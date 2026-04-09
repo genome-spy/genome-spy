@@ -21,6 +21,28 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
   - Implemented in [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js).
   - Validates and executes a batch through `IntentPipeline.submit(actions)`.
 
+- `toolCatalog`
+  - Generated from [`toolSchemaContract.ts`](../src/agent/toolSchemaContract.ts)
+    via [`generateAgentToolCatalog.mjs`](../../../scripts/generateAgentToolCatalog.mjs)
+    and [`generateAgentToolSchema.mjs`](../../../scripts/generateAgentToolSchema.mjs).
+  - Provides planner-facing tool metadata and the Responses API function
+    descriptors derived from the generated schema.
+
+- Session-owned expanded view state
+  - Implemented in [`agentSessionController.js`](../src/agent/agentSessionController.js).
+  - Maintains the current set of expanded view node selector keys and threads
+    them into the planner context snapshot.
+
+- `expandViewNode(selector)` / `collapseViewNode(selector)`
+  - Implemented in [`agentSessionController.js`](../src/agent/agentSessionController.js).
+  - Expands or collapses the agent-only view-context overlay without touching
+    provenance.
+
+- `setViewVisibility(selector, visibility)` / `clearViewVisibility(selector)`
+  - Implemented through the agent adapter and the app `viewSettings` slice.
+  - Changes the configured view visibility directly instead of routing through
+    provenance.
+
 ### Partially Implemented
 - `getViewHierarchySummary()`
   - Available as part of [`buildViewTree(app)`](../src/agent/viewTree.js), which feeds the agent context.
@@ -50,8 +72,6 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 - `getScaleSummaries()`
 - `resolveAttributeByName(query)`
 - `previewIntentProgram(program)`
-- `expandViewNode(selector)`
-- `collapseViewNode(selector)`
 - `getActionSchema(actionType)`
 - `forgetActionSchema(actionType)`
 
@@ -74,6 +94,47 @@ The OpenAI-facing tool list should stay coarse-grained.
 - Use detail tools such as `expandViewNode` and `getActionSchema` only when the
   model needs more context than the always-on summary provides.
 
+## Implementation Plan
+Build the tool surface in small generated steps:
+
+1. Define the tool contracts in TypeScript with JSDoc.
+   - Keep payloads and return shapes close to the agent runtime.
+   - Document public behavior, not implementation details.
+   - Treat these definitions as the source of truth for generation.
+
+2. Generate the catalog and schema artifacts from those definitions.
+   - Emit a compact tool catalog for prompt/context assembly.
+   - Emit JSON Schema artifacts for validation.
+   - Emit OpenAI Responses API tool descriptors from the same source.
+
+3. Add agent-local exploration state to the controller/runtime boundary.
+   - Maintain a set of expanded view nodes.
+   - Make `expandViewNode(selector)` add to that set.
+   - Make `collapseViewNode(selector)` remove from that set.
+   - Keep this state out of provenance and `submitIntentProgram`.
+
+4. Wire tool execution into the planner loop.
+   - Parse tool calls from the model response.
+   - Dispatch each tool to the local handler.
+   - Return tool outputs to the model with the matching call id or re-plan
+     locally after applying the tool result, depending on the transport layer.
+   - Keep `submitIntentProgram` only for provenance-backed mutations.
+
+5. Add visibility tools as separate direct state changes.
+   - Use them for app visibility, not intent provenance.
+   - Do not route them through `submitIntentProgram`.
+   - Keep them explicit so the model does not conflate them with view exploration.
+
+6. Update the system prompt and planner instructions.
+   - Tell the model when to use exploration tools.
+   - Tell the model when to use visibility tools.
+   - Clarify that only provenance-changing actions belong in intent programs.
+
+7. Add tests for the generated catalog and tool handling.
+   - Validate the generated schemas.
+   - Verify tool registration and dispatch.
+   - Cover expand/collapse and visibility behavior separately.
+
 ## Progressive Disclosure
 Use compact summaries by default, then fetch detail only when the model needs
 it.
@@ -81,10 +142,12 @@ it.
 - `expandViewNode(selector)`
   - Returns the hidden subtree or node details for a collapsed view branch.
   - Updates the agent's working context, not the user-visible UI state.
+  - Implemented.
 
 - `collapseViewNode(selector)`
   - Removes an expanded branch from the agent's working context.
   - Restores the summarized form for that node.
+  - Implemented.
 
 - `getActionSchema(actionType)`
   - Returns the exact payload schema for a single action type.

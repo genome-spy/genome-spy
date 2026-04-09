@@ -17,6 +17,8 @@ function createRuntimeMock() {
         requestPlan: vi.fn(),
         validateIntentProgram: vi.fn(),
         submitIntentProgram: vi.fn(),
+        setViewVisibility: vi.fn(),
+        clearViewVisibility: vi.fn(),
         summarizeExecutionResult: vi.fn(),
         summarizeIntentProgram: vi.fn(),
     };
@@ -27,6 +29,27 @@ beforeEach(() => {
 });
 
 describe("createAgentSessionController", () => {
+    it("tracks expanded view nodes in the session snapshot", () => {
+        const runtime = createRuntimeMock();
+        const controller = createAgentSessionController(runtime);
+
+        controller.expandViewNode({
+            scope: [],
+            view: "annotation-track",
+        });
+
+        expect(controller.getSnapshot().expandedViewNodeKeys).toEqual([
+            'v:{"scope":[],"view":"annotation-track"}',
+        ]);
+
+        controller.collapseViewNode({
+            scope: [],
+            view: "annotation-track",
+        });
+
+        expect(controller.getSnapshot().expandedViewNodeKeys).toEqual([]);
+    });
+
     it("parses numbered clarification choices from the planner response", async () => {
         const runtime = createRuntimeMock();
         runtime.requestPlan.mockImplementation((message) => {
@@ -80,6 +103,120 @@ describe("createAgentSessionController", () => {
                     label: "Available attributes",
                 },
             ],
+        });
+    });
+
+    it("executes planner tool calls and re-plans with the expanded view context", async () => {
+        const runtime = createRuntimeMock();
+        let plannerCallCount = 0;
+        runtime.requestPlan.mockImplementation(
+            (message, history, stream, allowStreaming, contextOptions) => {
+                plannerCallCount += 1;
+                if (message === PREFLIGHT_MESSAGE) {
+                    return Promise.resolve({
+                        response: {
+                            type: "answer",
+                            message: "I'm here",
+                        },
+                        trace: {
+                            totalMs: 10,
+                        },
+                    });
+                }
+
+                if (plannerCallCount === 2) {
+                    stream.onDelta?.("I should open the collapsed track.");
+                    return Promise.resolve({
+                        response: {
+                            type: "tool_call",
+                            message: "I should open the collapsed track.",
+                            toolCalls: [
+                                {
+                                    callId: "call-1",
+                                    name: "expandViewNode",
+                                    arguments: {
+                                        selector: {
+                                            scope: [],
+                                            view: "collapsed-track",
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        trace: {
+                            totalMs: 11,
+                        },
+                    });
+                }
+
+                expect(contextOptions.expandedViewNodeKeys).toEqual([
+                    'v:{"scope":[],"view":"collapsed-track"}',
+                ]);
+
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message:
+                            "The collapsed track is a heatmap of copy number changes.",
+                    },
+                    trace: {
+                        totalMs: 12,
+                    },
+                });
+            }
+        );
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage(
+            "What is hidden under that collapsed track?"
+        );
+
+        expect(controller.getSnapshot().expandedViewNodeKeys).toEqual([
+            'v:{"scope":[],"view":"collapsed-track"}',
+        ]);
+        expect(runtime.requestPlan).toHaveBeenCalledTimes(3);
+        expect(runtime.requestPlan.mock.calls[1][0]).toBe(
+            "What is hidden under that collapsed track?"
+        );
+        expect(runtime.requestPlan.mock.calls[2][1]).toMatchObject([
+            {
+                role: "user",
+                text: "What is hidden under that collapsed track?",
+            },
+            {
+                role: "assistant",
+                text: "I should open the collapsed track.",
+                toolCalls: [
+                    {
+                        callId: "call-1",
+                        name: "expandViewNode",
+                    },
+                ],
+            },
+            {
+                role: "tool",
+                text: "Expanded the requested view branch.",
+                toolCallId: "call-1",
+            },
+        ]);
+        expect(
+            runtime.requestPlan.mock.calls[2][4].expandedViewNodeKeys
+        ).toEqual(['v:{"scope":[],"view":"collapsed-track"}']);
+        expect(controller.getSnapshot().messages).toHaveLength(4);
+        expect(controller.getSnapshot().messages[1]).toMatchObject({
+            kind: "tool_call",
+            text: "I should open the collapsed track.",
+        });
+        expect(controller.getSnapshot().messages[2]).toMatchObject({
+            kind: "tool_result",
+            text: "Expanded the requested view branch.",
+        });
+        expect(controller.getSnapshot().messages[3]).toMatchObject({
+            kind: "assistant",
+            text: "The collapsed track is a heatmap of copy number changes.",
         });
     });
 

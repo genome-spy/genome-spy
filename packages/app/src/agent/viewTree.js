@@ -19,19 +19,22 @@ import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js
 import { getParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { formatScopedParamName } from "../viewScopeUtils.js";
 import { serializeBookmarkableParamValue } from "../state/paramValueSerialization.js";
+import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 
 /**
  * Builds a normalized, spec-like view tree for the agent.
  *
  * @param {import("../app.js").default} app
+ * @param {import("./types.d.ts").AgentContextOptions} [options]
  * @returns {import("./types.d.ts").AgentViewTreeRoot}
  */
-export function buildViewTree(app) {
+export function buildViewTree(app, options = {}) {
     const sampleView = app.getSampleView();
     const rootView = app?.genomeSpy?.viewRoot ?? sampleView;
     const hasStructuralRoot = Boolean(app?.genomeSpy?.viewRoot);
     const rootSpec = app?.genomeSpy?.spec;
     const rootConfig = summarizeRootConfig(rootSpec);
+    const expandedViewNodeKeys = new Set(options.expandedViewNodeKeys ?? []);
     const focusView = sampleView ?? rootView;
     const focusBranch = new Set(
         typeof focusView?.getLayoutAncestors === "function"
@@ -66,7 +69,8 @@ export function buildViewTree(app) {
 
         const node = summarizeViewNode(rootView, view, hasStructuralRoot);
         if (
-            shouldCollapseView(view, focusView, focusBranch) ||
+            (shouldCollapseView(view, focusView, focusBranch) &&
+                !isExpandedView(view, expandedViewNodeKeys)) ||
             node.visible === false
         ) {
             node.collapsed = true;
@@ -120,6 +124,24 @@ function shouldCollapseView(view, focusView, focusBranch) {
             : [view];
 
     return !ancestors.includes(focusView);
+}
+
+/**
+ * @param {any} view
+ * @param {Set<string>} expandedViewNodeKeys
+ * @returns {boolean}
+ */
+function isExpandedView(view, expandedViewNodeKeys) {
+    if (expandedViewNodeKeys.size === 0) {
+        return false;
+    }
+
+    const selector = getViewSelectorOrUndefined(view);
+    if (!selector) {
+        return false;
+    }
+
+    return expandedViewNodeKeys.has(makeViewSelectorKey(selector));
 }
 
 /**

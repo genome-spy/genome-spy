@@ -73,6 +73,56 @@ export interface AgentActionCatalogEntry {
 }
 
 /**
+ * Compact tool catalog entry exposed to the planner.
+ */
+export interface AgentToolCatalogEntry {
+    /**
+     * Stable tool name.
+     */
+    toolName: string;
+
+    /**
+     * User-facing tool description.
+     */
+    description: string;
+
+    /**
+     * Payload type name used by the schema generator.
+     */
+    inputType: string;
+
+    /**
+     * Field-level input metadata.
+     */
+    inputFields: AgentPayloadField[];
+
+    /**
+     * Minimal example payload.
+     */
+    exampleInput: unknown;
+}
+
+/**
+ * One tool invocation requested by the planner.
+ */
+export interface AgentToolCall {
+    /**
+     * Stable call identifier returned by the provider.
+     */
+    callId: string;
+
+    /**
+     * Tool name.
+     */
+    name: string;
+
+    /**
+     * Parsed tool arguments.
+     */
+    arguments: unknown;
+}
+
+/**
  * Compact action catalog entry sent in the planner context.
  */
 export interface AgentActionCatalogContextEntry {
@@ -725,6 +775,16 @@ export interface AgentAdapter {
     ): Promise<IntentProgramExecutionResult>;
 
     /**
+     * Changes the configured visibility of a view.
+     */
+    setViewVisibility(selector: ViewSelector, visibility: boolean): void;
+
+    /**
+     * Clears the configured visibility override for a view.
+     */
+    clearViewVisibility(selector: ViewSelector): void;
+
+    /**
      * Summarizes an execution result for display.
      */
     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
@@ -741,7 +801,8 @@ export interface AgentAdapter {
         message: string,
         history?: AgentConversationMessage[],
         streamCallbacks?: AgentStreamCallbacks,
-        allowStreaming?: boolean
+        allowStreaming?: boolean,
+        contextOptions?: AgentContextOptions
     ): Promise<{ response: PlanResponse; trace: Record<string, any> }>;
 
     /**
@@ -800,6 +861,11 @@ export interface AgentContext {
     actionCatalog: AgentActionCatalogContextEntry[];
 
     /**
+     * Available tools exposed to the planner.
+     */
+    toolCatalog: AgentToolCatalogEntry[];
+
+    /**
      * Structured workflows that the agent can resolve locally.
      */
     viewWorkflows: AgentPlannerViewWorkflowContext;
@@ -815,6 +881,16 @@ export interface AgentContext {
     lifecycle: {
         appInitialized: boolean;
     };
+}
+
+/**
+ * Optional context overlay used while building the planner snapshot.
+ */
+export interface AgentContextOptions {
+    /**
+     * Stable view selector keys that should remain expanded in the tree.
+     */
+    expandedViewNodeKeys?: string[];
 }
 
 /**
@@ -889,7 +965,7 @@ export interface AgentConversationMessage {
     /**
      * Transcript role.
      */
-    role: "user" | "assistant";
+    role: "user" | "assistant" | "tool";
 
     /**
      * Message text content.
@@ -899,7 +975,22 @@ export interface AgentConversationMessage {
     /**
      * Optional kind for non-standard assistant turns.
      */
-    kind?: "clarification";
+    kind?: "clarification" | "tool_call" | "tool_result";
+
+    /**
+     * Tool calls attached to an assistant tool-request turn.
+     */
+    toolCalls?: AgentToolCall[];
+
+    /**
+     * Tool call identifier for tool result turns.
+     */
+    toolCallId?: string;
+
+    /**
+     * Optional structured content for tool result turns.
+     */
+    content?: unknown;
 }
 
 export type AgentIntentProgramStep = GeneratedAgentIntentProgramStep;
@@ -1148,6 +1239,11 @@ export type PlanResponse =
     | {
           type: "clarify" | "answer";
           message: string;
+      }
+    | {
+          type: "tool_call";
+          toolCalls: AgentToolCall[];
+          message?: string;
       }
     | {
           type: "intent_program";

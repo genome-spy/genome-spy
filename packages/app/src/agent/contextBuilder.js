@@ -1,5 +1,6 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { listAgentActions } from "./actionCatalog.js";
+import { listAgentTools } from "./toolCatalog.js";
 import { buildViewTree } from "./viewTree.js";
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 
@@ -7,15 +8,16 @@ const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
 /**
  * @param {import("../app.js").default} app
+ * @param {import("./types.js").AgentContextOptions} [options]
  * @returns {import("./types.js").AgentContext}
  */
-export function getAgentContext(app) {
+export function getAgentContext(app, options = {}) {
     const sampleView = app.getSampleView();
     const state = app.store.getState();
     const sampleState = app.provenance.getPresentState()?.sampleView;
     const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
     const viewWorkflows = getViewWorkflowContext(app);
-    const { root: viewRoot } = buildViewTree(app);
+    const { root: viewRoot } = buildViewTree(app, options);
     const compactWorkflows =
         viewWorkflows.fields.length > 0
             ? {
@@ -38,6 +40,13 @@ export function getAgentContext(app) {
             description: entry.description,
             payloadFields: entry.payloadFields,
             examplePayload: entry.examplePayload,
+        })),
+        toolCatalog: listAgentTools().map((entry) => ({
+            toolName: entry.toolName,
+            description: entry.description,
+            inputType: entry.inputType,
+            inputFields: entry.inputFields,
+            exampleInput: entry.exampleInput,
         })),
         viewWorkflows: compactWorkflows,
         provenance: buildProvenanceActions(app, provenance),

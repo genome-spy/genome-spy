@@ -540,4 +540,75 @@ describe("buildViewTree", () => {
 
         expect(tree.root.description).toBe("First line\nSecond line");
     });
+
+    it("keeps explicitly expanded branches open", () => {
+        const expandedKey =
+            "v:" + JSON.stringify({ scope: [], view: "annotation-track" });
+
+        const sampleView = createMockView({
+            name: "samples",
+            title: "Samples",
+            constructorName: "SampleView",
+            spec: {
+                data: {
+                    name: "samples",
+                },
+            },
+        });
+
+        const root = createMockView({
+            name: "viewRoot",
+            title: "Visualization root",
+            spec: {},
+            children: [
+                createMockView({
+                    name: "data-tracks",
+                    title: "Data Tracks",
+                    spec: {
+                        vconcat: [],
+                    },
+                    children: [
+                        sampleView,
+                        createMockView({
+                            name: "annotation-track",
+                            title: "Annotation track",
+                            spec: {
+                                layer: [],
+                            },
+                            children: [
+                                createMockView({
+                                    name: "annotation-leaf",
+                                    title: "Annotation leaf",
+                                    spec: {
+                                        mark: "rule",
+                                    },
+                                }),
+                            ],
+                        }),
+                    ],
+                }),
+            ],
+        });
+
+        const tree = buildViewTree(
+            {
+                getSampleView: () => sampleView,
+                genomeSpy: {
+                    spec: {},
+                    viewRoot: root,
+                },
+            },
+            {
+                expandedViewNodeKeys: [expandedKey],
+            }
+        );
+
+        expect(tree.root.children[0].children[1]).toMatchObject({
+            title: "Annotation track",
+        });
+        expect(tree.root.children[0].children[1]).not.toHaveProperty(
+            "collapsed"
+        );
+        expect(tree.root.children[0].children[1].children).toHaveLength(1);
+    });
 });

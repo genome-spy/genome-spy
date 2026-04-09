@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.config import load_default_system_prompt
 from app.main import app, get_settings
-from app.models import ProviderResponse, ProviderStreamEvent
+from app.models import ProviderResponse, ProviderStreamEvent, ToolCall
 
 
 class StubProvider:
@@ -19,6 +19,20 @@ class StubProvider:
 class FailingProvider:
     async def generate(self, request):  # type: ignore[no-untyped-def]
         raise RuntimeError("boom")
+
+
+class ToolCallProvider:
+    async def generate(self, request):  # type: ignore[no-untyped-def]
+        return ProviderResponse(
+            type="tool_call",
+            tool_calls=[
+                ToolCall(
+                    call_id="call_1",
+                    name="expandViewNode",
+                    arguments={"selector": {"scope": [], "view": "track"}},
+                )
+            ],
+        )
 
 
 class StreamingProvider:
@@ -77,6 +91,39 @@ def test_plan_endpoint_returns_normalized_response(monkeypatch) -> None:
     assert response.json() == {
         "type": "answer",
         "message": "The beta-value track encodes it.",
+    }
+
+
+def test_plan_endpoint_returns_tool_call_response(monkeypatch) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    reset_settings_cache()
+    monkeypatch.setattr("app.main.get_provider", lambda: ToolCallProvider())
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/plan",
+        json={
+            "message": "Expand the collapsed node.",
+            "history": [],
+            "context": {"schemaVersion": 1},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "type": "tool_call",
+        "toolCalls": [
+            {
+                "callId": "call_1",
+                "name": "expandViewNode",
+                "arguments": {
+                    "selector": {
+                        "scope": [],
+                        "view": "track",
+                    }
+                },
+            }
+        ],
     }
 
 

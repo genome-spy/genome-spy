@@ -11,6 +11,9 @@ const { showAgentChoiceDialog } = vi.hoisted(() => ({
 const { resolveParamSelectorMock } = vi.hoisted(() => ({
     resolveParamSelectorMock: vi.fn(),
 }));
+const { resolveViewSelectorMock } = vi.hoisted(() => ({
+    resolveViewSelectorMock: vi.fn(),
+}));
 const { showHierarchyBoxplotDialog } = vi.hoisted(() => ({
     showHierarchyBoxplotDialog: vi.fn(() => Promise.resolve({ ok: true })),
 }));
@@ -29,6 +32,7 @@ vi.mock("./contextBuilder.js", () => ({
 
 vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     resolveParamSelector: resolveParamSelectorMock,
+    resolveViewSelector: resolveViewSelectorMock,
 }));
 
 vi.mock("../charts/hierarchyBoxplotDialog.js", () => ({
@@ -133,7 +137,15 @@ function createAppStub(encoding = undefined) {
 
     return {
         options: {},
+        store: {
+            dispatch: vi.fn(),
+        },
         getSampleView: () => sampleView,
+        genomeSpy: {
+            viewRoot: {
+                explicitName: "root",
+            },
+        },
         intentPipeline: {
             submit: vi.fn(() => Promise.resolve()),
         },
@@ -203,6 +215,37 @@ describe("agentAdapter", () => {
                 recordAgentTrace: vi.fn(),
             },
         });
+    });
+
+    it("dispatches view visibility tools directly to the store", () => {
+        const app = createAppStub();
+        resolveViewSelectorMock.mockReturnValue({
+            explicitName: "collapsed-track",
+        });
+
+        const adapter = createAgentAdapter(app);
+        adapter.setViewVisibility(
+            {
+                scope: [],
+                view: "collapsed-track",
+            },
+            false
+        );
+        adapter.clearViewVisibility({
+            scope: [],
+            view: "collapsed-track",
+        });
+
+        expect(app.store.dispatch).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: "viewSettings/setVisibility",
+            })
+        );
+        expect(app.store.dispatch).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: "viewSettings/restoreDefaultVisibility",
+            })
+        );
     });
 
     it("executes resolved view-workflow requests after planner resolution", async () => {

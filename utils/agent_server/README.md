@@ -12,15 +12,17 @@ The service is intentionally thin:
 - reads `message`, `history`, and `context` as-is
 - prepends a fixed internal system prompt
 - forwards the assembled prompt to one LLM provider
-- normalizes the result to either `answer` or `clarify`
+- normalizes the result to `answer`, `clarify`, or `tool_call`
 - can also stream the turn as SSE when the client asks for it
 
 The service does not:
 
 - rebuild GenomeSpy context
 - validate GenomeSpy semantics
-- execute tools or actions
 - perform retries, truncation, or summarization
+
+The browser app executes local tools such as view expansion and visibility
+changes after the relay returns a `tool_call` turn.
 
 ## Tech stack
 

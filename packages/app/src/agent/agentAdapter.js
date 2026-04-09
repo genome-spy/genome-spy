@@ -12,6 +12,9 @@ import { summarizeIntentProgram } from "./actionCatalog.js";
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 import { resolveViewWorkflow } from "./viewWorkflowResolver.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
+import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { makeViewSelectorKey } from "../viewSettingsUtils.js";
+import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 const SHOULD_LOG_AGENT_TRACE =
@@ -32,7 +35,51 @@ function elapsedMilliseconds(startedAt) {
 }
 
 /**
+ * @param {string} text
+ * @returns {boolean}
+ */
+function looksLikeStructuredToolMessage(text) {
+    const stripped = text.trimStart();
+    return (
+        stripped.startsWith("{") ||
+        stripped.startsWith("[") ||
+        stripped.startsWith("```") ||
+        /^"[^"]+"\s*:/.test(stripped)
+    );
+}
+
+/**
+ * @param {AgentToolCall} toolCall
+ * @returns {string}
+ */
+function summarizeToolExecution(toolCall) {
+    if (toolCall.name === "expandViewNode") {
+        return "Expanded the requested view branch.";
+    }
+
+    if (toolCall.name === "collapseViewNode") {
+        return "Collapsed the requested view branch.";
+    }
+
+    if (toolCall.name === "setViewVisibility") {
+        return "Updated the requested view visibility.";
+    }
+
+    if (toolCall.name === "clearViewVisibility") {
+        return "Cleared the requested view visibility override.";
+    }
+
+    if (toolCall.name === "submitIntentProgram") {
+        return "Executed the proposed intent program.";
+    }
+
+    return "Executed " + toolCall.name + ".";
+}
+
+/**
  * @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage
+ * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
+ * @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall
  */
 
 /**
@@ -54,6 +101,9 @@ function normalizeConversationHistory(history) {
             role: entry.role,
             text: entry.text,
             ...(entry.kind ? { kind: entry.kind } : {}),
+            ...(entry.toolCalls ? { toolCalls: entry.toolCalls } : {}),
+            ...(entry.toolCallId ? { toolCallId: entry.toolCallId } : {}),
+            ...(entry.content !== undefined ? { content: entry.content } : {}),
         };
     });
 }
@@ -103,6 +153,13 @@ export function createAgentAdapter(app) {
         submitIntentProgram: (
             /** @type {import("./types.js").IntentProgram} */ program
         ) => submitIntentProgram(app, program),
+        setViewVisibility: (
+            /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector,
+            /** @type {boolean} */ visibility
+        ) => setViewVisibility(app, selector, visibility),
+        clearViewVisibility: (
+            /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector
+        ) => clearViewVisibility(app, selector),
         summarizeExecutionResult,
         summarizeIntentProgram: (
             /** @type {import("./types.js").IntentProgram} */ program
@@ -111,13 +168,15 @@ export function createAgentAdapter(app) {
             /** @type {string} */ message,
             /** @type {Array<string | AgentConversationMessage>} */ history = [],
             /** @type {import("./agentSessionController.js").AgentStreamCallbacks} */ streamCallbacks = {},
-            /** @type {boolean} */ allowStreaming = true
+            /** @type {boolean} */ allowStreaming = true,
+            /** @type {AgentContextOptions} */ contextOptions = {}
         ) =>
             requestPlan(app, {
                 message,
                 history,
                 streamCallbacks,
                 allowStreaming,
+                contextOptions,
             }),
         runLocalPrompt: () => runLocalPrompt(app),
     };
@@ -129,7 +188,8 @@ export function createAgentAdapter(app) {
  *   message: string,
  *   history?: Array<string | AgentConversationMessage>,
  *   streamCallbacks?: import("./agentSessionController.js").AgentStreamCallbacks,
- *   allowStreaming?: boolean
+ *   allowStreaming?: boolean,
+ *   contextOptions?: AgentContextOptions
  * }} options
  * @returns {Promise<{ response: import("./types.js").PlanResponse, trace: Record<string, any> }>}
  */
@@ -137,7 +197,7 @@ async function requestPlan(app, options) {
     const baseUrl = app.options.agentBaseUrl ?? DEFAULT_AGENT_BASE_URL;
     const startedAt = now();
     const contextStartedAt = now();
-    const context = getAgentContext(app);
+    const context = getAgentContext(app, options.contextOptions);
     const contextBuildMs = elapsedMilliseconds(contextStartedAt);
     const history = normalizeConversationHistory(options.history ?? []);
     const shouldStream =
@@ -254,6 +314,43 @@ async function requestPlan(app, options) {
                 totalMs: elapsedMilliseconds(startedAt),
             },
         };
+    }
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+ * @param {boolean} visibility
+ */
+function setViewVisibility(app, selector, visibility) {
+    app.store.dispatch(
+        viewSettingsSlice.actions.setVisibility({
+            key: makeViewSelectorKey(selector),
+            visibility,
+        })
+    );
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+ */
+function clearViewVisibility(app, selector) {
+    const key = makeViewSelectorKey(selector);
+    app.store.dispatch(viewSettingsSlice.actions.restoreDefaultVisibility(key));
+
+    const viewRoot = app.genomeSpy?.viewRoot;
+    if (!viewRoot) {
+        return;
+    }
+
+    const view = resolveViewSelector(viewRoot, selector);
+    if (view?.explicitName && view.explicitName !== key) {
+        app.store.dispatch(
+            viewSettingsSlice.actions.restoreDefaultVisibility(
+                view.explicitName
+            )
+        );
     }
 }
 
@@ -384,10 +481,13 @@ function handlePlannerStreamEvent(
     }
 
     if (eventName === "final" && payload.response) {
-        return {
+        return /** @type {import("./types.js").PlanResponse} */ ({
             type: payload.response.type,
             message: payload.response.message,
-        };
+            ...(payload.response.toolCalls
+                ? { toolCalls: payload.response.toolCalls }
+                : {}),
+        });
     }
 
     if (eventName === "error") {
@@ -395,6 +495,18 @@ function handlePlannerStreamEvent(
     }
 
     return finalResponse;
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @returns {import("./types.d.ts").AgentContextOptions}
+ */
+function getCurrentAgentContextOptions(app) {
+    return {
+        expandedViewNodeKeys:
+            app.agentSessionController?.getSnapshot().expandedViewNodeKeys ??
+            [],
+    };
 }
 
 /**
@@ -410,21 +522,29 @@ async function runLocalPrompt(app) {
     const startedAt = now();
     /** @type {Record<string, any>} */
     const trace = { message: initialMessage };
+    /** @type {Array<string | AgentConversationMessage>} */
     const history = [];
     let message = initialMessage;
     let clarificationRounds = 0;
+    let toolRounds = 0;
     let repairedInvalidIntentProgram = false;
 
     try {
         while (true) {
-            const requestResult = await requestPlan(app, { message, history });
+            const requestResult = await requestPlan(app, {
+                message,
+                history,
+                contextOptions: getCurrentAgentContextOptions(app),
+            });
             const response = requestResult.response;
             Object.assign(trace, requestResult.trace);
 
             if (response.type === "clarify") {
                 const workflowType = inferRequestedWorkflowType([
                     initialMessage,
-                    ...history,
+                    ...history.map((entry) =>
+                        typeof entry === "string" ? entry : entry.text
+                    ),
                     response.message,
                 ]).workflowType;
                 const groundedClarification = getGroundedPlannerClarification(
@@ -537,6 +657,50 @@ async function runLocalPrompt(app) {
                 return;
             }
 
+            if (response.type === "tool_call") {
+                toolRounds += 1;
+                if (toolRounds > 5) {
+                    throw new Error(
+                        "Agent tool calls did not converge after 5 rounds."
+                    );
+                }
+
+                /** @type {AgentConversationMessage} */
+                history.push({
+                    id: `tool-call-${toolRounds}`,
+                    role: "assistant",
+                    text:
+                        response.message &&
+                        !looksLikeStructuredToolMessage(response.message)
+                            ? response.message
+                            : "",
+                    kind: "tool_call",
+                    toolCalls: response.toolCalls,
+                });
+
+                const controller = app.agentSessionController;
+                if (!controller?.executeToolCalls) {
+                    throw new Error(
+                        "Agent tool calls require an attached session controller."
+                    );
+                }
+
+                await controller.executeToolCalls(response.toolCalls);
+                if (controller.getSnapshot().status === "error") {
+                    return;
+                }
+                for (const toolCall of response.toolCalls) {
+                    history.push({
+                        id: `tool-result-${toolRounds}-${toolCall.callId}`,
+                        role: "tool",
+                        text: summarizeToolExecution(toolCall),
+                        toolCallId: toolCall.callId,
+                        kind: "tool_result",
+                    });
+                }
+                continue;
+            }
+
             if (response.type !== "intent_program") {
                 throw new Error(
                     "Unsupported agent response type: " + response.type
@@ -557,7 +721,9 @@ async function runLocalPrompt(app) {
                 ) {
                     const workflowType = inferRequestedWorkflowType([
                         initialMessage,
-                        ...history,
+                        ...history.map((entry) =>
+                            typeof entry === "string" ? entry : entry.text
+                        ),
                     ]).workflowType;
                     history.push(
                         message,

@@ -29,8 +29,8 @@ def build_prompt_ir(request: ProviderRequest) -> PromptIR:
     )
 
 
-def build_chat_completions_messages(prompt: PromptIR) -> list[dict[str, str]]:
-    messages: list[dict[str, str]] = [
+def build_chat_completions_messages(prompt: PromptIR) -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = [
         {"role": "system", "content": prompt.instructions},
         {
             "role": "system",
@@ -78,15 +78,42 @@ def _build_context_text(context: dict[str, Any]) -> str:
     )
 
 
-def _build_text_messages(history: list[HistoryMessage]) -> list[dict[str, str]]:
-    messages: list[dict[str, str]] = []
+def _build_text_messages(history: list[HistoryMessage]) -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = []
     for message in history:
-        messages.append(
-            {
-                "role": message.role,
+        if message.role == "tool":
+            messages.append(
+                {
+                    "role": "tool",
+                    "content": _stringify_content(message.content, message.text),
+                }
+            )
+        elif message.tool_calls:
+            content: dict[str, Any] = {
+                "role": "assistant",
                 "content": message.text,
+                "tool_calls": [
+                    {
+                        "id": tool_call.call_id,
+                        "type": "function",
+                        "function": {
+                            "name": tool_call.name,
+                            "arguments": _stringify_content(
+                                tool_call.arguments, "{}"
+                            ),
+                        },
+                    }
+                    for tool_call in message.tool_calls
+                ],
             }
-        )
+            messages.append(content)
+        else:
+            messages.append(
+                {
+                    "role": message.role,
+                    "content": message.text,
+                }
+            )
 
     return messages
 
@@ -94,6 +121,45 @@ def _build_text_messages(history: list[HistoryMessage]) -> list[dict[str, str]]:
 def _build_response_messages(history: list[HistoryMessage]) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = []
     for message in history:
+        if message.role == "tool":
+            output = _stringify_content(message.content, message.text)
+            messages.append(
+                {
+                    "type": "function_call_output",
+                    "call_id": message.tool_call_id or message.id,
+                    "output": output,
+                }
+            )
+            continue
+
+        if message.tool_calls:
+            if message.text:
+                messages.append(
+                    {
+                        "id": message.id,
+                        "type": "message",
+                        "status": "completed",
+                        "role": "assistant",
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": message.text,
+                            }
+                        ],
+                    }
+                )
+
+            messages.extend(
+                {
+                    "type": "function_call",
+                    "call_id": tool_call.call_id,
+                    "name": tool_call.name,
+                    "arguments": _stringify_content(tool_call.arguments, "{}"),
+                }
+                for tool_call in message.tool_calls
+            )
+            continue
+
         content_type = "output_text" if message.role == "assistant" else "input_text"
         content = [{"type": content_type, "text": message.text}]
         messages.append(
@@ -107,3 +173,13 @@ def _build_response_messages(history: list[HistoryMessage]) -> list[dict[str, An
         )
 
     return messages
+
+
+def _stringify_content(content: Any, fallback: str) -> str:
+    if isinstance(content, str):
+        return content
+
+    if content is None:
+        return fallback
+
+    return json.dumps(content, ensure_ascii=False, sort_keys=True)

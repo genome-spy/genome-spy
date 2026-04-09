@@ -7,12 +7,24 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class HistoryMessage(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     id: str
-    role: Literal["user", "assistant"]
+    role: Literal["user", "assistant", "tool"]
     text: str
     kind: str | None = None
+    tool_call_id: str | None = Field(default=None, alias="toolCallId")
+    name: str | None = None
+    content: Any | None = None
+    tool_calls: list["ToolCall"] = Field(default_factory=list, alias="toolCalls")
+
+
+class ToolCall(BaseModel):
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    call_id: str = Field(alias="callId")
+    name: str
+    arguments: Any
 
 
 class PlanRequest(BaseModel):
@@ -24,13 +36,19 @@ class PlanRequest(BaseModel):
 
 
 class PlanResponse(BaseModel):
-    type: Literal["answer", "clarify"]
-    message: str
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    type: Literal["answer", "clarify", "tool_call"]
+    message: str | None = None
+    tool_calls: list[ToolCall] = Field(default_factory=list, alias="toolCalls")
 
 
 class ProviderResponse(BaseModel):
-    type: Literal["answer", "clarify"]
-    message: str
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    type: Literal["answer", "clarify", "tool_call"]
+    message: str | None = None
+    tool_calls: list[ToolCall] = Field(default_factory=list, alias="toolCalls")
 
 
 @dataclass(frozen=True, slots=True)

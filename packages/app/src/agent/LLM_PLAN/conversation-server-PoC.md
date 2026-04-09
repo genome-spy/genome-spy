@@ -134,13 +134,15 @@ The server should build the LLM prompt in this order:
 
 ### Response
 
-For the read-only POC, the server should return either:
+For the read-only POC, the server should return one of:
 
 - `type: "answer"` with a natural-language `message`
 - `type: "clarify"` with a short clarification `message`
+- `type: "tool_call"` when the browser should execute a local exploration or visibility tool before the next turn
 
-No tool-call, intent-program, or action-execution response types are needed for
-the POC.
+The browser handles `tool_call` turns locally and then re-asks the planner with
+the updated context. Intent programs and provenance-changing actions remain on
+their own path.
 
 ### Response Example
 

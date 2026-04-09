@@ -1,4 +1,5 @@
 import templateResultToString from "../utils/templateResultToString.js";
+import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
@@ -6,10 +7,16 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
 /** @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult */
 /** @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine */
 /** @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult */
+/** @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions */
+/** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
 /** @typedef {import("./types.d.ts").PlanResponse | {
  *     type: "clarify";
  *     message: string | import("lit").TemplateResult;
  *     options?: ChatClarificationOption[];
+ * } | {
+ *     type: "tool_call";
+ *     toolCalls: AgentToolCall[];
+ *     message?: string;
  * }} ChatPlannerResponse */
 /**
  * @typedef {{
@@ -37,10 +44,21 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  *
  * @typedef {{
  *     id: number;
- *     kind: "user" | "assistant" | "clarification" | "plan" | "result" | "error";
+ *     kind:
+ *         | "user"
+ *         | "assistant"
+ *         | "clarification"
+ *         | "plan"
+ *         | "result"
+ *         | "tool_call"
+ *         | "tool_result"
+ *         | "error";
  *     text?: string | import("lit").TemplateResult;
  *     lines?: IntentProgramSummaryLine[];
  *     options?: ChatClarificationOption[];
+ *     toolCalls?: AgentToolCall[];
+ *     toolCallId?: string;
+ *     content?: unknown;
  *     durationMs?: number | null;
  * }} AgentChatMessage
  *
@@ -53,6 +71,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  *     queuedMessageCount: number;
  *     lastError: string;
  *     lastResponseDurationMs: number | null;
+ *     expandedViewNodeKeys: string[];
  * }} AgentSessionSnapshot
  *
  * @typedef {{
@@ -60,16 +79,48 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  *         message: string,
  *         history?: AgentConversationMessage[],
  *         stream?: AgentStreamCallbacks,
- *         allowStreaming?: boolean
+ *         allowStreaming?: boolean,
+ *         contextOptions?: AgentContextOptions
  *     ): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
+ *     setViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector, visibility: boolean): void;
+ *     clearViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): void;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
  *     summarizeIntentProgram(program: IntentProgram): IntentProgramSummaryLine[];
  * }} AgentSessionRuntime
  */
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
+
+/**
+ * @returns {number}
+ */
+function now() {
+    return globalThis.performance?.now?.() ?? Date.now();
+}
+
+/**
+ * @param {number} startedAt
+ * @returns {number}
+ */
+function elapsedMilliseconds(startedAt) {
+    return Math.round((now() - startedAt) * 10) / 10;
+}
+
+/**
+ * @param {string} text
+ * @returns {boolean}
+ */
+function looksLikeStructuredToolMessage(text) {
+    const stripped = text.trimStart();
+    return (
+        stripped.startsWith("{") ||
+        stripped.startsWith("[") ||
+        stripped.startsWith("```") ||
+        /^"[^"]+"\s*:/.test(stripped)
+    );
+}
 
 /**
  * @param {AgentSessionRuntime} runtime
@@ -108,6 +159,7 @@ export class AgentSessionController {
             queuedMessageCount: 0,
             lastError: "",
             lastResponseDurationMs: null,
+            expandedViewNodeKeys: [],
         };
 
         /** @type {Promise<void> | null} */
@@ -122,6 +174,8 @@ export class AgentSessionController {
         this.#queuedMessages = [];
         /** @type {AgentActiveTurnSnapshot | null} */
         this.#activeTurn = null;
+        /** @type {Set<string>} */
+        this.#expandedViewNodeKeys = new Set();
     }
 
     /** @type {AgentSessionRuntime} */
@@ -154,6 +208,9 @@ export class AgentSessionController {
     /** @type {AgentActiveTurnSnapshot | null} */
     #activeTurn;
 
+    /** @type {Set<string>} */
+    #expandedViewNodeKeys;
+
     /**
      * @param {(snapshot: AgentSessionSnapshot) => void} listener
      * @returns {() => void}
@@ -184,11 +241,15 @@ export class AgentSessionController {
     getSnapshot() {
         return {
             ...this.#state,
+            expandedViewNodeKeys: Array.from(this.#expandedViewNodeKeys),
             messages: this.#state.messages.map((message) => ({
                 ...message,
                 lines: message.lines?.slice(),
                 options: message.options?.map((option) => ({
                     ...option,
+                })),
+                toolCalls: message.toolCalls?.map((toolCall) => ({
+                    ...toolCall,
                 })),
             })),
         };
@@ -258,6 +319,64 @@ export class AgentSessionController {
     }
 
     /**
+     * Expands a collapsed view branch for the current session context.
+     *
+     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     */
+    expandViewNode(selector) {
+        const key = makeViewSelectorKey(selector);
+        if (this.#expandedViewNodeKeys.has(key)) {
+            return;
+        }
+
+        this.#expandedViewNodeKeys.add(key);
+        this.#state.expandedViewNodeKeys = Array.from(
+            this.#expandedViewNodeKeys
+        );
+        this.#notify();
+    }
+
+    /**
+     * Collapses a previously expanded view branch in the current session
+     * context.
+     *
+     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     */
+    collapseViewNode(selector) {
+        const key = makeViewSelectorKey(selector);
+        if (!this.#expandedViewNodeKeys.has(key)) {
+            return;
+        }
+
+        this.#expandedViewNodeKeys.delete(key);
+        this.#state.expandedViewNodeKeys = Array.from(
+            this.#expandedViewNodeKeys
+        );
+        this.#notify();
+    }
+
+    /**
+     * Executes tool calls requested by the planner.
+     *
+     * @param {AgentToolCall[]} toolCalls
+     * @returns {Promise<void>}
+     */
+    async executeToolCalls(toolCalls) {
+        for (const toolCall of toolCalls) {
+            const result = await this.#executeToolCall(toolCall);
+            if (result) {
+                this.#appendMessage({
+                    kind: "tool_result",
+                    text: result,
+                    toolCallId: toolCall.callId,
+                    durationMs: null,
+                });
+                this.#notify();
+            }
+        }
+    }
+
+    /**
      * @returns {boolean}
      */
     #shouldQueue() {
@@ -309,7 +428,8 @@ export class AgentSessionController {
                 PREFLIGHT_MESSAGE,
                 [],
                 undefined,
-                false
+                false,
+                this.#buildContextOptions()
             );
 
             if (!this.#looksDecent(response)) {
@@ -344,6 +464,7 @@ export class AgentSessionController {
             "type" in response &&
             (response.type === "answer" ||
                 response.type === "clarify" ||
+                response.type === "tool_call" ||
                 response.type === "intent_program" ||
                 response.type === "view_workflow" ||
                 response.type === "agent_program")
@@ -373,25 +494,62 @@ export class AgentSessionController {
         this.#notify();
 
         const turnId = this.#beginActiveTurn();
+        const startedAt = now();
 
         try {
-            const history = this.#buildHistory();
-            const { response, trace } = await this.#runtime.requestPlan(
-                message,
-                history,
-                {
-                    onDelta: (delta) => {
-                        this.#appendActiveTurnDelta(turnId, delta);
+            let response;
+            while (true) {
+                const history = this.#buildHistory();
+                const requestResult = await this.#runtime.requestPlan(
+                    message,
+                    history,
+                    {
+                        onDelta: (delta) => {
+                            this.#appendActiveTurnDelta(turnId, delta);
+                        },
+                        onReasoning: (delta) => {
+                            this.#appendActiveTurnReasoning(turnId, delta);
+                        },
+                        onHeartbeat: () => {
+                            this.#touchActiveTurn(turnId);
+                        },
                     },
-                    onReasoning: (delta) => {
-                        this.#appendActiveTurnReasoning(turnId, delta);
-                    },
-                    onHeartbeat: () => {
-                        this.#touchActiveTurn(turnId);
-                    },
+                    true,
+                    this.#buildContextOptions()
+                );
+                response = requestResult.response;
+
+                if (response.type !== "tool_call") {
+                    break;
                 }
+
+                this.#appendMessage({
+                    kind: "tool_call",
+                    text:
+                        response.message &&
+                        !looksLikeStructuredToolMessage(response.message)
+                            ? response.message
+                            : "",
+                    toolCalls: response.toolCalls,
+                    durationMs: elapsedMilliseconds(startedAt),
+                });
+
+                this.#state.status = "executing";
+                this.#notify();
+                await this.executeToolCalls(response.toolCalls);
+                if (this.#state.lastError) {
+                    return;
+                }
+                this.#resetActiveTurnDraft(turnId);
+                this.#state.status = "thinking";
+                this.#notify();
+            }
+
+            await this.#handleResponse(
+                response,
+                elapsedMilliseconds(startedAt),
+                turnId
             );
-            await this.#handleResponse(response, trace.totalMs, turnId);
         } catch (error) {
             this.#state.pendingResponsePlaceholder = "";
             this.#state.status = "error";
@@ -455,7 +613,9 @@ export class AgentSessionController {
                     message.kind === "assistant" ||
                     message.kind === "clarification" ||
                     message.kind === "plan" ||
-                    message.kind === "result"
+                    message.kind === "result" ||
+                    message.kind === "tool_call" ||
+                    message.kind === "tool_result"
             )
             .map((message) => {
                 const text =
@@ -464,6 +624,25 @@ export class AgentSessionController {
                         : message.text
                           ? templateResultToString(message.text)
                           : "";
+
+                if (message.kind === "tool_call") {
+                    return /** @type {AgentConversationMessage} */ ({
+                        id: String(message.id),
+                        role: "assistant",
+                        text,
+                        toolCalls: message.toolCalls ?? [],
+                    });
+                }
+
+                if (message.kind === "tool_result") {
+                    return /** @type {AgentConversationMessage} */ ({
+                        id: String(message.id),
+                        role: "tool",
+                        text,
+                        toolCallId: message.toolCallId,
+                        content: message.content,
+                    });
+                }
 
                 const historyMessage =
                     /** @type {AgentConversationMessage} */ ({
@@ -481,7 +660,12 @@ export class AgentSessionController {
 
                 return historyMessage;
             })
-            .filter((message) => message.text.length > 0);
+            .filter(
+                (message) =>
+                    message.text.length > 0 ||
+                    message.kind === "tool_call" ||
+                    message.kind === "tool_result"
+            );
     }
 
     /**
@@ -537,53 +721,10 @@ export class AgentSessionController {
         }
 
         if (response.type === "intent_program") {
-            const planLines = this.#runtime.summarizeIntentProgram(
-                response.program
+            await this.#executeIntentProgram(
+                response.program,
+                durationMs ?? null
             );
-
-            this.#appendMessage({
-                kind: "plan",
-                text:
-                    response.program.rationale ??
-                    "The agent proposed an action plan.",
-                lines: planLines,
-                durationMs: durationMs ?? null,
-            });
-
-            this.#state.status = "executing";
-            this.#notify();
-
-            const validation = this.#runtime.validateIntentProgram(
-                response.program
-            );
-            if (!validation.ok || !validation.program) {
-                const validationMessage = validation.errors.join("\n");
-                this.#appendMessage({
-                    kind: "error",
-                    text: validationMessage,
-                });
-                this.#state.status = "error";
-                this.#state.lastError = validationMessage;
-                this.#notify();
-                return;
-            }
-
-            const result = await this.#runtime.submitIntentProgram(
-                validation.program
-            );
-            this.#appendMessage({
-                kind: "result",
-                text:
-                    "Executed " +
-                    result.executedActions +
-                    " action" +
-                    (result.executedActions === 1 ? "" : "s") +
-                    ".",
-                lines: result.summaries,
-            });
-            this.#state.status = "ready";
-            this.#state.lastError = "";
-            this.#notify();
             return;
         }
 
@@ -617,6 +758,148 @@ export class AgentSessionController {
         this.#state.status = "error";
         this.#state.lastError = "Unsupported planner response.";
         this.#notify();
+    }
+
+    /**
+     * Executes a planner-authored intent program and records the result.
+     *
+     * @param {IntentProgram} program
+     * @param {number | null} durationMs
+     * @returns {Promise<void>}
+     */
+    async #executeIntentProgram(program, durationMs) {
+        const planLines = this.#runtime.summarizeIntentProgram(program);
+
+        this.#appendMessage({
+            kind: "plan",
+            text: program.rationale ?? "The agent proposed an action plan.",
+            lines: planLines,
+            durationMs,
+        });
+
+        this.#state.status = "executing";
+        this.#notify();
+
+        const validation = this.#runtime.validateIntentProgram(program);
+        if (!validation.ok || !validation.program) {
+            const validationMessage = validation.errors.join("\n");
+            this.#appendMessage({
+                kind: "error",
+                text: validationMessage,
+            });
+            this.#state.status = "error";
+            this.#state.lastError = validationMessage;
+            this.#notify();
+            return;
+        }
+
+        const result = await this.#runtime.submitIntentProgram(
+            validation.program
+        );
+        this.#appendMessage({
+            kind: "result",
+            text:
+                "Executed " +
+                result.executedActions +
+                " action" +
+                (result.executedActions === 1 ? "" : "s") +
+                ".",
+            lines: result.summaries,
+        });
+        this.#state.status = "ready";
+        this.#state.lastError = "";
+        this.#notify();
+    }
+
+    /**
+     * Executes one planner tool call.
+     *
+     * @param {AgentToolCall} toolCall
+     * @returns {Promise<string | null>}
+     */
+    async #executeToolCall(toolCall) {
+        const argumentsObject = this.#parseToolArguments(toolCall.arguments);
+
+        if (toolCall.name === "expandViewNode") {
+            this.expandViewNode(argumentsObject.selector);
+            return "Expanded the requested view branch.";
+        }
+
+        if (toolCall.name === "collapseViewNode") {
+            this.collapseViewNode(argumentsObject.selector);
+            return "Collapsed the requested view branch.";
+        }
+
+        if (toolCall.name === "setViewVisibility") {
+            this.#runtime.setViewVisibility(
+                argumentsObject.selector,
+                argumentsObject.visibility
+            );
+            return "Updated the requested view visibility.";
+        }
+
+        if (toolCall.name === "clearViewVisibility") {
+            this.#runtime.clearViewVisibility(argumentsObject.selector);
+            return "Cleared the requested view visibility override.";
+        }
+
+        if (toolCall.name === "submitIntentProgram") {
+            await this.#executeIntentProgram(argumentsObject.program, null);
+            if (this.#state.lastError) {
+                return null;
+            }
+
+            return "Executed the proposed intent program.";
+        }
+
+        throw new Error("Unsupported planner tool: " + toolCall.name);
+    }
+
+    /**
+     * @param {unknown} toolArguments
+     * @returns {Record<string, any>}
+     */
+    #parseToolArguments(toolArguments) {
+        if (typeof toolArguments === "string") {
+            return JSON.parse(toolArguments);
+        }
+
+        if (!toolArguments || typeof toolArguments !== "object") {
+            throw new Error("Planner tool arguments must be an object.");
+        }
+
+        return /** @type {Record<string, any>} */ (toolArguments);
+    }
+
+    /**
+     * Resets the active-turn draft after a tool call and before the next
+     * planner request reuses the same turn id.
+     *
+     * @param {number} turnId
+     */
+    #resetActiveTurnDraft(turnId) {
+        if (!this.#activeTurn || this.#activeTurn.turnId !== turnId) {
+            return;
+        }
+
+        this.#activeTurn = {
+            ...this.#activeTurn,
+            status: "working",
+            placeholder: "Working...",
+            draftText: "",
+            reasoningText: "",
+            heartbeatTick: 0,
+        };
+        this.#notifyActiveTurn();
+    }
+
+    /**
+     * @returns {AgentContextOptions}
+     */
+    #buildContextOptions() {
+        return {
+            expandedViewNodeKeys: Array.from(this.#expandedViewNodeKeys),
+        };
     }
 
     /**

@@ -17,12 +17,25 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  *     description?: string;
  * }} ChatClarificationOption
  *
+ * @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall
+ *
  * @typedef {{
  *     id: number;
- *     kind: "user" | "assistant" | "clarification" | "plan" | "result" | "error";
+ *     kind:
+ *         | "user"
+ *         | "assistant"
+ *         | "clarification"
+ *         | "plan"
+ *         | "result"
+ *         | "tool_call"
+ *         | "tool_result"
+ *         | "error";
  *     text?: string | import("lit").TemplateResult;
  *     lines?: IntentProgramSummaryLine[];
  *     options?: ChatClarificationOption[];
+ *     toolCalls?: AgentToolCall[];
+ *     toolCallId?: string;
+ *     content?: unknown;
  *     durationMs?: number | null;
  * }} ChatMessage
  *
@@ -42,6 +55,7 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  *     queuedMessageCount: number;
  *     lastError: string;
  *     lastResponseDurationMs: number | null;
+ *     expandedViewNodeKeys: string[];
  * }} ChatSessionSnapshot
  *
  * @typedef {{
@@ -64,6 +78,9 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  *     sendMessage(message: string): Promise<void>;
  *     queueMessage(message: string): Promise<void>;
  *     refreshPreflight(): Promise<void>;
+ *     expandViewNode?(selector: any): void;
+ *     collapseViewNode?(selector: any): void;
+ *     executeToolCalls?(toolCalls: AgentToolCall[]): Promise<void>;
  * }} AgentChatController
  */
 /** @type {ChatSessionSnapshot} */
@@ -76,6 +93,7 @@ const EMPTY_SNAPSHOT = {
     queuedMessageCount: 0,
     lastError: "",
     lastResponseDurationMs: null,
+    expandedViewNodeKeys: [],
 };
 
 export default class AgentChatPanel extends LitElement {
@@ -350,6 +368,16 @@ export default class AgentChatPanel extends LitElement {
                 border-left-color: #b55454;
             }
 
+            .message.tool-call {
+                border-left-color: #c77d20;
+                background: color-mix(in oklab, #c77d20 6%, white);
+            }
+
+            .message.tool-result {
+                border-left-color: #4f8a4f;
+                background: color-mix(in oklab, #4f8a4f 6%, white);
+            }
+
             .message-title {
                 display: flex;
                 align-items: center;
@@ -369,6 +397,65 @@ export default class AgentChatPanel extends LitElement {
             .message-text {
                 line-height: 1.45;
                 color: #222;
+            }
+
+            .tool-call-list {
+                display: grid;
+                gap: 0.5rem;
+                margin: 0;
+                padding: 0;
+            }
+
+            .tool-call-item {
+                display: grid;
+                gap: 0.3rem;
+                padding: 0.55rem 0.65rem;
+                border: 1px solid rgb(199 125 32 / 20%);
+                border-radius: 4px;
+                background: rgb(199 125 32 / 6%);
+            }
+
+            .tool-call-name {
+                font-size: 0.9rem;
+                font-weight: 700;
+                color: #7a4b0f;
+            }
+
+            .tool-call-meta,
+            .tool-result-meta {
+                color: #6d6d6d;
+                font-size: 0.78rem;
+            }
+
+            .tool-call-args,
+            .tool-result-text {
+                margin: 0;
+                padding: 0.5rem 0.6rem;
+                border-radius: 4px;
+                background: rgb(255 255 255 / 75%);
+                color: #2b2b2b;
+                font-family: var(
+                    --gs-mono-font-family,
+                    ui-monospace,
+                    SFMono-Regular,
+                    Consolas,
+                    "Liberation Mono",
+                    monospace
+                );
+                font-size: 0.8rem;
+                line-height: 1.35;
+                white-space: pre-wrap;
+                overflow-x: auto;
+            }
+
+            .tool-result-body {
+                display: grid;
+                gap: 0.5rem;
+            }
+
+            .tool-result-text {
+                border: 1px solid rgb(79 138 79 / 18%);
+                background: rgb(79 138 79 / 7%);
             }
 
             .message-dev-note {
@@ -727,6 +814,58 @@ export default class AgentChatPanel extends LitElement {
                     <div class="message-text">${message.text ?? ""}</div>
                 </article>
             `;
+        } else if (message.kind === "tool_result") {
+            return html`
+                <article class="message tool-result">
+                    <div class="message-title">
+                        ${icon(faInfoCircle).node[0]} Tool result
+                    </div>
+                    <div class="tool-result-body">
+                        <div class="tool-result-meta">
+                            Call id: ${message.toolCallId ?? "n/a"}
+                        </div>
+                        <div class="tool-result-text">
+                            ${this.#renderMarkdown(message.text ?? "")}
+                        </div>
+                    </div>
+                    ${this.#renderTimingNote(message.durationMs)}
+                </article>
+            `;
+        } else if (message.kind === "tool_call") {
+            return html`
+                <article class="message tool-call">
+                    <div class="message-title">
+                        ${icon(faRobot).node[0]} Tool call
+                    </div>
+                    <div class="assistant-body">
+                        ${message.text
+                            ? html`<div class="message-text">
+                                  ${this.#renderMarkdown(message.text)}
+                              </div>`
+                            : nothing}
+                        ${message.toolCalls?.length
+                            ? html`<div class="tool-call-list">
+                                  ${message.toolCalls.map(
+                                      (toolCall) => html`
+                                          <div class="tool-call-item">
+                                              <div class="tool-call-name">
+                                                  ${toolCall.name}
+                                              </div>
+                                              <div class="tool-call-meta">
+                                                  Call id: ${toolCall.callId}
+                                              </div>
+                                              <pre class="tool-call-args">
+${this.#formatToolArguments(toolCall.arguments)}</pre
+                                              >
+                                          </div>
+                                      `
+                                  )}
+                              </div>`
+                            : nothing}
+                    </div>
+                    ${this.#renderTimingNote(message.durationMs)}
+                </article>
+            `;
         } else if (message.kind === "assistant") {
             return html`
                 <article class="message assistant">
@@ -790,6 +929,22 @@ export default class AgentChatPanel extends LitElement {
             return html`${safeMarkdown(content)}`;
         } else {
             return html`${content}`;
+        }
+    }
+
+    /**
+     * @param {unknown} value
+     * @returns {string}
+     */
+    #formatToolArguments(value) {
+        if (typeof value === "string") {
+            return value;
+        }
+
+        try {
+            return JSON.stringify(value, null, 2) ?? String(value);
+        } catch {
+            return String(value);
         }
     }
 

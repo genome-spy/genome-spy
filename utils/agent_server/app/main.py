@@ -52,7 +52,7 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/v1/plan", response_model=PlanResponse)
+@app.post("/v1/plan", response_model=PlanResponse, response_model_exclude_defaults=True)
 async def plan(
     request: PlanRequest,
     http_request: Request,
@@ -81,7 +81,11 @@ async def plan(
         )
 
     response = await _generate_plan(provider_request)
-    return PlanResponse(type=response.type, message=response.message)
+    return PlanResponse(
+        type=response.type,
+        message=response.message,
+        tool_calls=response.tool_calls,
+    )
 
 
 async def _generate_plan(provider_request: ProviderRequest) -> ProviderResponse:
@@ -125,6 +129,16 @@ async def _stream_plan(
                         "response": {
                             "type": event.response.type,
                             "message": event.response.message,
+                            **(
+                                {
+                                    "toolCalls": [
+                                        tool_call.model_dump(by_alias=True)
+                                        for tool_call in event.response.tool_calls
+                                    ]
+                                }
+                                if event.response.tool_calls
+                                else {}
+                            ),
                         },
                         "trace": {
                             "message": provider_request.message,

@@ -1,4 +1,4 @@
-from app.models import ProviderResponse
+from app.models import ProviderResponse, ToolCall
 from app.providers import (
     _classify_stream_text,
     _extract_stream_text,
@@ -136,7 +136,81 @@ def test_parse_responses_response_logs_normalized_shape() -> None:
     assert response.model_dump() == {
         "type": "answer",
         "message": "This is normalized.",
+        "tool_calls": [],
     }
+
+
+def test_parse_responses_response_returns_tool_call_shape() -> None:
+    payload = {
+        "output": [
+            {
+                "type": "function_call",
+                "call_id": "call_123",
+                "name": "expandViewNode",
+                "arguments": '{"selector":{"scope":[],"view":"track"}}',
+            }
+        ]
+    }
+
+    response = _parse_responses_response(payload)
+
+    assert response == ProviderResponse(
+        type="tool_call",
+        message=None,
+        tool_calls=[
+            ToolCall(
+                call_id="call_123",
+                name="expandViewNode",
+                arguments={"selector": {"scope": [], "view": "track"}},
+            )
+        ],
+    )
+
+
+def test_parse_responses_response_suppresses_structured_tool_message() -> None:
+    payload = {
+        "output": [
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": (
+                            '"selector": {"scope": [], "view": "reference-sequence"}, '
+                            '"visibility": true'
+                        ),
+                    }
+                ],
+            },
+            {
+                "type": "function_call",
+                "call_id": "call_123",
+                "name": "setViewVisibility",
+                "arguments": (
+                    '{"selector":{"scope":[],"view":"reference-sequence"},'
+                    '"visibility":true}'
+                ),
+            },
+        ]
+    }
+
+    response = _parse_responses_response(payload)
+
+    assert response == ProviderResponse(
+        type="tool_call",
+        message=None,
+        tool_calls=[
+            ToolCall(
+                call_id="call_123",
+                name="setViewVisibility",
+                arguments={
+                    "selector": {"scope": [], "view": "reference-sequence"},
+                    "visibility": True,
+                },
+            )
+        ],
+    )
 
 
 def test_parse_provider_response_text_repairs_decoded_inner_json() -> None:
@@ -293,3 +367,6 @@ def test_classify_stream_text_distinguishes_prose_and_structured_json() -> None:
         "prose"
     )
     assert _classify_stream_text("   {\"type\":\"answer\"}") == "structured"
+    assert _classify_stream_text(
+        '"selector": {"scope": [], "view": "reference-sequence"}'
+    ) == "structured"

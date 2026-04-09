@@ -9,12 +9,13 @@ from typing import Any, AsyncIterator
 import httpx
 
 from .config import Settings
-from .models import ProviderRequest, ProviderResponse, ProviderStreamEvent
+from .models import ProviderRequest, ProviderResponse, ProviderStreamEvent, ToolCall
 from .prompt_builder import (
     build_chat_completions_messages,
     build_prompt_ir,
     build_responses_input,
 )
+from .tool_catalog import build_responses_tool_definitions
 
 logger = logging.getLogger(__name__)
 MAX_LOGGED_PROVIDER_CONTENT = 4000
@@ -46,6 +47,8 @@ class OpenAIResponsesProvider(BaseProvider):
             "model": self._settings.model,
             "instructions": prompt.instructions,
             "input": build_responses_input(prompt),
+            "tools": build_responses_tool_definitions(),
+            "tool_choice": "auto",
         }
         headers = {
             "authorization": f"Bearer {self._settings.api_key}",
@@ -118,6 +121,8 @@ class OpenAIResponsesProvider(BaseProvider):
             "model": self._settings.model,
             "instructions": prompt.instructions,
             "input": build_responses_input(prompt),
+            "tools": build_responses_tool_definitions(),
+            "tool_choice": "auto",
             "stream": True,
         }
         headers = {
@@ -152,6 +157,7 @@ class OpenAIResponsesProvider(BaseProvider):
 
                     text_parts: list[str] = []
                     reasoning_parts: list[str] = []
+                    tool_calls_by_id: dict[str, ToolCall] = {}
                     stream_mode: str | None = None
                     final_snapshot_text = ""
                     async for event_name, data_text in _iter_sse_events(response):
@@ -164,6 +170,9 @@ class OpenAIResponsesProvider(BaseProvider):
                             break
 
                         payload = _load_stream_event_payload(data_text)
+                        _collect_stream_tool_calls(
+                            tool_calls_by_id, payload, event_name
+                        )
                         if event_name.endswith(".done"):
                             snapshot_text = _extract_stream_text(payload, event_name)
                             if snapshot_text:
@@ -198,6 +207,8 @@ class OpenAIResponsesProvider(BaseProvider):
                             yield ProviderStreamEvent(type="heartbeat")
 
                     final_text = final_snapshot_text or "".join(text_parts).strip()
+                    if _looks_like_structured_response(final_text):
+                        final_text = ""
                     if not final_text and reasoning_parts:
                         final_text = "".join(reasoning_parts).strip()
 
@@ -210,6 +221,20 @@ class OpenAIResponsesProvider(BaseProvider):
                         len(reasoning_parts),
                         _truncate_logged_content(final_text),
                     )
+                    if tool_calls_by_id:
+                        yield ProviderStreamEvent(
+                            type="final",
+                            response=ProviderResponse(
+                                type="tool_call",
+                                message=(
+                                    _normalize_provider_text(final_text)
+                                    if final_text
+                                    else None
+                                ),
+                                tool_calls=list(tool_calls_by_id.values()),
+                            ),
+                        )
+                        return
                     yield ProviderStreamEvent(
                         type="final",
                         response=_parse_provider_response_text(
@@ -556,6 +581,51 @@ def _is_stream_heartbeat(event_name: str, payload: Any) -> bool:
     return False
 
 
+def _collect_stream_tool_calls(
+    tool_calls_by_id: dict[str, ToolCall], payload: Any, event_name: str
+) -> None:
+    candidate_payloads: list[Any] = [payload]
+    if isinstance(payload, dict):
+        candidate_payloads.append(payload.get("item"))
+        candidate_payloads.append(payload.get("response"))
+
+    for candidate in candidate_payloads:
+        tool_call = _extract_tool_call(candidate, event_name)
+        if tool_call is not None:
+            tool_calls_by_id[tool_call.call_id] = tool_call
+
+
+def _extract_tool_call(payload: Any, event_name: str) -> ToolCall | None:
+    if not isinstance(payload, dict):
+        return None
+
+    item_type = payload.get("type")
+    if item_type not in {"function_call", "tool_call"} and (
+        "function_call" not in event_name
+    ):
+        return None
+
+    call_id = payload.get("call_id") or payload.get("callId")
+    if not isinstance(call_id, str):
+        return None
+
+    name = payload.get("name")
+    if not isinstance(name, str):
+        return None
+
+    arguments = payload.get("arguments")
+    if arguments is None and isinstance(payload.get("function"), dict):
+        function = payload["function"]
+        name = function.get("name") if isinstance(function.get("name"), str) else name
+        arguments = function.get("arguments")
+
+    return ToolCall(
+        call_id=call_id,
+        name=name,
+        arguments=_parse_tool_arguments(arguments),
+    )
+
+
 def _parse_responses_response(payload: dict[str, Any]) -> ProviderResponse:
     output_text = payload.get("output_text")
     if isinstance(output_text, str):
@@ -572,6 +642,21 @@ def _parse_responses_response(payload: dict[str, Any]) -> ProviderResponse:
 
     if not isinstance(output, list):
         raise ProviderError("Provider response output must be a list.")
+
+    tool_calls = _extract_function_calls(output)
+    if tool_calls:
+        text = _extract_output_text(output, allow_missing=True)
+        if _looks_like_structured_response(text):
+            text = ""
+        logger.warning(
+            "Provider extracted tool calls from Responses API: %r",
+            [tool_call.model_dump(by_alias=True) for tool_call in tool_calls],
+        )
+        return ProviderResponse(
+            type="tool_call",
+            message=_normalize_provider_text(text) if text else None,
+            tool_calls=tool_calls,
+        )
 
     text = _extract_output_text(output)
     logger.warning(
@@ -593,6 +678,27 @@ def _parse_chat_completions_response(payload: dict[str, Any]) -> ProviderRespons
     parsed = message.get("parsed")
     if isinstance(parsed, dict):
         return _parse_provider_response_payload(parsed)
+
+    tool_calls = _extract_chat_tool_calls(message)
+    if tool_calls:
+        content = _select_message_content(message)
+        if isinstance(content, list):
+            text = _parse_message_parts(content)
+        elif isinstance(content, str):
+            text = content
+        elif isinstance(content, dict):
+            text = json.dumps(content, ensure_ascii=False, sort_keys=True)
+        else:
+            text = ""
+
+        if _looks_like_structured_response(text):
+            text = ""
+
+        return ProviderResponse(
+            type="tool_call",
+            message=_normalize_provider_text(text) if text else None,
+            tool_calls=tool_calls,
+        )
 
     content = _select_message_content(message)
     if isinstance(content, dict):
@@ -617,7 +723,12 @@ def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderRespons
 
     return ProviderResponse(
         type=response.type,
-        message=_normalize_provider_text(response.message),
+        message=(
+            _normalize_provider_text(response.message)
+            if response.message is not None
+            else None
+        ),
+        tool_calls=response.tool_calls,
     )
 
 
@@ -645,7 +756,7 @@ def _ensure_object_payload(payload: Any) -> dict[str, Any]:
     return payload
 
 
-def _extract_output_text(items: list[Any]) -> str:
+def _extract_output_text(items: list[Any], allow_missing: bool = False) -> str:
     for item in items:
         if not isinstance(item, dict):
             continue
@@ -660,6 +771,9 @@ def _extract_output_text(items: list[Any]) -> str:
                 return content
         elif item.get("type") == "output_text" and isinstance(item.get("text"), str):
             return item["text"]
+
+    if allow_missing:
+        return ""
 
     raise ProviderError("Provider response did not include assistant output text.")
 
@@ -678,6 +792,74 @@ def _extract_text_from_content_items(items: list[Any]) -> str:
         raise ProviderError("Provider response did not include text content.")
 
     return "".join(text_parts)
+
+
+def _extract_function_calls(items: list[Any]) -> list[ToolCall]:
+    tool_calls: list[ToolCall] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        item_type = item.get("type")
+        if item_type not in {"function_call", "tool_call"}:
+            continue
+
+        call_id = item.get("call_id") or item.get("callId")
+        name = item.get("name")
+        arguments = item.get("arguments")
+
+        if not isinstance(call_id, str) or not isinstance(name, str):
+            continue
+
+        tool_calls.append(
+            ToolCall(
+                call_id=call_id,
+                name=name,
+                arguments=_parse_tool_arguments(arguments),
+            )
+        )
+
+    return tool_calls
+
+
+def _extract_chat_tool_calls(message: dict[str, Any]) -> list[ToolCall]:
+    tool_calls = message.get("tool_calls")
+    if not isinstance(tool_calls, list):
+        return []
+
+    parsed_calls: list[ToolCall] = []
+    for tool_call in tool_calls:
+        if not isinstance(tool_call, dict):
+            continue
+
+        call_id = tool_call.get("id") or tool_call.get("call_id")
+        function = tool_call.get("function")
+        if not isinstance(call_id, str) or not isinstance(function, dict):
+            continue
+
+        name = function.get("name")
+        if not isinstance(name, str):
+            continue
+
+        parsed_calls.append(
+            ToolCall(
+                call_id=call_id,
+                name=name,
+                arguments=_parse_tool_arguments(function.get("arguments")),
+            )
+        )
+
+    return parsed_calls
+
+
+def _parse_tool_arguments(arguments: Any) -> Any:
+    if isinstance(arguments, str):
+        try:
+            return json.loads(arguments)
+        except Exception:
+            return arguments
+
+    return arguments
 
 
 def _select_message_content(message: dict[str, Any]) -> Any:
@@ -734,16 +916,15 @@ def _load_json_content(content: str, allow_repair: bool = False) -> Any:
 def _looks_like_structured_response(text: str) -> bool:
     stripped = text.lstrip()
     return bool(stripped) and (
-        stripped.startswith("{") or stripped.startswith("```")
+        stripped.startswith("{")
+        or stripped.startswith("[")
+        or stripped.startswith("```")
+        or re.match(r'^"[^"]+"\s*:', stripped) is not None
     )
 
 
 def _classify_stream_text(text: str) -> str | None:
-    stripped = text.lstrip()
-    if not stripped:
-        return None
-
-    if stripped.startswith("{") or stripped.startswith("```"):
+    if _looks_like_structured_response(text):
         return "structured"
 
     return "prose"

@@ -3,7 +3,7 @@ import { createAgentSessionController } from "./agentSessionController.js";
 import "./chatPanel.js";
 
 /**
- * @typedef {"answer" | "clarify" | "intent_program" | "error"} MockScenario
+ * @typedef {"answer" | "clarify" | "intent_program" | "tool_call" | "error"} MockScenario
  */
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
@@ -23,7 +23,13 @@ export default {
         scenario: {
             control: {
                 type: "select",
-                options: ["answer", "clarify", "intent_program", "error"],
+                options: [
+                    "answer",
+                    "clarify",
+                    "intent_program",
+                    "tool_call",
+                    "error",
+                ],
             },
         },
         preflightDelayMs: {
@@ -157,6 +163,7 @@ function createMockAgentController(scenario, options = {}) {
             appInitialized: true,
         },
     });
+    let issuedToolCall = false;
 
     const runtime = /** @type {any} */ ({
         getAgentContext: () => baseContext,
@@ -249,6 +256,44 @@ function createMockAgentController(scenario, options = {}) {
                     trace: {
                         message,
                         totalMs: 12,
+                    },
+                };
+            }
+
+            if (scenario === "tool_call" && !issuedToolCall) {
+                issuedToolCall = true;
+                await streamText(
+                    streamCallbacks,
+                    "I should expand the reference-sequence branch to inspect it.",
+                    {
+                        streamDelayMs,
+                        heartbeatIntervalMs,
+                        reasoningText:
+                            "The reference sequence is collapsed, so I need to expand it first.",
+                    }
+                );
+
+                return {
+                    response: {
+                        type: "tool_call",
+                        message:
+                            "I should expand the reference-sequence branch to inspect it.",
+                        toolCalls: [
+                            {
+                                callId: "call_reference_sequence",
+                                name: "expandViewNode",
+                                arguments: /** @type {any} */ ({
+                                    selector: {
+                                        scope: /** @type {any[]} */ ([]),
+                                        view: "reference-sequence",
+                                    },
+                                }),
+                            },
+                        ],
+                    },
+                    trace: {
+                        message,
+                        totalMs: 15,
                     },
                 };
             }
@@ -563,6 +608,13 @@ export const IntentProgram = {
 export const ErrorState = {
     args: {
         scenario: "error",
+    },
+    render: renderChatPanel,
+};
+
+export const ToolCall = {
+    args: {
+        scenario: "tool_call",
     },
     render: renderChatPanel,
 };

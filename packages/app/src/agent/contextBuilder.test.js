@@ -201,6 +201,7 @@ describe("getAgentContext", () => {
             "provenance",
             "sampleSummary",
             "schemaVersion",
+            "toolCatalog",
             "viewRoot",
             "viewWorkflows",
         ]);
@@ -281,6 +282,13 @@ describe("getAgentContext", () => {
         });
         expect(context.attributes[0].description).toBe("Description diagnosis");
         expect(context.actionCatalog.length).toBeGreaterThan(0);
+        expect(context.toolCatalog.map((entry) => entry.toolName)).toEqual([
+            "expandViewNode",
+            "collapseViewNode",
+            "setViewVisibility",
+            "clearViewVisibility",
+            "submitIntentProgram",
+        ]);
         expect(context.viewWorkflows.workflows).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({

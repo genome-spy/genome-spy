@@ -1,0 +1,104 @@
+[
+  {
+    "toolName": "expandViewNode",
+    "description": "Expand a collapsed view branch in the agent context.",
+    "inputType": "ExpandViewNodeToolInput",
+    "inputFields": [
+      {
+        "name": "selector",
+        "type": "ViewSelector",
+        "description": "Stable selector for the collapsed view node to expand.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "selector": {
+        "scope": [],
+        "view": "track"
+      }
+    }
+  },
+  {
+    "toolName": "collapseViewNode",
+    "description": "Collapse a previously expanded view branch in the agent context.",
+    "inputType": "CollapseViewNodeToolInput",
+    "inputFields": [
+      {
+        "name": "selector",
+        "type": "ViewSelector",
+        "description": "Stable selector for the view node to collapse.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "selector": {
+        "scope": [],
+        "view": "track"
+      }
+    }
+  },
+  {
+    "toolName": "setViewVisibility",
+    "description": "Set the configured visibility of a view.",
+    "inputType": "SetViewVisibilityToolInput",
+    "inputFields": [
+      {
+        "name": "selector",
+        "type": "ViewSelector",
+        "description": "Stable selector for the view whose visibility should change.",
+        "required": true
+      },
+      {
+        "name": "visibility",
+        "type": "boolean",
+        "description": "Whether the view should be visible.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "selector": {
+        "scope": [],
+        "view": "track"
+      },
+      "visibility": false
+    }
+  },
+  {
+    "toolName": "clearViewVisibility",
+    "description": "Clear the visibility override for a view.",
+    "inputType": "ClearViewVisibilityToolInput",
+    "inputFields": [
+      {
+        "name": "selector",
+        "type": "ViewSelector",
+        "description": "Stable selector for the view whose override should be cleared.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "selector": {
+        "scope": [],
+        "view": "track"
+      }
+    }
+  },
+  {
+    "toolName": "submitIntentProgram",
+    "description": "Execute a provenance-changing intent program.",
+    "inputType": "SubmitIntentProgramToolInput",
+    "inputFields": [
+      {
+        "name": "program",
+        "type": "AgentIntentProgram",
+        "description": "Structured intent program to execute.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "program": {
+        "schemaVersion": 1,
+        "steps": []
+      }
+    }
+  }
+]

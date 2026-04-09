@@ -1,0 +1,1288 @@
+{
+  "$ref": "#/definitions/AgentToolInputs",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AgentIntentProgram": {
+      "additionalProperties": false,
+      "properties": {
+        "needsConfirmation": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "const": 1,
+          "type": "number"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/definitions/AgentIntentProgramStep"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": ["schemaVersion", "steps"],
+      "type": "object"
+    },
+    "AgentIntentProgramStep": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/addMetadata",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attributeDefs": {
+                  "additionalProperties": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "scale": {}
+                    },
+                    "type": "object"
+                  },
+                  "type": "object"
+                },
+                "columnarMetadata": {
+                  "additionalProperties": {
+                    "type": "array"
+                  },
+                  "properties": {
+                    "sample": {
+                      "items": {
+                        "description": "This file is generated. Do not edit.",
+                        "type": ["string", "number", "boolean", "null"]
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["sample"],
+                  "type": "object"
+                },
+                "replace": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["columnarMetadata"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/deriveMetadata",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "groupPath": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "scale": {}
+              },
+              "required": ["attribute", "name"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/addMetadataFromSource",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "columnIds": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "groupPath": {
+                  "type": "string"
+                },
+                "replace": {
+                  "type": "boolean"
+                },
+                "sourceId": {
+                  "type": "string"
+                }
+              },
+              "required": ["columnIds"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/sortBy",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/retainFirstOfEach",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/retainFirstNCategories",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "n": {
+                  "minimum": 1,
+                  "type": "number"
+                }
+              },
+              "required": ["attribute", "n"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/filterByQuantitative",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "operand": {
+                  "type": "number"
+                },
+                "operator": {
+                  "enum": ["lt", "lte", "eq", "gte", "gt"],
+                  "type": "string"
+                }
+              },
+              "required": ["attribute", "operand", "operator"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/filterByNominal",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "remove": {
+                  "type": "boolean"
+                },
+                "values": {
+                  "items": {},
+                  "type": "array"
+                }
+              },
+              "required": ["attribute", "values"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/removeUndefined",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupCustomCategories",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "groups": {
+                  "additionalProperties": {
+                    "items": {
+                      "description": "This file is generated. Do not edit.",
+                      "type": ["string", "number", "boolean", "null"]
+                    },
+                    "type": "array"
+                  },
+                  "type": "object"
+                }
+              },
+              "required": ["attribute", "groups"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupByNominal",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupToQuartiles",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupByThresholds",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                },
+                "thresholds": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "operand": {
+                        "type": "number"
+                      },
+                      "operator": {
+                        "enum": ["lt", "lte"],
+                        "type": "string"
+                      }
+                    },
+                    "required": ["operator", "operand"],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                }
+              },
+              "required": ["attribute", "thresholds"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/removeGroup",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": ["path"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/retainMatched",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "attribute": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "specifier": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": {},
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": {
+                      "enum": [
+                        "SAMPLE_ATTRIBUTE",
+                        "VALUE_AT_LOCUS",
+                        "SAMPLE_NAME",
+                        "VIEW_ATTRIBUTE"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": ["type"],
+                  "type": "object"
+                }
+              },
+              "required": ["attribute"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "paramProvenance/paramChange",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "origin": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "intervalSources": {
+                      "additionalProperties": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end": {
+                            "type": "string"
+                          },
+                          "start": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "object"
+                    },
+                    "key": {
+                      "description": "This file is generated. Do not edit.",
+                      "type": ["string", "number", "boolean", "null"]
+                    },
+                    "keyField": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "const": "datum",
+                      "type": "string"
+                    },
+                    "view": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "scope": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "view": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["scope", "view"],
+                      "type": "object"
+                    }
+                  },
+                  "required": ["type", "view", "keyField", "key"],
+                  "type": "object"
+                },
+                "selector": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "param": {
+                      "type": "string"
+                    },
+                    "scope": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": ["scope", "param"],
+                  "type": "object"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "type": {
+                          "const": "value",
+                          "type": "string"
+                        },
+                        "value": {}
+                      },
+                      "required": ["type", "value"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "intervals": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "x": {
+                              "anyOf": [
+                                {
+                                  "items": {
+                                    "type": "number"
+                                  },
+                                  "maxItems": 2,
+                                  "minItems": 2,
+                                  "type": "array"
+                                },
+                                {
+                                  "items": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "chrom": {
+                                        "type": "string"
+                                      },
+                                      "pos": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": ["chrom", "pos"],
+                                    "type": "object"
+                                  },
+                                  "maxItems": 2,
+                                  "minItems": 2,
+                                  "type": "array"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "y": {
+                              "anyOf": [
+                                {
+                                  "items": {
+                                    "type": "number"
+                                  },
+                                  "maxItems": 2,
+                                  "minItems": 2,
+                                  "type": "array"
+                                },
+                                {
+                                  "items": {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "chrom": {
+                                        "type": "string"
+                                      },
+                                      "pos": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": ["chrom", "pos"],
+                                    "type": "object"
+                                  },
+                                  "maxItems": 2,
+                                  "minItems": 2,
+                                  "type": "array"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "type": {
+                          "const": "interval",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "intervals"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "keyFields": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "keys": {
+                          "items": {
+                            "items": {
+                              "description": "This file is generated. Do not edit.",
+                              "type": ["string", "number", "boolean", "null"]
+                            },
+                            "type": "array"
+                          },
+                          "type": "array"
+                        },
+                        "type": {
+                          "const": "point",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["type", "keyFields", "keys"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "operation": {
+                          "enum": ["replace", "add", "remove", "toggle"],
+                          "type": "string"
+                        },
+                        "origin": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "keyFields": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "keyTuple": {
+                              "items": {
+                                "description": "This file is generated. Do not edit.",
+                                "type": ["string", "number", "boolean", "null"]
+                              },
+                              "type": "array"
+                            },
+                            "type": {
+                              "const": "datum",
+                              "type": "string"
+                            },
+                            "view": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "scope": {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                },
+                                "view": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["scope", "view"],
+                              "type": "object"
+                            }
+                          },
+                          "required": ["view", "keyTuple"],
+                          "type": "object"
+                        },
+                        "partitionBy": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "rule": {},
+                        "type": {
+                          "const": "pointExpand",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["operation", "origin", "rule", "type"],
+                      "type": "object"
+                    },
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "operation": {
+                          "enum": ["replace", "add", "remove", "toggle"],
+                          "type": "string"
+                        },
+                        "origin": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "keyFields": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "keyTuple": {
+                              "items": {
+                                "description": "This file is generated. Do not edit.",
+                                "type": ["string", "number", "boolean", "null"]
+                              },
+                              "type": "array"
+                            },
+                            "type": {
+                              "const": "datum",
+                              "type": "string"
+                            },
+                            "view": {
+                              "additionalProperties": false,
+                              "properties": {
+                                "scope": {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                },
+                                "view": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["scope", "view"],
+                              "type": "object"
+                            }
+                          },
+                          "required": ["view", "keyTuple"],
+                          "type": "object"
+                        },
+                        "partitionBy": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "predicate": {},
+                        "type": {
+                          "const": "pointExpand",
+                          "type": "string"
+                        }
+                      },
+                      "required": ["operation", "origin", "predicate", "type"],
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "required": ["selector", "value"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "viewSettings/setVisibility",
+              "type": "string"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "visibility": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["key", "visibility"],
+              "type": "object"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "viewSettings/restoreDefaultVisibility",
+              "type": "string"
+            },
+            "payload": {
+              "type": "string"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        }
+      ]
+    },
+    "AgentToolInputs": {
+      "additionalProperties": false,
+      "description": "Tool inputs exposed to the planner.",
+      "properties": {
+        "clearViewVisibility": {
+          "$ref": "#/definitions/ClearViewVisibilityToolInput"
+        },
+        "collapseViewNode": {
+          "$ref": "#/definitions/CollapseViewNodeToolInput"
+        },
+        "expandViewNode": {
+          "$ref": "#/definitions/ExpandViewNodeToolInput"
+        },
+        "setViewVisibility": {
+          "$ref": "#/definitions/SetViewVisibilityToolInput"
+        },
+        "submitIntentProgram": {
+          "$ref": "#/definitions/SubmitIntentProgramToolInput"
+        }
+      },
+      "required": [
+        "expandViewNode",
+        "collapseViewNode",
+        "setViewVisibility",
+        "clearViewVisibility",
+        "submitIntentProgram"
+      ],
+      "type": "object"
+    },
+    "ClearViewVisibilityToolInput": {
+      "additionalProperties": false,
+      "description": "Clear the visibility override for a view.",
+      "examples": [
+        {
+          "selector": {
+            "scope": [],
+            "view": "track"
+          }
+        }
+      ],
+      "properties": {
+        "selector": {
+          "additionalProperties": false,
+          "description": "Stable selector for the view whose override should be cleared.",
+          "properties": {
+            "scope": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "view": {
+              "type": "string"
+            }
+          },
+          "required": ["scope", "view"],
+          "type": "object"
+        }
+      },
+      "required": ["selector"],
+      "type": "object"
+    },
+    "CollapseViewNodeToolInput": {
+      "additionalProperties": false,
+      "description": "Collapse a previously expanded view branch in the agent context.",
+      "examples": [
+        {
+          "selector": {
+            "scope": [],
+            "view": "track"
+          }
+        }
+      ],
+      "properties": {
+        "selector": {
+          "additionalProperties": false,
+          "description": "Stable selector for the view node to collapse.",
+          "properties": {
+            "scope": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "view": {
+              "type": "string"
+            }
+          },
+          "required": ["scope", "view"],
+          "type": "object"
+        }
+      },
+      "required": ["selector"],
+      "type": "object"
+    },
+    "ExpandViewNodeToolInput": {
+      "additionalProperties": false,
+      "description": "Expand a collapsed view branch in the agent context.",
+      "examples": [
+        {
+          "selector": {
+            "scope": [],
+            "view": "track"
+          }
+        }
+      ],
+      "properties": {
+        "selector": {
+          "additionalProperties": false,
+          "description": "Stable selector for the collapsed view node to expand.",
+          "properties": {
+            "scope": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "view": {
+              "type": "string"
+            }
+          },
+          "required": ["scope", "view"],
+          "type": "object"
+        }
+      },
+      "required": ["selector"],
+      "type": "object"
+    },
+    "SetViewVisibilityToolInput": {
+      "additionalProperties": false,
+      "description": "Set the configured visibility of a view.",
+      "examples": [
+        {
+          "selector": {
+            "scope": [],
+            "view": "track"
+          },
+          "visibility": false
+        }
+      ],
+      "properties": {
+        "selector": {
+          "additionalProperties": false,
+          "description": "Stable selector for the view whose visibility should change.",
+          "properties": {
+            "scope": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "view": {
+              "type": "string"
+            }
+          },
+          "required": ["scope", "view"],
+          "type": "object"
+        },
+        "visibility": {
+          "description": "Whether the view should be visible.",
+          "type": "boolean"
+        }
+      },
+      "required": ["selector", "visibility"],
+      "type": "object"
+    },
+    "SubmitIntentProgramToolInput": {
+      "additionalProperties": false,
+      "description": "Execute a provenance-changing intent program.",
+      "examples": [
+        {
+          "program": {
+            "schemaVersion": 1,
+            "steps": []
+          }
+        }
+      ],
+      "properties": {
+        "program": {
+          "$ref": "#/definitions/AgentIntentProgram",
+          "description": "Structured intent program to execute."
+        }
+      },
+      "required": ["program"],
+      "type": "object"
+    }
+  }
+}
