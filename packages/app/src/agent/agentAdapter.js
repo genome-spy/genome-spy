@@ -119,7 +119,11 @@ function logAgentTransport(phase, payload) {
  */
 export function createAgentAdapter(app) {
     return {
-        getAgentContext: () => getAgentContext(app),
+        getAgentContext: (
+            /** @type {AgentContextOptions} */ contextOptions = getCurrentAgentContextOptions(
+                app
+            )
+        ) => getAgentContext(app, contextOptions),
         validateIntentProgram: (/** @type {unknown} */ program) =>
             validateIntentProgram(app, program),
         submitIntentProgram: (

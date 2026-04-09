@@ -760,7 +760,7 @@ export interface AgentAdapter {
     /**
      * Returns the current planner context snapshot.
      */
-    getAgentContext(): AgentContext;
+    getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
 
     /**
      * Validates a planner-authored intent program.

@@ -265,6 +265,30 @@ describe("agentAdapter", () => {
         );
     });
 
+    it("uses the agent session controller expansion state for agent context snapshots", () => {
+        const app = createAppStub();
+        app.agentSessionController = {
+            getSnapshot: () => ({
+                expandedViewNodeKeys: [
+                    JSON.stringify({ scope: [], view: "reference-sequence" }),
+                ],
+            }),
+        };
+        getAgentContext.mockReturnValue(createMockPlannerContext());
+
+        const adapter = createAgentAdapter(app);
+        adapter.getAgentContext();
+
+        expect(getAgentContext).toHaveBeenCalledWith(
+            app,
+            expect.objectContaining({
+                expandedViewNodeKeys: [
+                    JSON.stringify({ scope: [], view: "reference-sequence" }),
+                ],
+            })
+        );
+    });
+
     it("executes resolved view-workflow requests after planner resolution", async () => {
         const app = createAppStub();
         globalThis.window.prompt.mockReturnValueOnce(

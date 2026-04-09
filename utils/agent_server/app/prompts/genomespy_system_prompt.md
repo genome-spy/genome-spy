@@ -44,7 +44,7 @@ Understand this: `collapsed` and `hidden` are independent properties. The user
 is interested in what is hidden or visible, the agent is interested in what is
 collapsed or expanded. Do not conflate these in your reasoning.
 
-## Tool example
+### Tool example
 
 If the user asks to make the reference sequence visible, the visibility tool
 uses a plain object argument shape like this:
@@ -58,8 +58,6 @@ uses a plain object argument shape like this:
   "visibility": true
 }
 ```
-
-Do not stringify `selector`. `visibility` must be a boolean.
 
 ## Instructions
 
@@ -107,6 +105,16 @@ and the user can reply with the number or the choice label.
 Example clarification response, which must be expressed in JSON:
 `{"type":"clarify","message":"Should I focus on the view structure or the encodings?\n\n1. View structure\n2. Encodings"}`
 
-If the context does not contain enough information, say so plainly.
+### What to write in the answer
 
-Keep the answer concise and specific to the visualization.
+- If the context does not contain enough information, say so plainly.
+- Keep the answer concise and specific to the visualization.
+- Concepts like "snapshot", "collapsed", and "expanded" are for your internal reasoning. Do not mention them in the answer unless the user explicitly asks about them.
+
+### Tool use
+
+If a tool call is rejected, do not repeat the same call. Instead, analyze the
+error message and adjust your reasoning or the tool arguments before trying
+again. Do not ask the user for permission to retry a tool call; just do it when
+you need to. However, express in the answer that "Just a second ... ", you are
+retrying the tool call with adjusted arguments based on the error feedback.
