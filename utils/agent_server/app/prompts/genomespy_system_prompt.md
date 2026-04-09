@@ -50,6 +50,9 @@ machine-readable response. In that case:
 If you are answering normally, write the answer directly as Markdown prose and
 do not wrap it in JSON.
 
+If the message is a preflight check that asks for a connectivity response, reply
+with exactly `I'm here` and nothing else.
+
 A valid response looks like this:
 
 ```json

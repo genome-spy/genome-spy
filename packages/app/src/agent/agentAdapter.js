@@ -110,15 +110,27 @@ export function createAgentAdapter(app) {
         requestPlan: (
             /** @type {string} */ message,
             /** @type {Array<string | AgentConversationMessage>} */ history = [],
-            /** @type {import("./agentSessionController.js").AgentStreamCallbacks} */ streamCallbacks = {}
-        ) => requestPlan(app, { message, history, streamCallbacks }),
+            /** @type {import("./agentSessionController.js").AgentStreamCallbacks} */ streamCallbacks = {},
+            /** @type {boolean} */ allowStreaming = true
+        ) =>
+            requestPlan(app, {
+                message,
+                history,
+                streamCallbacks,
+                allowStreaming,
+            }),
         runLocalPrompt: () => runLocalPrompt(app),
     };
 }
 
 /**
  * @param {import("../app.js").default} app
- * @param {{ message: string, history?: Array<string | AgentConversationMessage>, streamCallbacks?: import("./agentSessionController.js").AgentStreamCallbacks }} options
+ * @param {{
+ *   message: string,
+ *   history?: Array<string | AgentConversationMessage>,
+ *   streamCallbacks?: import("./agentSessionController.js").AgentStreamCallbacks,
+ *   allowStreaming?: boolean
+ * }} options
  * @returns {Promise<{ response: import("./types.js").PlanResponse, trace: Record<string, any> }>}
  */
 async function requestPlan(app, options) {
@@ -128,7 +140,9 @@ async function requestPlan(app, options) {
     const context = getAgentContext(app);
     const contextBuildMs = elapsedMilliseconds(contextStartedAt);
     const history = normalizeConversationHistory(options.history ?? []);
-    const shouldStream = shouldUseStreaming(options.streamCallbacks);
+    const shouldStream =
+        options.allowStreaming !== false &&
+        shouldUseStreaming(options.streamCallbacks);
     const requestPayload = {
         message: options.message,
         history,

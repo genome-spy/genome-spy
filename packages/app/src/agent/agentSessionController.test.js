@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAgentSessionController } from "./agentSessionController.js";
 
-const PREFLIGHT_MESSAGE = "__genomespy_preflight__";
+const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 
 /**
  * @returns {{
@@ -34,7 +34,7 @@ describe("createAgentSessionController", () => {
                 return Promise.resolve({
                     response: {
                         type: "answer",
-                        message: "Preflight OK",
+                        message: "I'm here",
                     },
                     trace: {
                         totalMs: 10,
@@ -134,11 +134,12 @@ describe("createAgentSessionController", () => {
         expect(controller.getSnapshot().queuedMessageCount).toBe(1);
         expect(runtime.requestPlan).toHaveBeenCalledTimes(1);
         expect(runtime.requestPlan.mock.calls[0][0]).toBe(PREFLIGHT_MESSAGE);
+        expect(runtime.requestPlan.mock.calls[0][3]).toBe(false);
 
         resolvePreflight({
             response: {
                 type: "answer",
-                message: "Preflight OK",
+                message: "I'm here",
             },
             trace: {
                 totalMs: 12,
@@ -173,7 +174,7 @@ describe("createAgentSessionController", () => {
                 return Promise.resolve({
                     response: {
                         type: "answer",
-                        message: "Preflight OK",
+                        message: "I'm here",
                     },
                     trace: {
                         totalMs: 10,

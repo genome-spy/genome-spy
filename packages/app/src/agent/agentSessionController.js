@@ -56,7 +56,12 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  * }} AgentSessionSnapshot
  *
  * @typedef {{
- *     requestPlan(message: string, history?: AgentConversationMessage[], stream?: AgentStreamCallbacks): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
+ *     requestPlan(
+ *         message: string,
+ *         history?: AgentConversationMessage[],
+ *         stream?: AgentStreamCallbacks,
+ *         allowStreaming?: boolean
+ *     ): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
@@ -64,7 +69,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  * }} AgentSessionRuntime
  */
 
-const PREFLIGHT_MESSAGE = "__genomespy_preflight__";
+const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 
 /**
  * @param {AgentSessionRuntime} runtime
@@ -302,7 +307,9 @@ export class AgentSessionController {
         try {
             const { response } = await this.#runtime.requestPlan(
                 PREFLIGHT_MESSAGE,
-                []
+                [],
+                undefined,
+                false
             );
 
             if (!this.#looksDecent(response)) {

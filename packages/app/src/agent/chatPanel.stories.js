@@ -6,7 +6,7 @@ import "./chatPanel.js";
  * @typedef {"answer" | "clarify" | "intent_program" | "error"} MockScenario
  */
 
-const PREFLIGHT_MESSAGE = "__genomespy_preflight__";
+const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 
 /** @type {Map<string, ReturnType<typeof createAgentSessionController>>} */
 const controllerCache = new Map();
@@ -163,7 +163,8 @@ function createMockAgentController(scenario, options = {}) {
         requestPlan: async (
             /** @type {string} */ message,
             /** @type {Array<any>} */ _history = [],
-            /** @type {any} */ streamCallbacks = {}
+            /** @type {any} */ streamCallbacks = {},
+            /** @type {boolean} */ allowStreaming = true
         ) => {
             if (message === PREFLIGHT_MESSAGE) {
                 if (preflightDelayMs > 0) {
@@ -179,7 +180,7 @@ function createMockAgentController(scenario, options = {}) {
                 return {
                     response: {
                         type: "answer",
-                        message: "Preflight check completed.",
+                        message: "I'm here",
                     },
                     trace: {
                         message,

@@ -740,7 +740,8 @@ export interface AgentAdapter {
     requestPlan(
         message: string,
         history?: AgentConversationMessage[],
-        streamCallbacks?: AgentStreamCallbacks
+        streamCallbacks?: AgentStreamCallbacks,
+        allowStreaming?: boolean
     ): Promise<{ response: PlanResponse; trace: Record<string, any> }>;
 
     /**
