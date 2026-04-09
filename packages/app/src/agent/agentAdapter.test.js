@@ -49,6 +49,32 @@ function createResponse(body) {
     };
 }
 
+function createStreamResponse(bodyText) {
+    const encoder = new TextEncoder();
+    let read = false;
+    const streamText = bodyText.endsWith("\n\n") ? bodyText : bodyText + "\n\n";
+
+    return {
+        ok: true,
+        headers: {
+            get: (name) =>
+                name === "content-type" ? "text/event-stream" : null,
+        },
+        body: {
+            getReader: () => ({
+                read: async () => {
+                    if (read) {
+                        return { done: true, value: undefined };
+                    }
+
+                    read = true;
+                    return { done: false, value: encoder.encode(streamText) };
+                },
+            }),
+        },
+    };
+}
+
 function createAppStub(encoding = undefined) {
     const betaView = {
         explicitName: "betaTrack",
@@ -257,6 +283,57 @@ describe("agentAdapter", () => {
         );
         expect(globalThis.fetch.mock.calls[0][1].body).toContain(
             '"history":[{"id":"msg_001","role":"user","text":"What is in this visualization?"},{"id":"msg_002","role":"assistant","text":"It is a cohort view."},{"id":"msg_003","role":"assistant","text":"Do you want the structure or the encodings?","kind":"clarification"}]'
+        );
+    });
+
+    it("consumes streamed planner events when callbacks are provided", async () => {
+        const app = createAppStub();
+        globalThis.fetch.mockResolvedValueOnce(
+            createStreamResponse(
+                [
+                    "event: start",
+                    'data: {"status":"working"}',
+                    "",
+                    "event: delta",
+                    'data: {"delta":"This view summarizes the cohort."}',
+                    "",
+                    "event: reasoning_delta",
+                    'data: {"delta":"Checking the response shape."}',
+                    "",
+                    "event: final",
+                    'data: {"response":{"type":"answer","message":"This view summarizes the cohort."},"trace":{"totalMs":21}}',
+                    "",
+                ].join("\n")
+            )
+        );
+
+        const onDelta = vi.fn();
+        const onReasoning = vi.fn();
+        const onHeartbeat = vi.fn();
+
+        const adapter = createAgentAdapter(app);
+        const result = await adapter.requestPlan("What can I do here?", [], {
+            onDelta,
+            onReasoning,
+            onHeartbeat,
+        });
+
+        expect(onDelta).toHaveBeenCalledWith(
+            "This view summarizes the cohort."
+        );
+        expect(onReasoning).toHaveBeenCalledWith(
+            "Checking the response shape."
+        );
+        expect(onHeartbeat).not.toHaveBeenCalled();
+        expect(result.response).toEqual({
+            type: "answer",
+            message: "This view summarizes the cohort.",
+        });
+        expect(globalThis.fetch.mock.calls[0][0]).toBe(
+            "http://127.0.0.1:8000/v1/plan"
+        );
+        expect(globalThis.fetch.mock.calls[0][1].headers.accept).toBe(
+            "text/event-stream"
         );
     });
 

@@ -1,6 +1,7 @@
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { showAgentChoiceDialog } from "../components/dialogs/agentChoiceDialog.js";
 import showHierarchyBoxplotDialog from "../charts/hierarchyBoxplotDialog.js";
+import templateResultToString from "../utils/templateResultToString.js";
 import { getAgentContext } from "./contextBuilder.js";
 import {
     submitIntentProgram,
@@ -8,10 +9,9 @@ import {
 } from "./intentProgramExecutor.js";
 import { validateIntentProgram } from "./intentProgramValidator.js";
 import { summarizeIntentProgram } from "./actionCatalog.js";
-import { parseClarificationMessage } from "./clarificationMessage.js";
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 import { resolveViewWorkflow } from "./viewWorkflowResolver.js";
-import templateResultToString from "../utils/templateResultToString.js";
+import { parseClarificationMessage } from "./clarificationMessage.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 const SHOULD_LOG_AGENT_TRACE =
@@ -109,15 +109,16 @@ export function createAgentAdapter(app) {
         ) => summarizeIntentProgram(app, program),
         requestPlan: (
             /** @type {string} */ message,
-            /** @type {Array<string | AgentConversationMessage>} */ history = []
-        ) => requestPlan(app, { message, history }),
+            /** @type {Array<string | AgentConversationMessage>} */ history = [],
+            /** @type {import("./agentSessionController.js").AgentStreamCallbacks} */ streamCallbacks = {}
+        ) => requestPlan(app, { message, history, streamCallbacks }),
         runLocalPrompt: () => runLocalPrompt(app),
     };
 }
 
 /**
  * @param {import("../app.js").default} app
- * @param {{ message: string, history?: Array<string | AgentConversationMessage> }} options
+ * @param {{ message: string, history?: Array<string | AgentConversationMessage>, streamCallbacks?: import("./agentSessionController.js").AgentStreamCallbacks }} options
  * @returns {Promise<{ response: import("./types.js").PlanResponse, trace: Record<string, any> }>}
  */
 async function requestPlan(app, options) {
@@ -127,6 +128,7 @@ async function requestPlan(app, options) {
     const context = getAgentContext(app);
     const contextBuildMs = elapsedMilliseconds(contextStartedAt);
     const history = normalizeConversationHistory(options.history ?? []);
+    const shouldStream = shouldUseStreaming(options.streamCallbacks);
     const requestPayload = {
         message: options.message,
         history,
@@ -176,6 +178,7 @@ async function requestPlan(app, options) {
         method: "POST",
         headers: {
             "content-type": "application/json",
+            ...(shouldStream ? { accept: "text/event-stream" } : {}),
         },
         body: JSON.stringify(requestPayload),
     });
@@ -187,27 +190,197 @@ async function requestPlan(app, options) {
         );
     }
 
-    const parseStartedAt = now();
-    const parsedResponse = await response.json();
-    const responseParseMs = elapsedMilliseconds(parseStartedAt);
-    logAgentTransport("response", {
-        baseUrl,
-        payload: parsedResponse,
-    });
+    if (
+        shouldStream &&
+        response.headers.get("content-type")?.includes("text/event-stream")
+    ) {
+        const parseStartedAt = now();
+        const streamedResponse = await consumePlannerStream(
+            response,
+            options.streamCallbacks ?? {}
+        );
+        const responseParseMs = elapsedMilliseconds(parseStartedAt);
+        logAgentTransport("response", {
+            baseUrl,
+            payload: streamedResponse.response,
+        });
+
+        return {
+            response: streamedResponse.response,
+            trace: {
+                message: options.message,
+                contextBuildMs,
+                requestMs,
+                responseParseMs,
+                serverTiming: response.headers.get("server-timing") ?? "n/a",
+                agentServerTotalMs:
+                    response.headers.get("x-genomespy-agent-total-ms") ?? "n/a",
+                totalMs: elapsedMilliseconds(startedAt),
+            },
+        };
+    } else {
+        const parseStartedAt = now();
+        const parsedResponse = await response.json();
+        const responseParseMs = elapsedMilliseconds(parseStartedAt);
+        logAgentTransport("response", {
+            baseUrl,
+            payload: parsedResponse,
+        });
+
+        return {
+            response: parsedResponse,
+            trace: {
+                message: options.message,
+                contextBuildMs,
+                requestMs,
+                responseParseMs,
+                serverTiming: response.headers.get("server-timing") ?? "n/a",
+                agentServerTotalMs:
+                    response.headers.get("x-genomespy-agent-total-ms") ?? "n/a",
+                totalMs: elapsedMilliseconds(startedAt),
+            },
+        };
+    }
+}
+
+/**
+ * @param {import("./agentSessionController.js").AgentStreamCallbacks | undefined} streamCallbacks
+ * @returns {boolean}
+ */
+function shouldUseStreaming(streamCallbacks) {
+    return Boolean(
+        streamCallbacks &&
+        (streamCallbacks.onDelta ||
+            streamCallbacks.onReasoning ||
+            streamCallbacks.onHeartbeat)
+    );
+}
+
+/**
+ * @param {Response} response
+ * @param {import("./agentSessionController.js").AgentStreamCallbacks} streamCallbacks
+ * @returns {Promise<{ response: import("./types.js").PlanResponse }>}
+ */
+async function consumePlannerStream(response, streamCallbacks) {
+    if (!response.body) {
+        throw new Error("Streaming response did not include a body.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let eventName = "message";
+    let dataLines = [];
+    let finalResponse = null;
+
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+            break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        let newlineIndex = buffer.indexOf("\n");
+        while (newlineIndex >= 0) {
+            const rawLine = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + 1);
+            const line = rawLine.endsWith("\r")
+                ? rawLine.slice(0, -1)
+                : rawLine;
+
+            if (line === "") {
+                const eventData = dataLines.join("\n");
+                if (eventData.length > 0) {
+                    if (eventData !== "[DONE]") {
+                        finalResponse = handlePlannerStreamEvent(
+                            eventName,
+                            eventData,
+                            streamCallbacks,
+                            finalResponse
+                        );
+                    }
+                }
+                eventName = "message";
+                dataLines = [];
+            } else if (line.startsWith("event:")) {
+                eventName = line.slice("event:".length).trim();
+            } else if (line.startsWith("data:")) {
+                dataLines.push(line.slice("data:".length).trimStart());
+            }
+
+            newlineIndex = buffer.indexOf("\n");
+        }
+    }
+
+    const trailingLine = buffer.trim();
+    if (trailingLine.length > 0) {
+        finalResponse = handlePlannerStreamEvent(
+            eventName,
+            trailingLine,
+            streamCallbacks,
+            finalResponse
+        );
+    }
+
+    if (!finalResponse) {
+        throw new Error(
+            "Streaming response ended without a final planner event."
+        );
+    }
 
     return {
-        response: parsedResponse,
-        trace: {
-            message: options.message,
-            contextBuildMs,
-            requestMs,
-            responseParseMs,
-            serverTiming: response.headers.get("server-timing") ?? "n/a",
-            agentServerTotalMs:
-                response.headers.get("x-genomespy-agent-total-ms") ?? "n/a",
-            totalMs: elapsedMilliseconds(startedAt),
-        },
+        response: finalResponse,
     };
+}
+
+/**
+ * @param {string} eventName
+ * @param {string} eventData
+ * @param {import("./agentSessionController.js").AgentStreamCallbacks} streamCallbacks
+ * @param {import("./types.js").PlanResponse | null} finalResponse
+ * @returns {import("./types.js").PlanResponse | null}
+ */
+function handlePlannerStreamEvent(
+    eventName,
+    eventData,
+    streamCallbacks,
+    finalResponse
+) {
+    /** @type {Record<string, any>} */
+    let payload;
+    try {
+        payload = JSON.parse(eventData);
+    } catch {
+        payload = { data: eventData };
+    }
+
+    if (eventName === "delta" && typeof payload.delta === "string") {
+        streamCallbacks.onDelta?.(payload.delta);
+        return finalResponse;
+    }
+
+    if (eventName === "reasoning_delta" && typeof payload.delta === "string") {
+        streamCallbacks.onReasoning?.(payload.delta);
+        return finalResponse;
+    }
+
+    if (eventName === "heartbeat") {
+        streamCallbacks.onHeartbeat?.();
+        return finalResponse;
+    }
+
+    if (eventName === "final" && payload.response) {
+        return {
+            type: payload.response.type,
+            message: payload.response.message,
+        };
+    }
+
+    if (eventName === "error") {
+        throw new Error(payload.message ?? "Streaming planner request failed.");
+    }
+
+    return finalResponse;
 }
 
 /**

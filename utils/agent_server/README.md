@@ -13,6 +13,7 @@ The service is intentionally thin:
 - prepends a fixed internal system prompt
 - forwards the assembled prompt to one LLM provider
 - normalizes the result to either `answer` or `clarify`
+- can also stream the turn as SSE when the client asks for it
 
 The service does not:
 
@@ -49,6 +50,10 @@ Optional environment variables:
 - `GENOMESPY_AGENT_API_STYLE`
   - default: `responses`
   - set to `chat_completions` to use the fallback adapter
+- `GENOMESPY_AGENT_ENABLE_STREAMING`
+  - default: `true`
+  - set to `false` to force the non-streaming JSON path, which is useful for
+    local providers with broken SSE output
 - `GENOMESPY_AGENT_TIMEOUT_SECONDS`
   - default: `180`
 - `GENOMESPY_AGENT_SYSTEM_PROMPT`
@@ -167,6 +172,11 @@ http://127.0.0.1:8000/v1/plan
 
 The Python relay then forwards the assembled prompt to the configured provider
 and returns a normalized `answer` or `clarify` response back to the chat panel.
+If the request carries `Accept: text/event-stream` or `?stream=true`, the relay
+streams `start`, `delta`, `reasoning_delta`, `heartbeat`, and `final` SSE
+events instead of a single JSON body. When the upstream model emits fenced JSON
+or schema-shaped output, the relay strips the envelope and streams only the
+sanitized assistant text.
 
 If everything is wired correctly, you should see:
 

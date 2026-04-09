@@ -166,6 +166,84 @@ describe("createAgentSessionController", () => {
         );
     });
 
+    it("publishes active-turn stream updates before the final response", async () => {
+        const runtime = createRuntimeMock();
+        runtime.requestPlan.mockImplementation((message, history, stream) => {
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "Preflight OK",
+                    },
+                    trace: {
+                        totalMs: 10,
+                    },
+                });
+            }
+
+            stream.onHeartbeat?.();
+            stream.onReasoning?.("Checking the response shape.");
+            stream.onDelta?.("This view summarizes the cohort.");
+
+            return Promise.resolve({
+                response: {
+                    type: "answer",
+                    message:
+                        "This view summarizes the cohort. Try asking for a sort or filter to turn it into an action.",
+                },
+                trace: {
+                    totalMs: 22,
+                },
+            });
+        });
+
+        const activeSnapshots = [];
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+        controller.subscribeToActiveTurn((snapshot) => {
+            activeSnapshots.push(
+                snapshot
+                    ? {
+                          ...snapshot,
+                      }
+                    : null
+            );
+        });
+
+        await controller.open();
+        await controller.sendMessage("What can I do here?");
+
+        expect(activeSnapshots.some((snapshot) => snapshot === null)).toBe(
+            true
+        );
+        expect(
+            activeSnapshots.some(
+                (snapshot) =>
+                    snapshot?.status === "working" ||
+                    snapshot?.status === "streaming"
+            )
+        ).toBe(true);
+        expect(
+            activeSnapshots.some(
+                (snapshot) =>
+                    snapshot?.draftText === "This view summarizes the cohort."
+            )
+        ).toBe(true);
+        expect(
+            activeSnapshots.some(
+                (snapshot) =>
+                    snapshot?.reasoningText === "Checking the response shape."
+            )
+        ).toBe(true);
+
+        const snapshot = controller.getSnapshot();
+        expect(snapshot.messages).toHaveLength(2);
+        expect(snapshot.messages[1]).toMatchObject({
+            kind: "assistant",
+            text: "This view summarizes the cohort. Try asking for a sort or filter to turn it into an action.",
+        });
+    });
+
     it("marks the session unavailable when preflight fails and preserves queued input", async () => {
         /** @type {(reason?: any) => void} */
         let rejectPreflight;

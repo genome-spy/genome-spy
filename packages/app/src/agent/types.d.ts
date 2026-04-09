@@ -739,13 +739,34 @@ export interface AgentAdapter {
      */
     requestPlan(
         message: string,
-        history?: AgentConversationMessage[]
+        history?: AgentConversationMessage[],
+        streamCallbacks?: AgentStreamCallbacks
     ): Promise<{ response: PlanResponse; trace: Record<string, any> }>;
 
     /**
      * Starts the local prompt loop.
      */
     runLocalPrompt(): Promise<void>;
+}
+
+/**
+ * Stream callbacks for the active agent turn.
+ */
+export interface AgentStreamCallbacks {
+    /**
+     * Receives visible text chunks.
+     */
+    onDelta?(delta: string): void;
+
+    /**
+     * Receives reasoning-summary chunks when the provider exposes them.
+     */
+    onReasoning?(delta: string): void;
+
+    /**
+     * Receives periodic progress pulses while the request stays active.
+     */
+    onHeartbeat?(): void;
 }
 
 /**

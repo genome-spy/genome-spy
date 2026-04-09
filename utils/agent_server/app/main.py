@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import json
 import logging
+import time
 from functools import lru_cache
+from typing import AsyncIterator
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 from .config import Settings, load_settings
-from .models import PlanRequest, PlanResponse, ProviderRequest
+from .models import PlanRequest, PlanResponse, ProviderRequest, ProviderResponse
 from .providers import (
     BaseProvider,
     OpenAIChatCompletionsProvider,
@@ -49,16 +53,40 @@ async def health() -> dict[str, str]:
 
 
 @app.post("/v1/plan", response_model=PlanResponse)
-async def plan(request: PlanRequest) -> PlanResponse:
+async def plan(
+    request: PlanRequest,
+    http_request: Request,
+    stream: bool = Query(default=False),
+) -> PlanResponse | StreamingResponse:
+    settings = get_settings()
     provider_request = ProviderRequest(
-        system_prompt=get_settings().system_prompt,
+        system_prompt=settings.system_prompt,
         context=request.context,
         history=request.history,
         message=request.message,
     )
 
+    should_stream = settings.enable_streaming and (
+        stream or "text/event-stream" in http_request.headers.get("accept", "")
+    )
+
+    if should_stream:
+        return StreamingResponse(
+            _stream_plan(provider_request),
+            media_type="text/event-stream",
+            headers={
+                "cache-control": "no-cache",
+                "x-accel-buffering": "no",
+            },
+        )
+
+    response = await _generate_plan(provider_request)
+    return PlanResponse(type=response.type, message=response.message)
+
+
+async def _generate_plan(provider_request: ProviderRequest) -> ProviderResponse:
     try:
-        response = await get_provider().generate(provider_request)
+        return await get_provider().generate(provider_request)
     except ProviderError as exc:
         logger.warning("Provider request failed: %s", exc)
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -69,4 +97,62 @@ async def plan(request: PlanRequest) -> PlanResponse:
             detail="Provider request failed: " + str(exc),
         ) from exc
 
-    return PlanResponse(type=response.type, message=response.message)
+
+async def _stream_plan(
+    provider_request: ProviderRequest,
+) -> AsyncIterator[str]:
+    started_at = time.perf_counter()
+    yield _encode_sse_event("start", {"status": "working"})
+
+    try:
+        async for event in get_provider().generate_stream(provider_request):
+            if event.type == "delta" and event.delta:
+                yield _encode_sse_event("delta", {"delta": event.delta})
+            elif event.type == "reasoning_delta" and event.reasoning:
+                yield _encode_sse_event(
+                    "reasoning_delta", {"delta": event.reasoning}
+                )
+            elif event.type == "heartbeat":
+                yield _encode_sse_event("heartbeat", {"status": "working"})
+            elif event.type == "final":
+                if event.response is None:
+                    raise ProviderError("Provider stream ended without a response.")
+
+                duration_ms = round((time.perf_counter() - started_at) * 1000)
+                yield _encode_sse_event(
+                    "final",
+                    {
+                        "response": {
+                            "type": event.response.type,
+                            "message": event.response.message,
+                        },
+                        "trace": {
+                            "message": provider_request.message,
+                            "totalMs": duration_ms,
+                        },
+                    },
+                )
+            else:
+                logger.debug("Ignoring unknown provider stream event: %s", event)
+    except ProviderError as exc:
+        logger.warning("Provider stream failed: %s", exc)
+        yield _encode_sse_event("error", {"message": str(exc)})
+    except Exception as exc:
+        logger.exception("Unexpected provider stream failure")
+        yield _encode_sse_event(
+            "error",
+            {
+                "message": "Provider request failed: " + str(exc),
+            },
+        )
+
+
+def _encode_sse_event(event_name: str, payload: dict[str, object]) -> str:
+    return (
+        "event: "
+        + event_name
+        + "\n"
+        + "data: "
+        + json.dumps(payload, ensure_ascii=False)
+        + "\n\n"
+    )

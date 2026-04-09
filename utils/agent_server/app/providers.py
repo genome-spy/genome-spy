@@ -4,12 +4,12 @@ import json
 import logging
 import re
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, AsyncIterator
 
 import httpx
 
 from .config import Settings
-from .models import ProviderRequest, ProviderResponse
+from .models import ProviderRequest, ProviderResponse, ProviderStreamEvent
 from .prompt_builder import (
     build_chat_completions_messages,
     build_prompt_ir,
@@ -28,6 +28,12 @@ class BaseProvider(ABC):
     @abstractmethod
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
         raise NotImplementedError
+
+    async def generate_stream(
+        self, request: ProviderRequest
+    ) -> AsyncIterator[ProviderStreamEvent]:
+        response = await self.generate(request)
+        yield ProviderStreamEvent(type="final", response=response)
 
 
 class OpenAIResponsesProvider(BaseProvider):
@@ -101,11 +107,140 @@ class OpenAIResponsesProvider(BaseProvider):
         try:
             response_json = response.json()
         except Exception as exc:
+            logger.warning(
+                "Provider raw outer response from Responses API: %r",
+                response.text,
+            )
             raise ProviderError(
-                "Provider response was not valid JSON: " + response.text[:500]
+                "Provider response was not valid JSON: "
+                + _truncate_logged_content(response.text)
             ) from exc
 
-        return _parse_responses_response(response_json)
+        logger.warning(
+            "Provider raw outer response from Responses API: %r",
+            response.text,
+        )
+        response_payload = _parse_responses_response(response_json)
+        logger.warning(
+            "Provider parsed response from Responses API: %r",
+            response_payload.model_dump(),
+        )
+        return response_payload
+
+    async def generate_stream(
+        self, request: ProviderRequest
+    ) -> AsyncIterator[ProviderStreamEvent]:
+        prompt = build_prompt_ir(request)
+        payload = {
+            "model": self._settings.model,
+            "instructions": prompt.instructions,
+            "input": build_responses_input(prompt),
+            "format": {
+                "type": "json_schema",
+                "name": "genomespy_plan_response",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["type", "message"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["answer", "clarify"],
+                        },
+                        "message": {"type": "string"},
+                    },
+                },
+            },
+            "stream": True,
+        }
+        headers = {
+            "authorization": f"Bearer {self._settings.api_key}",
+            "content-type": "application/json",
+        }
+
+        async with httpx.AsyncClient(
+            timeout=self._settings.timeout_seconds
+        ) as client:
+            try:
+                async with client.stream(
+                    "POST",
+                    f"{self._settings.base_url}/responses",
+                    json=payload,
+                    headers=headers,
+                ) as response:
+                    if response.status_code >= 400:
+                        body = await response.aread()
+                        body_preview = body.decode("utf-8", errors="replace").strip()
+                        logger.error(
+                            "Provider request failed with status %s: %s",
+                            response.status_code,
+                            body_preview,
+                        )
+                        raise ProviderError(
+                            "Provider returned HTTP "
+                            + str(response.status_code)
+                            + ": "
+                            + (body_preview or "no response body")
+                        )
+
+                    text_parts: list[str] = []
+                    reasoning_parts: list[str] = []
+                    async for event_name, data_text in _iter_sse_events(response):
+                        logger.warning(
+                            "Provider raw SSE event %s from Responses API:\n%s",
+                            event_name,
+                            data_text,
+                        )
+                        if data_text == "[DONE]":
+                            break
+
+                        payload = _load_stream_event_payload(data_text)
+                        text_delta = _extract_stream_text(payload, event_name)
+                        if text_delta:
+                            text_parts.append(text_delta)
+
+                        reasoning_delta = _extract_stream_reasoning(payload, event_name)
+                        if reasoning_delta:
+                            reasoning_parts.append(reasoning_delta)
+                            yield ProviderStreamEvent(
+                                type="reasoning_delta",
+                                reasoning=reasoning_delta,
+                            )
+
+                        if _is_stream_heartbeat(event_name, payload):
+                            yield ProviderStreamEvent(type="heartbeat")
+
+                    final_text = "".join(text_parts).strip()
+                    if not final_text and reasoning_parts:
+                        final_text = "".join(reasoning_parts).strip()
+
+                    logger.debug(
+                        (
+                            "Provider stream collected final text: "
+                            "parts=%d reasoning_parts=%d preview=%s"
+                        ),
+                        len(text_parts),
+                        len(reasoning_parts),
+                        _truncate_logged_content(final_text),
+                    )
+                    yield ProviderStreamEvent(
+                        type="final",
+                        response=_parse_provider_response_text(
+                            final_text, allow_repair=True
+                        ),
+                    )
+            except httpx.ReadTimeout as exc:
+                raise ProviderError(
+                    "Provider request timed out after "
+                    + str(self._settings.timeout_seconds)
+                    + " seconds. Local models may need extra warm-up time on "
+                    + "their first request."
+                ) from exc
+            except Exception as exc:
+                raise ProviderError(
+                    "Provider HTTP request failed: " + repr(exc)
+                ) from exc
 
 
 class OpenAIChatCompletionsProvider(BaseProvider):
@@ -180,17 +315,271 @@ class OpenAIChatCompletionsProvider(BaseProvider):
         try:
             response_json = response.json()
         except Exception as exc:
+            logger.warning(
+                "Provider raw outer response from Responses API: %r",
+                response.text,
+            )
             raise ProviderError(
-                "Provider response was not valid JSON: " + response.text[:500]
+                "Provider response was not valid JSON: "
+                + _truncate_logged_content(response.text)
             ) from exc
 
-        return _parse_chat_completions_response(response_json)
+        logger.warning(
+            "Provider raw outer response from Responses API: %r",
+            response.text,
+        )
+        response_payload = _parse_chat_completions_response(response_json)
+        logger.warning(
+            "Provider parsed response from Responses API: %r",
+            response_payload.model_dump(),
+        )
+        return response_payload
+
+    async def generate_stream(
+        self, request: ProviderRequest
+    ) -> AsyncIterator[ProviderStreamEvent]:
+        prompt = build_prompt_ir(request)
+        payload = {
+            "model": self._settings.model,
+            "messages": build_chat_completions_messages(prompt),
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "genomespy_plan_response",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["type", "message"],
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": ["answer", "clarify"],
+                            },
+                            "message": {"type": "string"},
+                        },
+                    },
+                },
+            },
+            "stream": True,
+        }
+        headers = {
+            "authorization": f"Bearer {self._settings.api_key}",
+            "content-type": "application/json",
+        }
+
+        async with httpx.AsyncClient(
+            timeout=self._settings.timeout_seconds
+        ) as client:
+            try:
+                async with client.stream(
+                    "POST",
+                    f"{self._settings.base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                ) as response:
+                    if response.status_code >= 400:
+                        body = await response.aread()
+                        body_preview = body.decode("utf-8", errors="replace").strip()
+                        logger.error(
+                            "Provider request failed with status %s: %s",
+                            response.status_code,
+                            body_preview,
+                        )
+                        raise ProviderError(
+                            "Provider returned HTTP "
+                            + str(response.status_code)
+                            + ": "
+                            + (body_preview or "no response body")
+                        )
+
+                    text_parts: list[str] = []
+                    reasoning_parts: list[str] = []
+                    async for event_name, data_text in _iter_sse_events(response):
+                        logger.warning(
+                            "Provider raw SSE event %s from Responses API:\n%s",
+                            event_name,
+                            data_text,
+                        )
+                        if data_text == "[DONE]":
+                            break
+
+                        payload = _load_stream_event_payload(data_text)
+                        text_delta = _extract_stream_text(payload, event_name)
+                        if text_delta:
+                            text_parts.append(text_delta)
+
+                        reasoning_delta = _extract_stream_reasoning(payload, event_name)
+                        if reasoning_delta:
+                            reasoning_parts.append(reasoning_delta)
+                            yield ProviderStreamEvent(
+                                type="reasoning_delta",
+                                reasoning=reasoning_delta,
+                            )
+
+                        if _is_stream_heartbeat(event_name, payload):
+                            yield ProviderStreamEvent(type="heartbeat")
+
+                    final_text = "".join(text_parts).strip()
+                    if not final_text and reasoning_parts:
+                        final_text = "".join(reasoning_parts).strip()
+
+                    logger.debug(
+                        (
+                            "Provider stream collected final text: "
+                            "parts=%d reasoning_parts=%d preview=%s"
+                        ),
+                        len(text_parts),
+                        len(reasoning_parts),
+                        _truncate_logged_content(final_text),
+                    )
+                    yield ProviderStreamEvent(
+                        type="final",
+                        response=_parse_provider_response_text(
+                            final_text, allow_repair=True
+                        ),
+                    )
+            except httpx.ReadTimeout as exc:
+                raise ProviderError(
+                    "Provider request timed out after "
+                    + str(self._settings.timeout_seconds)
+                    + " seconds. Local models may need extra warm-up time on "
+                    + "their first request."
+                ) from exc
+            except Exception as exc:
+                raise ProviderError(
+                    "Provider HTTP request failed: " + repr(exc)
+                ) from exc
+
+
+async def _iter_sse_events(
+    response: httpx.Response,
+) -> AsyncIterator[tuple[str, str]]:
+    event_name = "message"
+    data_lines: list[str] = []
+
+    async for line in response.aiter_lines():
+        if line == "":
+            if data_lines:
+                yield event_name, "\n".join(data_lines)
+                event_name = "message"
+                data_lines = []
+            continue
+
+        if line.startswith(":"):
+            continue
+
+        field, separator, value = line.partition(":")
+        if separator == "":
+            continue
+
+        if value.startswith(" "):
+            value = value[1:]
+
+        if field == "event":
+            event_name = value
+        elif field == "data":
+            data_lines.append(value)
+
+    if data_lines:
+        yield event_name, "\n".join(data_lines)
+
+
+def _load_stream_event_payload(data_text: str) -> Any:
+    try:
+        return json.loads(data_text)
+    except Exception:
+        return data_text
+
+
+def _extract_stream_text(payload: Any, event_name: str) -> str:
+    if isinstance(payload, str):
+        return ""
+
+    if not isinstance(payload, dict):
+        return ""
+
+    if event_name == "response.output_text.delta":
+        return ""
+
+    if isinstance(payload.get("delta"), str):
+        return _normalize_provider_text(payload["delta"])
+
+    if isinstance(payload.get("text"), str):
+        return _normalize_provider_text(payload["text"])
+
+    choices = payload.get("choices")
+    if isinstance(choices, list) and choices:
+        first_choice = choices[0]
+        if isinstance(first_choice, dict):
+            delta = first_choice.get("delta")
+            if isinstance(delta, dict):
+                if isinstance(delta.get("content"), str):
+                    return _normalize_provider_text(delta["content"])
+                if isinstance(delta.get("text"), str):
+                    return _normalize_provider_text(delta["text"])
+
+            if event_name.startswith("response.output_text"):
+                message = first_choice.get("message")
+                if isinstance(message, dict):
+                    content = message.get("content")
+                    if isinstance(content, str):
+                        return _normalize_provider_text(content)
+
+    content = payload.get("content")
+    if isinstance(content, str):
+        return _normalize_provider_text(content)
+
+    return ""
+
+
+def _extract_stream_reasoning(payload: Any, event_name: str) -> str:
+    if isinstance(payload, str):
+        return ""
+
+    if not isinstance(payload, dict):
+        return ""
+
+    if isinstance(payload.get("reasoning_content"), str):
+        return _normalize_provider_text(payload["reasoning_content"])
+
+    if isinstance(payload.get("reasoning_summary"), str):
+        return _normalize_provider_text(payload["reasoning_summary"])
+
+    if "reasoning" in event_name and isinstance(payload.get("delta"), str):
+        return _normalize_provider_text(payload["delta"])
+
+    choices = payload.get("choices")
+    if isinstance(choices, list) and choices:
+        first_choice = choices[0]
+        if isinstance(first_choice, dict):
+            delta = first_choice.get("delta")
+            if isinstance(delta, dict):
+                reasoning_delta = delta.get("reasoning_content")
+                if isinstance(reasoning_delta, str):
+                    return _normalize_provider_text(reasoning_delta)
+
+    return ""
+
+
+def _is_stream_heartbeat(event_name: str, payload: Any) -> bool:
+    if "heartbeat" in event_name or "progress" in event_name:
+        return True
+
+    if isinstance(payload, dict):
+        return payload.get("type") in {"heartbeat", "progress"}
+
+    return False
 
 
 def _parse_responses_response(payload: dict[str, Any]) -> ProviderResponse:
     output_text = payload.get("output_text")
     if isinstance(output_text, str):
-        return _parse_provider_response_text(output_text)
+        logger.warning(
+            "Provider extracted inner output_text from Responses API: %r",
+            output_text,
+        )
+        return _parse_provider_response_text(output_text, allow_repair=True)
 
     try:
         output = payload["output"]
@@ -201,7 +590,11 @@ def _parse_responses_response(payload: dict[str, Any]) -> ProviderResponse:
         raise ProviderError("Provider response output must be a list.")
 
     text = _extract_output_text(output)
-    return _parse_provider_response_text(text)
+    logger.warning(
+        "Provider extracted inner output_text from Responses API: %r",
+        text,
+    )
+    return _parse_provider_response_text(text, allow_repair=True)
 
 
 def _parse_chat_completions_response(payload: dict[str, Any]) -> ProviderResponse:
@@ -223,7 +616,7 @@ def _parse_chat_completions_response(payload: dict[str, Any]) -> ProviderRespons
     elif isinstance(content, list):
         parsed = _parse_message_parts(content)
     elif isinstance(content, str):
-        return _parse_provider_response_text(content)
+        return _parse_provider_response_text(content, allow_repair=True)
     else:
         raise ProviderError(
             "Provider response content must be a string, list, or JSON object."
@@ -244,10 +637,12 @@ def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderRespons
     )
 
 
-def _parse_provider_response_text(text: str) -> ProviderResponse:
+def _parse_provider_response_text(
+    text: str, allow_repair: bool = False
+) -> ProviderResponse:
     try:
         return _parse_provider_response_payload(
-            _ensure_object_payload(_load_json_content(text))
+            _ensure_object_payload(_load_json_content(text, allow_repair))
         )
     except ProviderError:
         # Some local OpenAI-compatible models ignore structured-output hints.
@@ -321,33 +716,126 @@ def _parse_message_parts(parts: list[Any]) -> Any:
         for part in parts
         if isinstance(part, dict) and isinstance(part.get("text"), str)
     )
-    return _load_json_content(text)
+    return _load_json_content(text, allow_repair=True)
 
 
-def _load_json_content(content: str) -> Any:
+def _load_json_content(content: str, allow_repair: bool = False) -> Any:
     try:
         return json.loads(content)
     except json.JSONDecodeError as exc:
-        stripped = content.strip()
-        fenced = _strip_json_code_fence(stripped)
-        if fenced is not None:
+        candidates = _extract_json_candidates(content)
+        for candidate in reversed(candidates):
             try:
-                return json.loads(fenced)
+                return json.loads(candidate)
             except json.JSONDecodeError:
-                pass
+                if allow_repair:
+                    repaired = _repair_json_string_content(candidate)
+                    if repaired != candidate:
+                        try:
+                            return json.loads(repaired)
+                        except json.JSONDecodeError:
+                            pass
+                continue
 
-        logger.error(
-            "Provider response content was not valid JSON:\n%s",
+        logger.warning(
+            "Provider raw outer response from Responses API: %r",
             _truncate_logged_content(content),
         )
         raise ProviderError("Provider response was not valid JSON.") from exc
 
 
-def _strip_json_code_fence(content: str) -> str | None:
-    match = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", content, re.DOTALL)
-    if match is None:
+def _extract_json_candidates(content: str) -> list[str]:
+    candidates: list[str] = []
+    stripped = content.strip()
+    if stripped:
+        candidates.append(stripped)
+
+    fenced_blocks = re.findall(
+        r"```(?:json)?\s*(.*?)\s*```",
+        content,
+        re.DOTALL,
+    )
+    candidates.extend(block.strip() for block in fenced_blocks if block.strip())
+
+    balanced = _extract_balanced_json_object(content)
+    if balanced is not None:
+        candidates.append(balanced)
+
+    seen: set[str] = set()
+    unique_candidates: list[str] = []
+    for candidate in candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            unique_candidates.append(candidate)
+
+    return unique_candidates
+
+
+def _extract_balanced_json_object(content: str) -> str | None:
+    start_index = content.find("{")
+    if start_index < 0:
         return None
-    return match.group(1)
+
+    depth = 0
+    in_string = False
+    escape = False
+    for index in range(start_index, len(content)):
+        char = content[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return content[start_index : index + 1].strip()
+
+    return None
+
+
+def _repair_json_string_content(content: str) -> str:
+    repaired: list[str] = []
+    in_string = False
+    escape = False
+    for char in content:
+        if in_string:
+            if escape:
+                repaired.append(char)
+                escape = False
+            elif char == "\\":
+                repaired.append(char)
+                escape = True
+            elif char == '"':
+                repaired.append(char)
+                in_string = False
+            elif char == "\n":
+                repaired.append("\\n")
+            elif char == "\r":
+                repaired.append("\\r")
+            elif char == "\t":
+                repaired.append("\\t")
+            elif char == "\b":
+                repaired.append("\\b")
+            elif char == "\f":
+                repaired.append("\\f")
+            else:
+                repaired.append(char)
+        else:
+            repaired.append(char)
+            if char == '"':
+                in_string = True
+                escape = False
+
+    return "".join(repaired)
 
 
 def _truncate_logged_content(content: str) -> str:

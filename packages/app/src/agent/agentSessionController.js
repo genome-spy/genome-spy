@@ -11,6 +11,22 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  *     message: string | import("lit").TemplateResult;
  *     options?: ChatClarificationOption[];
  * }} ChatPlannerResponse */
+/**
+ * @typedef {{
+ *     onDelta?: (delta: string) => void;
+ *     onReasoning?: (delta: string) => void;
+ *     onHeartbeat?: () => void;
+ * }} AgentStreamCallbacks
+ *
+ * @typedef {{
+ *     turnId: number;
+ *     status: "working" | "streaming" | "final" | "error";
+ *     placeholder: string;
+ *     draftText: string;
+ *     reasoningText: string;
+ *     heartbeatTick: number;
+ * }} AgentActiveTurnSnapshot
+ */
 
 /**
  * @typedef {{
@@ -40,7 +56,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  * }} AgentSessionSnapshot
  *
  * @typedef {{
- *     requestPlan(message: string, history?: AgentConversationMessage[]): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
+ *     requestPlan(message: string, history?: AgentConversationMessage[], stream?: AgentStreamCallbacks): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
@@ -70,6 +86,8 @@ export class AgentSessionController {
 
         /** @type {Set<(snapshot: AgentSessionSnapshot) => void>} */
         this.#listeners = new Set();
+        /** @type {Set<(snapshot: AgentActiveTurnSnapshot | null) => void>} */
+        this.#activeTurnListeners = new Set();
         /**
          * Keep the session state explicit so the panel can render a read-only
          * snapshot and future session commands can be added without changing
@@ -93,8 +111,12 @@ export class AgentSessionController {
         this.#drainingQueue = false;
         /** @type {number} */
         this.#nextMessageId = 1;
+        /** @type {number} */
+        this.#nextTurnId = 1;
         /** @type {string[]} */
         this.#queuedMessages = [];
+        /** @type {AgentActiveTurnSnapshot | null} */
+        this.#activeTurn = null;
     }
 
     /** @type {AgentSessionRuntime} */
@@ -102,6 +124,9 @@ export class AgentSessionController {
 
     /** @type {Set<(snapshot: AgentSessionSnapshot) => void>} */
     #listeners;
+
+    /** @type {Set<(snapshot: AgentActiveTurnSnapshot | null) => void>} */
+    #activeTurnListeners;
 
     /** @type {AgentSessionSnapshot} */
     #state;
@@ -115,8 +140,14 @@ export class AgentSessionController {
     /** @type {number} */
     #nextMessageId;
 
+    /** @type {number} */
+    #nextTurnId;
+
     /** @type {string[]} */
     #queuedMessages;
+
+    /** @type {AgentActiveTurnSnapshot | null} */
+    #activeTurn;
 
     /**
      * @param {(snapshot: AgentSessionSnapshot) => void} listener
@@ -127,6 +158,18 @@ export class AgentSessionController {
         listener(this.getSnapshot());
         return () => {
             this.#listeners.delete(listener);
+        };
+    }
+
+    /**
+     * @param {(snapshot: AgentActiveTurnSnapshot | null) => void} listener
+     * @returns {() => void}
+     */
+    subscribeToActiveTurn(listener) {
+        this.#activeTurnListeners.add(listener);
+        listener(this.#cloneActiveTurn());
+        return () => {
+            this.#activeTurnListeners.delete(listener);
         };
     }
 
@@ -322,17 +365,31 @@ export class AgentSessionController {
         this.#state.lastResponseDurationMs = null;
         this.#notify();
 
+        const turnId = this.#beginActiveTurn();
+
         try {
             const history = this.#buildHistory();
             const { response, trace } = await this.#runtime.requestPlan(
                 message,
-                history
+                history,
+                {
+                    onDelta: (delta) => {
+                        this.#appendActiveTurnDelta(turnId, delta);
+                    },
+                    onReasoning: (delta) => {
+                        this.#appendActiveTurnReasoning(turnId, delta);
+                    },
+                    onHeartbeat: () => {
+                        this.#touchActiveTurn(turnId);
+                    },
+                }
             );
-            await this.#handleResponse(response, trace.totalMs);
+            await this.#handleResponse(response, trace.totalMs, turnId);
         } catch (error) {
             this.#state.pendingResponsePlaceholder = "";
             this.#state.status = "error";
             this.#state.lastError = String(error);
+            this.#markActiveTurnError(turnId);
             this.#appendMessage({
                 kind: "error",
                 text: this.#state.lastError,
@@ -340,6 +397,7 @@ export class AgentSessionController {
         } finally {
             this.#state.pendingRequest = null;
             this.#state.pendingResponsePlaceholder = "";
+            this.#clearActiveTurn(turnId);
             this.#notify();
             void this.#drainQueue();
         }
@@ -422,9 +480,11 @@ export class AgentSessionController {
     /**
      * @param {ChatPlannerResponse} response
      * @param {number | undefined} durationMs
+     * @param {number} turnId
      * @returns {Promise<void>}
      */
-    async #handleResponse(response, durationMs) {
+    async #handleResponse(response, durationMs, turnId) {
+        this.#clearActiveTurn(turnId);
         this.#state.pendingResponsePlaceholder = "";
         this.#state.lastResponseDurationMs = durationMs ?? null;
 
@@ -550,6 +610,121 @@ export class AgentSessionController {
         this.#state.status = "error";
         this.#state.lastError = "Unsupported planner response.";
         this.#notify();
+    }
+
+    /**
+     * @returns {number}
+     */
+    #beginActiveTurn() {
+        const turnId = this.#nextTurnId++;
+        this.#activeTurn = {
+            turnId,
+            status: "working",
+            placeholder: "Working...",
+            draftText: "",
+            reasoningText: "",
+            heartbeatTick: 0,
+        };
+        this.#notifyActiveTurn();
+        return turnId;
+    }
+
+    /**
+     * @param {number} turnId
+     * @param {string} delta
+     */
+    #appendActiveTurnDelta(turnId, delta) {
+        if (!delta || !this.#activeTurn || this.#activeTurn.turnId !== turnId) {
+            return;
+        }
+
+        this.#activeTurn = {
+            ...this.#activeTurn,
+            status: "streaming",
+            draftText: this.#activeTurn.draftText + delta,
+        };
+        this.#notifyActiveTurn();
+    }
+
+    /**
+     * @param {number} turnId
+     * @param {string} delta
+     */
+    #appendActiveTurnReasoning(turnId, delta) {
+        if (!delta || !this.#activeTurn || this.#activeTurn.turnId !== turnId) {
+            return;
+        }
+
+        this.#activeTurn = {
+            ...this.#activeTurn,
+            reasoningText: this.#activeTurn.reasoningText + delta,
+        };
+        this.#notifyActiveTurn();
+    }
+
+    /**
+     * @param {number} turnId
+     */
+    #touchActiveTurn(turnId) {
+        if (!this.#activeTurn || this.#activeTurn.turnId !== turnId) {
+            return;
+        }
+
+        this.#activeTurn = {
+            ...this.#activeTurn,
+            heartbeatTick: this.#activeTurn.heartbeatTick + 1,
+        };
+        this.#notifyActiveTurn();
+    }
+
+    /**
+     * @param {number} turnId
+     */
+    #markActiveTurnError(turnId) {
+        if (!this.#activeTurn || this.#activeTurn.turnId !== turnId) {
+            return;
+        }
+
+        this.#activeTurn = {
+            ...this.#activeTurn,
+            status: "error",
+        };
+        this.#notifyActiveTurn();
+    }
+
+    /**
+     * @param {number} turnId
+     */
+    #clearActiveTurn(turnId) {
+        if (!this.#activeTurn || this.#activeTurn.turnId !== turnId) {
+            return;
+        }
+
+        this.#activeTurn = null;
+        this.#notifyActiveTurn();
+    }
+
+    /**
+     * @returns {AgentActiveTurnSnapshot | null}
+     */
+    #cloneActiveTurn() {
+        if (!this.#activeTurn) {
+            return null;
+        }
+
+        return {
+            ...this.#activeTurn,
+        };
+    }
+
+    /**
+     * Emits the current active-turn snapshot to all listeners.
+     */
+    #notifyActiveTurn() {
+        const snapshot = this.#cloneActiveTurn();
+        for (const listener of this.#activeTurnListeners) {
+            listener(snapshot);
+        }
     }
 
     /**

@@ -14,6 +14,7 @@ class Settings:
     timeout_seconds: float
     system_prompt: str
     api_style: Literal["responses", "chat_completions"]
+    enable_streaming: bool
 
 
 def load_default_system_prompt() -> str:
@@ -42,4 +43,22 @@ def load_settings() -> Settings:
             "GENOMESPY_AGENT_SYSTEM_PROMPT", load_default_system_prompt()
         ),
         api_style=cast(Literal["responses", "chat_completions"], api_style),
+        enable_streaming=_load_bool_env("GENOMESPY_AGENT_ENABLE_STREAMING", True),
+    )
+
+
+def _load_bool_env(name: str, default: bool) -> bool:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+
+    raise ValueError(
+        name + " must be one of: true, false, yes, no, on, off, 1, 0"
     )

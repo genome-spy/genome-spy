@@ -45,8 +45,20 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  * }} ChatSessionSnapshot
  *
  * @typedef {{
+ *     turnId: number;
+ *     status: "working" | "streaming" | "final" | "error";
+ *     placeholder: string;
+ *     draftText: string;
+ *     reasoningText: string;
+ *     heartbeatTick: number;
+ * }} AgentActiveTurnSnapshot
+ *
+ * @typedef {{
  *     getSnapshot(): ChatSessionSnapshot;
  *     subscribe(listener: (snapshot: ChatSessionSnapshot) => void): () => void;
+ *     subscribeToActiveTurn?(
+ *         listener: (snapshot: AgentActiveTurnSnapshot | null) => void
+ *     ): () => void;
  *     open(): Promise<void>;
  *     close(): void;
  *     sendMessage(message: string): Promise<void>;
@@ -72,6 +84,11 @@ export default class AgentChatPanel extends LitElement {
         panelTitle: { type: String },
         snapshot: { state: true },
         draft: { state: true },
+        streamTurnId: { state: true },
+        streamStatus: { state: true },
+        streamDraftText: { state: true },
+        streamReasoningText: { state: true },
+        streamHeartbeatTick: { state: true },
     };
 
     static styles = [
@@ -258,9 +275,38 @@ export default class AgentChatPanel extends LitElement {
                 border-left-width: 0;
             }
 
+            .message.assistant.streaming {
+                display: grid;
+                gap: 0.45rem;
+                max-width: min(84%, 44rem);
+                padding: 0.75rem 0.85rem;
+                border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+                border-left-width: 4px;
+                border-left-color: var(--gs-theme-primary, #6c82ab);
+                border-radius: 4px;
+                background: white;
+            }
+
             .assistant-body {
                 display: grid;
                 gap: 0.6rem;
+            }
+
+            .streaming-body {
+                display: grid;
+                gap: 0.45rem;
+                line-height: 1.45;
+            }
+
+            .streaming-draft {
+                white-space: pre-wrap;
+                color: #222;
+            }
+
+            .streaming-reasoning {
+                white-space: pre-wrap;
+                color: #666;
+                font-size: 0.88rem;
             }
 
             .assistant-body .markdown > :first-child {
@@ -424,6 +470,11 @@ export default class AgentChatPanel extends LitElement {
         this.draft = "";
         /** @type {ChatSessionSnapshot} */
         this.snapshot = EMPTY_SNAPSHOT;
+        this.streamTurnId = 0;
+        this.streamStatus = "idle";
+        this.streamDraftText = "";
+        this.streamReasoningText = "";
+        this.streamHeartbeatTick = 0;
     }
 
     /** @type {(() => void) | null} */
@@ -431,6 +482,9 @@ export default class AgentChatPanel extends LitElement {
 
     /** @type {AgentChatController | undefined} */
     #boundController = undefined;
+
+    /** @type {(() => void) | null} */
+    #unsubscribeActiveTurn = null;
 
     connectedCallback() {
         super.connectedCallback();
@@ -454,6 +508,15 @@ export default class AgentChatPanel extends LitElement {
         }
 
         if (changedProperties.has("snapshot")) {
+            void this.#scrollTranscriptToEnd();
+        }
+
+        if (
+            changedProperties.has("streamDraftText") ||
+            changedProperties.has("streamReasoningText") ||
+            changedProperties.has("streamStatus") ||
+            changedProperties.has("streamHeartbeatTick")
+        ) {
             void this.#scrollTranscriptToEnd();
         }
     }
@@ -491,14 +554,16 @@ export default class AgentChatPanel extends LitElement {
                             : snapshot.messages.map((message) =>
                                   this.#renderMessage(message)
                               )}
-                        ${snapshot.pendingResponsePlaceholder
-                            ? html`<div class="transcript-placeholder">
-                                  <span class="spinner"></span>
-                                  <span
-                                      >${snapshot.pendingResponsePlaceholder}</span
-                                  >
-                              </div>`
-                            : nothing}
+                        ${this.#hasActiveStream()
+                            ? this.#renderActiveTurnDraft(snapshot)
+                            : snapshot.pendingResponsePlaceholder
+                              ? html`<div class="transcript-placeholder">
+                                    <span class="spinner"></span>
+                                    <span
+                                        >${snapshot.pendingResponsePlaceholder}</span
+                                    >
+                                </div>`
+                              : nothing}
                     </section>
 
                     <form class="composer" @submit=${this.#handleSubmit}>
@@ -664,6 +729,40 @@ export default class AgentChatPanel extends LitElement {
     }
 
     /**
+     * @returns {boolean}
+     */
+    #hasActiveStream() {
+        return this.streamStatus !== "idle";
+    }
+
+    /**
+     * @param {ChatSessionSnapshot} snapshot
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderActiveTurnDraft(snapshot) {
+        const hasDraft = this.streamDraftText.length > 0;
+        return html`
+            <article class="message assistant streaming">
+                ${hasDraft
+                    ? html`<div class="streaming-body">
+                          <div class="streaming-draft">
+                              ${this.streamDraftText}
+                          </div>
+                          ${this.streamReasoningText
+                              ? html`<div class="streaming-reasoning">
+                                    ${this.streamReasoningText}
+                                </div>`
+                              : nothing}
+                      </div>`
+                    : html`<div class="transcript-placeholder">
+                          <span class="spinner"></span>
+                          <span>${snapshot.pendingResponsePlaceholder}</span>
+                      </div>`}
+            </article>
+        `;
+    }
+
+    /**
      * @param {string | import("lit").TemplateResult} content
      * @returns {import("lit").TemplateResult}
      */
@@ -786,7 +885,14 @@ export default class AgentChatPanel extends LitElement {
 
         this.#unsubscribeController?.();
         this.#unsubscribeController = null;
+        this.#unsubscribeActiveTurn?.();
+        this.#unsubscribeActiveTurn = null;
         this.#boundController = this.controller;
+        this.streamTurnId = 0;
+        this.streamStatus = "idle";
+        this.streamDraftText = "";
+        this.streamReasoningText = "";
+        this.streamHeartbeatTick = 0;
 
         if (!this.controller) {
             this.snapshot = EMPTY_SNAPSHOT;
@@ -797,7 +903,38 @@ export default class AgentChatPanel extends LitElement {
         this.#unsubscribeController = this.controller.subscribe((snapshot) => {
             this.snapshot = snapshot;
         });
+        if (this.controller.subscribeToActiveTurn) {
+            this.#unsubscribeActiveTurn = this.controller.subscribeToActiveTurn(
+                (snapshot) => {
+                    this.#handleActiveTurnSnapshot(snapshot);
+                }
+            );
+        }
         void this.controller.open();
+    }
+
+    /**
+     * @param {AgentActiveTurnSnapshot | null} snapshot
+     */
+    #handleActiveTurnSnapshot(snapshot) {
+        if (!snapshot) {
+            this.streamTurnId = 0;
+            this.streamStatus = "idle";
+            this.streamDraftText = "";
+            this.streamReasoningText = "";
+            this.streamHeartbeatTick = 0;
+            return;
+        }
+
+        if (snapshot.turnId < this.streamTurnId) {
+            return;
+        }
+
+        this.streamTurnId = snapshot.turnId;
+        this.streamStatus = snapshot.status;
+        this.streamDraftText = snapshot.draftText;
+        this.streamReasoningText = snapshot.reasoningText;
+        this.streamHeartbeatTick = snapshot.heartbeatTick;
     }
 }
 

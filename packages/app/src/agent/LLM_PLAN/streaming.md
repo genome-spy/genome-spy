@@ -8,8 +8,9 @@ clarification flows.
 ## Code References
 
 - Chat panel view: [`chatPanel.js`](../src/agent/chatPanel.js)
-- Session controller: committed snapshot, turn state, and request ids
+- Session controller: committed snapshot plus active-turn fast path
 - Agent runtime adapter: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+- Storybook mock harness: [`chatPanel.stories.js`](../src/agent/chatPanel.stories.js)
 - Python relay server plan: [`python_agent_server.md`](./python_agent_server.md)
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
 
@@ -30,6 +31,10 @@ The controller may receive partial text, heartbeat events, or reasoning-summary
 deltas while the model is running. The chat panel should subscribe to that
 active-turn stream directly for high-frequency draft updates, while the
 controller snapshot remains the source of truth for committed state.
+
+This split is implemented in the app-side controller, panel, Storybook mock
+harness, and the Python relay SSE endpoint. The remaining work is provider-side
+stream normalization across more upstream APIs.
 
 Recommended architecture:
 
@@ -137,8 +142,9 @@ Recommended shape:
 Unknown stream events should be ignored by default. In development, they should
 be logged so unexpected provider or relay changes are visible early.
 
-The current non-streaming API can remain the fallback path until the server and
-relay support streaming end to end.
+The current non-streaming API remains the fallback path when the client does
+not request streaming, streaming is disabled server-side, or the relay cannot
+expose an event stream.
 
 ## Relay Responsibilities
 
@@ -147,6 +153,7 @@ The Python relay should:
 - forward provider streaming events
 - normalize provider-specific event names into a small app-facing event set
 - preserve the final structured response
+- suppress raw structured JSON from the visible draft lane
 - emit errors early when the request fails
 
 The relay should not build GenomeSpy context or interpret the response beyond
@@ -175,6 +182,9 @@ Recommended rule:
 - stream prose incrementally
 - buffer the final structured object
 - replace the draft with the structured card when the response completes
+
+If the upstream model emits fenced JSON or JSON-schema text, the relay should
+parse it and stream only the sanitized assistant message, not the raw envelope.
 
 This keeps the UI stable and avoids showing incomplete JSON or incomplete
 options.
@@ -231,6 +241,9 @@ That combination keeps the UI responsive even for thinking-heavy models.
 4. Keep the current non-streaming request path as the fallback.
 5. Normalize provider-specific stream events into a small app-facing shape.
 
+Status: the app-side request contract already accepts stream callbacks, but the
+real relay still returns a final response only.
+
 ### Phase 3: Extend controller state
 
 1. Add an active-turn stream channel and a request id for the current turn.
@@ -239,6 +252,8 @@ That combination keeps the UI responsive even for thinking-heavy models.
 4. Clear the active turn when the final response is committed or cancelled.
 5. Preserve the current preflight, queueing, and timing behavior.
 
+Status: implemented in `agentSessionController.js` and covered by tests.
+
 ### Phase 4: Render the draft in the panel
 
 1. Show `Working...` immediately when the turn starts.
@@ -246,6 +261,8 @@ That combination keeps the UI responsive even for thinking-heavy models.
 3. Render reasoning-summary text as a muted helper line.
 4. Keep the transcript pinned to the latest streamed content.
 5. Replace the active card body with the final structured card when complete.
+
+Status: implemented in `chatPanel.js`.
 
 ### Phase 5: Finish structured turns
 
@@ -257,6 +274,9 @@ That combination keeps the UI responsive even for thinking-heavy models.
 5. Handle cancellation and error paths without leaving stale draft state
    behind.
 
+Status: the final turn replacement path is implemented; the structured
+completion path still uses the existing final-response contract.
+
 ### Phase 6: Add server-side streaming
 
 1. Update the Python relay to forward provider stream events.
@@ -264,6 +284,9 @@ That combination keeps the UI responsive even for thinking-heavy models.
 3. Emit heartbeats or progress events while the model is still working.
 4. Keep GenomeSpy context assembly and response interpretation out of the
    relay.
+
+Status: the relay now exposes an SSE path for `POST /v1/plan` when streaming is
+requested. Provider-side streaming normalization is the remaining gap.
 
 ### Phase 7: Verify the UX
 
@@ -273,33 +296,36 @@ That combination keeps the UI responsive even for thinking-heavy models.
 4. Add a Storybook scenario that simulates slow text generation.
 5. Add a Storybook scenario that emits heartbeats before the first token.
 
+Status: controller stream tests and Storybook streaming scenarios are in
+place; broader coverage for transport-level streaming is still pending.
+
 ## Concrete Checklist
 
 ### `packages/app/src/agent/agentAdapter.js`
 
-- Add a streaming-aware request entrypoint.
-- Accept callbacks for draft text, reasoning summaries, heartbeats, and
-  cancellation.
-- Keep the existing non-streaming code path as the fallback.
-- Normalize provider stream events into the controller-facing event set.
+- Request-plan callbacks already flow through the adapter contract.
+- Keep the existing non-streaming code path as the fallback until the relay
+  supports streaming end to end.
+- Normalize provider stream events into the controller-facing event set when
+  the relay starts emitting them.
 
 ### `packages/app/src/agent/agentSessionController.js`
 
-- Expose an active-turn stream channel for draft updates.
-- Keep committed snapshot state separate from transient stream state.
-- Track the active request id and drop stale events.
-- Keep the draft visible until the final structured response arrives.
-- Clear transient stream state when the final message is committed or
+- Exposes an active-turn stream channel for draft updates.
+- Keeps committed snapshot state separate from transient stream state.
+- Tracks the active request id and drops stale events.
+- Keeps the draft visible until the final structured response arrives.
+- Clears transient stream state when the final message is committed or
   cancelled.
-- Preserve the current queueing and preflight behavior.
+- Preserves the current queueing and preflight behavior.
 
 ### `packages/app/src/agent/chatPanel.js`
 
-- Subscribe to the active-turn stream for draft updates.
-- Render the streaming draft in the same transcript card as the final result.
-- Keep the card style stable while the text updates.
-- Keep auto-scroll pinned to the latest draft content.
-- Render reasoning summaries as muted helper text below the draft prose.
+- Subscribes to the active-turn stream for draft updates.
+- Renders the streaming draft in the same transcript card as the final result.
+- Keeps the card style stable while the text updates.
+- Keeps auto-scroll pinned to the latest draft content.
+- Renders reasoning summaries as muted helper text below the draft prose.
 
 ### `packages/app/src/agent/clarificationMessage.js`
 
@@ -313,9 +339,8 @@ That combination keeps the UI responsive even for thinking-heavy models.
 
 ### `packages/app/src/agent/chatPanel.stories.js`
 
-- Add a story that simulates slow prose streaming.
-- Add a story that emits heartbeat events before the first text chunk.
-- Add a story that finishes with a structured clarification response.
+- Adds stories that simulate slow prose streaming and heartbeat pulses.
+- Exercises clarification chunks with the same fast path.
 
 ### `utils/agent_server/app/main.py` and relay helpers
 
@@ -325,6 +350,9 @@ That combination keeps the UI responsive even for thinking-heavy models.
 - Keep GenomeSpy-specific context building out of the relay.
 - Ignore unknown provider events unless they are needed for final response
   assembly.
+
+Status: the relay serves SSE for stream requests when streaming is enabled on
+the server and keeps the JSON path as the fallback.
 
 ### Tests
 

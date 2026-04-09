@@ -16,6 +16,8 @@ export default {
     tags: ["autodocs"],
     args: {
         scenario: "intent_program",
+        streamDelayMs: 0,
+        heartbeatIntervalMs: 0,
     },
     argTypes: {
         scenario: {
@@ -34,16 +36,40 @@ export default {
         preflightFails: {
             control: "boolean",
         },
+        streamDelayMs: {
+            control: {
+                type: "number",
+                min: 0,
+                step: 50,
+            },
+        },
+        heartbeatIntervalMs: {
+            control: {
+                type: "number",
+                min: 0,
+                step: 50,
+            },
+        },
     },
 };
 
 /**
  * @param {MockScenario} scenario
- * @param {{ preflightDelayMs?: number; preflightFails?: boolean }} [options]
+ * @param {{
+ *     preflightDelayMs?: number;
+ *     preflightFails?: boolean;
+ *     streamDelayMs?: number;
+ *     heartbeatIntervalMs?: number;
+ * }} [options]
  * @returns {ReturnType<typeof createAgentSessionController>}
  */
 function createMockAgentController(scenario, options = {}) {
-    const { preflightDelayMs = 0, preflightFails = false } = options;
+    const {
+        preflightDelayMs = 0,
+        preflightFails = false,
+        streamDelayMs = 0,
+        heartbeatIntervalMs = 0,
+    } = options;
     const baseContext = /** @type {any} */ ({
         schemaVersion: 1,
         sampleSummary: {
@@ -134,7 +160,11 @@ function createMockAgentController(scenario, options = {}) {
 
     const runtime = /** @type {any} */ ({
         getAgentContext: () => baseContext,
-        requestPlan: async (/** @type {string} */ message) => {
+        requestPlan: async (
+            /** @type {string} */ message,
+            /** @type {Array<any>} */ _history = [],
+            /** @type {any} */ streamCallbacks = {}
+        ) => {
             if (message === PREFLIGHT_MESSAGE) {
                 if (preflightDelayMs > 0) {
                     await delay(preflightDelayMs);
@@ -171,6 +201,15 @@ function createMockAgentController(scenario, options = {}) {
                 normalized.includes("which") ||
                 normalized.includes("what attribute")
             ) {
+                await streamText(
+                    streamCallbacks,
+                    "Which attribute should I use?",
+                    {
+                        streamDelayMs,
+                        heartbeatIntervalMs,
+                    }
+                );
+
                 return {
                     response: {
                         type: "clarify",
@@ -189,6 +228,17 @@ function createMockAgentController(scenario, options = {}) {
                 normalized.includes("what") ||
                 normalized.includes("help")
             ) {
+                await streamText(
+                    streamCallbacks,
+                    "This view summarizes the cohort. Try asking for a sort or filter to turn it into an action.",
+                    {
+                        streamDelayMs,
+                        heartbeatIntervalMs,
+                        reasoningText:
+                            "I am checking the available cohort-level interactions.",
+                    }
+                );
+
                 return {
                     response: {
                         type: "answer",
@@ -268,6 +318,74 @@ function delay(ms) {
     return new Promise((resolve) => {
         window.setTimeout(resolve, ms);
     });
+}
+
+/**
+ * @param {Record<string, any>} streamCallbacks
+ * @param {string} text
+ * @param {{
+ *     streamDelayMs?: number;
+ *     heartbeatIntervalMs?: number;
+ *     reasoningText?: string;
+ * }} [options]
+ * @returns {Promise<void>}
+ */
+async function streamText(streamCallbacks, text, options = {}) {
+    const {
+        streamDelayMs = 0,
+        heartbeatIntervalMs = 0,
+        reasoningText = "",
+    } = options;
+
+    if (reasoningText && streamCallbacks.onReasoning) {
+        streamCallbacks.onReasoning(reasoningText);
+    }
+
+    const chunks = splitIntoChunks(text);
+    for (let index = 0; index < chunks.length; index += 1) {
+        if (heartbeatIntervalMs > 0 && streamCallbacks.onHeartbeat) {
+            await delay(heartbeatIntervalMs);
+            streamCallbacks.onHeartbeat();
+        }
+
+        if (streamCallbacks.onDelta) {
+            streamCallbacks.onDelta(chunks[index]);
+        }
+
+        if (streamDelayMs > 0 && index < chunks.length - 1) {
+            await delay(streamDelayMs);
+        }
+    }
+}
+
+/**
+ * @param {string} text
+ * @returns {string[]}
+ */
+function splitIntoChunks(text) {
+    const words = text.split(/(\s+)/);
+    const chunks = [];
+    let current = "";
+
+    for (const word of words) {
+        if (!word) {
+            continue;
+        }
+
+        const candidate = current + word;
+        if (current && candidate.length > 22 && /\S/.test(word)) {
+            chunks.push(current);
+            current = word;
+        } else {
+            current = candidate;
+        }
+    }
+
+    if (current) {
+        chunks.push(current);
+    }
+
+    return chunks.length > 0 ? chunks : [text];
 }
 
 /**
@@ -383,6 +501,8 @@ function summarizeMockStep(step) {
  *     scenario: MockScenario;
  *     preflightDelayMs?: number;
  *     preflightFails?: boolean;
+ *     streamDelayMs?: number;
+ *     heartbeatIntervalMs?: number;
  * }} args
  * @returns {import("lit").TemplateResult}
  */
@@ -391,12 +511,16 @@ function renderChatPanel(args) {
         scenario: args.scenario,
         preflightDelayMs: args.preflightDelayMs ?? 0,
         preflightFails: args.preflightFails ?? false,
+        streamDelayMs: args.streamDelayMs ?? 0,
+        heartbeatIntervalMs: args.heartbeatIntervalMs ?? 0,
     });
     let controller = controllerCache.get(key);
     if (!controller) {
         controller = createMockAgentController(args.scenario, {
             preflightDelayMs: args.preflightDelayMs,
             preflightFails: args.preflightFails,
+            streamDelayMs: args.streamDelayMs,
+            heartbeatIntervalMs: args.heartbeatIntervalMs,
         });
         controllerCache.set(key, controller);
     }
@@ -446,6 +570,24 @@ export const PreflightPending = {
     args: {
         scenario: "intent_program",
         preflightDelayMs: 1600,
+    },
+    render: renderChatPanel,
+};
+
+export const StreamingAnswer = {
+    args: {
+        scenario: "answer",
+        streamDelayMs: 120,
+        heartbeatIntervalMs: 400,
+    },
+    render: renderChatPanel,
+};
+
+export const StreamingClarify = {
+    args: {
+        scenario: "clarify",
+        streamDelayMs: 120,
+        heartbeatIntervalMs: 400,
     },
     render: renderChatPanel,
 };

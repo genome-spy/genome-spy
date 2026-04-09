@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,6 +31,14 @@ class PlanResponse(BaseModel):
 class ProviderResponse(BaseModel):
     type: Literal["answer", "clarify"]
     message: str
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderStreamEvent:
+    type: Literal["delta", "reasoning_delta", "heartbeat", "final"]
+    delta: str | None = None
+    reasoning: str | None = None
+    response: ProviderResponse | None = None
 
 
 class ProviderRequest(BaseModel):
