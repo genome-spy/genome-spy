@@ -174,9 +174,9 @@ The Python relay then forwards the assembled prompt to the configured provider
 and returns a normalized `answer` or `clarify` response back to the chat panel.
 If the request carries `Accept: text/event-stream` or `?stream=true`, the relay
 streams `start`, `delta`, `reasoning_delta`, `heartbeat`, and `final` SSE
-events instead of a single JSON body. When the upstream model emits fenced JSON
-or schema-shaped output, the relay strips the envelope and streams only the
-sanitized assistant text.
+events instead of a single JSON body. Plain Markdown replies stream directly.
+If the reply starts with `{` or a fenced JSON block, the relay buffers it as
+structured output and emits only the final parsed JSON response.
 
 If everything is wired correctly, you should see:
 

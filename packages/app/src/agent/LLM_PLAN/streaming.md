@@ -41,6 +41,9 @@ Recommended architecture:
 - keep streaming as a fast-path side channel
 - keep committed chat state in the snapshot
 - keep draft rendering state in the panel
+- stream plain Markdown replies directly
+- buffer replies that start with `{` or a fenced JSON block until the
+  structured object is complete
 - ignore unknown stream events
 - log unknown events in dev so transport drift is visible
 - require the final structured response to commit the turn

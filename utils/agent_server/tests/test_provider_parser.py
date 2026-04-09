@@ -1,5 +1,6 @@
 from app.models import ProviderResponse
 from app.providers import (
+    _classify_stream_text,
     _extract_stream_text,
     _parse_chat_completions_response,
     _parse_provider_response_text,
@@ -265,13 +266,15 @@ def test_parse_provider_response_text_uses_last_fenced_json_block() -> None:
     )
 
 
-def test_extract_stream_text_ignores_structured_output_deltas() -> None:
+def test_extract_stream_text_returns_text_deltas() -> None:
     payload = {
         "type": "response.output_text.delta",
-        "delta": "{",
+        "delta": "The x axis encodes genomic coordinates.",
     }
 
-    assert _extract_stream_text(payload, "response.output_text.delta") == ""
+    assert _extract_stream_text(payload, "response.output_text.delta") == (
+        "The x axis encodes genomic coordinates."
+    )
 
 
 def test_extract_stream_text_keeps_done_snapshot_text() -> None:
@@ -283,3 +286,10 @@ def test_extract_stream_text_keeps_done_snapshot_text() -> None:
     assert _extract_stream_text(payload, "response.output_text.done") == (
         '{"type":"answer","message":"Done."}'
     )
+
+
+def test_classify_stream_text_distinguishes_prose_and_structured_json() -> None:
+    assert _classify_stream_text("The x axis encodes genomic coordinates.") == (
+        "prose"
+    )
+    assert _classify_stream_text("   {\"type\":\"answer\"}") == "structured"

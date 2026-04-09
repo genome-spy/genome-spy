@@ -46,23 +46,6 @@ class OpenAIResponsesProvider(BaseProvider):
             "model": self._settings.model,
             "instructions": prompt.instructions,
             "input": build_responses_input(prompt),
-            "format": {
-                "type": "json_schema",
-                "name": "genomespy_plan_response",
-                "strict": True,
-                "schema": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["type", "message"],
-                    "properties": {
-                        "type": {
-                            "type": "string",
-                            "enum": ["answer", "clarify"],
-                        },
-                        "message": {"type": "string"},
-                    },
-                },
-            },
         }
         headers = {
             "authorization": f"Bearer {self._settings.api_key}",
@@ -116,12 +99,12 @@ class OpenAIResponsesProvider(BaseProvider):
                 + _truncate_logged_content(response.text)
             ) from exc
 
-        logger.warning(
+        logger.debug(
             "Provider raw outer response from Responses API: %r",
             response.text,
         )
         response_payload = _parse_responses_response(response_json)
-        logger.warning(
+        logger.debug(
             "Provider parsed response from Responses API: %r",
             response_payload.model_dump(),
         )
@@ -135,23 +118,6 @@ class OpenAIResponsesProvider(BaseProvider):
             "model": self._settings.model,
             "instructions": prompt.instructions,
             "input": build_responses_input(prompt),
-            "format": {
-                "type": "json_schema",
-                "name": "genomespy_plan_response",
-                "strict": True,
-                "schema": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["type", "message"],
-                    "properties": {
-                        "type": {
-                            "type": "string",
-                            "enum": ["answer", "clarify"],
-                        },
-                        "message": {"type": "string"},
-                    },
-                },
-            },
             "stream": True,
         }
         headers = {
@@ -186,8 +152,10 @@ class OpenAIResponsesProvider(BaseProvider):
 
                     text_parts: list[str] = []
                     reasoning_parts: list[str] = []
+                    stream_mode: str | None = None
+                    final_snapshot_text = ""
                     async for event_name, data_text in _iter_sse_events(response):
-                        logger.warning(
+                        logger.debug(
                             "Provider raw SSE event %s from Responses API:\n%s",
                             event_name,
                             data_text,
@@ -196,9 +164,27 @@ class OpenAIResponsesProvider(BaseProvider):
                             break
 
                         payload = _load_stream_event_payload(data_text)
+                        if event_name.endswith(".done"):
+                            snapshot_text = _extract_stream_text(payload, event_name)
+                            if snapshot_text:
+                                final_snapshot_text = snapshot_text
+                            continue
+
                         text_delta = _extract_stream_text(payload, event_name)
                         if text_delta:
                             text_parts.append(text_delta)
+                            if stream_mode is None:
+                                stream_mode = _classify_stream_text("".join(text_parts))
+                                if stream_mode == "prose":
+                                    yield ProviderStreamEvent(
+                                        type="delta",
+                                        delta="".join(text_parts),
+                                    )
+                            elif stream_mode == "prose":
+                                yield ProviderStreamEvent(
+                                    type="delta",
+                                    delta=text_delta,
+                                )
 
                         reasoning_delta = _extract_stream_reasoning(payload, event_name)
                         if reasoning_delta:
@@ -211,7 +197,7 @@ class OpenAIResponsesProvider(BaseProvider):
                         if _is_stream_heartbeat(event_name, payload):
                             yield ProviderStreamEvent(type="heartbeat")
 
-                    final_text = "".join(text_parts).strip()
+                    final_text = final_snapshot_text or "".join(text_parts).strip()
                     if not final_text and reasoning_parts:
                         final_text = "".join(reasoning_parts).strip()
 
@@ -252,25 +238,6 @@ class OpenAIChatCompletionsProvider(BaseProvider):
         payload = {
             "model": self._settings.model,
             "messages": build_chat_completions_messages(prompt),
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "genomespy_plan_response",
-                    "strict": True,
-                    "schema": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["type", "message"],
-                        "properties": {
-                            "type": {
-                                "type": "string",
-                                "enum": ["answer", "clarify"],
-                            },
-                            "message": {"type": "string"},
-                        },
-                    },
-                },
-            },
         }
         headers = {
             "authorization": f"Bearer {self._settings.api_key}",
@@ -324,12 +291,12 @@ class OpenAIChatCompletionsProvider(BaseProvider):
                 + _truncate_logged_content(response.text)
             ) from exc
 
-        logger.warning(
+        logger.debug(
             "Provider raw outer response from Responses API: %r",
             response.text,
         )
         response_payload = _parse_chat_completions_response(response_json)
-        logger.warning(
+        logger.debug(
             "Provider parsed response from Responses API: %r",
             response_payload.model_dump(),
         )
@@ -395,8 +362,10 @@ class OpenAIChatCompletionsProvider(BaseProvider):
 
                     text_parts: list[str] = []
                     reasoning_parts: list[str] = []
+                    stream_mode: str | None = None
+                    final_snapshot_text = ""
                     async for event_name, data_text in _iter_sse_events(response):
-                        logger.warning(
+                        logger.debug(
                             "Provider raw SSE event %s from Responses API:\n%s",
                             event_name,
                             data_text,
@@ -405,9 +374,27 @@ class OpenAIChatCompletionsProvider(BaseProvider):
                             break
 
                         payload = _load_stream_event_payload(data_text)
+                        if event_name.endswith(".done"):
+                            snapshot_text = _extract_stream_text(payload, event_name)
+                            if snapshot_text:
+                                final_snapshot_text = snapshot_text
+                            continue
+
                         text_delta = _extract_stream_text(payload, event_name)
                         if text_delta:
                             text_parts.append(text_delta)
+                            if stream_mode is None:
+                                stream_mode = _classify_stream_text("".join(text_parts))
+                                if stream_mode == "prose":
+                                    yield ProviderStreamEvent(
+                                        type="delta",
+                                        delta="".join(text_parts),
+                                    )
+                            elif stream_mode == "prose":
+                                yield ProviderStreamEvent(
+                                    type="delta",
+                                    delta=text_delta,
+                                )
 
                         reasoning_delta = _extract_stream_reasoning(payload, event_name)
                         if reasoning_delta:
@@ -420,7 +407,7 @@ class OpenAIChatCompletionsProvider(BaseProvider):
                         if _is_stream_heartbeat(event_name, payload):
                             yield ProviderStreamEvent(type="heartbeat")
 
-                    final_text = "".join(text_parts).strip()
+                    final_text = final_snapshot_text or "".join(text_parts).strip()
                     if not final_text and reasoning_parts:
                         final_text = "".join(reasoning_parts).strip()
 
@@ -497,9 +484,6 @@ def _extract_stream_text(payload: Any, event_name: str) -> str:
         return ""
 
     if not isinstance(payload, dict):
-        return ""
-
-    if event_name == "response.output_text.delta":
         return ""
 
     if isinstance(payload.get("delta"), str):
@@ -640,6 +624,9 @@ def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderRespons
 def _parse_provider_response_text(
     text: str, allow_repair: bool = False
 ) -> ProviderResponse:
+    if not _looks_like_structured_response(text):
+        return ProviderResponse(type="answer", message=_normalize_provider_text(text))
+
     try:
         return _parse_provider_response_payload(
             _ensure_object_payload(_load_json_content(text, allow_repair))
@@ -742,6 +729,24 @@ def _load_json_content(content: str, allow_repair: bool = False) -> Any:
             _truncate_logged_content(content),
         )
         raise ProviderError("Provider response was not valid JSON.") from exc
+
+
+def _looks_like_structured_response(text: str) -> bool:
+    stripped = text.lstrip()
+    return bool(stripped) and (
+        stripped.startswith("{") or stripped.startswith("```")
+    )
+
+
+def _classify_stream_text(text: str) -> str | None:
+    stripped = text.lstrip()
+    if not stripped:
+        return None
+
+    if stripped.startswith("{") or stripped.startswith("```"):
+        return "structured"
+
+    return "prose"
 
 
 def _extract_json_candidates(content: str) -> list[str]:

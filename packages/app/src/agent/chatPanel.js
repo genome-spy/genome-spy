@@ -279,12 +279,10 @@ export default class AgentChatPanel extends LitElement {
                 display: grid;
                 gap: 0.45rem;
                 max-width: min(84%, 44rem);
-                padding: 0.75rem 0.85rem;
-                border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
-                border-left-width: 4px;
-                border-left-color: var(--gs-theme-primary, #6c82ab);
-                border-radius: 4px;
-                background: white;
+                padding: 0.25rem 0.15rem;
+                border: none;
+                background: transparent;
+                border-left-width: 0;
             }
 
             .assistant-body {
@@ -296,6 +294,25 @@ export default class AgentChatPanel extends LitElement {
                 display: grid;
                 gap: 0.45rem;
                 line-height: 1.45;
+            }
+
+            .streaming-status {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.45rem;
+                color: #8a8f98;
+                font-style: italic;
+                font-size: 0.95em;
+            }
+
+            .streaming-status .spinner {
+                width: 0.8em;
+                height: 0.8em;
+                border-radius: 50%;
+                border: 2px solid rgb(138 143 152 / 35%);
+                border-top-color: rgb(138 143 152 / 90%);
+                animation: chat-panel-spin 0.8s linear infinite;
+                flex: 0 0 auto;
             }
 
             .streaming-draft {
@@ -740,21 +757,23 @@ export default class AgentChatPanel extends LitElement {
      * @returns {import("lit").TemplateResult}
      */
     #renderActiveTurnDraft(snapshot) {
-        const hasDraft = this.streamDraftText.length > 0;
+        const draftText = this.streamDraftText.trimStart();
+        const reasoningText = this.streamReasoningText.trimStart();
+        const hasVisibleDraft = draftText.length > 0;
         return html`
             <article class="message assistant streaming">
-                ${hasDraft
-                    ? html`<div class="streaming-body">
-                          <div class="streaming-draft">
-                              ${this.streamDraftText}
+                ${hasVisibleDraft
+                    ? html`<div class="assistant-body">
+                          <div class="streaming-body">
+                              <div class="streaming-draft">${draftText}</div>
+                              ${reasoningText
+                                  ? html`<div class="streaming-reasoning">
+                                        ${reasoningText}
+                                    </div>`
+                                  : nothing}
                           </div>
-                          ${this.streamReasoningText
-                              ? html`<div class="streaming-reasoning">
-                                    ${this.streamReasoningText}
-                                </div>`
-                              : nothing}
                       </div>`
-                    : html`<div class="transcript-placeholder">
+                    : html`<div class="streaming-status">
                           <span class="spinner"></span>
                           <span>${snapshot.pendingResponsePlaceholder}</span>
                       </div>`}
