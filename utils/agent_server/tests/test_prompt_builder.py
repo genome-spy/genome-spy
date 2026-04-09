@@ -1,3 +1,5 @@
+import json
+
 from app.models import HistoryMessage, ProviderRequest, ToolCall
 from app.prompt_builder import (
     build_chat_completions_messages,
@@ -157,7 +159,17 @@ def test_build_chat_completions_messages_serializes_tool_turns() -> None:
 def test_build_prompt_ir_separates_instructions_and_context() -> None:
     request = ProviderRequest(
         system_prompt="system prompt",
-        context={"schemaVersion": 1, "viewRoot": {"title": "Example"}},
+        context={
+            "schemaVersion": 1,
+            "sampleSummary": {"sampleCount": 2, "groupCount": 1},
+            "actionCatalog": [],
+            "toolCatalog": [],
+            "attributes": [],
+            "viewWorkflows": {"workflows": []},
+            "provenance": [],
+            "lifecycle": {"appInitialized": True},
+            "viewRoot": {"title": "Example"},
+        },
         history=[],
         message="Follow-up question",
     )
@@ -167,3 +179,18 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
     assert prompt.instructions == "system prompt"
     assert prompt.context["schemaVersion"] == 1
     assert prompt.context_text.startswith("Current GenomeSpy context snapshot:\n")
+    context_json = json.loads(
+        prompt.context_text.removeprefix("Current GenomeSpy context snapshot:\n")
+    )
+    assert list(context_json) == [
+        "schemaVersion",
+        "sampleSummary",
+        "actionCatalog",
+        "attributes",
+        "viewWorkflows",
+        "provenance",
+        "lifecycle",
+        "viewRoot",
+    ]
+    assert "toolCatalog" not in context_json
+    assert "toolCatalog" in prompt.context

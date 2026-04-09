@@ -846,16 +846,6 @@ export interface AgentContext {
     sampleSummary: AgentSampleSummary;
 
     /**
-     * Root node of the normalized view hierarchy snapshot.
-     */
-    viewRoot: AgentViewNode;
-
-    /**
-     * Available attributes in the current sample collection.
-     */
-    attributes: AgentAttributeSummary[];
-
-    /**
      * Agent-facing action catalog.
      */
     actionCatalog: AgentActionCatalogContextEntry[];
@@ -864,6 +854,11 @@ export interface AgentContext {
      * Available tools exposed to the planner.
      */
     toolCatalog: AgentToolCatalogEntry[];
+
+    /**
+     * Available attributes in the current sample collection.
+     */
+    attributes: AgentAttributeSummary[];
 
     /**
      * Structured workflows that the agent can resolve locally.
@@ -881,6 +876,11 @@ export interface AgentContext {
     lifecycle: {
         appInitialized: boolean;
     };
+
+    /**
+     * Root node of the normalized view hierarchy snapshot.
+     */
+    viewRoot: AgentViewNode;
 }
 
 /**

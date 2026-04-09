@@ -31,10 +31,6 @@ export function getAgentContext(app, options = {}) {
     return {
         schemaVersion: 1,
         sampleSummary: buildSampleSummary(sampleState),
-        viewRoot,
-        attributes: sampleView
-            ? buildAttributeSummary(sampleView, sampleState)
-            : [],
         actionCatalog: listAgentActions().map((entry) => ({
             actionType: entry.actionType,
             description: entry.description,
@@ -48,11 +44,15 @@ export function getAgentContext(app, options = {}) {
             inputFields: entry.inputFields,
             exampleInput: entry.exampleInput,
         })),
+        attributes: sampleView
+            ? buildAttributeSummary(sampleView, sampleState)
+            : [],
         viewWorkflows: compactWorkflows,
         provenance: buildProvenanceActions(app, provenance),
         lifecycle: {
             appInitialized: state.lifecycle.appInitialized,
         },
+        viewRoot,
     };
 }
 

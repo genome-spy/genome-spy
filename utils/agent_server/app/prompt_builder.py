@@ -72,10 +72,17 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
 
 
 def _build_context_text(context: dict[str, Any]) -> str:
+    prompt_context = _build_prompt_context(context)
     return (
         "Current GenomeSpy context snapshot:\n"
-        + json.dumps(context, indent=2, ensure_ascii=False, sort_keys=True)
+        + json.dumps(prompt_context, indent=2, ensure_ascii=False)
     )
+
+
+def _build_prompt_context(context: dict[str, Any]) -> dict[str, Any]:
+    prompt_context = dict(context)
+    prompt_context.pop("toolCatalog", None)
+    return prompt_context
 
 
 def _build_text_messages(history: list[HistoryMessage]) -> list[dict[str, Any]]:

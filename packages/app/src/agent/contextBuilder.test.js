@@ -194,16 +194,16 @@ describe("getAgentContext", () => {
     it("keeps the planner context wire shape stable", () => {
         const context = getAgentContext(createAppStub());
 
-        expect(Object.keys(context).sort()).toEqual([
-            "actionCatalog",
-            "attributes",
-            "lifecycle",
-            "provenance",
-            "sampleSummary",
+        expect(Object.keys(context)).toEqual([
             "schemaVersion",
+            "sampleSummary",
+            "actionCatalog",
             "toolCatalog",
-            "viewRoot",
+            "attributes",
             "viewWorkflows",
+            "provenance",
+            "lifecycle",
+            "viewRoot",
         ]);
 
         expect(() => JSON.stringify(context)).not.toThrow();
