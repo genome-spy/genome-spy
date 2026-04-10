@@ -14,6 +14,17 @@ const { resolveParamSelectorMock } = vi.hoisted(() => ({
 const { resolveViewSelectorMock } = vi.hoisted(() => ({
     resolveViewSelectorMock: vi.fn(),
 }));
+const { getViewSelectorMock } = vi.hoisted(() => ({
+    getViewSelectorMock: vi.fn((view) => ({
+        scope: [],
+        view: view.explicitName,
+    })),
+}));
+const { visitAddressableViewsMock } = vi.hoisted(() => ({
+    visitAddressableViewsMock: vi.fn((root, visitor) => {
+        root.visit(visitor);
+    }),
+}));
 const { showHierarchyBoxplotDialog } = vi.hoisted(() => ({
     showHierarchyBoxplotDialog: vi.fn(() => Promise.resolve({ ok: true })),
 }));
@@ -33,6 +44,8 @@ vi.mock("./contextBuilder.js", () => ({
 vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     resolveParamSelector: resolveParamSelectorMock,
     resolveViewSelector: resolveViewSelectorMock,
+    getViewSelector: getViewSelectorMock,
+    visitAddressableViews: visitAddressableViewsMock,
 }));
 
 vi.mock("../charts/hierarchyBoxplotDialog.js", () => ({

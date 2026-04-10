@@ -1,11 +1,18 @@
 // @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
+import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 
 const { resolveParamSelectorMock } = vi.hoisted(() => ({
     resolveParamSelectorMock: vi.fn(),
 }));
 const { getParamSelectorMock } = vi.hoisted(() => ({
     getParamSelectorMock: vi.fn(),
+}));
+const { getViewSelectorMock } = vi.hoisted(() => ({
+    getViewSelectorMock: vi.fn((view) => ({
+        scope: [],
+        view: view.explicitName,
+    })),
 }));
 const { asSelectionConfigMock } = vi.hoisted(() => ({
     asSelectionConfigMock: vi.fn((config) => config),
@@ -21,6 +28,11 @@ const { isIntervalSelectionConfigMock } = vi.hoisted(() => ({
 const { getBookmarkableParamsMock } = vi.hoisted(() => ({
     getBookmarkableParamsMock: vi.fn(() => []),
 }));
+const { visitAddressableViewsMock } = vi.hoisted(() => ({
+    visitAddressableViewsMock: vi.fn((root, visitor) => {
+        root.visit(visitor);
+    }),
+}));
 
 vi.mock("@genome-spy/core/selection/selection.js", () => ({
     asSelectionConfig: asSelectionConfigMock,
@@ -28,62 +40,72 @@ vi.mock("@genome-spy/core/selection/selection.js", () => ({
     isPointSelectionConfig: isPointSelectionConfigMock,
 }));
 
-vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
-    getBookmarkableParams: getBookmarkableParamsMock,
-    resolveParamSelector: resolveParamSelectorMock,
-    getParamSelector: getParamSelectorMock,
-}));
+vi.mock("@genome-spy/core/view/viewSelectors.js", async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+        ...actual,
+        getBookmarkableParams: getBookmarkableParamsMock,
+        getViewSelector: getViewSelectorMock,
+        resolveParamSelector: resolveParamSelectorMock,
+        getParamSelector: getParamSelectorMock,
+        visitAddressableViews: visitAddressableViewsMock,
+    };
+});
 
 import { getViewWorkflowContext } from "./viewWorkflowContext.js";
 
 describe("getViewWorkflowContext", () => {
-    it("builds selection and field capabilities from the current visualization", () => {
-        const betaView = {
-            explicitName: "betaTrack",
-            getTitleText: () => "Beta Track",
-            paramRuntime: {
-                paramConfigs: new Map([
-                    [
-                        "brush",
-                        {
-                            name: "brush",
-                            description: "Brush the beta interval.",
-                            persist: true,
-                            select: {
-                                type: "interval",
-                                encodings: ["x"],
-                            },
-                        },
-                    ],
-                ]),
-                getValue: (paramName) =>
-                    paramName === "brush"
-                        ? { type: "interval", value: [0, 1] }
-                        : undefined,
+    it("builds selection and field capabilities from the current visualization", async () => {
+        const spec = {
+            data: {
+                values: [
+                    { sample: "S1", gene: "EGFR", beta: 1.2 },
+                    { sample: "S2", gene: "TP53", beta: -0.4 },
+                ],
             },
-            getEncoding: () => ({
-                x: { field: "pos", type: "locus" },
-                y: {
-                    field: "beta",
-                    type: "quantitative",
-                    description: "Beta-value track",
+            samples: {},
+            spec: {
+                name: "track",
+                mark: "rect",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "gene", type: "nominal" },
+                    fill: {
+                        field: "beta",
+                        type: "quantitative",
+                        description: "Beta-value track",
+                    },
                 },
-            }),
+            },
         };
 
-        resolveParamSelectorMock.mockReturnValue({ view: betaView });
         getParamSelectorMock.mockReturnValue({
             scope: [],
             param: "brush",
         });
 
-        const sampleView = {
-            paramRuntime: betaView.paramRuntime,
-            visit: (visitor) => visitor(betaView),
-        };
+        const { view } = await createSampleViewForTest({ spec });
+        const targetView = view.findDescendantByName("track");
+        resolveParamSelectorMock.mockReturnValue({ view: targetView });
+        Object.defineProperty(view.paramRuntime, "paramConfigs", {
+            value: new Map([
+                [
+                    "brush",
+                    {
+                        name: "brush",
+                        description: "Brush the beta interval.",
+                        persist: true,
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                        },
+                    },
+                ],
+            ]),
+        });
 
         const app = {
-            getSampleView: () => sampleView,
+            getSampleView: () => view,
             provenance: {
                 getPresentState: () => ({
                     paramProvenance: {
@@ -120,6 +142,11 @@ describe("getViewWorkflowContext", () => {
             expect.objectContaining({
                 field: "beta",
                 description: "Beta-value track",
+                candidateId: expect.any(String),
+                viewSelector: {
+                    scope: [],
+                    view: "track",
+                },
                 supportedAggregations: expect.arrayContaining([
                     "weightedMean",
                     "variance",

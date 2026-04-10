@@ -4,9 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 const { resolveParamSelectorMock } = vi.hoisted(() => ({
     resolveParamSelectorMock: vi.fn(),
 }));
+const { getViewSelectorMock } = vi.hoisted(() => ({
+    getViewSelectorMock: vi.fn((view) => ({
+        scope: [],
+        view: view.explicitName,
+    })),
+}));
+const { visitAddressableViewsMock } = vi.hoisted(() => ({
+    visitAddressableViewsMock: vi.fn((root, visitor) => {
+        root.visit(visitor);
+    }),
+}));
 
 vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     resolveParamSelector: resolveParamSelectorMock,
+    getViewSelector: getViewSelectorMock,
+    visitAddressableViews: visitAddressableViewsMock,
 }));
 
 import { resolveViewWorkflow } from "./viewWorkflowResolver.js";

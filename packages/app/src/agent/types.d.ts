@@ -732,9 +732,19 @@ export interface AgentViewFieldSummary {
     id: string;
 
     /**
+     * Stable identifier for the aggregation candidate, if exposed.
+     */
+    candidateId?: string;
+
+    /**
      * Addressable view name.
      */
     view: string;
+
+    /**
+     * Structured selector for the view.
+     */
+    viewSelector?: ViewSelector;
 
     /**
      * Human-readable view title.

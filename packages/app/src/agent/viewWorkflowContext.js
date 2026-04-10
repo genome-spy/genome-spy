@@ -1,16 +1,6 @@
 import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
-import { getContextMenuFieldInfos } from "../sampleView/contextMenuBuilder.js";
+import { getContextMenuFieldInfos } from "../sampleView/selectionAggregationCandidates.js";
 import { listViewWorkflows } from "./viewWorkflowCatalog.js";
-
-const QUANTITATIVE_AGGREGATIONS = [
-    "min",
-    "max",
-    "count",
-    "weightedMean",
-    "variance",
-];
-
-const DEFAULT_AGGREGATIONS = ["count"];
 
 /**
  * @param {import("../app.js").default} app
@@ -70,6 +60,10 @@ function buildFieldSummaries(sampleView, selections) {
 
     /** @type {Map<string, import("./types.js").AgentViewFieldSummary>} */
     const fields = new Map();
+    const layoutRoot =
+        typeof sampleView.getLayoutAncestors === "function"
+            ? (sampleView.getLayoutAncestors().at(-1) ?? sampleView)
+            : sampleView;
 
     for (const selection of selections) {
         let resolved;
@@ -83,10 +77,14 @@ function buildFieldSummaries(sampleView, selections) {
             continue;
         }
 
-        for (const fieldInfo of getSelectionFieldInfos(sampleView, ownerView)) {
+        for (const fieldInfo of getContextMenuFieldInfos(
+            ownerView,
+            layoutRoot,
+            true
+        )) {
             const id = createFieldId(
                 selection.id,
-                fieldInfo.view,
+                fieldInfo.viewSelector.view,
                 fieldInfo.field
             );
             const existing = fields.get(id);
@@ -99,15 +97,15 @@ function buildFieldSummaries(sampleView, selections) {
 
             fields.set(id, {
                 id,
-                view: fieldInfo.view,
+                candidateId: fieldInfo.candidateId,
+                view: fieldInfo.viewSelector.view,
+                viewSelector: fieldInfo.viewSelector,
                 viewTitle: fieldInfo.viewTitle,
                 field: fieldInfo.field,
-                dataType: fieldInfo.dataType,
+                dataType: fieldInfo.type,
                 description: fieldInfo.description,
                 selectionIds: [selection.id],
-                supportedAggregations: getSupportedAggregations(
-                    fieldInfo.dataType
-                ),
+                supportedAggregations: fieldInfo.supportedAggregations.slice(),
             });
         }
     }
@@ -117,172 +115,6 @@ function buildFieldSummaries(sampleView, selections) {
             a.viewTitle.localeCompare(b.viewTitle) ||
             a.field.localeCompare(b.field)
     );
-}
-
-/**
- * @param {import("../sampleView/sampleView.js").default} sampleView
- * @param {any} ownerView
- */
-function getSelectionFieldInfos(sampleView, ownerView) {
-    const layoutRoot =
-        typeof sampleView.getLayoutAncestors === "function"
-            ? (sampleView.getLayoutAncestors().at(-1) ?? sampleView)
-            : sampleView;
-
-    try {
-        const fieldInfos = getContextMenuFieldInfos(
-            ownerView,
-            layoutRoot,
-            true
-        );
-        if (fieldInfos.length > 0) {
-            return deduplicateFieldInfos(
-                fieldInfos
-                    .map((info) => {
-                        const viewName = getAddressableViewName(info.view);
-                        if (!viewName) {
-                            return undefined;
-                        }
-
-                        return {
-                            view: viewName,
-                            viewTitle: String(
-                                info.view.getTitleText?.() ?? viewName
-                            ),
-                            field: info.field,
-                            dataType: info.type,
-                            description: getChannelDescription(
-                                info.view,
-                                info.channel,
-                                info.field
-                            ),
-                        };
-                    })
-                    .filter(Boolean)
-            );
-        }
-    } catch {
-        // Fall back to lightweight encoding inspection in tests or partial stubs.
-    }
-
-    return deduplicateFieldInfos(getEncodingFieldInfos(ownerView));
-}
-
-/**
- * @param {any} view
- */
-function getEncodingFieldInfos(view) {
-    const viewName = getAddressableViewName(view);
-    const encoding =
-        typeof view?.getEncoding === "function"
-            ? view.getEncoding()
-            : undefined;
-    if (!viewName || !encoding || typeof encoding !== "object") {
-        return [];
-    }
-
-    /** @type {Array<{ view: string, viewTitle: string, field: string, dataType: string, description?: string }>} */
-    const fields = [];
-    for (const [channel, def] of Object.entries(encoding)) {
-        if (
-            ["sample", "x", "x2"].includes(channel) ||
-            !def ||
-            typeof def !== "object" ||
-            !("field" in def) ||
-            typeof def.field !== "string"
-        ) {
-            continue;
-        }
-
-        fields.push({
-            view: viewName,
-            viewTitle: String(view.getTitleText?.() ?? viewName),
-            field: def.field,
-            dataType:
-                "type" in def && typeof def.type === "string"
-                    ? def.type
-                    : "nominal",
-            description: getChannelDescription(view, channel, def.field),
-        });
-    }
-
-    return fields;
-}
-
-/**
- * @param {any} view
- * @returns {string | undefined}
- */
-function getAddressableViewName(view) {
-    const candidate = view?.explicitName ?? view?.name;
-    return typeof candidate === "string" && candidate.length > 0
-        ? candidate
-        : undefined;
-}
-
-/**
- * @param {any} view
- * @param {string | undefined} channel
- * @param {string} field
- * @returns {string | undefined}
- */
-function getChannelDescription(view, channel, field) {
-    const encoding =
-        typeof view?.getEncoding === "function"
-            ? view.getEncoding()
-            : undefined;
-    if (!encoding || typeof encoding !== "object") {
-        return undefined;
-    }
-
-    if (
-        channel &&
-        channel in encoding &&
-        encoding[channel] &&
-        typeof encoding[channel] === "object" &&
-        "description" in encoding[channel]
-    ) {
-        return /** @type {{ description?: string }} */ (encoding[channel])
-            .description;
-    }
-
-    for (const def of Object.values(encoding)) {
-        if (
-            !def ||
-            typeof def !== "object" ||
-            !("field" in def) ||
-            def.field !== field
-        ) {
-            continue;
-        }
-
-        return /** @type {{ description?: string }} */ (def).description;
-    }
-
-    return undefined;
-}
-
-/**
- * @param {Array<{ view: string, viewTitle: string, field: string, dataType: string, description?: string }>} fields
- */
-function deduplicateFieldInfos(fields) {
-    return Array.from(
-        new Map(
-            fields.map((fieldInfo) => [
-                JSON.stringify([fieldInfo.view, fieldInfo.field]),
-                fieldInfo,
-            ])
-        ).values()
-    );
-}
-
-/**
- * @param {string} dataType
- */
-function getSupportedAggregations(dataType) {
-    return dataType === "quantitative"
-        ? QUANTITATIVE_AGGREGATIONS
-        : DEFAULT_AGGREGATIONS;
 }
 
 /**

@@ -15,6 +15,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
+import { buildSelectionAggregationAttributeIdentifier } from "../sampleView/selectionAggregationAttributes.js";
 import {
     MAX_REJECTED_TOOL_CALL_RETRIES,
     MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
@@ -1316,33 +1317,6 @@ function summarizeResolvedViewWorkflow(workflow) {
 }
 
 /**
- * @param {import("./types.js").ResolvedViewWorkflow} workflow
- * @returns {{
- *   attribute: import("../sampleView/types.js").AttributeIdentifier
- * }}
- */
-function createSelectionAttribute(workflow) {
-    return {
-        attribute: {
-            type: "VALUE_AT_LOCUS",
-            specifier: {
-                view: workflow.field.view,
-                field: workflow.field.field,
-                interval: {
-                    type: "selection",
-                    selector: workflow.selection.selector,
-                },
-                aggregation: {
-                    op: /** @type {import("../sampleView/types.js").AggregationOp} */ (
-                        workflow.aggregation
-                    ),
-                },
-            },
-        },
-    };
-}
-
-/**
  * @param {import("../app.js").default} app
  * @param {import("./types.js").ResolvedViewWorkflow} workflow
  */
@@ -1358,7 +1332,15 @@ async function executeResolvedViewWorkflow(app, workflow) {
                 sampleView.compositeAttributeInfoSource
             );
         const action = sampleView.actions.deriveMetadata({
-            ...createSelectionAttribute(workflow),
+            attribute: buildSelectionAggregationAttributeIdentifier({
+                viewSelector: workflow.field.viewSelector,
+                field: workflow.field.field,
+                selectionSelector: workflow.selection.selector,
+                aggregation:
+                    /** @type {import("../sampleView/types.js").AggregationOp} */ (
+                        workflow.aggregation
+                    ),
+            }),
             name: workflow.name,
             groupPath: workflow.groupPath,
             scale: workflow.scale,
@@ -1368,7 +1350,15 @@ async function executeResolvedViewWorkflow(app, workflow) {
     } else if (workflow.workflowType === "createBoxplotFromSelection") {
         const attributeInfo =
             sampleView.compositeAttributeInfoSource.getAttributeInfo(
-                createSelectionAttribute(workflow).attribute
+                buildSelectionAggregationAttributeIdentifier({
+                    viewSelector: workflow.field.viewSelector,
+                    field: workflow.field.field,
+                    selectionSelector: workflow.selection.selector,
+                    aggregation:
+                        /** @type {import("../sampleView/types.js").AggregationOp} */ (
+                            workflow.aggregation
+                        ),
+                })
             );
         await showHierarchyBoxplotDialog(
             attributeInfo,
