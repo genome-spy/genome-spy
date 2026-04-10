@@ -948,6 +948,7 @@ export class AgentSessionController {
                 " action" +
                 (result.executedActions === 1 ? "" : "s") +
                 ".",
+            content: result.content,
             lines: result.summaries,
         });
         this.#state.status = "ready";
@@ -1082,6 +1083,7 @@ export class AgentSessionController {
                 text: this.#runtime.summarizeExecutionResult(
                     intentProgramResult
                 ),
+                content: intentProgramResult.content,
                 rejected: false,
             };
         }

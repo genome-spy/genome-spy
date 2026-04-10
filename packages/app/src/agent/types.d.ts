@@ -839,6 +839,41 @@ export interface IntentProgramSummaryLine {
 }
 
 /**
+ * Visible sample counts reported before and after a sample-view mutation.
+ */
+export interface IntentProgramExecutionSampleViewSummary {
+    /**
+     * Visible sample count before execution.
+     */
+    visibleSamplesBefore: number;
+
+    /**
+     * Visible sample count after execution.
+     */
+    visibleSamplesAfter: number;
+}
+
+/**
+ * Structured content returned when an intent program executes.
+ */
+export interface IntentProgramExecutionContent {
+    /**
+     * Content discriminator.
+     */
+    kind: "intent_program_result";
+
+    /**
+     * Executed program.
+     */
+    program: IntentProgram;
+
+    /**
+     * Visible sample counts for sample-view mutations.
+     */
+    sampleView?: IntentProgramExecutionSampleViewSummary;
+}
+
+/**
  * Agent adapter API exposed to the UI and the embed entry point.
  */
 export interface AgentAdapter {
@@ -1167,6 +1202,11 @@ export interface IntentProgramExecutionResult {
      * Number of executed actions.
      */
     executedActions: number;
+
+    /**
+     * Structured execution content.
+     */
+    content: IntentProgramExecutionContent;
 
     /**
      * Human-readable summaries of the executed steps.

@@ -39,10 +39,19 @@ export async function submitIntentProgram(app, program) {
     await app.intentPipeline.submit(actions, { getAttributeInfo });
 
     const summaries = summarizeIntentProgram(app, validation.program);
+    /** @type {import("./types.js").IntentProgramExecutionContent} */
+    const content = {
+        kind: "intent_program_result",
+        program: validation.program,
+    };
     if (hasSampleViewMutation) {
         const afterVisibleSampleCount = countVisibleSamples(
             sampleView.sampleHierarchy.rootGroup
         );
+        content.sampleView = {
+            visibleSamplesBefore: beforeVisibleSampleCount,
+            visibleSamplesAfter: afterVisibleSampleCount,
+        };
         summaries.push({
             content: "Visible samples before: " + beforeVisibleSampleCount,
             text: "Visible samples before: " + beforeVisibleSampleCount,
@@ -56,6 +65,7 @@ export async function submitIntentProgram(app, program) {
     return {
         ok: true,
         executedActions: actions.length,
+        content,
         summaries,
         program: validation.program,
     };

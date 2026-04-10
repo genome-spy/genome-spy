@@ -362,6 +362,36 @@ describe("createAgentSessionController", () => {
         runtime.submitIntentProgram.mockResolvedValue({
             ok: true,
             executedActions: 2,
+            content: {
+                kind: "intent_program_result",
+                program: {
+                    schemaVersion: 1,
+                    steps: [
+                        {
+                            actionType: "sampleView/sortBy",
+                            payload: {
+                                attribute: {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "age",
+                                },
+                            },
+                        },
+                        {
+                            actionType: "sampleView/groupByNominal",
+                            payload: {
+                                attribute: {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "diagnosis",
+                                },
+                            },
+                        },
+                    ],
+                },
+                sampleView: {
+                    visibleSamplesBefore: 2,
+                    visibleSamplesAfter: 2,
+                },
+            },
             summaries: [
                 { content: "Sort by age", text: "Sort by age" },
                 { content: "Group by diagnosis", text: "Group by diagnosis" },
@@ -439,6 +469,36 @@ describe("createAgentSessionController", () => {
         expect(results[0]).toEqual(
             expect.objectContaining({
                 rejected: false,
+                content: expect.objectContaining({
+                    kind: "intent_program_result",
+                    program: expect.objectContaining({
+                        schemaVersion: 1,
+                        steps: [
+                            {
+                                actionType: "sampleView/sortBy",
+                                payload: {
+                                    attribute: {
+                                        type: "SAMPLE_ATTRIBUTE",
+                                        specifier: "age",
+                                    },
+                                },
+                            },
+                            {
+                                actionType: "sampleView/groupByNominal",
+                                payload: {
+                                    attribute: {
+                                        type: "SAMPLE_ATTRIBUTE",
+                                        specifier: "diagnosis",
+                                    },
+                                },
+                            },
+                        ],
+                    }),
+                    sampleView: {
+                        visibleSamplesBefore: 2,
+                        visibleSamplesAfter: 2,
+                    },
+                }),
                 text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2",
             })
         );
@@ -447,6 +507,36 @@ describe("createAgentSessionController", () => {
                 expect.objectContaining({
                     kind: "tool_result",
                     toolCallId: "call-intent",
+                    content: expect.objectContaining({
+                        kind: "intent_program_result",
+                        program: expect.objectContaining({
+                            schemaVersion: 1,
+                            steps: [
+                                {
+                                    actionType: "sampleView/sortBy",
+                                    payload: {
+                                        attribute: {
+                                            type: "SAMPLE_ATTRIBUTE",
+                                            specifier: "age",
+                                        },
+                                    },
+                                },
+                                {
+                                    actionType: "sampleView/groupByNominal",
+                                    payload: {
+                                        attribute: {
+                                            type: "SAMPLE_ATTRIBUTE",
+                                            specifier: "diagnosis",
+                                        },
+                                    },
+                                },
+                            ],
+                        }),
+                        sampleView: {
+                            visibleSamplesBefore: 2,
+                            visibleSamplesAfter: 2,
+                        },
+                    }),
                     text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2",
                 }),
             ])

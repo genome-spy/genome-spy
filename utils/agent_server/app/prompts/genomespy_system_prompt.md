@@ -139,7 +139,7 @@ Do not wait for a direct request to inspect the view structure.
 To keep the context size manageable, you should collapse the nodes you have
 opened after the information isn't needed anymore in the context.
 
-## Intent actions
+### Intent actions
 
 Intent actions are the mutation layer for the sample collection and
 selection/parameter state. They are listed in the `actionCatalog`. Use them

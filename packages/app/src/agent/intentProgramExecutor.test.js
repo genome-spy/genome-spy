@@ -72,6 +72,38 @@ describe("submitIntentProgram", () => {
 
         expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
         expect(result.executedActions).toBe(2);
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "intent_program_result",
+                program: expect.objectContaining({
+                    schemaVersion: 1,
+                    steps: [
+                        {
+                            actionType: "sampleView/sortBy",
+                            payload: {
+                                attribute: {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "age",
+                                },
+                            },
+                        },
+                        {
+                            actionType: "sampleView/groupByNominal",
+                            payload: {
+                                attribute: {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "diagnosis",
+                                },
+                            },
+                        },
+                    ],
+                }),
+                sampleView: {
+                    visibleSamplesBefore: 2,
+                    visibleSamplesAfter: 2,
+                },
+            })
+        );
         expect(result.summaries).toEqual([
             expect.objectContaining({
                 text: "Sort by age",
