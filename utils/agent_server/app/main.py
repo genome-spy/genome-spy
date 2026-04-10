@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import AsyncIterator
 
@@ -10,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from .config import Settings, load_settings
+from .config import Settings, describe_api_key_for_logs, load_settings
 from .models import PlanRequest, PlanResponse, ProviderRequest, ProviderResponse
 from .providers import (
     BaseProvider,
@@ -20,18 +22,7 @@ from .providers import (
 )
 
 logger = logging.getLogger(__name__)
-
-app = FastAPI(title="GenomeSpy Agent Server", version="0.0.1")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ],
-    allow_credentials=False,
-    allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["*"],
-)
+startup_logger = logging.getLogger("uvicorn.error")
 
 
 @lru_cache
@@ -45,6 +36,54 @@ def get_provider() -> BaseProvider:
     if settings.api_style == "chat_completions":
         return OpenAIChatCompletionsProvider(settings)
     return OpenAIResponsesProvider(settings)
+
+
+def log_startup_summary() -> None:
+    settings = get_settings()
+    provider = get_provider()
+    api_key_source = (
+        "GENOMESPY_AGENT_API_KEY"
+        if os.environ.get("GENOMESPY_AGENT_API_KEY") is not None
+        else "default"
+    )
+    startup_logger.info(
+        (
+            "GenomeSpy agent server startup: provider=%s base_url=%s "
+            "api_style=%s model=%s api_key_source=%s api_key=%s "
+            "streaming=%s timeout_seconds=%s"
+        ),
+        provider.__class__.__name__,
+        settings.base_url,
+        settings.api_style,
+        settings.model,
+        api_key_source,
+        describe_api_key_for_logs(settings.api_key),
+        settings.enable_streaming,
+        settings.timeout_seconds,
+    )
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    log_startup_summary()
+    yield
+
+
+app = FastAPI(
+    title="GenomeSpy Agent Server",
+    version="0.0.1",
+    lifespan=lifespan,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ],
+    allow_credentials=False,
+    allow_methods=["POST", "GET", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

@@ -11,13 +11,14 @@ from typing import Any, AsyncIterator
 
 import httpx
 
-from .config import Settings
+from .config import Settings, describe_api_key_for_logs
 from .models import ProviderRequest, ProviderResponse, ProviderStreamEvent, ToolCall
 from .prompt_builder import (
     build_chat_completions_messages,
     build_prompt_ir,
     build_responses_input,
 )
+
 logger = logging.getLogger(__name__)
 MAX_LOGGED_PROVIDER_CONTENT = 4000
 ENABLE_RESPONSES_TOOLS = True
@@ -45,6 +46,35 @@ class BaseProvider(ABC):
         yield ProviderStreamEvent(type="final", response=response)
 
 
+def _build_auth_headers(settings: Settings) -> dict[str, str]:
+    return {
+        "authorization": "Bearer " + settings.api_key,
+        "content-type": "application/json",
+    }
+
+
+def _log_provider_auth_diagnostic(
+    provider_name: str, endpoint: str, settings: Settings, status_code: int
+) -> None:
+    if status_code != 401:
+        return
+
+    logger.warning(
+        (
+            "Provider auth diagnostic: provider=%s endpoint=%s base_url=%s "
+            "api_style=%s model=%s api_key=%s api_key_has_whitespace=%s "
+            "authorization=Bearer <redacted>"
+        ),
+        provider_name,
+        endpoint,
+        settings.base_url,
+        settings.api_style,
+        settings.model,
+        describe_api_key_for_logs(settings.api_key),
+        settings.api_key != settings.api_key.strip(),
+    )
+
+
 class OpenAIResponsesProvider(BaseProvider):
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -61,17 +91,15 @@ class OpenAIResponsesProvider(BaseProvider):
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
         _log_model_request(prompt.instructions, prompt.context_text, tools)
-        headers = {
-            "authorization": f"Bearer {self._settings.api_key}",
-            "content-type": "application/json",
-        }
+        endpoint = self._settings.base_url + "/responses"
+        headers = _build_auth_headers(self._settings)
 
         async with httpx.AsyncClient(
             timeout=self._settings.timeout_seconds
         ) as client:
             try:
                 response = await client.post(
-                    f"{self._settings.base_url}/responses",
+                    endpoint,
                     json=payload,
                     headers=headers,
                 )
@@ -88,6 +116,9 @@ class OpenAIResponsesProvider(BaseProvider):
                 ) from exc
 
         if response.status_code >= 400:
+            _log_provider_auth_diagnostic(
+                "responses", endpoint, self._settings, response.status_code
+            )
             body_preview = response.text.strip()
             logger.error(
                 "Provider request failed with status %s: %s",
@@ -139,10 +170,8 @@ class OpenAIResponsesProvider(BaseProvider):
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
         _log_model_request(prompt.instructions, prompt.context_text, tools)
-        headers = {
-            "authorization": f"Bearer {self._settings.api_key}",
-            "content-type": "application/json",
-        }
+        endpoint = self._settings.base_url + "/responses"
+        headers = _build_auth_headers(self._settings)
 
         async with httpx.AsyncClient(
             timeout=self._settings.timeout_seconds
@@ -150,11 +179,14 @@ class OpenAIResponsesProvider(BaseProvider):
             try:
                 async with client.stream(
                     "POST",
-                    f"{self._settings.base_url}/responses",
+                    endpoint,
                     json=payload,
                     headers=headers,
                 ) as response:
                     if response.status_code >= 400:
+                        _log_provider_auth_diagnostic(
+                            "responses", endpoint, self._settings, response.status_code
+                        )
                         body = await response.aread()
                         body_preview = body.decode("utf-8", errors="replace").strip()
                         logger.error(
@@ -279,17 +311,15 @@ class OpenAIChatCompletionsProvider(BaseProvider):
             "messages": build_chat_completions_messages(prompt),
         }
         _log_model_request(prompt.instructions, prompt.context_text, [])
-        headers = {
-            "authorization": f"Bearer {self._settings.api_key}",
-            "content-type": "application/json",
-        }
+        endpoint = self._settings.base_url + "/chat/completions"
+        headers = _build_auth_headers(self._settings)
 
         async with httpx.AsyncClient(
             timeout=self._settings.timeout_seconds
         ) as client:
             try:
                 response = await client.post(
-                    f"{self._settings.base_url}/chat/completions",
+                    endpoint,
                     json=payload,
                     headers=headers,
                 )
@@ -306,6 +336,9 @@ class OpenAIChatCompletionsProvider(BaseProvider):
                 ) from exc
 
         if response.status_code >= 400:
+            _log_provider_auth_diagnostic(
+                "chat_completions", endpoint, self._settings, response.status_code
+            )
             body_preview = response.text.strip()
             logger.error(
                 "Provider request failed with status %s: %s",
@@ -371,10 +404,8 @@ class OpenAIChatCompletionsProvider(BaseProvider):
             "stream": True,
         }
         _log_model_request(prompt.instructions, prompt.context_text, [])
-        headers = {
-            "authorization": f"Bearer {self._settings.api_key}",
-            "content-type": "application/json",
-        }
+        endpoint = self._settings.base_url + "/chat/completions"
+        headers = _build_auth_headers(self._settings)
 
         async with httpx.AsyncClient(
             timeout=self._settings.timeout_seconds
@@ -382,11 +413,17 @@ class OpenAIChatCompletionsProvider(BaseProvider):
             try:
                 async with client.stream(
                     "POST",
-                    f"{self._settings.base_url}/chat/completions",
+                    endpoint,
                     json=payload,
                     headers=headers,
                 ) as response:
                     if response.status_code >= 400:
+                        _log_provider_auth_diagnostic(
+                            "chat_completions",
+                            endpoint,
+                            self._settings,
+                            response.status_code,
+                        )
                         body = await response.aread()
                         body_preview = body.decode("utf-8", errors="replace").strip()
                         logger.error(

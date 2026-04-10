@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+import logging
 import os
 from dataclasses import dataclass
 from importlib import resources
 from typing import Literal, cast
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -15,6 +19,11 @@ class Settings:
     system_prompt: str
     api_style: Literal["responses", "chat_completions"]
     enable_streaming: bool
+
+
+def describe_api_key_for_logs(api_key: str) -> str:
+    digest = hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+    return "len=" + str(len(api_key)) + " sha256=" + digest[:12]
 
 
 def load_default_system_prompt() -> str:
@@ -30,12 +39,14 @@ def load_settings() -> Settings:
             "GENOMESPY_AGENT_API_STYLE must be one of: responses, chat_completions"
         )
 
-    return Settings(
+    api_key_env = os.environ.get("GENOMESPY_AGENT_API_KEY")
+    api_key = api_key_env if api_key_env is not None else "ollama"
+    settings = Settings(
         model=os.environ["GENOMESPY_AGENT_MODEL"],
         base_url=os.environ.get(
             "GENOMESPY_AGENT_BASE_URL", "http://127.0.0.1:11434/v1"
         ).rstrip("/"),
-        api_key=os.environ.get("GENOMESPY_AGENT_API_KEY", "ollama"),
+        api_key=api_key,
         timeout_seconds=float(
             os.environ.get("GENOMESPY_AGENT_TIMEOUT_SECONDS", "180")
         ),
@@ -45,6 +56,23 @@ def load_settings() -> Settings:
         api_style=cast(Literal["responses", "chat_completions"], api_style),
         enable_streaming=_load_bool_env("GENOMESPY_AGENT_ENABLE_STREAMING", True),
     )
+
+    logger.info(
+        (
+            "Loaded GenomeSpy agent settings: "
+            "base_url=%s api_style=%s model=%s api_key_source=%s api_key=%s "
+            "streaming=%s timeout_seconds=%s"
+        ),
+        settings.base_url,
+        settings.api_style,
+        settings.model,
+        "GENOMESPY_AGENT_API_KEY" if api_key_env is not None else "default",
+        describe_api_key_for_logs(settings.api_key),
+        settings.enable_streaming,
+        settings.timeout_seconds,
+    )
+
+    return settings
 
 
 def _load_bool_env(name: str, default: bool) -> bool:
