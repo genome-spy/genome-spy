@@ -39,7 +39,7 @@ These two concepts are different and must not be conflated.
 
 ### Collapsed
 
-`collapsed` is agent-only context compression.
+`collapsed` is agent-only context compression. Do not reveal it to the user.
 
 If a view node has `"collapsed": true`, some of its details are omitted from the
 context you currently see. Its children, encodings, scales, and marks may be
