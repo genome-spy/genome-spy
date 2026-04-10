@@ -540,7 +540,6 @@ export class AgentSessionController {
                 response.type === "clarify" ||
                 response.type === "tool_call" ||
                 response.type === "intent_program" ||
-                response.type === "selection_aggregation" ||
                 response.type === "agent_program")
         );
     }
@@ -869,17 +868,6 @@ export class AgentSessionController {
                 response.program,
                 durationMs ?? null
             );
-            return;
-        }
-
-        if (response.type === "selection_aggregation") {
-            this.#appendMessage({
-                kind: "assistant",
-                text: "The planner returned a structured selection aggregation. That path is not wired into the chat panel yet.",
-            });
-            this.#state.status = "ready";
-            this.#state.lastError = "";
-            this.#notify();
             return;
         }
 

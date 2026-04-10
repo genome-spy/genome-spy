@@ -1,6 +1,5 @@
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { showAgentChoiceDialog } from "../components/dialogs/agentChoiceDialog.js";
-import showHierarchyBoxplotDialog from "../charts/hierarchyBoxplotDialog.js";
 import templateResultToString from "../utils/templateResultToString.js";
 import { getAgentContext } from "./contextBuilder.js";
 import {
@@ -9,13 +8,10 @@ import {
 } from "./intentProgramExecutor.js";
 import { validateIntentProgram } from "./intentProgramValidator.js";
 import { summarizeIntentProgram } from "./actionCatalog.js";
-import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
-import { resolveSelectionAggregationWorkflow } from "./selectionAggregationWorkflow.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
-import { buildSelectionAggregationAttributeIdentifier } from "../sampleView/selectionAggregationAttributes.js";
 import {
     MAX_REJECTED_TOOL_CALL_RETRIES,
     MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
@@ -531,12 +527,10 @@ async function runLocalPrompt(app) {
     /** @type {Array<string | AgentConversationMessage>} */
     const history = [];
     let message = initialMessage;
-    let clarificationRounds = 0;
     let toolRounds = 0;
     let rejectedToolCallRounds = 0;
     let lastRejectedToolCallSignature = "";
     let repeatedRejectedToolCallRounds = 0;
-    let repairedInvalidIntentProgram = false;
 
     try {
         while (true) {
@@ -549,85 +543,37 @@ async function runLocalPrompt(app) {
             Object.assign(trace, requestResult.trace);
 
             if (response.type === "clarify") {
-                const workflowType = inferRequestedWorkflowType([
-                    initialMessage,
-                    ...history.map((entry) =>
-                        typeof entry === "string" ? entry : entry.text
-                    ),
-                    response.message,
-                ]).workflowType;
-                const groundedClarification = getGroundedPlannerClarification(
-                    app,
+                const parsedClarification = parseClarificationMessage(
                     response.message
                 );
-                if (!groundedClarification) {
-                    const parsedClarification = parseClarificationMessage(
-                        response.message
-                    );
-                    if (parsedClarification.options.length === 0) {
-                        trace.responseType = response.type;
-                        trace.totalMs = elapsedMilliseconds(startedAt);
-                        publishAgentTrace(trace);
-                        await showMessageDialog(response.message, {
-                            title: "Agent Clarification",
-                            type: "info",
-                        });
-                        return;
-                    }
-
-                    const followUpValue = await showAgentChoiceDialog({
+                if (parsedClarification.options.length === 0) {
+                    trace.responseType = response.type;
+                    trace.totalMs = elapsedMilliseconds(startedAt);
+                    publishAgentTrace(trace);
+                    await showMessageDialog(response.message, {
                         title: "Agent Clarification",
-                        message:
-                            typeof parsedClarification.text === "string"
-                                ? parsedClarification.text
-                                : templateResultToString(
-                                      parsedClarification.text
-                                  ),
-                        choiceLabel: "Clarification",
-                        options: parsedClarification.options,
-                        value: parsedClarification.options[0].value,
+                        type: "info",
                     });
-                    if (!followUpValue) {
-                        throw new Error("Agent clarification was cancelled.");
-                    }
-
-                    history.push(message, response.message);
-                    message = followUpValue.trim();
-                    clarificationRounds += 1;
-                    continue;
-                }
-
-                if (clarificationRounds >= 3) {
-                    throw new Error(
-                        "Agent clarification did not converge after 3 rounds."
-                    );
+                    return;
                 }
 
                 const followUpValue = await showAgentChoiceDialog({
                     title: "Agent Clarification",
-                    message: groundedClarification.message,
-                    choiceLabel: groundedClarification.choiceLabel,
-                    options: groundedClarification.options,
-                    value: groundedClarification.value,
+                    message:
+                        typeof parsedClarification.text === "string"
+                            ? parsedClarification.text
+                            : templateResultToString(parsedClarification.text),
+                    choiceLabel: "Clarification",
+                    options: parsedClarification.options,
+                    value: parsedClarification.options[0].value,
                 });
                 if (!followUpValue) {
                     throw new Error("Agent clarification was cancelled.");
                 }
 
-                await runSelectionAggregationWorkflow(
-                    app,
-                    {
-                        ...createSeededSelectionAggregationRequest(
-                            app,
-                            initialMessage,
-                            workflowType
-                        ),
-                        [groundedClarification.slot]: followUpValue,
-                    },
-                    trace,
-                    startedAt
-                );
-                return;
+                history.push(message, response.message);
+                message = followUpValue.trim();
+                continue;
             }
 
             if (response.type === "answer") {
@@ -638,21 +584,6 @@ async function runLocalPrompt(app) {
                     title: "Agent Response",
                     type: "info",
                 });
-                return;
-            }
-
-            if (response.type === "selection_aggregation") {
-                await runAgentProgram(
-                    app,
-                    [
-                        {
-                            type: "selection_aggregation",
-                            workflow: response.workflow,
-                        },
-                    ],
-                    trace,
-                    startedAt
-                );
                 return;
             }
 
@@ -767,32 +698,6 @@ async function runLocalPrompt(app) {
             const validation = validateIntentProgram(app, response.program);
             trace.validationMs = elapsedMilliseconds(validationStartedAt);
             if (!validation.ok) {
-                if (
-                    !repairedInvalidIntentProgram &&
-                    shouldRetryAsSelectionAggregation(
-                        app,
-                        response.program,
-                        validation.errors
-                    )
-                ) {
-                    const workflowType = inferRequestedWorkflowType([
-                        initialMessage,
-                        ...history.map((entry) =>
-                            typeof entry === "string" ? entry : entry.text
-                        ),
-                    ]).workflowType;
-                    history.push(
-                        message,
-                        buildInvalidProgramFeedback(validation.errors)
-                    );
-                    message = buildSelectionAggregationRepairMessage(
-                        initialMessage,
-                        workflowType
-                    );
-                    repairedInvalidIntentProgram = true;
-                    continue;
-                }
-
                 throw new Error(validation.errors.join("\n"));
             }
 
@@ -828,7 +733,7 @@ async function runLocalPrompt(app) {
  */
 async function runAgentProgram(app, steps, trace, startedAt) {
     const previewStartedAt = now();
-    /** @type {Array<{ type: "intent_program", summary: string, program: import("./types.js").IntentProgram } | { type: "selection_aggregation", summary: string, workflow: import("./types.js").ResolvedSelectionAggregationWorkflow }>} */
+    /** @type {Array<{ type: "intent_program", summary: string, program: import("./types.js").IntentProgram }>} */
     const preparedSteps = [];
     for (const step of steps) {
         preparedSteps.push(await prepareAgentProgramStep(app, step));
@@ -881,9 +786,7 @@ async function runAgentProgram(app, steps, trace, startedAt) {
                     type: "info",
                 }
             );
-        } else if (
-            preparedStep.workflow.workflowType !== "createBoxplotFromSelection"
-        ) {
+        } else {
             await showMessageDialog(
                 "Executed 1 action.\n- " + preparedStep.summary,
                 {
@@ -916,11 +819,6 @@ async function runAgentProgram(app, steps, trace, startedAt) {
  *         summary: string;
  *         program: import("./types.js").IntentProgram;
  *     }
- *   | {
- *         type: "selection_aggregation";
- *         summary: string;
- *         workflow: import("./types.js").ResolvedSelectionAggregationWorkflow;
- *     }
  * >}
  */
 async function prepareAgentProgramStep(app, step) {
@@ -936,68 +834,9 @@ async function prepareAgentProgramStep(app, step) {
             summary: summaries.map((line) => "- " + line.text).join("\n"),
             program: validation.program,
         };
-    } else if (step.type === "selection_aggregation") {
-        const workflow =
-            await resolveSelectionAggregationWorkflowWithClarifications(
-                app,
-                step.workflow
-            );
-        return {
-            type: "selection_aggregation",
-            summary: summarizeResolvedSelectionAggregationWorkflow(workflow),
-            workflow,
-        };
     }
 
     throw new Error("Unsupported agent program step.");
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("./types.js").SelectionAggregationRequest} workflowRequest
- * @returns {Promise<import("./types.js").ResolvedSelectionAggregationWorkflow>}
- */
-async function resolveSelectionAggregationWorkflowWithClarifications(
-    app,
-    workflowRequest
-) {
-    /** @type {import("./types.js").SelectionAggregationRequest} */
-    let currentRequest = { ...workflowRequest };
-
-    while (true) {
-        const resolution = resolveSelectionAggregationWorkflow(
-            getSelectionAggregationContext(app),
-            currentRequest
-        );
-        if (resolution.status === "error") {
-            throw new Error(resolution.message);
-        } else if (resolution.status === "resolved") {
-            return resolution.value;
-        } else if (resolution.status === "needs_clarification") {
-            const request = resolution.request;
-            const followUp = await showAgentChoiceDialog({
-                title: "Agent Clarification",
-                message: request.message,
-                choiceLabel: formatClarificationSlot(request.slot),
-                options: request.options ?? [],
-                value: request.initialValue,
-            });
-            if (!followUp) {
-                throw new Error(
-                    "Selection aggregation clarification was cancelled."
-                );
-            }
-
-            currentRequest = {
-                ...currentRequest,
-                ...request.state,
-                [request.slot]: followUp.trim(),
-            };
-            continue;
-        }
-
-        throw new Error("Unsupported resolver status.");
-    }
 }
 
 /**
@@ -1006,10 +845,6 @@ async function resolveSelectionAggregationWorkflowWithClarifications(
  *   type: "intent_program",
  *   summary: string,
  *   program: import("./types.js").IntentProgram
- * } | {
- *   type: "selection_aggregation",
- *   summary: string,
- *   workflow: import("./types.js").ResolvedSelectionAggregationWorkflow
  * }} step
  */
 async function executePreparedAgentProgramStep(app, step) {
@@ -1022,369 +857,5 @@ async function executePreparedAgentProgramStep(app, step) {
             executedActions: intentProgramResult.executedActions,
             intentProgramResult,
         };
-    } else {
-        await executeResolvedSelectionAggregationWorkflow(app, step.workflow);
-        return {
-            executedActions: 1,
-            intentProgramResult: undefined,
-        };
-    }
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("./types.js").IntentProgram} program
- * @param {string[]} errors
- */
-function shouldRetryAsSelectionAggregation(app, program, errors) {
-    const workflowContext = getSelectionAggregationContext(app);
-    if (
-        workflowContext.selections.length === 0 ||
-        workflowContext.fields.length === 0
-    ) {
-        return false;
-    }
-
-    const hasUnknownSampleAttributeError = errors.some((error) =>
-        error.includes('unknown attribute {"type":"SAMPLE_ATTRIBUTE"')
-    );
-    const hasQuantitativeFilterShapeError = errors.some(
-        (error) =>
-            error.includes("payload.operator is required") ||
-            error.includes("payload.operand is required") ||
-            error.includes("payload.operator must be one of") ||
-            error.includes("payload.operand must be of type number") ||
-            error.includes("payload.operand must be greater than or equal to")
-    );
-    const hasGenericPayloadShapeError = errors.some(
-        (error) => error.includes("$.steps[") && error.includes(".payload.")
-    );
-    const hasSampleAttributePayload = (program.steps ?? []).some((step) => {
-        const payload = /** @type {any} */ (step?.payload);
-        return payload?.attribute?.type === "SAMPLE_ATTRIBUTE";
-    });
-    const hasSuspiciousTemplateLikeAttribute = (program.steps ?? []).some(
-        (step) => {
-            const payload = /** @type {any} */ (step?.payload);
-            return (
-                typeof payload?.attribute?.specifier === "string" &&
-                payload.attribute.specifier.includes("{{")
-            );
-        }
-    );
-
-    return (
-        (hasUnknownSampleAttributeError && hasSampleAttributePayload) ||
-        (hasQuantitativeFilterShapeError && hasSampleAttributePayload) ||
-        (hasGenericPayloadShapeError && hasSampleAttributePayload) ||
-        hasSuspiciousTemplateLikeAttribute
-    );
-}
-
-/**
- * @param {string[]} errors
- */
-function buildInvalidProgramFeedback(errors) {
-    return (
-        "Previous planner output was invalid:\n" + errors.slice(0, 5).join("\n")
-    );
-}
-
-/**
- * @param {string} originalMessage
- * @param {import("./types.js").SelectionAggregationRequest["workflowType"]} workflowType
- */
-function buildSelectionAggregationRepairMessage(originalMessage, workflowType) {
-    const workflowInstruction =
-        workflowType === "createBoxplotFromSelection"
-            ? "Return a structured selection_aggregation for createBoxplotFromSelection if this request is about aggregating a visible field over the current selection and showing the result as a boxplot."
-            : "Return a structured selection_aggregation for deriveMetadataFromSelection if this request is about aggregating a visible field over the current selection and storing the result in sample metadata.";
-
-    return (
-        originalMessage +
-        "\n\n" +
-        workflowInstruction +
-        " Do not return a metadata intent_program unless the source is an existing SAMPLE_ATTRIBUTE."
-    );
-}
-
-/**
- * @param {string[]} messages
- * @returns {{ workflowType: import("./types.js").SelectionAggregationRequest["workflowType"] }}
- */
-function inferRequestedWorkflowType(messages) {
-    const combined = messages.join("\n").toLowerCase();
-    if (combined.includes("boxplot")) {
-        return {
-            workflowType: "createBoxplotFromSelection",
-        };
-    } else {
-        return {
-            workflowType: "deriveMetadataFromSelection",
-        };
-    }
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {string} message
- * @param {import("./types.js").SelectionAggregationRequest["workflowType"]} workflowType
- * @returns {import("./types.js").SelectionAggregationRequest}
- */
-function createSeededSelectionAggregationRequest(app, message, workflowType) {
-    return {
-        workflowType,
-        aggregation: inferRequestedAggregation(app, message),
-    };
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {string} message
- * @returns {string | undefined}
- */
-function inferRequestedAggregation(app, message) {
-    const normalizedMessage = message.toLowerCase();
-    const supportedAggregations = Array.from(
-        new Set(
-            getSelectionAggregationContext(app).fields.flatMap(
-                (field) => field.supportedAggregations
-            )
-        )
-    );
-
-    for (const aggregation of supportedAggregations) {
-        if (normalizedMessage.includes(aggregation.toLowerCase())) {
-            return aggregation;
-        }
-    }
-
-    if (normalizedMessage.includes("weighted mean")) {
-        return "weightedMean";
-    }
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {string} message
- */
-function getGroundedPlannerClarification(app, message) {
-    const workflowContext = getSelectionAggregationContext(app);
-    const normalizedMessage = message.toLowerCase();
-
-    if (
-        (normalizedMessage.includes("aggregation") ||
-            normalizedMessage.includes("aggregate")) &&
-        workflowContext.fields.length > 0
-    ) {
-        const aggregations = Array.from(
-            new Set(
-                workflowContext.fields.flatMap(
-                    (field) => field.supportedAggregations
-                )
-            )
-        );
-        if (aggregations.length > 0) {
-            const options = aggregations.map((aggregation) => ({
-                value: aggregation,
-                label: aggregation,
-            }));
-            return {
-                slot: "aggregation",
-                choiceLabel: "Aggregation",
-                message:
-                    message +
-                    " Available options: " +
-                    aggregations.join(", ") +
-                    ".",
-                options,
-                value: options[0].value,
-            };
-        }
-    }
-
-    if (
-        (normalizedMessage.includes("field") ||
-            normalizedMessage.includes("attribute")) &&
-        workflowContext.fields.length > 0
-    ) {
-        const fields = normalizedMessage.includes("quantitative")
-            ? workflowContext.fields.filter(
-                  (field) => field.dataType === "quantitative"
-              )
-            : workflowContext.fields;
-        if (fields.length > 0) {
-            const options = fields.map((field) => ({
-                value: field.id,
-                label: `${field.field} (${field.viewTitle})`,
-            }));
-            return {
-                slot: "fieldId",
-                choiceLabel: "Field",
-                message:
-                    message +
-                    " Available options: " +
-                    options.map((option) => option.label).join(", ") +
-                    ".",
-                options,
-                value: options[0].value,
-            };
-        }
-    }
-
-    if (
-        (normalizedMessage.includes("selection") ||
-            normalizedMessage.includes("brush") ||
-            normalizedMessage.includes("interval")) &&
-        workflowContext.selections.length > 0
-    ) {
-        const options = workflowContext.selections.map((selection) => ({
-            value: selection.id,
-            label: selection.label,
-        }));
-        return {
-            slot: "selectionId",
-            choiceLabel: "Selection",
-            message:
-                message +
-                " Available options: " +
-                options.map((option) => option.label).join(", ") +
-                ".",
-            options,
-            value: options[0].value,
-        };
-    }
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("./types.js").SelectionAggregationRequest} workflowRequest
- * @param {Record<string, any>} trace
- * @param {number} startedAt
- * @returns {Promise<void>}
- */
-async function runSelectionAggregationWorkflow(
-    app,
-    workflowRequest,
-    trace,
-    startedAt
-) {
-    await runAgentProgram(
-        app,
-        [
-            {
-                type: "selection_aggregation",
-                workflow: workflowRequest,
-            },
-        ],
-        trace,
-        startedAt
-    );
-}
-
-/**
- * @param {string} slot
- * @returns {string}
- */
-function formatClarificationSlot(slot) {
-    if (slot === "selectionId") {
-        return "Selection";
-    } else if (slot === "fieldId") {
-        return "Field";
-    } else if (slot === "aggregation") {
-        return "Aggregation";
-    } else {
-        return slot;
-    }
-}
-
-/**
- * @param {import("./types.js").ResolvedSelectionAggregationWorkflow} workflow
- * @returns {string}
- */
-function summarizeResolvedSelectionAggregationWorkflow(workflow) {
-    if (workflow.workflowType === "createBoxplotFromSelection") {
-        return (
-            "Create a boxplot from " +
-            workflow.aggregation +
-            "(" +
-            workflow.field.field +
-            ") in " +
-            workflow.selection.label +
-            " on " +
-            workflow.field.viewTitle
-        );
-    } else {
-        return (
-            "Add derived metadata " +
-            workflow.name +
-            " from " +
-            workflow.aggregation +
-            "(" +
-            workflow.field.field +
-            ") in " +
-            workflow.selection.label +
-            " on " +
-            workflow.field.viewTitle
-        );
-    }
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("./types.js").ResolvedSelectionAggregationWorkflow} workflow
- */
-async function executeResolvedSelectionAggregationWorkflow(app, workflow) {
-    const sampleView = app.getSampleView();
-    if (!sampleView) {
-        throw new Error("SampleView is not available.");
-    }
-
-    if (workflow.workflowType === "deriveMetadataFromSelection") {
-        const getAttributeInfo =
-            sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
-                sampleView.compositeAttributeInfoSource
-            );
-        const action = sampleView.actions.deriveMetadata({
-            attribute: buildSelectionAggregationAttributeIdentifier({
-                viewSelector: workflow.field.viewSelector,
-                field: workflow.field.field,
-                selectionSelector: workflow.selection.selector,
-                aggregation:
-                    /** @type {import("../sampleView/types.js").AggregationOp} */ (
-                        workflow.aggregation
-                    ),
-            }),
-            name: workflow.name,
-            groupPath: workflow.groupPath,
-            scale: workflow.scale,
-        });
-        await app.intentPipeline.submit([action], { getAttributeInfo });
-        return;
-    } else if (workflow.workflowType === "createBoxplotFromSelection") {
-        const attributeInfo =
-            sampleView.compositeAttributeInfoSource.getAttributeInfo(
-                buildSelectionAggregationAttributeIdentifier({
-                    viewSelector: workflow.field.viewSelector,
-                    field: workflow.field.field,
-                    selectionSelector: workflow.selection.selector,
-                    aggregation:
-                        /** @type {import("../sampleView/types.js").AggregationOp} */ (
-                            workflow.aggregation
-                        ),
-                })
-            );
-        await showHierarchyBoxplotDialog(
-            attributeInfo,
-            sampleView.sampleHierarchy,
-            sampleView.compositeAttributeInfoSource
-        );
-        return;
-    } else {
-        throw new Error(
-            "Unsupported resolved selection aggregation: " +
-                workflow.workflowType +
-                "."
-        );
     }
 }

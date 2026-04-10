@@ -1,4 +1,4 @@
-# Selection Aggregation Workflow (Draft)
+# Selection Aggregation Plan (Draft)
 
 This document describes the agent-facing flow for turning an interval selection
 into an aggregated attribute descriptor that can be reused for derived metadata,
@@ -11,27 +11,27 @@ descriptor can drive multiple consumers.
 ## Code References
 
 - Selection menu construction: [`contextMenuBuilder.js`](../src/sampleView/contextMenuBuilder.js)
+- Shared selection aggregation candidates: [`selectionAggregationCandidates.js`](../src/sampleView/selectionAggregationCandidates.js)
+- Canonical aggregated attribute builder: [`selectionAggregationAttributes.js`](../src/sampleView/selectionAggregationAttributes.js)
 - Attribute resolution and value providers: [`viewAttributeInfoSource.js`](../src/sampleView/viewAttributeInfoSource.js)
 - Aggregated value accessors: [`attributeAccessors.js`](../src/sampleView/attributeAggregation/attributeAccessors.js)
 - Derived metadata intent builder: [`deriveMetadataUtils.js`](../src/sampleView/metadata/deriveMetadataUtils.js)
-- Agent-facing view selectors: [`viewTree.js`](../src/agent/viewTree.js)
-- Selection aggregation context: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
-- Selection aggregation resolver: [`selectionAggregationWorkflow.js`](../src/agent/selectionAggregationWorkflow.js)
+- Agent-facing selection context: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
 - Local agent execution: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 
 ## Why this exists
 
 - The current UI path is menu-driven and multi-step:
   - create an interval selection
-  - inspect eligible views
+  - inspect eligible views and fields
   - choose a field
   - choose an aggregation op
   - optionally derive metadata or reuse the same attribute elsewhere
 - The final payload is too nested for a local LLM to construct reliably.
 - The app already contains the logic needed to build the canonical attribute
   descriptor, so the agent should not reimplement it.
-- The old `viewWorkflow*` files are gone; the remaining resolver should stay
-  thin and live in the agent folder.
+- The agent should work from compact candidate snapshots, not from raw nested
+  payloads.
 
 ## User-Facing Intent
 
@@ -52,8 +52,8 @@ From the agent's point of view, these requests mean:
 6. Reuse that attribute for metadata, sorting, filtering, or plotting.
 
 The agent should not need to invent the full nested reducer payload by hand.
-It should understand the conceptual workflow and rely on the app for the
-canonical construction.
+It should understand the conceptual flow and rely on the app for the canonical
+construction.
 
 ## Revision During Implementation
 
@@ -61,8 +61,8 @@ This is a living plan, not a fixed contract.
 
 - Revise the candidate shape when the shared helper extraction makes the real
   data flow clearer.
-- Revise the resolver shape if the app ends up needing a different boundary
-  than the draft currently suggests.
+- Revise the agent context shape if the agent needs a different boundary than
+  the draft currently suggests.
 - Keep the plan aligned with the actual extracted helpers, tests, and
   commit-splitting boundaries.
 - Prefer updating this document during implementation over protecting the draft
@@ -93,10 +93,9 @@ The derived-metadata helper in `deriveMetadataUtils.js` should remain the
 authoritative source for turning a resolved attribute into a provenance-backed
 mutation.
 
-The agent should not duplicate these rules in prompt text or in a separate
-resolver with its own parallel logic. The resolver itself belongs in the
-agent folder, but it should stay thin and depend on shared sample-view
-helpers for candidate discovery and attribute construction.
+The agent should not duplicate these rules in prompt text or in separate
+parallel logic. The agent-facing context should stay thin and depend on shared
+sample-view helpers for candidate discovery and attribute construction.
 
 ## Proposed Shape
 
@@ -144,9 +143,9 @@ Prefer a small read-only tool that returns structured candidates:
 The agent can then choose a candidate and an aggregation op. App code should
 materialize the final attribute identifier and any derived metadata action.
 
-The second tool should be a resolver, not a parallel workflow engine. Its job is
-to map one selected candidate + aggregation op into the canonical aggregated
-`AttributeIdentifier` that the app already understands.
+The second tool should be a resolver, not a parallel workflow engine. Its job
+is to map one selected candidate + aggregation op into the canonical
+aggregated `AttributeIdentifier` that the app already understands.
 
 Suggested resolver shape:
 
@@ -199,7 +198,7 @@ filters, or plotting encodings.
 Extract reusable helpers from the current UI code:
 
 - `discoverIntervalAggregationCandidates(...)`
-  - shared by the context menu and by the agent-facing tool
+  - shared by the context menu and by the agent-facing context
   - enumerates candidate view selectors, fields, and ops
   - should live in the non-agent sample-view codebase so the UI and agent both
     consume the same source of truth
@@ -213,12 +212,6 @@ Extract reusable helpers from the current UI code:
   - should not mutate state
   - may accept or surface an LLM-generated description as an optional preview
     string, but should not depend on the wording for correctness
-
-- `resolveSelectionAggregationWorkflow(...)`
-  - lives in the agent folder
-  - converts a compact request plus current agent context into a resolved
-    selection aggregation workflow
-  - should remain a thin wrapper around shared, deterministic helper logic
 
 - `buildDerivedMetadataIntent(...)`
   - keeps building the actual provenance-backed mutation
@@ -244,13 +237,11 @@ Extract reusable helpers from the current UI code:
    - Do not duplicate the construction in the agent layer.
    - Review the extracted code for code smells before continuing.
 
-3. Replace the current resolver path with a thinner agent-facing shell.
+3. Feed the agent from the shared candidate snapshot and keep the agent-facing
+   context thin.
    - Keep the prompt high-level.
    - Let the tool return compact candidates.
    - Let app code construct the final payload.
-  - Keep the agent-side resolver thin and colocated with the agent code.
-  - Remove the remaining `viewWorkflow*` references once their logic has
-      moved into shared helpers.
    - Review the resulting agent-facing code for code smells before continuing.
 
 4. Test the shared helpers directly.

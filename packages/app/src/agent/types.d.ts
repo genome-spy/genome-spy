@@ -1183,111 +1183,16 @@ export interface IntentProgramExecutionResult {
 }
 
 /**
- * Request for resolving a structured selection aggregation.
- */
-export interface SelectionAggregationRequest {
-    /**
-     * Workflow identifier.
-     */
-    workflowType: "deriveMetadataFromSelection" | "createBoxplotFromSelection";
-
-    /**
-     * Optional active selection id.
-     */
-    selectionId?: string;
-
-    /**
-     * Optional field id.
-     */
-    fieldId?: string;
-
-    /**
-     * Optional aggregation op.
-     */
-    aggregation?: string;
-
-    /**
-     * Desired output target.
-     */
-    outputTarget?: "sample_metadata" | "boxplot";
-
-    /**
-     * Optional derived name.
-     */
-    name?: string;
-
-    /**
-     * Optional group path for derived metadata.
-     */
-    groupPath?: string;
-
-    /**
-     * Optional scale payload for the workflow.
-     */
-    scale?: Record<string, any>;
-}
-
-/**
- * Normalized selection aggregation after resolving selections and fields.
- */
-export interface ResolvedSelectionAggregationWorkflow {
-    /**
-     * Workflow identifier.
-     */
-    workflowType: "deriveMetadataFromSelection" | "createBoxplotFromSelection";
-
-    /**
-     * Resolved selection.
-     */
-    selection: AgentSelectionSummary;
-
-    /**
-     * Resolved field.
-     */
-    field: AgentViewFieldSummary;
-
-    /**
-     * Resolved aggregation.
-     */
-    aggregation: string;
-
-    /**
-     * Final output target.
-     */
-    outputTarget: "sample_metadata" | "boxplot";
-
-    /**
-     * Optional derived name.
-     */
-    name?: string;
-
-    /**
-     * Optional group path.
-     */
-    groupPath?: string;
-
-    /**
-     * Optional scale payload.
-     */
-    scale?: Record<string, any>;
-}
-
-/**
  * One step in a mixed agent program.
  */
-export type AgentProgramStep =
-    | {
-          type: "intent_program";
-          program: IntentProgram;
-      }
-    | {
-          type: "selection_aggregation";
-          workflow: SelectionAggregationRequest;
-      };
+export type AgentProgramStep = {
+    type: "intent_program";
+    program: IntentProgram;
+};
 
 /**
  * Mixed structured program that can combine generic intents and local
- * selection aggregation resolution.
+ * intent resolution.
  */
 export interface AgentProgram {
     /**
@@ -1336,10 +1241,6 @@ export type PlanResponse =
     | {
           type: "intent_program";
           program: IntentProgram;
-      }
-    | {
-          type: "selection_aggregation";
-          workflow: SelectionAggregationRequest;
       }
     | {
           type: "agent_program";

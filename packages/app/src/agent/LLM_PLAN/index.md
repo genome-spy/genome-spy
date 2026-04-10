@@ -3,7 +3,7 @@
 ## Code Anchors
 - Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
 - View normalization: [`viewTree.js`](../src/agent/viewTree.js)
-- Selection aggregation context and resolution: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js), [`selectionAggregationWorkflow.js`](../src/agent/selectionAggregationWorkflow.js)
+- Selection aggregation context: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
 - Action catalog and execution: [`actionCatalog.js`](../src/agent/actionCatalog.js), [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js), [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Chat and entry points: [`chatPanel.js`](../src/agent/chatPanel.js), [`agentAdapter.js`](../src/agent/agentAdapter.js), [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
 - Session controller: owns transcript state, preflight, queueing, and the panel snapshot
@@ -72,8 +72,10 @@
 
 ## Action + State Context
 - See [`action-schema.md`](./action-schema.md) for the proposed action/provenance schema.
+- See [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
+  for the interval-selection summaries used by the agent.
 - See [`selection-aggregation-workflow.md`](./selection-aggregation-workflow.md)
-  for the interval-selection-to-aggregated-attribute flow.
+  for the draft selection-aggregation plan.
 
 ## Data Access Policy
 - See [`infrastructure.md`](./infrastructure.md) for the public-data vs controlled-access policy and the LLM transport safeguards.

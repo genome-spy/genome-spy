@@ -6,7 +6,6 @@ This document outlines what the LLM needs to understand a GenomeSpy visualizatio
 - Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
 - View hierarchy normalization: [`viewTree.js`](../src/agent/viewTree.js)
 - Selection and field summaries: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
-- Workflow clarification and field resolution: [`selectionAggregationWorkflow.js`](../src/agent/selectionAggregationWorkflow.js)
 - App transport boundary: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 
 ## Principles

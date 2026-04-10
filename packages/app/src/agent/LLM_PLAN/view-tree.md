@@ -10,7 +10,6 @@ propose new views.
 - Tree builder: [`viewTree.js`](../src/agent/viewTree.js)
 - Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
 - Runtime selection summaries: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
-- Workflow resolution: [`selectionAggregationWorkflow.js`](../src/agent/selectionAggregationWorkflow.js)
 - Local agent entry point: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 - Coverage tests: [`viewTree.test.js`](../src/agent/viewTree.test.js)
 

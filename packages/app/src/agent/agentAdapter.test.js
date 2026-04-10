@@ -5,9 +5,6 @@ const { showMessageDialog, getAgentContext } = vi.hoisted(() => ({
     showMessageDialog: vi.fn(),
     getAgentContext: vi.fn(() => ({ schemaVersion: 1 })),
 }));
-const { showAgentChoiceDialog } = vi.hoisted(() => ({
-    showAgentChoiceDialog: vi.fn(),
-}));
 const { resolveParamSelectorMock } = vi.hoisted(() => ({
     resolveParamSelectorMock: vi.fn(),
 }));
@@ -25,16 +22,9 @@ const { visitAddressableViewsMock } = vi.hoisted(() => ({
         root.visit(visitor);
     }),
 }));
-const { showHierarchyBoxplotDialog } = vi.hoisted(() => ({
-    showHierarchyBoxplotDialog: vi.fn(() => Promise.resolve({ ok: true })),
-}));
 
 vi.mock("../components/generic/messageDialog.js", () => ({
     showMessageDialog,
-}));
-
-vi.mock("../components/dialogs/agentChoiceDialog.js", () => ({
-    showAgentChoiceDialog,
 }));
 
 vi.mock("./contextBuilder.js", () => ({
@@ -48,14 +38,8 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     visitAddressableViews: visitAddressableViewsMock,
 }));
 
-vi.mock("../charts/hierarchyBoxplotDialog.js", () => ({
-    __esModule: true,
-    default: showHierarchyBoxplotDialog,
-}));
-
 import { createAgentAdapter } from "./agentAdapter.js";
 import { createAgentSessionController } from "./agentSessionController.js";
-import { createFieldId } from "./selectionAggregationContext.js";
 
 function createResponse(body) {
     return {
@@ -303,44 +287,6 @@ describe("agentAdapter", () => {
         );
     });
 
-    it("executes resolved selection-aggregation requests after planner resolution", async () => {
-        const app = createAppStub();
-        globalThis.window.prompt.mockReturnValueOnce(
-            "compute weighted mean in the selected region and add it to metadata"
-        );
-        globalThis.fetch.mockResolvedValueOnce(
-            createResponse({
-                type: "selection_aggregation",
-                workflow: {
-                    workflowType: "deriveMetadataFromSelection",
-                    aggregation: "variance",
-                },
-            })
-        );
-        showMessageDialog.mockResolvedValue(true);
-        showAgentChoiceDialog.mockResolvedValue(
-            createFieldId(
-                JSON.stringify({ scope: [], param: "brush" }),
-                "betaTrack",
-                "beta"
-            )
-        );
-
-        const adapter = createAgentAdapter(app);
-        await adapter.runLocalPrompt();
-
-        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-        expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
-        expect(app.intentPipeline.submit.mock.calls[0][0]).toEqual([
-            expect.objectContaining({
-                type: "sampleView/deriveMetadata",
-                payload: expect.objectContaining({
-                    name: expect.stringMatching(/^variance_beta_brush_/),
-                }),
-            }),
-        ]);
-    });
-
     it("posts structured conversation history to the planner endpoint", async () => {
         const app = createAppStub();
         const adapter = createAgentAdapter(app);
@@ -455,67 +401,6 @@ describe("agentAdapter", () => {
         expect(result.response.message).toContain(
             "Functional Segmentation (FUSE) of ENCODE WGBS data"
         );
-    });
-
-    it("asks for a grounded field when the workflow leaves the field unspecified", async () => {
-        const app = createAppStub({
-            x: { field: "pos", type: "locus" },
-            y: { field: "beta", type: "quantitative" },
-            color: { field: "segmentMean", type: "quantitative" },
-        });
-        globalThis.window.prompt.mockReturnValueOnce(
-            "compute variance in the selected region and add it to metadata"
-        );
-        globalThis.fetch.mockResolvedValueOnce(
-            createResponse({
-                type: "selection_aggregation",
-                workflow: {
-                    workflowType: "deriveMetadataFromSelection",
-                    aggregation: "variance",
-                },
-            })
-        );
-        showMessageDialog.mockResolvedValue(true);
-        showAgentChoiceDialog.mockResolvedValue(
-            createFieldId(
-                JSON.stringify({ scope: [], param: "brush" }),
-                "betaTrack",
-                "beta"
-            )
-        );
-
-        const adapter = createAgentAdapter(app);
-        await adapter.runLocalPrompt();
-
-        expect(showAgentChoiceDialog).toHaveBeenCalledWith(
-            expect.objectContaining({
-                title: "Agent Clarification",
-                message: expect.stringContaining("I need to know which field"),
-                choiceLabel: "Field",
-                options: expect.arrayContaining([
-                    expect.objectContaining({
-                        value: createFieldId(
-                            JSON.stringify({ scope: [], param: "brush" }),
-                            "betaTrack",
-                            "beta"
-                        ),
-                    }),
-                    expect.objectContaining({
-                        value: createFieldId(
-                            JSON.stringify({ scope: [], param: "brush" }),
-                            "betaTrack",
-                            "segmentMean"
-                        ),
-                    }),
-                ]),
-                value: createFieldId(
-                    JSON.stringify({ scope: [], param: "brush" }),
-                    "betaTrack",
-                    "beta"
-                ),
-            })
-        );
-        expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
     });
 
     it("stops promptly when the same rejected tool call repeats", async () => {
@@ -715,211 +600,10 @@ describe("agentAdapter", () => {
         expect(app.intentPipeline.submit).not.toHaveBeenCalled();
     });
 
-    it("opens a boxplot dialog for a structured plot workflow", async () => {
-        const app = createAppStub();
-        globalThis.window.prompt.mockReturnValueOnce(
-            "Create a boxplot from the current selection"
-        );
-        globalThis.fetch.mockResolvedValueOnce(
-            createResponse({
-                type: "selection_aggregation",
-                workflow: {
-                    workflowType: "createBoxplotFromSelection",
-                    aggregation: "variance",
-                },
-            })
-        );
-        showMessageDialog.mockResolvedValue(true);
-        showAgentChoiceDialog.mockResolvedValue(
-            createFieldId(
-                JSON.stringify({ scope: [], param: "brush" }),
-                "betaTrack",
-                "beta"
-            )
-        );
-
-        const adapter = createAgentAdapter(app);
-        await adapter.runLocalPrompt();
-
-        expect(showHierarchyBoxplotDialog).toHaveBeenCalledTimes(1);
-        expect(app.intentPipeline.submit).not.toHaveBeenCalled();
-    });
-
-    it("continues locally after a grounded planner clarification instead of making a second planner request", async () => {
-        const app = createAppStub();
-        globalThis.window.prompt.mockReturnValueOnce(
-            "Use the current selection to create derived sample metadata from a visible quantitative field using weightedMean"
-        );
-        globalThis.fetch.mockResolvedValueOnce(
-            createResponse({
-                type: "clarify",
-                message:
-                    "Please specify the aggregation you'd like to use for the derived sample metadata attribute.",
-            })
-        );
-        showMessageDialog.mockResolvedValue(true);
-        showAgentChoiceDialog.mockResolvedValue("weightedMean");
-
-        const adapter = createAgentAdapter(app);
-        await adapter.runLocalPrompt();
-
-        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-        expect(showAgentChoiceDialog).toHaveBeenCalledWith(
-            expect.objectContaining({
-                title: "Agent Clarification",
-                choiceLabel: "Aggregation",
-                options: expect.arrayContaining([
-                    expect.objectContaining({ value: "weightedMean" }),
-                ]),
-            })
-        );
-        expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
-    });
-
-    it("preserves boxplot intent when continuing locally after a grounded planner clarification", async () => {
-        const app = createAppStub();
-        globalThis.window.prompt.mockReturnValueOnce(
-            "Create a boxplot from the active interval selection using a visible quantitative field and aggregation variance"
-        );
-        globalThis.fetch.mockResolvedValueOnce(
-            createResponse({
-                type: "clarify",
-                message:
-                    "Please specify the visible quantitative field you'd like to use for the boxplot.",
-            })
-        );
-        showMessageDialog.mockResolvedValue(true);
-        showAgentChoiceDialog.mockResolvedValue(
-            createFieldId(
-                JSON.stringify({ scope: [], param: "brush" }),
-                "betaTrack",
-                "beta"
-            )
-        );
-
-        const adapter = createAgentAdapter(app);
-        await adapter.runLocalPrompt();
-
-        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-        expect(showHierarchyBoxplotDialog).toHaveBeenCalledTimes(1);
-        expect(app.intentPipeline.submit).not.toHaveBeenCalled();
-    });
-
-    it("retries once with a selection-aggregation hint when the planner returns a misclassified invalid intent program", async () => {
-        const app = createAppStub();
-        globalThis.window.prompt.mockReturnValueOnce(
-            "Compute weighted mean of the visible field in the brush and store it in sample metadata"
-        );
-        globalThis.fetch
-            .mockResolvedValueOnce(
-                createResponse({
-                    type: "intent_program",
-                    program: {
-                        schemaVersion: 1,
-                        steps: [
-                            {
-                                actionType: "sampleView/filterByQuantitative",
-                                payload: {
-                                    attribute: {
-                                        type: "SAMPLE_ATTRIBUTE",
-                                        specifier: "signalValue",
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                })
-            )
-            .mockResolvedValueOnce(
-                createResponse({
-                    type: "selection_aggregation",
-                    workflow: {
-                        workflowType: "deriveMetadataFromSelection",
-                        aggregation: "weightedMean",
-                    },
-                })
-            );
-        showMessageDialog.mockResolvedValue(true);
-        showAgentChoiceDialog.mockResolvedValue(
-            createFieldId(
-                JSON.stringify({ scope: [], param: "brush" }),
-                "betaTrack",
-                "beta"
-            )
-        );
-
-        const adapter = createAgentAdapter(app);
-        await adapter.runLocalPrompt();
-
-        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-        expect(globalThis.fetch.mock.calls[1][1].body).toContain(
-            "Return a structured selection_aggregation for deriveMetadataFromSelection"
-        );
-        expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
-        expect(showMessageDialog).not.toHaveBeenCalledWith(
-            expect.stringContaining("payload.operator must be one of"),
-            expect.anything()
-        );
-    });
-
-    it("retries boxplot requests with a boxplot-specific selection-aggregation hint", async () => {
-        const app = createAppStub();
-        globalThis.window.prompt.mockReturnValueOnce(
-            "Create a boxplot from the active interval selection using a visible quantitative field and aggregation variance"
-        );
-        globalThis.fetch
-            .mockResolvedValueOnce(
-                createResponse({
-                    type: "intent_program",
-                    program: {
-                        schemaVersion: 1,
-                        steps: [
-                            {
-                                actionType: "sampleView/filterByQuantitative",
-                                payload: {
-                                    attribute: {
-                                        type: "SAMPLE_ATTRIBUTE",
-                                        specifier: "signalValue",
-                                    },
-                                },
-                            },
-                        ],
-                    },
-                })
-            )
-            .mockResolvedValueOnce(
-                createResponse({
-                    type: "selection_aggregation",
-                    workflow: {
-                        workflowType: "createBoxplotFromSelection",
-                        aggregation: "variance",
-                    },
-                })
-            );
-        showMessageDialog.mockResolvedValue(true);
-        showAgentChoiceDialog.mockResolvedValue(
-            createFieldId(
-                JSON.stringify({ scope: [], param: "brush" }),
-                "betaTrack",
-                "beta"
-            )
-        );
-
-        const adapter = createAgentAdapter(app);
-        await adapter.runLocalPrompt();
-
-        expect(globalThis.fetch).toHaveBeenCalledTimes(2);
-        expect(globalThis.fetch.mock.calls[1][1].body).toContain(
-            "Return a structured selection_aggregation for createBoxplotFromSelection"
-        );
-        expect(showHierarchyBoxplotDialog).toHaveBeenCalledTimes(1);
-        expect(app.intentPipeline.submit).not.toHaveBeenCalled();
-    });
-
     it("executes mixed agent_program steps in order", async () => {
         const app = createAppStub();
         globalThis.window.prompt.mockReturnValueOnce(
-            "sort by age, group by gender and create a boxplot over the selected interval"
+            "sort by age, group by gender and derive metadata from the selected interval"
         );
         globalThis.fetch.mockResolvedValueOnce(
             createResponse({
@@ -954,10 +638,37 @@ describe("agentAdapter", () => {
                             },
                         },
                         {
-                            type: "selection_aggregation",
-                            workflow: {
-                                workflowType: "createBoxplotFromSelection",
-                                aggregation: "variance",
+                            type: "intent_program",
+                            program: {
+                                schemaVersion: 1,
+                                steps: [
+                                    {
+                                        actionType: "sampleView/deriveMetadata",
+                                        payload: {
+                                            attribute: {
+                                                type: "VALUE_AT_LOCUS",
+                                                specifier: {
+                                                    view: {
+                                                        scope: [],
+                                                        view: "betaTrack",
+                                                    },
+                                                    field: "beta",
+                                                    interval: {
+                                                        type: "selection",
+                                                        selector: {
+                                                            scope: [],
+                                                            param: "brush",
+                                                        },
+                                                    },
+                                                    aggregation: {
+                                                        op: "variance",
+                                                    },
+                                                },
+                                            },
+                                            name: "variance_beta_brush",
+                                        },
+                                    },
+                                ],
                             },
                         },
                     ],
@@ -965,25 +676,14 @@ describe("agentAdapter", () => {
             })
         );
         showMessageDialog.mockResolvedValue(true);
-        showAgentChoiceDialog.mockResolvedValue(
-            createFieldId(
-                JSON.stringify({ scope: [], param: "brush" }),
-                "betaTrack",
-                "beta"
-            )
-        );
 
         const adapter = createAgentAdapter(app);
         await adapter.runLocalPrompt();
 
-        expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
+        expect(app.intentPipeline.submit).toHaveBeenCalledTimes(2);
         expect(app.intentPipeline.submit.mock.calls[0][0]).toEqual([
             expect.objectContaining({ type: "sampleView/sortBy" }),
             expect.objectContaining({ type: "sampleView/groupByNominal" }),
         ]);
-        expect(showHierarchyBoxplotDialog).toHaveBeenCalledTimes(1);
-        expect(
-            app.intentPipeline.submit.mock.invocationCallOrder[0]
-        ).toBeLessThan(showHierarchyBoxplotDialog.mock.invocationCallOrder[0]);
     });
 });
