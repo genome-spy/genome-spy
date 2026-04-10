@@ -128,6 +128,46 @@ export interface AgentToolCall {
 }
 
 /**
+ * Structured summary for a view-state mutation performed by an agent tool.
+ */
+export interface AgentViewStateChange {
+    /**
+     * Content discriminator.
+     */
+    kind: "view_state_change";
+
+    /**
+     * Mutation domain.
+     */
+    domain: "agent_context" | "user_visibility";
+
+    /**
+     * Mutated state field.
+     */
+    field: "collapsed" | "visible";
+
+    /**
+     * Selector that the tool targeted.
+     */
+    selector: ViewSelector;
+
+    /**
+     * State before the tool ran.
+     */
+    before: boolean;
+
+    /**
+     * State after the tool ran.
+     */
+    after: boolean;
+
+    /**
+     * Whether the tool changed the relevant state.
+     */
+    changed: boolean;
+}
+
+/**
  * Compact action catalog entry sent in the planner context.
  */
 export interface AgentActionCatalogContextEntry {

@@ -18,6 +18,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
 /** @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult */
 /** @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions */
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
+/** @typedef {import("./types.d.ts").AgentViewStateChange} AgentViewStateChange */
 /** @typedef {import("./types.d.ts").PlanResponse | {
  *     type: "clarify";
  *     message: string | import("lit").TemplateResult;
@@ -55,6 +56,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  *     toolCallId: string;
  *     text: string | null;
  *     rejected: boolean;
+ *     content?: unknown;
  * }} ToolExecutionResult
  *
  * @typedef {{
@@ -427,12 +429,18 @@ export class AgentSessionController {
                 toolCallId: toolCall.callId,
                 text: result.text,
                 rejected: result.rejected,
+                ...(result.content !== undefined
+                    ? { content: result.content }
+                    : {}),
             });
-            if (result.text) {
+            if (result.text || result.content !== undefined) {
                 this.#appendMessage({
                     kind: "tool_result",
-                    text: result.text,
+                    text: result.text ?? "",
                     toolCallId: toolCall.callId,
+                    ...(result.content !== undefined
+                        ? { content: result.content }
+                        : {}),
                     durationMs: null,
                 });
                 this.#notify();
@@ -985,10 +993,10 @@ export class AgentSessionController {
             toolCall.name === "setViewVisibility" ||
             toolCall.name === "clearViewVisibility"
         ) {
-            const selector = this.#runtime.resolveViewSelector(
+            const view = this.#runtime.resolveViewSelector(
                 argumentsObject.selector
             );
-            if (!selector) {
+            if (!view) {
                 return {
                     toolCallId: toolCall.callId,
                     text: formatToolCallRejection(toolCall.name, [
@@ -999,41 +1007,69 @@ export class AgentSessionController {
             }
 
             if (toolCall.name === "expandViewNode") {
-                this.expandViewNode(argumentsObject.selector);
-                return {
-                    toolCallId: toolCall.callId,
-                    text: "Expanded the requested view branch.",
-                    rejected: false,
-                };
+                return this.#executeViewStateMutation(toolCall, {
+                    domain: "agent_context",
+                    field: "collapsed",
+                    selector: argumentsObject.selector,
+                    readState: () =>
+                        this.#expandedViewNodeKeys.has(
+                            makeViewSelectorKey(argumentsObject.selector)
+                        ),
+                    applyState: () => {
+                        this.expandViewNode(argumentsObject.selector);
+                    },
+                    changedText: "Expanded the requested view branch.",
+                    noopText: "The requested view branch was already expanded.",
+                });
             }
 
             if (toolCall.name === "collapseViewNode") {
-                this.collapseViewNode(argumentsObject.selector);
-                return {
-                    toolCallId: toolCall.callId,
-                    text: "Collapsed the requested view branch.",
-                    rejected: false,
-                };
+                return this.#executeViewStateMutation(toolCall, {
+                    domain: "agent_context",
+                    field: "collapsed",
+                    selector: argumentsObject.selector,
+                    readState: () =>
+                        this.#expandedViewNodeKeys.has(
+                            makeViewSelectorKey(argumentsObject.selector)
+                        ),
+                    applyState: () => {
+                        this.collapseViewNode(argumentsObject.selector);
+                    },
+                    changedText: "Collapsed the requested view branch.",
+                    noopText:
+                        "The requested view branch was already collapsed.",
+                });
             }
 
             if (toolCall.name === "setViewVisibility") {
-                this.#runtime.setViewVisibility(
-                    argumentsObject.selector,
-                    argumentsObject.visibility
-                );
-                return {
-                    toolCallId: toolCall.callId,
-                    text: "Updated the requested view visibility.",
-                    rejected: false,
-                };
+                return this.#executeViewStateMutation(toolCall, {
+                    domain: "user_visibility",
+                    field: "visible",
+                    selector: argumentsObject.selector,
+                    readState: () => view.isVisible(),
+                    applyState: () => {
+                        this.#runtime.setViewVisibility(
+                            argumentsObject.selector,
+                            argumentsObject.visibility
+                        );
+                    },
+                    changedText: "Updated the requested view visibility.",
+                    noopText:
+                        "The view was already in the requested visibility state.",
+                });
             }
 
-            this.#runtime.clearViewVisibility(argumentsObject.selector);
-            return {
-                toolCallId: toolCall.callId,
-                text: "Cleared the requested view visibility override.",
-                rejected: false,
-            };
+            return this.#executeViewStateMutation(toolCall, {
+                domain: "user_visibility",
+                field: "visible",
+                selector: argumentsObject.selector,
+                readState: () => view.isVisible(),
+                applyState: () => {
+                    this.#runtime.clearViewVisibility(argumentsObject.selector);
+                },
+                changedText: "Cleared the requested view visibility override.",
+                noopText: "The visibility override was already clear.",
+            });
         }
 
         if (toolCall.name === "submitIntentProgram") {
@@ -1054,6 +1090,43 @@ export class AgentSessionController {
         }
 
         throw new Error("Unsupported planner tool: " + toolCall.name);
+    }
+
+    /**
+     * Executes a state mutation tool and returns a structured summary.
+     *
+     * @param {AgentToolCall} toolCall
+     * @param {{
+     *     domain: AgentViewStateChange["domain"];
+     *     field: AgentViewStateChange["field"];
+     *     selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector;
+     *     readState: () => boolean;
+     *     applyState: () => void;
+     *     changedText: string;
+     *     noopText: string;
+     * }} options
+     * @returns {ToolExecutionResult}
+     */
+    #executeViewStateMutation(toolCall, options) {
+        const before = options.readState();
+        options.applyState();
+        const after = options.readState();
+        const changed = before !== after;
+
+        return {
+            toolCallId: toolCall.callId,
+            text: changed ? options.changedText : options.noopText,
+            rejected: false,
+            content: /** @type {AgentViewStateChange} */ ({
+                kind: "view_state_change",
+                domain: options.domain,
+                field: options.field,
+                selector: options.selector,
+                before,
+                after,
+                changed,
+            }),
+        };
     }
 
     /**

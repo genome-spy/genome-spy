@@ -9,6 +9,8 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  *     validateIntentProgram: ReturnType<typeof vi.fn>;
  *     submitIntentProgram: ReturnType<typeof vi.fn>;
  *     resolveViewSelector: ReturnType<typeof vi.fn>;
+ *     setViewVisibility: ReturnType<typeof vi.fn>;
+ *     clearViewVisibility: ReturnType<typeof vi.fn>;
  *     summarizeExecutionResult: ReturnType<typeof vi.fn>;
  *     summarizeIntentProgram: ReturnType<typeof vi.fn>;
  * }}
@@ -18,7 +20,9 @@ function createRuntimeMock() {
         requestPlan: vi.fn(),
         validateIntentProgram: vi.fn(),
         submitIntentProgram: vi.fn(),
-        resolveViewSelector: vi.fn(() => ({})),
+        resolveViewSelector: vi.fn(() => ({
+            isVisible: vi.fn(() => true),
+        })),
         setViewVisibility: vi.fn(),
         clearViewVisibility: vi.fn(),
         summarizeExecutionResult: vi.fn(),
@@ -204,6 +208,18 @@ describe("createAgentSessionController", () => {
                 kind: "tool_result",
                 text: "Expanded the requested view branch.",
                 toolCallId: "call-1",
+                content: {
+                    kind: "view_state_change",
+                    domain: "agent_context",
+                    field: "collapsed",
+                    selector: {
+                        scope: [],
+                        view: "collapsed-track",
+                    },
+                    before: false,
+                    after: true,
+                    changed: true,
+                },
             },
         ]);
         expect(
@@ -217,11 +233,165 @@ describe("createAgentSessionController", () => {
         expect(controller.getSnapshot().messages[2]).toMatchObject({
             kind: "tool_result",
             text: "Expanded the requested view branch.",
+            content: {
+                kind: "view_state_change",
+                domain: "agent_context",
+                field: "collapsed",
+                selector: {
+                    scope: [],
+                    view: "collapsed-track",
+                },
+                before: false,
+                after: true,
+                changed: true,
+            },
         });
         expect(controller.getSnapshot().messages[3]).toMatchObject({
             kind: "assistant",
             text: "The collapsed track is a heatmap of copy number changes.",
         });
+    });
+
+    it("returns structured mutation results for visibility tools", async () => {
+        const runtime = createRuntimeMock();
+        let visible = false;
+        const resolvedView = {
+            isVisible: vi.fn(() => visible),
+        };
+        runtime.resolveViewSelector.mockReturnValue(resolvedView);
+        runtime.setViewVisibility.mockImplementation((selector, visibility) => {
+            visible = visibility;
+        });
+        runtime.clearViewVisibility.mockImplementation(() => {});
+
+        const controller = createAgentSessionController(runtime);
+
+        const results = await controller.executeToolCalls([
+            {
+                callId: "call-visibility",
+                name: "setViewVisibility",
+                arguments: {
+                    selector: {
+                        scope: [],
+                        view: "reference-sequence",
+                    },
+                    visibility: true,
+                },
+            },
+        ]);
+
+        expect(results).toEqual([
+            expect.objectContaining({
+                rejected: false,
+                text: "Updated the requested view visibility.",
+                content: {
+                    kind: "view_state_change",
+                    domain: "user_visibility",
+                    field: "visible",
+                    selector: {
+                        scope: [],
+                        view: "reference-sequence",
+                    },
+                    before: false,
+                    after: true,
+                    changed: true,
+                },
+            }),
+        ]);
+
+        expect(controller.getSnapshot().messages).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    kind: "tool_result",
+                    toolCallId: "call-visibility",
+                    text: "Updated the requested view visibility.",
+                    content: {
+                        kind: "view_state_change",
+                        domain: "user_visibility",
+                        field: "visible",
+                        selector: {
+                            scope: [],
+                            view: "reference-sequence",
+                        },
+                        before: false,
+                        after: true,
+                        changed: true,
+                    },
+                }),
+            ])
+        );
+
+        await controller.executeToolCalls([
+            {
+                callId: "call-visibility-noop",
+                name: "clearViewVisibility",
+                arguments: {
+                    selector: {
+                        scope: [],
+                        view: "reference-sequence",
+                    },
+                },
+            },
+        ]);
+
+        expect(controller.getSnapshot().messages).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    kind: "tool_result",
+                    toolCallId: "call-visibility-noop",
+                    text: "The visibility override was already clear.",
+                    content: {
+                        kind: "view_state_change",
+                        domain: "user_visibility",
+                        field: "visible",
+                        selector: {
+                            scope: [],
+                            view: "reference-sequence",
+                        },
+                        before: true,
+                        after: true,
+                        changed: false,
+                    },
+                }),
+            ])
+        );
+    });
+
+    it("returns a structured no-op result when collapsing an already collapsed branch", async () => {
+        const runtime = createRuntimeMock();
+        const controller = createAgentSessionController(runtime);
+
+        const results = await controller.executeToolCalls([
+            {
+                callId: "call-collapse",
+                name: "collapseViewNode",
+                arguments: {
+                    selector: {
+                        scope: [],
+                        view: "reference-sequence",
+                    },
+                },
+            },
+        ]);
+
+        expect(results).toEqual([
+            expect.objectContaining({
+                rejected: false,
+                text: "The requested view branch was already collapsed.",
+                content: {
+                    kind: "view_state_change",
+                    domain: "agent_context",
+                    field: "collapsed",
+                    selector: {
+                        scope: [],
+                        view: "reference-sequence",
+                    },
+                    before: false,
+                    after: false,
+                    changed: false,
+                },
+            }),
+        ]);
     });
 
     it("queues input during preflight and drains it after preflight succeeds", async () => {
