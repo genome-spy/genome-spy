@@ -68,10 +68,12 @@ export function buildViewTree(app, options = {}) {
         }
 
         const node = summarizeViewNode(rootView, view, hasStructuralRoot);
+        const canCollapse = node.selector !== undefined;
         if (
-            (shouldCollapseView(view, focusView, focusBranch) &&
+            canCollapse &&
+            ((shouldCollapseView(view, focusView, focusBranch) &&
                 !isExpandedView(view, expandedViewNodeKeys)) ||
-            node.visible === false
+                node.visible === false)
         ) {
             node.collapsed = true;
             const childCount = getChildCount(view);
@@ -316,7 +318,7 @@ function summarizeViewNode(root, view, hasStructuralRoot) {
                 ? undefined
                 : getViewSelectorOrUndefined(view),
         markType: getMarkType(view),
-        visible: visible === false ? false : undefined,
+        visible,
         data: summarizeDataSpec(spec.data),
         encodings: /** @type {import("./types.d.ts").AgentViewEncodings} */ (
             type === "unit"

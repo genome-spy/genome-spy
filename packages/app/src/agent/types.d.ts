@@ -348,7 +348,7 @@ export interface AgentViewNode {
     /**
      * Whether the view is currently visible according to the app state.
      */
-    visible?: boolean;
+    visible: boolean;
 
     /**
      * Whether the node is a compressed hidden branch rather than a fully

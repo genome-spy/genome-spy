@@ -303,6 +303,7 @@ describe("buildViewTree", () => {
                 title: "Visualization root",
                 description: "Top-level visualization.\nIncludes samples.",
                 selector: undefined,
+                visible: true,
             })
         );
         expect(tree.root).not.toHaveProperty("encodings");
@@ -313,6 +314,7 @@ describe("buildViewTree", () => {
                 type: "layer",
                 name: "ideogram-track",
                 title: "Chromosome Ideogram",
+                visible: true,
                 collapsed: true,
                 childCount: 1,
                 selector: {
@@ -349,6 +351,7 @@ describe("buildViewTree", () => {
                 name: "samples",
                 title: "Samples",
                 description: "Top-level sample view.",
+                visible: true,
                 selector: {
                     scope: [],
                     view: "samples",
@@ -501,6 +504,7 @@ describe("buildViewTree", () => {
                 name: "annotation-track",
                 title: "Annotation track",
                 description: "Collapsed sibling of the focused sample view.",
+                visible: true,
                 collapsed: true,
                 childCount: 1,
                 selector: {
@@ -610,5 +614,50 @@ describe("buildViewTree", () => {
             "collapsed"
         );
         expect(tree.root.children[0].children[1].children).toHaveLength(1);
+    });
+
+    it("keeps non-addressable branches expanded by default", () => {
+        const anonymousBranch = createMockView({
+            title: "Anonymous branch",
+            spec: {
+                layer: [],
+            },
+            children: [
+                createMockView({
+                    title: "Anonymous leaf",
+                    spec: {
+                        mark: "rule",
+                    },
+                }),
+            ],
+        });
+
+        const root = createMockView({
+            name: "samples",
+            title: "Samples",
+            constructorName: "SampleView",
+            spec: {
+                data: {
+                    name: "samples",
+                },
+            },
+            children: [anonymousBranch],
+        });
+
+        const tree = buildViewTree({
+            getSampleView: () => root,
+            genomeSpy: {
+                spec: {},
+                viewRoot: root,
+            },
+        });
+
+        expect(tree.root.children[0]).toMatchObject({
+            title: "Anonymous branch",
+            selector: undefined,
+            visible: true,
+        });
+        expect(tree.root.children[0]).not.toHaveProperty("collapsed");
+        expect(tree.root.children[0].children).toHaveLength(1);
     });
 });
