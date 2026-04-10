@@ -293,6 +293,7 @@ describe("getAgentContext", () => {
             "collapseViewNode",
             "setViewVisibility",
             "clearViewVisibility",
+            "resolveSelectionAggregationCandidate",
             "submitIntentProgram",
         ]);
         expect(context.selectionAggregation.fields).toEqual([]);

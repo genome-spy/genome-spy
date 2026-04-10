@@ -5,6 +5,7 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 ## Code References
 - Context/tool assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
 - Selection and field discovery: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
+- Selection aggregation resolver: [`selectionAggregationTool.js`](../src/agent/selectionAggregationTool.js)
 - Action validation and execution: [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Action summaries: [`actionCatalog.js`](../src/agent/actionCatalog.js)
 - Agent entry point: [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
@@ -20,6 +21,11 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 - `submitIntentProgram(program)`
   - Implemented in [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js).
   - Validates and executes a batch through `IntentPipeline.submit(actions)`.
+
+- `resolveSelectionAggregationCandidate(candidateId, aggregation)`
+  - Implemented in [`selectionAggregationTool.js`](../src/agent/selectionAggregationTool.js).
+  - Resolves a planner-visible selection aggregation row into the canonical
+    attribute identifier and a short preview.
 
 - `toolCatalog`
   - Generated from [`toolSchemaContract.ts`](../src/agent/toolSchemaContract.ts)

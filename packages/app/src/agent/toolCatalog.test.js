@@ -16,15 +16,17 @@ describe("toolCatalog", () => {
             "collapseViewNode",
             "setViewVisibility",
             "clearViewVisibility",
+            "resolveSelectionAggregationCandidate",
             "submitIntentProgram",
         ]);
-        expect(tools[4].strict).toBe(false);
+        expect(tools[4].strict).toBe(true);
+        expect(tools[5].strict).toBe(false);
     });
 
     it("builds Responses API function tool definitions", () => {
         const toolDefinitions = buildResponsesToolDefinitions();
 
-        expect(toolDefinitions).toHaveLength(5);
+        expect(toolDefinitions).toHaveLength(6);
         expect(toolDefinitions[0]).toEqual(
             expect.objectContaining({
                 type: "function",
@@ -42,8 +44,13 @@ describe("toolCatalog", () => {
             })
         );
         expect(toolDefinitions[2].parameters.type).toBe("object");
+        expect(toolDefinitions[4].name).toBe(
+            "resolveSelectionAggregationCandidate"
+        );
         expect(toolDefinitions[4].parameters.type).toBe("object");
-        expect(toolDefinitions[4].strict).toBe(false);
+        expect(toolDefinitions[4].strict).toBe(true);
+        expect(toolDefinitions[5].parameters.type).toBe("object");
+        expect(toolDefinitions[5].strict).toBe(false);
     });
 
     it("validates tool arguments against the generated schema", () => {

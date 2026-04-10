@@ -1057,44 +1057,6 @@
           },
           "required": ["actionType", "payload"],
           "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
-              "const": "viewSettings/setVisibility",
-              "type": "string"
-            },
-            "payload": {
-              "additionalProperties": false,
-              "properties": {
-                "key": {
-                  "type": "string"
-                },
-                "visibility": {
-                  "type": "boolean"
-                }
-              },
-              "required": ["key", "visibility"],
-              "type": "object"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
-              "const": "viewSettings/restoreDefaultVisibility",
-              "type": "string"
-            },
-            "payload": {
-              "type": "string"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
         }
       ]
     },
@@ -1111,6 +1073,9 @@
         "expandViewNode": {
           "$ref": "#/definitions/ExpandViewNodeToolInput"
         },
+        "resolveSelectionAggregationCandidate": {
+          "$ref": "#/definitions/ResolveSelectionAggregationCandidateToolInput"
+        },
         "setViewVisibility": {
           "$ref": "#/definitions/SetViewVisibilityToolInput"
         },
@@ -1123,9 +1088,15 @@
         "collapseViewNode",
         "setViewVisibility",
         "clearViewVisibility",
+        "resolveSelectionAggregationCandidate",
         "submitIntentProgram"
       ],
       "type": "object"
+    },
+    "AggregationOp": {
+      "description": "Aggregation operators supported by interval-based attribute access.",
+      "enum": ["min", "max", "weightedMean", "variance", "count"],
+      "type": "string"
     },
     "ClearViewVisibilityToolInput": {
       "additionalProperties": false,
@@ -1226,6 +1197,28 @@
       "required": ["selector"],
       "type": "object"
     },
+    "ResolveSelectionAggregationCandidateToolInput": {
+      "additionalProperties": false,
+      "description": "Resolve a selection aggregation candidate into the canonical attribute and a short preview.",
+      "examples": [
+        {
+          "aggregation": "max",
+          "candidateId": "brush@beta-values:beta"
+        }
+      ],
+      "properties": {
+        "aggregation": {
+          "$ref": "#/definitions/AggregationOp",
+          "description": "Aggregation op to apply to the candidate field."
+        },
+        "candidateId": {
+          "description": "Stable identifier for the selected candidate row.",
+          "type": "string"
+        }
+      },
+      "required": ["candidateId", "aggregation"],
+      "type": "object"
+    },
     "SetViewVisibilityToolInput": {
       "additionalProperties": false,
       "description": "Set the configured visibility of a view.",
@@ -1233,7 +1226,7 @@
         {
           "selector": {
             "scope": [],
-            "view": "track"
+            "view": "reference-sequence"
           },
           "visibility": false
         }
@@ -1266,12 +1259,22 @@
     },
     "SubmitIntentProgramToolInput": {
       "additionalProperties": false,
-      "description": "Execute a provenance-changing intent program.",
+      "description": "Execute a provenance-changing intent program with one or more ordered steps.",
       "examples": [
         {
           "program": {
             "schemaVersion": 1,
-            "steps": []
+            "steps": [
+              {
+                "actionType": "sampleView/groupToQuartiles",
+                "payload": {
+                  "attribute": {
+                    "specifier": "age",
+                    "type": "SAMPLE_ATTRIBUTE"
+                  }
+                }
+              }
+            ]
           }
         }
       ],

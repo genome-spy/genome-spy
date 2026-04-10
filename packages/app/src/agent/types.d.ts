@@ -3,6 +3,7 @@ import {
     AttributeIdentifierType,
 } from "../sampleView/types.js";
 import { ParamSelector } from "../sampleView/sampleViewTypes.js";
+import type { AggregationOp } from "../sampleView/types.d.ts";
 import type {
     AgentActionType as GeneratedAgentActionType,
     AgentIntentProgramStep as GeneratedAgentIntentProgramStep,
@@ -739,6 +740,56 @@ export interface AgentSelectionAggregationContext {
      * Aggregatable fields for the active selections.
      */
     fields: AgentViewFieldSummary[];
+}
+
+/**
+ * Result of resolving a selection aggregation candidate.
+ */
+export interface SelectionAggregationResolution {
+    /**
+     * Content discriminator.
+     */
+    kind: "selection_aggregation_resolution";
+
+    /**
+     * Stable candidate identifier.
+     */
+    candidateId: string;
+
+    /**
+     * Aggregation op that was chosen.
+     */
+    aggregation: AggregationOp;
+
+    /**
+     * Structured selector for the resolved view.
+     */
+    viewSelector: ViewSelector;
+
+    /**
+     * Structured selector for the resolved selection.
+     */
+    selectionSelector: ParamSelector;
+
+    /**
+     * Field name being aggregated.
+     */
+    field: string;
+
+    /**
+     * Canonical attribute identifier.
+     */
+    attribute: AttributeIdentifier;
+
+    /**
+     * Short title for preview or confirmation.
+     */
+    title: string;
+
+    /**
+     * Short description for preview or confirmation.
+     */
+    description: string;
 }
 
 /**

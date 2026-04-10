@@ -87,6 +87,30 @@
     "strict": true
   },
   {
+    "toolName": "resolveSelectionAggregationCandidate",
+    "description": "Resolve a selection aggregation candidate into the canonical attribute and a short preview.",
+    "inputType": "ResolveSelectionAggregationCandidateToolInput",
+    "inputFields": [
+      {
+        "name": "candidateId",
+        "type": "string",
+        "description": "Stable identifier for the selected candidate row.",
+        "required": true
+      },
+      {
+        "name": "aggregation",
+        "type": "AggregationOp",
+        "description": "Aggregation op to apply to the candidate field.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "candidateId": "brush@beta-values:beta",
+      "aggregation": "max"
+    },
+    "strict": true
+  },
+  {
     "toolName": "submitIntentProgram",
     "description": "Execute a provenance-changing intent program with one or more ordered steps.",
     "inputType": "SubmitIntentProgramToolInput",

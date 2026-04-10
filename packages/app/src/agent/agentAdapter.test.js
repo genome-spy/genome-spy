@@ -171,6 +171,11 @@ function createControllerRuntimeMock() {
         requestPlan: vi.fn(),
         validateIntentProgram: vi.fn(),
         submitIntentProgram: vi.fn(),
+        getAgentContext: vi.fn(() => ({
+            selectionAggregation: {
+                fields: [],
+            },
+        })),
         resolveViewSelector: vi.fn(() => ({})),
         setViewVisibility: vi.fn(),
         clearViewVisibility: vi.fn(),

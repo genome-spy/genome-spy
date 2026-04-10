@@ -4,6 +4,7 @@ import {
     formatToolCallRejection,
     validateToolArgumentsShape,
 } from "./toolCatalog.js";
+import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool.js";
 import {
     MAX_REJECTED_TOOL_CALL_RETRIES,
     MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
@@ -17,6 +18,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
 /** @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine */
 /** @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult */
 /** @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions */
+/** @typedef {import("./types.d.ts").AgentContext} AgentContext */
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
 /** @typedef {import("./types.d.ts").AgentViewStateChange} AgentViewStateChange */
 /** @typedef {import("./types.d.ts").PlanResponse | {
@@ -102,6 +104,7 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  *     ): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
+ *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
  *     resolveViewSelector(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
  *     setViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector, visibility: boolean): void;
  *     clearViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): void;
@@ -1074,6 +1077,58 @@ export class AgentSessionController {
                 content: intentProgramResult.content,
                 rejected: false,
             };
+        }
+
+        if (toolCall.name === "resolveSelectionAggregationCandidate") {
+            let context;
+            try {
+                context = this.#runtime.getAgentContext?.();
+            } catch (error) {
+                return {
+                    toolCallId: toolCall.callId,
+                    text: formatToolCallRejection(toolCall.name, [
+                        String(error),
+                    ]),
+                    rejected: true,
+                };
+            }
+
+            if (!context) {
+                return {
+                    toolCallId: toolCall.callId,
+                    text: formatToolCallRejection(toolCall.name, [
+                        "Planner context is not available.",
+                    ]),
+                    rejected: true,
+                };
+            }
+
+            try {
+                const resolution = resolveSelectionAggregationCandidate(
+                    context,
+                    argumentsObject.candidateId,
+                    argumentsObject.aggregation
+                );
+                return {
+                    toolCallId: toolCall.callId,
+                    text:
+                        "Resolved " +
+                        resolution.title +
+                        " for " +
+                        argumentsObject.candidateId +
+                        ".",
+                    rejected: false,
+                    content: resolution,
+                };
+            } catch (error) {
+                return {
+                    toolCallId: toolCall.callId,
+                    text: formatToolCallRejection(toolCall.name, [
+                        String(error),
+                    ]),
+                    rejected: true,
+                };
+            }
         }
 
         throw new Error("Unsupported planner tool: " + toolCall.name);

@@ -1,4 +1,5 @@
 import type { AgentIntentProgram } from "./schemaContract.js";
+import type { AggregationOp } from "../sampleView/types.d.ts";
 
 type ViewSelector = {
     scope: string[];
@@ -84,6 +85,28 @@ export interface ClearViewVisibilityToolInput {
 }
 
 /**
+ * Resolve a selection aggregation candidate into the canonical attribute and
+ * a short preview.
+ *
+ * @example
+ * {
+ *   "candidateId": "brush@beta-values:beta",
+ *   "aggregation": "max"
+ * }
+ */
+export interface ResolveSelectionAggregationCandidateToolInput {
+    /**
+     * Stable identifier for the selected candidate row.
+     */
+    candidateId: string;
+
+    /**
+     * Aggregation op to apply to the candidate field.
+     */
+    aggregation: AggregationOp;
+}
+
+/**
  * Execute a provenance-changing intent program with one or more ordered steps.
  *
  * @example
@@ -119,5 +142,6 @@ export interface AgentToolInputs {
     collapseViewNode: CollapseViewNodeToolInput;
     setViewVisibility: SetViewVisibilityToolInput;
     clearViewVisibility: ClearViewVisibilityToolInput;
+    resolveSelectionAggregationCandidate: ResolveSelectionAggregationCandidateToolInput;
     submitIntentProgram: SubmitIntentProgramToolInput;
 }

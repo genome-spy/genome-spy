@@ -17,6 +17,7 @@ descriptor can drive multiple consumers.
 - Aggregated value accessors: [`attributeAccessors.js`](../src/sampleView/attributeAggregation/attributeAccessors.js)
 - Derived metadata intent builder: [`deriveMetadataUtils.js`](../src/sampleView/metadata/deriveMetadataUtils.js)
 - Agent-facing selection context: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
+- Selection-aggregation resolver tool: [`selectionAggregationTool.js`](../src/agent/selectionAggregationTool.js)
 - Local agent execution: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 
 ## Status
@@ -26,6 +27,8 @@ descriptor can drive multiple consumers.
     and reused by the context menu and the agent context.
   - The agent context already exposes active interval selections and
     aggregatable fields through `selectionAggregationContext.js`.
+  - `resolveSelectionAggregationCandidate(candidateId, aggregation)` resolves
+    a candidate row into the canonical attribute and a short preview.
   - The canonical `VALUE_AT_LOCUS` builder exists in
     `selectionAggregationAttributes.js`.
   - `buildDerivedMetadataIntent(...)` exists and is used by the derived
@@ -36,14 +39,11 @@ descriptor can drive multiple consumers.
 - Partially implemented:
   - The canonical attribute builder is not yet wired into the live derived
     metadata flow.
-  - There is no dedicated resolver tool yet for
-    `selectionSelector + candidateId + aggregation -> canonical attribute`.
   - The agent-facing context is still a snapshot, not a resolver workflow.
 
 - Still to do:
   - Wire the shared attribute builder into the live consumer path where it
     should be reused.
-  - Add the resolver tool and keep it thin.
   - Add coverage for the resolver path and its reuse in downstream consumers.
 
 ## Why this exists
@@ -74,8 +74,8 @@ From the agent's point of view, these requests mean:
 2. Determine whether the interval is already represented by an active selection
    or needs one.
 3. Ask for or inspect the current aggregation candidates.
-4. Choose a selection selector, view selector, field, and aggregation op.
-5. Let the app build the canonical aggregated `AttributeIdentifier`.
+4. Choose the matching candidate row and an aggregation op.
+5. Resolve that row into the canonical aggregated `AttributeIdentifier`.
 6. Reuse that attribute for metadata, sorting, filtering, or plotting.
 
 The agent should not need to invent the full nested reducer payload by hand.
@@ -109,15 +109,17 @@ What is available today:
     `sampleView/deriveMetadata`.
   - `paramProvenance/expandPointSelection` exists, but it is for point
     selections and is not part of the interval-selection flow.
+- `resolveSelectionAggregationCandidate` resolves a candidate row into the
+  canonical attribute preview.
+  - It takes `candidateId` and `aggregation`.
+  - It returns the canonical `VALUE_AT_LOCUS` attribute plus a short preview.
 - `expandViewNode` / `collapseViewNode` are separate agent-context tools.
   - They are useful for the view tree, not for selection aggregation.
 
 What is still missing:
 
-- A dedicated resolver that turns `selectionSelector + candidateId + aggregation`
-  into the canonical aggregated `AttributeIdentifier`.
-- A dedicated selection-aggregation tool that returns the canonical attribute
-  preview without requiring the agent to author the nested payload itself.
+- Wiring the resolved attribute into the live derived-metadata flow where that
+  helper is reused outside the planner surface.
 
 ## Revision During Implementation
 
@@ -209,18 +211,14 @@ Prefer a small read-only tool that returns structured candidates:
 The agent can then choose a candidate and an aggregation op. App code should
 materialize the final attribute identifier and any derived metadata action.
 
-The second tool should be a resolver, not a parallel workflow engine. Its job
-is to map one selected candidate + aggregation op into the canonical
-aggregated `AttributeIdentifier` that the app already understands.
+The resolver tool should map one selected candidate row + aggregation op into
+the canonical aggregated `AttributeIdentifier` that the app already
+understands.
 
 Suggested resolver shape:
 
 ```json
 {
-  "selectionSelector": {
-    "scope": [],
-    "param": "brush"
-  },
   "candidateId": "brush@beta-values:beta",
   "aggregation": "max"
 }
@@ -257,10 +255,8 @@ Suggested resolver result:
 
 The resolver should not build the final `deriveMetadata` action. It should only
 produce the reusable attribute descriptor and a short preview. The structured
-attribute should come from app code, but the short natural-language preview can
-be LLM-authored if that is easier and produces better wording. Downstream
-consumers can then turn that descriptor into derived metadata, sort keys,
-filters, or plotting encodings.
+attribute should come from app code. Downstream consumers can then turn that
+descriptor into derived metadata, sort keys, filters, or plotting encodings.
 
 ## Proposed App Helpers
 

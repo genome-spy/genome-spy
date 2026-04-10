@@ -34,6 +34,7 @@ describe("generateAgentToolCatalog", () => {
             "collapseViewNode",
             "setViewVisibility",
             "clearViewVisibility",
+            "resolveSelectionAggregationCandidate",
             "submitIntentProgram",
         ]);
         expect(new Set(toolNames).size).toBe(toolNames.length);

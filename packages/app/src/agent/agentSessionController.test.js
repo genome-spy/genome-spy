@@ -8,6 +8,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  *     requestPlan: ReturnType<typeof vi.fn>;
  *     validateIntentProgram: ReturnType<typeof vi.fn>;
  *     submitIntentProgram: ReturnType<typeof vi.fn>;
+ *     getAgentContext: ReturnType<typeof vi.fn>;
  *     resolveViewSelector: ReturnType<typeof vi.fn>;
  *     setViewVisibility: ReturnType<typeof vi.fn>;
  *     clearViewVisibility: ReturnType<typeof vi.fn>;
@@ -20,6 +21,11 @@ function createRuntimeMock() {
         requestPlan: vi.fn(),
         validateIntentProgram: vi.fn(),
         submitIntentProgram: vi.fn(),
+        getAgentContext: vi.fn(() => ({
+            selectionAggregation: {
+                fields: [],
+            },
+        })),
         resolveViewSelector: vi.fn(() => ({
             isVisible: vi.fn(() => true),
         })),
@@ -576,6 +582,86 @@ describe("createAgentSessionController", () => {
                     after: false,
                     changed: false,
                 },
+            }),
+        ]);
+    });
+
+    it("resolves a selection aggregation candidate into the canonical attribute", async () => {
+        const runtime = createRuntimeMock();
+        runtime.getAgentContext.mockReturnValue({
+            selectionAggregation: {
+                fields: [
+                    {
+                        candidateId: "brush@track:beta",
+                        view: "track",
+                        viewSelector: {
+                            scope: [],
+                            view: "track",
+                        },
+                        field: "beta",
+                        dataType: "quantitative",
+                        selectionSelector: {
+                            scope: [],
+                            param: "brush",
+                        },
+                        supportedAggregations: [
+                            "count",
+                            "min",
+                            "max",
+                            "weightedMean",
+                            "variance",
+                        ],
+                    },
+                ],
+            },
+        });
+
+        const controller = createAgentSessionController(runtime);
+        const results = await controller.executeToolCalls([
+            {
+                callId: "call-resolve",
+                name: "resolveSelectionAggregationCandidate",
+                arguments: {
+                    candidateId: "brush@track:beta",
+                    aggregation: "max",
+                },
+            },
+        ]);
+
+        expect(runtime.getAgentContext).toHaveBeenCalledTimes(1);
+        expect(results).toEqual([
+            expect.objectContaining({
+                rejected: false,
+                text: "Resolved max(beta) for brush@track:beta.",
+                content: expect.objectContaining({
+                    kind: "selection_aggregation_resolution",
+                    candidateId: "brush@track:beta",
+                    aggregation: "max",
+                    field: "beta",
+                    title: "max(beta)",
+                    description:
+                        "Aggregated beta values over the brush selection",
+                    attribute: expect.objectContaining({
+                        type: "VALUE_AT_LOCUS",
+                        specifier: expect.objectContaining({
+                            view: {
+                                scope: [],
+                                view: "track",
+                            },
+                            field: "beta",
+                            interval: {
+                                type: "selection",
+                                selector: {
+                                    scope: [],
+                                    param: "brush",
+                                },
+                            },
+                            aggregation: {
+                                op: "max",
+                            },
+                        }),
+                    }),
+                }),
             }),
         ]);
     });
