@@ -72,6 +72,8 @@
 
 ## Action + State Context
 - See [`action-schema.md`](./action-schema.md) for the proposed action/provenance schema.
+- See [`selection-aggregation-workflow.md`](./selection-aggregation-workflow.md)
+  for the interval-selection-to-aggregated-attribute flow.
 
 ## Data Access Policy
 - See [`infrastructure.md`](./infrastructure.md) for the public-data vs controlled-access policy and the LLM transport safeguards.
