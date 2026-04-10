@@ -86,6 +86,7 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  *     refreshPreflight(): Promise<void>;
  *     expandViewNode?(selector: any): void;
  *     collapseViewNode?(selector: any): void;
+ *     stopCurrentTurn?(): void;
  *     executeToolCalls?(
  *         toolCalls: AgentToolCall[]
  *     ): Promise<ToolExecutionResult[]>;
@@ -690,10 +691,11 @@ export default class AgentChatPanel extends LitElement {
                             <button
                                 type="submit"
                                 ?disabled=${!this.controller ||
-                                this.draft.trim().length === 0}
+                                (!this.#hasActiveLoop() &&
+                                    this.draft.trim().length === 0)}
                                 class="btn btn-primary"
                             >
-                                Send
+                                ${this.#hasActiveLoop() ? "Stop" : "Send"}
                             </button>
                         </div>
 
@@ -900,6 +902,13 @@ ${this.#formatToolArguments(toolCall.arguments)}</pre
     }
 
     /**
+     * @returns {boolean}
+     */
+    #hasActiveLoop() {
+        return this.#hasActiveStream() || this.snapshot.pendingRequest !== null;
+    }
+
+    /**
      * @param {ChatSessionSnapshot} snapshot
      * @returns {import("lit").TemplateResult}
      */
@@ -978,6 +987,11 @@ ${this.#formatToolArguments(toolCall.arguments)}</pre
      */
     #handleSubmit = (event) => {
         event.preventDefault();
+        if (this.#hasActiveLoop()) {
+            this.controller?.stopCurrentTurn?.();
+            return;
+        }
+
         void this.#submitMessage(this.draft);
     };
 

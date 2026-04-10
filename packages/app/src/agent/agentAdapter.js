@@ -180,7 +180,8 @@ export function createAgentAdapter(app) {
  *   history?: Array<string | AgentConversationMessage>,
  *   streamCallbacks?: import("./agentSessionController.js").AgentStreamCallbacks,
  *   allowStreaming?: boolean,
- *   contextOptions?: AgentContextOptions
+ *   contextOptions?: AgentContextOptions,
+ *   signal?: AbortSignal
  * }} options
  * @returns {Promise<{ response: import("./types.js").PlanResponse, trace: Record<string, any> }>}
  */
@@ -194,6 +195,9 @@ async function requestPlan(app, options) {
     const shouldStream =
         options.allowStreaming !== false &&
         shouldUseStreaming(options.streamCallbacks);
+    if (options.signal?.aborted) {
+        throw createAbortError();
+    }
     const requestPayload = {
         message: options.message,
         history,
@@ -246,6 +250,7 @@ async function requestPlan(app, options) {
             ...(shouldStream ? { accept: "text/event-stream" } : {}),
         },
         body: JSON.stringify(requestPayload),
+        signal: options.signal,
     });
     const requestMs = elapsedMilliseconds(requestStartedAt);
 
@@ -306,6 +311,15 @@ async function requestPlan(app, options) {
             },
         };
     }
+}
+
+/**
+ * @returns {Error}
+ */
+function createAbortError() {
+    const error = new Error("Aborted");
+    error.name = "AbortError";
+    return error;
 }
 
 /**

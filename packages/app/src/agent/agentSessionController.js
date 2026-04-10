@@ -95,7 +95,8 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  *         history?: AgentConversationMessage[],
  *         stream?: AgentStreamCallbacks,
  *         allowStreaming?: boolean,
- *         contextOptions?: AgentContextOptions
+ *         contextOptions?: AgentContextOptions,
+ *         signal?: AbortSignal
  *     ): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
@@ -191,6 +192,10 @@ export class AgentSessionController {
         this.#activeTurn = null;
         /** @type {Set<string>} */
         this.#expandedViewNodeKeys = new Set();
+        /** @type {AbortController | null} */
+        this.#activeRequestAbortController = null;
+        /** @type {Set<number>} */
+        this.#cancelledTurnIds = new Set();
     }
 
     /** @type {AgentSessionRuntime} */
@@ -225,6 +230,12 @@ export class AgentSessionController {
 
     /** @type {Set<string>} */
     #expandedViewNodeKeys;
+
+    /** @type {AbortController | null} */
+    #activeRequestAbortController;
+
+    /** @type {Set<number>} */
+    #cancelledTurnIds;
 
     /**
      * @param {(snapshot: AgentSessionSnapshot) => void} listener
@@ -368,6 +379,37 @@ export class AgentSessionController {
             this.#expandedViewNodeKeys
         );
         this.#notify();
+    }
+
+    /**
+     * Cancels the current active turn and clears queued work.
+     */
+    stopCurrentTurn() {
+        if (!this.#activeTurn && !this.#state.pendingRequest) {
+            this.#queuedMessages = [];
+            this.#state.queuedMessageCount = 0;
+            this.#state.pendingResponsePlaceholder = "";
+            this.#notify();
+            return;
+        }
+
+        const turnId = this.#activeTurn?.turnId;
+        if (turnId !== undefined) {
+            this.#cancelledTurnIds.add(turnId);
+        }
+
+        this.#activeRequestAbortController?.abort();
+        this.#activeRequestAbortController = null;
+        this.#queuedMessages = [];
+        this.#state.queuedMessageCount = 0;
+        this.#state.pendingRequest = null;
+        this.#state.pendingResponsePlaceholder = "";
+        this.#state.status = "ready";
+        this.#state.lastError = "";
+        this.#resetActiveTurnDraft(turnId ?? -1);
+        this.#clearActiveTurn(turnId ?? -1);
+        this.#notify();
+        void this.#drainQueue();
     }
 
     /**
@@ -518,6 +560,7 @@ export class AgentSessionController {
         this.#notify();
 
         const turnId = this.#beginActiveTurn();
+        this.#activeRequestAbortController = new AbortController();
         const startedAt = now();
 
         try {
@@ -542,9 +585,14 @@ export class AgentSessionController {
                         },
                     },
                     true,
-                    this.#buildContextOptions()
+                    this.#buildContextOptions(),
+                    this.#activeRequestAbortController?.signal
                 );
                 response = requestResult.response;
+
+                if (this.#isTurnCancelled(turnId)) {
+                    return;
+                }
 
                 if (response.type !== "tool_call") {
                     break;
@@ -566,6 +614,9 @@ export class AgentSessionController {
                 const executionResults = await this.executeToolCalls(
                     response.toolCalls
                 );
+                if (this.#isTurnCancelled(turnId)) {
+                    return;
+                }
                 if (this.#state.lastError) {
                     return;
                 }
@@ -628,6 +679,10 @@ export class AgentSessionController {
                 turnId
             );
         } catch (error) {
+            if (this.#isAbortError(error) || this.#isTurnCancelled(turnId)) {
+                return;
+            }
+
             this.#state.pendingResponsePlaceholder = "";
             this.#state.status = "error";
             this.#state.lastError = String(error);
@@ -639,6 +694,8 @@ export class AgentSessionController {
         } finally {
             this.#state.pendingRequest = null;
             this.#state.pendingResponsePlaceholder = "";
+            this.#activeRequestAbortController = null;
+            this.#cancelledTurnIds.delete(turnId);
             this.#clearActiveTurn(turnId);
             this.#notify();
             void this.#drainQueue();
@@ -1044,6 +1101,25 @@ export class AgentSessionController {
         return {
             expandedViewNodeKeys: Array.from(this.#expandedViewNodeKeys),
         };
+    }
+
+    /**
+     * @param {number} turnId
+     * @returns {boolean}
+     */
+    #isTurnCancelled(turnId) {
+        return this.#cancelledTurnIds.has(turnId);
+    }
+
+    /**
+     * @param {unknown} error
+     * @returns {boolean}
+     */
+    #isAbortError(error) {
+        return (
+            (error instanceof DOMException && error.name === "AbortError") ||
+            (error instanceof Error && error.name === "AbortError")
+        );
     }
 
     /**

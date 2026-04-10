@@ -849,7 +849,8 @@ export interface AgentAdapter {
         history?: AgentConversationMessage[],
         streamCallbacks?: AgentStreamCallbacks,
         allowStreaming?: boolean,
-        contextOptions?: AgentContextOptions
+        contextOptions?: AgentContextOptions,
+        signal?: AbortSignal
     ): Promise<{ response: PlanResponse; trace: Record<string, any> }>;
 
     /**

@@ -612,4 +612,78 @@ describe("createAgentSessionController", () => {
             ])
         );
     });
+
+    it("cancels the active turn and ignores late planner responses", async () => {
+        const runtime = createRuntimeMock();
+        let resolvePlan;
+        /** @type {AbortSignal | undefined} */
+        let observedSignal;
+        runtime.requestPlan.mockImplementation(
+            (
+                message,
+                history,
+                stream,
+                allowStreaming,
+                contextOptions,
+                signal
+            ) => {
+                if (message === PREFLIGHT_MESSAGE) {
+                    return Promise.resolve({
+                        response: {
+                            type: "answer",
+                            message: "I'm here",
+                        },
+                        trace: {
+                            totalMs: 9,
+                        },
+                    });
+                }
+
+                observedSignal = signal;
+                return new Promise((resolve) => {
+                    resolvePlan = resolve;
+                });
+            }
+        );
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        const sendPromise = controller.sendMessage(
+            "Show me the highest-purity sample from each patient."
+        );
+
+        expect(controller.getSnapshot().status).toBe("thinking");
+        controller.stopCurrentTurn();
+        expect(observedSignal?.aborted).toBe(true);
+        expect(controller.getSnapshot()).toEqual(
+            expect.objectContaining({
+                status: "ready",
+                pendingRequest: null,
+                pendingResponsePlaceholder: "",
+            })
+        );
+
+        resolvePlan?.({
+            response: {
+                type: "answer",
+                message: "Still here.",
+            },
+            trace: {
+                totalMs: 11,
+            },
+        });
+        await sendPromise;
+
+        const snapshot = controller.getSnapshot();
+        expect(snapshot.status).toBe("ready");
+        expect(snapshot.lastError).toBe("");
+        expect(snapshot.messages).toEqual([
+            expect.objectContaining({
+                kind: "user",
+                text: "Show me the highest-purity sample from each patient.",
+            }),
+        ]);
+    });
 });
