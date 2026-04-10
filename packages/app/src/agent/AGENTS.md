@@ -10,6 +10,7 @@ current visualization state and propose actions. The project is still in early s
 - A separate server application, which communicates with the LLM, is implemented in Python and doesn't live in this monorepo.
 - Any schemas or metadata needed for the agent should be generated from the app's existing sources of truth where possible, rather than hand-maintained. For example, action schemas can be generated from the Redux slice definitions and JSDoc comments.
 - `generated*.(json|ts)` files are generated artifacts that should not be manually edited.
+- When changing a source contract that feeds generation, regenerate the corresponding `generated*` artifacts before finishing the change. This includes tool catalog/schema files and action schema/type files.
 
 ## Code organization
 

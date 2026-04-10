@@ -16,7 +16,8 @@
         "scope": [],
         "view": "track"
       }
-    }
+    },
+    "strict": true
   },
   {
     "toolName": "collapseViewNode",
@@ -35,7 +36,8 @@
         "scope": [],
         "view": "track"
       }
-    }
+    },
+    "strict": true
   },
   {
     "toolName": "setViewVisibility",
@@ -61,7 +63,8 @@
         "view": "reference-sequence"
       },
       "visibility": false
-    }
+    },
+    "strict": true
   },
   {
     "toolName": "clearViewVisibility",
@@ -80,7 +83,8 @@
         "scope": [],
         "view": "track"
       }
-    }
+    },
+    "strict": true
   },
   {
     "toolName": "submitIntentProgram",
@@ -99,6 +103,7 @@
         "schemaVersion": 1,
         "steps": []
       }
-    }
+    },
+    "strict": false
   }
 ]

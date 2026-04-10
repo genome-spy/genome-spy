@@ -48,6 +48,7 @@ def build_responses_tool_definitions() -> list[dict[str, Any]]:
         tool_name = entry.get("toolName")
         input_type = entry.get("inputType")
         description = entry.get("description")
+        strict = entry.get("strict")
 
         if not isinstance(tool_name, str) or not isinstance(input_type, str):
             raise ValueError("Generated tool catalog entry is missing names.")
@@ -55,6 +56,11 @@ def build_responses_tool_definitions() -> list[dict[str, Any]]:
         if not isinstance(description, str):
             raise ValueError(
                 "Generated tool catalog entry is missing a description."
+            )
+
+        if not isinstance(strict, bool):
+            raise ValueError(
+                "Generated tool catalog entry is missing a strict flag."
             )
 
         if input_type not in definitions:
@@ -70,7 +76,7 @@ def build_responses_tool_definitions() -> list[dict[str, Any]]:
                 "parameters": _project_schema(
                     definitions[input_type], definitions
                 ),
-                "strict": True,
+                "strict": strict,
             }
         )
 

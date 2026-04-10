@@ -8,7 +8,8 @@ import {
 
 describe("toolCatalog", () => {
     it("exposes the generated planner tools", () => {
-        const toolNames = listAgentTools().map((entry) => entry.toolName);
+        const tools = listAgentTools();
+        const toolNames = tools.map((entry) => entry.toolName);
 
         expect(toolNames).toEqual([
             "expandViewNode",
@@ -17,6 +18,7 @@ describe("toolCatalog", () => {
             "clearViewVisibility",
             "submitIntentProgram",
         ]);
+        expect(tools[4].strict).toBe(false);
     });
 
     it("builds Responses API function tool definitions", () => {
@@ -41,6 +43,7 @@ describe("toolCatalog", () => {
         );
         expect(toolDefinitions[2].parameters.type).toBe("object");
         expect(toolDefinitions[4].parameters.type).toBe("object");
+        expect(toolDefinitions[4].strict).toBe(false);
     });
 
     it("validates tool arguments against the generated schema", () => {

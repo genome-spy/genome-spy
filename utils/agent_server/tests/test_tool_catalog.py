@@ -17,3 +17,4 @@ def test_build_responses_tool_definitions_reads_generated_contract() -> None:
     assert "AgentIntentProgramStep" not in serialized
     assert tools[0]["parameters"]["type"] == "object"
     assert tools[-1]["parameters"]["type"] == "object"
+    assert tools[-1]["strict"] is False

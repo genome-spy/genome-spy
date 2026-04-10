@@ -100,6 +100,11 @@ export interface AgentToolCatalogEntry {
      * Minimal example payload.
      */
     exampleInput: unknown;
+
+    /**
+     * Whether the Responses API function tool should run in strict mode.
+     */
+    strict?: boolean;
 }
 
 /**

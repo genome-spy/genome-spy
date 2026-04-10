@@ -32,7 +32,7 @@ export function listAgentTools() {
  *     name: string;
  *     description: string;
  *     parameters: Record<string, any>;
- *     strict: true;
+ *     strict: boolean;
  * }>}
  */
 export function buildResponsesToolDefinitions() {
@@ -41,7 +41,7 @@ export function buildResponsesToolDefinitions() {
         name: entry.toolName,
         description: formatToolDescription(entry),
         parameters: getToolParameters(entry.inputType),
-        strict: true,
+        strict: entry.strict !== false,
     }));
 }
 
