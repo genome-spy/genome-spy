@@ -504,7 +504,7 @@ describe("agentAdapter", () => {
         expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
     });
 
-    it("retries once after a rejected tool call and then surfaces the error", async () => {
+    it("stops promptly when the same rejected tool call repeats", async () => {
         const app = createAppStub();
         app.agentSessionController = createAgentSessionController(
             createControllerRuntimeMock()
@@ -563,7 +563,118 @@ describe("agentAdapter", () => {
         expect(retryRequest.history[1].text).toContain('"visibility": false');
         expect(showMessageDialog).toHaveBeenCalledWith(
             expect.stringContaining(
-                "Error: Agent repeated a rejected tool call after validation failure."
+                "Error: Agent repeated the same rejected tool call after validation failure."
+            ),
+            expect.objectContaining({
+                title: "Local Agent Error",
+                type: "error",
+            })
+        );
+    });
+
+    it("allows several varied rejected tool calls before stopping on budget", async () => {
+        const app = createAppStub();
+        app.agentSessionController = createAgentSessionController(
+            createControllerRuntimeMock()
+        );
+        globalThis.window.prompt.mockReturnValueOnce(
+            "I cannot see the reference sequence in the visualization."
+        );
+        globalThis.fetch
+            .mockResolvedValueOnce(
+                createResponse({
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: "call-1",
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true-1",
+                            },
+                        },
+                    ],
+                })
+            )
+            .mockResolvedValueOnce(
+                createResponse({
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: "call-2",
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true-2",
+                            },
+                        },
+                    ],
+                })
+            )
+            .mockResolvedValueOnce(
+                createResponse({
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: "call-3",
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true-3",
+                            },
+                        },
+                    ],
+                })
+            )
+            .mockResolvedValueOnce(
+                createResponse({
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: "call-4",
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true-4",
+                            },
+                        },
+                    ],
+                })
+            )
+            .mockResolvedValueOnce(
+                createResponse({
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: "call-5",
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true-5",
+                            },
+                        },
+                    ],
+                })
+            );
+        showMessageDialog.mockResolvedValue(true);
+
+        const adapter = createAgentAdapter(app);
+        await adapter.runLocalPrompt();
+
+        expect(globalThis.fetch).toHaveBeenCalledTimes(5);
+        expect(showMessageDialog).toHaveBeenCalledWith(
+            expect.stringContaining(
+                "Error: Agent produced too many rejected tool calls without converging."
             ),
             expect.objectContaining({
                 title: "Local Agent Error",

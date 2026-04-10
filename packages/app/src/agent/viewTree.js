@@ -270,6 +270,7 @@ function createUnknownRootNode() {
         name: "unknown",
         title: "Unknown view",
         description: "",
+        visible: false,
         encodings:
             /** @type {import("./types.d.ts").AgentViewEncodings} */ ({}),
         parameterDeclarations:

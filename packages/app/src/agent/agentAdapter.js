@@ -15,6 +15,11 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    MAX_REJECTED_TOOL_CALL_RETRIES,
+    MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
+    serializeToolCallSignature,
+} from "./toolCallLoop.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 const SHOULD_LOG_AGENT_TRACE =
@@ -514,6 +519,8 @@ async function runLocalPrompt(app) {
     let clarificationRounds = 0;
     let toolRounds = 0;
     let rejectedToolCallRounds = 0;
+    let lastRejectedToolCallSignature = "";
+    let repeatedRejectedToolCallRounds = 0;
     let repairedInvalidIntentProgram = false;
 
     try {
@@ -701,10 +708,34 @@ async function runLocalPrompt(app) {
                 }
 
                 if (executionResults.some((result) => result.rejected)) {
+                    const rejectedToolCallSignature =
+                        serializeToolCallSignature(response.toolCalls);
                     rejectedToolCallRounds += 1;
-                    if (rejectedToolCallRounds > 1) {
+                    if (
+                        rejectedToolCallSignature ===
+                        lastRejectedToolCallSignature
+                    ) {
+                        repeatedRejectedToolCallRounds += 1;
+                    } else {
+                        lastRejectedToolCallSignature =
+                            rejectedToolCallSignature;
+                        repeatedRejectedToolCallRounds = 0;
+                    }
+
+                    if (
+                        repeatedRejectedToolCallRounds >=
+                        MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS
+                    ) {
                         throw new Error(
-                            "Agent repeated a rejected tool call after validation failure."
+                            "Agent repeated the same rejected tool call after validation failure."
+                        );
+                    }
+
+                    if (
+                        rejectedToolCallRounds > MAX_REJECTED_TOOL_CALL_RETRIES
+                    ) {
+                        throw new Error(
+                            "Agent produced too many rejected tool calls without converging."
                         );
                     }
                 }

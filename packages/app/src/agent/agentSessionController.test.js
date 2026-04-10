@@ -463,7 +463,7 @@ describe("createAgentSessionController", () => {
         expect(rejectionMessage?.text).toContain("Validation errors:");
     });
 
-    it("retries once after a rejected tool call and then fails on repetition", async () => {
+    it("stops promptly when the same rejected tool call repeats", async () => {
         const runtime = createRuntimeMock();
         let plannerCallCount = 0;
         runtime.requestPlan.mockImplementation((message) => {
@@ -514,7 +514,7 @@ describe("createAgentSessionController", () => {
         expect(runtime.requestPlan).toHaveBeenCalledTimes(3);
         expect(snapshot.status).toBe("error");
         expect(snapshot.lastError).toBe(
-            "The planner repeated a rejected tool call after validation failure."
+            "The planner repeated the same rejected tool call after validation failure."
         );
         expect(snapshot.messages).toEqual(
             expect.arrayContaining([
@@ -526,7 +526,7 @@ describe("createAgentSessionController", () => {
                 }),
                 expect.objectContaining({
                     kind: "error",
-                    text: "The planner repeated a rejected tool call after validation failure.",
+                    text: "The planner repeated the same rejected tool call after validation failure.",
                 }),
             ])
         );
@@ -541,6 +541,75 @@ describe("createAgentSessionController", () => {
         );
         expect(toolResultMessage?.text).toContain(
             "setViewVisibility expects selector (ViewSelector), visibility (boolean)."
+        );
+    });
+
+    it("allows several varied rejected tool calls before stopping on budget", async () => {
+        const runtime = createRuntimeMock();
+        let plannerCallCount = 0;
+        runtime.requestPlan.mockImplementation((message) => {
+            plannerCallCount += 1;
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 9,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: `call-${plannerCallCount}`,
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: `true-${plannerCallCount}`,
+                            },
+                        },
+                    ],
+                },
+                trace: {
+                    totalMs: 10,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage(
+            "I cannot see the reference sequence in the visualization."
+        );
+
+        const snapshot = controller.getSnapshot();
+        expect(runtime.requestPlan).toHaveBeenCalledTimes(6);
+        expect(snapshot.status).toBe("error");
+        expect(snapshot.lastError).toBe(
+            "The planner produced too many rejected tool calls without converging."
+        );
+        expect(snapshot.messages).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    kind: "tool_result",
+                    text: expect.stringContaining(
+                        "Tool call was incorrect and rejected. Correct it before trying again."
+                    ),
+                }),
+                expect.objectContaining({
+                    kind: "error",
+                    text: "The planner produced too many rejected tool calls without converging.",
+                }),
+            ])
         );
     });
 });

@@ -4,6 +4,11 @@ import {
     formatToolCallRejection,
     validateToolArgumentsShape,
 } from "./toolCatalog.js";
+import {
+    MAX_REJECTED_TOOL_CALL_RETRIES,
+    MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
+    serializeToolCallSignature,
+} from "./toolCallLoop.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
@@ -103,8 +108,6 @@ import { parseClarificationMessage } from "./clarificationMessage.js";
  */
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
-const MAX_REJECTED_TOOL_CALL_RETRIES = 1;
-
 /**
  * @returns {number}
  */
@@ -519,6 +522,8 @@ export class AgentSessionController {
 
         try {
             let rejectedToolCallRounds = 0;
+            let lastRejectedToolCallSignature = "";
+            let repeatedRejectedToolCallRounds = 0;
             let response;
             while (true) {
                 const history = this.#buildHistory();
@@ -565,12 +570,42 @@ export class AgentSessionController {
                     return;
                 }
                 if (executionResults.some((result) => result.rejected)) {
+                    const rejectedToolCallSignature =
+                        serializeToolCallSignature(response.toolCalls);
                     rejectedToolCallRounds += 1;
+                    if (
+                        rejectedToolCallSignature ===
+                        lastRejectedToolCallSignature
+                    ) {
+                        repeatedRejectedToolCallRounds += 1;
+                    } else {
+                        lastRejectedToolCallSignature =
+                            rejectedToolCallSignature;
+                        repeatedRejectedToolCallRounds = 0;
+                    }
+
+                    if (
+                        repeatedRejectedToolCallRounds >=
+                        MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS
+                    ) {
+                        const errorMessage =
+                            "The planner repeated the same rejected tool call after validation failure.";
+                        this.#markActiveTurnError(turnId);
+                        this.#appendMessage({
+                            kind: "error",
+                            text: errorMessage,
+                        });
+                        this.#state.status = "error";
+                        this.#state.lastError = errorMessage;
+                        this.#notify();
+                        return;
+                    }
+
                     if (
                         rejectedToolCallRounds > MAX_REJECTED_TOOL_CALL_RETRIES
                     ) {
                         const errorMessage =
-                            "The planner repeated a rejected tool call after validation failure.";
+                            "The planner produced too many rejected tool calls without converging.";
                         this.#markActiveTurnError(turnId);
                         this.#appendMessage({
                             kind: "error",
