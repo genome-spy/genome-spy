@@ -1,25 +1,95 @@
-import { getViewWorkflowDefinition } from "./viewWorkflowCatalog.js";
-import { getViewWorkflowContext } from "./viewWorkflowContext.js";
+/**
+ * @typedef {import("./types.js").AgentSelectionSummary} SelectionSummary
+ *
+ * @typedef {import("./types.js").AgentViewFieldSummary} FieldSummary
+ *
+ * @typedef {{
+ *     selections: SelectionSummary[];
+ *     fields: FieldSummary[];
+ * }} SelectionAggregationWorkflowContext
+ *
+ * @typedef {{
+ *     workflowType: "deriveMetadataFromSelection" | "createBoxplotFromSelection";
+ *     selectionId?: string;
+ *     fieldId?: string;
+ *     aggregation?: string;
+ *     outputTarget?: "sample_metadata" | "boxplot";
+ *     name?: string;
+ *     groupPath?: string;
+ *     scale?: Record<string, any>;
+ * }} SelectionAggregationWorkflowRequest
+ *
+ * @typedef {{
+ *     workflowType: "deriveMetadataFromSelection" | "createBoxplotFromSelection";
+ *     selection: SelectionSummary;
+ *     field: FieldSummary;
+ *     aggregation: string;
+ *     outputTarget: "sample_metadata" | "boxplot";
+ *     name?: string;
+ *     groupPath?: string;
+ *     scale?: Record<string, any>;
+ * }} ResolvedSelectionAggregationWorkflow
+ *
+ * @typedef {{
+ *     workflowKind: "selection_aggregation";
+ *     slot: "selectionId" | "fieldId" | "aggregation";
+ *     message: string;
+ *     options?: Array<{ value: string; label: string }>;
+ *     initialValue: string;
+ *     state: Record<string, string>;
+ * }} SelectionAggregationClarificationRequest
+ *
+ * @typedef {{
+ *     status: "resolved";
+ *     value: SelectionSummary;
+ * } | {
+ *     status: "needs_clarification";
+ *     request: SelectionAggregationClarificationRequest;
+ * } | {
+ *     status: "error";
+ *     message: string;
+ * }} SelectionResolutionResult
+ *
+ * @typedef {{
+ *     status: "resolved";
+ *     value: FieldSummary;
+ * } | {
+ *     status: "needs_clarification";
+ *     request: SelectionAggregationClarificationRequest;
+ * } | {
+ *     status: "error";
+ *     message: string;
+ * }} FieldResolutionResult
+ *
+ * @typedef {{
+ *     status: "needs_clarification";
+ *     request: SelectionAggregationClarificationRequest;
+ * } | {
+ *     status: "error";
+ *     message: string;
+ * }} AggregationResolutionResult
+ *
+ * @typedef {{
+ *     status: "resolved";
+ *     value: ResolvedSelectionAggregationWorkflow;
+ * } | {
+ *     status: "needs_clarification";
+ *     request: SelectionAggregationClarificationRequest;
+ * } | {
+ *     status: "error";
+ *     message: string;
+ * }} SelectionAggregationWorkflowResolution
+ */
 
 /**
- * @param {import("../app.js").default} app
- * @param {import("./types.js").ViewWorkflowRequest} workflowRequest
- * @returns {import("./types.js").WorkflowResolverResult<import("./types.js").ResolvedViewWorkflow>}
+ * Resolves a compact workflow request into a concrete selection aggregation
+ * workflow.
+ *
+ * @param {SelectionAggregationWorkflowContext} context
+ * @param {SelectionAggregationWorkflowRequest} workflowRequest
+ * @returns {SelectionAggregationWorkflowResolution}
  */
-export function resolveViewWorkflow(app, workflowRequest) {
-    const definition = getViewWorkflowDefinition(workflowRequest.workflowType);
-    if (!definition) {
-        return {
-            status: "error",
-            message:
-                "Unsupported view workflow type: " +
-                workflowRequest.workflowType +
-                ".",
-        };
-    }
-
-    const context = getViewWorkflowContext(app);
-
+export function resolveSelectionAggregationWorkflow(context, workflowRequest) {
     const selection = resolveSelection(context, workflowRequest.selectionId);
     if (
         selection.status === "error" ||
@@ -64,7 +134,7 @@ export function resolveViewWorkflow(app, workflowRequest) {
                     "deriveMetadataFromSelection" && !workflowRequest.name
                     ? createDerivedMetadataName({
                           aggregation,
-                          fieldId: resolvedField.id,
+                          fieldName: resolvedField.field,
                           selectionSuffix: resolvedSelection.nameSuffix,
                       })
                     : workflowRequest.name,
@@ -75,9 +145,9 @@ export function resolveViewWorkflow(app, workflowRequest) {
 }
 
 /**
- * @param {import("./types.js").AgentViewWorkflowContext} context
+ * @param {SelectionAggregationWorkflowContext} context
  * @param {string | undefined} selectionId
- * @returns {import("./types.js").WorkflowResolverResult<import("./types.js").AgentSelectionSummary>}
+ * @returns {SelectionResolutionResult}
  */
 function resolveSelection(context, selectionId) {
     if (context.selections.length === 0) {
@@ -110,7 +180,7 @@ function resolveSelection(context, selectionId) {
     return {
         status: "needs_clarification",
         request: {
-            workflowKind: "view_workflow",
+            workflowKind: "selection_aggregation",
             slot: "selectionId",
             message:
                 "I need to know which active selection to use. Available options: " +
@@ -129,10 +199,10 @@ function resolveSelection(context, selectionId) {
 }
 
 /**
- * @param {import("./types.js").AgentViewWorkflowContext} context
+ * @param {SelectionAggregationWorkflowContext} context
  * @param {string} selectionId
  * @param {string | undefined} fieldId
- * @returns {import("./types.js").WorkflowResolverResult<import("./types.js").AgentViewFieldSummary>}
+ * @returns {FieldResolutionResult}
  */
 function resolveField(context, selectionId, fieldId) {
     const fields = context.fields.filter((field) =>
@@ -166,7 +236,7 @@ function resolveField(context, selectionId, fieldId) {
     return {
         status: "needs_clarification",
         request: {
-            workflowKind: "view_workflow",
+            workflowKind: "selection_aggregation",
             slot: "fieldId",
             message:
                 "I need to know which field from the selected visualization to use. Available options: " +
@@ -187,9 +257,9 @@ function resolveField(context, selectionId, fieldId) {
 }
 
 /**
- * @param {import("./types.js").AgentViewFieldSummary} field
+ * @param {FieldSummary} field
  * @param {string | undefined} aggregation
- * @returns {string | import("./types.js").WorkflowResolverResult<import("./types.js").ResolvedViewWorkflow>}
+ * @returns {string | AggregationResolutionResult}
  */
 function resolveAggregation(field, aggregation) {
     if (aggregation && field.supportedAggregations.includes(aggregation)) {
@@ -203,7 +273,7 @@ function resolveAggregation(field, aggregation) {
     return {
         status: "needs_clarification",
         request: {
-            workflowKind: "view_workflow",
+            workflowKind: "selection_aggregation",
             slot: "aggregation",
             message:
                 "I need to know which aggregation to compute for " +
@@ -224,12 +294,11 @@ function resolveAggregation(field, aggregation) {
 }
 
 /**
- * @param {{ aggregation: string, fieldId: string, selectionSuffix: string }} options
+ * @param {{ aggregation: string, fieldName: string, selectionSuffix: string }} options
  */
 function createDerivedMetadataName(options) {
-    const parsedField = JSON.parse(options.fieldId);
     const normalizedBase = sanitizeName(
-        `${options.aggregation}_${parsedField.field}`
+        `${options.aggregation}_${options.fieldName}`
     );
     return appendCompactSuffix(normalizedBase, options.selectionSuffix, 32);
 }

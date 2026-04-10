@@ -513,32 +513,6 @@ export interface AgentProvenanceAction {
 }
 
 /**
- * Declarative description of a structured view workflow that the planner can
- * request.
- */
-export interface AgentViewWorkflowDefinition {
-    /**
-     * Workflow identifier.
-     */
-    workflowType: "deriveMetadataFromSelection" | "createBoxplotFromSelection";
-
-    /**
-     * Human-readable description.
-     */
-    description: string;
-
-    /**
-     * Slots that must be filled before the workflow can be resolved.
-     */
-    requiredSlots: string[];
-
-    /**
-     * The outputs this workflow can produce.
-     */
-    outputTargets: string[];
-}
-
-/**
  * Active interval selection summary used for selection-driven workflows.
  */
 export interface AgentSelectionSummary {
@@ -778,9 +752,9 @@ export interface AgentViewFieldSummary {
 }
 
 /**
- * View-workflow planning context derived from the current visualization.
+ * Selection-derived aggregation context exposed to the planner.
  */
-export interface AgentViewWorkflowContext {
+export interface AgentSelectionAggregationContext {
     /**
      * Active interval selections.
      */
@@ -790,27 +764,6 @@ export interface AgentViewWorkflowContext {
      * Aggregatable fields for the active selections.
      */
     fields: AgentViewFieldSummary[];
-
-    /**
-     * Supported structured workflows.
-     */
-    workflows: AgentViewWorkflowDefinition[];
-}
-
-/**
- * Planner-facing workflow context. Field lists are omitted when there are no
- * active selection-driven fields.
- */
-export interface AgentPlannerViewWorkflowContext {
-    /**
-     * Supported structured workflows.
-     */
-    workflows: AgentViewWorkflowDefinition[];
-
-    /**
-     * Aggregatable fields for the active selections, if any.
-     */
-    fields?: AgentViewFieldSummary[];
 }
 
 /**
@@ -999,9 +952,9 @@ export interface AgentContext {
     attributes: AgentAttributeSummary[];
 
     /**
-     * Structured workflows that the agent can resolve locally.
+     * Selection-derived aggregation candidates exposed to the planner.
      */
-    viewWorkflows: AgentPlannerViewWorkflowContext;
+    selectionAggregation: AgentSelectionAggregationContext;
 
     /**
      * Bookmarkable provenance actions for the current analysis history.
@@ -1230,9 +1183,9 @@ export interface IntentProgramExecutionResult {
 }
 
 /**
- * Request for resolving a structured view workflow.
+ * Request for resolving a structured selection aggregation.
  */
-export interface ViewWorkflowRequest {
+export interface SelectionAggregationRequest {
     /**
      * Workflow identifier.
      */
@@ -1275,9 +1228,9 @@ export interface ViewWorkflowRequest {
 }
 
 /**
- * Normalized workflow after resolving selections and fields.
+ * Normalized selection aggregation after resolving selections and fields.
  */
-export interface ResolvedViewWorkflow {
+export interface ResolvedSelectionAggregationWorkflow {
     /**
      * Workflow identifier.
      */
@@ -1328,13 +1281,13 @@ export type AgentProgramStep =
           program: IntentProgram;
       }
     | {
-          type: "view_workflow";
-          workflow: ViewWorkflowRequest;
+          type: "selection_aggregation";
+          workflow: SelectionAggregationRequest;
       };
 
 /**
  * Mixed structured program that can combine generic intents and local
- * view-workflow resolution.
+ * selection aggregation resolution.
  */
 export interface AgentProgram {
     /**
@@ -1368,14 +1321,6 @@ export type ResolverResult<T> =
     | { status: "error"; message: string };
 
 /**
- * Resolver result used by view-workflow helpers.
- */
-export type WorkflowResolverResult<T> =
-    | { status: "resolved"; value: T }
-    | { status: "needs_clarification"; request: ClarificationRequest }
-    | { status: "error"; message: string };
-
-/**
  * Top-level response returned by the planner endpoint.
  */
 export type PlanResponse =
@@ -1393,8 +1338,8 @@ export type PlanResponse =
           program: IntentProgram;
       }
     | {
-          type: "view_workflow";
-          workflow: ViewWorkflowRequest;
+          type: "selection_aggregation";
+          workflow: SelectionAggregationRequest;
       }
     | {
           type: "agent_program";

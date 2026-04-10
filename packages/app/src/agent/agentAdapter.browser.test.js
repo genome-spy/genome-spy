@@ -39,7 +39,7 @@ import {
     setDialogSelectValue,
     waitForDialog,
 } from "./agentBrowserTestUtils.js";
-import { createFieldId } from "./viewWorkflowContext.js";
+import { createFieldId } from "./selectionAggregationContext.js";
 
 describe("agentAdapter browser integration", () => {
     beforeEach(() => {
@@ -102,11 +102,11 @@ describe("agentAdapter browser integration", () => {
         expect(planner.fetchMock).toHaveBeenCalledTimes(1);
         expect(planner.requests[0].body.message).toBe(prompt);
         expect(
-            planner.requests[0].body.context.viewWorkflows.workflows
+            planner.requests[0].body.context.selectionAggregation.fields
         ).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    workflowType: "deriveMetadataFromSelection",
+                    field: "signalValue",
                 }),
             ])
         );
@@ -161,9 +161,9 @@ describe("agentAdapter browser integration", () => {
                 }),
                 attributes: expect.any(Array),
                 actionCatalog: expect.any(Array),
-                viewWorkflows: expect.objectContaining({
+                selectionAggregation: expect.objectContaining({
                     fields: expect.any(Array),
-                    workflows: expect.any(Array),
+                    selections: expect.any(Array),
                 }),
                 provenance: expect.any(Array),
                 lifecycle: expect.objectContaining({
@@ -175,11 +175,11 @@ describe("agentAdapter browser integration", () => {
         expect(planner.requests[0].body.context).not.toHaveProperty("viewTree");
         expect(planner.requests[0].body.context).not.toHaveProperty("params");
         expect(
-            planner.requests[0].body.context.viewWorkflows
-        ).not.toHaveProperty("selections");
+            planner.requests[0].body.context.selectionAggregation
+        ).toHaveProperty("selections");
     });
 
-    it("runs a structured view workflow and clarifies the missing field using the real choice dialog", async () => {
+    it("runs a structured selection aggregation and clarifies the missing field using the real choice dialog", async () => {
         const fixture = createVisualizationFixture({
             intervalFields: [
                 {
@@ -206,7 +206,7 @@ describe("agentAdapter browser integration", () => {
         );
         const planner = installPlannerMock([
             {
-                type: "view_workflow",
+                type: "selection_aggregation",
                 workflow: {
                     workflowType: "deriveMetadataFromSelection",
                     aggregation: "weightedMean",
@@ -339,7 +339,7 @@ describe("agentAdapter browser integration", () => {
 
         const aggregationDialog = await waitForDialog("gs-agent-choice-dialog");
         expect(getDialogText(aggregationDialog)).toContain(
-            "Available options: min, max, count, weightedMean, variance."
+            "Available options: count, min, max, weightedMean, variance."
         );
         await setDialogSelectValue(aggregationDialog, "weightedMean");
         await clickDialogButton(aggregationDialog, "OK");
@@ -389,7 +389,7 @@ describe("agentAdapter browser integration", () => {
 
         const aggregationDialog = await waitForDialog("gs-agent-choice-dialog");
         expect(getDialogText(aggregationDialog)).toContain(
-            "Available options: min, max, count, weightedMean, variance."
+            "Available options: count, min, max, weightedMean, variance."
         );
         await setDialogSelectValue(aggregationDialog, "weightedMean");
         await clickDialogButton(aggregationDialog, "OK");
@@ -408,7 +408,7 @@ describe("agentAdapter browser integration", () => {
         expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
     });
 
-    it("shows a deterministic error dialog when a view workflow needs a missing selection", async () => {
+    it("shows a deterministic error dialog when a selection aggregation needs a missing selection", async () => {
         const fixture = createVisualizationFixture({
             hasActiveSelection: false,
         });
@@ -422,7 +422,7 @@ describe("agentAdapter browser integration", () => {
         );
         installPlannerMock([
             {
-                type: "view_workflow",
+                type: "selection_aggregation",
                 workflow: {
                     workflowType: "deriveMetadataFromSelection",
                     aggregation: "count",
@@ -465,7 +465,7 @@ describe("agentAdapter browser integration", () => {
         );
         const planner = installPlannerMock([
             {
-                type: "view_workflow",
+                type: "selection_aggregation",
                 workflow: {
                     workflowType: "createBoxplotFromSelection",
                     aggregation: "variance",
@@ -541,7 +541,7 @@ describe("agentAdapter browser integration", () => {
                             },
                         },
                         {
-                            type: "view_workflow",
+                            type: "selection_aggregation",
                             workflow: {
                                 workflowType: "createBoxplotFromSelection",
                                 aggregation: "variance",

@@ -55,7 +55,7 @@ vi.mock("../charts/hierarchyBoxplotDialog.js", () => ({
 
 import { createAgentAdapter } from "./agentAdapter.js";
 import { createAgentSessionController } from "./agentSessionController.js";
-import { createFieldId } from "./viewWorkflowContext.js";
+import { createFieldId } from "./selectionAggregationContext.js";
 
 function createResponse(body) {
     return {
@@ -225,8 +225,9 @@ function createMockPlannerContext() {
             },
         ],
         actionCatalog: [],
-        viewWorkflows: {
-            workflows: [],
+        selectionAggregation: {
+            selections: [],
+            fields: [],
         },
         provenance: [],
         lifecycle: {
@@ -302,14 +303,14 @@ describe("agentAdapter", () => {
         );
     });
 
-    it("executes resolved view-workflow requests after planner resolution", async () => {
+    it("executes resolved selection-aggregation requests after planner resolution", async () => {
         const app = createAppStub();
         globalThis.window.prompt.mockReturnValueOnce(
             "compute weighted mean in the selected region and add it to metadata"
         );
         globalThis.fetch.mockResolvedValueOnce(
             createResponse({
-                type: "view_workflow",
+                type: "selection_aggregation",
                 workflow: {
                     workflowType: "deriveMetadataFromSelection",
                     aggregation: "variance",
@@ -467,7 +468,7 @@ describe("agentAdapter", () => {
         );
         globalThis.fetch.mockResolvedValueOnce(
             createResponse({
-                type: "view_workflow",
+                type: "selection_aggregation",
                 workflow: {
                     workflowType: "deriveMetadataFromSelection",
                     aggregation: "variance",
@@ -721,7 +722,7 @@ describe("agentAdapter", () => {
         );
         globalThis.fetch.mockResolvedValueOnce(
             createResponse({
-                type: "view_workflow",
+                type: "selection_aggregation",
                 workflow: {
                     workflowType: "createBoxplotFromSelection",
                     aggregation: "variance",
@@ -804,7 +805,7 @@ describe("agentAdapter", () => {
         expect(app.intentPipeline.submit).not.toHaveBeenCalled();
     });
 
-    it("retries once with a view-workflow hint when the planner returns a misclassified invalid intent program", async () => {
+    it("retries once with a selection-aggregation hint when the planner returns a misclassified invalid intent program", async () => {
         const app = createAppStub();
         globalThis.window.prompt.mockReturnValueOnce(
             "Compute weighted mean of the visible field in the brush and store it in sample metadata"
@@ -831,7 +832,7 @@ describe("agentAdapter", () => {
             )
             .mockResolvedValueOnce(
                 createResponse({
-                    type: "view_workflow",
+                    type: "selection_aggregation",
                     workflow: {
                         workflowType: "deriveMetadataFromSelection",
                         aggregation: "weightedMean",
@@ -852,7 +853,7 @@ describe("agentAdapter", () => {
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
         expect(globalThis.fetch.mock.calls[1][1].body).toContain(
-            "Return a structured view_workflow for deriveMetadataFromSelection"
+            "Return a structured selection_aggregation for deriveMetadataFromSelection"
         );
         expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
         expect(showMessageDialog).not.toHaveBeenCalledWith(
@@ -861,7 +862,7 @@ describe("agentAdapter", () => {
         );
     });
 
-    it("retries boxplot requests with a boxplot-specific view-workflow hint", async () => {
+    it("retries boxplot requests with a boxplot-specific selection-aggregation hint", async () => {
         const app = createAppStub();
         globalThis.window.prompt.mockReturnValueOnce(
             "Create a boxplot from the active interval selection using a visible quantitative field and aggregation variance"
@@ -888,7 +889,7 @@ describe("agentAdapter", () => {
             )
             .mockResolvedValueOnce(
                 createResponse({
-                    type: "view_workflow",
+                    type: "selection_aggregation",
                     workflow: {
                         workflowType: "createBoxplotFromSelection",
                         aggregation: "variance",
@@ -909,7 +910,7 @@ describe("agentAdapter", () => {
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(2);
         expect(globalThis.fetch.mock.calls[1][1].body).toContain(
-            "Return a structured view_workflow for createBoxplotFromSelection"
+            "Return a structured selection_aggregation for createBoxplotFromSelection"
         );
         expect(showHierarchyBoxplotDialog).toHaveBeenCalledTimes(1);
         expect(app.intentPipeline.submit).not.toHaveBeenCalled();
@@ -953,7 +954,7 @@ describe("agentAdapter", () => {
                             },
                         },
                         {
-                            type: "view_workflow",
+                            type: "selection_aggregation",
                             workflow: {
                                 workflowType: "createBoxplotFromSelection",
                                 aggregation: "variance",

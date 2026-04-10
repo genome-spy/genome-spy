@@ -4,8 +4,8 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 
 ## Code References
 - Context/tool assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
-- Selection and field discovery: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js)
-- Workflow resolution: [`viewWorkflowResolver.js`](../src/agent/viewWorkflowResolver.js)
+- Selection and field discovery: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
+- Workflow resolution: [`selectionAggregationWorkflow.js`](../src/agent/selectionAggregationWorkflow.js)
 - Action validation and execution: [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Action summaries: [`actionCatalog.js`](../src/agent/actionCatalog.js)
 - Agent entry point: [`toolbarMenu.js`](../src/agent/toolbarMenu.js)

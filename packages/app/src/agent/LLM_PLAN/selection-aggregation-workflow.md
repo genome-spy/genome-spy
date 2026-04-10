@@ -15,7 +15,8 @@ descriptor can drive multiple consumers.
 - Aggregated value accessors: [`attributeAccessors.js`](../src/sampleView/attributeAggregation/attributeAccessors.js)
 - Derived metadata intent builder: [`deriveMetadataUtils.js`](../src/sampleView/metadata/deriveMetadataUtils.js)
 - Agent-facing view selectors: [`viewTree.js`](../src/agent/viewTree.js)
-- Sample-view context helpers: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js)
+- Selection aggregation context: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
+- Selection aggregation resolver: [`selectionAggregationWorkflow.js`](../src/agent/selectionAggregationWorkflow.js)
 - Local agent execution: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 
 ## Why this exists
@@ -29,8 +30,8 @@ descriptor can drive multiple consumers.
 - The final payload is too nested for a local LLM to construct reliably.
 - The app already contains the logic needed to build the canonical attribute
   descriptor, so the agent should not reimplement it.
-- The current `viewWorkflowResolver.js` path is likely the wrong abstraction and
-  should be removed rather than expanded.
+- The old `viewWorkflow*` files are gone; the remaining resolver should stay
+  thin and live in the agent folder.
 
 ## User-Facing Intent
 
@@ -93,7 +94,9 @@ authoritative source for turning a resolved attribute into a provenance-backed
 mutation.
 
 The agent should not duplicate these rules in prompt text or in a separate
-resolver with its own parallel logic.
+resolver with its own parallel logic. The resolver itself belongs in the
+agent folder, but it should stay thin and depend on shared sample-view
+helpers for candidate discovery and attribute construction.
 
 ## Proposed Shape
 
@@ -211,6 +214,12 @@ Extract reusable helpers from the current UI code:
   - may accept or surface an LLM-generated description as an optional preview
     string, but should not depend on the wording for correctness
 
+- `resolveSelectionAggregationWorkflow(...)`
+  - lives in the agent folder
+  - converts a compact request plus current agent context into a resolved
+    selection aggregation workflow
+  - should remain a thin wrapper around shared, deterministic helper logic
+
 - `buildDerivedMetadataIntent(...)`
   - keeps building the actual provenance-backed mutation
   - should remain the single source of truth for the reducer payload
@@ -239,7 +248,8 @@ Extract reusable helpers from the current UI code:
    - Keep the prompt high-level.
    - Let the tool return compact candidates.
    - Let app code construct the final payload.
-   - Remove `viewWorkflowResolver.js` and related files once their logic has
+  - Keep the agent-side resolver thin and colocated with the agent code.
+  - Remove the remaining `viewWorkflow*` references once their logic has
       moved into shared helpers.
    - Review the resulting agent-facing code for code smells before continuing.
 
@@ -262,5 +272,5 @@ Extract reusable helpers from the current UI code:
 - Should the agent-facing tool return candidate IDs only, or candidate IDs plus
   canonical attribute previews?
 - Should the same helper also drive a sort/filter/plot suggestion tool?
-- Which remaining files should be deleted with the old resolver path versus
-  retained as shared helpers?
+- Which agent-context summaries still need to be surfaced for the planner and
+  which can stay internal to the selection-aggregation resolver?

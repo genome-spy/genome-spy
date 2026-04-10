@@ -52,9 +52,9 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", async (importOriginal) => {
     };
 });
 
-import { getViewWorkflowContext } from "./viewWorkflowContext.js";
+import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 
-describe("getViewWorkflowContext", () => {
+describe("getSelectionAggregationContext", () => {
     it("builds selection and field capabilities from the current visualization", async () => {
         const spec = {
             data: {
@@ -120,18 +120,8 @@ describe("getViewWorkflowContext", () => {
             },
         };
 
-        const context = getViewWorkflowContext(app);
+        const context = getSelectionAggregationContext(app);
 
-        expect(context.workflows).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    workflowType: "deriveMetadataFromSelection",
-                }),
-                expect.objectContaining({
-                    workflowType: "createBoxplotFromSelection",
-                }),
-            ])
-        );
         expect(context.selections).toEqual([
             expect.objectContaining({
                 label: "brush",

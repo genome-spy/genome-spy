@@ -100,7 +100,7 @@ service consumes artifacts, not implementation code.
 
 - `contextBuilder.js`
 - `viewTree.js`
-- `viewWorkflowContext.js`
+- `selectionAggregationContext.js`
 - `intentProgramValidator.js`
 - `actionShapeValidator.js`
 - tool implementation files

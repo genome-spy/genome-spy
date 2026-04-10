@@ -9,8 +9,8 @@ import {
 } from "./intentProgramExecutor.js";
 import { validateIntentProgram } from "./intentProgramValidator.js";
 import { summarizeIntentProgram } from "./actionCatalog.js";
-import { getViewWorkflowContext } from "./viewWorkflowContext.js";
-import { resolveViewWorkflow } from "./viewWorkflowResolver.js";
+import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
+import { resolveSelectionAggregationWorkflow } from "./selectionAggregationWorkflow.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
@@ -614,10 +614,10 @@ async function runLocalPrompt(app) {
                     throw new Error("Agent clarification was cancelled.");
                 }
 
-                await runViewWorkflow(
+                await runSelectionAggregationWorkflow(
                     app,
                     {
-                        ...createSeededViewWorkflowRequest(
+                        ...createSeededSelectionAggregationRequest(
                             app,
                             initialMessage,
                             workflowType
@@ -641,12 +641,12 @@ async function runLocalPrompt(app) {
                 return;
             }
 
-            if (response.type === "view_workflow") {
+            if (response.type === "selection_aggregation") {
                 await runAgentProgram(
                     app,
                     [
                         {
-                            type: "view_workflow",
+                            type: "selection_aggregation",
                             workflow: response.workflow,
                         },
                     ],
@@ -769,7 +769,7 @@ async function runLocalPrompt(app) {
             if (!validation.ok) {
                 if (
                     !repairedInvalidIntentProgram &&
-                    shouldRetryAsViewWorkflow(
+                    shouldRetryAsSelectionAggregation(
                         app,
                         response.program,
                         validation.errors
@@ -785,7 +785,7 @@ async function runLocalPrompt(app) {
                         message,
                         buildInvalidProgramFeedback(validation.errors)
                     );
-                    message = buildViewWorkflowRepairMessage(
+                    message = buildSelectionAggregationRepairMessage(
                         initialMessage,
                         workflowType
                     );
@@ -828,7 +828,7 @@ async function runLocalPrompt(app) {
  */
 async function runAgentProgram(app, steps, trace, startedAt) {
     const previewStartedAt = now();
-    /** @type {Array<{ type: "intent_program", summary: string, program: import("./types.js").IntentProgram } | { type: "view_workflow", summary: string, workflow: import("./types.js").ResolvedViewWorkflow }>} */
+    /** @type {Array<{ type: "intent_program", summary: string, program: import("./types.js").IntentProgram } | { type: "selection_aggregation", summary: string, workflow: import("./types.js").ResolvedSelectionAggregationWorkflow }>} */
     const preparedSteps = [];
     for (const step of steps) {
         preparedSteps.push(await prepareAgentProgramStep(app, step));
@@ -917,9 +917,9 @@ async function runAgentProgram(app, steps, trace, startedAt) {
  *         program: import("./types.js").IntentProgram;
  *     }
  *   | {
- *         type: "view_workflow";
+ *         type: "selection_aggregation";
  *         summary: string;
- *         workflow: import("./types.js").ResolvedViewWorkflow;
+ *         workflow: import("./types.js").ResolvedSelectionAggregationWorkflow;
  *     }
  * >}
  */
@@ -936,14 +936,15 @@ async function prepareAgentProgramStep(app, step) {
             summary: summaries.map((line) => "- " + line.text).join("\n"),
             program: validation.program,
         };
-    } else if (step.type === "view_workflow") {
-        const workflow = await resolveViewWorkflowWithClarifications(
-            app,
-            step.workflow
-        );
+    } else if (step.type === "selection_aggregation") {
+        const workflow =
+            await resolveSelectionAggregationWorkflowWithClarifications(
+                app,
+                step.workflow
+            );
         return {
-            type: "view_workflow",
-            summary: summarizeResolvedViewWorkflow(workflow),
+            type: "selection_aggregation",
+            summary: summarizeResolvedSelectionAggregationWorkflow(workflow),
             workflow,
         };
     }
@@ -953,15 +954,21 @@ async function prepareAgentProgramStep(app, step) {
 
 /**
  * @param {import("../app.js").default} app
- * @param {import("./types.js").ViewWorkflowRequest} workflowRequest
- * @returns {Promise<import("./types.js").ResolvedViewWorkflow>}
+ * @param {import("./types.js").SelectionAggregationRequest} workflowRequest
+ * @returns {Promise<import("./types.js").ResolvedSelectionAggregationWorkflow>}
  */
-async function resolveViewWorkflowWithClarifications(app, workflowRequest) {
-    /** @type {import("./types.js").ViewWorkflowRequest} */
+async function resolveSelectionAggregationWorkflowWithClarifications(
+    app,
+    workflowRequest
+) {
+    /** @type {import("./types.js").SelectionAggregationRequest} */
     let currentRequest = { ...workflowRequest };
 
     while (true) {
-        const resolution = resolveViewWorkflow(app, currentRequest);
+        const resolution = resolveSelectionAggregationWorkflow(
+            getSelectionAggregationContext(app),
+            currentRequest
+        );
         if (resolution.status === "error") {
             throw new Error(resolution.message);
         } else if (resolution.status === "resolved") {
@@ -976,7 +983,9 @@ async function resolveViewWorkflowWithClarifications(app, workflowRequest) {
                 value: request.initialValue,
             });
             if (!followUp) {
-                throw new Error("View workflow clarification was cancelled.");
+                throw new Error(
+                    "Selection aggregation clarification was cancelled."
+                );
             }
 
             currentRequest = {
@@ -998,9 +1007,9 @@ async function resolveViewWorkflowWithClarifications(app, workflowRequest) {
  *   summary: string,
  *   program: import("./types.js").IntentProgram
  * } | {
- *   type: "view_workflow",
+ *   type: "selection_aggregation",
  *   summary: string,
- *   workflow: import("./types.js").ResolvedViewWorkflow
+ *   workflow: import("./types.js").ResolvedSelectionAggregationWorkflow
  * }} step
  */
 async function executePreparedAgentProgramStep(app, step) {
@@ -1014,7 +1023,7 @@ async function executePreparedAgentProgramStep(app, step) {
             intentProgramResult,
         };
     } else {
-        await executeResolvedViewWorkflow(app, step.workflow);
+        await executeResolvedSelectionAggregationWorkflow(app, step.workflow);
         return {
             executedActions: 1,
             intentProgramResult: undefined,
@@ -1027,8 +1036,8 @@ async function executePreparedAgentProgramStep(app, step) {
  * @param {import("./types.js").IntentProgram} program
  * @param {string[]} errors
  */
-function shouldRetryAsViewWorkflow(app, program, errors) {
-    const workflowContext = getViewWorkflowContext(app);
+function shouldRetryAsSelectionAggregation(app, program, errors) {
+    const workflowContext = getSelectionAggregationContext(app);
     if (
         workflowContext.selections.length === 0 ||
         workflowContext.fields.length === 0
@@ -1083,13 +1092,13 @@ function buildInvalidProgramFeedback(errors) {
 
 /**
  * @param {string} originalMessage
- * @param {import("./types.js").ViewWorkflowRequest["workflowType"]} workflowType
+ * @param {import("./types.js").SelectionAggregationRequest["workflowType"]} workflowType
  */
-function buildViewWorkflowRepairMessage(originalMessage, workflowType) {
+function buildSelectionAggregationRepairMessage(originalMessage, workflowType) {
     const workflowInstruction =
         workflowType === "createBoxplotFromSelection"
-            ? "Return a structured view_workflow for createBoxplotFromSelection if this request is about aggregating a visible field over the current selection and showing the result as a boxplot."
-            : "Return a structured view_workflow for deriveMetadataFromSelection if this request is about aggregating a visible field over the current selection and storing the result in sample metadata.";
+            ? "Return a structured selection_aggregation for createBoxplotFromSelection if this request is about aggregating a visible field over the current selection and showing the result as a boxplot."
+            : "Return a structured selection_aggregation for deriveMetadataFromSelection if this request is about aggregating a visible field over the current selection and storing the result in sample metadata.";
 
     return (
         originalMessage +
@@ -1101,7 +1110,7 @@ function buildViewWorkflowRepairMessage(originalMessage, workflowType) {
 
 /**
  * @param {string[]} messages
- * @returns {{ workflowType: import("./types.js").ViewWorkflowRequest["workflowType"] }}
+ * @returns {{ workflowType: import("./types.js").SelectionAggregationRequest["workflowType"] }}
  */
 function inferRequestedWorkflowType(messages) {
     const combined = messages.join("\n").toLowerCase();
@@ -1119,10 +1128,10 @@ function inferRequestedWorkflowType(messages) {
 /**
  * @param {import("../app.js").default} app
  * @param {string} message
- * @param {import("./types.js").ViewWorkflowRequest["workflowType"]} workflowType
- * @returns {import("./types.js").ViewWorkflowRequest}
+ * @param {import("./types.js").SelectionAggregationRequest["workflowType"]} workflowType
+ * @returns {import("./types.js").SelectionAggregationRequest}
  */
-function createSeededViewWorkflowRequest(app, message, workflowType) {
+function createSeededSelectionAggregationRequest(app, message, workflowType) {
     return {
         workflowType,
         aggregation: inferRequestedAggregation(app, message),
@@ -1138,7 +1147,7 @@ function inferRequestedAggregation(app, message) {
     const normalizedMessage = message.toLowerCase();
     const supportedAggregations = Array.from(
         new Set(
-            getViewWorkflowContext(app).fields.flatMap(
+            getSelectionAggregationContext(app).fields.flatMap(
                 (field) => field.supportedAggregations
             )
         )
@@ -1160,7 +1169,7 @@ function inferRequestedAggregation(app, message) {
  * @param {string} message
  */
 function getGroundedPlannerClarification(app, message) {
-    const workflowContext = getViewWorkflowContext(app);
+    const workflowContext = getSelectionAggregationContext(app);
     const normalizedMessage = message.toLowerCase();
 
     if (
@@ -1249,17 +1258,22 @@ function getGroundedPlannerClarification(app, message) {
 
 /**
  * @param {import("../app.js").default} app
- * @param {import("./types.js").ViewWorkflowRequest} workflowRequest
+ * @param {import("./types.js").SelectionAggregationRequest} workflowRequest
  * @param {Record<string, any>} trace
  * @param {number} startedAt
  * @returns {Promise<void>}
  */
-async function runViewWorkflow(app, workflowRequest, trace, startedAt) {
+async function runSelectionAggregationWorkflow(
+    app,
+    workflowRequest,
+    trace,
+    startedAt
+) {
     await runAgentProgram(
         app,
         [
             {
-                type: "view_workflow",
+                type: "selection_aggregation",
                 workflow: workflowRequest,
             },
         ],
@@ -1285,10 +1299,10 @@ function formatClarificationSlot(slot) {
 }
 
 /**
- * @param {import("./types.js").ResolvedViewWorkflow} workflow
+ * @param {import("./types.js").ResolvedSelectionAggregationWorkflow} workflow
  * @returns {string}
  */
-function summarizeResolvedViewWorkflow(workflow) {
+function summarizeResolvedSelectionAggregationWorkflow(workflow) {
     if (workflow.workflowType === "createBoxplotFromSelection") {
         return (
             "Create a boxplot from " +
@@ -1318,9 +1332,9 @@ function summarizeResolvedViewWorkflow(workflow) {
 
 /**
  * @param {import("../app.js").default} app
- * @param {import("./types.js").ResolvedViewWorkflow} workflow
+ * @param {import("./types.js").ResolvedSelectionAggregationWorkflow} workflow
  */
-async function executeResolvedViewWorkflow(app, workflow) {
+async function executeResolvedSelectionAggregationWorkflow(app, workflow) {
     const sampleView = app.getSampleView();
     if (!sampleView) {
         throw new Error("SampleView is not available.");
@@ -1368,7 +1382,9 @@ async function executeResolvedViewWorkflow(app, workflow) {
         return;
     } else {
         throw new Error(
-            "Unsupported resolved view workflow: " + workflow.workflowType + "."
+            "Unsupported resolved selection aggregation: " +
+                workflow.workflowType +
+                "."
         );
     }
 }

@@ -18,6 +18,9 @@ const { isIntervalSelectionConfigMock } = vi.hoisted(() => ({
 const { getBookmarkableParamsMock } = vi.hoisted(() => ({
     getBookmarkableParamsMock: vi.fn(() => []),
 }));
+const { resolveParamSelectorMock } = vi.hoisted(() => ({
+    resolveParamSelectorMock: vi.fn(),
+}));
 
 vi.mock("@genome-spy/core/selection/selection.js", () => ({
     asSelectionConfig: asSelectionConfigMock,
@@ -33,6 +36,7 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
         view: view.explicitName ?? view.name,
     }),
     isChromeView: () => false,
+    resolveParamSelector: resolveParamSelectorMock,
     visitAddressableViews: (root, visitor) => root.visit(visitor),
 }));
 
@@ -112,6 +116,9 @@ function createAppStub() {
     getParamSelectorMock.mockImplementation((view, paramName) => ({
         scope: [],
         param: paramName,
+    }));
+    resolveParamSelectorMock.mockImplementation((view) => ({
+        view,
     }));
 
     const provenance = [
@@ -200,7 +207,7 @@ describe("getAgentContext", () => {
             "actionCatalog",
             "toolCatalog",
             "attributes",
-            "viewWorkflows",
+            "selectionAggregation",
             "provenance",
             "lifecycle",
             "viewRoot",
@@ -287,17 +294,8 @@ describe("getAgentContext", () => {
             "clearViewVisibility",
             "submitIntentProgram",
         ]);
-        expect(context.viewWorkflows.workflows).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    workflowType: "deriveMetadataFromSelection",
-                }),
-                expect.objectContaining({
-                    workflowType: "createBoxplotFromSelection",
-                }),
-            ])
-        );
-        expect(context.viewWorkflows).not.toHaveProperty("selections");
+        expect(context.selectionAggregation.fields).toEqual([]);
+        expect(context.selectionAggregation).toHaveProperty("selections");
         expect(context.provenance).toEqual([
             expect.objectContaining({
                 summary: "Brush brush (0-1) in Patient Cohort",

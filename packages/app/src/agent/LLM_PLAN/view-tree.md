@@ -9,10 +9,9 @@ propose new views.
 
 - Tree builder: [`viewTree.js`](../src/agent/viewTree.js)
 - Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
-- Runtime selection summaries: [`viewWorkflowContext.js`](../src/agent/viewWorkflowContext.js)
-- Workflow resolution: [`viewWorkflowResolver.js`](../src/agent/viewWorkflowResolver.js)
+- Runtime selection summaries: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
+- Workflow resolution: [`selectionAggregationWorkflow.js`](../src/agent/selectionAggregationWorkflow.js)
 - Local agent entry point: [`agentAdapter.js`](../src/agent/agentAdapter.js)
-- Workflow catalog: [`viewWorkflowCatalog.js`](../src/agent/viewWorkflowCatalog.js)
 - Coverage tests: [`viewTree.test.js`](../src/agent/viewTree.test.js)
 
 ## Why this exists
@@ -118,7 +117,7 @@ useful.
 
 ### Tree and selection traversal
 
-- `packages/app/src/agent/viewWorkflowContext.js`
+- `packages/app/src/agent/selectionAggregationContext.js`
   - already traverses the runtime tree with `sampleView.visit(...)`
   - already extracts parameter declarations, active selections, and selection-driven fields
 

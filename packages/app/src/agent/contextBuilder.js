@@ -2,7 +2,7 @@ import templateResultToString from "../utils/templateResultToString.js";
 import { listAgentActions } from "./actionCatalog.js";
 import { listAgentTools } from "./toolCatalog.js";
 import { buildViewTree } from "./viewTree.js";
-import { getViewWorkflowContext } from "./viewWorkflowContext.js";
+import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -16,18 +16,9 @@ export function getAgentContext(app, options = {}) {
     const state = app.store.getState();
     const sampleState = app.provenance.getPresentState()?.sampleView;
     const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
-    const viewWorkflows = getViewWorkflowContext(app);
+    const selectionAggregation = getSelectionAggregationContext(app);
     const { root: viewRoot } = buildViewTree(app, options);
     const actionCatalog = listAgentActions();
-    const compactWorkflows =
-        viewWorkflows.fields.length > 0
-            ? {
-                  fields: viewWorkflows.fields,
-                  workflows: viewWorkflows.workflows,
-              }
-            : {
-                  workflows: viewWorkflows.workflows,
-              };
 
     return {
         schemaVersion: 1,
@@ -48,7 +39,7 @@ export function getAgentContext(app, options = {}) {
         attributes: sampleView
             ? buildAttributeSummary(sampleView, sampleState)
             : [],
-        viewWorkflows: compactWorkflows,
+        selectionAggregation,
         provenance: buildProvenanceActions(app, provenance),
         lifecycle: {
             appInitialized: state.lifecycle.appInitialized,

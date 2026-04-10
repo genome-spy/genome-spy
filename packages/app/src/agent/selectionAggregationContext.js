@@ -1,12 +1,11 @@
 import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { getContextMenuFieldInfos } from "../sampleView/selectionAggregationCandidates.js";
-import { listViewWorkflows } from "./viewWorkflowCatalog.js";
 
 /**
  * @param {import("../app.js").default} app
- * @returns {import("./types.js").AgentViewWorkflowContext}
+ * @returns {{ selections: import("./types.js").AgentSelectionSummary[]; fields: import("./types.js").AgentViewFieldSummary[]; }}
  */
-export function getViewWorkflowContext(app) {
+export function getSelectionAggregationContext(app) {
     const sampleView = app.getSampleView();
     const selections = buildSelectionSummaries(app);
     const fields = buildFieldSummaries(sampleView, selections);
@@ -14,7 +13,6 @@ export function getViewWorkflowContext(app) {
     return {
         selections,
         fields,
-        workflows: listViewWorkflows(),
     };
 }
 

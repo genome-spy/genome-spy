@@ -150,8 +150,9 @@ function createMockAgentController(scenario, options = {}) {
             },
         ],
         actionCatalog: [],
-        viewWorkflows: {
-            workflows: [],
+        selectionAggregation: {
+            selections: [],
+            fields: [],
         },
         provenance: [
             {
