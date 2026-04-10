@@ -17,7 +17,7 @@ function createMockView(options) {
         },
         getScaleResolution: options.getScaleResolution ?? (() => undefined),
         getTitleText: () => options.title,
-        getEncoding: () => options.encoding ?? {},
+        getEncoding: () => options.encoding ?? options.spec?.encoding ?? {},
         getLayoutAncestors() {
             return this.parent
                 ? [this, ...this.parent.getLayoutAncestors()]
@@ -60,6 +60,35 @@ function createMockView(options) {
     }
 
     return view;
+}
+
+/**
+ * @param {{
+ *     type: string;
+ *     domain?: unknown[];
+ *     range?: unknown;
+ *     scheme?: unknown;
+ *     assembly?: unknown;
+ *     reverse?: boolean;
+ * }} options
+ * @returns {any}
+ */
+function createMockScaleResolution(options) {
+    const scale = {
+        props: {
+            type: options.type,
+            scheme: options.scheme,
+            assembly: options.assembly,
+            reverse: options.reverse ?? false,
+        },
+        domain: () => options.domain,
+        range: () => options.range,
+    };
+
+    return {
+        getResolvedScaleType: () => options.type,
+        getScale: () => scale,
+    };
 }
 
 describe("buildViewTree", () => {
@@ -659,5 +688,100 @@ describe("buildViewTree", () => {
         });
         expect(tree.root.children[0]).not.toHaveProperty("collapsed");
         expect(tree.root.children[0].children).toHaveLength(1);
+    });
+
+    it("summarizes effective scale mappings on color encodings", () => {
+        const colorLeaf = createMockView({
+            name: "color-points",
+            title: "Color points",
+            spec: {
+                mark: "point",
+                encoding: {
+                    color: {
+                        field: "group",
+                        type: "nominal",
+                        scale: {
+                            scheme: "category10",
+                        },
+                    },
+                },
+            },
+            getScaleResolution: (channel) =>
+                channel === "color"
+                    ? createMockScaleResolution({
+                          type: "ordinal",
+                          domain: ["A", "B"],
+                          range: ["#1f77b4", "#ff7f0e"],
+                          scheme: "category10",
+                      })
+                    : undefined,
+        });
+
+        const tree = buildViewTree({
+            getSampleView: () => colorLeaf,
+            genomeSpy: {
+                spec: {},
+                viewRoot: colorLeaf,
+            },
+        });
+
+        expect(tree.root.encodings.color).toEqual(
+            expect.objectContaining({
+                sourceKind: "field",
+                field: "group",
+                type: "nominal",
+                inherited: false,
+                scale: {
+                    type: "ordinal",
+                    domain: ["A", "B"],
+                    range: ["#1f77b4", "#ff7f0e"],
+                    scheme: "category10",
+                },
+            })
+        );
+    });
+
+    it("omits the range for positional scale summaries", () => {
+        const positionalLeaf = createMockView({
+            name: "positional-points",
+            title: "Positional points",
+            spec: {
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "value",
+                        type: "quantitative",
+                        scale: {
+                            type: "linear",
+                        },
+                    },
+                },
+            },
+            getScaleResolution: (channel) =>
+                channel === "y"
+                    ? createMockScaleResolution({
+                          type: "linear",
+                          domain: [0, 10],
+                          range: [0, 400],
+                      })
+                    : undefined,
+        });
+
+        const tree = buildViewTree({
+            getSampleView: () => positionalLeaf,
+            genomeSpy: {
+                spec: {},
+                viewRoot: positionalLeaf,
+            },
+        });
+
+        expect(tree.root.encodings.y.scale).toEqual(
+            expect.objectContaining({
+                type: "linear",
+                domain: [0, 10],
+            })
+        );
+        expect(tree.root.encodings.y.scale).not.toHaveProperty("range");
+        expect(tree.root.encodings.y.scale).not.toHaveProperty("reverse");
     });
 });

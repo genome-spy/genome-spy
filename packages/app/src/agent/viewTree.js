@@ -322,7 +322,7 @@ function summarizeViewNode(root, view, hasStructuralRoot) {
         data: summarizeDataSpec(spec.data),
         encodings: /** @type {import("./types.d.ts").AgentViewEncodings} */ (
             type === "unit"
-                ? summarizeEncodings(effectiveEncoding, ownEncoding)
+                ? summarizeEncodings(view, effectiveEncoding, ownEncoding)
                 : {}
         ),
         parameterDeclarations:
@@ -564,11 +564,12 @@ function getDataFormatKind(format) {
 }
 
 /**
+ * @param {any} view
  * @param {any} effectiveEncoding
  * @param {any} ownEncoding
  * @returns {import("./types.d.ts").AgentViewEncodings}
  */
-function summarizeEncodings(effectiveEncoding, ownEncoding) {
+function summarizeEncodings(view, effectiveEncoding, ownEncoding) {
     if (!effectiveEncoding || typeof effectiveEncoding !== "object") {
         return {};
     }
@@ -577,7 +578,12 @@ function summarizeEncodings(effectiveEncoding, ownEncoding) {
         Object.entries(effectiveEncoding)
             .filter(([channel]) => !isInternalChannel(channel))
             .map(([channel, def]) => {
-                const summary = summarizeEncoding(channel, def, ownEncoding);
+                const summary = summarizeEncoding(
+                    view,
+                    channel,
+                    def,
+                    ownEncoding
+                );
                 return summary ? [channel, summary] : undefined;
             })
             .filter(Boolean)
@@ -585,12 +591,13 @@ function summarizeEncodings(effectiveEncoding, ownEncoding) {
 }
 
 /**
+ * @param {any} view
  * @param {string} channel
  * @param {any} def
  * @param {any} ownEncoding
  * @returns {import("./types.d.ts").AgentViewEncodingSummary | undefined}
  */
-function summarizeEncoding(channel, def, ownEncoding) {
+function summarizeEncoding(view, channel, def, ownEncoding) {
     if (!isDataDrivenEncoding(def)) {
         return undefined;
     }
@@ -627,8 +634,74 @@ function summarizeEncoding(channel, def, ownEncoding) {
         summary.description = normalizeDescription(def.description);
     }
 
+    const scaleResolution =
+        typeof view.getScaleResolution === "function"
+            ? view.getScaleResolution(channel)
+            : undefined;
+    const scale = summarizeScale(channel, scaleResolution);
+    if (scale) {
+        summary.scale = scale;
+    }
+
     if ("aggregate" in def && typeof def.aggregate === "string") {
         summary.type ??= def.aggregate;
+    }
+
+    return summary;
+}
+
+/**
+ * @param {string} channel
+ * @param {any} scaleResolution
+ * @returns {import("./types.d.ts").AgentViewScaleSummary | undefined}
+ */
+function summarizeScale(channel, scaleResolution) {
+    if (!scaleResolution) {
+        return undefined;
+    }
+
+    const scale = scaleResolution.getScale();
+    const props = scale.props ?? {};
+    /** @type {import("./types.d.ts").AgentViewScaleSummary} */
+    const summary = {
+        type: String(
+            props.type ?? scaleResolution.getResolvedScaleType() ?? "null"
+        ),
+    };
+
+    if (summary.type === "null") {
+        return summary;
+    }
+
+    if (props.scheme !== undefined) {
+        summary.scheme = props.scheme;
+    }
+
+    if (props.assembly !== undefined) {
+        summary.assembly = props.assembly;
+    }
+
+    if (props.reverse === true) {
+        summary.reverse = true;
+    }
+
+    if (
+        channel !== "x" &&
+        channel !== "y" &&
+        channel !== "x2" &&
+        channel !== "y2"
+    ) {
+        const range = scale.range();
+        if (range !== undefined && typeof range !== "function") {
+            summary.range = range;
+        }
+    }
+
+    if (summary.type !== "locus") {
+        const domain = scale.domain();
+        if (domain !== undefined) {
+            summary.domain = domain;
+        }
     }
 
     return summary;

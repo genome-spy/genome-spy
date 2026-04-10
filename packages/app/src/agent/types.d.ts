@@ -301,9 +301,49 @@ export interface AgentViewEncodingSummary {
     description?: string;
 
     /**
+     * Effective scale configuration for the channel, if the encoding uses a scale.
+     */
+    scale?: AgentViewScaleSummary;
+
+    /**
      * Whether this encoding comes from an ancestor view.
      */
     inherited: boolean;
+}
+
+/**
+ * Effective scale configuration for a view encoding channel.
+ */
+export interface AgentViewScaleSummary {
+    /**
+     * Effective scale type.
+     */
+    type: string;
+
+    /**
+     * Effective scale domain.
+     */
+    domain?: unknown;
+
+    /**
+     * Effective scale range.
+     */
+    range?: unknown;
+
+    /**
+     * Effective color scheme.
+     */
+    scheme?: unknown;
+
+    /**
+     * Effective locus assembly.
+     */
+    assembly?: import("@genome-spy/core/spec/scale.js").Scale["assembly"];
+
+    /**
+     * Whether the scale is reversed.
+     */
+    reverse?: boolean;
 }
 
 /**
