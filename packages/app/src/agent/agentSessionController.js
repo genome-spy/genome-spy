@@ -11,6 +11,7 @@ import {
     serializeToolCallSignature,
 } from "./toolCallLoop.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
+import { looksLikeStructuredToolMessage } from "./messageDetection.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
 /** @typedef {import("./types.d.ts").IntentProgram} IntentProgram */
@@ -127,20 +128,6 @@ function now() {
  */
 function elapsedMilliseconds(startedAt) {
     return Math.round((now() - startedAt) * 10) / 10;
-}
-
-/**
- * @param {string} text
- * @returns {boolean}
- */
-function looksLikeStructuredToolMessage(text) {
-    const stripped = text.trimStart();
-    return (
-        stripped.startsWith("{") ||
-        stripped.startsWith("[") ||
-        stripped.startsWith("```") ||
-        /^"[^"]+"\s*:/.test(stripped)
-    );
 }
 
 /**

@@ -9,6 +9,7 @@ import {
 import { validateIntentProgram } from "./intentProgramValidator.js";
 import { summarizeIntentProgram } from "./actionCatalog.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
+import { looksLikeStructuredToolMessage } from "./messageDetection.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
@@ -19,10 +20,7 @@ import {
 } from "./toolCallLoop.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
-const SHOULD_LOG_AGENT_TRACE =
-    import.meta.env.DEV && import.meta.env.MODE !== "test";
-const SHOULD_LOG_AGENT_IO =
-    import.meta.env.DEV && import.meta.env.MODE !== "test";
+const SHOULD_LOG_AGENT = import.meta.env.DEV && import.meta.env.MODE !== "test";
 
 function now() {
     return globalThis.performance?.now?.() ?? Date.now();
@@ -34,20 +32,6 @@ function now() {
  */
 function elapsedMilliseconds(startedAt) {
     return Math.round((now() - startedAt) * 10) / 10;
-}
-
-/**
- * @param {string} text
- * @returns {boolean}
- */
-function looksLikeStructuredToolMessage(text) {
-    const stripped = text.trimStart();
-    return (
-        stripped.startsWith("{") ||
-        stripped.startsWith("[") ||
-        stripped.startsWith("```") ||
-        /^"[^"]+"\s*:/.test(stripped)
-    );
 }
 
 /**
@@ -95,7 +79,7 @@ function publishAgentTrace(trace) {
     const app = /** @type {any} */ (window).__genomeSpyApp;
     app?.recordAgentTrace?.(trace);
     /** @type {any} */ (window).__genomeSpyLastAgentTrace = trace;
-    if (SHOULD_LOG_AGENT_TRACE) {
+    if (SHOULD_LOG_AGENT) {
         console.groupCollapsed(
             "[GenomeSpy Agent] " + trace.message + " (" + trace.totalMs + " ms)"
         );
@@ -109,7 +93,7 @@ function publishAgentTrace(trace) {
  * @param {Record<string, any>} payload
  */
 function logAgentTransport(phase, payload) {
-    if (!SHOULD_LOG_AGENT_IO) {
+    if (!SHOULD_LOG_AGENT) {
         return;
     }
 
