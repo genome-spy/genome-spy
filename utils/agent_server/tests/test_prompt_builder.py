@@ -25,13 +25,13 @@ def test_build_responses_input_uses_poc_order() -> None:
     assert messages[0]["role"] == "developer"
     assert messages[0]["content"][0]["type"] == "input_text"
     assert "schemaVersion" in messages[0]["content"][0]["text"]
-    assert messages[1]["id"] == "1"
+    assert messages[1]["id"] == "msg_1"
     assert messages[1]["role"] == "user"
     assert messages[1]["content"][0] == {
         "type": "input_text",
         "text": "First question",
     }
-    assert messages[2]["id"] == "2"
+    assert messages[2]["id"] == "msg_2"
     assert messages[2]["role"] == "assistant"
     assert messages[3]["role"] == "user"
     assert messages[3]["content"][0] == {
@@ -92,7 +92,7 @@ def test_build_responses_input_serializes_tool_turns() -> None:
     prompt = build_prompt_ir(request)
     messages = build_responses_input(prompt)
 
-    assert messages[1]["id"] == "1"
+    assert messages[1]["id"] == "msg_1"
     assert messages[1]["role"] == "assistant"
     assert messages[1]["content"][0] == {
         "type": "output_text",

@@ -143,7 +143,7 @@ def _build_response_messages(history: list[HistoryMessage]) -> list[dict[str, An
             if message.text:
                 messages.append(
                     {
-                        "id": message.id,
+                        "id": _normalize_message_id(message.id),
                         "type": "message",
                         "status": "completed",
                         "role": "assistant",
@@ -171,7 +171,7 @@ def _build_response_messages(history: list[HistoryMessage]) -> list[dict[str, An
         content = [{"type": content_type, "text": message.text}]
         messages.append(
             {
-                "id": message.id,
+                "id": _normalize_message_id(message.id),
                 "type": "message",
                 "status": "completed",
                 "role": message.role,
@@ -190,3 +190,10 @@ def _stringify_content(content: Any, fallback: str) -> str:
         return fallback
 
     return json.dumps(content, ensure_ascii=False, sort_keys=True)
+
+
+def _normalize_message_id(message_id: str) -> str:
+    if message_id.startswith("msg"):
+        return message_id
+
+    return "msg_" + message_id
