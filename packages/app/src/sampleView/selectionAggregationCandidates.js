@@ -336,5 +336,12 @@ function deduplicateFieldInfos(fields) {
  * @returns {string}
  */
 export function createSelectionAggregationCandidateId(viewSelector, field) {
-    return JSON.stringify({ viewSelector, field });
+    return (
+        (viewSelector.scope.length > 0
+            ? viewSelector.scope.join("/") + "/"
+            : "") +
+        viewSelector.view +
+        ":" +
+        field
+    );
 }

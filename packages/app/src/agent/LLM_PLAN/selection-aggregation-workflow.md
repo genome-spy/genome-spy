@@ -19,6 +19,33 @@ descriptor can drive multiple consumers.
 - Agent-facing selection context: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
 - Local agent execution: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 
+## Status
+
+- Implemented:
+  - Candidate discovery is extracted to `selectionAggregationCandidates.js`
+    and reused by the context menu and the agent context.
+  - The agent context already exposes active interval selections and
+    aggregatable fields through `selectionAggregationContext.js`.
+  - The canonical `VALUE_AT_LOCUS` builder exists in
+    `selectionAggregationAttributes.js`.
+  - `buildDerivedMetadataIntent(...)` exists and is used by the derived
+    metadata flow.
+  - Tests cover candidate discovery, the attribute builder, and the agent
+    selection context.
+
+- Partially implemented:
+  - The canonical attribute builder is not yet wired into the live derived
+    metadata flow.
+  - There is no dedicated resolver tool yet for
+    `selectionSelector + candidateId + aggregation -> canonical attribute`.
+  - The agent-facing context is still a snapshot, not a resolver workflow.
+
+- Still to do:
+  - Wire the shared attribute builder into the live consumer path where it
+    should be reused.
+  - Add the resolver tool and keep it thin.
+  - Add coverage for the resolver path and its reuse in downstream consumers.
+
 ## Why this exists
 
 - The current UI path is menu-driven and multi-step:
@@ -47,13 +74,50 @@ From the agent's point of view, these requests mean:
 2. Determine whether the interval is already represented by an active selection
    or needs one.
 3. Ask for or inspect the current aggregation candidates.
-4. Choose a view selector, field, and aggregation op.
+4. Choose a selection selector, view selector, field, and aggregation op.
 5. Let the app build the canonical aggregated `AttributeIdentifier`.
 6. Reuse that attribute for metadata, sorting, filtering, or plotting.
 
 The agent should not need to invent the full nested reducer payload by hand.
 It should understand the conceptual flow and rely on the app for the canonical
 construction.
+
+### Current Agent Surface
+
+What is available today:
+
+- Read-only planner context already includes `selectionAggregation`.
+  - `selectionAggregation.fields` lists one row per selection-field pair for
+    the current active interval selections.
+  - Each field summary already carries a stable `candidateId`,
+    `viewSelector`, `field`, `dataType`, `supportedAggregations`, and a
+    singular `selectionSelector`.
+  - It does not duplicate `viewTitle` or field `description`; use `viewTree`
+    and the sample-view helpers when richer labels are needed.
+- The active selection declarations themselves come from `viewTree`.
+  - The agent should read them from `parameterDeclarations`, not from
+    `selectionAggregation`.
+- There is no dedicated candidate-query tool.
+  - The agent gets candidate information from the context snapshot returned by
+    `getAgentContext(app)`.
+  - If the agent needs a refreshed snapshot, it gets one on the next planner
+    turn after the app rebuilds context.
+- The available mutation entry point is `submitIntentProgram`.
+  - To make or update an interval selection, the agent uses an intent program
+    with `paramProvenance/paramChange`.
+  - To turn the resolved view field into derived metadata, the agent uses
+    `sampleView/deriveMetadata`.
+  - `paramProvenance/expandPointSelection` exists, but it is for point
+    selections and is not part of the interval-selection flow.
+- `expandViewNode` / `collapseViewNode` are separate agent-context tools.
+  - They are useful for the view tree, not for selection aggregation.
+
+What is still missing:
+
+- A dedicated resolver that turns `selectionSelector + candidateId + aggregation`
+  into the canonical aggregated `AttributeIdentifier`.
+- A dedicated selection-aggregation tool that returns the canonical attribute
+  preview without requiring the agent to author the nested payload itself.
 
 ## Revision During Implementation
 
@@ -102,7 +166,7 @@ sample-view helpers for candidate discovery and attribute construction.
 The agent-facing flow should be split into two phases:
 
 1. Discover candidates.
-   - Return stable selection IDs.
+   - Return selection selector objects.
    - Return view selectors, not raw view IDs.
    - Return eligible fields.
    - Return supported aggregation ops for each field.
@@ -113,8 +177,8 @@ The agent-facing flow should be split into two phases:
    - Build the derived metadata intent in app code if needed.
    - Reuse the same descriptor for other consumers.
 
-The model should choose from compact IDs and labels. It should not author the
-full nested payload that the reducer expects.
+The model should choose from selector objects, candidate IDs, and labels. It
+should not author the full nested payload that the reducer expects.
 
 ## Proposed Agent Contract
 
@@ -122,18 +186,20 @@ Prefer a small read-only tool that returns structured candidates:
 
 ```json
 {
-  "selectionId": "brush",
   "candidates": [
     {
-      "candidateId": "beta-values/beta",
+      "candidateId": "brush@beta-values:beta",
       "viewSelector": {
         "scope": ["beta-values"],
         "view": "beta-values"
       },
-      "viewTitle": "Beta values",
       "field": "beta",
       "dataType": "quantitative",
       "supportedAggregations": ["count", "min", "max", "weightedMean", "variance"],
+      "selectionSelector": {
+        "scope": [],
+        "param": "brush"
+      },
       "defaultName": "max(beta)"
     }
   ]
@@ -151,8 +217,11 @@ Suggested resolver shape:
 
 ```json
 {
-  "selectionId": "brush",
-  "candidateId": "beta-values/beta",
+  "selectionSelector": {
+    "scope": [],
+    "param": "brush"
+  },
+  "candidateId": "brush@beta-values:beta",
   "aggregation": "max"
 }
 ```
@@ -195,31 +264,28 @@ filters, or plotting encodings.
 
 ## Proposed App Helpers
 
-Extract reusable helpers from the current UI code:
+These helpers are already present or partially extracted:
 
 - `discoverIntervalAggregationCandidates(...)`
-  - shared by the context menu and by the agent-facing context
-  - enumerates candidate view selectors, fields, and ops
-  - should live in the non-agent sample-view codebase so the UI and agent both
-    consume the same source of truth
+  - Implemented as `getSelectionAggregationFieldInfos(...)` and the
+    `getContextMenuFieldInfos(...)` alias.
+  - Shared by the context menu and the agent-facing context.
+  - Enumerates candidate view selectors, fields, and ops.
 
 - `buildAggregatedAttributeIdentifier(...)`
-  - turns a chosen candidate into the canonical `AttributeIdentifier`
-  - should be used by derived metadata, sort/filter/plot consumers, and any
-    future agent workflow
-  - should return the canonical `AttributeIdentifier` plus a compact preview
-    title/description
-  - should not mutate state
-  - may accept or surface an LLM-generated description as an optional preview
-    string, but should not depend on the wording for correctness
+  - Implemented as `buildSelectionAggregationAttributeIdentifier(...)`.
+  - Turns a chosen candidate into the canonical `AttributeIdentifier`.
+  - This is the right helper to reuse for derived metadata and any future
+    agent workflow.
 
 - `buildDerivedMetadataIntent(...)`
-  - keeps building the actual provenance-backed mutation
-  - should remain the single source of truth for the reducer payload
+  - Implemented in `deriveMetadataUtils.js`.
+  - Keeps building the actual provenance-backed mutation.
+  - Remains the single source of truth for the reducer payload.
 
 ## Implementation Plan
 
-1. Extract candidate discovery from the context menu code.
+1. Extract candidate discovery from the context menu code. Done.
    - Move the menu eligibility logic into a pure helper.
    - Keep the context menu as a UI consumer of that helper.
    - Keep the agent-facing discovery tool as another consumer of the same
@@ -229,7 +295,7 @@ Extract reusable helpers from the current UI code:
      to `master`.
    - Review the extracted code for code smells before continuing.
 
-2. Extract canonical aggregated-attribute construction.
+2. Extract canonical aggregated-attribute construction. Partially done.
    - Build the `VALUE_AT_LOCUS` descriptor in one place.
    - Reuse the helper for derived metadata and any other consumer that needs the
      same attribute.
@@ -238,13 +304,13 @@ Extract reusable helpers from the current UI code:
    - Review the extracted code for code smells before continuing.
 
 3. Feed the agent from the shared candidate snapshot and keep the agent-facing
-   context thin.
+   context thin. Partially done.
    - Keep the prompt high-level.
    - Let the tool return compact candidates.
    - Let app code construct the final payload.
    - Review the resulting agent-facing code for code smells before continuing.
 
-4. Test the shared helpers directly.
+4. Test the shared helpers directly. Mostly done.
    - Cover candidate discovery.
    - Cover aggregation op filtering by field type.
    - Cover attribute construction from a chosen candidate.

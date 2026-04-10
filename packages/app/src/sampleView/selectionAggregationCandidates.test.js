@@ -45,7 +45,7 @@ describe("selectionAggregationCandidates", () => {
         expect(candidates).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    candidateId: expect.any(String),
+                    candidateId: "track:zScore",
                     viewSelector: {
                         scope: [],
                         view: "track",

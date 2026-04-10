@@ -12,6 +12,7 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
         scope: [],
         view: view.explicitName ?? view.name,
     }),
+    makeParamSelectorKey: (selector) => JSON.stringify(selector),
     resolveParamSelector: (root, selector) =>
         resolveParamSelectorMock(root, selector),
     isChromeView: () => false,
@@ -153,7 +154,6 @@ describe("agentAdapter browser integration", () => {
                 actionCatalog: expect.any(Array),
                 selectionAggregation: expect.objectContaining({
                     fields: expect.any(Array),
-                    selections: expect.any(Array),
                 }),
                 provenance: expect.any(Array),
                 lifecycle: expect.objectContaining({
@@ -164,9 +164,6 @@ describe("agentAdapter browser integration", () => {
         expect(planner.requests[0].body.context).not.toHaveProperty("view");
         expect(planner.requests[0].body.context).not.toHaveProperty("viewTree");
         expect(planner.requests[0].body.context).not.toHaveProperty("params");
-        expect(
-            planner.requests[0].body.context.selectionAggregation
-        ).toHaveProperty("selections");
     });
 
     it("shows planner clarifications in the real message dialog without executing actions", async () => {

@@ -114,6 +114,10 @@ describe("getSelectionAggregationContext", () => {
                                 selector: { scope: [], param: "brush" },
                                 value: { type: "interval", value: [0, 1] },
                             },
+                            brush2: {
+                                selector: { scope: [], param: "brush2" },
+                                value: { type: "interval", value: [1, 2] },
+                            },
                         },
                     },
                 }),
@@ -122,20 +126,33 @@ describe("getSelectionAggregationContext", () => {
 
         const context = getSelectionAggregationContext(app);
 
-        expect(context.selections).toEqual([
-            expect.objectContaining({
-                label: "brush",
-                description: "Brush the beta interval.",
-            }),
-        ]);
         expect(context.fields).toEqual([
             expect.objectContaining({
                 field: "beta",
-                description: "Beta-value track",
-                candidateId: expect.any(String),
+                candidateId: "brush@track:beta",
                 viewSelector: {
                     scope: [],
                     view: "track",
+                },
+                selectionSelector: {
+                    scope: [],
+                    param: "brush",
+                },
+                supportedAggregations: expect.arrayContaining([
+                    "weightedMean",
+                    "variance",
+                ]),
+            }),
+            expect.objectContaining({
+                field: "beta",
+                candidateId: "brush2@track:beta",
+                viewSelector: {
+                    scope: [],
+                    view: "track",
+                },
+                selectionSelector: {
+                    scope: [],
+                    param: "brush2",
                 },
                 supportedAggregations: expect.arrayContaining([
                     "weightedMean",
@@ -143,5 +160,7 @@ describe("getSelectionAggregationContext", () => {
                 ]),
             }),
         ]);
+        expect(context.fields[0]).not.toHaveProperty("viewTitle");
+        expect(context.fields[0]).not.toHaveProperty("description");
     });
 });

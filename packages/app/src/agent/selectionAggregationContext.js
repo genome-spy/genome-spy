@@ -1,9 +1,12 @@
 import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
-import { getContextMenuFieldInfos } from "../sampleView/selectionAggregationCandidates.js";
+import {
+    createSelectionAggregationCandidateId,
+    getContextMenuFieldInfos,
+} from "../sampleView/selectionAggregationCandidates.js";
 
 /**
  * @param {import("../app.js").default} app
- * @returns {{ selections: import("./types.js").AgentSelectionSummary[]; fields: import("./types.js").AgentViewFieldSummary[]; }}
+ * @returns {import("./types.js").AgentSelectionAggregationContext}
  */
 export function getSelectionAggregationContext(app) {
     const sampleView = app.getSampleView();
@@ -11,7 +14,6 @@ export function getSelectionAggregationContext(app) {
     const fields = buildFieldSummaries(sampleView, selections);
 
     return {
-        selections,
         fields,
     };
 }
@@ -34,7 +36,6 @@ function buildSelectionSummaries(app) {
                 isActiveIntervalSelectionValue(entry.value)
         )
         .map((entry) => ({
-            id: createSelectionId(entry.selector),
             type: "interval",
             label: entry.selector.param,
             description: /** @type {string | undefined} */ (
@@ -56,8 +57,8 @@ function buildFieldSummaries(sampleView, selections) {
         return [];
     }
 
-    /** @type {Map<string, import("./types.js").AgentViewFieldSummary>} */
-    const fields = new Map();
+    /** @type {import("./types.js").AgentViewFieldSummary[]} */
+    const fields = [];
     const layoutRoot =
         typeof sampleView.getLayoutAncestors === "function"
             ? (sampleView.getLayoutAncestors().at(-1) ?? sampleView)
@@ -80,46 +81,50 @@ function buildFieldSummaries(sampleView, selections) {
             layoutRoot,
             true
         )) {
-            const id = createFieldId(
-                selection.id,
-                fieldInfo.viewSelector.view,
-                fieldInfo.field
-            );
-            const existing = fields.get(id);
-            if (existing) {
-                if (!existing.selectionIds.includes(selection.id)) {
-                    existing.selectionIds.push(selection.id);
-                }
-                continue;
-            }
-
-            fields.set(id, {
-                id,
-                candidateId: fieldInfo.candidateId,
+            const baseCandidateId =
+                fieldInfo.candidateId ??
+                createSelectionAggregationCandidateId(
+                    fieldInfo.viewSelector,
+                    fieldInfo.field
+                );
+            fields.push({
+                candidateId: createSelectionAggregationRowCandidateId(
+                    selection.selector,
+                    baseCandidateId
+                ),
                 view: fieldInfo.viewSelector.view,
                 viewSelector: fieldInfo.viewSelector,
-                viewTitle: fieldInfo.viewTitle,
                 field: fieldInfo.field,
                 dataType: fieldInfo.type,
-                description: fieldInfo.description,
-                selectionIds: [selection.id],
+                selectionSelector: selection.selector,
                 supportedAggregations: fieldInfo.supportedAggregations.slice(),
             });
         }
     }
 
-    return Array.from(fields.values()).sort(
-        (a, b) =>
-            a.viewTitle.localeCompare(b.viewTitle) ||
-            a.field.localeCompare(b.field)
-    );
+    return fields.sort((a, b) => a.candidateId.localeCompare(b.candidateId));
 }
 
 /**
- * @param {any} selector
+ * @param {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} selectionSelector
+ * @param {string} candidateId
+ * @returns {string}
  */
-function createSelectionId(selector) {
-    return JSON.stringify(selector);
+function createSelectionAggregationRowCandidateId(
+    selectionSelector,
+    candidateId
+) {
+    return `${formatParamSelector(selectionSelector)}@${candidateId}`;
+}
+
+/**
+ * @param {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} selector
+ * @returns {string}
+ */
+function formatParamSelector(selector) {
+    return selector.scope.length > 0
+        ? `${selector.scope.join("/")}:${selector.param}`
+        : selector.param;
 }
 
 /**
@@ -132,15 +137,6 @@ function createSelectionNameSuffix(value) {
     }
 
     return "brush_" + hashString(JSON.stringify(value));
-}
-
-/**
- * @param {string} selectionId
- * @param {string} view
- * @param {string} field
- */
-export function createFieldId(selectionId, view, field) {
-    return JSON.stringify({ selectionId, view, field });
 }
 
 /**

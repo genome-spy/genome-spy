@@ -31,6 +31,7 @@ vi.mock("@genome-spy/core/selection/selection.js", () => ({
 vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     getBookmarkableParams: getBookmarkableParamsMock,
     getParamSelector: getParamSelectorMock,
+    makeParamSelectorKey: (selector) => JSON.stringify(selector),
     getViewSelector: (view) => ({
         scope: [],
         view: view.explicitName ?? view.name,
@@ -295,7 +296,6 @@ describe("getAgentContext", () => {
             "submitIntentProgram",
         ]);
         expect(context.selectionAggregation.fields).toEqual([]);
-        expect(context.selectionAggregation).toHaveProperty("selections");
         expect(context.provenance).toEqual([
             expect.objectContaining({
                 summary: "Brush brush (0-1) in Patient Cohort",

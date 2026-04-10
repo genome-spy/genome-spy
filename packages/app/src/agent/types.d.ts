@@ -517,11 +517,6 @@ export interface AgentProvenanceAction {
  */
 export interface AgentSelectionSummary {
     /**
-     * Stable identifier derived from the selector.
-     */
-    id: string;
-
-    /**
      * Selection kind. Currently only interval selections are surfaced.
      */
     type: "interval";
@@ -701,14 +696,9 @@ export type AgentParameterDeclaration =
  */
 export interface AgentViewFieldSummary {
     /**
-     * Stable identifier for the field summary.
+     * Stable, human-readable identifier for the aggregation candidate.
      */
-    id: string;
-
-    /**
-     * Stable identifier for the aggregation candidate, if exposed.
-     */
-    candidateId?: string;
+    candidateId: string;
 
     /**
      * Addressable view name.
@@ -721,11 +711,6 @@ export interface AgentViewFieldSummary {
     viewSelector?: ViewSelector;
 
     /**
-     * Human-readable view title.
-     */
-    viewTitle: string;
-
-    /**
      * Field name.
      */
     field: string;
@@ -736,14 +721,9 @@ export interface AgentViewFieldSummary {
     dataType: string;
 
     /**
-     * Human-readable description of the field, if available.
+     * Selection selector for which this field is relevant.
      */
-    description?: string;
-
-    /**
-     * Active selections for which this field is relevant.
-     */
-    selectionIds: string[];
+    selectionSelector: ParamSelector;
 
     /**
      * Supported aggregations for this field.
@@ -755,11 +735,6 @@ export interface AgentViewFieldSummary {
  * Selection-derived aggregation context exposed to the planner.
  */
 export interface AgentSelectionAggregationContext {
-    /**
-     * Active interval selections.
-     */
-    selections: AgentSelectionSummary[];
-
     /**
      * Aggregatable fields for the active selections.
      */

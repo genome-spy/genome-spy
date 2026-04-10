@@ -151,7 +151,6 @@ function createMockAgentController(scenario, options = {}) {
         ],
         actionCatalog: [],
         selectionAggregation: {
-            selections: [],
             fields: [],
         },
         provenance: [

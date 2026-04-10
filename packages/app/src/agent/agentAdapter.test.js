@@ -35,6 +35,7 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
     resolveParamSelector: resolveParamSelectorMock,
     resolveViewSelector: resolveViewSelectorMock,
     getViewSelector: getViewSelectorMock,
+    makeParamSelectorKey: (selector) => JSON.stringify(selector),
     visitAddressableViews: visitAddressableViewsMock,
 }));
 
@@ -210,7 +211,6 @@ function createMockPlannerContext() {
         ],
         actionCatalog: [],
         selectionAggregation: {
-            selections: [],
             fields: [],
         },
         provenance: [],
