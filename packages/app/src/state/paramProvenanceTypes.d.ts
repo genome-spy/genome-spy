@@ -159,7 +159,9 @@ export type ParamValue =
     | ParamValuePointExpand;
 
 /**
- * Payload for updating a bookmarkable parameter entry in provenance.
+ * Payload for creating or updating a reactive selection or parameter value,
+ * including point selections, interval selections, and genomic-region
+ * selections.
  */
 export interface ParamProvenanceEntry {
     /**

@@ -58,11 +58,6 @@ export interface AgentActionCatalogEntry {
     payloadType: string;
 
     /**
-     * Longer payload description.
-     */
-    payloadDescription: string;
-
-    /**
      * Field-level payload metadata.
      */
     payloadFields: AgentPayloadField[];

@@ -38,7 +38,6 @@ describe("actionCatalog", () => {
 
         expect(entries[0]).toEqual(
             expect.objectContaining({
-                payloadDescription: expect.any(String),
                 payloadFields: expect.any(Array),
             })
         );
@@ -68,7 +67,7 @@ describe("actionCatalog", () => {
     it("exposes payload field metadata for quantitative filters", () => {
         const entry = getActionCatalogEntry("sampleView/filterByQuantitative");
 
-        expect(entry.payloadDescription).toContain("quantitative attribute");
+        expect(entry.description).toContain("quantitative attribute");
         expect(entry.payloadFields).toEqual([
             expect.objectContaining({
                 name: "attribute",

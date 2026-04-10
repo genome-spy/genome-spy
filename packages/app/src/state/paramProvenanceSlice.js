@@ -17,10 +17,11 @@ export const paramProvenanceSlice = createSlice({
     initialState,
     reducers: {
         /**
-         * Update a bookmarkable parameter.
+         * Create or update a reactive selection or parameter value, including
+         * point selections, interval selections, and genomic-region selections.
          *
-         * Use this for interval selection updates and other replayable
-         * provenance-backed parameter changes.
+         * Use this for point selections, interval selections, genomic-region
+         * selections, and other replayable parameter changes.
          *
          * @agent.payloadType ParamProvenanceEntry
          * @agent.category provenance

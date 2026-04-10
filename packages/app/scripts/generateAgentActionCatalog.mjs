@@ -367,8 +367,6 @@ function buildEntry(actionType, localActionName, node, payloadTypeDocs) {
         actionType,
         description: normalizeActionDescription(summary),
         payloadType,
-        payloadDescription:
-            payloadTypeDoc.description || normalizeActionDescription(summary),
         payloadFields: payloadTypeDoc.fields,
         examplePayload,
     };

@@ -141,7 +141,7 @@ export const sampleSlice = createSlice({
     initialState: createInitialState(),
     reducers: {
         /**
-         * Set the initial sample collection for this view.
+         * Install the initial sample collection for this view.
          *
          * Use this when samples are first loaded or the entire collection is
          * replaced.
@@ -198,7 +198,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Add imported sample metadata to the current collection.
+         * Import metadata columns into the current sample collection.
          *
          * Use this for metadata uploads or source imports that provide
          * columnar sample attributes.
@@ -214,10 +214,11 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Add derived metadata computed from a view-backed attribute.
+         * Create a derived metadata column from a selected or aggregated attribute.
          *
-         * Use this when the user wants to turn a selected field into a new
-         * sample metadata column.
+         * Use this when the user wants to turn a selected field, selection
+         * aggregation, or other resolved attribute into a new sample metadata
+         * column.
          *
          * @agent.payloadType DeriveMetadata
          * @agent.category metadata
@@ -238,7 +239,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Add metadata imported from an external source.
+         * Import metadata columns from an external source.
          *
          * The payload is resolved by the metadata source machinery before the
          * reducer runs.
@@ -261,7 +262,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Sort samples in descending order by the chosen attribute.
+         * Sort samples by a selected attribute.
          *
          * Use this when the user wants to rank samples by a single attribute.
          * The attribute is typically quantitative or ordinal.
@@ -285,7 +286,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain the first sample of each category in the current ordering.
+         * Keep the first sample for each category in the current ordering.
          *
          * Use this when the current sort order already encodes the desired
          * representative sample for each category.
@@ -306,7 +307,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain samples from the first n categories in the current ordering.
+         * Keep samples from the first n categories in the current ordering.
          *
          * Use this when the user wants to keep only the leading categories
          * according to a prior sort or ranking.
@@ -331,7 +332,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain or remove samples using a numeric comparison.
+         * Filter samples by comparing a selected quantitative attribute to a threshold.
          *
          * Use this for threshold-based filtering on quantitative attributes.
          *
@@ -362,7 +363,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain or remove samples by exact discrete values.
+         * Filter samples by matching values in a selected attribute.
          *
          * Use this for categorical metadata and exact-match filtering.
          *
@@ -392,7 +393,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Remove samples that are missing the chosen attribute.
+         * Remove samples missing a selected attribute value.
          *
          * Use this to clean up incomplete metadata before applying further
          * analysis steps.
@@ -412,7 +413,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Create custom sample groups from manually chosen categories.
+         * Group samples by custom categories chosen from a selected attribute.
          *
          * Use this when the user wants to merge specific categories into named
          * groups.
@@ -445,7 +446,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Group samples by the distinct values of the chosen attribute.
+         * Group samples by the distinct values of a selected attribute.
          *
          * Use this to stratify the sample collection into one group per
          * category.
@@ -473,7 +474,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Group samples into quartiles by the chosen quantitative attribute.
+         * Group samples into quartiles by a selected quantitative attribute.
          *
          * Use this for a fast, coarse stratification into four groups.
          *
@@ -499,7 +500,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Group samples by user-defined numeric thresholds.
+         * Group samples by user-defined thresholds on a selected quantitative attribute.
          *
          * Use this when the desired stratification does not match quartiles or
          * a pre-existing categorical split.
@@ -535,7 +536,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Remove a nested sample group by path.
+         * Remove a sample group by path.
          *
          * Use this when the user wants to delete a previously created group
          * from the hierarchy.
@@ -555,7 +556,7 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain categories that are present in all current groups.
+         * Keep categories that appear in every current group.
          *
          * Use this for intersection-style cohort refinement.
          *

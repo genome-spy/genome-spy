@@ -2,81 +2,81 @@
   {
     "actionType": "sampleView/addMetadata",
     "title": "Add metadata",
-    "description": "Add imported sample metadata to the current collection."
+    "description": "Import metadata columns into the current sample collection."
   },
   {
     "actionType": "sampleView/deriveMetadata",
     "title": "Add derived metadata",
-    "description": "Add derived metadata computed from a view-backed attribute."
+    "description": "Create a derived metadata column from a selected or aggregated attribute."
   },
   {
     "actionType": "sampleView/addMetadataFromSource",
     "title": "Import metadata from source",
-    "description": "Add metadata imported from an external source."
+    "description": "Import metadata columns from an external source."
   },
   {
     "actionType": "sampleView/sortBy",
     "title": "Sort by",
-    "description": "Sort samples in descending order by the chosen attribute."
+    "description": "Sort samples by a selected attribute."
   },
   {
     "actionType": "sampleView/retainFirstOfEach",
     "title": "Retain the first sample of each",
-    "description": "Retain the first sample of each category in the current ordering."
+    "description": "Keep the first sample for each category in the current ordering."
   },
   {
     "actionType": "sampleView/retainFirstNCategories",
     "title": "Retain first n categories of ...",
-    "description": "Retain samples from the first n categories in the current ordering."
+    "description": "Keep samples from the first n categories in the current ordering."
   },
   {
     "actionType": "sampleView/filterByQuantitative",
     "title": "Retain samples having purity ≥ 0.6",
-    "description": "Retain or remove samples using a numeric comparison."
+    "description": "Filter samples by comparing a selected quantitative attribute to a threshold."
   },
   {
     "actionType": "sampleView/filterByNominal",
     "title": "Retain samples having diagnosis = AML",
-    "description": "Retain or remove samples by exact discrete values."
+    "description": "Filter samples by matching values in a selected attribute."
   },
   {
     "actionType": "sampleView/removeUndefined",
     "title": "Remove samples having missing attribute",
-    "description": "Remove samples that are missing the chosen attribute."
+    "description": "Remove samples missing a selected attribute value."
   },
   {
     "actionType": "sampleView/groupCustomCategories",
-    "title": "Create custom sample groups from manually chosen categories.",
-    "description": "Create custom sample groups from manually chosen categories."
+    "title": "Group samples by custom categories chosen from a selected attribute.",
+    "description": "Group samples by custom categories chosen from a selected attribute."
   },
   {
     "actionType": "sampleView/groupByNominal",
     "title": "Group by",
-    "description": "Group samples by the distinct values of the chosen attribute."
+    "description": "Group samples by the distinct values of a selected attribute."
   },
   {
     "actionType": "sampleView/groupToQuartiles",
     "title": "Group by quartiles",
-    "description": "Group samples into quartiles by the chosen quantitative attribute."
+    "description": "Group samples into quartiles by a selected quantitative attribute."
   },
   {
     "actionType": "sampleView/groupByThresholds",
     "title": "Group by thresholds",
-    "description": "Group samples by user-defined numeric thresholds."
+    "description": "Group samples by user-defined thresholds on a selected quantitative attribute."
   },
   {
     "actionType": "sampleView/removeGroup",
-    "title": "Remove a nested sample group by path.",
-    "description": "Remove a nested sample group by path."
+    "title": "Remove a sample group by path.",
+    "description": "Remove a sample group by path."
   },
   {
     "actionType": "sampleView/retainMatched",
     "title": "Retain group-wise matched samples using",
-    "description": "Retain categories that are present in all current groups."
+    "description": "Keep categories that appear in every current group."
   },
   {
     "actionType": "paramProvenance/paramChange",
-    "title": "Update a bookmarkable parameter.",
-    "description": "Update a bookmarkable parameter."
+    "title": "Create or update a reactive selection or parameter value, including point selections, interval selections, and genomic-region selections.",
+    "description": "Create or update a reactive selection or parameter value, including point selections, interval selections, and genomic-region selections."
   }
 ]

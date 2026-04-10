@@ -25,7 +25,6 @@ function getAttributeInfoSource(app) {
  * @property {(payload: any) => import("@reduxjs/toolkit").PayloadAction<any>} actionCreator
  * @property {string} description
  * @property {string} payloadType
- * @property {string} payloadDescription
  * @property {import("./types.js").AgentPayloadField[]} payloadFields
  * @property {unknown} examplePayload
  */

@@ -1,9 +1,8 @@
 [
   {
     "actionType": "sampleView/addMetadata",
-    "description": "Add imported sample metadata to the current collection.",
+    "description": "Import metadata columns into the current sample collection.",
     "payloadType": "SetMetadata",
-    "payloadDescription": "Add imported sample metadata to the current collection.",
     "payloadFields": [
       {
         "name": "columnarMetadata",
@@ -28,9 +27,8 @@
   },
   {
     "actionType": "sampleView/deriveMetadata",
-    "description": "Add derived metadata computed from a view-backed attribute.",
+    "description": "Create a derived metadata column from a selected or aggregated attribute.",
     "payloadType": "DeriveMetadata",
-    "payloadDescription": "Add derived metadata computed from a view-backed attribute.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -61,9 +59,8 @@
   },
   {
     "actionType": "sampleView/addMetadataFromSource",
-    "description": "Add metadata imported from an external source.",
+    "description": "Import metadata columns from an external source.",
     "payloadType": "AddMetadataFromSource",
-    "payloadDescription": "Add metadata imported from an external source.",
     "payloadFields": [
       {
         "name": "sourceId",
@@ -94,9 +91,8 @@
   },
   {
     "actionType": "sampleView/sortBy",
-    "description": "Sort samples in descending order by the chosen attribute.",
+    "description": "Sort samples by a selected attribute.",
     "payloadType": "SortBy",
-    "payloadDescription": "Payload for sorting samples by an attribute.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -114,9 +110,8 @@
   },
   {
     "actionType": "sampleView/retainFirstOfEach",
-    "description": "Retain the first sample of each category in the current ordering.",
+    "description": "Keep the first sample for each category in the current ordering.",
     "payloadType": "RetainFirstOfEach",
-    "payloadDescription": "Payload for retaining the first sample of each category.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -129,9 +124,8 @@
   },
   {
     "actionType": "sampleView/retainFirstNCategories",
-    "description": "Retain samples from the first n categories in the current ordering.",
+    "description": "Keep samples from the first n categories in the current ordering.",
     "payloadType": "RetainFirstNCategories",
-    "payloadDescription": "Retain samples from the first n categories in the current ordering.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -150,9 +144,8 @@
   },
   {
     "actionType": "sampleView/filterByQuantitative",
-    "description": "Retain or remove samples using a numeric comparison.",
+    "description": "Filter samples by comparing a selected quantitative attribute to a threshold.",
     "payloadType": "FilterByQuantitative",
-    "payloadDescription": "Payload for filtering samples by comparing a quantitative attribute against a numeric operand.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -184,9 +177,8 @@
   },
   {
     "actionType": "sampleView/filterByNominal",
-    "description": "Retain or remove samples by exact discrete values.",
+    "description": "Filter samples by matching values in a selected attribute.",
     "payloadType": "FilterByNominal",
-    "payloadDescription": "Retain or remove samples by exact discrete values.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -217,9 +209,8 @@
   },
   {
     "actionType": "sampleView/removeUndefined",
-    "description": "Remove samples that are missing the chosen attribute.",
+    "description": "Remove samples missing a selected attribute value.",
     "payloadType": "RemoveUndefined",
-    "payloadDescription": "Payload for removing samples missing an attribute value.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -232,9 +223,8 @@
   },
   {
     "actionType": "sampleView/groupCustomCategories",
-    "description": "Create custom sample groups from manually chosen categories.",
+    "description": "Group samples by custom categories chosen from a selected attribute.",
     "payloadType": "GroupCustom",
-    "payloadDescription": "Create custom sample groups from manually chosen categories.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -253,9 +243,8 @@
   },
   {
     "actionType": "sampleView/groupByNominal",
-    "description": "Group samples by the distinct values of the chosen attribute.",
+    "description": "Group samples by the distinct values of a selected attribute.",
     "payloadType": "GroupByNominal",
-    "payloadDescription": "Payload for grouping by a categorical attribute.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -268,9 +257,8 @@
   },
   {
     "actionType": "sampleView/groupToQuartiles",
-    "description": "Group samples into quartiles by the chosen quantitative attribute.",
+    "description": "Group samples into quartiles by a selected quantitative attribute.",
     "payloadType": "GroupToQuartiles",
-    "payloadDescription": "Payload for grouping by quartiles.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -283,9 +271,8 @@
   },
   {
     "actionType": "sampleView/groupByThresholds",
-    "description": "Group samples by user-defined numeric thresholds.",
+    "description": "Group samples by user-defined thresholds on a selected quantitative attribute.",
     "payloadType": "GroupByThresholds",
-    "payloadDescription": "Group samples by user-defined numeric thresholds.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -319,9 +306,8 @@
   },
   {
     "actionType": "sampleView/removeGroup",
-    "description": "Remove a nested sample group by path.",
+    "description": "Remove a sample group by path.",
     "payloadType": "RemoveGroup",
-    "payloadDescription": "Remove a nested sample group by path.",
     "payloadFields": [
       {
         "name": "path",
@@ -334,9 +320,8 @@
   },
   {
     "actionType": "sampleView/retainMatched",
-    "description": "Retain categories that are present in all current groups.",
+    "description": "Keep categories that appear in every current group.",
     "payloadType": "RetainMatched",
-    "payloadDescription": "Retain categories that are present in all current groups.",
     "payloadFields": [
       {
         "name": "attribute",
@@ -349,9 +334,8 @@
   },
   {
     "actionType": "paramProvenance/paramChange",
-    "description": "Update a bookmarkable parameter.",
+    "description": "Create or update a reactive selection or parameter value, including point selections, interval selections, and genomic-region selections.",
     "payloadType": "ParamProvenanceEntry",
-    "payloadDescription": "Payload for updating a bookmarkable parameter entry in provenance.",
     "payloadFields": [
       {
         "name": "selector",
