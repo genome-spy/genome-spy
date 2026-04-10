@@ -85,8 +85,8 @@ export interface ClearViewVisibilityToolInput {
 }
 
 /**
- * Resolve a selection aggregation candidate into the canonical attribute and
- * a short preview.
+ * Resolve a selection aggregation candidate into an `AttributeIdentifier`
+ * for intent actions, plus a short preview.
  *
  * @example
  * {

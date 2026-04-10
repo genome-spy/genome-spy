@@ -8,22 +8,34 @@ import generatedActionCatalog from "../src/agent/generatedActionCatalog.json" wi
 
 describe("generatedActionSchema", () => {
     it("covers the current agent action set", () => {
-        expect(generatedActionSchema.definitions.AgentIntentProgramStep.anyOf).toHaveLength(
-            generatedActionCatalog.length
+        const stepVariants =
+            generatedActionSchema.definitions.AgentIntentProgramStep.anyOf;
+        expect(stepVariants).toHaveLength(generatedActionCatalog.length);
+        expect(
+            stepVariants
+                .map((entry) => entry.properties.actionType.const)
+                .filter(Boolean)
+        ).toEqual(generatedActionCatalog.map((entry) => entry.actionType));
+
+        const groupByThresholds = stepVariants.find(
+            (entry) =>
+                entry.properties.actionType.const ===
+                "sampleView/groupByThresholds"
+        );
+        expect(groupByThresholds.properties.payload.properties.thresholds.minItems).toBe(
+            1
+        );
+
+        const retainFirstNCategories = stepVariants.find(
+            (entry) =>
+                entry.properties.actionType.const ===
+                "sampleView/retainFirstNCategories"
         );
         expect(
-            generatedActionSchema.definitions.AgentIntentProgramStep.anyOf.map((entry) =>
-                entry.properties.actionType.const
-            )
-        ).toEqual(generatedActionCatalog.map((entry) => entry.actionType));
-        expect(
-            generatedActionSchema.definitions.GroupByThresholds.properties.thresholds.minItems
-        ).toBe(1);
-        expect(
-            generatedActionSchema.definitions.RetainFirstNCategories.properties.n.type
+            retainFirstNCategories.properties.payload.properties.n.type
         ).toBe("number");
         expect(
-            generatedActionSchema.definitions.RetainFirstNCategories.properties.n.minimum
+            retainFirstNCategories.properties.payload.properties.n.minimum
         ).toBe(1);
     });
 

@@ -6,6 +6,4 @@ export interface AgentIntentProgram {
     steps: [AgentIntentProgramStep, ...AgentIntentProgramStep[]];
 
     rationale?: string;
-
-    needsConfirmation?: boolean;
 }

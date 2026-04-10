@@ -79,10 +79,6 @@ export function validateIntentProgram(app, program) {
                 typeof candidate.rationale === "string"
                     ? candidate.rationale
                     : undefined,
-            needsConfirmation:
-                typeof candidate.needsConfirmation === "boolean"
-                    ? candidate.needsConfirmation
-                    : normalizedSteps.length > 1,
             steps: normalizedSteps,
         },
     };

@@ -5,9 +5,6 @@
     "AgentIntentProgram": {
       "additionalProperties": false,
       "properties": {
-        "needsConfirmation": {
-          "type": "boolean"
-        },
         "rationale": {
           "type": "string"
         },

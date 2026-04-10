@@ -174,6 +174,35 @@ A simple example:
 }
 ```
 
+### Selections
+
+Selections are based on "parameters" that are declared in the `viewTree` under
+`parameterDeclarations`. To make a selection or adjust an existing one, use the
+`paramChange` action.
+
+### Interval aggregation
+
+Some user requests ask for values aggregated over a genomic interval, such as a
+brush selection or a requested genomic range. Use this when the user asks for
+things like mean, max, min, variance, or count over an interval, or when they
+want metadata derived from the current brush.
+
+How to handle interval aggregation:
+
+0. Make or adjust an interval selection if needed.
+1. Find the active interval selection in `parameterDeclarations`.
+2. Inspect `selectionAggregation.fields` to find the row for the view and field
+   the user wants.
+3. Call `resolveSelectionAggregationCandidate` to get the `AttributeIdentifier`
+   for the candidate that matches.
+4. Use the returned `attribute` in the intent action that needs it, such as
+   `sampleView/deriveMetadata`, sorting, filtering, or plotting.
+
+Important rules:
+
+- Use a separate tool call for the interval selection step. Otherwise you cannot
+  access the latest aggregation candidates and get the correct attribute identifier.
+
 ## Tool use
 
 If a tool call is rejected, do not repeat the same call. Instead, analyze the

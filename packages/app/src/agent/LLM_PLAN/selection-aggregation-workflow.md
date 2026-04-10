@@ -36,16 +36,6 @@ descriptor can drive multiple consumers.
   - Tests cover candidate discovery, the attribute builder, and the agent
     selection context.
 
-- Partially implemented:
-  - The canonical attribute builder is not yet wired into the live derived
-    metadata flow.
-  - The agent-facing context is still a snapshot, not a resolver workflow.
-
-- Still to do:
-  - Wire the shared attribute builder into the live consumer path where it
-    should be reused.
-  - Add coverage for the resolver path and its reuse in downstream consumers.
-
 ## Why this exists
 
 - The current UI path is menu-driven and multi-step:
@@ -115,11 +105,6 @@ What is available today:
   - It returns the canonical `VALUE_AT_LOCUS` attribute plus a short preview.
 - `expandViewNode` / `collapseViewNode` are separate agent-context tools.
   - They are useful for the view tree, not for selection aggregation.
-
-What is still missing:
-
-- Wiring the resolved attribute into the live derived-metadata flow where that
-  helper is reused outside the planner surface.
 
 ## Revision During Implementation
 
@@ -322,8 +307,4 @@ These helpers are already present or partially extracted:
 
 ## Open Questions
 
-- Should the agent-facing tool return candidate IDs only, or candidate IDs plus
-  canonical attribute previews?
-- Should the same helper also drive a sort/filter/plot suggestion tool?
-- Which agent-context summaries still need to be surfaced for the planner and
-  which can stay internal to the selection-aggregation resolver?
+- None at the moment.

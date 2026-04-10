@@ -1135,11 +1135,6 @@ export interface IntentProgram {
      * Optional planner rationale.
      */
     rationale?: string;
-
-    /**
-     * Whether the program should be confirmed before execution.
-     */
-    needsConfirmation?: boolean;
 }
 
 /**
@@ -1235,11 +1230,6 @@ export interface AgentProgram {
      * Optional planner rationale.
      */
     rationale?: string;
-
-    /**
-     * Whether to ask for confirmation before execution.
-     */
-    needsConfirmation?: boolean;
 }
 
 /**

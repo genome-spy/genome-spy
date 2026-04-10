@@ -2,8 +2,8 @@ import { formatAggregationExpression } from "../sampleView/attributeAggregation/
 import { buildSelectionAggregationAttributeIdentifier } from "../sampleView/selectionAggregationAttributes.js";
 
 /**
- * Resolves a selection-aggregation candidate into the canonical attribute and
- * a short preview.
+ * Resolves a selection-aggregation candidate into an `AttributeIdentifier`
+ * for intent actions, plus a short preview.
  *
  * @param {import("./types.js").AgentContext} context
  * @param {string} candidateId

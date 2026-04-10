@@ -88,7 +88,7 @@
   },
   {
     "toolName": "resolveSelectionAggregationCandidate",
-    "description": "Resolve a selection aggregation candidate into the canonical attribute and a short preview.",
+    "description": "Resolve a selection aggregation candidate into an `AttributeIdentifier` for intent actions, plus a short preview.",
     "inputType": "ResolveSelectionAggregationCandidateToolInput",
     "inputFields": [
       {

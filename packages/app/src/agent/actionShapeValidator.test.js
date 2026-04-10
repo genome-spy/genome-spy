@@ -10,7 +10,6 @@ describe("actionShapeValidator", () => {
         const result = validateIntentProgramShape({
             schemaVersion: 1,
             rationale: "Sort by age",
-            needsConfirmation: false,
             steps: [
                 {
                     actionType: "sampleView/sortBy",
