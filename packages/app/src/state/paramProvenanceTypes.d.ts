@@ -159,16 +159,16 @@ export type ParamValue =
     | ParamValuePointExpand;
 
 /**
- * Single bookmarkable param entry.
+ * Payload for updating a bookmarkable parameter entry in provenance.
  */
-export type ParamProvenanceEntry = {
+export interface ParamProvenanceEntry {
     /**
-     * Stable selector for the param entry.
+     * Structured selector for the parameter.
      */
     selector: ParamSelector;
 
     /**
-     * Current param value.
+     * Serialized parameter value.
      */
     value: ParamValue;
 
@@ -176,7 +176,7 @@ export type ParamProvenanceEntry = {
      * Optional datum origin for replayable values.
      */
     origin?: ParamOrigin;
-};
+}
 
 /**
  * Payload for expanding a point selection.

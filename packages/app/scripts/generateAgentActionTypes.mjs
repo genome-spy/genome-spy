@@ -200,27 +200,10 @@ export function renderGeneratedActionTypes(catalog) {
 
     const stepVariants = catalog
         .map((entry) => {
-            let payloadType;
-            if (entry.actionType.startsWith("sampleView/")) {
-                payloadType = entry.payloadType;
-            } else if (entry.actionType === "paramProvenance/paramChange") {
-                payloadType = "ParamProvenanceEntry";
-            } else if (entry.actionType === "viewSettings/setVisibility") {
-                payloadType = "ViewSettingsSetVisibility";
-            } else if (
-                entry.actionType === "viewSettings/restoreDefaultVisibility"
-            ) {
-                payloadType = "ViewSettingsRestoreDefaultVisibility";
-            } else {
-                throw new Error(
-                    "Unsupported agent actionType " + entry.actionType + "."
-                );
-            }
-
             return [
                 "    | {",
                 `          actionType: "${entry.actionType}";`,
-                `          payload: ${payloadType};`,
+                `          payload: ${entry.payloadType};`,
                 "      }",
             ].join("\n");
         })

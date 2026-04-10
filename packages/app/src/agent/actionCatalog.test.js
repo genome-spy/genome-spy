@@ -53,7 +53,7 @@ describe("actionCatalog", () => {
         expect(action.type).toBe("sampleView/sortBy");
     });
 
-    it("provides action creators for supplemental actions", () => {
+    it("provides action creators for provenance actions", () => {
         expect(
             getActionCatalogEntry("paramProvenance/paramChange").actionCreator({
                 selector: { scope: [], param: "brush" },

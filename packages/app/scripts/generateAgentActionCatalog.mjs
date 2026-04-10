@@ -2,7 +2,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
-import { supplementalActionCatalogEntries } from "../src/agent/actionCatalogDefinitions.js";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(scriptDir, "..");
@@ -22,6 +21,18 @@ const payloadTypesPath = path.join(
     "state",
     "payloadTypes.d.ts"
 );
+const paramProvenanceSlicePath = path.join(
+    packageDir,
+    "src",
+    "state",
+    "paramProvenanceSlice.js"
+);
+const paramProvenanceTypesPath = path.join(
+    packageDir,
+    "src",
+    "state",
+    "paramProvenanceTypes.d.ts"
+);
 const outputPath = path.join(
     packageDir,
     "src",
@@ -30,6 +41,7 @@ const outputPath = path.join(
 );
 
 const SAMPLE_SLICE_PREFIX = "sampleView/";
+const PARAM_PROVENANCE_SLICE_PREFIX = "paramProvenance/";
 
 /**
  * @param {string} filePath
@@ -150,9 +162,10 @@ function parseExamples(tags) {
 
 /**
  * @param {ts.SourceFile} sourceFile
+ * @param {string} sliceName
  * @returns {Map<string, ts.PropertyAssignment>}
  */
-function getReducerNodes(sourceFile) {
+function getReducerNodes(sourceFile, sliceName) {
     /** @type {Map<string, ts.PropertyAssignment>} */
     const reducers = new Map();
 
@@ -162,7 +175,7 @@ function getReducerNodes(sourceFile) {
         }
 
         for (const declaration of statement.declarationList.declarations) {
-            if (declaration.name.getText(sourceFile) !== "sampleSlice") {
+            if (declaration.name.getText(sourceFile) !== sliceName) {
                 continue;
             }
 
@@ -322,18 +335,6 @@ function inferPayloadType(actionType) {
 }
 
 /**
- * @param {string} actionType
- * @returns {string}
- */
-function getSampleActionName(actionType) {
-    if (!actionType.startsWith(SAMPLE_SLICE_PREFIX)) {
-        throw new Error("Not a sample action type: " + actionType);
-    }
-
-    return actionType.slice(SAMPLE_SLICE_PREFIX.length);
-}
-
-/**
  * @param {string} text
  * @returns {string}
  */
@@ -343,15 +344,15 @@ function normalizeActionDescription(text) {
 
 /**
  * @param {string} actionType
+ * @param {string} localActionName
  * @param {ts.PropertyAssignment} node
  * @param {Map<string, PayloadTypeDoc>} payloadTypeDocs
  * @returns {Record<string, any>}
  */
-function buildEntry(actionType, node, payloadTypeDocs) {
+function buildEntry(actionType, localActionName, node, payloadTypeDocs) {
     const { summary, tags } = readJsDoc(node);
     const agentTags = parseAgentTags(tags);
     const examplePayload = parseExamples(tags)[0] ?? {};
-    const localActionName = getSampleActionName(actionType);
     const payloadType =
         agentTags.payloadType || inferPayloadType(localActionName);
     const payloadTypeDoc = payloadTypeDocs.get(payloadType);
@@ -374,33 +375,44 @@ function buildEntry(actionType, node, payloadTypeDocs) {
 }
 
 /**
+ * @param {Object} config
+ * @param {string} config.actionTypePrefix
+ * @param {string} config.slicePath
+ * @param {string} config.payloadTypesPath
+ * @param {string} config.sliceName
  * @returns {Promise<import("./types.js").AgentActionCatalogEntry[]>}
  */
-export async function createGeneratedActionCatalog() {
-    const [sampleSliceSource, payloadTypesSource] = await Promise.all([
-        loadSourceFile(sampleSlicePath, ts.ScriptKind.JS),
+async function createGeneratedActionCatalogEntriesForSource({
+    actionTypePrefix,
+    slicePath,
+    payloadTypesPath,
+    sliceName,
+}) {
+    const [sliceSource, payloadTypesSource] = await Promise.all([
+        loadSourceFile(slicePath, ts.ScriptKind.JS),
         loadSourceFile(payloadTypesPath, ts.ScriptKind.TS),
     ]);
 
-    const reducerNodes = getReducerNodes(sampleSliceSource);
+    const reducerNodes = getReducerNodes(sliceSource, sliceName);
     const payloadTypeDocs = getPayloadTypeDocs(payloadTypesSource);
-    const supplementalEntriesByActionType = new Map(
-        supplementalActionCatalogEntries.map((entry) => [entry.actionType, entry])
-    );
-
     /** @type {import("./types.js").AgentActionCatalogEntry[]} */
     const generatedActionCatalog = [];
+
     for (const [reducerName, reducerNode] of reducerNodes) {
         const { tags } = readJsDoc(reducerNode);
         const agentTags = parseAgentTags(tags);
-        if (agentTags.category === "initialization") {
+        if (
+            agentTags.category === "initialization" ||
+            agentTags.ignore === "true"
+        ) {
             continue;
         }
 
         generatedActionCatalog.push(
             /** @type {import("./types.js").AgentActionCatalogEntry} */ (
                 buildEntry(
-                    `${SAMPLE_SLICE_PREFIX}${reducerName}`,
+                    `${actionTypePrefix}${reducerName}`,
+                    reducerName,
                     reducerNode,
                     payloadTypeDocs
                 )
@@ -408,22 +420,30 @@ export async function createGeneratedActionCatalog() {
         );
     }
 
-    for (const actionType of supplementalEntriesByActionType.keys()) {
-        const supplementalEntry =
-            supplementalEntriesByActionType.get(actionType);
-        if (!supplementalEntry) {
-            throw new Error(
-                "Cannot find supplemental action catalog entry for " +
-                    actionType
-            );
-        }
+    return generatedActionCatalog;
+}
 
-        generatedActionCatalog.push(
-            /** @type {import("./types.js").AgentActionCatalogEntry} */ ({
-                ...supplementalEntry,
-            })
-        );
-    }
+/**
+ * @returns {Promise<import("./types.js").AgentActionCatalogEntry[]>}
+ */
+export async function createGeneratedActionCatalog() {
+    const generatedActionCatalog = [];
+    generatedActionCatalog.push(
+        ...(await createGeneratedActionCatalogEntriesForSource({
+            actionTypePrefix: SAMPLE_SLICE_PREFIX,
+            slicePath: sampleSlicePath,
+            payloadTypesPath,
+            sliceName: "sampleSlice",
+        }))
+    );
+    generatedActionCatalog.push(
+        ...(await createGeneratedActionCatalogEntriesForSource({
+            actionTypePrefix: PARAM_PROVENANCE_SLICE_PREFIX,
+            slicePath: paramProvenanceSlicePath,
+            payloadTypesPath: paramProvenanceTypesPath,
+            sliceName: "paramProvenanceSlice",
+        }))
+    );
 
     return generatedActionCatalog;
 }

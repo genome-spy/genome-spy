@@ -49,8 +49,6 @@ describe("generateAgentActionSummaries", () => {
             "sampleView/removeGroup",
             "sampleView/retainMatched",
             "paramProvenance/paramChange",
-            "viewSettings/setVisibility",
-            "viewSettings/restoreDefaultVisibility",
         ]);
     });
 });

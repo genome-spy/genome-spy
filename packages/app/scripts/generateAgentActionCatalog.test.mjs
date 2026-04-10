@@ -37,10 +37,6 @@ describe("generateAgentActionCatalog", () => {
         );
         expect(actionTypes).toContain("sampleView/sortBy");
         expect(actionTypes).toContain("paramProvenance/paramChange");
-        expect(actionTypes).toContain("viewSettings/setVisibility");
-        expect(actionTypes).toContain(
-            "viewSettings/restoreDefaultVisibility"
-        );
         expect(actionTypes).not.toContain("sampleView/setSamples");
     });
 });
