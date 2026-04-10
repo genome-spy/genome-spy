@@ -86,7 +86,8 @@ export interface ClearViewVisibilityToolInput {
 
 /**
  * Resolve a selection aggregation candidate into an `AttributeIdentifier`
- * for intent actions, plus a short preview.
+ * for intent actions. Before using this tool, you must make an interval
+ * selection or ensure that one already exists.
  *
  * @example
  * {
@@ -96,7 +97,10 @@ export interface ClearViewVisibilityToolInput {
  */
 export interface ResolveSelectionAggregationCandidateToolInput {
     /**
-     * Stable identifier for the selected candidate row.
+     * Stable identifier for the selected candidate row. The identifiers are
+     * available in `selectionAggregationCandidates` in the view context.
+     * They become available after a selection is made with a successful
+     * `paramChange` action.
      */
     candidateId: string;
 

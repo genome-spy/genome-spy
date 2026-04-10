@@ -39,7 +39,7 @@
       {
         "name": "name",
         "type": "string",
-        "description": "Name of the derived metadata column. The resulting metadata is written under this name.",
+        "description": "Name of the derived metadata column, should be less than 20 characters. The resulting metadata is written under this name.",
         "required": true
       },
       {

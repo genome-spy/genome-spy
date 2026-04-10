@@ -82,7 +82,7 @@ export interface SetMetadata {
 
 export interface DeriveMetadata extends PayloadWithAttribute {
     /**
-     * Name of the derived metadata column.
+     * Name of the derived metadata column, should be less than 20 characters.
      *
      * The resulting metadata is written under this name.
      */
