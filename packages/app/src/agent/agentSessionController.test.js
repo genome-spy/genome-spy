@@ -357,6 +357,102 @@ describe("createAgentSessionController", () => {
         );
     });
 
+    it("summarizes intent program tool results for sample-view actions", async () => {
+        const runtime = createRuntimeMock();
+        runtime.submitIntentProgram.mockResolvedValue({
+            ok: true,
+            executedActions: 2,
+            summaries: [
+                { content: "Sort by age", text: "Sort by age" },
+                { content: "Group by diagnosis", text: "Group by diagnosis" },
+                {
+                    content: "Visible samples before: 2",
+                    text: "Visible samples before: 2",
+                },
+                {
+                    content: "Visible samples after: 2",
+                    text: "Visible samples after: 2",
+                },
+            ],
+            program: {
+                schemaVersion: 1,
+                steps: [
+                    {
+                        actionType: "sampleView/sortBy",
+                        payload: {
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                        },
+                    },
+                    {
+                        actionType: "sampleView/groupByNominal",
+                        payload: {
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "diagnosis",
+                            },
+                        },
+                    },
+                ],
+            },
+        });
+        runtime.summarizeExecutionResult.mockReturnValue(
+            "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2"
+        );
+
+        const controller = createAgentSessionController(runtime);
+        const results = await controller.executeToolCalls([
+            {
+                callId: "call-intent",
+                name: "submitIntentProgram",
+                arguments: {
+                    program: {
+                        schemaVersion: 1,
+                        steps: [
+                            {
+                                actionType: "sampleView/sortBy",
+                                payload: {
+                                    attribute: {
+                                        type: "SAMPLE_ATTRIBUTE",
+                                        specifier: "age",
+                                    },
+                                },
+                            },
+                            {
+                                actionType: "sampleView/groupByNominal",
+                                payload: {
+                                    attribute: {
+                                        type: "SAMPLE_ATTRIBUTE",
+                                        specifier: "diagnosis",
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+        ]);
+
+        expect(runtime.submitIntentProgram).toHaveBeenCalledTimes(1);
+        expect(results[0]).toEqual(
+            expect.objectContaining({
+                rejected: false,
+                text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2",
+            })
+        );
+        expect(controller.getSnapshot().messages).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    kind: "tool_result",
+                    toolCallId: "call-intent",
+                    text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2",
+                }),
+            ])
+        );
+    });
+
     it("returns a structured no-op result when collapsing an already collapsed branch", async () => {
         const runtime = createRuntimeMock();
         const controller = createAgentSessionController(runtime);

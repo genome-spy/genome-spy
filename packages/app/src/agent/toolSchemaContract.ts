@@ -84,13 +84,23 @@ export interface ClearViewVisibilityToolInput {
 }
 
 /**
- * Execute a provenance-changing intent program.
+ * Execute a provenance-changing intent program with one or more ordered steps.
  *
  * @example
  * {
  *   "program": {
  *     "schemaVersion": 1,
- *     "steps": []
+ *     "steps": [
+ *       {
+ *         "actionType": "sampleView/groupToQuartiles",
+ *         "payload": {
+ *           "attribute": {
+ *             "type": "SAMPLE_ATTRIBUTE",
+ *             "specifier": "age"
+ *           }
+ *         }
+ *       }
+ *     ]
  *   }
  * }
  */

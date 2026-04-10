@@ -29,12 +29,34 @@ export async function submitIntentProgram(app, program) {
         getActionCatalogEntry(step.actionType).actionCreator(step.payload)
     );
 
+    const hasSampleViewMutation = validation.program.steps.some((step) =>
+        step.actionType.startsWith("sampleView/")
+    );
+    const beforeVisibleSampleCount = hasSampleViewMutation
+        ? countVisibleSamples(sampleView.sampleHierarchy.rootGroup)
+        : undefined;
+
     await app.intentPipeline.submit(actions, { getAttributeInfo });
+
+    const summaries = summarizeIntentProgram(app, validation.program);
+    if (hasSampleViewMutation) {
+        const afterVisibleSampleCount = countVisibleSamples(
+            sampleView.sampleHierarchy.rootGroup
+        );
+        summaries.push({
+            content: "Visible samples before: " + beforeVisibleSampleCount,
+            text: "Visible samples before: " + beforeVisibleSampleCount,
+        });
+        summaries.push({
+            content: "Visible samples after: " + afterVisibleSampleCount,
+            text: "Visible samples after: " + afterVisibleSampleCount,
+        });
+    }
 
     return {
         ok: true,
         executedActions: actions.length,
-        summaries: summarizeIntentProgram(app, validation.program),
+        summaries,
         program: validation.program,
     };
 }
@@ -57,4 +79,26 @@ export function summarizeExecutionResult(result) {
     }
 
     return lines.join("\n");
+}
+
+/**
+ * Counts the distinct samples currently present in the visible hierarchy.
+ *
+ * @param {import("../sampleView/state/sampleState.js").Group} group
+ * @param {Set<string>} [sampleIds]
+ * @returns {number}
+ */
+function countVisibleSamples(group, sampleIds = new Set()) {
+    if ("samples" in group) {
+        for (const sampleId of group.samples) {
+            sampleIds.add(sampleId);
+        }
+        return sampleIds.size;
+    }
+
+    for (const child of group.groups) {
+        countVisibleSamples(child, sampleIds);
+    }
+
+    return sampleIds.size;
 }

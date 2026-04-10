@@ -1073,18 +1073,15 @@ export class AgentSessionController {
         }
 
         if (toolCall.name === "submitIntentProgram") {
-            await this.#executeIntentProgram(argumentsObject.program, null);
-            if (this.#state.lastError) {
-                return {
-                    toolCallId: toolCall.callId,
-                    text: null,
-                    rejected: false,
-                };
-            }
+            const intentProgramResult = await this.#runtime.submitIntentProgram(
+                argumentsObject.program
+            );
 
             return {
                 toolCallId: toolCall.callId,
-                text: "Executed the proposed intent program.",
+                text: this.#runtime.summarizeExecutionResult(
+                    intentProgramResult
+                ),
                 rejected: false,
             };
         }

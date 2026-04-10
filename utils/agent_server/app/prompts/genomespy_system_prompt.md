@@ -139,6 +139,41 @@ Do not wait for a direct request to inspect the view structure.
 To keep the context size manageable, you should collapse the nodes you have
 opened after the information isn't needed anymore in the context.
 
+## Intent actions
+
+Intent actions are the mutation layer for the sample collection and
+selection/parameter state. They are listed in the `actionCatalog`. Use them
+when you need to change the visualization state, not when you are only
+explaining it.
+
+You can apply intent actions incrementally as the conversation unfolds. When a
+single user request needs multiple changes, combine the actions into one
+`submitIntentProgram` call with ordered steps.
+
+Keep each step specific and valid. Do not submit empty programs or placeholder
+steps.
+
+A simple example:
+
+```json
+{
+  "program": {
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "actionType": "sampleView/groupToQuartiles",
+        "payload": {
+          "attribute": {
+            "type": "SAMPLE_ATTRIBUTE",
+            "specifier": "age"
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
 ## Tool use
 
 If a tool call is rejected, do not repeat the same call. Instead, analyze the

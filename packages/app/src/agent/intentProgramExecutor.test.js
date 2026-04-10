@@ -18,6 +18,20 @@ function createAppStub() {
 
     return {
         getSampleView: () => ({
+            sampleHierarchy: {
+                rootGroup: {
+                    name: "ROOT",
+                    title: "Root",
+                    samples: ["sampleA", "sampleB"],
+                    groups: [
+                        {
+                            name: "group",
+                            title: "Group",
+                            samples: ["sampleA", "sampleB"],
+                        },
+                    ],
+                },
+            },
             compositeAttributeInfoSource: {
                 getAttributeInfo,
             },
@@ -65,9 +79,21 @@ describe("submitIntentProgram", () => {
             expect.objectContaining({
                 text: "Group by diagnosis",
             }),
+            expect.objectContaining({
+                text: "Visible samples before: 2",
+            }),
+            expect.objectContaining({
+                text: "Visible samples after: 2",
+            }),
         ]);
         expect(summarizeExecutionResult(result)).toContain(
             "Executed 2 actions."
+        );
+        expect(summarizeExecutionResult(result)).toContain(
+            "Visible samples before: 2"
+        );
+        expect(summarizeExecutionResult(result)).toContain(
+            "Visible samples after: 2"
         );
     });
 });
