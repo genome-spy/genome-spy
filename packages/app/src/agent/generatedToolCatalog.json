@@ -41,7 +41,7 @@
   },
   {
     "toolName": "setViewVisibility",
-    "description": "Set the configured visibility of a view.",
+    "description": "Set the visibility of a view.",
     "inputType": "SetViewVisibilityToolInput",
     "inputFields": [
       {
@@ -68,7 +68,7 @@
   },
   {
     "toolName": "clearViewVisibility",
-    "description": "Clear the visibility override for a view.",
+    "description": "Returns the view to its default visibility.",
     "inputType": "ClearViewVisibilityToolInput",
     "inputFields": [
       {
@@ -112,7 +112,7 @@
   },
   {
     "toolName": "submitIntentProgram",
-    "description": "Execute a provenance-changing intent program with one or more ordered steps.",
+    "description": "Execute a provenance-changing intent program with one or more ordered actions.",
     "inputType": "SubmitIntentProgramToolInput",
     "inputFields": [
       {

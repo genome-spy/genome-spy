@@ -13,7 +13,8 @@ type ViewSelector = {
 };
 
 /**
- * Expand a collapsed view branch in the agent context.
+ * Expand a collapsed view branch in the agent context. The result is only
+ * visible in the context and not observable by the user.
  *
  * @example
  * {
@@ -49,7 +50,7 @@ export interface CollapseViewNodeToolInput {
 }
 
 /**
- * Set the configured visibility of a view.
+ * Set the visibility of a view. This is a user-facing change that will be reflected in the UI.
  *
  * @example
  * {
@@ -73,7 +74,7 @@ export interface SetViewVisibilityToolInput {
 }
 
 /**
- * Clear the visibility override for a view.
+ * Returns the view to its default visibility.
  *
  * @example
  * {
@@ -117,7 +118,7 @@ export interface ResolveSelectionAggregationCandidateToolInput {
 }
 
 /**
- * Execute a provenance-changing intent program with one or more ordered steps.
+ * Execute a provenance-changing intent program with one or more ordered actions.
  *
  * @example
  * {

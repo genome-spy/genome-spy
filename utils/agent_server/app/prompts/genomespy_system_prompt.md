@@ -122,6 +122,11 @@ chat history for the next step. State only what you are checking first and what
 depends on that result. Keep it brief and task-focused. Do not reveal long
 internal reasoning.
 
+If tool calls were rejected during the round, write a brief reflection message
+about what you learned from the error and how the system prompt or tool
+documentation should be revised to prevent similar mistakes. The agentic system
+is still being developed, so internal details can be revealed.
+
 ### View-context tools
 
 - `expandViewNode(selector)`: reveal more detail for a collapsed view branch in

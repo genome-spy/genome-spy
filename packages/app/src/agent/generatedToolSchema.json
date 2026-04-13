@@ -1097,7 +1097,7 @@
     },
     "ClearViewVisibilityToolInput": {
       "additionalProperties": false,
-      "description": "Clear the visibility override for a view.",
+      "description": "Returns the view to its default visibility.",
       "examples": [
         {
           "selector": {
@@ -1137,7 +1137,7 @@
     },
     "ExpandViewNodeToolInput": {
       "additionalProperties": false,
-      "description": "Expand a collapsed view branch in the agent context.",
+      "description": "Expand a collapsed view branch in the agent context. The result is only visible in the context and not observable by the user.",
       "examples": [
         {
           "selector": {
@@ -1179,7 +1179,7 @@
     },
     "SetViewVisibilityToolInput": {
       "additionalProperties": false,
-      "description": "Set the configured visibility of a view.",
+      "description": "Set the visibility of a view. This is a user-facing change that will be reflected in the UI.",
       "examples": [
         {
           "selector": {
@@ -1204,7 +1204,7 @@
     },
     "SubmitIntentProgramToolInput": {
       "additionalProperties": false,
-      "description": "Execute a provenance-changing intent program with one or more ordered steps.",
+      "description": "Execute a provenance-changing intent program with one or more ordered actions.",
       "examples": [
         {
           "program": {
