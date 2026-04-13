@@ -28,7 +28,7 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
     attribute identifier and a short preview.
 
 - `toolCatalog`
-  - Generated from [`toolSchemaContract.ts`](../src/agent/toolSchemaContract.ts)
+  - Generated from [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts)
     via [`generateAgentToolCatalog.mjs`](../../../scripts/generateAgentToolCatalog.mjs)
     and [`generateAgentToolSchema.mjs`](../../../scripts/generateAgentToolSchema.mjs).
   - Provides planner-facing tool metadata and the Responses API function

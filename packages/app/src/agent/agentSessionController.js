@@ -4,7 +4,6 @@ import {
     formatToolCallRejection,
     validateToolArgumentsShape,
 } from "./toolCatalog.js";
-import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool.js";
 import {
     MAX_REJECTED_TOOL_CALL_RETRIES,
     MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
@@ -12,6 +11,7 @@ import {
 } from "./toolCallLoop.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 import { looksLikeStructuredToolMessage } from "./messageDetection.js";
+import { ToolCallRejectionError, createAgentTools } from "./agentTools.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
 /** @typedef {import("./types.d.ts").IntentProgram} IntentProgram */
@@ -21,7 +21,7 @@ import { looksLikeStructuredToolMessage } from "./messageDetection.js";
 /** @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions */
 /** @typedef {import("./types.d.ts").AgentContext} AgentContext */
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
-/** @typedef {import("./types.d.ts").AgentViewStateChange} AgentViewStateChange */
+/** @typedef {keyof ReturnType<typeof createAgentTools>} AgentToolName */
 /** @typedef {import("./types.d.ts").PlanResponse | {
  *     type: "clarify";
  *     message: string | import("lit").TemplateResult;
@@ -188,6 +188,27 @@ export class AgentSessionController {
         this.#activeRequestAbortController = null;
         /** @type {Set<number>} */
         this.#cancelledTurnIds = new Set();
+        this.#tools = createAgentTools({
+            expandViewNode: (selector) => this.expandViewNode(selector),
+            collapseViewNode: (selector) => this.collapseViewNode(selector),
+            resolveViewSelector: (selector) =>
+                this.#runtime.resolveViewSelector(selector),
+            isViewNodeExpanded: (selector) =>
+                this.#expandedViewNodeKeys.has(makeViewSelectorKey(selector)),
+            isViewVisible: (selector) => {
+                const view = this.#runtime.resolveViewSelector(selector);
+                return view ? view.isVisible() : false;
+            },
+            setViewVisibility: (selector, visibility) =>
+                this.#runtime.setViewVisibility(selector, visibility),
+            clearViewVisibility: (selector) =>
+                this.#runtime.clearViewVisibility(selector),
+            getAgentContext: (contextOptions = this.#buildContextOptions()) =>
+                this.#runtime.getAgentContext(contextOptions),
+            submitIntentProgram: (program) =>
+                this.#runtime.submitIntentProgram(program),
+            summarizeExecutionResult: this.#runtime.summarizeExecutionResult,
+        });
     }
 
     /** @type {AgentSessionRuntime} */
@@ -228,6 +249,9 @@ export class AgentSessionController {
 
     /** @type {Set<number>} */
     #cancelledTurnIds;
+
+    /** @type {ReturnType<typeof createAgentTools>} */
+    #tools;
 
     /**
      * @param {(snapshot: AgentSessionSnapshot) => void} listener
@@ -966,198 +990,38 @@ export class AgentSessionController {
             };
         }
 
-        if (
-            toolCall.name === "expandViewNode" ||
-            toolCall.name === "collapseViewNode" ||
-            toolCall.name === "setViewVisibility" ||
-            toolCall.name === "clearViewVisibility"
-        ) {
-            const view = this.#runtime.resolveViewSelector(
-                argumentsObject.selector
-            );
-            if (!view) {
-                return {
-                    toolCallId: toolCall.callId,
-                    text: formatToolCallRejection(toolCall.name, [
-                        "Selector did not resolve in the current view hierarchy.",
-                    ]),
-                    rejected: true,
-                };
-            }
-
-            if (toolCall.name === "expandViewNode") {
-                return this.#executeViewStateMutation(toolCall, {
-                    domain: "agent_context",
-                    field: "collapsed",
-                    selector: argumentsObject.selector,
-                    readState: () =>
-                        this.#expandedViewNodeKeys.has(
-                            makeViewSelectorKey(argumentsObject.selector)
-                        ),
-                    applyState: () => {
-                        this.expandViewNode(argumentsObject.selector);
-                    },
-                    changedText: "Expanded the requested view branch.",
-                    noopText: "The requested view branch was already expanded.",
-                });
-            }
-
-            if (toolCall.name === "collapseViewNode") {
-                return this.#executeViewStateMutation(toolCall, {
-                    domain: "agent_context",
-                    field: "collapsed",
-                    selector: argumentsObject.selector,
-                    readState: () =>
-                        this.#expandedViewNodeKeys.has(
-                            makeViewSelectorKey(argumentsObject.selector)
-                        ),
-                    applyState: () => {
-                        this.collapseViewNode(argumentsObject.selector);
-                    },
-                    changedText: "Collapsed the requested view branch.",
-                    noopText:
-                        "The requested view branch was already collapsed.",
-                });
-            }
-
-            if (toolCall.name === "setViewVisibility") {
-                return this.#executeViewStateMutation(toolCall, {
-                    domain: "user_visibility",
-                    field: "visible",
-                    selector: argumentsObject.selector,
-                    readState: () => view.isVisible(),
-                    applyState: () => {
-                        this.#runtime.setViewVisibility(
-                            argumentsObject.selector,
-                            argumentsObject.visibility
-                        );
-                    },
-                    changedText: "Updated the requested view visibility.",
-                    noopText:
-                        "The view was already in the requested visibility state.",
-                });
-            }
-
-            return this.#executeViewStateMutation(toolCall, {
-                domain: "user_visibility",
-                field: "visible",
-                selector: argumentsObject.selector,
-                readState: () => view.isVisible(),
-                applyState: () => {
-                    this.#runtime.clearViewVisibility(argumentsObject.selector);
-                },
-                changedText: "Cleared the requested view visibility override.",
-                noopText: "The visibility override was already clear.",
-            });
+        const handler =
+            this.#tools[/** @type {AgentToolName} */ (toolCall.name)];
+        if (!handler) {
+            throw new Error("Unsupported planner tool: " + toolCall.name);
         }
 
-        if (toolCall.name === "submitIntentProgram") {
-            const intentProgramResult = await this.#runtime.submitIntentProgram(
-                argumentsObject.program
-            );
-
+        try {
+            const result = await handler(/** @type {any} */ (argumentsObject));
             return {
                 toolCallId: toolCall.callId,
-                text: this.#runtime.summarizeExecutionResult(
-                    intentProgramResult
-                ),
-                content: intentProgramResult.content,
+                text: result.text,
                 rejected: false,
+                ...(result.content !== undefined
+                    ? { content: result.content }
+                    : {}),
             };
+        } catch (error) {
+            if (error instanceof ToolCallRejectionError) {
+                return {
+                    toolCallId: toolCall.callId,
+                    text: formatToolCallRejection(toolCall.name, [
+                        error.message,
+                    ]),
+                    rejected: true,
+                };
+            }
+
+            throw error;
         }
-
-        if (toolCall.name === "resolveSelectionAggregationCandidate") {
-            let context;
-            try {
-                context = this.#runtime.getAgentContext?.();
-            } catch (error) {
-                return {
-                    toolCallId: toolCall.callId,
-                    text: formatToolCallRejection(toolCall.name, [
-                        String(error),
-                    ]),
-                    rejected: true,
-                };
-            }
-
-            if (!context) {
-                return {
-                    toolCallId: toolCall.callId,
-                    text: formatToolCallRejection(toolCall.name, [
-                        "Planner context is not available.",
-                    ]),
-                    rejected: true,
-                };
-            }
-
-            try {
-                const resolution = resolveSelectionAggregationCandidate(
-                    context,
-                    argumentsObject.candidateId,
-                    argumentsObject.aggregation
-                );
-                return {
-                    toolCallId: toolCall.callId,
-                    text:
-                        "Resolved " +
-                        resolution.title +
-                        " for " +
-                        argumentsObject.candidateId +
-                        ".",
-                    rejected: false,
-                    content: resolution,
-                };
-            } catch (error) {
-                return {
-                    toolCallId: toolCall.callId,
-                    text: formatToolCallRejection(toolCall.name, [
-                        String(error),
-                    ]),
-                    rejected: true,
-                };
-            }
-        }
-
-        throw new Error("Unsupported planner tool: " + toolCall.name);
     }
 
     /**
-     * Executes a state mutation tool and returns a structured summary.
-     *
-     * @param {AgentToolCall} toolCall
-     * @param {{
-     *     domain: AgentViewStateChange["domain"];
-     *     field: AgentViewStateChange["field"];
-     *     selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector;
-     *     readState: () => boolean;
-     *     applyState: () => void;
-     *     changedText: string;
-     *     noopText: string;
-     * }} options
-     * @returns {ToolExecutionResult}
-     */
-    #executeViewStateMutation(toolCall, options) {
-        const before = options.readState();
-        options.applyState();
-        const after = options.readState();
-        const changed = before !== after;
-
-        return {
-            toolCallId: toolCall.callId,
-            text: changed ? options.changedText : options.noopText,
-            rejected: false,
-            content: /** @type {AgentViewStateChange} */ ({
-                kind: "view_state_change",
-                domain: options.domain,
-                field: options.field,
-                selector: options.selector,
-                before,
-                after,
-                changed,
-            }),
-        };
-    }
-
     /**
      * @param {unknown} toolArguments
      * @returns {Record<string, any>}

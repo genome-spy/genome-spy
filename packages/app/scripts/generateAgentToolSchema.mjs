@@ -6,6 +6,8 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
+// The planner tool input contract is defined in src/agent/agentToolInputs.d.ts.
+// This script projects that documented contract into JSON Schema.
 const schemaPath = new URL(
     "../src/agent/generatedToolSchema.json",
     import.meta.url
@@ -31,7 +33,7 @@ export async function generateToolSchemaText() {
             "--",
             "ts-json-schema-generator",
             "--path",
-            "src/agent/toolSchemaContract.ts",
+            "src/agent/agentToolInputs.d.ts",
             "--type",
             "AgentToolInputs",
             "--no-type-check",

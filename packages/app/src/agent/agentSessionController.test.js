@@ -363,6 +363,30 @@ describe("createAgentSessionController", () => {
         );
     });
 
+    it("does not convert unexpected tool runtime failures into rejected tool calls", async () => {
+        const runtime = createRuntimeMock();
+        runtime.setViewVisibility.mockImplementation(() => {
+            throw new Error("boom");
+        });
+        const controller = createAgentSessionController(runtime);
+
+        await expect(
+            controller.executeToolCalls([
+                {
+                    callId: "call-broken",
+                    name: "setViewVisibility",
+                    arguments: {
+                        selector: {
+                            scope: [],
+                            view: "reference-sequence",
+                        },
+                        visibility: true,
+                    },
+                },
+            ])
+        ).rejects.toThrow("boom");
+    });
+
     it("summarizes intent program tool results for sample-view actions", async () => {
         const runtime = createRuntimeMock();
         runtime.submitIntentProgram.mockResolvedValue({

@@ -7,11 +7,13 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(packageDir, "..");
 
-const toolSchemaContractPath = path.join(
+// The documented tool inputs in src/agent/agentToolInputs.d.ts drive the
+// generated catalog that the app consumes at runtime.
+const toolInputsPath = path.join(
     packageDir,
     "src",
     "agent",
-    "toolSchemaContract.ts"
+    "agentToolInputs.d.ts"
 );
 const outputPath = path.join(
     packageDir,
@@ -213,7 +215,7 @@ function getToolInputsInterface(sourceFile) {
  */
 export async function createGeneratedToolCatalog() {
     const toolSource = await loadSourceFile(
-        toolSchemaContractPath,
+        toolInputsPath,
         ts.ScriptKind.TS
     );
     const interfaces = getInterfaceNodes(toolSource);

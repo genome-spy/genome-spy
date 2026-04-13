@@ -1108,21 +1108,8 @@
       ],
       "properties": {
         "selector": {
-          "additionalProperties": false,
-          "description": "Stable selector for the view whose override should be cleared.",
-          "properties": {
-            "scope": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "view": {
-              "type": "string"
-            }
-          },
-          "required": ["scope", "view"],
-          "type": "object"
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the view whose override should be cleared."
         }
       },
       "required": ["selector"],
@@ -1141,21 +1128,8 @@
       ],
       "properties": {
         "selector": {
-          "additionalProperties": false,
-          "description": "Stable selector for the view node to collapse.",
-          "properties": {
-            "scope": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "view": {
-              "type": "string"
-            }
-          },
-          "required": ["scope", "view"],
-          "type": "object"
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the view node to collapse."
         }
       },
       "required": ["selector"],
@@ -1174,21 +1148,8 @@
       ],
       "properties": {
         "selector": {
-          "additionalProperties": false,
-          "description": "Stable selector for the collapsed view node to expand.",
-          "properties": {
-            "scope": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "view": {
-              "type": "string"
-            }
-          },
-          "required": ["scope", "view"],
-          "type": "object"
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the collapsed view node to expand."
         }
       },
       "required": ["selector"],
@@ -1230,21 +1191,8 @@
       ],
       "properties": {
         "selector": {
-          "additionalProperties": false,
-          "description": "Stable selector for the view whose visibility should change.",
-          "properties": {
-            "scope": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "view": {
-              "type": "string"
-            }
-          },
-          "required": ["scope", "view"],
-          "type": "object"
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the view whose visibility should change."
         },
         "visibility": {
           "description": "Whether the view should be visible.",
@@ -1282,6 +1230,22 @@
         }
       },
       "required": ["program"],
+      "type": "object"
+    },
+    "ViewSelector": {
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "view": {
+          "type": "string"
+        }
+      },
+      "required": ["scope", "view"],
       "type": "object"
     }
   }

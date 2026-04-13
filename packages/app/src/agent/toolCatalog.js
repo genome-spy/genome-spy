@@ -4,6 +4,8 @@ import generatedToolCatalog from "./generatedToolCatalog.json" with { type: "jso
 import generatedToolSchema from "./generatedToolSchema.json" with { type: "json" };
 import { formatAjvErrors } from "./validationErrorFormatter.js";
 
+// These generated artifacts are derived from agentToolInputs.d.ts and are the
+// runtime source for tool descriptions, validation, and Responses API shapes.
 const AjvClass = /** @type {any} */ (Ajv);
 
 const ajv = new AjvClass({

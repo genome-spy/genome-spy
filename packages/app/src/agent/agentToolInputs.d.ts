@@ -1,6 +1,11 @@
 import type { AgentIntentProgram } from "./schemaContract.js";
 import type { AggregationOp } from "../sampleView/types.d.ts";
 
+/**
+ * Source of truth for planner-visible tool input shapes and their field
+ * documentation. The generator scripts read this file to produce the runtime
+ * catalog and JSON Schema artifacts.
+ */
 type ViewSelector = {
     scope: string[];
     view: string;
