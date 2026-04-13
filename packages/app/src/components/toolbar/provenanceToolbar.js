@@ -62,7 +62,8 @@ export default class ProvenanceButtons extends LitElement {
             return html`
                 <li>
                     <a
-                        @click=${() => this.provenance.activateState(index)}
+                        @click=${() =>
+                            this.provenance.activateState(action.provenanceId)}
                         class=${index == this.provenance.getCurrentIndex()
                             ? "active-state"
                             : ""}

@@ -2,7 +2,7 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { describe, expect, it } from "vitest";
 import IntentExecutor from "./intentExecutor.js";
-import Provenance from "./provenance.js";
+import Provenance, { createProvenanceIdMiddleware } from "./provenance.js";
 import {
     AUGMENTED_KEY,
     createProvenanceReducer,
@@ -43,6 +43,11 @@ function createStore() {
         reducer: combineReducers({
             provenance: provenanceReducer,
         }),
+        middleware: (getDefaultMiddleware) =>
+            getDefaultMiddleware({
+                serializableCheck: false,
+                immutableCheck: false,
+            }).concat(createProvenanceIdMiddleware()),
     });
 }
 
@@ -86,6 +91,9 @@ describe("Provenance", () => {
         expect(history.length).toBe(2);
         expect(history[0].type).toBe("sample/add");
         expect(/** @type {any} */ (history[1]).payload).toEqual({ value: 2 });
+        expect(history[0].provenanceId).toMatch(/^provenance-\d+$/);
+        expect(history[1].provenanceId).toMatch(/^provenance-\d+$/);
+        expect(history[0].provenanceId).not.toBe(history[1].provenanceId);
     });
 
     it("serializes bookmark actions without augmentation data", () => {
@@ -115,11 +123,13 @@ describe("Provenance", () => {
         expect(serialized.actions.length).toBe(2);
         expect(serialized.actions[0].payload).toEqual({ value: 1 });
         expect(serialized.actions[1].payload).toEqual({ value: 2 });
+        expect("provenanceId" in serialized.actions[0]).toBe(false);
+        expect("provenanceId" in serialized.actions[1]).toBe(false);
         expect(serialized.actions[0].payload[AUGMENTED_KEY]).toBeUndefined();
         expect(serialized.actions[1].payload[AUGMENTED_KEY]).toBeUndefined();
     });
 
-    it("activates past and future states by index", () => {
+    it("activates past and future states by provenance id", () => {
         const store = createStore();
         const intentExecutor = new IntentExecutor(/** @type {any} */ (store));
         const provenance = new Provenance(store);
@@ -143,11 +153,36 @@ describe("Provenance", () => {
             })
         );
 
-        // Index 1 maps to the second action (count=2) in redux-undo history.
-        provenance.activateState(1);
+        const history = provenance.getActionHistory();
+
+        // Use provenance ids to jump to the second action (count=2).
+        provenance.activateState(history[1].provenanceId);
         expect(store.getState().provenance.present.sample.count).toBe(2);
 
-        provenance.activateState(2);
+        provenance.activateState(history[2].provenanceId);
         expect(store.getState().provenance.present.sample.count).toBe(3);
+    });
+
+    it("activates the initial state", () => {
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(/** @type {any} */ (store));
+        const provenance = new Provenance(store);
+
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 1 },
+            })
+        );
+        intentExecutor.dispatch(
+            /** @type {any} */ ({
+                type: "sample/add",
+                payload: { value: 2 },
+            })
+        );
+
+        expect(store.getState().provenance.present.sample.count).toBe(2);
+        provenance.activateInitialState();
+        expect(store.getState().provenance.present.sample.count).toBe(1);
     });
 });

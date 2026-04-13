@@ -1,6 +1,5 @@
 // @ts-check
 import { describe, expect, it, vi } from "vitest";
-import { ActionCreators } from "redux-undo";
 import { restoreBookmark } from "./bookmark.js";
 
 describe("bookmark restore", () => {
@@ -15,9 +14,8 @@ describe("bookmark restore", () => {
             ]),
         };
 
-        const storeDispatch = vi.fn();
         const store = {
-            dispatch: storeDispatch,
+            dispatch: vi.fn(),
             getState: () => ({ intentStatus: undefined }),
         };
 
@@ -36,6 +34,7 @@ describe("bookmark restore", () => {
                 paramProvenanceBridge,
                 provenance: {
                     isUndoable: () => true,
+                    activateInitialState: vi.fn(),
                     activateState: vi.fn(),
                 },
                 genomeSpy: {
@@ -46,9 +45,7 @@ describe("bookmark restore", () => {
 
         await restoreBookmark(entry, app);
 
-        expect(storeDispatch).toHaveBeenCalledWith(
-            ActionCreators.jumpToPast(0)
-        );
+        expect(app.provenance.activateInitialState).toHaveBeenCalledTimes(1);
         expect(intentPipeline.submit).toHaveBeenCalledWith(entry.actions);
         expect(paramProvenanceBridge.whenApplied).toHaveBeenCalled();
     });

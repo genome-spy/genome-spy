@@ -1,5 +1,4 @@
 import { html } from "lit";
-import { ActionCreators } from "redux-undo";
 import "../components/dialogs/bookmarkInfoBox.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { normalizeViewSettingsPayload } from "../viewSettingsUtils.js";
@@ -33,7 +32,7 @@ export function resetToDefaultState(app) {
     const store = app.store;
 
     if (app.provenance.isUndoable()) {
-        store.dispatch(ActionCreators.jumpToPast(0));
+        app.provenance.activateInitialState();
     }
     store.dispatch(viewSettingsSlice.actions.restoreDefaultVisibilities());
 }
@@ -46,7 +45,7 @@ export async function restoreBookmark(entry, app) {
     try {
         if (entry.actions) {
             if (app.provenance.isUndoable()) {
-                app.store.dispatch(ActionCreators.jumpToPast(0));
+                app.provenance.activateInitialState();
             }
             if (!app.intentPipeline) {
                 throw new Error(
@@ -91,7 +90,7 @@ export async function restoreBookmark(entry, app) {
                 <p>${e}</p>`,
             { type: "error" }
         );
-        app.provenance.activateState(0);
+        app.provenance.activateInitialState();
     }
 }
 /**

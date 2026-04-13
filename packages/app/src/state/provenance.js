@@ -1,5 +1,6 @@
 /**
  * @typedef {import("@reduxjs/toolkit").Action} Action
+ * @typedef {Action & { provenanceId?: string }} ProvenanceAction
  *
  * @typedef {object} ActionInfo
  * @prop {string | import("lit").TemplateResult} title A title shown in
@@ -14,14 +15,34 @@ import { ActionCreators } from "redux-undo";
 import { isBaselineAction } from "./provenanceBaseline.js";
 
 /**
+ * Adds a provenance id to dispatched actions.
+ *
+ * @returns {import("@reduxjs/toolkit").Middleware}
+ */
+export function createProvenanceIdMiddleware() {
+    let nextProvenanceId = 0;
+
+    return () => (next) => (action) => {
+        if (action && typeof action == "object" && "type" in action) {
+            action = {
+                ...action,
+                provenanceId: `provenance-${nextProvenanceId++}`,
+            };
+        }
+
+        return next(action);
+    };
+}
+
+/**
  * An API for undo/redo and action history.
  */
 export default class Provenance {
-    /** @type {import('@reduxjs/toolkit').EnhancedStore<import("./setupStore.js").AppState>} */
+    /** @type {import("@reduxjs/toolkit").EnhancedStore<import("./setupStore.js").AppState>} */
     #store;
 
     /**
-     * @param {import('@reduxjs/toolkit').EnhancedStore<import("./setupStore.js").AppState>} store
+     * @param {import("@reduxjs/toolkit").EnhancedStore<import("./setupStore.js").AppState>} store
      */
     constructor(store) {
         this.#store = store;
@@ -107,10 +128,18 @@ export default class Provenance {
     }
 
     /**
+     * Activates a state identified by its provenance id.
      *
-     * @param {number} index
+     * @param {string} provenanceId
      */
-    activateState(index) {
+    activateState(provenanceId) {
+        const index = this.getFullActionHistory().findIndex(
+            (action) => action.provenanceId === provenanceId
+        );
+        if (index < 0) {
+            return;
+        }
+
         const current = this.getCurrentIndex();
         if (index < current) {
             this.#store.dispatch(ActionCreators.jumpToPast(index));
@@ -121,29 +150,33 @@ export default class Provenance {
         }
     }
 
+    /**
+     * Activates the initial provenance state.
+     */
+    activateInitialState() {
+        this.#store.dispatch(ActionCreators.jumpToPast(0));
+    }
+
     getCurrentIndex() {
         return this._provenanceState.past?.length;
     }
 
     /**
-     * Returns the history up to the current node
+     * Returns the history up to the current node.
      *
-     * @returns {Action[]}
+     * @returns {ProvenanceAction[]}
      */
     getActionHistory() {
-        // TODO: Selector
         const state = this._provenanceState;
-        return (
-            state.present &&
-            [...state.past, state.present].map((entry) => entry.lastAction)
-        );
+        return state.present
+            ? [...state.past, state.present].map((entry) => entry.lastAction)
+            : [...state.past].map((entry) => entry.lastAction);
     }
 
     /**
-     * @returns {Action[]}
+     * @returns {ProvenanceAction[]}
      */
     getFullActionHistory() {
-        // TODO: Selector
         const state = this._provenanceState;
         return [...state.past, state.present, ...state.future].map(
             (entry) => entry.lastAction
@@ -151,12 +184,18 @@ export default class Provenance {
     }
 
     /**
-     * Returns actions that can be bookmarked. The indices cannot be used
-     * to jump to a specific point in history.
+     * Returns actions that can be bookmarked. The ids are stripped because
+     * bookmarks should remain stable across dispatch sessions.
+     *
+     * @returns {Action[]}
      */
     getBookmarkableActionHistory() {
-        return this.getActionHistory()?.filter(
-            (action) => !isBaselineAction(action)
-        );
+        return this.getActionHistory()
+            .filter((action) => !isBaselineAction(action))
+            .map((action) => {
+                // eslint-disable-next-line no-unused-vars
+                const { provenanceId, ...rest } = action;
+                return rest;
+            });
     }
 }
