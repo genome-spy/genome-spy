@@ -24,6 +24,9 @@ export function getAgentContext(app, options = {}) {
     return {
         schemaVersion: 1,
         sampleSummary: buildSampleSummary(sampleState),
+        sampleGroupLevels: sampleView
+            ? buildSampleGroupLevels(sampleView, sampleState)
+            : [],
         actionCatalog: actionCatalog.map((entry) => ({
             actionType: entry.actionType,
             description: entry.description,
@@ -55,7 +58,7 @@ export function getAgentContext(app, options = {}) {
  */
 function buildSampleSummary(sampleState) {
     const sampleCount = sampleState?.sampleData?.ids?.length ?? 0;
-    const groupCount = countGroups(sampleState?.rootGroup);
+    const groupCount = sampleState?.groupMetadata?.length ?? 0;
 
     return {
         sampleCount,
@@ -97,6 +100,27 @@ function buildAttributeSummary(sampleView, sampleState) {
 }
 
 /**
+ * @param {import("../sampleView/sampleView.js").default} sampleView
+ * @param {any} sampleState
+ * @returns {import("./types.js").AgentSampleGroupLevel[]}
+ */
+function buildSampleGroupLevels(sampleView, sampleState) {
+    const groupMetadata = sampleState?.groupMetadata ?? [];
+
+    return groupMetadata.map((entry, level) => {
+        const info = sampleView.compositeAttributeInfoSource.getAttributeInfo(
+            entry.attribute
+        );
+
+        return {
+            level,
+            attribute: entry.attribute,
+            title: templateResultToString(info.title),
+        };
+    });
+}
+
+/**
  * @param {import("../app.js").default} app
  * @param {import("@reduxjs/toolkit").Action[]} provenanceActions
  * @returns {import("./types.js").AgentProvenanceAction[]}
@@ -121,27 +145,4 @@ function buildProvenanceActions(app, provenanceActions) {
                 error: /** @type {any} */ (action).error,
             };
         });
-}
-
-/**
- * @param {any} group
- * @returns {number}
- */
-function countGroups(group) {
-    if (!group) {
-        return 0;
-    }
-
-    if (!("groups" in group) || !Array.isArray(group.groups)) {
-        return 1;
-    }
-
-    return (
-        1 +
-        group.groups.reduce(
-            (/** @type {number} */ acc, /** @type {any} */ child) =>
-                acc + countGroups(child),
-            0
-        )
-    );
 }

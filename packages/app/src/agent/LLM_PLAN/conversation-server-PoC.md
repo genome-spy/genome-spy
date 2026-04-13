@@ -123,6 +123,16 @@ The server should build the LLM prompt in this order:
       "sampleCount": 61,
       "groupCount": 1
     },
+    "sampleGroupLevels": [
+      {
+        "level": 0,
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "diagnosis"
+        },
+        "title": "Diagnosis"
+      }
+    ],
     "viewRoot": {
       "type": "vconcat",
       "title": "viewRoot",

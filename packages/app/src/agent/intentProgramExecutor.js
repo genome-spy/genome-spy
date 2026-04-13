@@ -25,7 +25,6 @@ export async function submitIntentProgram(app, program) {
             sampleView.compositeAttributeInfoSource
         );
     const provenanceStartIndex = app.provenance.getActionHistory().length;
-
     const actions = validation.program.steps.map((step) =>
         getActionCatalogEntry(step.actionType).actionCreator(step.payload)
     );
@@ -35,6 +34,9 @@ export async function submitIntentProgram(app, program) {
     );
     const beforeVisibleSampleCount = hasSampleViewMutation
         ? countVisibleSamples(sampleView.sampleHierarchy.rootGroup)
+        : undefined;
+    const beforeGroupLevelCount = hasSampleViewMutation
+        ? (sampleView.sampleHierarchy.groupMetadata?.length ?? 0)
         : undefined;
 
     await app.intentPipeline.submit(actions, { getAttributeInfo });
@@ -51,9 +53,13 @@ export async function submitIntentProgram(app, program) {
         const afterVisibleSampleCount = countVisibleSamples(
             sampleView.sampleHierarchy.rootGroup
         );
+        const afterGroupLevelCount =
+            sampleView.sampleHierarchy.groupMetadata?.length ?? 0;
         content.sampleView = {
             visibleSamplesBefore: beforeVisibleSampleCount,
             visibleSamplesAfter: afterVisibleSampleCount,
+            groupLevelsBefore: beforeGroupLevelCount,
+            groupLevelsAfter: afterGroupLevelCount,
         };
         summaries.push({
             content: "Visible samples before: " + beforeVisibleSampleCount,
@@ -62,6 +68,14 @@ export async function submitIntentProgram(app, program) {
         summaries.push({
             content: "Visible samples after: " + afterVisibleSampleCount,
             text: "Visible samples after: " + afterVisibleSampleCount,
+        });
+        summaries.push({
+            content: "Group levels before: " + beforeGroupLevelCount,
+            text: "Group levels before: " + beforeGroupLevelCount,
+        });
+        summaries.push({
+            content: "Group levels after: " + afterGroupLevelCount,
+            text: "Group levels after: " + afterGroupLevelCount,
         });
     }
 

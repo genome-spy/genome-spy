@@ -209,6 +209,7 @@ export function createAgentBrowserApp(options = {}) {
                         : {},
                 },
             }),
+            getActionHistory: () => [],
             getBookmarkableActionHistory: () => [],
             getActionInfo: () => undefined,
         },

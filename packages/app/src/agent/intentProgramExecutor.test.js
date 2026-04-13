@@ -19,6 +19,14 @@ function createAppStub() {
     return {
         getSampleView: () => ({
             sampleHierarchy: {
+                groupMetadata: [
+                    {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "diagnosis",
+                        },
+                    },
+                ],
                 rootGroup: {
                     name: "ROOT",
                     title: "Root",
@@ -105,6 +113,8 @@ describe("submitIntentProgram", () => {
                 sampleView: {
                     visibleSamplesBefore: 2,
                     visibleSamplesAfter: 2,
+                    groupLevelsBefore: 1,
+                    groupLevelsAfter: 1,
                 },
             })
         );
@@ -121,6 +131,12 @@ describe("submitIntentProgram", () => {
             expect.objectContaining({
                 text: "Visible samples after: 2",
             }),
+            expect.objectContaining({
+                text: "Group levels before: 1",
+            }),
+            expect.objectContaining({
+                text: "Group levels after: 1",
+            }),
         ]);
         expect(summarizeExecutionResult(result)).toContain(
             "Executed 2 actions."
@@ -130,6 +146,12 @@ describe("submitIntentProgram", () => {
         );
         expect(summarizeExecutionResult(result)).toContain(
             "Visible samples after: 2"
+        );
+        expect(summarizeExecutionResult(result)).toContain(
+            "Group levels before: 1"
+        );
+        expect(summarizeExecutionResult(result)).toContain(
+            "Group levels after: 1"
         );
     });
 });

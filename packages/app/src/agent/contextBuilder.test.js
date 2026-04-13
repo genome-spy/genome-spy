@@ -178,6 +178,14 @@ function createAppStub() {
                             purity: { visible: false },
                         },
                     },
+                    groupMetadata: [
+                        {
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "diagnosis",
+                            },
+                        },
+                    ],
                     rootGroup: {
                         name: "ROOT",
                         groups: [{ name: "A", samples: ["s1", "s2"] }],
@@ -207,6 +215,7 @@ describe("getAgentContext", () => {
         expect(Object.keys(context)).toEqual([
             "schemaVersion",
             "sampleSummary",
+            "sampleGroupLevels",
             "actionCatalog",
             "toolCatalog",
             "attributes",
@@ -243,8 +252,18 @@ describe("getAgentContext", () => {
         expect(context.schemaVersion).toBe(1);
         expect(context.sampleSummary).toEqual({
             sampleCount: 2,
-            groupCount: 2,
+            groupCount: 1,
         });
+        expect(context.sampleGroupLevels).toEqual([
+            {
+                level: 0,
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+                title: "Title diagnosis",
+            },
+        ]);
         expect(context.viewRoot).toEqual(
             expect.objectContaining({
                 type: "other",

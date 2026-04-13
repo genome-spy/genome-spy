@@ -239,9 +239,29 @@ export interface AgentSampleSummary {
     sampleCount: number;
 
     /**
-     * Number of sample groups in the current hierarchy.
+     * Number of grouping levels in the current hierarchy.
      */
     groupCount: number;
+}
+
+/**
+ * One level in the current sample grouping hierarchy.
+ */
+export interface AgentSampleGroupLevel {
+    /**
+     * Zero-based grouping depth.
+     */
+    level: number;
+
+    /**
+     * Grouping attribute used at this level.
+     */
+    attribute: AttributeIdentifier;
+
+    /**
+     * Human-readable grouping label.
+     */
+    title: string;
 }
 
 /**
@@ -828,7 +848,8 @@ export interface IntentProgramSummaryLine {
 }
 
 /**
- * Visible sample counts reported before and after a sample-view mutation.
+ * Visible sample and grouping counts reported before and after a sample-view
+ * mutation.
  */
 export interface IntentProgramExecutionSampleViewSummary {
     /**
@@ -840,6 +861,16 @@ export interface IntentProgramExecutionSampleViewSummary {
      * Visible sample count after execution.
      */
     visibleSamplesAfter: number;
+
+    /**
+     * Number of grouping levels before execution.
+     */
+    groupLevelsBefore: number;
+
+    /**
+     * Number of grouping levels after execution.
+     */
+    groupLevelsAfter: number;
 }
 
 /**
@@ -976,6 +1007,11 @@ export interface AgentContext {
      * Sample-collection summary.
      */
     sampleSummary: AgentSampleSummary;
+
+    /**
+     * Current grouping levels in the sample hierarchy.
+     */
+    sampleGroupLevels: AgentSampleGroupLevel[];
 
     /**
      * Agent-facing action catalog.

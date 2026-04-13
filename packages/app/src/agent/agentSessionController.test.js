@@ -420,6 +420,8 @@ describe("createAgentSessionController", () => {
                 sampleView: {
                     visibleSamplesBefore: 2,
                     visibleSamplesAfter: 2,
+                    groupLevelsBefore: 1,
+                    groupLevelsAfter: 1,
                 },
             },
             summaries: [
@@ -432,6 +434,14 @@ describe("createAgentSessionController", () => {
                 {
                     content: "Visible samples after: 2",
                     text: "Visible samples after: 2",
+                },
+                {
+                    content: "Group levels before: 1",
+                    text: "Group levels before: 1",
+                },
+                {
+                    content: "Group levels after: 1",
+                    text: "Group levels after: 1",
                 },
             ],
             program: {
@@ -459,7 +469,7 @@ describe("createAgentSessionController", () => {
             },
         });
         runtime.summarizeExecutionResult.mockReturnValue(
-            "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2"
+            "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2\n- Group levels before: 1\n- Group levels after: 1"
         );
 
         const controller = createAgentSessionController(runtime);
@@ -527,9 +537,11 @@ describe("createAgentSessionController", () => {
                     sampleView: {
                         visibleSamplesBefore: 2,
                         visibleSamplesAfter: 2,
+                        groupLevelsBefore: 1,
+                        groupLevelsAfter: 1,
                     },
                 }),
-                text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2",
+                text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2\n- Group levels before: 1\n- Group levels after: 1",
             })
         );
         expect(controller.getSnapshot().messages).toEqual(
@@ -565,9 +577,11 @@ describe("createAgentSessionController", () => {
                         sampleView: {
                             visibleSamplesBefore: 2,
                             visibleSamplesAfter: 2,
+                            groupLevelsBefore: 1,
+                            groupLevelsAfter: 1,
                         },
                     }),
-                    text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2",
+                    text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2\n- Group levels before: 1\n- Group levels after: 1",
                 }),
             ])
         );
@@ -656,7 +670,7 @@ describe("createAgentSessionController", () => {
         expect(results).toEqual([
             expect.objectContaining({
                 rejected: false,
-                text: "Resolved max(beta) for brush@track:beta.",
+                text: "Resolved max(beta) for brush@track:beta. Remember to use the resolution in a subsequent intent program action to apply the aggregation.",
                 content: expect.objectContaining({
                     kind: "selection_aggregation_resolution",
                     candidateId: "brush@track:beta",
