@@ -2,6 +2,7 @@ import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { ActionCreators } from "redux-undo";
 import { sampleSlice } from "../sampleView/state/sampleSlice.js";
 import { createProvenanceReducer } from "./provenanceReducerBuilder.js";
+import { createProvenanceIdMiddleware } from "./provenance.js";
 import { lifecycleSlice } from "../lifecycleSlice.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { intentStatusSlice } from "./intentStatusSlice.js";
@@ -80,7 +81,7 @@ export default function setupStore() {
             getDefaultMiddleware({
                 serializableCheck: false,
                 immutableCheck: false,
-            }),
+            }).concat(createProvenanceIdMiddleware()),
         reducer: rootReducer,
     });
 }
