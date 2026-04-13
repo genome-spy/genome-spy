@@ -11,7 +11,7 @@ import {
 } from "./toolCallLoop.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 import { looksLikeStructuredToolMessage } from "./messageDetection.js";
-import { ToolCallRejectionError, createAgentTools } from "./agentTools.js";
+import { ToolCallRejectionError, agentTools } from "./agentTools.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
 /** @typedef {import("./types.d.ts").IntentProgram} IntentProgram */
@@ -21,7 +21,7 @@ import { ToolCallRejectionError, createAgentTools } from "./agentTools.js";
 /** @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions */
 /** @typedef {import("./types.d.ts").AgentContext} AgentContext */
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
-/** @typedef {keyof ReturnType<typeof createAgentTools>} AgentToolName */
+/** @typedef {keyof typeof agentTools} AgentToolName */
 /** @typedef {import("./types.d.ts").PlanResponse | {
  *     type: "clarify";
  *     message: string | import("lit").TemplateResult;
@@ -107,6 +107,8 @@ import { ToolCallRejectionError, createAgentTools } from "./agentTools.js";
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
  *     resolveViewSelector(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
+ *     expandViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
+ *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     setViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector, visibility: boolean): void;
  *     clearViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): void;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
@@ -188,27 +190,10 @@ export class AgentSessionController {
         this.#activeRequestAbortController = null;
         /** @type {Set<number>} */
         this.#cancelledTurnIds = new Set();
-        this.#tools = createAgentTools({
-            expandViewNode: (selector) => this.expandViewNode(selector),
-            collapseViewNode: (selector) => this.collapseViewNode(selector),
-            resolveViewSelector: (selector) =>
-                this.#runtime.resolveViewSelector(selector),
-            isViewNodeExpanded: (selector) =>
-                this.#expandedViewNodeKeys.has(makeViewSelectorKey(selector)),
-            isViewVisible: (selector) => {
-                const view = this.#runtime.resolveViewSelector(selector);
-                return view ? view.isVisible() : false;
-            },
-            setViewVisibility: (selector, visibility) =>
-                this.#runtime.setViewVisibility(selector, visibility),
-            clearViewVisibility: (selector) =>
-                this.#runtime.clearViewVisibility(selector),
-            getAgentContext: (contextOptions = this.#buildContextOptions()) =>
-                this.#runtime.getAgentContext(contextOptions),
-            submitIntentProgram: (program) =>
-                this.#runtime.submitIntentProgram(program),
-            summarizeExecutionResult: this.#runtime.summarizeExecutionResult,
-        });
+        this.#runtime.expandViewNode = (selector) =>
+            this.expandViewNode(selector);
+        this.#runtime.collapseViewNode = (selector) =>
+            this.collapseViewNode(selector);
     }
 
     /** @type {AgentSessionRuntime} */
@@ -249,9 +234,6 @@ export class AgentSessionController {
 
     /** @type {Set<number>} */
     #cancelledTurnIds;
-
-    /** @type {ReturnType<typeof createAgentTools>} */
-    #tools;
 
     /**
      * @param {(snapshot: AgentSessionSnapshot) => void} listener
@@ -364,18 +346,10 @@ export class AgentSessionController {
      * Expands a collapsed view branch for the current session context.
      *
      * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     * @returns {boolean}
      */
     expandViewNode(selector) {
-        const key = makeViewSelectorKey(selector);
-        if (this.#expandedViewNodeKeys.has(key)) {
-            return;
-        }
-
-        this.#expandedViewNodeKeys.add(key);
-        this.#state.expandedViewNodeKeys = Array.from(
-            this.#expandedViewNodeKeys
-        );
-        this.#notify();
+        return this.#setExpandedViewNode(selector, true);
     }
 
     /**
@@ -383,18 +357,40 @@ export class AgentSessionController {
      * context.
      *
      * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     * @returns {boolean}
      */
     collapseViewNode(selector) {
+        return this.#setExpandedViewNode(selector, false);
+    }
+
+    /**
+     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     * @param {boolean} expanded
+     * @returns {boolean}
+     */
+    #setExpandedViewNode(selector, expanded) {
         const key = makeViewSelectorKey(selector);
-        if (!this.#expandedViewNodeKeys.has(key)) {
-            return;
+        const hasKey = this.#expandedViewNodeKeys.has(key);
+
+        if (expanded) {
+            if (hasKey) {
+                return false;
+            }
+
+            this.#expandedViewNodeKeys.add(key);
+        } else {
+            if (!hasKey) {
+                return false;
+            }
+
+            this.#expandedViewNodeKeys.delete(key);
         }
 
-        this.#expandedViewNodeKeys.delete(key);
         this.#state.expandedViewNodeKeys = Array.from(
             this.#expandedViewNodeKeys
         );
         this.#notify();
+        return true;
     }
 
     /**
@@ -991,13 +987,16 @@ export class AgentSessionController {
         }
 
         const handler =
-            this.#tools[/** @type {AgentToolName} */ (toolCall.name)];
+            agentTools[/** @type {AgentToolName} */ (toolCall.name)];
         if (!handler) {
             throw new Error("Unsupported planner tool: " + toolCall.name);
         }
 
         try {
-            const result = await handler(/** @type {any} */ (argumentsObject));
+            const result = await handler(
+                this.#runtime,
+                /** @type {any} */ (argumentsObject)
+            );
             return {
                 toolCallId: toolCall.callId,
                 text: result.text,
@@ -1021,7 +1020,6 @@ export class AgentSessionController {
         }
     }
 
-    /**
     /**
      * @param {unknown} toolArguments
      * @returns {Record<string, any>}

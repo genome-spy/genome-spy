@@ -19,27 +19,22 @@ import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool
  * @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine
  * @typedef {import("./types.d.ts").AgentViewStateChange} AgentViewStateChange
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
+ * @typedef {{
+ *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
+ *     resolveViewSelector(selector: ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
+ *     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
+ *     clearViewVisibility(selector: ViewSelector): void;
+ *     expandViewNode?(selector: ViewSelector): boolean;
+ *     collapseViewNode?(selector: ViewSelector): boolean;
+ *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
+ *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
+ * }} AgentToolRuntime
  */
 
 /**
  * Error thrown for expected planner-facing tool rejections.
  */
 export class ToolCallRejectionError extends Error {}
-
-/**
- * @typedef {{
- *     expandViewNode: (selector: ViewSelector) => void;
- *     collapseViewNode: (selector: ViewSelector) => void;
- *     resolveViewSelector: (selector: ViewSelector) => import("@genome-spy/core/view/view.js").default | undefined;
- *     isViewNodeExpanded: (selector: ViewSelector) => boolean;
- *     isViewVisible: (selector: ViewSelector) => boolean;
- *     setViewVisibility: (selector: ViewSelector, visibility: boolean) => void;
- *     clearViewVisibility: (selector: ViewSelector) => void;
- *     getAgentContext: (contextOptions?: AgentContextOptions) => AgentContext;
- *     submitIntentProgram: (program: IntentProgram) => Promise<IntentProgramExecutionResult>;
- *     summarizeExecutionResult: (result: IntentProgramExecutionResult) => string;
- * }} AgentToolRuntime
- */
 
 /**
  * @typedef {{
@@ -50,29 +45,17 @@ export class ToolCallRejectionError extends Error {}
  */
 
 /**
- * Creates the concrete agent tool handlers.
- *
- * @param {AgentToolRuntime} runtime
+ * Concrete agent tool handlers keyed by planner tool name.
  */
-export function createAgentTools(runtime) {
-    return {
-        expandViewNode: (/** @type {ExpandViewNodeToolInput} */ input) =>
-            expandViewNode(runtime, input),
-        collapseViewNode: (/** @type {CollapseViewNodeToolInput} */ input) =>
-            collapseViewNode(runtime, input),
-        setViewVisibility: (/** @type {SetViewVisibilityToolInput} */ input) =>
-            setViewVisibility(runtime, input),
-        clearViewVisibility: (
-            /** @type {ClearViewVisibilityToolInput} */ input
-        ) => clearViewVisibility(runtime, input),
-        resolveSelectionAggregationCandidate: (
-            /** @type {ResolveSelectionAggregationCandidateToolInput} */ input
-        ) => resolveSelectionAggregationCandidateTool(runtime, input),
-        submitIntentProgram: (
-            /** @type {SubmitIntentProgramToolInput} */ input
-        ) => submitIntentProgramTool(runtime, input),
-    };
-}
+export const agentTools = {
+    expandViewNode,
+    collapseViewNode,
+    setViewVisibility,
+    clearViewVisibility,
+    resolveSelectionAggregationCandidate:
+        resolveSelectionAggregationCandidateTool,
+    submitIntentProgram: submitIntentProgramTool,
+};
 
 /**
  * Expands a collapsed view branch in the current session context.
@@ -82,27 +65,7 @@ export function createAgentTools(runtime) {
  * @returns {AgentToolExecutionResult}
  */
 export function expandViewNode(runtime, input) {
-    ensureResolvedView(runtime, input.selector);
-    const before = runtime.isViewNodeExpanded(input.selector);
-    runtime.expandViewNode(input.selector);
-    const after = runtime.isViewNodeExpanded(input.selector);
-    let text;
-    if (before) {
-        text = "The requested view branch was already expanded.";
-    } else {
-        text = "Expanded the requested view branch.";
-    }
-
-    return {
-        text,
-        content: createViewStateChange(
-            "agent_context",
-            "collapsed",
-            input.selector,
-            before,
-            after
-        ),
-    };
+    return updateViewNodeExpansion(runtime, input.selector, true);
 }
 
 /**
@@ -113,27 +76,7 @@ export function expandViewNode(runtime, input) {
  * @returns {AgentToolExecutionResult}
  */
 export function collapseViewNode(runtime, input) {
-    ensureResolvedView(runtime, input.selector);
-    const before = runtime.isViewNodeExpanded(input.selector);
-    runtime.collapseViewNode(input.selector);
-    const after = runtime.isViewNodeExpanded(input.selector);
-    let text;
-    if (before) {
-        text = "Collapsed the requested view branch.";
-    } else {
-        text = "The requested view branch was already collapsed.";
-    }
-
-    return {
-        text,
-        content: createViewStateChange(
-            "agent_context",
-            "collapsed",
-            input.selector,
-            before,
-            after
-        ),
-    };
+    return updateViewNodeExpansion(runtime, input.selector, false);
 }
 
 /**
@@ -144,27 +87,9 @@ export function collapseViewNode(runtime, input) {
  * @returns {AgentToolExecutionResult}
  */
 export function setViewVisibility(runtime, input) {
-    ensureResolvedView(runtime, input.selector);
-    const before = runtime.isViewVisible(input.selector);
-    runtime.setViewVisibility(input.selector, input.visibility);
-    const after = runtime.isViewVisible(input.selector);
-    let text;
-    if (after === before) {
-        text = "The view was already in the requested visibility state.";
-    } else {
-        text = "Updated the requested view visibility.";
-    }
-
-    return {
-        text,
-        content: createViewStateChange(
-            "user_visibility",
-            "visible",
-            input.selector,
-            before,
-            after
-        ),
-    };
+    return updateViewVisibility(runtime, input.selector, false, () =>
+        runtime.setViewVisibility(input.selector, input.visibility)
+    );
 }
 
 /**
@@ -175,27 +100,9 @@ export function setViewVisibility(runtime, input) {
  * @returns {AgentToolExecutionResult}
  */
 export function clearViewVisibility(runtime, input) {
-    ensureResolvedView(runtime, input.selector);
-    const before = runtime.isViewVisible(input.selector);
-    runtime.clearViewVisibility(input.selector);
-    const after = runtime.isViewVisible(input.selector);
-    let text;
-    if (after === before) {
-        text = "The visibility override was already clear.";
-    } else {
-        text = "Cleared the requested view visibility override.";
-    }
-
-    return {
-        text,
-        content: createViewStateChange(
-            "user_visibility",
-            "visible",
-            input.selector,
-            before,
-            after
-        ),
-    };
+    return updateViewVisibility(runtime, input.selector, true, () =>
+        runtime.clearViewVisibility(input.selector)
+    );
 }
 
 /**
@@ -206,29 +113,27 @@ export function clearViewVisibility(runtime, input) {
  * @returns {AgentToolExecutionResult}
  */
 export function resolveSelectionAggregationCandidateTool(runtime, input) {
-    let context;
     try {
-        context = runtime.getAgentContext();
-    } catch (error) {
-        throw new ToolCallRejectionError(getErrorMessage(error));
-    }
-
-    let resolution;
-    try {
-        resolution = resolveSelectionAggregationCandidate(
-            context,
+        const resolution = resolveSelectionAggregationCandidate(
+            runtime.getAgentContext(),
             input.candidateId,
             input.aggregation
         );
-    } catch (error) {
-        throw new ToolCallRejectionError(getErrorMessage(error));
-    }
 
-    return {
-        text:
-            "Resolved " + resolution.title + " for " + input.candidateId + ".",
-        content: resolution,
-    };
+        return {
+            text:
+                "Resolved " +
+                resolution.title +
+                " for " +
+                input.candidateId +
+                ".",
+            content: resolution,
+        };
+    } catch (error) {
+        throw new ToolCallRejectionError(
+            error instanceof Error ? error.message : String(error)
+        );
+    }
 }
 
 /**
@@ -258,6 +163,71 @@ function ensureResolvedView(runtime, selector) {
             "Selector did not resolve in the current view hierarchy."
         );
     }
+    return view;
+}
+
+/**
+ * @param {AgentToolRuntime} runtime
+ * @param {ViewSelector} selector
+ * @param {boolean} expanded
+ * @returns {AgentToolExecutionResult}
+ */
+function updateViewNodeExpansion(runtime, selector, expanded) {
+    ensureResolvedView(runtime, selector);
+    const changed = expanded
+        ? runtime.expandViewNode(selector)
+        : runtime.collapseViewNode(selector);
+    const before = expanded ? !changed : changed;
+    const text = expanded
+        ? changed
+            ? "Expanded the requested view branch."
+            : "The requested view branch was already expanded."
+        : changed
+          ? "Collapsed the requested view branch."
+          : "The requested view branch was already collapsed.";
+
+    return {
+        text,
+        content: createViewStateChange(
+            "agent_context",
+            "collapsed",
+            selector,
+            before,
+            expanded
+        ),
+    };
+}
+
+/**
+ * @param {AgentToolRuntime} runtime
+ * @param {ViewSelector} selector
+ * @param {boolean} clearing
+ * @param {() => void} applyChange
+ * @returns {AgentToolExecutionResult}
+ */
+function updateViewVisibility(runtime, selector, clearing, applyChange) {
+    const view = ensureResolvedView(runtime, selector);
+    const before = view.isVisible();
+    applyChange();
+    const after = view.isVisible();
+
+    return {
+        text:
+            after === before
+                ? clearing
+                    ? "The visibility override was already clear."
+                    : "The view was already in the requested visibility state."
+                : clearing
+                  ? "Cleared the requested view visibility override."
+                  : "Updated the requested view visibility.",
+        content: createViewStateChange(
+            "user_visibility",
+            "visible",
+            selector,
+            before,
+            after
+        ),
+    };
 }
 
 /**
@@ -278,12 +248,4 @@ function createViewStateChange(domain, field, selector, before, after) {
         after,
         changed: before !== after,
     };
-}
-
-/**
- * @param {unknown} error
- * @returns {string}
- */
-function getErrorMessage(error) {
-    return error instanceof Error ? error.message : String(error);
 }

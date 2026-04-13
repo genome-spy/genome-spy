@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ToolCallRejectionError, createAgentTools } from "./agentTools.js";
+import { ToolCallRejectionError, agentTools } from "./agentTools.js";
 
 function createRuntimeStub() {
     let expanded = false;
@@ -10,10 +10,14 @@ function createRuntimeStub() {
 
     return {
         expandViewNode: vi.fn(() => {
+            const wasExpanded = expanded;
             expanded = true;
+            return !wasExpanded;
         }),
         collapseViewNode: vi.fn(() => {
+            const wasExpanded = expanded;
             expanded = false;
+            return wasExpanded;
         }),
         resolveViewSelector: vi.fn(() => view),
         isViewNodeExpanded: vi.fn(() => expanded),
@@ -62,10 +66,10 @@ function createRuntimeStub() {
 describe("agentTools", () => {
     it("delegates expand and collapse operations to the runtime", () => {
         const runtime = createRuntimeStub();
-        const tools = createAgentTools(runtime);
+        const tools = agentTools;
 
         expect(
-            tools.expandViewNode({
+            tools.expandViewNode(runtime, {
                 selector: {
                     scope: [],
                     view: "track",
@@ -83,7 +87,7 @@ describe("agentTools", () => {
         );
 
         expect(
-            tools.collapseViewNode({
+            tools.collapseViewNode(runtime, {
                 selector: {
                     scope: [],
                     view: "track",
@@ -112,9 +116,9 @@ describe("agentTools", () => {
 
     it("resolves selection aggregation candidates through the current context", () => {
         const runtime = createRuntimeStub();
-        const tools = createAgentTools(runtime);
+        const tools = agentTools;
 
-        const result = tools.resolveSelectionAggregationCandidate({
+        const result = tools.resolveSelectionAggregationCandidate(runtime, {
             candidateId: "brush@track:beta",
             aggregation: "max",
         });
@@ -132,9 +136,9 @@ describe("agentTools", () => {
 
     it("summarizes intent program execution through the runtime", async () => {
         const runtime = createRuntimeStub();
-        const tools = createAgentTools(runtime);
+        const tools = agentTools;
 
-        const result = await tools.submitIntentProgram({
+        const result = await tools.submitIntentProgram(runtime, {
             program: {
                 schemaVersion: 1,
                 steps: [],
@@ -156,10 +160,10 @@ describe("agentTools", () => {
     it("fails fast when a selector does not resolve", () => {
         const runtime = createRuntimeStub();
         runtime.resolveViewSelector.mockReturnValueOnce(undefined);
-        const tools = createAgentTools(runtime);
+        const tools = agentTools;
 
         expect(() =>
-            tools.setViewVisibility({
+            tools.setViewVisibility(runtime, {
                 selector: {
                     scope: [],
                     view: "missing",
@@ -176,10 +180,10 @@ describe("agentTools", () => {
                 fields: [],
             },
         });
-        const tools = createAgentTools(runtime);
+        const tools = agentTools;
 
         expect(() =>
-            tools.resolveSelectionAggregationCandidate({
+            tools.resolveSelectionAggregationCandidate(runtime, {
                 candidateId: "missing-candidate",
                 aggregation: "max",
             })
