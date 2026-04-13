@@ -180,12 +180,7 @@ export function resolveSelectionAggregationCandidateTool(runtime, input) {
         );
 
         return {
-            text:
-                "Resolved " +
-                resolution.title +
-                " for " +
-                input.candidateId +
-                ".",
+            text: `Resolved ${resolution.title} for ${input.candidateId}. Remember to use the resolution in a subsequent intent program action to apply the aggregation.`,
             content: resolution,
         };
     } catch (error) {

@@ -155,43 +155,6 @@ Example:
 }
 ```
 
-### Intent tool
-
-- `submitIntentProgram(program)`: execute one or more ordered,
-  provenance-changing actions.
-
-Use this for sample collection changes and parameter or selection updates. Do
-not use it for view expansion or view visibility.
-
-Actions are additive, which means that they do not replace the state but
-build on top of it. For example, filtering by first keeping all positive values
-and then negative values results in an empty dataset unless the first filter is
-undone.
-
-Each step in the program must contain a valid `actionType` and payload. Keep
-steps specific. Do not submit empty programs or placeholder steps.
-
-Example:
-
-```json
-{
-  "program": {
-    "schemaVersion": 1,
-    "steps": [
-      {
-        "actionType": "sampleView/groupToQuartiles",
-        "payload": {
-          "attribute": {
-            "type": "SAMPLE_ATTRIBUTE",
-            "specifier": "age"
-          }
-        }
-      }
-    ]
-  }
-}
-```
-
 ### Selection-aggregation tool
 
 - `resolveSelectionAggregationCandidate(candidateId, aggregation)`: resolve a
@@ -216,16 +179,56 @@ tools `jumpToProvenanceState(provenanceId)` and
 
 Avoid mentioning `provenanceId`, as it is an internal identifier not visible to the user.
 
-Replacement semantics: If the user requests an alternative analysis using words
-like “instead,” “replace,” or “switch to,” consult provenance history first and
-interpret this as replacing the current operation. If the prior analysis state
-must be changed, jump back in provenance first, then apply the new action. Do
-not submit the replacement action before restoring the earlier state when a
-rollback is needed.
+If the user asks to change, swap, or use a different version of an existing
+analysis step, treat it as a replacement even if they do not use the exact words
+“instead,” “replace,” or “switch to.” Always identify the most recent relevant
+provenance state, jump back to the state before that step, and then apply the
+new action. Do not submit the replacement action before restoring the earlier
+state when a rollback is needed. However, no need to ask the user to confirm the
+rollback and replacement as a single combined change. Just do it in the right
+order.
 
 Before any non-additive analysis change, inspect provenance history first. Use
 `jumpToProvenanceState(provenanceId)` when the current request should continue
 from an earlier state, even if the user did not explicitly ask to jump back.
+
+### Intent tool
+
+`submitIntentProgram(program)` executes actions that change the analysis state.
+These actions are stored in provenance history.
+
+Actions that change the sample collections are all additive and do not replace
+the prior state. Grouping (which is multi-level), filtering, sorting, and
+metadata derivation are all additive and do not replace existing action. For
+example, filtering by first keeping all positive values and then negative values
+results in an empty dataset unless the first filter is undone.
+
+Actions that change a parameter (such as a selection or a brush) replace the
+prior value of that parameter.
+
+Each step in the program must contain a valid `actionType` and payload. Keep
+steps specific. Do not submit empty programs or placeholder steps.
+
+Example:
+
+```json
+{
+  "program": {
+    "schemaVersion": 1,
+    "steps": [
+      {
+        "actionType": "sampleView/groupToQuartiles",
+        "payload": {
+          "attribute": {
+            "type": "SAMPLE_ATTRIBUTE",
+            "specifier": "age"
+          }
+        }
+      }
+    ]
+  }
+}
+```
 
 ## Selections and interval aggregation
 
