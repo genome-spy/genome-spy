@@ -159,4 +159,7 @@ def _project_schema(
 
         projected[key] = value
 
+    if projected.get("type") == "object" and "properties" not in projected:
+        projected["properties"] = {}
+
     return projected

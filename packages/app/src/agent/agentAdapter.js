@@ -132,6 +132,9 @@ export function createAgentAdapter(app) {
         clearViewVisibility: (
             /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector
         ) => clearViewVisibility(app, selector),
+        jumpToProvenanceState: (/** @type {string} */ provenanceId) =>
+            jumpToProvenanceState(app, provenanceId),
+        jumpToInitialProvenanceState: () => jumpToInitialProvenanceState(app),
         summarizeExecutionResult,
         summarizeIntentProgram: (
             /** @type {import("./types.js").IntentProgram} */ program
@@ -338,6 +341,27 @@ function clearViewVisibility(app, selector) {
             )
         );
     }
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {string} provenanceId
+ * @returns {boolean}
+ */
+function jumpToProvenanceState(app, provenanceId) {
+    const currentIndex = app.provenance.getCurrentIndex();
+    app.provenance.activateState(provenanceId);
+    return app.provenance.getCurrentIndex() !== currentIndex;
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @returns {boolean}
+ */
+function jumpToInitialProvenanceState(app) {
+    const currentIndex = app.provenance.getCurrentIndex();
+    app.provenance.activateInitialState();
+    return app.provenance.getCurrentIndex() !== currentIndex;
 }
 
 /**

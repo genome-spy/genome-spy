@@ -34,6 +34,8 @@ describe("generateAgentToolCatalog", () => {
             "collapseViewNode",
             "setViewVisibility",
             "clearViewVisibility",
+            "jumpToProvenanceState",
+            "jumpToInitialProvenanceState",
             "resolveSelectionAggregationCandidate",
             "submitIntentProgram",
         ]);

@@ -87,6 +87,31 @@
     "strict": true
   },
   {
+    "toolName": "jumpToProvenanceState",
+    "description": "Jump to a prior provenance state identified by the given provenance id.",
+    "inputType": "JumpToProvenanceStateToolInput",
+    "inputFields": [
+      {
+        "name": "provenanceId",
+        "type": "string",
+        "description": "Provenance id to jump to.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "provenanceId": "provenance-12"
+    },
+    "strict": true
+  },
+  {
+    "toolName": "jumpToInitialProvenanceState",
+    "description": "Jump to the initial provenance state before any actions were dispatched.",
+    "inputType": "JumpToInitialProvenanceStateToolInput",
+    "inputFields": [],
+    "exampleInput": {},
+    "strict": true
+  },
+  {
     "toolName": "resolveSelectionAggregationCandidate",
     "description": "Resolve a selection aggregation candidate into an `AttributeIdentifier` for intent actions.",
     "inputType": "ResolveSelectionAggregationCandidateToolInput",

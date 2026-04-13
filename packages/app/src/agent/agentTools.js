@@ -10,10 +10,13 @@ import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool
  * @typedef {import("./agentToolInputs.d.ts").CollapseViewNodeToolInput} CollapseViewNodeToolInput
  * @typedef {import("./agentToolInputs.d.ts").SetViewVisibilityToolInput} SetViewVisibilityToolInput
  * @typedef {import("./agentToolInputs.d.ts").ClearViewVisibilityToolInput} ClearViewVisibilityToolInput
+ * @typedef {import("./agentToolInputs.d.ts").JumpToProvenanceStateToolInput} JumpToProvenanceStateToolInput
+ * @typedef {import("./agentToolInputs.d.ts").JumpToInitialProvenanceStateToolInput} JumpToInitialProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").ResolveSelectionAggregationCandidateToolInput} ResolveSelectionAggregationCandidateToolInput
  * @typedef {import("./agentToolInputs.d.ts").SubmitIntentProgramToolInput} SubmitIntentProgramToolInput
  * @typedef {import("./types.d.ts").AgentContext} AgentContext
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
+ * @typedef {import("./types.d.ts").AgentProvenanceAction} AgentProvenanceAction
  * @typedef {import("./types.d.ts").IntentProgram} IntentProgram
  * @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult
  * @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine
@@ -21,6 +24,8 @@ import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {{
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
+ *     jumpToProvenanceState(provenanceId: string): boolean;
+ *     jumpToInitialProvenanceState(): boolean;
  *     resolveViewSelector(selector: ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
  *     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
  *     clearViewVisibility(selector: ViewSelector): void;
@@ -52,6 +57,8 @@ export const agentTools = {
     collapseViewNode,
     setViewVisibility,
     clearViewVisibility,
+    jumpToProvenanceState,
+    jumpToInitialProvenanceState,
     resolveSelectionAggregationCandidate:
         resolveSelectionAggregationCandidateTool,
     submitIntentProgram: submitIntentProgramTool,
@@ -103,6 +110,58 @@ export function clearViewVisibility(runtime, input) {
     return updateViewVisibility(runtime, input.selector, true, () =>
         runtime.clearViewVisibility(input.selector)
     );
+}
+
+/**
+ * Jumps to a provenance state by id.
+ *
+ * @param {AgentToolRuntime} runtime
+ * @param {JumpToProvenanceStateToolInput} input
+ * @returns {AgentToolExecutionResult}
+ */
+export function jumpToProvenanceState(runtime, input) {
+    const provenanceAction = findProvenanceAction(runtime, input.provenanceId);
+    const changed = runtime.jumpToProvenanceState(input.provenanceId);
+
+    return {
+        text:
+            changed && provenanceAction
+                ? "Jumped to provenance state: " +
+                  provenanceAction.summary +
+                  "."
+                : "The requested provenance state was already active.",
+        content: createProvenanceStateActivation(
+            input.provenanceId,
+            provenanceAction,
+            false,
+            changed
+        ),
+    };
+}
+
+/**
+ * Jumps to the initial provenance state.
+ *
+ * @param {AgentToolRuntime} runtime
+ * @param {JumpToInitialProvenanceStateToolInput} input
+ * @returns {AgentToolExecutionResult}
+ */
+export function jumpToInitialProvenanceState(runtime, input) {
+    void input;
+
+    const changed = runtime.jumpToInitialProvenanceState();
+
+    return {
+        text: changed
+            ? "Jumped to the initial provenance state."
+            : "The initial provenance state was already active.",
+        content: createProvenanceStateActivation(
+            undefined,
+            undefined,
+            true,
+            changed
+        ),
+    };
 }
 
 /**
@@ -248,4 +307,56 @@ function createViewStateChange(domain, field, selector, before, after) {
         after,
         changed: before !== after,
     };
+}
+
+/**
+ * @param {string | undefined} provenanceId
+ * @param {AgentProvenanceAction | undefined} action
+ * @param {boolean} initial
+ * @param {boolean} changed
+ * @returns {{
+ *     kind: "provenance_state_activation";
+ *     provenanceId?: string;
+ *     actionType?: string;
+ *     summary?: string;
+ *     initial: boolean;
+ *     changed: boolean;
+ * }}
+ */
+function createProvenanceStateActivation(
+    provenanceId,
+    action,
+    initial,
+    changed
+) {
+    return {
+        kind: "provenance_state_activation",
+        ...(provenanceId ? { provenanceId } : {}),
+        ...(action
+            ? {
+                  actionType: action.type,
+                  summary: action.summary,
+              }
+            : {}),
+        initial,
+        changed,
+    };
+}
+
+/**
+ * @param {AgentToolRuntime} runtime
+ * @param {string} provenanceId
+ * @returns {AgentProvenanceAction}
+ */
+function findProvenanceAction(runtime, provenanceId) {
+    const action = runtime
+        .getAgentContext()
+        .provenance.find((entry) => entry.provenanceId === provenanceId);
+    if (!action) {
+        throw new ToolCallRejectionError(
+            "Unknown provenance id " + provenanceId + "."
+        );
+    }
+
+    return action;
 }

@@ -16,17 +16,21 @@ describe("toolCatalog", () => {
             "collapseViewNode",
             "setViewVisibility",
             "clearViewVisibility",
+            "jumpToProvenanceState",
+            "jumpToInitialProvenanceState",
             "resolveSelectionAggregationCandidate",
             "submitIntentProgram",
         ]);
         expect(tools[4].strict).toBe(true);
-        expect(tools[5].strict).toBe(false);
+        expect(tools[5].strict).toBe(true);
+        expect(tools[6].strict).toBe(true);
+        expect(tools[7].strict).toBe(false);
     });
 
     it("builds Responses API function tool definitions", () => {
         const toolDefinitions = buildResponsesToolDefinitions();
 
-        expect(toolDefinitions).toHaveLength(6);
+        expect(toolDefinitions).toHaveLength(8);
         expect(toolDefinitions[0]).toEqual(
             expect.objectContaining({
                 type: "function",
@@ -40,17 +44,26 @@ describe("toolCatalog", () => {
         expect(toolDefinitions[2]).toEqual(
             expect.objectContaining({
                 name: "setViewVisibility",
-                description: "Set the configured visibility of a view.",
             })
         );
-        expect(toolDefinitions[2].parameters.type).toBe("object");
-        expect(toolDefinitions[4].name).toBe(
-            "resolveSelectionAggregationCandidate"
+        expect(toolDefinitions[2].description).toContain(
+            "visibility of a view"
         );
+        expect(toolDefinitions[2].parameters.type).toBe("object");
+        expect(toolDefinitions[4].name).toBe("jumpToProvenanceState");
         expect(toolDefinitions[4].parameters.type).toBe("object");
         expect(toolDefinitions[4].strict).toBe(true);
+        expect(toolDefinitions[5].name).toBe("jumpToInitialProvenanceState");
         expect(toolDefinitions[5].parameters.type).toBe("object");
-        expect(toolDefinitions[5].strict).toBe(false);
+        expect(toolDefinitions[5].parameters.properties).toEqual({});
+        expect(toolDefinitions[5].strict).toBe(true);
+        expect(toolDefinitions[6].name).toBe(
+            "resolveSelectionAggregationCandidate"
+        );
+        expect(toolDefinitions[6].parameters.type).toBe("object");
+        expect(toolDefinitions[6].strict).toBe(true);
+        expect(toolDefinitions[7].parameters.type).toBe("object");
+        expect(toolDefinitions[7].strict).toBe(false);
     });
 
     it("validates tool arguments against the generated schema", () => {

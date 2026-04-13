@@ -1070,6 +1070,12 @@
         "expandViewNode": {
           "$ref": "#/definitions/ExpandViewNodeToolInput"
         },
+        "jumpToInitialProvenanceState": {
+          "$ref": "#/definitions/JumpToInitialProvenanceStateToolInput"
+        },
+        "jumpToProvenanceState": {
+          "$ref": "#/definitions/JumpToProvenanceStateToolInput"
+        },
         "resolveSelectionAggregationCandidate": {
           "$ref": "#/definitions/ResolveSelectionAggregationCandidateToolInput"
         },
@@ -1085,6 +1091,8 @@
         "collapseViewNode",
         "setViewVisibility",
         "clearViewVisibility",
+        "jumpToProvenanceState",
+        "jumpToInitialProvenanceState",
         "resolveSelectionAggregationCandidate",
         "submitIntentProgram"
       ],
@@ -1153,6 +1161,28 @@
         }
       },
       "required": ["selector"],
+      "type": "object"
+    },
+    "JumpToInitialProvenanceStateToolInput": {
+      "additionalProperties": false,
+      "description": "Jump to the initial provenance state before any actions were dispatched.",
+      "type": "object"
+    },
+    "JumpToProvenanceStateToolInput": {
+      "additionalProperties": false,
+      "description": "Jump to a prior provenance state identified by the given provenance id. Consult provenance history first when a request should continue from an earlier analysis state, even if the user did not explicitly ask to jump back.",
+      "examples": [
+        {
+          "provenanceId": "provenance-12"
+        }
+      ],
+      "properties": {
+        "provenanceId": {
+          "description": "Provenance id to jump to.",
+          "type": "string"
+        }
+      },
+      "required": ["provenanceId"],
       "type": "object"
     },
     "ResolveSelectionAggregationCandidateToolInput": {

@@ -124,6 +124,7 @@ function createAppStub() {
 
     const provenance = [
         {
+            provenanceId: "provenance-1",
             type: "paramProvenance/paramChange",
             summary: "Brush brush (0-1) in Patient Cohort",
             payload: {
@@ -132,6 +133,7 @@ function createAppStub() {
             },
         },
         {
+            provenanceId: "provenance-2",
             type: "sampleView/sortBy",
             summary: "Sort by min(purity) in selection brush",
             payload: {
@@ -190,7 +192,7 @@ function createAppStub() {
                     },
                 },
             }),
-            getBookmarkableActionHistory: () => provenance,
+            getActionHistory: () => provenance,
             getActionInfo: (action) => ({
                 provenanceTitle: action.summary,
             }),
@@ -293,6 +295,8 @@ describe("getAgentContext", () => {
             "collapseViewNode",
             "setViewVisibility",
             "clearViewVisibility",
+            "jumpToProvenanceState",
+            "jumpToInitialProvenanceState",
             "resolveSelectionAggregationCandidate",
             "submitIntentProgram",
         ]);
@@ -301,10 +305,12 @@ describe("getAgentContext", () => {
             expect.objectContaining({
                 summary: "Brush brush (0-1) in Patient Cohort",
                 type: "paramProvenance/paramChange",
+                provenanceId: "provenance-1",
             }),
             expect.objectContaining({
                 summary: "Sort by min(purity) in selection brush",
                 type: "sampleView/sortBy",
+                provenanceId: "provenance-2",
             }),
         ]);
     });

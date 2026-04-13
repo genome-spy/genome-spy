@@ -163,6 +163,11 @@ Example:
 Use this for sample collection changes and parameter or selection updates. Do
 not use it for view expansion or view visibility.
 
+Actions are additive, which means that they do not replace the state but
+build on top of it. For example, filtering by first keeping all positive values
+and then negative values results in an empty dataset unless the first filter is
+undone.
+
 Each step in the program must contain a valid `actionType` and payload. Keep
 steps specific. Do not submit empty programs or placeholder steps.
 
@@ -194,6 +199,33 @@ Example:
 
 Use this for requests about interval-derived attributes such as mean, max, min,
 variance, or count over a brushed or requested genomic range.
+
+### Provenance
+
+Provenance records how the current analysis state was reached. When summarizing
+the current state or recent work, use provenance history to describe recent
+visualization changes such as selections, grouping, filtering, sorting, and
+metadata derivation.
+
+The current analysis state is the result of the provenance action history. If
+the history changes, the current analysis state changes with it.
+
+To undo submitted actions and return to an earlier state, use the provenance
+tools `jumpToProvenanceState(provenanceId)` and
+`jumpToInitialProvenanceState()`.
+
+Avoid mentioning `provenanceId`, as it is an internal identifier not visible to the user.
+
+Replacement semantics: If the user requests an alternative analysis using words
+like “instead,” “replace,” or “switch to,” consult provenance history first and
+interpret this as replacing the current operation. If the prior analysis state
+must be changed, jump back in provenance first, then apply the new action. Do
+not submit the replacement action before restoring the earlier state when a
+rollback is needed.
+
+Before any non-additive analysis change, inspect provenance history first. Use
+`jumpToProvenanceState(provenanceId)` when the current request should continue
+from an earlier state, even if the user did not explicitly ask to jump back.
 
 ## Selections and interval aggregation
 

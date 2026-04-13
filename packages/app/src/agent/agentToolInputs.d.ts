@@ -92,6 +92,29 @@ export interface ClearViewVisibilityToolInput {
 }
 
 /**
+ * Jump to a prior provenance state identified by the given provenance id.
+ * Consult provenance history first when a request should continue from an
+ * earlier analysis state, even if the user did not explicitly ask to jump
+ * back.
+ *
+ * @example
+ * {
+ *   "provenanceId": "provenance-12"
+ * }
+ */
+export interface JumpToProvenanceStateToolInput {
+    /**
+     * Provenance id to jump to.
+     */
+    provenanceId: string;
+}
+
+/**
+ * Jump to the initial provenance state before any actions were dispatched.
+ */
+export interface JumpToInitialProvenanceStateToolInput {}
+
+/**
  * Resolve a selection aggregation candidate into an `AttributeIdentifier`
  * for intent actions. Before using this tool, you must make an interval
  * selection or ensure that one already exists.
@@ -153,6 +176,8 @@ export interface AgentToolInputs {
     collapseViewNode: CollapseViewNodeToolInput;
     setViewVisibility: SetViewVisibilityToolInput;
     clearViewVisibility: ClearViewVisibilityToolInput;
+    jumpToProvenanceState: JumpToProvenanceStateToolInput;
+    jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     resolveSelectionAggregationCandidate: ResolveSelectionAggregationCandidateToolInput;
     submitIntentProgram: SubmitIntentProgramToolInput;
 }

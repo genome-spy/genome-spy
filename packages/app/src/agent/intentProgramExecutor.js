@@ -24,6 +24,7 @@ export async function submitIntentProgram(app, program) {
         sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
             sampleView.compositeAttributeInfoSource
         );
+    const provenanceStartIndex = app.provenance.getActionHistory().length;
 
     const actions = validation.program.steps.map((step) =>
         getActionCatalogEntry(step.actionType).actionCreator(step.payload)
@@ -37,12 +38,14 @@ export async function submitIntentProgram(app, program) {
         : undefined;
 
     await app.intentPipeline.submit(actions, { getAttributeInfo });
+    const provenanceIds = getDispatchedProvenanceIds(app, provenanceStartIndex);
 
     const summaries = summarizeIntentProgram(app, validation.program);
     /** @type {import("./types.js").IntentProgramExecutionContent} */
     const content = {
         kind: "intent_program_result",
         program: validation.program,
+        provenanceIds,
     };
     if (hasSampleViewMutation) {
         const afterVisibleSampleCount = countVisibleSamples(
@@ -111,4 +114,17 @@ function countVisibleSamples(group, sampleIds = new Set()) {
     }
 
     return sampleIds.size;
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {number} provenanceStartIndex
+ * @returns {string[]}
+ */
+function getDispatchedProvenanceIds(app, provenanceStartIndex) {
+    return app.provenance
+        .getActionHistory()
+        .slice(provenanceStartIndex)
+        .map((action) => action.provenanceId)
+        .filter((provenanceId) => typeof provenanceId === "string");
 }

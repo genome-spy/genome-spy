@@ -488,6 +488,11 @@ export interface AgentProvenanceAction {
     summary: string;
 
     /**
+     * Stable provenance id for the current session.
+     */
+    provenanceId?: string;
+
+    /**
      * Redux action type.
      */
     type: string;
@@ -855,6 +860,11 @@ export interface IntentProgramExecutionContent {
      * Visible sample counts for sample-view mutations.
      */
     sampleView?: IntentProgramExecutionSampleViewSummary;
+
+    /**
+     * Provenance ids for the actions dispatched by the program.
+     */
+    provenanceIds?: string[];
 }
 
 /**
@@ -894,6 +904,16 @@ export interface AgentAdapter {
      * Clears the configured visibility override for a view.
      */
     clearViewVisibility(selector: ViewSelector): void;
+
+    /**
+     * Activates a provenance state by id.
+     */
+    jumpToProvenanceState(provenanceId: string): boolean;
+
+    /**
+     * Activates the initial provenance state.
+     */
+    jumpToInitialProvenanceState(): boolean;
 
     /**
      * Summarizes an execution result for display.
@@ -978,7 +998,7 @@ export interface AgentContext {
     selectionAggregation: AgentSelectionAggregationContext;
 
     /**
-     * Bookmarkable provenance actions for the current analysis history.
+     * Provenance actions for the current analysis history.
      */
     provenance: AgentProvenanceAction[];
 

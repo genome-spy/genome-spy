@@ -298,6 +298,10 @@ function projectToolSchema(
         projected[key] = value;
     }
 
+    if (projected.type === "object" && projected.properties === undefined) {
+        projected.properties = {};
+    }
+
     return projected;
 }
 

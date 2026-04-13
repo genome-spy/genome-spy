@@ -36,6 +36,9 @@ function createAppStub() {
                 getAttributeInfo,
             },
         }),
+        provenance: {
+            getActionHistory: vi.fn(() => []),
+        },
         intentPipeline: {
             submit: vi.fn(() => Promise.resolve()),
         },
@@ -75,6 +78,7 @@ describe("submitIntentProgram", () => {
         expect(result.content).toEqual(
             expect.objectContaining({
                 kind: "intent_program_result",
+                provenanceIds: [],
                 program: expect.objectContaining({
                     schemaVersion: 1,
                     steps: [

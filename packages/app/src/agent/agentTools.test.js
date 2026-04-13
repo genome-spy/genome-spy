@@ -28,6 +28,8 @@ function createRuntimeStub() {
         clearViewVisibility: vi.fn(() => {
             visible = true;
         }),
+        jumpToProvenanceState: vi.fn(() => true),
+        jumpToInitialProvenanceState: vi.fn(() => true),
         getAgentContext: vi.fn(() => ({
             selectionAggregation: {
                 fields: [
@@ -132,6 +134,55 @@ describe("agentTools", () => {
             })
         );
         expect(runtime.getAgentContext).toHaveBeenCalledTimes(1);
+    });
+
+    it("activates provenance states through the runtime", () => {
+        const runtime = createRuntimeStub();
+        runtime.getAgentContext.mockReturnValueOnce({
+            provenance: [
+                {
+                    provenanceId: "provenance-1",
+                    summary: "Sort by purity",
+                    type: "sampleView/sortBy",
+                },
+            ],
+        });
+
+        const tools = agentTools;
+
+        expect(
+            tools.jumpToProvenanceState(runtime, {
+                provenanceId: "provenance-1",
+            })
+        ).toEqual(
+            expect.objectContaining({
+                text: "Jumped to provenance state: Sort by purity.",
+                content: expect.objectContaining({
+                    kind: "provenance_state_activation",
+                    provenanceId: "provenance-1",
+                    actionType: "sampleView/sortBy",
+                    summary: "Sort by purity",
+                    initial: false,
+                    changed: true,
+                }),
+            })
+        );
+
+        expect(tools.jumpToInitialProvenanceState(runtime, {})).toEqual(
+            expect.objectContaining({
+                text: "Jumped to the initial provenance state.",
+                content: expect.objectContaining({
+                    kind: "provenance_state_activation",
+                    initial: true,
+                    changed: true,
+                }),
+            })
+        );
+
+        expect(runtime.jumpToProvenanceState).toHaveBeenCalledWith(
+            "provenance-1"
+        );
+        expect(runtime.jumpToInitialProvenanceState).toHaveBeenCalledTimes(1);
     });
 
     it("summarizes intent program execution through the runtime", async () => {

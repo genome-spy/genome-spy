@@ -3,6 +3,7 @@ import { listAgentActions } from "./actionCatalog.js";
 import { listAgentTools } from "./toolCatalog.js";
 import { buildViewTree } from "./viewTree.js";
 import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
+import { isBaselineAction } from "../state/provenanceBaseline.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -15,7 +16,7 @@ export function getAgentContext(app, options = {}) {
     const sampleView = app.getSampleView();
     const state = app.store.getState();
     const sampleState = app.provenance.getPresentState()?.sampleView;
-    const provenance = app.provenance.getBookmarkableActionHistory() ?? [];
+    const provenance = app.provenance.getActionHistory() ?? [];
     const selectionAggregation = getSelectionAggregationContext(app);
     const { root: viewRoot } = buildViewTree(app, options);
     const actionCatalog = listAgentActions();
@@ -101,21 +102,25 @@ function buildAttributeSummary(sampleView, sampleState) {
  * @returns {import("./types.js").AgentProvenanceAction[]}
  */
 function buildProvenanceActions(app, provenanceActions) {
-    return provenanceActions.slice(-10).map((action) => {
-        const info = app.provenance.getActionInfo(action);
-        const title =
-            info?.provenanceTitle ??
-            info?.title ??
-            action.type.replace("sampleView/", "");
+    return provenanceActions
+        .filter((action) => !isBaselineAction(action))
+        .slice(-10)
+        .map((action) => {
+            const info = app.provenance.getActionInfo(action);
+            const title =
+                info?.provenanceTitle ??
+                info?.title ??
+                action.type.replace("sampleView/", "");
 
-        return {
-            summary: templateResultToString(title),
-            type: action.type,
-            payload: /** @type {any} */ (action).payload,
-            meta: /** @type {any} */ (action).meta,
-            error: /** @type {any} */ (action).error,
-        };
-    });
+            return {
+                summary: templateResultToString(title),
+                provenanceId: /** @type {any} */ (action).provenanceId,
+                type: action.type,
+                payload: /** @type {any} */ (action).payload,
+                meta: /** @type {any} */ (action).meta,
+                error: /** @type {any} */ (action).error,
+            };
+        });
 }
 
 /**
