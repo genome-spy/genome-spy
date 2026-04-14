@@ -15,7 +15,6 @@ import { getAgentMenuItems } from "./toolbarMenu.js";
 describe("getAgentMenuItems", () => {
     it("returns no items when the agent is not enabled", () => {
         const items = getAgentMenuItems({
-            options: { showLocalAgentButton: false },
             agentAdapter: undefined,
         });
 
@@ -25,7 +24,6 @@ describe("getAgentMenuItems", () => {
     it("returns the agent menu items when enabled", async () => {
         const items = getAgentMenuItems(
             {
-                options: { showLocalAgentButton: true },
                 agentAdapter: {
                     getAgentContext: vi.fn(),
                 },
@@ -37,7 +35,9 @@ describe("getAgentMenuItems", () => {
         await items[0].callback();
         expect(showAgentContextDialogMock).toHaveBeenCalledWith(
             expect.objectContaining({
-                options: { showLocalAgentButton: true },
+                agentAdapter: expect.objectContaining({
+                    getAgentContext: expect.any(Function),
+                }),
             })
         );
     });

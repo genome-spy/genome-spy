@@ -51,12 +51,6 @@ The app-side pieces below are already in place:
   strings.
 - `agentAdapter.js` sends `message`, `history`, and `context` to the agent
   backend.
-- `agentAdapter.js` supports the dev-only mock backend path when
-  `VITE_AGENT_BASE_URL=mock`.
-- `mockAgentTurn.js` returns deterministic read-only answers and clarifications
-  without network access.
-- `agentAdapter.js` logs the outgoing request payload and incoming response in
-  dev mode.
 - `chat-ui.md` describes the controller API using the structured transcript
   shape.
 
@@ -275,15 +269,8 @@ server:
   - `#submitMessage()` prepares the chat request.
   - `#buildHistory()` creates the transcript payload sent to the controller.
 - [`packages/app/src/agent/agentAdapter.js`](../agentAdapter.js)
-  - `requestAgentTurn()` is the transport boundary for the real server and the mock.
-  - `logAgentTransport()` logs the request and response in dev mode.
+  - `requestAgentTurn()` is the transport boundary for the real server.
   - `publishAgentTrace()` publishes timing and high-level execution metadata.
-- [`packages/app/src/agent/mockAgentTurn.js`](../mockAgentTurn.js)
-  - `requestMockAgentTurn()` is the dev-only no-network stand-in for the Python
-    server.
-
-In dev mode, the app also prints the request and response payloads to the
-browser console from `agentAdapter.js`.
 
 ## Implementation Steps
 

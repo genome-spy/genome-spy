@@ -115,7 +115,7 @@ export default class Toolbar extends LitElement {
                 >${renderVersionLink(packageJson.version)}</span
             >
 
-            ${this.app.options.showLocalAgentButton && this.app.agentAdapter
+            ${this.app.agentAdapter
                 ? html`
                       <button
                           class="tool-btn"

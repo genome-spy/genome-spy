@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const { createAgentAdapterMock } = vi.hoisted(() => ({
     createAgentAdapterMock: vi.fn(() => ({
         getAgentContext: vi.fn(),
-        runLocalPrompt: vi.fn(),
     })),
 }));
 
@@ -71,9 +70,6 @@ describe("embed", () => {
         expect(getAgentMenuItemsMock).toHaveBeenCalledTimes(1);
         expect(AppMock).toHaveBeenCalledTimes(1);
         expect(AppMock.mock.instances[0].options.agentBaseUrl).toBe("http://x");
-        expect(AppMock.mock.instances[0].options.showLocalAgentButton).toBe(
-            true
-        );
 
         handle.finalize();
     });
@@ -90,9 +86,6 @@ describe("embed", () => {
         expect(getAgentMenuItemsMock).not.toHaveBeenCalled();
         expect(AppMock).toHaveBeenCalledTimes(1);
         expect(AppMock.mock.instances[0].options.agentBaseUrl).toBeUndefined();
-        expect(AppMock.mock.instances[0].options.showLocalAgentButton).toBe(
-            false
-        );
 
         handle.finalize();
     });

@@ -65,7 +65,6 @@ export default class App {
 
         this.options = {
             showInspectorButton: true,
-            showLocalAgentButton: false,
             ...options,
             // App has a specialized handler for input bindings
             inputBindingContainer: /** @type {"none"} */ ("none"),
@@ -143,10 +142,6 @@ export default class App {
             )
         );
         this.#setupViewVisibilityHandling();
-
-        if (typeof window !== "undefined") {
-            /** @type {any} */ (window).__genomeSpyApp = this;
-        }
     }
 
     #setupStoreAndProvenance() {

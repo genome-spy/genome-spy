@@ -335,11 +335,6 @@ place; broader coverage for transport-level streaming is still pending.
 - Reuse the existing clarification parser for streamed final text.
 - Only render buttons after the final clarification message is complete.
 
-### `packages/app/src/agent/mockAgentTurn.js`
-
-- Emit a slow-response scenario for Storybook and tests.
-- Provide a stream-friendly clarification example.
-
 ### `packages/app/src/agent/chatPanel.stories.js`
 
 - Adds stories that simulate slow prose streaming and heartbeat pulses.

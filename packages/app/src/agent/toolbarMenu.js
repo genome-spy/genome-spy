@@ -6,7 +6,7 @@ import { faEye } from "@fortawesome/free-solid-svg-icons";
  * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
  */
 export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
-    if (!app.options.showLocalAgentButton || !app.agentAdapter) {
+    if (!app.agentAdapter) {
         return [];
     }
 

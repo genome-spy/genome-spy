@@ -10,7 +10,6 @@ import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
-const SHOULD_LOG_AGENT = import.meta.env.DEV && import.meta.env.MODE !== "test";
 
 function now() {
     return globalThis.performance?.now?.() ?? Date.now();
@@ -53,18 +52,6 @@ function normalizeConversationHistory(history) {
             ...(entry.content !== undefined ? { content: entry.content } : {}),
         };
     });
-}
-
-/**
- * @param {string} phase
- * @param {Record<string, any>} payload
- */
-function logAgentTransport(phase, payload) {
-    if (!SHOULD_LOG_AGENT) {
-        return;
-    }
-
-    console.log("[GenomeSpy Agent] " + phase, payload);
 }
 
 /**
@@ -154,44 +141,6 @@ async function requestAgentTurn(app, options) {
         context,
     };
 
-    logAgentTransport("request", {
-        baseUrl,
-        payload: requestPayload,
-    });
-
-    if (baseUrl === "mock") {
-        if (!import.meta.env.DEV) {
-            throw new Error(
-                "Mock agent backend is available only in dev mode."
-            );
-        }
-
-        const mockStartedAt = now();
-        const { requestMockAgentTurn } = await import("./mockAgentTurn.js");
-        const requestResult = await requestMockAgentTurn({
-            message: options.message,
-            history,
-            context,
-        });
-        logAgentTransport("response", {
-            baseUrl,
-            payload: requestResult.response,
-        });
-
-        return {
-            response: requestResult.response,
-            trace: {
-                message: options.message,
-                contextBuildMs,
-                requestMs: elapsedMilliseconds(mockStartedAt),
-                responseParseMs: 0,
-                serverTiming: "mock",
-                agentServerTotalMs: "mock",
-                totalMs: elapsedMilliseconds(startedAt),
-            },
-        };
-    }
-
     const requestStartedAt = now();
     const response = await fetch(baseUrl + "/v1/agent-turn", {
         method: "POST",
@@ -220,10 +169,6 @@ async function requestAgentTurn(app, options) {
             options.streamCallbacks ?? {}
         );
         const responseParseMs = elapsedMilliseconds(parseStartedAt);
-        logAgentTransport("response", {
-            baseUrl,
-            payload: streamedResponse.response,
-        });
 
         return {
             response: streamedResponse.response,
@@ -242,10 +187,6 @@ async function requestAgentTurn(app, options) {
         const parseStartedAt = now();
         const parsedResponse = await response.json();
         const responseParseMs = elapsedMilliseconds(parseStartedAt);
-        logAgentTransport("response", {
-            baseUrl,
-            payload: parsedResponse,
-        });
 
         return {
             response: parsedResponse,

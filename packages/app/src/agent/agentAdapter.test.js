@@ -364,25 +364,34 @@ describe("agentAdapter", () => {
         );
     });
 
-    it("uses the dev-only mock agent turn when the base URL is mock", async () => {
+    it("uses the configured base URL for agent turns", async () => {
         const app = createAppStub();
-        app.options.agentBaseUrl = "mock";
+        app.options.agentBaseUrl = "http://example.test";
         getAgentContext.mockReturnValue(createMockPlannerContext());
         const adapter = createAgentAdapter(app);
+        globalThis.fetch.mockResolvedValueOnce(
+            createResponse({
+                type: "answer",
+                message: "OK",
+            })
+        );
 
         const result = await adapter.requestAgentTurn(
             "What is in this visualization?",
             []
         );
 
-        expect(globalThis.fetch).not.toHaveBeenCalled();
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            "http://example.test/v1/agent-turn",
+            expect.objectContaining({
+                method: "POST",
+            })
+        );
         expect(result.response).toEqual(
             expect.objectContaining({
                 type: "answer",
+                message: "OK",
             })
-        );
-        expect(result.response.message).toContain(
-            "Functional Segmentation (FUSE) of ENCODE WGBS data"
         );
     });
 });

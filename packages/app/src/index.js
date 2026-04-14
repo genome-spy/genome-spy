@@ -61,9 +61,6 @@ export async function embed(el, spec, options = {}) {
             powerPreference: "high-performance",
             ...options,
             agentBaseUrl,
-            showLocalAgentButton:
-                agentEnabled &&
-                (options.showLocalAgentButton ?? Boolean(agentBaseUrl)),
             agentAdapterFactory: agentEnabled
                 ? (options.agentAdapterFactory ?? agentAdapterFactory)
                 : undefined,
