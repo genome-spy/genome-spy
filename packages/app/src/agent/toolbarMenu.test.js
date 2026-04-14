@@ -23,7 +23,6 @@ describe("getAgentMenuItems", () => {
     });
 
     it("returns the agent menu items when enabled", async () => {
-        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
         const items = getAgentMenuItems(
             {
                 options: { showLocalAgentButton: true },
@@ -34,20 +33,12 @@ describe("getAgentMenuItems", () => {
             { isDev: true }
         );
 
-        expect(items.map((item) => item.label)).toEqual([
-            "Show Agent Context",
-            "Agent Trace",
-        ]);
+        expect(items.map((item) => item.label)).toEqual(["Show Agent Context"]);
         await items[0].callback();
-        items[1].callback();
         expect(showAgentContextDialogMock).toHaveBeenCalledWith(
             expect.objectContaining({
                 options: { showLocalAgentButton: true },
             })
-        );
-        expect(logSpy).toHaveBeenCalledTimes(1);
-        expect(logSpy).toHaveBeenCalledWith(
-            "[GenomeSpy Agent] Suppressed dialog: Agent Trace"
         );
     });
 });

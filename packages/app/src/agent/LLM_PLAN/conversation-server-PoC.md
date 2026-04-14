@@ -281,11 +281,6 @@ server:
 - [`packages/app/src/agent/mockAgentTurn.js`](../mockAgentTurn.js)
   - `requestMockAgentTurn()` is the dev-only no-network stand-in for the Python
     server.
-- [`packages/app/src/app.js`](../../app.js)
-  - `recordAgentTrace()` stores trace entries and emits the
-    `genomespy-agent-trace` event.
-- [`packages/app/src/components/dialogs/agentTraceDialog.js`](../../components/dialogs/agentTraceDialog.js)
-  - the Agent Trace dialog shows the recorded trace entries.
 
 In dev mode, the app also prints the request and response payloads to the
 browser console from `agentAdapter.js`.

@@ -208,9 +208,6 @@ describe("agentAdapter", () => {
         globalThis.fetch = vi.fn();
         globalThis.window = /** @type {any} */ ({
             prompt: vi.fn(),
-            __genomeSpyApp: {
-                recordAgentTrace: vi.fn(),
-            },
         });
     });
 

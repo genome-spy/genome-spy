@@ -551,8 +551,7 @@ export class AgentSessionController {
             (response.type === "answer" ||
                 response.type === "clarify" ||
                 response.type === "tool_call" ||
-                response.type === "intent_program" ||
-                response.type === "agent_program")
+                response.type === "intent_program")
         );
     }
 
@@ -880,17 +879,6 @@ export class AgentSessionController {
                 response.program,
                 durationMs ?? null
             );
-            return;
-        }
-
-        if (response.type === "agent_program") {
-            this.#appendMessage({
-                kind: "assistant",
-                text: "The agent returned an agent program. That path is not wired into the chat panel yet.",
-            });
-            this.#state.status = "ready";
-            this.#state.lastError = "";
-            this.#notify();
             return;
         }
 

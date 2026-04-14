@@ -1255,35 +1255,6 @@ export interface IntentProgramExecutionResult {
 }
 
 /**
- * One step in a mixed agent program.
- */
-export type AgentProgramStep = {
-    type: "intent_program";
-    program: IntentProgram;
-};
-
-/**
- * Mixed structured program that can combine generic intents and local
- * intent resolution.
- */
-export interface AgentProgram {
-    /**
-     * Schema version for mixed agent programs.
-     */
-    schemaVersion: 1;
-
-    /**
-     * Ordered steps.
-     */
-    steps: AgentProgramStep[];
-
-    /**
-     * Optional agent rationale.
-     */
-    rationale?: string;
-}
-
-/**
  * Result shape used by resolvers that may need clarification.
  */
 export type ResolverResult<T> =
@@ -1309,7 +1280,4 @@ export type AgentTurnResponse =
           type: "intent_program";
           program: IntentProgram;
       }
-    | {
-          type: "agent_program";
-          program: AgentProgram;
-      };
+    | never;

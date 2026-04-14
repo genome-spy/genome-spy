@@ -62,8 +62,6 @@ export default class App {
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         this.rootSpec = rootSpec;
-        /** @type {Record<string, any>[]} */
-        this.agentTraces = [];
 
         this.options = {
             showInspectorButton: true,
@@ -149,30 +147,6 @@ export default class App {
         if (typeof window !== "undefined") {
             /** @type {any} */ (window).__genomeSpyApp = this;
         }
-    }
-
-    /**
-     * @param {Record<string, any>} trace
-     */
-    recordAgentTrace(trace) {
-        this.agentTraces.unshift(trace);
-        this.agentTraces.length = Math.min(this.agentTraces.length, 20);
-
-        if (typeof window !== "undefined") {
-            window.dispatchEvent(
-                new CustomEvent("genomespy-agent-trace", {
-                    detail: trace,
-                })
-            );
-        }
-    }
-
-    clearAgentTraces() {
-        this.agentTraces = [];
-    }
-
-    getAgentTraces() {
-        return this.agentTraces;
     }
 
     #setupStoreAndProvenance() {

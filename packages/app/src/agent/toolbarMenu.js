@@ -1,4 +1,4 @@
-import { faEye, faStopwatch } from "@fortawesome/free-solid-svg-icons";
+import { faEye } from "@fortawesome/free-solid-svg-icons";
 
 /**
  * @param {import("../app.js").default} app
@@ -22,23 +22,7 @@ export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
             },
         });
     }
-
-    items.push({
-        label: "Agent Trace",
-        icon: faStopwatch,
-        callback: /** @returns {void} */ () => {
-            logSuppressedAgentDialog("Agent Trace");
-        },
-    });
-
     return items;
-}
-
-/**
- * @param {string} label
- */
-function logSuppressedAgentDialog(label) {
-    console.log("[GenomeSpy Agent] Suppressed dialog: " + label);
 }
 
 /**
