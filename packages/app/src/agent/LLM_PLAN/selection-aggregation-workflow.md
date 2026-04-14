@@ -1,4 +1,4 @@
-# Selection Aggregation Plan (Draft)
+# Selection Aggregation Draft
 
 This document describes the agent-facing flow for turning an interval selection
 into an aggregated attribute descriptor that can be reused for derived metadata,
@@ -76,7 +76,7 @@ construction.
 
 What is available today:
 
-- Read-only planner context already includes `selectionAggregation`.
+- Read-only agent context already includes `selectionAggregation`.
   - `selectionAggregation.fields` lists one row per selection-field pair for
     the current active interval selections.
   - Each field summary already carries a stable `candidateId`,
@@ -90,7 +90,7 @@ What is available today:
 - There is no dedicated candidate-query tool.
   - The agent gets candidate information from the context snapshot returned by
     `getAgentContext(app)`.
-  - If the agent needs a refreshed snapshot, it gets one on the next planner
+  - If the agent needs a refreshed snapshot, it gets one on the next agent
     turn after the app rebuilds context.
 - The available mutation entry point is `submitIntentProgram`.
   - To make or update an interval selection, the agent uses an intent program
@@ -108,13 +108,13 @@ What is available today:
 
 ## Revision During Implementation
 
-This is a living plan, not a fixed contract.
+This is a living draft, not a fixed contract.
 
 - Revise the candidate shape when the shared helper extraction makes the real
   data flow clearer.
 - Revise the agent context shape if the agent needs a different boundary than
   the draft currently suggests.
-- Keep the plan aligned with the actual extracted helpers, tests, and
+- Keep the draft aligned with the actual extracted helpers, tests, and
   commit-splitting boundaries.
 - Prefer updating this document during implementation over protecting the draft
   wording.
@@ -264,7 +264,7 @@ These helpers are already present or partially extracted:
   - Keeps building the actual provenance-backed mutation.
   - Remains the single source of truth for the reducer payload.
 
-## Implementation Plan
+## Implementation Steps
 
 1. Extract candidate discovery from the context menu code. Done.
    - Move the menu eligibility logic into a pure helper.

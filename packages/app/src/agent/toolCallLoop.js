@@ -1,6 +1,6 @@
 /**
  * Maximum number of rejected tool-call rounds allowed per user turn when the
- * planner keeps varying the payload.
+ * agent keeps varying the payload.
  */
 export const MAX_REJECTED_TOOL_CALL_RETRIES = 4;
 

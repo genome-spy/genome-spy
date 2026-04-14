@@ -7,7 +7,7 @@ import {
 } from "./toolCatalog.js";
 
 describe("toolCatalog", () => {
-    it("exposes the generated planner tools", () => {
+    it("exposes the generated agent tools", () => {
         const tools = listAgentTools();
         const toolNames = tools.map((entry) => entry.toolName);
 

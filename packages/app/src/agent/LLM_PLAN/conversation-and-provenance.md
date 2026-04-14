@@ -10,8 +10,8 @@ current app state.
 
 ## Code References
 
-- Conversation and planner orchestration: [`agentAdapter.js`](../src/agent/agentAdapter.js)
-- Planner context snapshot: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- Conversation and agent orchestration: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+- Agent context snapshot: [`contextBuilder.js`](../src/agent/contextBuilder.js)
 - Execution and provenance summaries: [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Action catalog summaries: [`actionCatalog.js`](../src/agent/actionCatalog.js)
 - Agent UI trace entry points: [`toolbarMenu.js`](../src/agent/toolbarMenu.js), [`chatPanel.js`](../src/agent/chatPanel.js)
@@ -85,7 +85,7 @@ Tracks:
 - active selections and params
 - the current data/state summaries
 
-### Derived planner context
+### Derived agent context
 
 Build the agent prompt from:
 
@@ -141,9 +141,9 @@ Provenance should not know about the chat system. Instead, the agent add-on can
 record which chat message or clarification led to a given provenance branch by
 storing stable ids in its own layer. The provenance entries themselves only need
 generic ids and parent/branch metadata; the add-on can map those ids back to the
-conversation when it builds the planner context or renders the transcript.
+conversation when it builds the agent context or renders the transcript.
 
-## Revision Plan For The Current Architecture
+## Revision Notes For The Current Architecture
 
 As of 2026-04-07, the agent code still treats conversation, state, and
 provenance as mostly separate projections over the current app state. To support
@@ -159,11 +159,11 @@ this model, the architecture should be revised as follows:
 - Let the agent add-on maintain a separate correlation layer that links chat
   messages and clarification replies to provenance ids.
 - Keep the visualization state compact and current by default; do not store
-  multiple full snapshots in the normal planner context.
+  multiple full snapshots in the normal agent context.
 - Treat progressive revealing as a context overlay. Tool results may expand or
   collapse the agent’s current view of a branch, but they should not add
   transport metadata to the tree itself.
-- Assemble planner context from the current message context, the active
+- Assemble agent context from the current message context, the active
   provenance branch, and the current collapsed visualization state.
 - Use background annotation only for collapsed or inactive provenance branches.
   The annotation layer can summarize why a branch was abandoned or retained, but
@@ -171,8 +171,9 @@ this model, the architecture should be revised as follows:
 - Keep the core/app side generic. Provenance should expose stable ids and branch
   structure, but it should not depend on agent-specific message concepts.
 
-This revision keeps the agent add-on self-contained while allowing the planner
-to reason about which conversation messages led to which state mutations.
+This revision keeps the agent add-on self-contained while allowing the agent
+service to reason about which conversation messages led to which state
+mutations.
 
 ## Conversation Object
 
@@ -297,7 +298,7 @@ Notes:
 - `dispatchedProvenanceIds` are attached by the add-on layer after successful
   action execution. Use an array because one message may lead to multiple
   actions.
-- The planner can use the messages plus the linked provenance ids to reconstruct
+- The agent can use the messages plus the linked provenance ids to reconstruct
   the active reasoning path without making provenance depend on chat concepts.
 - If you want to tie a message or action to the state after execution, use the
   provenance entry itself rather than adding a separate state reference to the
@@ -312,4 +313,4 @@ The smallest useful version is:
 - one chat transcript
 - one current collapsed visualization state
 - an append-only provenance tree with an active branch
-- a planner context assembled from those projections
+- an agent context assembled from those projections

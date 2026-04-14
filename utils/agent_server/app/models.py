@@ -27,7 +27,7 @@ class ToolCall(BaseModel):
     arguments: Any
 
 
-class PlanRequest(BaseModel):
+class AgentTurnRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     message: str
@@ -35,7 +35,7 @@ class PlanRequest(BaseModel):
     context: dict[str, Any]
 
 
-class PlanResponse(BaseModel):
+class AgentTurnResponse(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     type: Literal["answer", "clarify", "tool_call"]

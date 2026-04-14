@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Any
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_TOOL_CATALOG_PATH = _REPO_ROOT / "packages/app/src/agent/generatedToolCatalog.json"
-_TOOL_SCHEMA_PATH = _REPO_ROOT / "packages/app/src/agent/generatedToolSchema.json"
+_GENERATED_AGENT_DIR = _REPO_ROOT / "packages/app/src/agent/generated"
+_TOOL_CATALOG_PATH = _GENERATED_AGENT_DIR / "generatedToolCatalog.json"
+_TOOL_SCHEMA_PATH = _GENERATED_AGENT_DIR / "generatedToolSchema.json"
 
 
 @lru_cache(maxsize=1)

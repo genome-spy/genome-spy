@@ -24,20 +24,20 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 
 - `resolveSelectionAggregationCandidate(candidateId, aggregation)`
   - Implemented in [`selectionAggregationTool.js`](../src/agent/selectionAggregationTool.js).
-  - Resolves a planner-visible selection aggregation row into the canonical
+  - Resolves an agent-visible selection aggregation row into the canonical
     attribute identifier and a short preview.
 
 - `toolCatalog`
   - Generated from [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts)
     via [`generateAgentToolCatalog.mjs`](../../../scripts/generateAgentToolCatalog.mjs)
     and [`generateAgentToolSchema.mjs`](../../../scripts/generateAgentToolSchema.mjs).
-  - Provides planner-facing tool metadata and the Responses API function
+  - Provides agent-facing tool metadata and the Responses API function
     descriptors derived from the generated schema.
 
 - Session-owned expanded view state
   - Implemented in [`agentSessionController.js`](../src/agent/agentSessionController.js).
   - Maintains the current set of expanded view node selector keys and threads
-    them into the planner context snapshot.
+    them into the agent context snapshot.
 
 - `expandViewNode(selector)` / `collapseViewNode(selector)`
   - Implemented in [`agentSessionController.js`](../src/agent/agentSessionController.js).
@@ -100,7 +100,7 @@ The OpenAI-facing tool list should stay coarse-grained.
 - Use detail tools such as `expandViewNode` and `getActionSchema` only when the
   model needs more context than the always-on summary provides.
 
-## Implementation Plan
+## Implementation Steps
 Build the tool surface in small generated steps:
 
 1. Define the tool contracts in TypeScript with JSDoc.
@@ -119,10 +119,11 @@ Build the tool surface in small generated steps:
    - Make `collapseViewNode(selector)` remove from that set.
    - Keep this state out of provenance and `submitIntentProgram`.
 
-4. Wire tool execution into the planner loop.
+4. Wire tool execution into the agent turn loop.
    - Parse tool calls from the model response.
    - Dispatch each tool to the local handler.
-   - Return tool outputs to the model with the matching call id or re-plan
+   - Return tool outputs to the model with the matching call id or request
+     another turn
      locally after applying the tool result, depending on the transport layer.
    - Keep `submitIntentProgram` only for provenance-backed mutations.
 
@@ -131,7 +132,7 @@ Build the tool surface in small generated steps:
    - Do not route them through `submitIntentProgram`.
    - Keep them explicit so the model does not conflate them with view exploration.
 
-6. Update the system prompt and planner instructions.
+6. Update the system prompt and agent instructions.
    - Tell the model when to use exploration tools.
    - Tell the model when to use app-state tools.
    - Clarify that only provenance-changing actions belong in intent programs.

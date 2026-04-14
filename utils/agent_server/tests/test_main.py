@@ -67,14 +67,14 @@ def reset_settings_cache() -> None:
     get_settings.cache_clear()
 
 
-def test_plan_endpoint_returns_normalized_response(monkeypatch) -> None:
+def test_agent_turn_endpoint_returns_normalized_response(monkeypatch) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
     reset_settings_cache()
     monkeypatch.setattr("app.main.get_provider", lambda: StubProvider())
     client = TestClient(app)
 
     response = client.post(
-        "/v1/plan",
+        "/v1/agent-turn",
         json={
             "message": "How are methylation levels encoded?",
             "history": [
@@ -95,14 +95,14 @@ def test_plan_endpoint_returns_normalized_response(monkeypatch) -> None:
     }
 
 
-def test_plan_endpoint_returns_tool_call_response(monkeypatch) -> None:
+def test_agent_turn_endpoint_returns_tool_call_response(monkeypatch) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
     reset_settings_cache()
     monkeypatch.setattr("app.main.get_provider", lambda: ToolCallProvider())
     client = TestClient(app)
 
     response = client.post(
-        "/v1/plan",
+        "/v1/agent-turn",
         json={
             "message": "Expand the collapsed node.",
             "history": [],
@@ -128,14 +128,14 @@ def test_plan_endpoint_returns_tool_call_response(monkeypatch) -> None:
     }
 
 
-def test_plan_endpoint_reports_provider_failure(monkeypatch) -> None:
+def test_agent_turn_endpoint_reports_provider_failure(monkeypatch) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
     reset_settings_cache()
     monkeypatch.setattr("app.main.get_provider", lambda: FailingProvider())
     client = TestClient(app)
 
     response = client.post(
-        "/v1/plan",
+        "/v1/agent-turn",
         json={
             "message": "What is in this visualization?",
             "history": [],
@@ -147,14 +147,14 @@ def test_plan_endpoint_reports_provider_failure(monkeypatch) -> None:
     assert response.json() == {"detail": "Provider request failed: boom"}
 
 
-def test_plan_endpoint_streams_sse_events(monkeypatch) -> None:
+def test_agent_turn_endpoint_streams_sse_events(monkeypatch) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
     reset_settings_cache()
     monkeypatch.setattr("app.main.get_provider", lambda: StreamingProvider())
     client = TestClient(app)
 
     response = client.post(
-        "/v1/plan?stream=true",
+        "/v1/agent-turn?stream=true",
         json={
             "message": "What is in this visualization?",
             "history": [],
@@ -172,7 +172,7 @@ def test_plan_endpoint_streams_sse_events(monkeypatch) -> None:
     assert "```json" not in response.text
 
 
-def test_plan_endpoint_ignores_streaming_when_disabled(monkeypatch) -> None:
+def test_agent_turn_endpoint_ignores_streaming_when_disabled(monkeypatch) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
     monkeypatch.setenv("GENOMESPY_AGENT_ENABLE_STREAMING", "false")
     reset_settings_cache()
@@ -180,7 +180,7 @@ def test_plan_endpoint_ignores_streaming_when_disabled(monkeypatch) -> None:
     client = TestClient(app)
 
     response = client.post(
-        "/v1/plan?stream=true",
+        "/v1/agent-turn?stream=true",
         json={
             "message": "How are methylation levels encoded?",
             "history": [

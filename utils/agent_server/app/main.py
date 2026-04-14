@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from .config import Settings, describe_api_key_for_logs, load_settings
-from .models import PlanRequest, PlanResponse, ProviderRequest, ProviderResponse
+from .models import AgentTurnRequest, AgentTurnResponse, ProviderRequest, ProviderResponse
 from .providers import (
     BaseProvider,
     OpenAIChatCompletionsProvider,
@@ -91,12 +91,16 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/v1/plan", response_model=PlanResponse, response_model_exclude_defaults=True)
-async def plan(
-    request: PlanRequest,
+@app.post(
+    "/v1/agent-turn",
+    response_model=AgentTurnResponse,
+    response_model_exclude_defaults=True,
+)
+async def agent_turn(
+    request: AgentTurnRequest,
     http_request: Request,
     stream: bool = Query(default=False),
-) -> PlanResponse | StreamingResponse:
+) -> AgentTurnResponse | StreamingResponse:
     settings = get_settings()
     provider_request = ProviderRequest(
         system_prompt=settings.system_prompt,
@@ -120,7 +124,7 @@ async def plan(
         )
 
     response = await _generate_plan(provider_request)
-    return PlanResponse(
+    return AgentTurnResponse(
         type=response.type,
         message=response.message,
         tool_calls=response.tool_calls,

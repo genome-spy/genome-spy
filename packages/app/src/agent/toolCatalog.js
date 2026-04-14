@@ -96,7 +96,7 @@ export function validateToolArgumentsShape(toolName, toolArguments) {
     if (!validator) {
         return {
             ok: false,
-            errors: ["Unsupported planner tool " + toolName + "."],
+            errors: ["Unsupported agent tool " + toolName + "."],
         };
     }
 

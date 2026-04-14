@@ -178,7 +178,7 @@ function createMockAgentController(scenario, options = {}) {
 
     const runtime = /** @type {any} */ ({
         getAgentContext: () => baseContext,
-        requestPlan: async (
+        requestAgentTurn: async (
             /** @type {string} */ message,
             /** @type {Array<any>} */ _history = [],
             /** @type {any} */ streamCallbacks = {},
@@ -191,7 +191,7 @@ function createMockAgentController(scenario, options = {}) {
 
                 if (preflightFails) {
                     throw new Error(
-                        "Mock planner is unavailable during preflight."
+                        "Mock agent turn is unavailable during preflight."
                     );
                 }
 
@@ -211,7 +211,7 @@ function createMockAgentController(scenario, options = {}) {
 
             if (scenario === "error" || normalized.includes("error")) {
                 throw new Error(
-                    "Mock planner error: the request could not be parsed."
+                    "Mock agent turn error: the request could not be parsed."
                 );
             }
 
@@ -329,7 +329,7 @@ function createMockAgentController(scenario, options = {}) {
             ) {
                 return /** @type {any} */ ({
                     ok: false,
-                    errors: ["The mock planner did not return any steps."],
+                    errors: ["The mock agent turn did not return any steps."],
                 });
             }
 

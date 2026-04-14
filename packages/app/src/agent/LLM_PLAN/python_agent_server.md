@@ -1,4 +1,4 @@
-# Python Agent Server Plan Prompt
+# Python Agent Server
 
 This document captures the current direction for a minimal Python-side agent
 server for GenomeSpy and reframes the discussion as a prompt for a coding
@@ -83,7 +83,7 @@ Relevant existing files include:
 
 Current request flow:
 
-- the app posts to `/v1/plan`
+- the app posts to `/v1/agent-turn`
 - the request body includes:
   - `message`
   - `history`
@@ -115,8 +115,8 @@ For `v0.0.1`, the contract bundle should include:
 - `generated/generatedActionCatalog.json`
 - `generated/generatedActionSummaries.json`
 - `agentContext.schema.json`
-- `planRequest.schema.json`
-- `planResponse.schema.json`
+- `agentTurnRequest.schema.json`
+- `agentTurnResponse.schema.json`
 - `toolCatalog.json` or equivalent generated tool-contract artifact
 - `manifest.json`
 
@@ -214,7 +214,7 @@ Existing files in GenomeSpy:
 - related JSDoc- and typing-driven agent files under `packages/app/src/agent/`
 
 Current request flow:
-- The app posts to `/v1/plan` with a JSON body like:
+- The app posts to `/v1/agent-turn` with a JSON body like:
   - `message`
   - `history`
   - `context`

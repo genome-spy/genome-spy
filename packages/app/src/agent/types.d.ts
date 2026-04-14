@@ -39,7 +39,7 @@ export interface AgentPayloadField {
 }
 
 /**
- * A single action catalog entry exposed to the planner or local model.
+ * A single action catalog entry exposed to the agent or local model.
  */
 export interface AgentActionCatalogEntry {
     /**
@@ -69,7 +69,7 @@ export interface AgentActionCatalogEntry {
 }
 
 /**
- * Compact tool catalog entry exposed to the planner.
+ * Compact tool catalog entry exposed to the agent.
  */
 export interface AgentToolCatalogEntry {
     /**
@@ -104,7 +104,7 @@ export interface AgentToolCatalogEntry {
 }
 
 /**
- * One tool invocation requested by the planner.
+ * One tool invocation requested by the agent.
  */
 export interface AgentToolCall {
     /**
@@ -164,7 +164,7 @@ export interface AgentViewStateChange {
 }
 
 /**
- * Compact action catalog entry sent in the planner context.
+ * Compact action catalog entry sent in the agent context.
  */
 export interface AgentActionCatalogContextEntry {
     /**
@@ -758,7 +758,7 @@ export interface AgentViewFieldSummary {
 }
 
 /**
- * Selection-derived aggregation context exposed to the planner.
+ * Selection-derived aggregation context exposed to the agent.
  */
 export interface AgentSelectionAggregationContext {
     /**
@@ -838,7 +838,7 @@ export interface AgentActionSummary {
 }
 
 /**
- * Renderable summary line for a planner-authored intent step.
+ * Renderable summary line for an agent-authored intent step.
  */
 export interface IntentProgramSummaryLine {
     /**
@@ -908,12 +908,12 @@ export interface IntentProgramExecutionContent {
  */
 export interface AgentAdapter {
     /**
-     * Returns the current planner context snapshot.
+     * Returns the current agent context snapshot.
      */
     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
 
     /**
-     * Validates a planner-authored intent program.
+     * Validates an agent-authored intent program.
      */
     validateIntentProgram(program: unknown): IntentProgramValidationResult;
 
@@ -957,21 +957,21 @@ export interface AgentAdapter {
     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
 
     /**
-     * Summarizes a planner-authored intent program for preview.
+     * Summarizes an agent-authored intent program for preview.
      */
     summarizeIntentProgram(program: IntentProgram): IntentProgramSummaryLine[];
 
     /**
-     * Requests a plan from the configured planner service.
+     * Requests an agent turn from the configured agent service.
      */
-    requestPlan(
+    requestAgentTurn(
         message: string,
         history?: AgentConversationMessage[],
         streamCallbacks?: AgentStreamCallbacks,
         allowStreaming?: boolean,
         contextOptions?: AgentContextOptions,
         signal?: AbortSignal
-    ): Promise<{ response: PlanResponse; trace: Record<string, any> }>;
+    ): Promise<{ response: AgentTurnResponse; trace: Record<string, any> }>;
 }
 
 /**
@@ -995,11 +995,11 @@ export interface AgentStreamCallbacks {
 }
 
 /**
- * Top-level context snapshot sent to the planner.
+ * Top-level context snapshot sent to the agent.
  */
 export interface AgentContext {
     /**
-     * Schema version for the planner context.
+     * Schema version for the agent context.
      */
     schemaVersion: 1;
 
@@ -1009,7 +1009,7 @@ export interface AgentContext {
     actionCatalog: AgentActionCatalogContextEntry[];
 
     /**
-     * Available tools exposed to the planner.
+     * Available tools exposed to the agent.
      */
     toolCatalog: AgentToolCatalogEntry[];
 
@@ -1019,7 +1019,7 @@ export interface AgentContext {
     attributes: AgentAttributeSummary[];
 
     /**
-     * Selection-derived aggregation candidates exposed to the planner.
+     * Selection-derived aggregation candidates exposed to the agent.
      */
     selectionAggregation: AgentSelectionAggregationContext;
 
@@ -1052,7 +1052,7 @@ export interface AgentContext {
 }
 
 /**
- * Optional context overlay used while building the planner snapshot.
+ * Optional context overlay used while building the agent snapshot.
  */
 export interface AgentContextOptions {
     /**
@@ -1082,7 +1082,7 @@ export interface ClarificationOption {
 }
 
 /**
- * Request for additional user input when a plan cannot be resolved.
+ * Request for additional user input when a response cannot be resolved.
  */
 export interface ClarificationRequest {
     /**
@@ -1122,7 +1122,7 @@ export interface ClarificationRequest {
 }
 
 /**
- * Conversation turn sent to the planner service.
+ * Conversation turn sent to the agent service.
  */
 export interface AgentConversationMessage {
     /**
@@ -1169,7 +1169,7 @@ export type AgentIntentProgramStep = GeneratedAgentIntentProgramStep;
 export type IntentProgramStep = AgentIntentProgramStep;
 
 /**
- * Ordered list of actions proposed by the planner.
+ * Ordered list of actions proposed by the agent.
  */
 export interface IntentProgram {
     /**
@@ -1183,13 +1183,13 @@ export interface IntentProgram {
     steps: AgentIntentProgramStep[];
 
     /**
-     * Optional planner rationale.
+     * Optional agent rationale.
      */
     rationale?: string;
 }
 
 /**
- * Result of validating a planner-authored schema against the generated agent
+ * Result of validating an agent-authored schema against the generated agent
  * contract.
  */
 export interface ShapeValidationResult {
@@ -1278,7 +1278,7 @@ export interface AgentProgram {
     steps: AgentProgramStep[];
 
     /**
-     * Optional planner rationale.
+     * Optional agent rationale.
      */
     rationale?: string;
 }
@@ -1293,9 +1293,9 @@ export type ResolverResult<T> =
     | { status: "error"; message: string };
 
 /**
- * Top-level response returned by the planner endpoint.
+ * Top-level response returned by the agent-turn endpoint.
  */
-export type PlanResponse =
+export type AgentTurnResponse =
     | {
           type: "clarify" | "answer";
           message: string;

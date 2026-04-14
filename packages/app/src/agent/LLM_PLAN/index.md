@@ -1,4 +1,4 @@
-# LLM Project Summary (Draft)
+# LLM Project Summary
 
 ## Code Anchors
 - Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
@@ -7,9 +7,9 @@
 - Action catalog and execution: [`actionCatalog.js`](../src/agent/actionCatalog.js), [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js), [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Chat and entry points: [`chatPanel.js`](../src/agent/chatPanel.js), [`agentAdapter.js`](../src/agent/agentAdapter.js), [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
 - Session controller: owns transcript state, preflight, queueing, and the panel snapshot
-- Streaming plan: [`streaming.md`](./streaming.md)
-- Python relay server plan: [`python_agent_server.md`](./python_agent_server.md)
-- Tool-call validation and rejection plan: [`validation.md`](./validation.md)
+- Streaming design: [`streaming.md`](./streaming.md)
+- Python relay server design: [`python_agent_server.md`](./python_agent_server.md)
+- Tool-call validation and rejection guide: [`validation.md`](./validation.md)
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
 
 ## Goals
@@ -75,7 +75,7 @@
 - See [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
   for the interval-selection summaries used by the agent.
 - See [`selection-aggregation-workflow.md`](./selection-aggregation-workflow.md)
-  for the draft selection-aggregation plan.
+  for the draft selection-aggregation flow.
 
 ## Data Access Policy
 - See [`infrastructure.md`](./infrastructure.md) for the public-data vs controlled-access policy and the LLM transport safeguards.

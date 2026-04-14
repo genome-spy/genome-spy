@@ -1059,7 +1059,7 @@
     },
     "AgentToolInputs": {
       "additionalProperties": false,
-      "description": "Tool inputs exposed to the planner.",
+      "description": "Tool inputs exposed to the agent.",
       "properties": {
         "clearViewVisibility": {
           "$ref": "#/definitions/ClearViewVisibilityToolInput"

@@ -1,4 +1,4 @@
-# Streaming Plan
+# Streaming
 
 This document describes how GenomeSpy should handle streaming agent responses.
 The goal is to make long-running model calls feel alive without giving up the
@@ -11,7 +11,7 @@ clarification flows.
 - Session controller: committed snapshot plus active-turn fast path
 - Agent runtime adapter: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 - Storybook mock harness: [`chatPanel.stories.js`](../src/agent/chatPanel.stories.js)
-- Python relay server plan: [`python_agent_server.md`](./python_agent_server.md)
+- Python relay server design: [`python_agent_server.md`](./python_agent_server.md)
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
 
 ## Goal
@@ -134,7 +134,7 @@ The adapter needs a streaming-friendly request API.
 
 Recommended shape:
 
-- `requestPlan(message, history, { onDelta, onReasoning, onHeartbeat, signal })`
+- `requestAgentTurn(message, history, { onDelta, onReasoning, onHeartbeat, signal })`
 - `onDelta` receives user-visible text chunks
 - `onReasoning` receives reasoning-summary chunks, if available
 - `onHeartbeat` emits a lightweight "still working" pulse during long pauses
@@ -238,7 +238,7 @@ That combination keeps the UI responsive even for thinking-heavy models.
 
 ### Phase 2: Add adapter support
 
-1. Extend `agentAdapter.requestPlan(...)` with a streaming-aware variant.
+1. Extend `agentAdapter.requestAgentTurn(...)` with a streaming-aware variant.
 2. Forward streamed text and reasoning-summary updates from the relay.
 3. Buffer the final structured response until completion.
 4. Keep the current non-streaming request path as the fallback.
@@ -288,7 +288,7 @@ completion path still uses the existing final-response contract.
 4. Keep GenomeSpy context assembly and response interpretation out of the
    relay.
 
-Status: the relay now exposes an SSE path for `POST /v1/plan` when streaming is
+Status: the relay now exposes an SSE path for `POST /v1/agent-turn` when streaming is
 requested. Provider-side streaming normalization is the remaining gap.
 
 ### Phase 7: Verify the UX
@@ -306,7 +306,7 @@ place; broader coverage for transport-level streaming is still pending.
 
 ### `packages/app/src/agent/agentAdapter.js`
 
-- Request-plan callbacks already flow through the adapter contract.
+- Request-turn callbacks already flow through the adapter contract.
 - Keep the existing non-streaming code path as the fallback until the relay
   supports streaming end to end.
 - Normalize provider stream events into the controller-facing event set when
@@ -335,7 +335,7 @@ place; broader coverage for transport-level streaming is still pending.
 - Reuse the existing clarification parser for streamed final text.
 - Only render buttons after the final clarification message is complete.
 
-### `packages/app/src/agent/mockPlanner.js`
+### `packages/app/src/agent/mockAgentTurn.js`
 
 - Emit a slow-response scenario for Storybook and tests.
 - Provide a stream-friendly clarification example.

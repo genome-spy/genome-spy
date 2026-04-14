@@ -209,7 +209,7 @@ function createAppStub() {
 }
 
 describe("getAgentContext", () => {
-    it("keeps the planner context wire shape stable", () => {
+    it("keeps the agent context wire shape stable", () => {
         const context = getAgentContext(createAppStub());
 
         expect(Object.keys(context)).toEqual([

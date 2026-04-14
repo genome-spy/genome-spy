@@ -9,9 +9,9 @@
  *     history: AgentConversationMessage[];
  *     context: AgentContext;
  * }} request
- * @returns {Promise<{ response: import("./types.d.ts").PlanResponse }>}
+ * @returns {Promise<{ response: import("./types.d.ts").AgentTurnResponse }>}
  */
-export async function requestMockPlan(request) {
+export async function requestMockAgentTurn(request) {
     void request.history;
 
     const lowerMessage = request.message.toLowerCase();

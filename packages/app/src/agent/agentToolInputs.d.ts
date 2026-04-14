@@ -2,7 +2,7 @@ import type { AgentIntentProgram } from "./schemaContract.js";
 import type { AggregationOp } from "../sampleView/types.d.ts";
 
 /*
- * Source of truth for planner-visible tool input shapes and their field
+ * Source of truth for agent-visible tool input shapes and their field
  * documentation. The generator scripts read this file to produce the runtime
  * catalog and JSON Schema artifacts.
  */
@@ -175,7 +175,7 @@ export interface SubmitIntentProgramToolInput {
 }
 
 /**
- * Tool inputs exposed to the planner.
+ * Tool inputs exposed to the agent.
  */
 export interface AgentToolInputs {
     expandViewNode: ExpandViewNodeToolInput;

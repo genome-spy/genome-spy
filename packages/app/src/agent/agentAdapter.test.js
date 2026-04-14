@@ -269,7 +269,7 @@ describe("agentAdapter", () => {
         );
     });
 
-    it("posts structured conversation history to the planner endpoint", async () => {
+    it("posts structured conversation history to the agent-turn endpoint", async () => {
         const app = createAppStub();
         const adapter = createAgentAdapter(app);
         globalThis.fetch.mockResolvedValueOnce(
@@ -298,7 +298,7 @@ describe("agentAdapter", () => {
             },
         ];
 
-        await adapter.requestPlan(
+        await adapter.requestAgentTurn(
             "How are methylation levels encoded?",
             history
         );
@@ -312,7 +312,7 @@ describe("agentAdapter", () => {
         );
     });
 
-    it("consumes streamed planner events when callbacks are provided", async () => {
+    it("consumes streamed agent-turn events when callbacks are provided", async () => {
         const app = createAppStub();
         globalThis.fetch.mockResolvedValueOnce(
             createStreamResponse(
@@ -338,11 +338,15 @@ describe("agentAdapter", () => {
         const onHeartbeat = vi.fn();
 
         const adapter = createAgentAdapter(app);
-        const result = await adapter.requestPlan("What can I do here?", [], {
-            onDelta,
-            onReasoning,
-            onHeartbeat,
-        });
+        const result = await adapter.requestAgentTurn(
+            "What can I do here?",
+            [],
+            {
+                onDelta,
+                onReasoning,
+                onHeartbeat,
+            }
+        );
 
         expect(onDelta).toHaveBeenCalledWith(
             "This view summarizes the cohort."
@@ -356,20 +360,20 @@ describe("agentAdapter", () => {
             message: "This view summarizes the cohort.",
         });
         expect(globalThis.fetch.mock.calls[0][0]).toBe(
-            "http://127.0.0.1:8000/v1/plan"
+            "http://127.0.0.1:8000/v1/agent-turn"
         );
         expect(globalThis.fetch.mock.calls[0][1].headers.accept).toBe(
             "text/event-stream"
         );
     });
 
-    it("uses the dev-only mock planner when the base URL is mock", async () => {
+    it("uses the dev-only mock agent turn when the base URL is mock", async () => {
         const app = createAppStub();
         app.options.agentBaseUrl = "mock";
         getAgentContext.mockReturnValue(createMockPlannerContext());
         const adapter = createAgentAdapter(app);
 
-        const result = await adapter.requestPlan(
+        const result = await adapter.requestAgentTurn(
             "What is in this visualization?",
             []
         );

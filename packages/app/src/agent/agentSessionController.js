@@ -22,7 +22,7 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
 /** @typedef {import("./types.d.ts").AgentContext} AgentContext */
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
 /** @typedef {keyof typeof agentTools} AgentToolName */
-/** @typedef {import("./types.d.ts").PlanResponse | {
+/** @typedef {import("./types.d.ts").AgentTurnResponse | {
  *     type: "clarify";
  *     message: string | import("lit").TemplateResult;
  *     options?: ChatClarificationOption[];
@@ -30,7 +30,7 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
  *     type: "tool_call";
  *     toolCalls: AgentToolCall[];
  *     message?: string;
- * }} ChatPlannerResponse */
+ * }} ChatAgentTurnResponse */
 /**
  * @typedef {{
  *     onDelta?: (delta: string) => void;
@@ -68,7 +68,7 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
  *         | "user"
  *         | "assistant"
  *         | "clarification"
- *         | "plan"
+ *         | "proposal"
  *         | "result"
  *         | "tool_call"
  *         | "tool_result"
@@ -95,14 +95,14 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
  * }} AgentSessionSnapshot
  *
  * @typedef {{
- *     requestPlan(
+ *     requestAgentTurn(
  *         message: string,
  *         history?: AgentConversationMessage[],
  *         stream?: AgentStreamCallbacks,
  *         allowStreaming?: boolean,
  *         contextOptions?: AgentContextOptions,
  *         signal?: AbortSignal
- *     ): Promise<{ response: ChatPlannerResponse; trace: Record<string, any> }>;
+ *     ): Promise<{ response: ChatAgentTurnResponse; trace: Record<string, any> }>;
  *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
@@ -427,7 +427,7 @@ export class AgentSessionController {
     }
 
     /**
-     * Executes tool calls requested by the planner.
+     * Executes tool calls requested by the agent.
      *
      * @param {AgentToolCall[]} toolCalls
      * @returns {Promise<ToolExecutionResult[]>}
@@ -503,14 +503,14 @@ export class AgentSessionController {
     }
 
     /**
-     * Runs a harmless planner request to prime the server prompt cache and
+     * Runs a harmless agent request to prime the server prompt cache and
      * verify the transport path before the first real user turn.
      *
      * @returns {Promise<void>}
      */
     async #runPreflight() {
         try {
-            const { response } = await this.#runtime.requestPlan(
+            const { response } = await this.#runtime.requestAgentTurn(
                 PREFLIGHT_MESSAGE,
                 [],
                 undefined,
@@ -540,7 +540,7 @@ export class AgentSessionController {
     }
 
     /**
-     * @param {ChatPlannerResponse} response
+     * @param {ChatAgentTurnResponse} response
      * @returns {boolean}
      */
     #looksDecent(response) {
@@ -589,7 +589,7 @@ export class AgentSessionController {
             let response;
             while (true) {
                 const history = this.#buildHistory();
-                const requestResult = await this.#runtime.requestPlan(
+                const requestResult = await this.#runtime.requestAgentTurn(
                     message,
                     history,
                     {
@@ -659,7 +659,7 @@ export class AgentSessionController {
                         MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS
                     ) {
                         const errorMessage =
-                            "The planner repeated the same rejected tool call after validation failure.";
+                            "The agent repeated the same rejected tool call after validation failure.";
                         this.#markActiveTurnError(turnId);
                         this.#appendMessage({
                             kind: "error",
@@ -675,7 +675,7 @@ export class AgentSessionController {
                         rejectedToolCallRounds > MAX_REJECTED_TOOL_CALL_RETRIES
                     ) {
                         const errorMessage =
-                            "The planner produced too many rejected tool calls without converging.";
+                            "The agent produced too many rejected tool calls without converging.";
                         this.#markActiveTurnError(turnId);
                         this.#appendMessage({
                             kind: "error",
@@ -765,7 +765,7 @@ export class AgentSessionController {
                     message.kind === "user" ||
                     message.kind === "assistant" ||
                     message.kind === "clarification" ||
-                    message.kind === "plan" ||
+                    message.kind === "proposal" ||
                     message.kind === "result" ||
                     message.kind === "tool_call" ||
                     message.kind === "tool_result"
@@ -824,7 +824,7 @@ export class AgentSessionController {
     }
 
     /**
-     * @param {ChatPlannerResponse} response
+     * @param {ChatAgentTurnResponse} response
      * @param {number | undefined} durationMs
      * @param {number} turnId
      * @returns {Promise<void>}
@@ -886,7 +886,7 @@ export class AgentSessionController {
         if (response.type === "agent_program") {
             this.#appendMessage({
                 kind: "assistant",
-                text: "The planner returned an agent program. That path is not wired into the chat panel yet.",
+                text: "The agent returned an agent program. That path is not wired into the chat panel yet.",
             });
             this.#state.status = "ready";
             this.#state.lastError = "";
@@ -897,27 +897,28 @@ export class AgentSessionController {
         const exhaustiveCheck = /** @type {never} */ (response);
         this.#appendMessage({
             kind: "error",
-            text: "Unsupported planner response: " + String(exhaustiveCheck),
+            text: "Unsupported agent response: " + String(exhaustiveCheck),
         });
         this.#state.status = "error";
-        this.#state.lastError = "Unsupported planner response.";
+        this.#state.lastError = "Unsupported agent response.";
         this.#notify();
     }
 
     /**
-     * Executes a planner-authored intent program and records the result.
+     * Executes an agent-authored intent program and records the result.
      *
      * @param {IntentProgram} program
      * @param {number | null} durationMs
      * @returns {Promise<void>}
      */
     async #executeIntentProgram(program, durationMs) {
-        const planLines = this.#runtime.summarizeIntentProgram(program);
+        const proposalLines = this.#runtime.summarizeIntentProgram(program);
 
         this.#appendMessage({
-            kind: "plan",
-            text: program.rationale ?? "The agent proposed an action plan.",
-            lines: planLines,
+            kind: "proposal",
+            text:
+                program.rationale ?? "The agent proposed a multi-step action.",
+            lines: proposalLines,
             durationMs,
         });
 
@@ -957,7 +958,7 @@ export class AgentSessionController {
     }
 
     /**
-     * Executes one planner tool call.
+     * Executes one agent tool call.
      *
      * @param {AgentToolCall} toolCall
      * @returns {Promise<ToolExecutionResult>}
@@ -991,7 +992,7 @@ export class AgentSessionController {
         const handler =
             agentTools[/** @type {AgentToolName} */ (toolCall.name)];
         if (!handler) {
-            throw new Error("Unsupported planner tool: " + toolCall.name);
+            throw new Error("Unsupported agent tool: " + toolCall.name);
         }
 
         try {
@@ -1040,7 +1041,7 @@ export class AgentSessionController {
 
     /**
      * Resets the active-turn draft after a tool call and before the next
-     * planner request reuses the same turn id.
+     * Agent turn request reuses the same turn id.
      *
      * @param {number} turnId
      */

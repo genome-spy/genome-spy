@@ -106,14 +106,14 @@ export function createAgentAdapter(app) {
         summarizeIntentProgram: (
             /** @type {import("./types.js").IntentProgram} */ program
         ) => summarizeIntentProgram(app, program),
-        requestPlan: (
+        requestAgentTurn: (
             /** @type {string} */ message,
             /** @type {Array<string | AgentConversationMessage>} */ history = [],
             /** @type {import("./agentSessionController.js").AgentStreamCallbacks} */ streamCallbacks = {},
             /** @type {boolean} */ allowStreaming = true,
             /** @type {AgentContextOptions} */ contextOptions = {}
         ) =>
-            requestPlan(app, {
+            requestAgentTurn(app, {
                 message,
                 history,
                 streamCallbacks,
@@ -133,9 +133,9 @@ export function createAgentAdapter(app) {
  *   contextOptions?: AgentContextOptions,
  *   signal?: AbortSignal
  * }} options
- * @returns {Promise<{ response: import("./types.js").PlanResponse, trace: Record<string, any> }>}
+ * @returns {Promise<{ response: import("./types.js").AgentTurnResponse, trace: Record<string, any> }>}
  */
-async function requestPlan(app, options) {
+async function requestAgentTurn(app, options) {
     const baseUrl = app.options.agentBaseUrl ?? DEFAULT_AGENT_BASE_URL;
     const startedAt = now();
     const contextStartedAt = now();
@@ -167,8 +167,8 @@ async function requestPlan(app, options) {
         }
 
         const mockStartedAt = now();
-        const { requestMockPlan } = await import("./mockPlanner.js");
-        const requestResult = await requestMockPlan({
+        const { requestMockAgentTurn } = await import("./mockAgentTurn.js");
+        const requestResult = await requestMockAgentTurn({
             message: options.message,
             history,
             context,
@@ -193,7 +193,7 @@ async function requestPlan(app, options) {
     }
 
     const requestStartedAt = now();
-    const response = await fetch(baseUrl + "/v1/plan", {
+    const response = await fetch(baseUrl + "/v1/agent-turn", {
         method: "POST",
         headers: {
             "content-type": "application/json",
@@ -206,7 +206,7 @@ async function requestPlan(app, options) {
 
     if (!response.ok) {
         throw new Error(
-            "Local agent request failed with status " + response.status + "."
+            "Agent turn request failed with status " + response.status + "."
         );
     }
 
@@ -215,7 +215,7 @@ async function requestPlan(app, options) {
         response.headers.get("content-type")?.includes("text/event-stream")
     ) {
         const parseStartedAt = now();
-        const streamedResponse = await consumePlannerStream(
+        const streamedResponse = await consumeAgentTurnStream(
             response,
             options.streamCallbacks ?? {}
         );
@@ -346,9 +346,9 @@ function shouldUseStreaming(streamCallbacks) {
 /**
  * @param {Response} response
  * @param {import("./agentSessionController.js").AgentStreamCallbacks} streamCallbacks
- * @returns {Promise<{ response: import("./types.js").PlanResponse }>}
+ * @returns {Promise<{ response: import("./types.js").AgentTurnResponse }>}
  */
-async function consumePlannerStream(response, streamCallbacks) {
+async function consumeAgentTurnStream(response, streamCallbacks) {
     if (!response.body) {
         throw new Error("Streaming response did not include a body.");
     }
@@ -379,7 +379,7 @@ async function consumePlannerStream(response, streamCallbacks) {
                 const eventData = dataLines.join("\n");
                 if (eventData.length > 0) {
                     if (eventData !== "[DONE]") {
-                        finalResponse = handlePlannerStreamEvent(
+                        finalResponse = handleAgentTurnStreamEvent(
                             eventName,
                             eventData,
                             streamCallbacks,
@@ -401,7 +401,7 @@ async function consumePlannerStream(response, streamCallbacks) {
 
     const trailingLine = buffer.trim();
     if (trailingLine.length > 0) {
-        finalResponse = handlePlannerStreamEvent(
+        finalResponse = handleAgentTurnStreamEvent(
             eventName,
             trailingLine,
             streamCallbacks,
@@ -411,7 +411,7 @@ async function consumePlannerStream(response, streamCallbacks) {
 
     if (!finalResponse) {
         throw new Error(
-            "Streaming response ended without a final planner event."
+            "Streaming response ended without a final agent-turn event."
         );
     }
 
@@ -424,10 +424,10 @@ async function consumePlannerStream(response, streamCallbacks) {
  * @param {string} eventName
  * @param {string} eventData
  * @param {import("./agentSessionController.js").AgentStreamCallbacks} streamCallbacks
- * @param {import("./types.js").PlanResponse | null} finalResponse
- * @returns {import("./types.js").PlanResponse | null}
+ * @param {import("./types.js").AgentTurnResponse | null} finalResponse
+ * @returns {import("./types.js").AgentTurnResponse | null}
  */
-function handlePlannerStreamEvent(
+function handleAgentTurnStreamEvent(
     eventName,
     eventData,
     streamCallbacks,
@@ -457,7 +457,7 @@ function handlePlannerStreamEvent(
     }
 
     if (eventName === "final" && payload.response) {
-        return /** @type {import("./types.js").PlanResponse} */ ({
+        return /** @type {import("./types.js").AgentTurnResponse} */ ({
             type: payload.response.type,
             message: payload.response.message,
             ...(payload.response.toolCalls
@@ -467,7 +467,9 @@ function handlePlannerStreamEvent(
     }
 
     if (eventName === "error") {
-        throw new Error(payload.message ?? "Streaming planner request failed.");
+        throw new Error(
+            payload.message ?? "Streaming agent-turn request failed."
+        );
     }
 
     return finalResponse;

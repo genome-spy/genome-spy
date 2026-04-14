@@ -49,11 +49,11 @@ The app-side pieces below are already in place:
 - `chatPanel.js` keeps the full transcript in memory for the session.
 - `chatPanel.js` builds `history` as structured message objects instead of plain
   strings.
-- `agentAdapter.js` sends `message`, `history`, and `context` to the planner
+- `agentAdapter.js` sends `message`, `history`, and `context` to the agent
   backend.
 - `agentAdapter.js` supports the dev-only mock backend path when
   `VITE_AGENT_BASE_URL=mock`.
-- `mockPlanner.js` returns deterministic read-only answers and clarifications
+- `mockAgentTurn.js` returns deterministic read-only answers and clarifications
   without network access.
 - `agentAdapter.js` logs the outgoing request payload and incoming response in
   dev mode.
@@ -64,7 +64,7 @@ The app-side pieces below are already in place:
 
 The app and Python server communicate through one relay endpoint:
 
-- `POST /v1/plan`
+- `POST /v1/agent-turn`
 
 ### Request
 
@@ -151,7 +151,7 @@ For the read-only POC, the server should return one of:
 - `type: "clarify"` with a short clarification `message`
 - `type: "tool_call"` when the browser should execute a local exploration tool before the next turn
 
-The browser handles `tool_call` turns locally and then re-asks the planner with
+The browser handles `tool_call` turns locally and then re-asks the agent service with
 the updated context. Intent programs and provenance-changing actions remain on
 their own path.
 
@@ -227,7 +227,7 @@ The Python server should not rebuild this information.
 
 ## Relation to Other Plans
 
-- See [`chat-ui.md`](./chat-ui.md) for the full chat UI plan. The POC uses the
+- See [`chat-ui.md`](./chat-ui.md) for the full chat UI design. The POC uses the
   read-only subset of that interaction model.
 - See [`python_agent_server.md`](./python_agent_server.md) for the relay-server
   boundary.
@@ -247,14 +247,14 @@ To support this POC, `chatPanel.js` should be adjusted as follows:
   - optional `kind` later
 - stop truncating history to the last few turns
 - update the controller API in `chat-ui.md` and the implementation in
-  `chatPanel.js` so `requestPlan()` accepts the structured transcript shape
+  `chatPanel.js` so `requestAgentTurn()` accepts the structured transcript shape
   instead of `string[]`
 - keep the current assistant rendering behavior:
   - answer messages render inline
   - clarify messages render inline
   - errors render inline and stop the flow
 
-The controller-facing `requestPlan()` call can still hide the transport details,
+The controller-facing `requestAgentTurn()` call can still hide the transport details,
 but the chat panel itself should preserve the full transcript and hand it to
 the controller as the request history for the POC.
 
@@ -263,7 +263,7 @@ support the mock backend switch:
 
 - read `VITE_AGENT_BASE_URL`
 - if the value is `mock`, use the dev-only mock server path instead of `fetch`
-- otherwise, continue to call the real `/v1/plan` endpoint
+  - otherwise, continue to call the real `/v1/agent-turn` endpoint
 - keep the mock implementation out of production bundles
 
 ## Debugging Pointers
@@ -275,11 +275,11 @@ server:
   - `#submitMessage()` prepares the chat request.
   - `#buildHistory()` creates the transcript payload sent to the controller.
 - [`packages/app/src/agent/agentAdapter.js`](../agentAdapter.js)
-  - `requestPlan()` is the transport boundary for the real server and the mock.
+  - `requestAgentTurn()` is the transport boundary for the real server and the mock.
   - `logAgentTransport()` logs the request and response in dev mode.
   - `publishAgentTrace()` publishes timing and high-level execution metadata.
-- [`packages/app/src/agent/mockPlanner.js`](../mockPlanner.js)
-  - `requestMockPlan()` is the dev-only no-network stand-in for the Python
+- [`packages/app/src/agent/mockAgentTurn.js`](../mockAgentTurn.js)
+  - `requestMockAgentTurn()` is the dev-only no-network stand-in for the Python
     server.
 - [`packages/app/src/app.js`](../../app.js)
   - `recordAgentTrace()` stores trace entries and emits the
@@ -290,14 +290,14 @@ server:
 In dev mode, the app also prints the request and response payloads to the
 browser console from `agentAdapter.js`.
 
-## Implementation Plan
+## Implementation Steps
 
 1. Update the chat UI transcript model.
    - Change `chatPanel.js` and the controller type in `chat-ui.md` so
-     `requestPlan()` accepts a structured `history` array instead of `string[]`.
+     `requestAgentTurn()` accepts a structured `history` array instead of `string[]`.
    - Keep the transcript in memory for the session and stop truncating it.
 2. Update the app-to-server request contract.
-   - Keep `POST /v1/plan`.
+   - Keep `POST /v1/agent-turn`.
    - Send `message`, full `history`, and current `context`.
    - Do not include provenance cross-links yet.
 3. Add the dev-only mock server path.

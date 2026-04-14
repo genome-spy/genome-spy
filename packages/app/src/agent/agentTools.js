@@ -37,7 +37,7 @@ import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool
  */
 
 /**
- * Error thrown for expected planner-facing tool rejections.
+ * Error thrown for expected agent-facing tool rejections.
  */
 export class ToolCallRejectionError extends Error {}
 
@@ -50,7 +50,7 @@ export class ToolCallRejectionError extends Error {}
  */
 
 /**
- * Concrete agent tool handlers keyed by planner tool name.
+ * Concrete agent tool handlers keyed by agent tool name.
  */
 export const agentTools = {
     expandViewNode,

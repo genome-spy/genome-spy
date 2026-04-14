@@ -102,4 +102,4 @@ same principle means:
 
 For a local on-device model, this explicitness is not optional. The protocol
 should assume limited recovery from ambiguity and give the model the minimum
-semantic contract needed to plan a correct action on the first try.
+semantic contract needed to choose a correct action on the first try.

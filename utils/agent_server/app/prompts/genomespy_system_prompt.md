@@ -259,7 +259,7 @@ time.
 If a tool call is rejected, do not repeat the same call unchanged.
 
 - Read the error carefully.
-- Adjust the arguments or the plan.
+- Adjust the arguments or the proposal.
 - Retry only with corrected inputs.
 
 Do not mention internal validation details unless they help explain a visible

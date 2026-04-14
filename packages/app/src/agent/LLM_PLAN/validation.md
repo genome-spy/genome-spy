@@ -1,6 +1,6 @@
-# Tool Validation and Rejection Plan
+# Tool Validation and Rejection
 
-This document is the detailed rollout plan for validating planner tool calls,
+This document is the detailed rollout for validating agent tool calls,
 rejecting malformed calls, and keeping the agent loop from repeating the same
 bad request forever.
 
@@ -21,7 +21,7 @@ The app is the validation boundary.
 
 ## Desired States
 
-Each planner tool call should end up in one of these states:
+Each agent tool call should end up in one of these states:
 
 - `accepted`
   - The call matches the schema and any semantic checks.
@@ -81,9 +81,9 @@ Failure messages should be short and specific:
 
 The agent should get one correction opportunity, not an infinite loop.
 
-- After a rejected tool call, re-enter the planner once with the updated
+- After a rejected tool call, request another turn once with the updated
   history.
-- If the planner repeats the same invalid call signature, stop and surface an
+- If the agent repeats the same invalid call signature, stop and surface an
   error instead of looping.
 - Track repeated rejections per turn so the retry cap is explicit and testable.
 - Prefer a hard stop over speculative normalization after the first migration
@@ -112,7 +112,8 @@ Implement the behavior in small, testable steps.
 
 ### 3. One retry after rejection
 
-- After a rejected tool call, re-plan once with the updated history.
+- After a rejected tool call, request another turn once with the updated
+  history.
 - Add a per-turn retry cap so the loop cannot continue forever.
 - Treat repeated invalid calls as a terminal error for that user turn.
 

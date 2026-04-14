@@ -8,7 +8,7 @@ conversation PoC described in
 
 The service is intentionally thin:
 
-- accepts `POST /v1/plan`
+- accepts `POST /v1/agent-turn`
 - reads `message`, `history`, and `context` as-is
 - prepends a fixed internal system prompt
 - forwards the assembled prompt to one LLM provider
@@ -169,7 +169,7 @@ The chat panel request should travel from GenomeSpy to the Python relay as a
 `POST` request to:
 
 ```text
-http://127.0.0.1:8000/v1/plan
+http://127.0.0.1:8000/v1/agent-turn
 ```
 
 The Python relay then forwards the assembled prompt to the configured provider
@@ -183,7 +183,7 @@ structured output and emits only the final parsed JSON response.
 If everything is wired correctly, you should see:
 
 - the browser app running on `http://localhost:8080/`
-- the Python relay logging `POST /v1/plan`
+- the Python relay logging `POST /v1/agent-turn`
 - the chat panel rendering the returned assistant message
 
 ## Test

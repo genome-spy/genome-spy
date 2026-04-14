@@ -1,4 +1,4 @@
-# LLM Chat UI Plan
+# LLM Chat UI Design
 
 This document describes the user-facing chat interface for the GenomeSpy agent.
 It focuses on component shape, interaction flow, and implementation constraints.
@@ -16,7 +16,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 - Provide a compact chat surface for asking questions, issuing commands, and reviewing assistant output.
 - Keep the component self-contained so it does not depend on global stylesheet changes.
 - Render a read-only snapshot owned by the agent session controller.
-- Fit the existing GenomeSpy agent flow: context snapshot, plan, validation, execution, provenance.
+- Fit the existing GenomeSpy agent flow: context snapshot, proposal, validation, execution, provenance.
 - Make the component available in Storybook for development, documentation, and testing.
 
 ## Recommended Component Shape
@@ -24,14 +24,14 @@ It focuses on component shape, interaction flow, and implementation constraints.
 - Start with one shadow-DOM web component.
 - Use a single top-level docked component such as `gs-agent-chat-panel`.
 - Keep the implementation under `packages/app/src/agent` so the chat UI stays close to the rest of the agent code.
-- Keep transcript rendering, composer handling, clarification UI, and plan preview inside the same component.
+- Keep transcript rendering, composer handling, clarification UI, and proposal preview inside the same component.
 - Keep the component stateless with respect to agent session data; the controller owns the transcript and turn state.
 - Split into multiple web components only if a subpart becomes reusable or materially harder to maintain.
 
 ## Interaction Model
 
 - User submits a message.
-- When the panel opens, the controller runs a preflight request through the same planning path with a harmless dummy message, primes the prompt prefix cache, and verifies that the server is available.
+- When the panel opens, the controller runs a preflight request through the same agent-turn path with a harmless dummy message, primes the prompt prefix cache, and verifies that the server is available.
 - While preflight is running, user input is queued.
 - If preflight fails, the panel should show a clear unavailable state such as `It seems that the agent is currently unavailable.`
 - The agent responds with one of:
@@ -40,7 +40,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
   - `intent_program`
 - If the response is a direct answer, show it in the transcript.
 - If the response is a clarification request, render selectable follow-up options.
-- If the response is an intent program, show a short plan preview and execute it immediately after validation.
+- If the response is an intent program, show a short proposal preview and execute it immediately after validation.
 - Do not require a confirmation step by default for undoable, non-destructive actions.
 - Use provenance and undo as the safety net after execution.
 - Do not persist message history across reloads for the first version.
@@ -59,7 +59,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
   - User messages
   - Assistant messages
   - Clarification cards
-  - Plan cards
+  - Proposal cards
   - Execution summaries
   - The execution summary should list the intent actions the agent just dispatched.
 - Composer
@@ -85,7 +85,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 
 - Add a dedicated Storybook story for the chat panel.
 - Keep the story in the same agent folder as the implementation, following the existing `*.stories.js` pattern.
-- Provide a realistic mock controller in Storybook so the component can be exercised without the real planner service.
+- Provide a realistic mock controller in Storybook so the component can be exercised without the real agent service.
 - The mock should simulate:
   - plain answers
   - clarification requests
@@ -111,7 +111,7 @@ The session controller owns:
 - pending request / turn state
 - preflight state
 - provenance correlation ids
-- derived planner context
+- derived agent context
 - error and timing diagnostics
 
 Recommended message kinds:
@@ -120,7 +120,7 @@ Recommended message kinds:
 - `assistant`
 - `status`
 - `clarification`
-- `plan`
+- `proposal`
 - `result`
 - `error`
 
@@ -129,7 +129,7 @@ Recommended message kinds:
 - Do not block every intent with a confirmation dialog.
 - Ask for clarification only when the request is ambiguous or missing required context.
 - Allow direct execution for valid, undoable, non-destructive intents.
-- Surface a visible preview before execution when the assistant produces a multi-step plan.
+- Surface a visible preview before execution when the assistant produces a multi-step proposal.
 - Show undo and provenance after execution.
 - Keep preflight separate from normal confirmation logic; it is a connectivity check, not a user decision point.
 
@@ -157,9 +157,9 @@ The component should expose a small, stable API:
   - `sendMessage(message)`
   - `queueMessage(message)`
   - `refreshPreflight()`
-- Keep planner request/validation/execution logic out of the UI component itself.
+- Keep agent request/validation/execution logic out of the UI component itself.
 - Let the UI focus on rendering messages, collecting input, and showing outcomes.
-- The controller should own the history used for follow-up planner calls and should hand the panel a render-ready snapshot.
+- The controller should own the history used for follow-up agent turns and should hand the panel a render-ready snapshot.
 - The panel should treat `snapshot` as the render input and update it through controller subscription, not by querying the app state directly.
 - The controller also owns preflight, queueing, and DEV timing diagnostics.
 

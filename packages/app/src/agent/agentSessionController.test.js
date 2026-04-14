@@ -5,7 +5,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 
 /**
  * @returns {{
- *     requestPlan: ReturnType<typeof vi.fn>;
+ *     requestAgentTurn: ReturnType<typeof vi.fn>;
  *     validateIntentProgram: ReturnType<typeof vi.fn>;
  *     submitIntentProgram: ReturnType<typeof vi.fn>;
  *     getAgentContext: ReturnType<typeof vi.fn>;
@@ -18,7 +18,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  */
 function createRuntimeMock() {
     return {
-        requestPlan: vi.fn(),
+        requestAgentTurn: vi.fn(),
         validateIntentProgram: vi.fn(),
         submitIntentProgram: vi.fn(),
         getAgentContext: vi.fn(() => ({
@@ -62,9 +62,9 @@ describe("createAgentSessionController", () => {
         expect(controller.getSnapshot().expandedViewNodeKeys).toEqual([]);
     });
 
-    it("parses numbered clarification choices from the planner response", async () => {
+    it("parses numbered clarification choices from the agent response", async () => {
         const runtime = createRuntimeMock();
-        runtime.requestPlan.mockImplementation((message) => {
+        runtime.requestAgentTurn.mockImplementation((message) => {
             if (message === PREFLIGHT_MESSAGE) {
                 return Promise.resolve({
                     response: {
@@ -118,12 +118,12 @@ describe("createAgentSessionController", () => {
         });
     });
 
-    it("executes planner tool calls and re-plans with the expanded view context", async () => {
+    it("executes agent tool calls and re-runs with the expanded view context", async () => {
         const runtime = createRuntimeMock();
-        let plannerCallCount = 0;
-        runtime.requestPlan.mockImplementation(
+        let agentTurnCallCount = 0;
+        runtime.requestAgentTurn.mockImplementation(
             (message, history, stream, allowStreaming, contextOptions) => {
-                plannerCallCount += 1;
+                agentTurnCallCount += 1;
                 if (message === PREFLIGHT_MESSAGE) {
                     return Promise.resolve({
                         response: {
@@ -136,7 +136,7 @@ describe("createAgentSessionController", () => {
                     });
                 }
 
-                if (plannerCallCount === 2) {
+                if (agentTurnCallCount === 2) {
                     stream.onDelta?.("I should open the collapsed track.");
                     return Promise.resolve({
                         response: {
@@ -189,11 +189,11 @@ describe("createAgentSessionController", () => {
         expect(controller.getSnapshot().expandedViewNodeKeys).toEqual([
             'v:{"scope":[],"view":"collapsed-track"}',
         ]);
-        expect(runtime.requestPlan).toHaveBeenCalledTimes(3);
-        expect(runtime.requestPlan.mock.calls[1][0]).toBe(
+        expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(3);
+        expect(runtime.requestAgentTurn.mock.calls[1][0]).toBe(
             "What is hidden under that collapsed track?"
         );
-        expect(runtime.requestPlan.mock.calls[2][1]).toMatchObject([
+        expect(runtime.requestAgentTurn.mock.calls[2][1]).toMatchObject([
             {
                 role: "user",
                 text: "What is hidden under that collapsed track?",
@@ -229,7 +229,7 @@ describe("createAgentSessionController", () => {
             },
         ]);
         expect(
-            runtime.requestPlan.mock.calls[2][4].expandedViewNodeKeys
+            runtime.requestAgentTurn.mock.calls[2][4].expandedViewNodeKeys
         ).toEqual(['v:{"scope":[],"view":"collapsed-track"}']);
         expect(controller.getSnapshot().messages).toHaveLength(4);
         expect(controller.getSnapshot().messages[1]).toMatchObject({
@@ -708,7 +708,7 @@ describe("createAgentSessionController", () => {
         /** @type {(value: any) => void} */
         let resolvePreflight;
         const runtime = createRuntimeMock();
-        runtime.requestPlan.mockImplementation((message) => {
+        runtime.requestAgentTurn.mockImplementation((message) => {
             if (message === PREFLIGHT_MESSAGE) {
                 return new Promise((resolve) => {
                     resolvePreflight = resolve;
@@ -753,9 +753,11 @@ describe("createAgentSessionController", () => {
 
         void controller.sendMessage("Show me the current view.");
         expect(controller.getSnapshot().queuedMessageCount).toBe(1);
-        expect(runtime.requestPlan).toHaveBeenCalledTimes(1);
-        expect(runtime.requestPlan.mock.calls[0][0]).toBe(PREFLIGHT_MESSAGE);
-        expect(runtime.requestPlan.mock.calls[0][3]).toBe(false);
+        expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(1);
+        expect(runtime.requestAgentTurn.mock.calls[0][0]).toBe(
+            PREFLIGHT_MESSAGE
+        );
+        expect(runtime.requestAgentTurn.mock.calls[0][3]).toBe(false);
 
         resolvePreflight({
             response: {
@@ -782,42 +784,44 @@ describe("createAgentSessionController", () => {
             kind: "assistant",
             text: "Done",
         });
-        expect(runtime.requestPlan).toHaveBeenCalledTimes(2);
-        expect(runtime.requestPlan.mock.calls[1][0]).toBe(
+        expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(2);
+        expect(runtime.requestAgentTurn.mock.calls[1][0]).toBe(
             "Show me the current view."
         );
     });
 
     it("publishes active-turn stream updates before the final response", async () => {
         const runtime = createRuntimeMock();
-        runtime.requestPlan.mockImplementation((message, history, stream) => {
-            if (message === PREFLIGHT_MESSAGE) {
+        runtime.requestAgentTurn.mockImplementation(
+            (message, history, stream) => {
+                if (message === PREFLIGHT_MESSAGE) {
+                    return Promise.resolve({
+                        response: {
+                            type: "answer",
+                            message: "I'm here",
+                        },
+                        trace: {
+                            totalMs: 10,
+                        },
+                    });
+                }
+
+                stream.onHeartbeat?.();
+                stream.onReasoning?.("Checking the response shape.");
+                stream.onDelta?.("This view summarizes the cohort.");
+
                 return Promise.resolve({
                     response: {
                         type: "answer",
-                        message: "I'm here",
+                        message:
+                            "This view summarizes the cohort. Try asking for a sort or filter to turn it into an action.",
                     },
                     trace: {
-                        totalMs: 10,
+                        totalMs: 22,
                     },
                 });
             }
-
-            stream.onHeartbeat?.();
-            stream.onReasoning?.("Checking the response shape.");
-            stream.onDelta?.("This view summarizes the cohort.");
-
-            return Promise.resolve({
-                response: {
-                    type: "answer",
-                    message:
-                        "This view summarizes the cohort. Try asking for a sort or filter to turn it into an action.",
-                },
-                trace: {
-                    totalMs: 22,
-                },
-            });
-        });
+        );
 
         const activeSnapshots = [];
         const controller = createAgentSessionController(runtime);
@@ -870,7 +874,7 @@ describe("createAgentSessionController", () => {
         /** @type {(reason?: any) => void} */
         let rejectPreflight;
         const runtime = createRuntimeMock();
-        runtime.requestPlan.mockImplementation((message) => {
+        runtime.requestAgentTurn.mockImplementation((message) => {
             if (message === PREFLIGHT_MESSAGE) {
                 return new Promise((_, reject) => {
                     rejectPreflight = reject;
@@ -908,7 +912,7 @@ describe("createAgentSessionController", () => {
             "It seems that the agent is currently unavailable."
         );
         expect(snapshot.queuedMessageCount).toBe(1);
-        expect(runtime.requestPlan).toHaveBeenCalledTimes(1);
+        expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(1);
     });
 
     it("rejects malformed visibility tool arguments before execution", async () => {
@@ -945,9 +949,9 @@ describe("createAgentSessionController", () => {
 
     it("stops promptly when the same rejected tool call repeats", async () => {
         const runtime = createRuntimeMock();
-        let plannerCallCount = 0;
-        runtime.requestPlan.mockImplementation((message) => {
-            plannerCallCount += 1;
+        let agentTurnCallCount = 0;
+        runtime.requestAgentTurn.mockImplementation((message) => {
+            agentTurnCallCount += 1;
             if (message === PREFLIGHT_MESSAGE) {
                 return Promise.resolve({
                     response: {
@@ -966,7 +970,7 @@ describe("createAgentSessionController", () => {
                     message: "I will update visibility.",
                     toolCalls: [
                         {
-                            callId: `call-${plannerCallCount}`,
+                            callId: `call-${agentTurnCallCount}`,
                             name: "setViewVisibility",
                             arguments: {
                                 selector:
@@ -991,10 +995,10 @@ describe("createAgentSessionController", () => {
         );
 
         const snapshot = controller.getSnapshot();
-        expect(runtime.requestPlan).toHaveBeenCalledTimes(3);
+        expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(3);
         expect(snapshot.status).toBe("error");
         expect(snapshot.lastError).toBe(
-            "The planner repeated the same rejected tool call after validation failure."
+            "The agent repeated the same rejected tool call after validation failure."
         );
         expect(snapshot.messages).toEqual(
             expect.arrayContaining([
@@ -1006,7 +1010,7 @@ describe("createAgentSessionController", () => {
                 }),
                 expect.objectContaining({
                     kind: "error",
-                    text: "The planner repeated the same rejected tool call after validation failure.",
+                    text: "The agent repeated the same rejected tool call after validation failure.",
                 }),
             ])
         );
@@ -1026,9 +1030,9 @@ describe("createAgentSessionController", () => {
 
     it("allows several varied rejected tool calls before stopping on budget", async () => {
         const runtime = createRuntimeMock();
-        let plannerCallCount = 0;
-        runtime.requestPlan.mockImplementation((message) => {
-            plannerCallCount += 1;
+        let agentTurnCallCount = 0;
+        runtime.requestAgentTurn.mockImplementation((message) => {
+            agentTurnCallCount += 1;
             if (message === PREFLIGHT_MESSAGE) {
                 return Promise.resolve({
                     response: {
@@ -1047,12 +1051,12 @@ describe("createAgentSessionController", () => {
                     message: "I will update visibility.",
                     toolCalls: [
                         {
-                            callId: `call-${plannerCallCount}`,
+                            callId: `call-${agentTurnCallCount}`,
                             name: "setViewVisibility",
                             arguments: {
                                 selector:
                                     '{"scope":[],"view":"reference-sequence"}',
-                                visibility: `true-${plannerCallCount}`,
+                                visibility: `true-${agentTurnCallCount}`,
                             },
                         },
                     ],
@@ -1072,10 +1076,10 @@ describe("createAgentSessionController", () => {
         );
 
         const snapshot = controller.getSnapshot();
-        expect(runtime.requestPlan).toHaveBeenCalledTimes(6);
+        expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(6);
         expect(snapshot.status).toBe("error");
         expect(snapshot.lastError).toBe(
-            "The planner produced too many rejected tool calls without converging."
+            "The agent produced too many rejected tool calls without converging."
         );
         expect(snapshot.messages).toEqual(
             expect.arrayContaining([
@@ -1087,18 +1091,18 @@ describe("createAgentSessionController", () => {
                 }),
                 expect.objectContaining({
                     kind: "error",
-                    text: "The planner produced too many rejected tool calls without converging.",
+                    text: "The agent produced too many rejected tool calls without converging.",
                 }),
             ])
         );
     });
 
-    it("cancels the active turn and ignores late planner responses", async () => {
+    it("cancels the active turn and ignores late agent responses", async () => {
         const runtime = createRuntimeMock();
         let resolvePlan;
         /** @type {AbortSignal | undefined} */
         let observedSignal;
-        runtime.requestPlan.mockImplementation(
+        runtime.requestAgentTurn.mockImplementation(
             (
                 message,
                 history,
