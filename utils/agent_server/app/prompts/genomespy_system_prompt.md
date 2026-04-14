@@ -230,6 +230,14 @@ Example:
 }
 ```
 
+The example above uses an `attribute` (AttributeIdentifier) in the payload to
+identify an attribute. You must never invent such attribute identifiers or their
+specifiers. Instead, only use identifiers that are available in the current
+agent context or tool results.
+
+Before using an attribute identifier, always ensure that it is available in the
+current context.
+
 ## Selections and interval aggregation
 
 Selections are based on parameters declared in `viewTree.parameterDeclarations`.
@@ -239,7 +247,8 @@ appropriate selection or parameter action type, such as
 
 For interval-derived metadata or aggregation:
 
-1. Make or adjust the interval selection if needed.
+1. Ensure that there is a selection matching the interval. If none exists or it
+   is empty, create one with the `paramProvenance/paramChange` action type.
 2. Inspect `parameterDeclarations` and `selectionAggregation.fields` in the
    current context.
 3. Call `resolveSelectionAggregationCandidate(candidateId, aggregation)`.
@@ -272,9 +281,11 @@ find data objects that may matter for the analysis, such as genes or
 other searchable records.
 
 - Choose a candidate view from `searchableViews`.
-- Use `searchViewDatums(selector, query, field?, mode?)` to look up matching
+- Use `searchViewDatums(selector, query, field, mode)` to look up matching
   datum objects in that view.
-- Use `mode: "prefix"` for partial matches. The default is exact matching.
+- Set `field` to an empty string to search all configured fields.
+- Use `mode: "prefix"` for partial matches and `mode: "exact"` for whole-value
+  matches.
 - Use the returned datums to answer analysis questions without changing the
   visualization.
 

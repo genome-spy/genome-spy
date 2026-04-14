@@ -123,7 +123,7 @@ export interface JumpToInitialProvenanceStateToolInput {}
  *
  * @example
  * {
- *   "candidateId": "brush@beta-values:beta",
+ *   "candidateId": "brush@foo:bar",
  *   "aggregation": "max"
  * }
  */
@@ -151,7 +151,9 @@ export interface ResolveSelectionAggregationCandidateToolInput {
  *     "scope": [],
  *     "view": "gene-track"
  *   },
- *   "query": "TP53"
+ *   "query": "TP53",
+ *   "field": "",
+ *   "mode": "exact"
  * }
  */
 export interface SearchViewDatumsToolInput {
@@ -162,25 +164,19 @@ export interface SearchViewDatumsToolInput {
 
     /**
      * Search term to match against the view's configured search fields.
-     * If `field` is omitted, all search fields are matched.
      */
     query: string;
 
     /**
-     * Optional search field name. If omitted, all search fields are searched.
+     * Search field name. Use an empty string to search all configured fields.
      */
-    field?: string;
+    field: string;
 
     /**
      * Search mode. `exact` matches the whole field value. `prefix` matches the
-     * beginning of the field value. Defaults to `exact`.
+     * beginning of the field value.
      */
-    mode?: "exact" | "prefix";
-
-    /**
-     * Maximum number of matching datums to return.
-     */
-    limit?: number;
+    mode: "exact" | "prefix";
 }
 
 /**
@@ -188,7 +184,11 @@ export interface SearchViewDatumsToolInput {
  * actions. Actions are additive. Before submitting new actions, always
  * consult the current provenance state that defines the state of the
  * analysis. Jump to a prior provenance state if necessary to continue from
- * an earlier point in the analysis.
+ * an earlier point in the analysis. In addition, before constructing the
+ * intent program, ensure that every `attribute` (AttributeIdentifier) is
+ * presented to you in the context or tool results. If not, submit actions
+ * one by one and consult the updated context after each action, instead
+ * of submitting them all at once.
  *
  * @example
  * {

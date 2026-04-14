@@ -130,7 +130,7 @@
       }
     ],
     "exampleInput": {
-      "candidateId": "brush@beta-values:beta",
+      "candidateId": "brush@foo:bar",
       "aggregation": "max"
     },
     "strict": true
@@ -155,20 +155,14 @@
       {
         "name": "field",
         "type": "string",
-        "description": "Optional search field name. Omit to search all fields.",
-        "required": false
+        "description": "Search field name. Use an empty string to search all configured fields.",
+        "required": true
       },
       {
         "name": "mode",
-        "type": "string",
-        "description": "Search mode. exact matches the whole field value; prefix matches the start of the field value. Defaults to exact.",
-        "required": false
-      },
-      {
-        "name": "limit",
-        "type": "number",
-        "description": "Maximum number of matching datums to return.",
-        "required": false
+        "type": "\"exact\" | \"prefix\"",
+        "description": "Search mode. `exact` matches the whole field value. `prefix` matches the beginning of the field value.",
+        "required": true
       }
     ],
     "exampleInput": {
@@ -176,9 +170,11 @@
         "scope": [],
         "view": "gene-track"
       },
-      "query": "TP53"
+      "query": "TP53",
+      "field": "",
+      "mode": "exact"
     },
-    "strict": false
+    "strict": true
   },
   {
     "toolName": "submitIntentProgram",

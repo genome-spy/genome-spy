@@ -1023,6 +1023,9 @@ describe("createAgentSessionController", () => {
     it("marks the session unavailable when preflight fails and preserves queued input", async () => {
         /** @type {(reason?: any) => void} */
         let rejectPreflight;
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
         const runtime = createRuntimeMock();
         runtime.requestAgentTurn.mockImplementation((message) => {
             if (message === PREFLIGHT_MESSAGE) {
@@ -1063,6 +1066,11 @@ describe("createAgentSessionController", () => {
         );
         expect(snapshot.queuedMessageCount).toBe(1);
         expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(1);
+        expect(consoleError).toHaveBeenCalledWith(
+            "Agent preflight failed:",
+            expect.any(Error)
+        );
+        consoleError.mockRestore();
     });
 
     it("rejects malformed visibility tool arguments before execution", async () => {

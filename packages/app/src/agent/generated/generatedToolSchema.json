@@ -1195,7 +1195,7 @@
       "examples": [
         {
           "aggregation": "max",
-          "candidateId": "brush@beta-values:beta"
+          "candidateId": "brush@foo:bar"
         }
       ],
       "properties": {
@@ -1216,6 +1216,8 @@
       "description": "Search datum objects in one specific searchable view.",
       "examples": [
         {
+          "field": "",
+          "mode": "exact",
           "query": "TP53",
           "selector": {
             "scope": [],
@@ -1225,22 +1227,16 @@
       ],
       "properties": {
         "field": {
-          "description": "Optional search field name. Omit to search all fields.",
+          "description": "Search field name. Use an empty string to search all configured fields.",
           "type": "string"
         },
         "mode": {
-          "description": "Search mode. exact matches the whole field value; prefix matches the start of the field value. Defaults to exact.",
+          "description": "Search mode. `exact` matches the whole field value. `prefix` matches the beginning of the field value.",
           "enum": ["exact", "prefix"],
           "type": "string"
         },
-        "limit": {
-          "minimum": 1,
-          "description": "Maximum number of matching datums to return.",
-          "type": "number"
-        },
         "query": {
           "description": "Search term to match against the view's configured search fields.",
-          "minLength": 1,
           "type": "string"
         },
         "selector": {
@@ -1248,7 +1244,7 @@
           "description": "Stable selector for the searchable view to inspect."
         }
       },
-      "required": ["selector", "query"],
+      "required": ["selector", "query", "field", "mode"],
       "type": "object"
     },
     "SetViewVisibilityToolInput": {
@@ -1278,7 +1274,7 @@
     },
     "SubmitIntentProgramToolInput": {
       "additionalProperties": false,
-      "description": "Execute a provenance-changing intent program with one or more ordered actions. Actions are additive. Before submitting new actions, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis.",
+      "description": "Execute a provenance-changing intent program with one or more ordered actions. Actions are additive. Before submitting new actions, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the intent program, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results. If not, submit actions one by one and consult the updated context after each action, instead of submitting them all at once.",
       "examples": [
         {
           "program": {

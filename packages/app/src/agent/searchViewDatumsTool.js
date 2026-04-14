@@ -34,12 +34,9 @@ export function searchViewDatumsTool(runtime, input) {
         );
     }
 
-    const limit = input.limit ?? 10;
-    if (!Number.isInteger(limit) || limit < 1) {
-        throw new ToolCallRejectionError(
-            "Limit must be a positive integer when provided."
-        );
-    }
+    // Keep the result set bounded even though the provider-facing contract
+    // does not expose a limit argument.
+    const limit = 10;
 
     const view = ensureResolvedView(runtime, input.selector);
     const searchAccessors = selectSearchAccessors(view, input.field);
@@ -118,7 +115,7 @@ function selectSearchAccessors(view, field) {
         );
     }
 
-    if (field === undefined) {
+    if (field === undefined || field === "") {
         return accessors;
     }
 

@@ -25,7 +25,7 @@ describe("toolCatalog", () => {
         expect(tools[4].strict).toBe(true);
         expect(tools[5].strict).toBe(true);
         expect(tools[6].strict).toBe(true);
-        expect(tools[7].strict).toBe(false);
+        expect(tools[7].strict).toBe(true);
         expect(tools[8].strict).toBe(false);
     });
 
@@ -66,13 +66,24 @@ describe("toolCatalog", () => {
         expect(toolDefinitions[6].strict).toBe(true);
         expect(toolDefinitions[7].name).toBe("searchViewDatums");
         expect(toolDefinitions[7].parameters.type).toBe("object");
+        expect(toolDefinitions[7].parameters.required).toEqual([
+            "selector",
+            "query",
+            "field",
+            "mode",
+        ]);
+        expect(toolDefinitions[7].parameters.properties.field).toEqual({
+            type: "string",
+            description:
+                "Search field name. Use an empty string to search all configured fields.",
+        });
         expect(toolDefinitions[7].parameters.properties.mode).toEqual({
             type: "string",
             enum: ["exact", "prefix"],
             description:
-                "Search mode. exact matches the whole field value; prefix matches the start of the field value. Defaults to exact.",
+                "Search mode. `exact` matches the whole field value. `prefix` matches the beginning of the field value.",
         });
-        expect(toolDefinitions[7].strict).toBe(false);
+        expect(toolDefinitions[7].strict).toBe(true);
         expect(toolDefinitions[8].parameters.type).toBe("object");
         expect(toolDefinitions[8].strict).toBe(false);
     });

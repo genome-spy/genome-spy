@@ -1,30 +1,34 @@
 // @ts-nocheck
 import { describe, expect, it } from "vitest";
 import templateResultToString from "../utils/templateResultToString.js";
+import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
 import {
     getActionCatalogEntry,
     listAgentActions,
+    summarizeProvenanceActions,
     summarizeIntentProgram,
 } from "./actionCatalog.js";
 
 function createAppStub() {
-    const getAttributeInfo = (attribute) => ({
-        name: String(attribute.specifier),
-        attribute,
-        title: String(attribute.specifier),
-        emphasizedName: String(attribute.specifier),
-        accessor: () => undefined,
-        valuesProvider: () => [],
-        type: "nominal",
-    });
-
     return {
-        getSampleView: () => ({
-            compositeAttributeInfoSource: {
-                getAttributeInfo,
+        provenance: {
+            getActionInfo: (action) => {
+                if (action.type === "sampleView/sortBy") {
+                    return {
+                        title: "Sort by age",
+                    };
+                }
+
+                if (action.type === "paramProvenance/paramChange") {
+                    return {
+                        title: "Set brush = 0.5 in Overview",
+                    };
+                }
+
+                return undefined;
             },
-        }),
+        },
     };
 }
 
@@ -109,5 +113,23 @@ describe("actionCatalog", () => {
         expect(templateResultToString(summaries[0].content)).toBe(
             "Sort by age"
         );
+    });
+
+    it("summarizes provenance actions using the provenance formatter", () => {
+        const action = paramProvenanceSlice.actions.paramChange({
+            selector: { scope: [], param: "brush" },
+            value: {
+                type: "value",
+                value: 0.5,
+            },
+        });
+
+        const summaries = summarizeProvenanceActions(createAppStub(), [action]);
+
+        expect(summaries).toEqual([
+            expect.objectContaining({
+                text: "Set brush = 0.5 in Overview",
+            }),
+        ]);
     });
 });

@@ -181,6 +181,8 @@ describe("agentTools", () => {
                 view: "gene-track",
             },
             query: "tp53",
+            field: "gene_symbol",
+            mode: "exact",
         });
 
         expect(result).toEqual(
@@ -210,7 +212,7 @@ describe("agentTools", () => {
         });
     });
 
-    it("searches all configured fields when field is omitted", () => {
+    it("searches all configured fields when field is empty", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
@@ -220,6 +222,8 @@ describe("agentTools", () => {
                 view: "gene-track",
             },
             query: "breast cancer 1",
+            field: "",
+            mode: "exact",
         });
 
         expect(result.content).toEqual(
@@ -249,6 +253,7 @@ describe("agentTools", () => {
             },
             query: "breast cancer 1",
             field: "gene_name",
+            mode: "exact",
         });
 
         expect(result.content).toEqual(
@@ -282,6 +287,7 @@ describe("agentTools", () => {
             },
             query: "breast cancer 1",
             field: "gene_symbol",
+            mode: "exact",
         });
 
         expect(result.content).toEqual(
@@ -305,6 +311,7 @@ describe("agentTools", () => {
                 view: "gene-track",
             },
             query: "breast",
+            field: "",
             mode: "prefix",
         });
 
@@ -339,6 +346,8 @@ describe("agentTools", () => {
                     view: "track",
                 },
                 query: "TP53",
+                field: "",
+                mode: "exact",
             })
         ).toThrow(ToolCallRejectionError);
     });

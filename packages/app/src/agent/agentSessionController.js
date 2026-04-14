@@ -528,7 +528,8 @@ export class AgentSessionController {
             this.#state.status = "ready";
             this.#notify();
             await this.#drainQueue();
-        } catch {
+        } catch (error) {
+            console.error("Agent preflight failed:", error);
             this.#state.preflightState = "failed";
             this.#state.status = "unavailable";
             this.#state.pendingRequest = null;

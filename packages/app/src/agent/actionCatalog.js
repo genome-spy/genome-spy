@@ -1,24 +1,8 @@
 import { sampleSlice } from "../sampleView/state/sampleSlice.js";
 import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
-import { getActionInfo } from "../sampleView/state/actionInfo.js";
 import templateResultToString from "../utils/templateResultToString.js";
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
-
-/**
- * @param {import("../app.js").default} app
- * @returns {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource}
- */
-function getAttributeInfoSource(app) {
-    const sampleView = app.getSampleView();
-    if (!sampleView) {
-        throw new Error("SampleView is not available.");
-    }
-
-    return sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
-        sampleView.compositeAttributeInfoSource
-    );
-}
 
 /**
  * @typedef {Object} ActionCatalogEntry
@@ -148,12 +132,9 @@ export function summarizeProvenanceActions(app, actions) {
  * @returns {import("./types.js").IntentProgramSummaryLine[]}
  */
 function summarizeActions(app, actions) {
-    const getAttributeInfo = getAttributeInfoSource(app);
-
     return actions.map((action) => {
-        const info = getActionInfo(
-            /** @type {ActionInfoInput} */ (action),
-            getAttributeInfo
+        const info = app.provenance.getActionInfo(
+            /** @type {ActionInfoInput} */ (action)
         );
         const content = info?.provenanceTitle ?? info?.title ?? action.type;
         return {
