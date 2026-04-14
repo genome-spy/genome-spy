@@ -67,8 +67,9 @@ export function createAgentAdapter(app) {
         validateIntentProgram: (/** @type {unknown} */ program) =>
             validateIntentProgram(app, program),
         submitIntentProgram: (
-            /** @type {import("./types.js").IntentProgram} */ program
-        ) => submitIntentProgram(app, program),
+            /** @type {import("./types.js").IntentProgram} */ program,
+            /** @type {{submissionKind?: "agent" | "bookmark" | "user"}} */ options
+        ) => submitIntentProgram(app, program, options),
         resolveViewSelector: (
             /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector
         ) => {

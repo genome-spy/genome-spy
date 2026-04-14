@@ -46,6 +46,20 @@ function createAppStub() {
         }),
         provenance: {
             getActionHistory: vi.fn(() => []),
+            getActionInfo: vi.fn((action) => ({
+                title:
+                    action.type === "sampleView/sortBy"
+                        ? "Sort by age"
+                        : action.type === "sampleView/groupByNominal"
+                          ? "Group by diagnosis"
+                          : "Test action",
+                provenanceTitle:
+                    action.type === "sampleView/sortBy"
+                        ? "Sort by age"
+                        : action.type === "sampleView/groupByNominal"
+                          ? "Group by diagnosis"
+                          : "Test action",
+            })),
         },
         intentPipeline: {
             submit: vi.fn(() => Promise.resolve()),
@@ -82,6 +96,13 @@ describe("submitIntentProgram", () => {
         });
 
         expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
+        expect(app.intentPipeline.submit).toHaveBeenCalledWith(
+            expect.any(Array),
+            expect.objectContaining({
+                getAttributeInfo: expect.any(Function),
+                submissionKind: "agent",
+            })
+        );
         expect(result.executedActions).toBe(2);
         expect(result.content).toEqual(
             expect.objectContaining({

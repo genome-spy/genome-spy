@@ -102,7 +102,10 @@ import { agentTools } from "./agentTools.js";
  *         contextOptions?: AgentContextOptions,
  *         signal?: AbortSignal
  *     ): Promise<{ response: ChatAgentTurnResponse; trace: Record<string, any> }>;
- *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
+ *     submitIntentProgram(
+ *         program: IntentProgram,
+ *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
+ *     ): Promise<IntentProgramExecutionResult>;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
  *     summarizeProvenanceActionsSince(
  *         startIndex: number

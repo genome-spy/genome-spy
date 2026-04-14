@@ -424,6 +424,29 @@ describe("agentTools", () => {
         expect(runtime.summarizeExecutionResult).toHaveBeenCalledTimes(1);
     });
 
+    it("rethrows intent program failures as rejected tool calls", async () => {
+        const runtime = createRuntimeStub();
+        runtime.submitIntentProgram.mockRejectedValue(
+            new Error("No such attribute: mean beta")
+        );
+        const tools = agentTools;
+
+        await expect(
+            tools.submitIntentProgram(runtime, {
+                program: {
+                    schemaVersion: 1,
+                    steps: [],
+                },
+            })
+        ).rejects.toThrow(ToolCallRejectionError);
+        expect(runtime.submitIntentProgram).toHaveBeenCalledWith(
+            expect.any(Object),
+            expect.objectContaining({
+                submissionKind: "agent",
+            })
+        );
+    });
+
     it("fails fast when a selector does not resolve", () => {
         const runtime = createRuntimeStub();
         runtime.resolveViewSelector.mockReturnValueOnce(undefined);

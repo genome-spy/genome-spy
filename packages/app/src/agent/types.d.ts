@@ -12,6 +12,7 @@ import type { ViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import type { ParamValue } from "../state/paramProvenanceTypes.d.ts";
 
 export type AgentActionType = GeneratedAgentActionType;
+export type IntentSubmissionKind = "user" | "agent" | "bookmark";
 
 /**
  * Metadata for a single field in the generated agent action catalog.
@@ -1006,7 +1007,8 @@ export interface AgentAdapter {
      * Submits a validated intent program for execution.
      */
     submitIntentProgram(
-        program: IntentProgram
+        program: IntentProgram,
+        options?: { submissionKind?: IntentSubmissionKind }
     ): Promise<IntentProgramExecutionResult>;
 
     /**

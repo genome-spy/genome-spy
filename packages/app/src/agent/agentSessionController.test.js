@@ -746,6 +746,113 @@ describe("createAgentSessionController", () => {
         );
     });
 
+    it("returns an intent program failure to the agent as a rejected tool result", async () => {
+        const runtime = createRuntimeMock();
+        let returnedToolCall = false;
+        runtime.submitIntentProgram.mockRejectedValue(
+            new Error("No such attribute: mean beta")
+        );
+        runtime.requestAgentTurn.mockImplementation(
+            (message, history, stream, allowStreaming, contextOptions) => {
+                if (message === PREFLIGHT_MESSAGE) {
+                    return Promise.resolve({
+                        response: {
+                            type: "answer",
+                            message: "I'm here",
+                        },
+                        trace: {
+                            totalMs: 10,
+                        },
+                    });
+                }
+
+                if (!returnedToolCall) {
+                    returnedToolCall = true;
+                    return Promise.resolve({
+                        response: {
+                            type: "tool_call",
+                            message: "I will add mean beta to metadata.",
+                            toolCalls: [
+                                {
+                                    callId: "call-intent",
+                                    name: "submitIntentProgram",
+                                    arguments: {
+                                        program: {
+                                            schemaVersion: 1,
+                                            steps: [
+                                                {
+                                                    actionType:
+                                                        "sampleView/sortBy",
+                                                    payload: {
+                                                        attribute: {
+                                                            type: "SAMPLE_ATTRIBUTE",
+                                                            specifier: "age",
+                                                        },
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        trace: {
+                            totalMs: 11,
+                        },
+                    });
+                }
+
+                expect(history).toMatchObject([
+                    {
+                        role: "user",
+                        text: "Add mean beta to metadata.",
+                    },
+                    {
+                        role: "assistant",
+                        kind: "tool_call",
+                        text: "I will add mean beta to metadata.",
+                    },
+                    {
+                        role: "tool",
+                        kind: "tool_result",
+                        text: expect.stringContaining(
+                            "No such attribute: mean beta"
+                        ),
+                    },
+                ]);
+                expect(contextOptions.expandedViewNodeKeys).toEqual([]);
+
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "Use a different attribute.",
+                    },
+                    trace: {
+                        totalMs: 12,
+                    },
+                });
+            }
+        );
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("Add mean beta to metadata.");
+
+        expect(runtime.submitIntentProgram).toHaveBeenCalledTimes(1);
+        expect(controller.getSnapshot().messages).toHaveLength(4);
+        expect(controller.getSnapshot().messages[2]).toMatchObject({
+            kind: "tool_result",
+            toolCallId: "call-intent",
+            text: expect.stringContaining("No such attribute: mean beta"),
+        });
+        expect(controller.getSnapshot().messages[3]).toMatchObject({
+            kind: "assistant",
+            text: "Use a different attribute.",
+        });
+    });
+
     it("returns a structured no-op result when collapsing an already collapsed branch", async () => {
         const runtime = createRuntimeMock();
         const controller = createAgentSessionController(runtime);

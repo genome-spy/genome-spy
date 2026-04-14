@@ -7,9 +7,10 @@ import { validateIntentProgram } from "./intentProgramValidator.js";
 /**
  * @param {import("../app.js").default} app
  * @param {import("./types.js").IntentProgram} program
+ * @param {{submissionKind?: "agent" | "bookmark" | "user"}} [options]
  * @returns {Promise<import("./types.js").IntentProgramExecutionResult>}
  */
-export async function submitIntentProgram(app, program) {
+export async function submitIntentProgram(app, program, options = {}) {
     const validation = validateIntentProgram(app, program);
     if (!validation.ok) {
         throw new Error(validation.errors.join("\n"));
@@ -39,7 +40,10 @@ export async function submitIntentProgram(app, program) {
         ? (sampleView.sampleHierarchy.groupMetadata?.length ?? 0)
         : undefined;
 
-    await app.intentPipeline.submit(actions, { getAttributeInfo });
+    await app.intentPipeline.submit(actions, {
+        getAttributeInfo,
+        submissionKind: options.submissionKind ?? "agent",
+    });
     const provenanceIds = getDispatchedProvenanceIds(app, provenanceStartIndex);
 
     const summaries = summarizeIntentProgram(app, validation.program);

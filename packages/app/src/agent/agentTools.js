@@ -33,7 +33,10 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  *     clearViewVisibility(selector: ViewSelector): void;
  *     expandViewNode?(selector: ViewSelector): boolean;
  *     collapseViewNode?(selector: ViewSelector): boolean;
- *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
+ *     submitIntentProgram(
+ *         program: IntentProgram,
+ *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
+ *     ): Promise<IntentProgramExecutionResult>;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
  * }} AgentToolRuntime
  */
@@ -196,12 +199,25 @@ export function resolveSelectionAggregationCandidateTool(runtime, input) {
  * @returns {Promise<AgentToolExecutionResult>}
  */
 export async function submitIntentProgramTool(runtime, input) {
-    const result = await runtime.submitIntentProgram(input.program);
-    return {
-        text: runtime.summarizeExecutionResult(result),
-        content: result.content,
-        summaries: result.summaries,
-    };
+    try {
+        const result = await runtime.submitIntentProgram(input.program, {
+            submissionKind: "agent",
+        });
+        return {
+            text: runtime.summarizeExecutionResult(result),
+            content: result.content,
+            summaries: result.summaries,
+        };
+    } catch (error) {
+        // Surface intent execution failures back to the model as a rejected tool call.
+        if (error instanceof ToolCallRejectionError) {
+            throw error;
+        }
+
+        throw new ToolCallRejectionError(
+            error instanceof Error ? error.message : String(error)
+        );
+    }
 }
 
 /**
