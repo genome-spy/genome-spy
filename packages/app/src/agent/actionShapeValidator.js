@@ -1,6 +1,6 @@
 // @ts-check
 import Ajv from "ajv";
-import generatedActionSchema from "./generatedActionSchema.json" with { type: "json" };
+import generatedActionSchema from "./generated/generatedActionSchema.json" with { type: "json" };
 import { formatAjvErrors } from "./validationErrorFormatter.js";
 
 const AjvClass = /** @type {any} */ (Ajv);

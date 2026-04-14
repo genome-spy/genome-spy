@@ -20,6 +20,7 @@ const outputPath = path.join(
     packageDir,
     "src",
     "agent",
+    "generated",
     "generatedToolCatalog.json"
 );
 

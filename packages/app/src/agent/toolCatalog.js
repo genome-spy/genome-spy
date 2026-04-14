@@ -1,7 +1,7 @@
 // @ts-check
 import Ajv from "ajv";
-import generatedToolCatalog from "./generatedToolCatalog.json" with { type: "json" };
-import generatedToolSchema from "./generatedToolSchema.json" with { type: "json" };
+import generatedToolCatalog from "./generated/generatedToolCatalog.json" with { type: "json" };
+import generatedToolSchema from "./generated/generatedToolSchema.json" with { type: "json" };
 import { formatAjvErrors } from "./validationErrorFormatter.js";
 
 // These generated artifacts are derived from agentToolInputs.d.ts and are the

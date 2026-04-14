@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import generatedToolSchema from "../src/agent/generatedToolSchema.json" with {
+import generatedToolSchema from "../src/agent/generated/generatedToolSchema.json" with {
     type: "json",
 };
-import generatedToolCatalog from "../src/agent/generatedToolCatalog.json" with {
+import generatedToolCatalog from "../src/agent/generated/generatedToolCatalog.json" with {
     type: "json",
 };
 

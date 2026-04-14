@@ -8,7 +8,7 @@ import { formatGeneratedSource } from "./formatGeneratedSource.mjs";
 const execFileAsync = promisify(execFile);
 
 const schemaPath = new URL(
-    "../src/agent/generatedActionSchema.json",
+    "../src/agent/generated/generatedActionSchema.json",
     import.meta.url
 );
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -56,7 +56,7 @@ export async function writeGeneratedActionSchema() {
     const generated = await generateSchemaText();
     await writeFile(schemaPath, generated);
 
-    console.log("Wrote app/src/agent/generatedActionSchema.json");
+    console.log("Wrote app/src/agent/generated/generatedActionSchema.json");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

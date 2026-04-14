@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createGeneratedToolCatalog, renderGeneratedToolCatalog } from "./generateAgentToolCatalog.mjs";
 
 const outputPath = new URL(
-    "../src/agent/generatedToolCatalog.json",
+    "../src/agent/generated/generatedToolCatalog.json",
     import.meta.url
 );
 

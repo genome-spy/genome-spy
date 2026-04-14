@@ -1,4 +1,4 @@
-import type { AgentIntentProgramStep } from "./generatedActionTypes.js";
+import type { AgentIntentProgramStep } from "./generated/generatedActionTypes.js";
 
 export interface AgentIntentProgram {
     schemaVersion: 1;

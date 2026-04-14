@@ -19,10 +19,10 @@ From intent actions and action info sources:
 Rationale: enables programmatic validation of LLM-proposed steps.
 
 Current implementation:
-- `generatedActionCatalog.json` is the machine-facing source for action payloads and examples.
-- `generatedActionSchema.json` is the generated JSON Schema contract for planner-authored intent programs and excludes internal-only `@hidden` payload fields.
+- `generated/generatedActionCatalog.json` is the machine-facing source for action payloads and examples.
+- `generated/generatedActionSchema.json` is the generated JSON Schema contract for planner-authored intent programs and excludes internal-only `@hidden` payload fields.
 - Runtime shape validation uses Ajv against that generated schema.
-- `generatedActionSummaries.json` is the compact presentation layer used in the agent context.
+- `generated/generatedActionSummaries.json` is the compact presentation layer used in the agent context.
 - `actionInfo` and `paramActionInfo` remain the runtime human-readable formatters used by the app UI and provenance rendering.
 - The always-on catalog should stay compact; use a detail lookup such as
   `getActionSchema(actionType)` when the model needs exact field constraints or

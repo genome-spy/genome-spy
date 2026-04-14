@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { generateSchemaText } from "./generateAgentActionSchema.mjs";
 
 const schemaPath = new URL(
-    "../src/agent/generatedActionSchema.json",
+    "../src/agent/generated/generatedActionSchema.json",
     import.meta.url
 );
 

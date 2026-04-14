@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { generateToolSchemaText } from "./generateAgentToolSchema.mjs";
 
 const outputPath = new URL(
-    "../src/agent/generatedToolSchema.json",
+    "../src/agent/generated/generatedToolSchema.json",
     import.meta.url
 );
 

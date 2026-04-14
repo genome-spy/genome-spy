@@ -10,7 +10,7 @@ const execFileAsync = promisify(execFile);
 // The planner tool input contract is defined in src/agent/agentToolInputs.d.ts.
 // This script projects that documented contract into JSON Schema.
 const schemaPath = new URL(
-    "../src/agent/generatedToolSchema.json",
+    "../src/agent/generated/generatedToolSchema.json",
     import.meta.url
 );
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -58,7 +58,7 @@ export async function writeGeneratedToolSchema() {
     const generated = await generateToolSchemaText();
     await writeFile(schemaPath, generated);
 
-    console.log("Wrote app/src/agent/generatedToolSchema.json");
+    console.log("Wrote app/src/agent/generated/generatedToolSchema.json");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

@@ -38,6 +38,7 @@ const outputPath = path.join(
     packageDir,
     "src",
     "agent",
+    "generated",
     "generatedActionCatalog.json"
 );
 

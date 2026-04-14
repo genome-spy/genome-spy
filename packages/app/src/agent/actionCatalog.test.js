@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { describe, expect, it } from "vitest";
 import templateResultToString from "../utils/templateResultToString.js";
-import generatedActionCatalog from "./generatedActionCatalog.json" with { type: "json" };
+import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
 import {
     getActionCatalogEntry,
     listAgentActions,

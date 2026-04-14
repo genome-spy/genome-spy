@@ -16,6 +16,7 @@ const outputPath = path.join(
     packageDir,
     "src",
     "agent",
+    "generated",
     "generatedActionSummaries.json"
 );
 

@@ -11,6 +11,7 @@ const outputPath = path.join(
     packageDir,
     "src",
     "agent",
+    "generated",
     "generatedActionTypes.ts"
 );
 

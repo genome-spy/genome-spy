@@ -72,9 +72,9 @@ agent artifacts in `packages/app/src/agent`.
 
 Relevant existing files include:
 
-- `packages/app/src/agent/generatedActionSchema.json`
-- `packages/app/src/agent/generatedActionCatalog.json`
-- `packages/app/src/agent/generatedActionSummaries.json`
+- `packages/app/src/agent/generated/generatedActionSchema.json`
+- `packages/app/src/agent/generated/generatedActionCatalog.json`
+- `packages/app/src/agent/generated/generatedActionSummaries.json`
 - `packages/app/src/agent/schemaContract.ts`
 - `packages/app/src/agent/types.d.ts`
 - `packages/app/src/agent/contextBuilder.js`
@@ -111,9 +111,9 @@ service consumes artifacts, not implementation code.
 
 For `v0.0.1`, the contract bundle should include:
 
-- `generatedActionSchema.json`
-- `generatedActionCatalog.json`
-- `generatedActionSummaries.json`
+- `generated/generatedActionSchema.json`
+- `generated/generatedActionCatalog.json`
+- `generated/generatedActionSummaries.json`
 - `agentContext.schema.json`
 - `planRequest.schema.json`
 - `planResponse.schema.json`
@@ -203,9 +203,9 @@ Context:
   one provider's request/response shape into the overall server architecture.
 
 Existing files in GenomeSpy:
-- `packages/app/src/agent/generatedActionSchema.json`
-- `packages/app/src/agent/generatedActionCatalog.json`
-- `packages/app/src/agent/generatedActionSummaries.json`
+- `packages/app/src/agent/generated/generatedActionSchema.json`
+- `packages/app/src/agent/generated/generatedActionCatalog.json`
+- `packages/app/src/agent/generated/generatedActionSummaries.json`
 - `packages/app/src/agent/schemaContract.ts`
 - `packages/app/src/agent/types.d.ts`
 - `packages/app/src/agent/contextBuilder.js`

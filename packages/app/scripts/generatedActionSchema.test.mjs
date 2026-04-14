@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import generatedActionSchema from "../src/agent/generatedActionSchema.json" with {
+import generatedActionSchema from "../src/agent/generated/generatedActionSchema.json" with {
     type: "json",
 };
-import generatedActionCatalog from "../src/agent/generatedActionCatalog.json" with {
+import generatedActionCatalog from "../src/agent/generated/generatedActionCatalog.json" with {
     type: "json",
 };
 

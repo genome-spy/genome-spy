@@ -7,7 +7,7 @@ import type { AggregationOp } from "../sampleView/types.d.ts";
 import type {
     AgentActionType as GeneratedAgentActionType,
     AgentIntentProgramStep as GeneratedAgentIntentProgramStep,
-} from "./generatedActionTypes.js";
+} from "./generated/generatedActionTypes.js";
 import type { ViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import type { ParamValue } from "../state/paramProvenanceTypes.d.ts";
 
