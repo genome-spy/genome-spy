@@ -88,4 +88,37 @@ describe("actionShapeValidator", () => {
         expect(result.ok).toBe(false);
         expect(result.errors.join("\n")).toContain("at least 1 item");
     });
+
+    it("does not report unrelated step-branch errors for a known actionType", () => {
+        const result = validateIntentProgramShape({
+            schemaVersion: 1,
+            steps: [
+                {
+                    actionType: "paramProvenance/paramChange",
+                    payload: {
+                        selector: {
+                            scope: [],
+                            param: "brush",
+                        },
+                        value: {
+                            type: "interval",
+                            intervals: {
+                                x: [
+                                    { chrom: "chr17", pos: 43044294 },
+                                    { chrom: "chr17", pos: 43125364 },
+                                    { chrom: "chr13", pos: 32315507 },
+                                    { chrom: "chr13", pos: 32400268 },
+                                ],
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(result.ok).toBe(false);
+        const message = result.errors.join("\n");
+        expect(message).toContain("must contain at most 2 item(s)");
+        expect(message).not.toContain("sampleView/groupCustomCategories");
+    });
 });

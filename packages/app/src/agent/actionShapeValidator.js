@@ -23,10 +23,32 @@ function createSchemaWrapper(schema) {
     };
 }
 
-const intentProgramSchema = createSchemaWrapper(
-    generatedActionSchema.definitions.AgentIntentProgram
+const intentProgramContainerSchema = createSchemaWrapper({
+    ...generatedActionSchema.definitions.AgentIntentProgram,
+    properties: {
+        ...generatedActionSchema.definitions.AgentIntentProgram.properties,
+        steps: {
+            type: "array",
+            minItems: 1,
+            items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["actionType", "payload"],
+                properties: {
+                    actionType: {
+                        type: "string",
+                    },
+                    payload: {
+                        type: "object",
+                    },
+                },
+            },
+        },
+    },
+});
+const validateIntentProgramContainerSchema = ajv.compile(
+    intentProgramContainerSchema
 );
-const validateIntentProgramSchema = ajv.compile(intentProgramSchema);
 
 const stepVariants =
     generatedActionSchema.definitions.AgentIntentProgramStep.anyOf;
@@ -71,25 +93,64 @@ export function validateIntentProgramShape(program) {
         }
     }
 
-    if (validateIntentProgramSchema(program)) {
+    if (!validateIntentProgramContainerSchema(program)) {
         return {
-            ok: true,
-            errors: [],
+            ok: false,
+            errors: formatAjvErrors(
+                "$",
+                validateIntentProgramContainerSchema.errors
+            ),
         };
     }
 
+    if (program && typeof program === "object") {
+        const candidate = /** @type {{ steps?: unknown[] }} */ (program);
+        if (Array.isArray(candidate.steps)) {
+            /** @type {string[]} */
+            const errors = [];
+            for (const [index, step] of candidate.steps.entries()) {
+                const action =
+                    /** @type {{ actionType?: unknown; payload?: unknown }} */ (
+                        step
+                    );
+                if (typeof action.actionType !== "string") {
+                    continue;
+                }
+
+                const payloadValidation = validateActionPayloadShape(
+                    /** @type {import("./types.js").AgentActionType} */ (
+                        action.actionType
+                    ),
+                    action.payload,
+                    `$.steps[${index}].payload`
+                );
+                if (!payloadValidation.ok) {
+                    errors.push(...payloadValidation.errors);
+                }
+            }
+
+            if (errors.length) {
+                return {
+                    ok: false,
+                    errors,
+                };
+            }
+        }
+    }
+
     return {
-        ok: false,
-        errors: formatAjvErrors("$", validateIntentProgramSchema.errors),
+        ok: true,
+        errors: [],
     };
 }
 
 /**
  * @param {import("./types.js").AgentActionType} actionType
  * @param {unknown} payload
+ * @param {string} [prefix]
  * @returns {import("./types.js").ShapeValidationResult}
  */
-export function validateActionPayloadShape(actionType, payload) {
+export function validateActionPayloadShape(actionType, payload, prefix = "$") {
     const validator = payloadValidatorsByActionType.get(actionType);
     if (!validator) {
         return {
@@ -107,6 +168,6 @@ export function validateActionPayloadShape(actionType, payload) {
 
     return {
         ok: false,
-        errors: formatAjvErrors("$", validator.errors),
+        errors: formatAjvErrors(prefix, validator.errors),
     };
 }
