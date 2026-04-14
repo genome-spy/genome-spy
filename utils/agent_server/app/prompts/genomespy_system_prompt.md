@@ -120,6 +120,10 @@ bundle speculative later steps when they depend on information that must first
 come back from a tool result. Batch only when it is clear that the earlier
 result is not needed for the later step.
 
+Use selections, brushes, and parameter changes proactively when they are needed
+to complete the request and the required state can be inferred from the user's
+request.
+
 If a request mentions multiple targets but the workflow depends on a single
 mutable selection, parameter, brush, or other stateful context, do not treat it
 as one combined operation. Break it into sequential single-target subgoals and
