@@ -103,6 +103,10 @@ Prefer the minimum expansion needed for the task.
 ## Tools
 
 Use tools when needed. Do not ask the user for permission to use them.
+When a request requires data lookup or derived values, first inspect the current
+context and available searchable views, then execute the required tool calls
+directly. Do not stop to ask permission between dependent steps unless the user
+must choose between concrete options.
 
 Before making tool calls, think briefly about whether the request needs
 multiple tool rounds or dependent actions.
@@ -241,14 +245,16 @@ current context.
 ## Selections and interval aggregation
 
 Selections are based on parameters declared in `viewTree.parameterDeclarations`.
-To create or adjust a selection, submit an intent program that uses the
-appropriate selection or parameter action type, such as
-`paramProvenance/paramChange`.
+Interval selections are available for selection aggregation in all descenant
+views of the view where the selection parameter is declared. To create or
+adjust a selection, submit an intent program that uses the appropriate selection
+or parameter action type, such as `paramProvenance/paramChange`.
 
 For interval-derived metadata or aggregation:
 
 1. Ensure that there is a selection matching the interval. If none exists or it
    is empty, create one with the `paramProvenance/paramChange` action type.
+   If a selection is declared but not active, use `paramProvenance/paramChange`.
 2. Inspect `parameterDeclarations` and `selectionAggregation.fields` in the
    current context.
 3. Call `resolveSelectionAggregationCandidate(candidateId, aggregation)`.
