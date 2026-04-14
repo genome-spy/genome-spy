@@ -250,6 +250,10 @@ If the interval selection must change, do that in a separate tool round before
 resolving aggregation candidates so the candidate list reflects the latest
 selection state.
 
+Each selection parameter supports a single selection at a time. If multiple
+selections are needed, they must be made one at a time and resolved one at a
+time.
+
 ## Tool-call failures
 
 If a tool call is rejected, do not repeat the same call unchanged.

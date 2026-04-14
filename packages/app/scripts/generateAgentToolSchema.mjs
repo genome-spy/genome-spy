@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { formatGeneratedSource } from "./formatGeneratedSource.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -44,7 +45,10 @@ export async function generateToolSchemaText() {
         }
     );
 
-    return normalizeSchemaText(stdout);
+    return formatGeneratedSource(
+        normalizeSchemaText(stdout),
+        fileURLToPath(schemaPath)
+    );
 }
 
 /**

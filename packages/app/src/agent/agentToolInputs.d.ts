@@ -116,10 +116,10 @@ export interface JumpToInitialProvenanceStateToolInput {}
 
 /**
  * Resolve a selection aggregation candidate into an `AttributeIdentifier`
- * for intent actions. Before using this tool, you must make an interval
- * selection or ensure that one already exists. This tool does not apply
- * any aggregation itself. Use the `submitIntentProgram` tool after using
- * this tool.
+ * that can be used for subsequent intent actions. Before using this tool,
+ * you must make an interval selection using a parameter or ensure that
+ * one already exists. This tool does not apply any aggregation itself.
+ * Use the `submitIntentProgram` tool after using this tool.
  *
  * @example
  * {

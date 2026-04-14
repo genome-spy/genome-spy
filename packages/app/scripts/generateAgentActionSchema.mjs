@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { formatGeneratedSource } from "./formatGeneratedSource.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -25,8 +26,11 @@ function normalizeSchemaText(text) {
  */
 export async function generateSchemaText() {
     const { stdout } = await execFileAsync(
-        "ts-json-schema-generator",
+        "npm",
         [
+            "exec",
+            "--",
+            "ts-json-schema-generator",
             "--path",
             "src/agent/schemaContract.ts",
             "--type",
@@ -39,7 +43,10 @@ export async function generateSchemaText() {
         }
     );
 
-    return normalizeSchemaText(stdout);
+    return formatGeneratedSource(
+        normalizeSchemaText(stdout),
+        fileURLToPath(schemaPath)
+    );
 }
 
 /**

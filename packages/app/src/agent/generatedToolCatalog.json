@@ -113,7 +113,7 @@
   },
   {
     "toolName": "resolveSelectionAggregationCandidate",
-    "description": "Resolve a selection aggregation candidate into an `AttributeIdentifier` for intent actions.",
+    "description": "Resolve a selection aggregation candidate into an `AttributeIdentifier` that can be used for subsequent intent actions.",
     "inputType": "ResolveSelectionAggregationCandidateToolInput",
     "inputFields": [
       {

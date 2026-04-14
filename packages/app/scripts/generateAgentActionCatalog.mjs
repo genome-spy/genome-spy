@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { formatGeneratedSource } from "./formatGeneratedSource.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(scriptDir, "..");
@@ -451,7 +452,10 @@ export async function createGeneratedActionCatalog() {
  * @returns {string}
  */
 export async function renderGeneratedActionCatalog(generatedActionCatalog) {
-    return JSON.stringify(generatedActionCatalog, null, 2) + "\n";
+    return formatGeneratedSource(
+        JSON.stringify(generatedActionCatalog, null, 2) + "\n",
+        outputPath
+    );
 }
 
 /**
