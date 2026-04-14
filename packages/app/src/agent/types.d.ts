@@ -1276,8 +1276,4 @@ export type AgentTurnResponse =
           toolCalls: AgentToolCall[];
           message?: string;
       }
-    | {
-          type: "intent_program";
-          program: IntentProgram;
-      }
     | never;

@@ -25,7 +25,6 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  *         | "user"
  *         | "assistant"
  *         | "clarification"
- *         | "proposal"
  *         | "result"
  *         | "tool_call"
  *         | "tool_result"
@@ -359,10 +358,6 @@ export default class AgentChatPanel extends LitElement {
 
             .assistant-body .markdown > :last-child {
                 margin-bottom: 0;
-            }
-
-            .message.proposal {
-                border-left-color: #b98f2d;
             }
 
             .message.result {
@@ -765,29 +760,6 @@ export default class AgentChatPanel extends LitElement {
                                   `
                               )}
                           </div>`
-                        : nothing}
-                    ${this.#renderTimingNote(message.durationMs)}
-                </article>
-            `;
-        } else if (message.kind === "proposal") {
-            return html`
-                <article class="message proposal">
-                    <div class="message-title">
-                        ${icon(faInfoCircle).node[0]} Proposal preview
-                    </div>
-                    ${message.text
-                        ? html`<div class="message-text">
-                              ${this.#renderMarkdown(message.text)}
-                          </div>`
-                        : nothing}
-                    ${message.lines?.length
-                        ? html`
-                              <ul class="message-lines">
-                                  ${message.lines.map(
-                                      (line) => html`<li>${line.content}</li>`
-                                  )}
-                              </ul>
-                          `
                         : nothing}
                     ${this.#renderTimingNote(message.durationMs)}
                 </article>

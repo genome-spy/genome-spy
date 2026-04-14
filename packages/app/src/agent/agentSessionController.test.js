@@ -6,20 +6,17 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 /**
  * @returns {{
  *     requestAgentTurn: ReturnType<typeof vi.fn>;
- *     validateIntentProgram: ReturnType<typeof vi.fn>;
  *     submitIntentProgram: ReturnType<typeof vi.fn>;
  *     getAgentContext: ReturnType<typeof vi.fn>;
  *     resolveViewSelector: ReturnType<typeof vi.fn>;
  *     setViewVisibility: ReturnType<typeof vi.fn>;
  *     clearViewVisibility: ReturnType<typeof vi.fn>;
  *     summarizeExecutionResult: ReturnType<typeof vi.fn>;
- *     summarizeIntentProgram: ReturnType<typeof vi.fn>;
  * }}
  */
 function createRuntimeMock() {
     return {
         requestAgentTurn: vi.fn(),
-        validateIntentProgram: vi.fn(),
         submitIntentProgram: vi.fn(),
         getAgentContext: vi.fn(() => ({
             selectionAggregation: {
@@ -32,7 +29,6 @@ function createRuntimeMock() {
         setViewVisibility: vi.fn(),
         clearViewVisibility: vi.fn(),
         summarizeExecutionResult: vi.fn(),
-        summarizeIntentProgram: vi.fn(),
     };
 }
 
@@ -725,14 +721,6 @@ describe("createAgentSessionController", () => {
                 },
             });
         });
-        runtime.validateIntentProgram.mockReturnValue({
-            ok: true,
-            errors: [],
-            program: {
-                schemaVersion: 1,
-                steps: [],
-            },
-        });
         runtime.submitIntentProgram.mockResolvedValue({
             ok: true,
             executedActions: 0,
@@ -742,7 +730,6 @@ describe("createAgentSessionController", () => {
                 steps: [],
             },
         });
-        runtime.summarizeIntentProgram.mockReturnValue([]);
         runtime.summarizeExecutionResult.mockReturnValue("Executed 0 actions.");
 
         const controller = createAgentSessionController(runtime);

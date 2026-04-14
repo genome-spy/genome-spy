@@ -3,7 +3,7 @@ import { createAgentSessionController } from "./agentSessionController.js";
 import "./chatPanel.js";
 
 /**
- * @typedef {"answer" | "clarify" | "intent_program" | "tool_call" | "error"} MockScenario
+ * @typedef {"answer" | "clarify" | "tool_call" | "error"} MockScenario
  */
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
@@ -15,7 +15,7 @@ export default {
     title: "Agent/ChatPanel",
     tags: ["autodocs"],
     args: {
-        scenario: "intent_program",
+        scenario: "tool_call",
         streamDelayMs: 0,
         heartbeatIntervalMs: 0,
     },
@@ -23,13 +23,7 @@ export default {
         scenario: {
             control: {
                 type: "select",
-                options: [
-                    "answer",
-                    "clarify",
-                    "intent_program",
-                    "tool_call",
-                    "error",
-                ],
+                options: ["answer", "clarify", "tool_call", "error"],
             },
         },
         preflightDelayMs: {
@@ -311,33 +305,24 @@ function createMockAgentController(scenario, options = {}) {
 
             return {
                 response: {
-                    type: "intent_program",
-                    program: buildMockIntentProgram(normalized),
+                    type: "tool_call",
+                    message:
+                        "I should submit an intent program to sort the samples.",
+                    toolCalls: [
+                        {
+                            callId: "call_submit_intent_program",
+                            name: "submitIntentProgram",
+                            arguments: /** @type {any} */ ({
+                                program: buildMockIntentProgram(normalized),
+                            }),
+                        },
+                    ],
                 },
                 trace: {
                     message,
                     totalMs: 18,
                 },
             };
-        },
-        validateIntentProgram: (/** @type {any} */ program) => {
-            if (
-                !program ||
-                typeof program !== "object" ||
-                !Array.isArray(program.steps) ||
-                program.steps.length === 0
-            ) {
-                return /** @type {any} */ ({
-                    ok: false,
-                    errors: ["The mock agent turn did not return any steps."],
-                });
-            }
-
-            return /** @type {any} */ ({
-                ok: true,
-                errors: [],
-                program,
-            });
         },
         submitIntentProgram: async (/** @type {any} */ program) => {
             const summaries = program.steps.map((/** @type {any} */ step) =>
@@ -358,10 +343,6 @@ function createMockAgentController(scenario, options = {}) {
                     (/** @type {any} */ summary) => summary.text
                 ),
             ].join("\n"),
-        summarizeIntentProgram: (/** @type {any} */ program) =>
-            program.steps.map((/** @type {any} */ step) =>
-                summarizeMockStep(step)
-            ),
     });
 
     return createAgentSessionController(runtime);
@@ -611,7 +592,7 @@ export const Clarify = {
 
 export const IntentProgram = {
     args: {
-        scenario: "intent_program",
+        scenario: "tool_call",
     },
     render: renderChatPanel,
 };
@@ -632,7 +613,7 @@ export const ToolCall = {
 
 export const PreflightPending = {
     args: {
-        scenario: "intent_program",
+        scenario: "tool_call",
         preflightDelayMs: 1600,
     },
     render: renderChatPanel,

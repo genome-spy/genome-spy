@@ -17,7 +17,6 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
 /** @typedef {import("./types.d.ts").IntentProgram} IntentProgram */
 /** @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult */
 /** @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine */
-/** @typedef {import("./types.d.ts").IntentProgramValidationResult} IntentProgramValidationResult */
 /** @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions */
 /** @typedef {import("./types.d.ts").AgentContext} AgentContext */
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
@@ -68,7 +67,6 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
  *         | "user"
  *         | "assistant"
  *         | "clarification"
- *         | "proposal"
  *         | "result"
  *         | "tool_call"
  *         | "tool_result"
@@ -103,7 +101,6 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
  *         contextOptions?: AgentContextOptions,
  *         signal?: AbortSignal
  *     ): Promise<{ response: ChatAgentTurnResponse; trace: Record<string, any> }>;
- *     validateIntentProgram(program: unknown): IntentProgramValidationResult;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
  *     jumpToProvenanceState(provenanceId: string): boolean;
@@ -114,7 +111,6 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
  *     setViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector, visibility: boolean): void;
  *     clearViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): void;
  *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
- *     summarizeIntentProgram(program: IntentProgram): IntentProgramSummaryLine[];
  * }} AgentSessionRuntime
  */
 
@@ -550,8 +546,7 @@ export class AgentSessionController {
             "type" in response &&
             (response.type === "answer" ||
                 response.type === "clarify" ||
-                response.type === "tool_call" ||
-                response.type === "intent_program")
+                response.type === "tool_call")
         );
     }
 
@@ -764,7 +759,6 @@ export class AgentSessionController {
                     message.kind === "user" ||
                     message.kind === "assistant" ||
                     message.kind === "clarification" ||
-                    message.kind === "proposal" ||
                     message.kind === "result" ||
                     message.kind === "tool_call" ||
                     message.kind === "tool_result"
@@ -874,14 +868,6 @@ export class AgentSessionController {
             return;
         }
 
-        if (response.type === "intent_program") {
-            await this.#executeIntentProgram(
-                response.program,
-                durationMs ?? null
-            );
-            return;
-        }
-
         const exhaustiveCheck = /** @type {never} */ (response);
         this.#appendMessage({
             kind: "error",
@@ -889,59 +875,6 @@ export class AgentSessionController {
         });
         this.#state.status = "error";
         this.#state.lastError = "Unsupported agent response.";
-        this.#notify();
-    }
-
-    /**
-     * Executes an agent-authored intent program and records the result.
-     *
-     * @param {IntentProgram} program
-     * @param {number | null} durationMs
-     * @returns {Promise<void>}
-     */
-    async #executeIntentProgram(program, durationMs) {
-        const proposalLines = this.#runtime.summarizeIntentProgram(program);
-
-        this.#appendMessage({
-            kind: "proposal",
-            text:
-                program.rationale ?? "The agent proposed a multi-step action.",
-            lines: proposalLines,
-            durationMs,
-        });
-
-        this.#state.status = "executing";
-        this.#notify();
-
-        const validation = this.#runtime.validateIntentProgram(program);
-        if (!validation.ok || !validation.program) {
-            const validationMessage = validation.errors.join("\n");
-            this.#appendMessage({
-                kind: "error",
-                text: validationMessage,
-            });
-            this.#state.status = "error";
-            this.#state.lastError = validationMessage;
-            this.#notify();
-            return;
-        }
-
-        const result = await this.#runtime.submitIntentProgram(
-            validation.program
-        );
-        this.#appendMessage({
-            kind: "result",
-            text:
-                "Executed " +
-                result.executedActions +
-                " action" +
-                (result.executedActions === 1 ? "" : "s") +
-                ".",
-            content: result.content,
-            lines: result.summaries,
-        });
-        this.#state.status = "ready";
-        this.#state.lastError = "";
         this.#notify();
     }
 
