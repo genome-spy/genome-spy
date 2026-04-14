@@ -18,6 +18,7 @@ or duplicating logic that already exists in the view and collector pipeline.
 - View selector creation and resolution: [`viewSelectors.js`](../../core/src/view/viewSelectors.js)
 - Collector wiring in the view pipeline: [`flowBuilder.js`](../../core/src/view/flowBuilder.js)
 - Collector implementation: [`collector.js`](../../core/src/data/collector.js)
+- Existing simple statistics helpers: [`boxplot.js`](../../utils/statistics/boxplot.js)
 
 ## Status
 
