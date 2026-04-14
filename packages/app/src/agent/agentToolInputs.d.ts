@@ -143,6 +143,47 @@ export interface ResolveSelectionAggregationCandidateToolInput {
 }
 
 /**
+ * Search datum objects in one specific searchable view.
+ *
+ * @example
+ * {
+ *   "selector": {
+ *     "scope": [],
+ *     "view": "gene-track"
+ *   },
+ *   "query": "TP53"
+ * }
+ */
+export interface SearchViewDatumsToolInput {
+    /**
+     * Stable selector for the searchable view to inspect.
+     */
+    selector: ViewSelector;
+
+    /**
+     * Search term to match against the view's configured search fields.
+     * If `field` is omitted, all search fields are matched.
+     */
+    query: string;
+
+    /**
+     * Optional search field name. If omitted, all search fields are searched.
+     */
+    field?: string;
+
+    /**
+     * Search mode. `exact` matches the whole field value. `prefix` matches the
+     * beginning of the field value. Defaults to `exact`.
+     */
+    mode?: "exact" | "prefix";
+
+    /**
+     * Maximum number of matching datums to return.
+     */
+    limit?: number;
+}
+
+/**
  * Execute a provenance-changing intent program with one or more ordered
  * actions. Actions are additive. Before submitting new actions, always
  * consult the current provenance state that defines the state of the
@@ -185,5 +226,6 @@ export interface AgentToolInputs {
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     resolveSelectionAggregationCandidate: ResolveSelectionAggregationCandidateToolInput;
+    searchViewDatums: SearchViewDatumsToolInput;
     submitIntentProgram: SubmitIntentProgramToolInput;
 }

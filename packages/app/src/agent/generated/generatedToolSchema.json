@@ -1079,6 +1079,9 @@
         "resolveSelectionAggregationCandidate": {
           "$ref": "#/definitions/ResolveSelectionAggregationCandidateToolInput"
         },
+        "searchViewDatums": {
+          "$ref": "#/definitions/SearchViewDatumsToolInput"
+        },
         "setViewVisibility": {
           "$ref": "#/definitions/SetViewVisibilityToolInput"
         },
@@ -1094,6 +1097,7 @@
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
         "resolveSelectionAggregationCandidate",
+        "searchViewDatums",
         "submitIntentProgram"
       ],
       "type": "object"
@@ -1205,6 +1209,46 @@
         }
       },
       "required": ["candidateId", "aggregation"],
+      "type": "object"
+    },
+    "SearchViewDatumsToolInput": {
+      "additionalProperties": false,
+      "description": "Search datum objects in one specific searchable view.",
+      "examples": [
+        {
+          "query": "TP53",
+          "selector": {
+            "scope": [],
+            "view": "gene-track"
+          }
+        }
+      ],
+      "properties": {
+        "field": {
+          "description": "Optional search field name. Omit to search all fields.",
+          "type": "string"
+        },
+        "mode": {
+          "description": "Search mode. exact matches the whole field value; prefix matches the start of the field value. Defaults to exact.",
+          "enum": ["exact", "prefix"],
+          "type": "string"
+        },
+        "limit": {
+          "minimum": 1,
+          "description": "Maximum number of matching datums to return.",
+          "type": "number"
+        },
+        "query": {
+          "description": "Search term to match against the view's configured search fields.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "selector": {
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the searchable view to inspect."
+        }
+      },
+      "required": ["selector", "query"],
       "type": "object"
     },
     "SetViewVisibilityToolInput": {

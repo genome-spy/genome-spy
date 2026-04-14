@@ -43,7 +43,22 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
 
 import { getAgentContext } from "./contextBuilder.js";
 
-function createAppStub() {
+function createAppStub(options = {}) {
+    const geneSearchData = options.geneSearchData ?? [
+        {
+            gene_symbol: "TP53",
+            gene_name: "tumor protein p53",
+        },
+        {
+            gene_symbol: "BRCA1",
+            gene_name: "breast cancer 1",
+        },
+        {
+            gene_symbol: "EGFR",
+            gene_name: "epidermal growth factor receptor",
+        },
+    ];
+
     const getAttributeInfo = (attribute) => ({
         name: String(attribute.specifier),
         attribute,
@@ -54,6 +69,72 @@ function createAppStub() {
         valuesProvider: () => [],
         type: attribute.specifier === "purity" ? "quantitative" : "nominal",
     });
+
+    const provenance = [
+        {
+            provenanceId: "provenance-1",
+            type: "paramProvenance/paramChange",
+            summary: "Brush brush (0-1) in Patient Cohort",
+            payload: {
+                selector: { scope: [], param: "brush" },
+                value: { type: "interval", intervals: { x: [0, 1] } },
+            },
+        },
+        {
+            provenanceId: "provenance-2",
+            type: "sampleView/sortBy",
+            summary: "Sort by min(purity) in selection brush",
+            payload: {
+                attribute: {
+                    type: "VALUE_AT_LOCUS",
+                    specifier: {
+                        view: {
+                            scope: ["samples"],
+                            view: "track",
+                        },
+                        field: "purity",
+                        interval: {
+                            type: "selection",
+                            selector: { scope: [], param: "brush" },
+                        },
+                        aggregation: { op: "min" },
+                    },
+                },
+            },
+        },
+    ];
+
+    const getGeneSearchData = vi.fn(() => geneSearchData);
+    const searchCollector = {
+        getData: getGeneSearchData,
+    };
+    const searchView = {
+        name: "gene-track",
+        explicitName: "gene-track",
+        spec: {
+            name: "gene-track",
+            description: "Gene symbols and names.",
+            encoding: {
+                search: [
+                    {
+                        field: "gene_symbol",
+                        description: "Gene symbol",
+                    },
+                    {
+                        field: "gene_name",
+                        description: "Gene name",
+                    },
+                ],
+            },
+        },
+        getTitleText: () => "Gene Symbols",
+        getEncoding: () => searchView.spec.encoding,
+        getSearchAccessors: vi.fn(() => [
+            (datum) => datum.gene_symbol,
+            (datum) => datum.gene_name,
+        ]),
+        getCollector: vi.fn(() => searchCollector),
+    };
 
     const sampleView = {
         name: "samples",
@@ -122,42 +203,13 @@ function createAppStub() {
         view,
     }));
 
-    const provenance = [
-        {
-            provenanceId: "provenance-1",
-            type: "paramProvenance/paramChange",
-            summary: "Brush brush (0-1) in Patient Cohort",
-            payload: {
-                selector: { scope: [], param: "brush" },
-                value: { type: "interval", intervals: { x: [0, 1] } },
-            },
-        },
-        {
-            provenanceId: "provenance-2",
-            type: "sampleView/sortBy",
-            summary: "Sort by min(purity) in selection brush",
-            payload: {
-                attribute: {
-                    type: "VALUE_AT_LOCUS",
-                    specifier: {
-                        view: {
-                            scope: ["samples"],
-                            view: "track",
-                        },
-                        field: "purity",
-                        interval: {
-                            type: "selection",
-                            selector: { scope: [], param: "brush" },
-                        },
-                        aggregation: { op: "min" },
-                    },
-                },
-            },
-        },
-    ];
-
     return {
         getSampleView: () => sampleView,
+        genomeSpy: {
+            getSearchableViews: () => [searchView],
+        },
+        searchView,
+        searchCollector,
         store: {
             getState: () => ({
                 lifecycle: {
@@ -210,13 +262,15 @@ function createAppStub() {
 
 describe("getAgentContext", () => {
     it("keeps the agent context wire shape stable", () => {
-        const context = getAgentContext(createAppStub());
+        const app = createAppStub();
+        const context = getAgentContext(app);
 
         expect(Object.keys(context)).toEqual([
             "schemaVersion",
             "actionCatalog",
             "toolCatalog",
             "attributes",
+            "searchableViews",
             "selectionAggregation",
             "provenance",
             "sampleSummary",
@@ -247,7 +301,8 @@ describe("getAgentContext", () => {
     });
 
     it("builds a compact agent context from app state", () => {
-        const context = getAgentContext(createAppStub());
+        const app = createAppStub();
+        const context = getAgentContext(app);
 
         expect(context.schemaVersion).toBe(1);
         expect(context.sampleSummary).toEqual({
@@ -318,7 +373,35 @@ describe("getAgentContext", () => {
             "jumpToProvenanceState",
             "jumpToInitialProvenanceState",
             "resolveSelectionAggregationCandidate",
+            "searchViewDatums",
             "submitIntentProgram",
+        ]);
+        expect(context.searchableViews).toEqual([
+            expect.objectContaining({
+                selector: {
+                    scope: [],
+                    view: "gene-track",
+                },
+                title: "Gene Symbols",
+                description: "Gene symbols and names.",
+                searchFields: [
+                    {
+                        field: "gene_symbol",
+                        description: "Gene symbol",
+                        examples: ["TP53", "BRCA1", "EGFR"],
+                    },
+                    {
+                        field: "gene_name",
+                        description: "Gene name",
+                        examples: [
+                            "tumor protein p53",
+                            "breast cancer 1",
+                            "epidermal growth factor receptor",
+                        ],
+                    },
+                ],
+                dataFields: ["gene_symbol", "gene_name"],
+            }),
         ]);
         expect(context.selectionAggregation.fields).toEqual([]);
         expect(context.provenance).toEqual([
@@ -332,6 +415,60 @@ describe("getAgentContext", () => {
                 type: "sampleView/sortBy",
                 provenanceId: "provenance-2",
             }),
+        ]);
+    });
+
+    it("caches searchable view examples across context rebuilds", () => {
+        const app = createAppStub();
+
+        const firstContext = getAgentContext(app);
+        const secondContext = getAgentContext(app);
+
+        expect(firstContext.searchableViews).toEqual(
+            secondContext.searchableViews
+        );
+        expect(app.searchView.getSearchAccessors).toHaveBeenCalledTimes(1);
+        expect(app.searchView.getCollector).toHaveBeenCalledTimes(1);
+        expect(app.searchCollector.getData).toHaveBeenCalledTimes(1);
+    });
+
+    it("caps searchable view examples per field", () => {
+        const app = createAppStub({
+            geneSearchData: [
+                {
+                    gene_symbol: "TP53",
+                    gene_name: "tumor protein p53",
+                },
+                {
+                    gene_symbol: "BRCA1",
+                    gene_name: "breast cancer 1",
+                },
+                {
+                    gene_symbol: "EGFR",
+                    gene_name: "epidermal growth factor receptor",
+                },
+                {
+                    gene_symbol: "MYC",
+                    gene_name: "myelocytomatosis",
+                },
+                {
+                    gene_symbol: "PTEN",
+                    gene_name: "phosphatase and tensin homolog",
+                },
+            ],
+        });
+
+        const context = getAgentContext(app);
+
+        expect(context.searchableViews[0].searchFields[0].examples).toEqual([
+            "TP53",
+            "BRCA1",
+            "EGFR",
+        ]);
+        expect(context.searchableViews[0].searchFields[1].examples).toEqual([
+            "tumor protein p53",
+            "breast cancer 1",
+            "epidermal growth factor receptor",
         ]);
     });
 });

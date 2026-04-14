@@ -19,18 +19,20 @@ describe("toolCatalog", () => {
             "jumpToProvenanceState",
             "jumpToInitialProvenanceState",
             "resolveSelectionAggregationCandidate",
+            "searchViewDatums",
             "submitIntentProgram",
         ]);
         expect(tools[4].strict).toBe(true);
         expect(tools[5].strict).toBe(true);
         expect(tools[6].strict).toBe(true);
         expect(tools[7].strict).toBe(false);
+        expect(tools[8].strict).toBe(false);
     });
 
     it("builds Responses API function tool definitions", () => {
         const toolDefinitions = buildResponsesToolDefinitions();
 
-        expect(toolDefinitions).toHaveLength(8);
+        expect(toolDefinitions).toHaveLength(9);
         expect(toolDefinitions[0]).toEqual(
             expect.objectContaining({
                 type: "function",
@@ -62,8 +64,17 @@ describe("toolCatalog", () => {
         );
         expect(toolDefinitions[6].parameters.type).toBe("object");
         expect(toolDefinitions[6].strict).toBe(true);
+        expect(toolDefinitions[7].name).toBe("searchViewDatums");
         expect(toolDefinitions[7].parameters.type).toBe("object");
+        expect(toolDefinitions[7].parameters.properties.mode).toEqual({
+            type: "string",
+            enum: ["exact", "prefix"],
+            description:
+                "Search mode. exact matches the whole field value; prefix matches the start of the field value. Defaults to exact.",
+        });
         expect(toolDefinitions[7].strict).toBe(false);
+        expect(toolDefinitions[8].parameters.type).toBe("object");
+        expect(toolDefinitions[8].strict).toBe(false);
     });
 
     it("validates tool arguments against the generated schema", () => {

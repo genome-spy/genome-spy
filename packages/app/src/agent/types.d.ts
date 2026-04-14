@@ -504,6 +504,91 @@ export interface AgentViewTreeRoot {
 }
 
 /**
+ * Summary of a searchable field configured on a view.
+ */
+export interface AgentSearchableFieldSummary {
+    /**
+     * Search field name.
+     */
+    field: string;
+
+    /**
+     * Human-readable field description, if available.
+     */
+    description?: string;
+
+    /**
+     * Cached example strings for the field.
+     */
+    examples: string[];
+}
+
+/**
+ * Summary of a searchable view exposed to the agent.
+ */
+export interface AgentSearchableViewSummary {
+    /**
+     * Stable selector for the underlying view.
+     */
+    selector: ViewSelector;
+
+    /**
+     * Human-readable title for the searchable view.
+     */
+    title: string;
+
+    /**
+     * Human-readable description of the searchable view, if available.
+     */
+    description?: string;
+
+    /**
+     * Searchable fields configured on the view.
+     */
+    searchFields: AgentSearchableFieldSummary[];
+
+    /**
+     * Datum field names present in the lookup result objects.
+     */
+    dataFields: string[];
+}
+
+/**
+ * Result of looking up datum objects in a searchable view.
+ */
+export interface AgentSearchableViewDatumLookupResult {
+    /**
+     * Content discriminator.
+     */
+    kind: "datum_lookup_result";
+
+    /**
+     * Structured selector for the searched view.
+     */
+    selector: ViewSelector;
+
+    /**
+     * Lookup query that was executed.
+     */
+    query: string;
+
+    /**
+     * Search mode that was used.
+     */
+    mode: "exact" | "prefix";
+
+    /**
+     * Number of matching datums returned.
+     */
+    count: number;
+
+    /**
+     * Matching datum objects.
+     */
+    matches: unknown[];
+}
+
+/**
  * Bookmarkable provenance action exposed to the agent.
  */
 export interface AgentProvenanceAction {
@@ -1019,6 +1104,11 @@ export interface AgentContext {
      * Available attributes in the current sample collection.
      */
     attributes: AgentAttributeSummary[];
+
+    /**
+     * Searchable views exposed to the agent for datum lookup.
+     */
+    searchableViews: AgentSearchableViewSummary[];
 
     /**
      * Selection-derived aggregation candidates exposed to the agent.

@@ -207,6 +207,8 @@ def test_default_system_prompt_is_markdown_text() -> None:
 
     assert "genomespy_plan_response" in prompt
     assert "message" in prompt
+    assert "searchableViews" in prompt
+    assert "searchViewDatums" in prompt
 
 
 def test_startup_summary_logs_provider_and_masked_key(

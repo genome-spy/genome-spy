@@ -11,7 +11,8 @@ import {
 } from "./toolCallLoop.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
 import { looksLikeStructuredToolMessage } from "./messageDetection.js";
-import { ToolCallRejectionError, agentTools } from "./agentTools.js";
+import { ToolCallRejectionError } from "./agentToolErrors.js";
+import { agentTools } from "./agentTools.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
 /** @typedef {import("./types.d.ts").IntentProgram} IntentProgram */

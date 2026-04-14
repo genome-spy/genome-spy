@@ -1,4 +1,6 @@
 import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool.js";
+import { ToolCallRejectionError } from "./agentToolErrors.js";
+import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 
 /*
  * Tool behavior lives here. The input shapes and user-facing descriptions are
@@ -37,11 +39,6 @@ import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool
  */
 
 /**
- * Error thrown for expected agent-facing tool rejections.
- */
-export class ToolCallRejectionError extends Error {}
-
-/**
  * @typedef {{
  *     text: string;
  *     content?: unknown;
@@ -61,6 +58,7 @@ export const agentTools = {
     jumpToInitialProvenanceState,
     resolveSelectionAggregationCandidate:
         resolveSelectionAggregationCandidateTool,
+    searchViewDatums: searchViewDatumsTool,
     submitIntentProgram: submitIntentProgramTool,
 };
 

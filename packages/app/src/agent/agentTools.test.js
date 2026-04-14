@@ -1,10 +1,45 @@
 import { describe, expect, it, vi } from "vitest";
-import { ToolCallRejectionError, agentTools } from "./agentTools.js";
+import { ToolCallRejectionError } from "./agentToolErrors.js";
+import { agentTools } from "./agentTools.js";
 
 function createRuntimeStub() {
     let expanded = false;
     let visible = true;
+    const searchData = [
+        {
+            gene_symbol: "TP53",
+            gene_name: "tumor protein p53",
+        },
+        {
+            gene_symbol: "BRCA1",
+            gene_name: "breast cancer 1",
+        },
+    ];
     const view = {
+        explicitName: "gene-track",
+        name: "gene-track",
+        spec: {
+            name: "gene-track",
+            encoding: {
+                search: [
+                    {
+                        field: "gene_symbol",
+                    },
+                    {
+                        field: "gene_name",
+                    },
+                ],
+            },
+        },
+        getTitleText: vi.fn(() => "Gene Symbols"),
+        getEncoding: vi.fn(() => view.spec.encoding),
+        getSearchAccessors: vi.fn(() => [
+            (datum) => datum.gene_symbol,
+            (datum) => datum.gene_name,
+        ]),
+        getCollector: vi.fn(() => ({
+            getData: vi.fn(() => searchData),
+        })),
         isVisible: vi.fn(() => visible),
     };
 
@@ -134,6 +169,178 @@ describe("agentTools", () => {
             })
         );
         expect(runtime.getAgentContext).toHaveBeenCalledTimes(1);
+    });
+
+    it("looks up datums in one searchable view", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.searchViewDatums(runtime, {
+            selector: {
+                scope: [],
+                view: "gene-track",
+            },
+            query: "tp53",
+        });
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                text: "Found 1 matching datum.",
+                content: expect.objectContaining({
+                    kind: "datum_lookup_result",
+                    query: "tp53",
+                    mode: "exact",
+                    count: 1,
+                    selector: {
+                        scope: [],
+                        view: "gene-track",
+                    },
+                    matches: [
+                        {
+                            gene_symbol: "TP53",
+                            gene_name: "tumor protein p53",
+                        },
+                    ],
+                }),
+            })
+        );
+        expect(runtime.resolveViewSelector).toHaveBeenCalledWith({
+            scope: [],
+            view: "gene-track",
+        });
+    });
+
+    it("searches all configured fields when field is omitted", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.searchViewDatums(runtime, {
+            selector: {
+                scope: [],
+                view: "gene-track",
+            },
+            query: "breast cancer 1",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "datum_lookup_result",
+                query: "breast cancer 1",
+                mode: "exact",
+                count: 1,
+                matches: [
+                    {
+                        gene_symbol: "BRCA1",
+                        gene_name: "breast cancer 1",
+                    },
+                ],
+            })
+        );
+    });
+
+    it("restricts lookup to one configured field when field is provided", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.searchViewDatums(runtime, {
+            selector: {
+                scope: [],
+                view: "gene-track",
+            },
+            query: "breast cancer 1",
+            field: "gene_name",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "datum_lookup_result",
+                query: "breast cancer 1",
+                mode: "exact",
+                count: 1,
+                matches: [
+                    {
+                        gene_symbol: "BRCA1",
+                        gene_name: "breast cancer 1",
+                    },
+                ],
+            })
+        );
+        expect(runtime.resolveViewSelector).toHaveBeenCalledWith({
+            scope: [],
+            view: "gene-track",
+        });
+    });
+
+    it("returns no matches when the requested field does not match", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.searchViewDatums(runtime, {
+            selector: {
+                scope: [],
+                view: "gene-track",
+            },
+            query: "breast cancer 1",
+            field: "gene_symbol",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "datum_lookup_result",
+                query: "breast cancer 1",
+                mode: "exact",
+                count: 0,
+                matches: [],
+            })
+        );
+    });
+
+    it("supports prefix matching", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.searchViewDatums(runtime, {
+            selector: {
+                scope: [],
+                view: "gene-track",
+            },
+            query: "breast",
+            mode: "prefix",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "datum_lookup_result",
+                query: "breast",
+                mode: "prefix",
+                count: 1,
+                matches: [
+                    {
+                        gene_symbol: "BRCA1",
+                        gene_name: "breast cancer 1",
+                    },
+                ],
+            })
+        );
+    });
+
+    it("rejects datum lookup on a non-searchable view", () => {
+        const runtime = createRuntimeStub();
+        runtime.resolveViewSelector.mockReturnValueOnce({
+            explicitName: "track",
+            name: "track",
+        });
+        const tools = agentTools;
+
+        expect(() =>
+            tools.searchViewDatums(runtime, {
+                selector: {
+                    scope: [],
+                    view: "track",
+                },
+                query: "TP53",
+            })
+        ).toThrow(ToolCallRejectionError);
     });
 
     it("activates provenance states through the runtime", () => {

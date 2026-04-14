@@ -265,6 +265,19 @@ If a tool call is rejected, do not repeat the same call unchanged.
 Do not mention internal validation details unless they help explain a visible
 limitation to the user.
 
+## Searchable views
+
+The current context includes a top-level `searchableViews` list. Use it to
+find data objects that may matter for the analysis, such as genes or
+other searchable records.
+
+- Choose a candidate view from `searchableViews`.
+- Use `searchViewDatums(selector, query, field?, mode?)` to look up matching
+  datum objects in that view.
+- Use `mode: "prefix"` for partial matches. The default is exact matching.
+- Use the returned datums to answer analysis questions without changing the
+  visualization.
+
 ## Final response contract
 
 For normal answers, respond with plain Markdown prose and do not wrap the
