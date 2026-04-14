@@ -103,6 +103,9 @@ import { ToolCallRejectionError, agentTools } from "./agentTools.js";
  *     ): Promise<{ response: ChatAgentTurnResponse; trace: Record<string, any> }>;
  *     submitIntentProgram(program: IntentProgram): Promise<IntentProgramExecutionResult>;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
+ *     summarizeProvenanceActionsSince(
+ *         startIndex: number
+ *     ): IntentProgramSummaryLine[];
  *     jumpToProvenanceState(provenanceId: string): boolean;
  *     jumpToInitialProvenanceState(): boolean;
  *     resolveViewSelector(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
@@ -577,6 +580,7 @@ export class AgentSessionController {
         const startedAt = now();
 
         try {
+            let turnProvenanceStartIndex = null;
             let rejectedToolCallRounds = 0;
             let lastRejectedToolCallSignature = "";
             let repeatedRejectedToolCallRounds = 0;
@@ -621,6 +625,12 @@ export class AgentSessionController {
                     toolCalls: response.toolCalls,
                     durationMs: elapsedMilliseconds(startedAt),
                 });
+
+                turnProvenanceStartIndex =
+                    this.#maybeCaptureTurnProvenanceStartIndex(
+                        turnProvenanceStartIndex,
+                        response.toolCalls
+                    );
 
                 this.#state.status = "executing";
                 this.#notify();
@@ -686,6 +696,7 @@ export class AgentSessionController {
                 this.#notify();
             }
 
+            this.#appendTurnProvenanceSummary(turnProvenanceStartIndex);
             await this.#handleResponse(
                 response,
                 elapsedMilliseconds(startedAt),
@@ -942,6 +953,50 @@ export class AgentSessionController {
 
             throw error;
         }
+    }
+
+    /**
+     * @param {number | null} currentStartIndex
+     * @param {AgentToolCall[]} toolCalls
+     * @returns {number | null}
+     */
+    #maybeCaptureTurnProvenanceStartIndex(currentStartIndex, toolCalls) {
+        if (
+            currentStartIndex !== null ||
+            !toolCalls.some(
+                (toolCall) => toolCall.name === "submitIntentProgram"
+            )
+        ) {
+            return currentStartIndex;
+        }
+
+        return this.#runtime.summarizeProvenanceActionsSince(0).length;
+    }
+
+    /**
+     * @param {number | null} turnProvenanceStartIndex
+     */
+    #appendTurnProvenanceSummary(turnProvenanceStartIndex) {
+        if (turnProvenanceStartIndex === null) {
+            return;
+        }
+
+        const actionSummaries = this.#runtime.summarizeProvenanceActionsSince(
+            turnProvenanceStartIndex
+        );
+        if (actionSummaries.length === 0) {
+            return;
+        }
+
+        this.#appendMessage({
+            kind: "result",
+            text:
+                actionSummaries.length === 1
+                    ? "Completed 1 action."
+                    : "Completed " + actionSummaries.length + " actions.",
+            lines: actionSummaries,
+        });
+        this.#notify();
     }
 
     /**

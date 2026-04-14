@@ -30,6 +30,24 @@ function getAttributeInfoSource(app) {
  */
 
 /**
+ * @typedef {{
+ *     type: string;
+ *     payload?: unknown;
+ *     provenanceId?: string;
+ *     summary?: string;
+ * }} SummarizableAction
+ */
+
+/**
+ * @typedef {{
+ *     type: string;
+ *     payload: unknown;
+ *     provenanceId?: string;
+ *     summary?: string;
+ * }} ActionInfoInput
+ */
+
+/**
  * @param {import("./types.js").AgentActionType} actionType
  * @returns {(payload: any) => import("@reduxjs/toolkit").PayloadAction<any>}
  */
@@ -104,14 +122,40 @@ export function getActionCatalogEntry(actionType) {
  * @returns {import("./types.js").IntentProgramSummaryLine[]}
  */
 export function summarizeIntentProgram(app, program) {
+    const actions = program.steps.map(
+        (step) =>
+            /** @type {ActionInfoInput} */ (
+                getActionCatalogEntry(step.actionType).actionCreator(
+                    step.payload
+                )
+            )
+    );
+    return summarizeActions(app, actions);
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {SummarizableAction[]} actions
+ * @returns {import("./types.js").IntentProgramSummaryLine[]}
+ */
+export function summarizeProvenanceActions(app, actions) {
+    return summarizeActions(app, actions);
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {SummarizableAction[]} actions
+ * @returns {import("./types.js").IntentProgramSummaryLine[]}
+ */
+function summarizeActions(app, actions) {
     const getAttributeInfo = getAttributeInfoSource(app);
 
-    return program.steps.map((step) => {
-        const action = getActionCatalogEntry(step.actionType).actionCreator(
-            step.payload
+    return actions.map((action) => {
+        const info = getActionInfo(
+            /** @type {ActionInfoInput} */ (action),
+            getAttributeInfo
         );
-        const info = getActionInfo(action, getAttributeInfo);
-        const content = info?.provenanceTitle ?? info?.title ?? step.actionType;
+        const content = info?.provenanceTitle ?? info?.title ?? action.type;
         return {
             content,
             text: templateResultToString(content),

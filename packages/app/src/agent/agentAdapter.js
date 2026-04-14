@@ -4,7 +4,7 @@ import {
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
 import { validateIntentProgram } from "./intentProgramValidator.js";
-import { summarizeIntentProgram } from "./actionCatalog.js";
+import { summarizeProvenanceActions } from "./actionCatalog.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
@@ -89,10 +89,12 @@ export function createAgentAdapter(app) {
         jumpToProvenanceState: (/** @type {string} */ provenanceId) =>
             jumpToProvenanceState(app, provenanceId),
         jumpToInitialProvenanceState: () => jumpToInitialProvenanceState(app),
+        summarizeProvenanceActionsSince: (/** @type {number} */ startIndex) =>
+            summarizeProvenanceActions(
+                app,
+                app.provenance.getActionHistory().slice(startIndex)
+            ),
         summarizeExecutionResult,
-        summarizeIntentProgram: (
-            /** @type {import("./types.js").IntentProgram} */ program
-        ) => summarizeIntentProgram(app, program),
         requestAgentTurn: (
             /** @type {string} */ message,
             /** @type {Array<string | AgentConversationMessage>} */ history = [],

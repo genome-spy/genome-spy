@@ -12,6 +12,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  *     setViewVisibility: ReturnType<typeof vi.fn>;
  *     clearViewVisibility: ReturnType<typeof vi.fn>;
  *     summarizeExecutionResult: ReturnType<typeof vi.fn>;
+ *     summarizeProvenanceActionsSince: ReturnType<typeof vi.fn>;
  * }}
  */
 function createRuntimeMock() {
@@ -29,6 +30,7 @@ function createRuntimeMock() {
         setViewVisibility: vi.fn(),
         clearViewVisibility: vi.fn(),
         summarizeExecutionResult: vi.fn(),
+        summarizeProvenanceActionsSince: vi.fn(() => []),
     };
 }
 
@@ -56,6 +58,167 @@ describe("createAgentSessionController", () => {
         });
 
         expect(controller.getSnapshot().expandedViewNodeKeys).toEqual([]);
+    });
+
+    it("summarizes provenance changes after submitIntentProgram tool calls", async () => {
+        const runtime = createRuntimeMock();
+        const provenanceHistory = [];
+        let agentTurnCallCount = 0;
+        runtime.summarizeProvenanceActionsSince.mockImplementation(
+            (startIndex) =>
+                provenanceHistory.slice(startIndex).map((action) => ({
+                    content: action.summary,
+                    text: action.summary,
+                }))
+        );
+        runtime.submitIntentProgram.mockImplementation(async (program) => {
+            const provenanceIds = [];
+            for (const step of program.steps) {
+                const provenanceId =
+                    "provenance-" + (provenanceHistory.length + 1);
+                provenanceIds.push(provenanceId);
+                provenanceHistory.push({
+                    summary:
+                        step.actionType === "sampleView/sortBy"
+                            ? "Sort by age"
+                            : step.actionType,
+                    provenanceId,
+                    type: step.actionType,
+                    payload: step.payload,
+                });
+            }
+
+            return {
+                ok: true,
+                executedActions: program.steps.length,
+                content: {
+                    kind: "intent_program_result",
+                    program,
+                    provenanceIds,
+                },
+                summaries: [
+                    {
+                        content: "ignored",
+                        text: "ignored",
+                    },
+                ],
+                program,
+            };
+        });
+        runtime.summarizeExecutionResult.mockReturnValue(
+            "Executed 1 action.\n- ignored"
+        );
+        runtime.requestAgentTurn.mockImplementation(
+            (message, history, stream, allowStreaming, contextOptions) => {
+                agentTurnCallCount += 1;
+                if (message === PREFLIGHT_MESSAGE) {
+                    return Promise.resolve({
+                        response: {
+                            type: "answer",
+                            message: "I'm here",
+                        },
+                        trace: {
+                            totalMs: 10,
+                        },
+                    });
+                }
+
+                if (agentTurnCallCount === 2) {
+                    return Promise.resolve({
+                        response: {
+                            type: "tool_call",
+                            message: "I will sort the samples by age.",
+                            toolCalls: [
+                                {
+                                    callId: "call-1",
+                                    name: "submitIntentProgram",
+                                    arguments: {
+                                        program: {
+                                            schemaVersion: 1,
+                                            steps: [
+                                                {
+                                                    actionType:
+                                                        "sampleView/sortBy",
+                                                    payload: {
+                                                        attribute: {
+                                                            type: "SAMPLE_ATTRIBUTE",
+                                                            specifier: "age",
+                                                        },
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        trace: {
+                            totalMs: 11,
+                        },
+                    });
+                }
+
+                expect(history).toMatchObject([
+                    {
+                        role: "user",
+                        text: "Sort the samples by age.",
+                    },
+                    {
+                        role: "assistant",
+                        kind: "tool_call",
+                        text: "I will sort the samples by age.",
+                    },
+                    {
+                        role: "tool",
+                        kind: "tool_result",
+                        text: "Executed 1 action.\n- ignored",
+                    },
+                ]);
+                expect(contextOptions.expandedViewNodeKeys).toEqual([]);
+
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "Sorted the samples by age.",
+                    },
+                    trace: {
+                        totalMs: 12,
+                    },
+                });
+            }
+        );
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("Sort the samples by age.");
+
+        const snapshot = controller.getSnapshot();
+        expect(snapshot.messages).toHaveLength(5);
+        expect(snapshot.messages[1]).toMatchObject({
+            kind: "tool_call",
+            text: "I will sort the samples by age.",
+        });
+        expect(snapshot.messages[2]).toMatchObject({
+            kind: "tool_result",
+            text: "Executed 1 action.\n- ignored",
+        });
+        expect(snapshot.messages[3]).toMatchObject({
+            kind: "result",
+            text: "Completed 1 action.",
+            lines: [
+                {
+                    content: "Sort by age",
+                    text: "Sort by age",
+                },
+            ],
+        });
+        expect(snapshot.messages[4]).toMatchObject({
+            kind: "assistant",
+            text: "Sorted the samples by age.",
+        });
+        expect(runtime.summarizeProvenanceActionsSince).toHaveBeenCalledWith(0);
     });
 
     it("parses numbered clarification choices from the agent response", async () => {

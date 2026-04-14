@@ -107,6 +107,7 @@ function buildAttributeSummary(sampleView, sampleState) {
  * @returns {import("./types.js").AgentSampleGroupLevel[]}
  */
 function buildSampleGroupLevels(sampleView, sampleState) {
+    /** @type {Array<{ attribute: import("./types.js").AgentAttributeSummary["id"] }>} */
     const groupMetadata = sampleState?.groupMetadata ?? [];
 
     return groupMetadata.map((entry, level) => {

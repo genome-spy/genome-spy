@@ -70,6 +70,8 @@ function createMockAgentController(scenario, options = {}) {
         streamDelayMs = 0,
         heartbeatIntervalMs = 0,
     } = options;
+    /** @type {import("./types.d.ts").AgentProvenanceAction[]} */
+    const provenanceHistory = [];
     const baseContext = /** @type {any} */ ({
         schemaVersion: 1,
         sampleSummary: {
@@ -328,12 +330,29 @@ function createMockAgentController(scenario, options = {}) {
             const summaries = program.steps.map((/** @type {any} */ step) =>
                 summarizeMockStep(step)
             );
+            const provenanceIds = program.steps.map(
+                (/** @type {any} */ _step, /** @type {number} */ index) =>
+                    "provenance-" + (provenanceHistory.length + index)
+            );
+            for (let index = 0; index < program.steps.length; index += 1) {
+                provenanceHistory.push({
+                    summary: summaries[index].text,
+                    provenanceId: provenanceIds[index],
+                    type: program.steps[index].actionType,
+                    payload: program.steps[index].payload,
+                });
+            }
 
             return {
                 ok: true,
                 executedActions: program.steps.length,
                 summaries,
                 program,
+                content: {
+                    kind: "intent_program_result",
+                    program,
+                    provenanceIds,
+                },
             };
         },
         summarizeExecutionResult: (/** @type {any} */ result) =>
@@ -343,6 +362,17 @@ function createMockAgentController(scenario, options = {}) {
                     (/** @type {any} */ summary) => summary.text
                 ),
             ].join("\n"),
+        summarizeProvenanceActionsSince: (/** @type {number} */ startIndex) =>
+            provenanceHistory
+                .slice(startIndex)
+                .map(
+                    (
+                        /** @type {import("./types.d.ts").AgentProvenanceAction} */ action
+                    ) => ({
+                        content: action.summary ?? action.type,
+                        text: action.summary ?? action.type,
+                    })
+                ),
     });
 
     return createAgentSessionController(runtime);
@@ -590,7 +620,7 @@ export const Clarify = {
     render: renderChatPanel,
 };
 
-export const IntentProgram = {
+export const SubmitIntentProgram = {
     args: {
         scenario: "tool_call",
     },

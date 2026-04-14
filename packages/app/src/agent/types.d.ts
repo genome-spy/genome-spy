@@ -510,7 +510,7 @@ export interface AgentProvenanceAction {
     /**
      * Human-readable summary of the action.
      */
-    summary: string;
+    summary?: string;
 
     /**
      * Stable provenance id for the current session.
@@ -957,9 +957,11 @@ export interface AgentAdapter {
     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
 
     /**
-     * Summarizes an agent-authored intent program for preview.
+     * Summarizes provenance actions after a history index.
      */
-    summarizeIntentProgram(program: IntentProgram): IntentProgramSummaryLine[];
+    summarizeProvenanceActionsSince(
+        startIndex: number
+    ): IntentProgramSummaryLine[];
 
     /**
      * Requests an agent turn from the configured agent service.

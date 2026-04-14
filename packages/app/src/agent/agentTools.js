@@ -127,7 +127,7 @@ export function jumpToProvenanceState(runtime, input) {
         text:
             changed && provenanceAction
                 ? "Jumped to provenance state: " +
-                  provenanceAction.summary +
+                  (provenanceAction.summary ?? provenanceAction.type) +
                   "."
                 : "The requested provenance state was already active.",
         content: createProvenanceStateActivation(
@@ -330,7 +330,7 @@ function createProvenanceStateActivation(
         ...(action
             ? {
                   actionType: action.type,
-                  summary: action.summary,
+                  summary: action.summary ?? action.type,
               }
             : {}),
         initial,
