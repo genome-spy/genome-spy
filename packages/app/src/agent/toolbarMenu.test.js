@@ -2,6 +2,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 
+const { showAgentContextDialogMock } = vi.hoisted(() => ({
+    showAgentContextDialogMock: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock("../components/dialogs/agentContextDialog.js", () => ({
+    showAgentContextDialog: showAgentContextDialogMock,
+}));
+
 import { getAgentMenuItems } from "./toolbarMenu.js";
 
 describe("getAgentMenuItems", () => {
@@ -14,7 +22,8 @@ describe("getAgentMenuItems", () => {
         expect(items).toEqual([]);
     });
 
-    it("returns the agent menu items when enabled", () => {
+    it("returns the agent menu items when enabled", async () => {
+        const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
         const items = getAgentMenuItems(
             {
                 options: { showLocalAgentButton: true },
@@ -31,5 +40,16 @@ describe("getAgentMenuItems", () => {
             "Show Agent Context",
             "Agent Trace",
         ]);
+        await items[1].callback();
+        items[2].callback();
+        expect(showAgentContextDialogMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                options: { showLocalAgentButton: true },
+            })
+        );
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        expect(logSpy).toHaveBeenCalledWith(
+            "[GenomeSpy Agent] Suppressed dialog: Agent Trace"
+        );
     });
 });

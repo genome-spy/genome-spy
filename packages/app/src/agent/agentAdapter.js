@@ -1,6 +1,3 @@
-import { showMessageDialog } from "../components/generic/messageDialog.js";
-import { showAgentChoiceDialog } from "../components/dialogs/agentChoiceDialog.js";
-import templateResultToString from "../utils/templateResultToString.js";
 import { getAgentContext } from "./contextBuilder.js";
 import {
     submitIntentProgram,
@@ -8,7 +5,6 @@ import {
 } from "./intentProgramExecutor.js";
 import { validateIntentProgram } from "./intentProgramValidator.js";
 import { summarizeIntentProgram } from "./actionCatalog.js";
-import { parseClarificationMessage } from "./clarificationMessage.js";
 import { looksLikeStructuredToolMessage } from "./messageDetection.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
@@ -98,6 +94,14 @@ function logAgentTransport(phase, payload) {
     }
 
     console.log("[GenomeSpy Agent] " + phase, payload);
+}
+
+/**
+ * @param {string} title
+ * @param {string} message
+ */
+function logSuppressedDialog(title, message) {
+    console.log("[GenomeSpy Agent] Suppressed dialog: " + title, message);
 }
 
 /**
@@ -551,47 +555,18 @@ async function runLocalPrompt(app) {
             Object.assign(trace, requestResult.trace);
 
             if (response.type === "clarify") {
-                const parsedClarification = parseClarificationMessage(
-                    response.message
-                );
-                if (parsedClarification.options.length === 0) {
-                    trace.responseType = response.type;
-                    trace.totalMs = elapsedMilliseconds(startedAt);
-                    publishAgentTrace(trace);
-                    await showMessageDialog(response.message, {
-                        title: "Agent Clarification",
-                        type: "info",
-                    });
-                    return;
-                }
-
-                const followUpValue = await showAgentChoiceDialog({
-                    title: "Agent Clarification",
-                    message:
-                        typeof parsedClarification.text === "string"
-                            ? parsedClarification.text
-                            : templateResultToString(parsedClarification.text),
-                    choiceLabel: "Clarification",
-                    options: parsedClarification.options,
-                    value: parsedClarification.options[0].value,
-                });
-                if (!followUpValue) {
-                    throw new Error("Agent clarification was cancelled.");
-                }
-
-                history.push(message, response.message);
-                message = followUpValue.trim();
-                continue;
+                trace.responseType = response.type;
+                trace.totalMs = elapsedMilliseconds(startedAt);
+                publishAgentTrace(trace);
+                logSuppressedDialog("Agent Clarification", response.message);
+                return;
             }
 
             if (response.type === "answer") {
                 trace.responseType = response.type;
                 trace.totalMs = elapsedMilliseconds(startedAt);
                 publishAgentTrace(trace);
-                await showMessageDialog(response.message, {
-                    title: "Agent Response",
-                    type: "info",
-                });
+                logSuppressedDialog("Agent Response", response.message);
                 return;
             }
 
@@ -726,10 +701,7 @@ async function runLocalPrompt(app) {
         trace.error = String(error);
         trace.totalMs = elapsedMilliseconds(startedAt);
         publishAgentTrace(trace);
-        await showMessageDialog(String(error), {
-            title: "Local Agent Error",
-            type: "error",
-        });
+        logSuppressedDialog("Local Agent Error", String(error));
     }
 }
 
@@ -749,73 +721,16 @@ async function runAgentProgram(app, steps, trace, startedAt) {
     trace.previewBuildMs = elapsedMilliseconds(previewStartedAt);
 
     const confirmationStartedAt = now();
-    const confirmed = await showMessageDialog(
-        preparedSteps.map((step) => step.summary).join("\n"),
-        {
-            title: "Execute Local Agent Plan?",
-            type: "info",
-            confirm: true,
-        }
+    logSuppressedDialog(
+        "Execute Local Agent Plan?",
+        preparedSteps.map((step) => step.summary).join("\n")
     );
     trace.confirmationMs = elapsedMilliseconds(confirmationStartedAt);
-    if (!confirmed) {
-        trace.executed = false;
-        trace.totalMs = elapsedMilliseconds(startedAt);
-        publishAgentTrace(trace);
-        return;
-    }
-
-    const executionStartedAt = now();
-    let executedActions = 0;
-    /** @type {Array<{ executedActions: number, intentProgramResult?: import("./types.js").IntentProgramExecutionResult }>} */
-    const executionResults = [];
-    for (const step of preparedSteps) {
-        const result = await executePreparedAgentProgramStep(app, step);
-        executedActions += result.executedActions;
-        executionResults.push(result);
-    }
-    trace.executionMs = elapsedMilliseconds(executionStartedAt);
-    trace.executedActions = executedActions;
-    trace.executed = true;
+    trace.executed = false;
     trace.responseType =
         preparedSteps.length > 1 ? "agent_program" : preparedSteps[0].type;
     trace.totalMs = elapsedMilliseconds(startedAt);
     publishAgentTrace(trace);
-
-    if (preparedSteps.length === 1) {
-        const [preparedStep] = preparedSteps;
-        const [executionResult] = executionResults;
-
-        if (preparedStep.type === "intent_program") {
-            await showMessageDialog(
-                summarizeExecutionResult(executionResult.intentProgramResult),
-                {
-                    title: "Local Agent Execution",
-                    type: "info",
-                }
-            );
-        } else {
-            await showMessageDialog(
-                "Executed 1 action.\n- " + preparedStep.summary,
-                {
-                    title: "Local Agent Execution",
-                    type: "info",
-                }
-            );
-        }
-    } else {
-        await showMessageDialog(
-            "Executed " +
-                preparedSteps.length +
-                " step" +
-                (preparedSteps.length === 1 ? "" : "s") +
-                ".",
-            {
-                title: "Local Agent Execution",
-                type: "info",
-            }
-        );
-    }
 }
 
 /**
@@ -845,25 +760,4 @@ async function prepareAgentProgramStep(app, step) {
     }
 
     throw new Error("Unsupported agent program step.");
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {{
- *   type: "intent_program",
- *   summary: string,
- *   program: import("./types.js").IntentProgram
- * }} step
- */
-async function executePreparedAgentProgramStep(app, step) {
-    if (step.type === "intent_program") {
-        const intentProgramResult = await submitIntentProgram(
-            app,
-            step.program
-        );
-        return {
-            executedActions: intentProgramResult.executedActions,
-            intentProgramResult,
-        };
-    }
 }

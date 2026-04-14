@@ -1,5 +1,4 @@
 import { faEye, faRobot, faStopwatch } from "@fortawesome/free-solid-svg-icons";
-import { showDialog } from "../components/generic/baseDialog.js";
 
 /**
  * @param {import("../app.js").default} app
@@ -24,8 +23,8 @@ export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
         items.push({
             label: "Show Agent Context",
             icon: faEye,
-            callback: /** @returns {void} */ () => {
-                void showAgentContextDialog(app);
+            callback: async () => /** @returns {Promise<void>} */ {
+                await showAgentContextDialog(app);
             },
         });
     }
@@ -34,7 +33,7 @@ export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
         label: "Agent Trace",
         icon: faStopwatch,
         callback: /** @returns {void} */ () => {
-            void showAgentTraceDialog(app);
+            logSuppressedAgentDialog("Agent Trace");
         },
     });
 
@@ -42,19 +41,10 @@ export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
 }
 
 /**
- * @param {import("../app.js").default} app
- * @returns {Promise<void>}
+ * @param {string} label
  */
-async function showAgentTraceDialog(app) {
-    await import("../components/dialogs/agentTraceDialog.js");
-    showDialog(
-        "gs-agent-trace-dialog",
-        (
-            /** @type {import("../components/dialogs/agentTraceDialog.js").default} */ dialog
-        ) => {
-            dialog.app = app;
-        }
-    );
+function logSuppressedAgentDialog(label) {
+    console.log("[GenomeSpy Agent] Suppressed dialog: " + label);
 }
 
 /**

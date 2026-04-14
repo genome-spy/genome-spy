@@ -1,8 +1,7 @@
 // @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { showMessageDialog, getAgentContext } = vi.hoisted(() => ({
-    showMessageDialog: vi.fn(),
+const { getAgentContext } = vi.hoisted(() => ({
     getAgentContext: vi.fn(() => ({ schemaVersion: 1 })),
 }));
 const { resolveParamSelectorMock } = vi.hoisted(() => ({
@@ -21,10 +20,6 @@ const { visitAddressableViewsMock } = vi.hoisted(() => ({
     visitAddressableViewsMock: vi.fn((root, visitor) => {
         root.visit(visitor);
     }),
-}));
-
-vi.mock("../components/generic/messageDialog.js", () => ({
-    showMessageDialog,
 }));
 
 vi.mock("./contextBuilder.js", () => ({
@@ -229,8 +224,13 @@ function createMockPlannerContext() {
 }
 
 describe("agentAdapter", () => {
+    /** @type {ReturnType<typeof vi.spyOn> | undefined} */
+    let consoleLogSpy;
+
     beforeEach(() => {
+        vi.restoreAllMocks();
         vi.clearAllMocks();
+        consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
         globalThis.fetch = vi.fn();
         globalThis.window = /** @type {any} */ ({
             prompt: vi.fn(),
@@ -454,7 +454,6 @@ describe("agentAdapter", () => {
                     ],
                 })
             );
-        showMessageDialog.mockResolvedValue(true);
 
         const adapter = createAgentAdapter(app);
         await adapter.runLocalPrompt();
@@ -468,14 +467,11 @@ describe("agentAdapter", () => {
             "setViewVisibility expects selector (ViewSelector), visibility (boolean)."
         );
         expect(retryRequest.history[1].text).toContain('"visibility": false');
-        expect(showMessageDialog).toHaveBeenCalledWith(
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+            "[GenomeSpy Agent] Suppressed dialog: Local Agent Error",
             expect.stringContaining(
                 "Error: Agent repeated the same rejected tool call after validation failure."
-            ),
-            expect.objectContaining({
-                title: "Local Agent Error",
-                type: "error",
-            })
+            )
         );
     });
 
@@ -573,20 +569,16 @@ describe("agentAdapter", () => {
                     ],
                 })
             );
-        showMessageDialog.mockResolvedValue(true);
 
         const adapter = createAgentAdapter(app);
         await adapter.runLocalPrompt();
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(5);
-        expect(showMessageDialog).toHaveBeenCalledWith(
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+            "[GenomeSpy Agent] Suppressed dialog: Local Agent Error",
             expect.stringContaining(
                 "Error: Agent produced too many rejected tool calls without converging."
-            ),
-            expect.objectContaining({
-                title: "Local Agent Error",
-                type: "error",
-            })
+            )
         );
     });
 
@@ -599,16 +591,19 @@ describe("agentAdapter", () => {
                 message: "Planner path used.",
             })
         );
-        showMessageDialog.mockResolvedValue(true);
 
         const adapter = createAgentAdapter(app);
         await adapter.runLocalPrompt();
 
         expect(globalThis.fetch).toHaveBeenCalledTimes(1);
         expect(app.intentPipeline.submit).not.toHaveBeenCalled();
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+            "[GenomeSpy Agent] Suppressed dialog: Agent Response",
+            "Planner path used."
+        );
     });
 
-    it("executes mixed agent_program steps in order", async () => {
+    it("suppresses agent_program execution when confirmation dialogs are disabled", async () => {
         const app = createAppStub();
         globalThis.window.prompt.mockReturnValueOnce(
             "sort by age, group by gender and derive metadata from the selected interval"
@@ -683,15 +678,14 @@ describe("agentAdapter", () => {
                 },
             })
         );
-        showMessageDialog.mockResolvedValue(true);
 
         const adapter = createAgentAdapter(app);
         await adapter.runLocalPrompt();
 
-        expect(app.intentPipeline.submit).toHaveBeenCalledTimes(2);
-        expect(app.intentPipeline.submit.mock.calls[0][0]).toEqual([
-            expect.objectContaining({ type: "sampleView/sortBy" }),
-            expect.objectContaining({ type: "sampleView/groupByNominal" }),
-        ]);
+        expect(app.intentPipeline.submit).not.toHaveBeenCalled();
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+            "[GenomeSpy Agent] Suppressed dialog: Execute Local Agent Plan?",
+            expect.stringContaining("Sort by age")
+        );
     });
 });

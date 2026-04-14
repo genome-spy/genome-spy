@@ -548,7 +548,7 @@ export interface AgentSelectionSummary {
     type: "interval";
 
     /**
-     * Human-readable label shown in clarification dialogs.
+     * Human-readable label shown in clarification messages.
      */
     label: string;
 
@@ -842,7 +842,7 @@ export interface AgentActionSummary {
  */
 export interface IntentProgramSummaryLine {
     /**
-     * Renderable content for chat or dialog UIs.
+     * Renderable content for chat UIs.
      */
     content: string | import("lit").TemplateResult;
 
