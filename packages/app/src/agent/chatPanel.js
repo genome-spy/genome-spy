@@ -448,7 +448,6 @@ export default class AgentChatPanel extends LitElement {
                 );
                 font-size: 0.8rem;
                 line-height: 1.35;
-                white-space: pre-wrap;
                 overflow-x: auto;
             }
 
@@ -473,10 +472,6 @@ export default class AgentChatPanel extends LitElement {
                 gap: 0.4rem;
                 margin: 0;
                 padding-left: 1.15rem;
-            }
-
-            .message-lines li {
-                line-height: 1.45;
             }
 
             .clarification-options {
