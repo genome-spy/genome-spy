@@ -242,6 +242,11 @@ export interface AgentSampleSummary {
      * Number of grouping levels in the current hierarchy.
      */
     groupCount: number;
+
+    /**
+     * Number of visible samples in the current hierarchy.
+     */
+    visibleSampleCount: number;
 }
 
 /**
@@ -1004,16 +1009,6 @@ export interface AgentContext {
     schemaVersion: 1;
 
     /**
-     * Sample-collection summary.
-     */
-    sampleSummary: AgentSampleSummary;
-
-    /**
-     * Current grouping levels in the sample hierarchy.
-     */
-    sampleGroupLevels: AgentSampleGroupLevel[];
-
-    /**
      * Agent-facing action catalog.
      */
     actionCatalog: AgentActionCatalogContextEntry[];
@@ -1037,6 +1032,16 @@ export interface AgentContext {
      * Provenance actions for the current analysis history.
      */
     provenance: AgentProvenanceAction[];
+
+    /**
+     * Sample-collection summary.
+     */
+    sampleSummary: AgentSampleSummary;
+
+    /**
+     * Current grouping levels in the sample hierarchy.
+     */
+    sampleGroupLevels: AgentSampleGroupLevel[];
 
     /**
      * Application lifecycle state.

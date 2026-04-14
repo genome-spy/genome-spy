@@ -143,6 +143,7 @@ describe("agentAdapter browser integration", () => {
                 sampleSummary: expect.objectContaining({
                     sampleCount: expect.any(Number),
                     groupCount: expect.any(Number),
+                    visibleSampleCount: expect.any(Number),
                 }),
                 sampleGroupLevels: expect.any(Array),
                 viewRoot: expect.objectContaining({

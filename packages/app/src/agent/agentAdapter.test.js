@@ -159,6 +159,8 @@ function createAppStub(encoding = undefined) {
                     },
                 },
             }),
+            getActionHistory: () => [],
+            getActionInfo: () => undefined,
         },
     };
 }
@@ -193,6 +195,7 @@ function createMockPlannerContext() {
         sampleSummary: {
             sampleCount: 61,
             groupCount: 1,
+            visibleSampleCount: 61,
         },
         viewRoot: {
             type: "vconcat",

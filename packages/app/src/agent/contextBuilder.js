@@ -23,10 +23,6 @@ export function getAgentContext(app, options = {}) {
 
     return {
         schemaVersion: 1,
-        sampleSummary: buildSampleSummary(sampleState),
-        sampleGroupLevels: sampleView
-            ? buildSampleGroupLevels(sampleView, sampleState)
-            : [],
         actionCatalog: actionCatalog.map((entry) => ({
             actionType: entry.actionType,
             description: entry.description,
@@ -45,6 +41,10 @@ export function getAgentContext(app, options = {}) {
             : [],
         selectionAggregation,
         provenance: buildProvenanceActions(app, provenance),
+        sampleSummary: buildSampleSummary(sampleState),
+        sampleGroupLevels: sampleView
+            ? buildSampleGroupLevels(sampleView, sampleState)
+            : [],
         lifecycle: {
             appInitialized: state.lifecycle.appInitialized,
         },
@@ -59,10 +59,12 @@ export function getAgentContext(app, options = {}) {
 function buildSampleSummary(sampleState) {
     const sampleCount = sampleState?.sampleData?.ids?.length ?? 0;
     const groupCount = sampleState?.groupMetadata?.length ?? 0;
+    const visibleSampleCount = countVisibleSamples(sampleState?.rootGroup);
 
     return {
         sampleCount,
         groupCount,
+        visibleSampleCount,
     };
 }
 
@@ -145,4 +147,29 @@ function buildProvenanceActions(app, provenanceActions) {
                 error: /** @type {any} */ (action).error,
             };
         });
+}
+
+/**
+ * @param {any} group
+ * @param {Set<string>} [sampleIds]
+ * @returns {number}
+ */
+function countVisibleSamples(group, sampleIds = new Set()) {
+    if (!group) {
+        return 0;
+    }
+
+    if ("samples" in group) {
+        for (const sampleId of group.samples) {
+            sampleIds.add(sampleId);
+        }
+
+        return sampleIds.size;
+    }
+
+    for (const child of group.groups) {
+        countVisibleSamples(child, sampleIds);
+    }
+
+    return sampleIds.size;
 }

@@ -214,13 +214,13 @@ describe("getAgentContext", () => {
 
         expect(Object.keys(context)).toEqual([
             "schemaVersion",
-            "sampleSummary",
-            "sampleGroupLevels",
             "actionCatalog",
             "toolCatalog",
             "attributes",
             "selectionAggregation",
             "provenance",
+            "sampleSummary",
+            "sampleGroupLevels",
             "lifecycle",
             "viewRoot",
         ]);
@@ -253,6 +253,7 @@ describe("getAgentContext", () => {
         expect(context.sampleSummary).toEqual({
             sampleCount: 2,
             groupCount: 1,
+            visibleSampleCount: 2,
         });
         expect(context.sampleGroupLevels).toEqual([
             {
