@@ -972,11 +972,6 @@ export interface AgentAdapter {
         contextOptions?: AgentContextOptions,
         signal?: AbortSignal
     ): Promise<{ response: PlanResponse; trace: Record<string, any> }>;
-
-    /**
-     * Starts the local prompt loop.
-     */
-    runLocalPrompt(): Promise<void>;
 }
 
 /**

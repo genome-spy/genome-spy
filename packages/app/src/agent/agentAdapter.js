@@ -5,15 +5,9 @@ import {
 } from "./intentProgramExecutor.js";
 import { validateIntentProgram } from "./intentProgramValidator.js";
 import { summarizeIntentProgram } from "./actionCatalog.js";
-import { looksLikeStructuredToolMessage } from "./messageDetection.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
-import {
-    MAX_REJECTED_TOOL_CALL_RETRIES,
-    MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
-    serializeToolCallSignature,
-} from "./toolCallLoop.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 const SHOULD_LOG_AGENT = import.meta.env.DEV && import.meta.env.MODE !== "test";
@@ -33,7 +27,6 @@ function elapsedMilliseconds(startedAt) {
 /**
  * @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
- * @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall
  */
 
 /**
@@ -63,28 +56,6 @@ function normalizeConversationHistory(history) {
 }
 
 /**
- * @param {Record<string, any>} trace
- */
-function publishAgentTrace(trace) {
-    trace.timestamp = new Date().toISOString();
-
-    if (typeof window === "undefined") {
-        return;
-    }
-
-    const app = /** @type {any} */ (window).__genomeSpyApp;
-    app?.recordAgentTrace?.(trace);
-    /** @type {any} */ (window).__genomeSpyLastAgentTrace = trace;
-    if (SHOULD_LOG_AGENT) {
-        console.groupCollapsed(
-            "[GenomeSpy Agent] " + trace.message + " (" + trace.totalMs + " ms)"
-        );
-        console.table(trace);
-        console.groupEnd();
-    }
-}
-
-/**
  * @param {string} phase
  * @param {Record<string, any>} payload
  */
@@ -94,14 +65,6 @@ function logAgentTransport(phase, payload) {
     }
 
     console.log("[GenomeSpy Agent] " + phase, payload);
-}
-
-/**
- * @param {string} title
- * @param {string} message
- */
-function logSuppressedDialog(title, message) {
-    console.log("[GenomeSpy Agent] Suppressed dialog: " + title, message);
 }
 
 /**
@@ -157,7 +120,6 @@ export function createAgentAdapter(app) {
                 allowStreaming,
                 contextOptions,
             }),
-        runLocalPrompt: () => runLocalPrompt(app),
     };
 }
 
@@ -521,243 +483,4 @@ function getCurrentAgentContextOptions(app) {
             app.agentSessionController?.getSnapshot().expandedViewNodeKeys ??
             [],
     };
-}
-
-/**
- * @param {import("../app.js").default} app
- * @returns {Promise<void>}
- */
-async function runLocalPrompt(app) {
-    const initialMessage = window.prompt("Local agent prompt");
-    if (!initialMessage) {
-        return;
-    }
-
-    const startedAt = now();
-    /** @type {Record<string, any>} */
-    const trace = { message: initialMessage };
-    /** @type {Array<string | AgentConversationMessage>} */
-    const history = [];
-    let message = initialMessage;
-    let toolRounds = 0;
-    let rejectedToolCallRounds = 0;
-    let lastRejectedToolCallSignature = "";
-    let repeatedRejectedToolCallRounds = 0;
-
-    try {
-        while (true) {
-            const requestResult = await requestPlan(app, {
-                message,
-                history,
-                contextOptions: getCurrentAgentContextOptions(app),
-            });
-            const response = requestResult.response;
-            Object.assign(trace, requestResult.trace);
-
-            if (response.type === "clarify") {
-                trace.responseType = response.type;
-                trace.totalMs = elapsedMilliseconds(startedAt);
-                publishAgentTrace(trace);
-                logSuppressedDialog("Agent Clarification", response.message);
-                return;
-            }
-
-            if (response.type === "answer") {
-                trace.responseType = response.type;
-                trace.totalMs = elapsedMilliseconds(startedAt);
-                publishAgentTrace(trace);
-                logSuppressedDialog("Agent Response", response.message);
-                return;
-            }
-
-            if (response.type === "agent_program") {
-                await runAgentProgram(
-                    app,
-                    response.program.steps,
-                    trace,
-                    startedAt
-                );
-                return;
-            }
-
-            if (response.type === "tool_call") {
-                toolRounds += 1;
-                if (toolRounds > 5) {
-                    throw new Error(
-                        "Agent tool calls did not converge after 5 rounds."
-                    );
-                }
-
-                /** @type {AgentConversationMessage} */
-                history.push({
-                    id: `tool-call-${toolRounds}`,
-                    role: "assistant",
-                    text:
-                        response.message &&
-                        !looksLikeStructuredToolMessage(response.message)
-                            ? response.message
-                            : "",
-                    kind: "tool_call",
-                    toolCalls: response.toolCalls,
-                });
-
-                const controller = app.agentSessionController;
-                if (!controller?.executeToolCalls) {
-                    throw new Error(
-                        "Agent tool calls require an attached session controller."
-                    );
-                }
-
-                const executionResults = await controller.executeToolCalls(
-                    response.toolCalls
-                );
-                for (const toolCall of response.toolCalls) {
-                    const executionResult = executionResults.find(
-                        (result) => result.toolCallId === toolCall.callId
-                    );
-                    if (!executionResult || !executionResult.text) {
-                        continue;
-                    }
-
-                    history.push({
-                        id: `tool-result-${toolRounds}-${toolCall.callId}`,
-                        role: "tool",
-                        text: executionResult.text,
-                        toolCallId: toolCall.callId,
-                        kind: "tool_result",
-                    });
-                }
-
-                const controllerSnapshot = controller.getSnapshot();
-                if (controllerSnapshot.status === "error") {
-                    throw new Error(
-                        controllerSnapshot.lastError ||
-                            "Agent tool call failed."
-                    );
-                }
-
-                if (executionResults.some((result) => result.rejected)) {
-                    const rejectedToolCallSignature =
-                        serializeToolCallSignature(response.toolCalls);
-                    rejectedToolCallRounds += 1;
-                    if (
-                        rejectedToolCallSignature ===
-                        lastRejectedToolCallSignature
-                    ) {
-                        repeatedRejectedToolCallRounds += 1;
-                    } else {
-                        lastRejectedToolCallSignature =
-                            rejectedToolCallSignature;
-                        repeatedRejectedToolCallRounds = 0;
-                    }
-
-                    if (
-                        repeatedRejectedToolCallRounds >=
-                        MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS
-                    ) {
-                        throw new Error(
-                            "Agent repeated the same rejected tool call after validation failure."
-                        );
-                    }
-
-                    if (
-                        rejectedToolCallRounds > MAX_REJECTED_TOOL_CALL_RETRIES
-                    ) {
-                        throw new Error(
-                            "Agent produced too many rejected tool calls without converging."
-                        );
-                    }
-                }
-                continue;
-            }
-
-            if (response.type !== "intent_program") {
-                throw new Error(
-                    "Unsupported agent response type: " + response.type
-                );
-            }
-
-            const validationStartedAt = now();
-            const validation = validateIntentProgram(app, response.program);
-            trace.validationMs = elapsedMilliseconds(validationStartedAt);
-            if (!validation.ok) {
-                throw new Error(validation.errors.join("\n"));
-            }
-
-            await runAgentProgram(
-                app,
-                [
-                    {
-                        type: "intent_program",
-                        program: validation.program,
-                    },
-                ],
-                trace,
-                startedAt
-            );
-            return;
-        }
-    } catch (error) {
-        trace.error = String(error);
-        trace.totalMs = elapsedMilliseconds(startedAt);
-        publishAgentTrace(trace);
-        logSuppressedDialog("Local Agent Error", String(error));
-    }
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("./types.js").AgentProgramStep[]} steps
- * @param {Record<string, any>} trace
- * @param {number} startedAt
- */
-async function runAgentProgram(app, steps, trace, startedAt) {
-    const previewStartedAt = now();
-    /** @type {Array<{ type: "intent_program", summary: string, program: import("./types.js").IntentProgram }>} */
-    const preparedSteps = [];
-    for (const step of steps) {
-        preparedSteps.push(await prepareAgentProgramStep(app, step));
-    }
-    trace.previewBuildMs = elapsedMilliseconds(previewStartedAt);
-
-    const confirmationStartedAt = now();
-    logSuppressedDialog(
-        "Execute Local Agent Plan?",
-        preparedSteps.map((step) => step.summary).join("\n")
-    );
-    trace.confirmationMs = elapsedMilliseconds(confirmationStartedAt);
-    trace.executed = false;
-    trace.responseType =
-        preparedSteps.length > 1 ? "agent_program" : preparedSteps[0].type;
-    trace.totalMs = elapsedMilliseconds(startedAt);
-    publishAgentTrace(trace);
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("./types.js").AgentProgramStep} step
- * @returns {Promise<
- *   | {
- *         type: "intent_program";
- *         summary: string;
- *         program: import("./types.js").IntentProgram;
- *     }
- * >}
- */
-async function prepareAgentProgramStep(app, step) {
-    if (step.type === "intent_program") {
-        const validation = validateIntentProgram(app, step.program);
-        if (!validation.ok) {
-            throw new Error(validation.errors.join("\n"));
-        }
-
-        const summaries = summarizeIntentProgram(app, validation.program);
-        return {
-            type: "intent_program",
-            summary: summaries.map((line) => "- " + line.text).join("\n"),
-            program: validation.program,
-        };
-    }
-
-    throw new Error("Unsupported agent program step.");
 }

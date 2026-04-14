@@ -28,7 +28,6 @@ describe("getAgentMenuItems", () => {
             {
                 options: { showLocalAgentButton: true },
                 agentAdapter: {
-                    runLocalPrompt: vi.fn(),
                     getAgentContext: vi.fn(),
                 },
             },
@@ -36,12 +35,11 @@ describe("getAgentMenuItems", () => {
         );
 
         expect(items.map((item) => item.label)).toEqual([
-            "Local Agent",
             "Show Agent Context",
             "Agent Trace",
         ]);
-        await items[1].callback();
-        items[2].callback();
+        await items[0].callback();
+        items[1].callback();
         expect(showAgentContextDialogMock).toHaveBeenCalledWith(
             expect.objectContaining({
                 options: { showLocalAgentButton: true },

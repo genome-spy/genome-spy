@@ -1,4 +1,4 @@
-import { faEye, faRobot, faStopwatch } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faStopwatch } from "@fortawesome/free-solid-svg-icons";
 
 /**
  * @param {import("../app.js").default} app
@@ -11,19 +11,13 @@ export function getAgentMenuItems(app, { isDev = import.meta.env.DEV } = {}) {
     }
 
     /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
-    const items = [
-        {
-            label: "Local Agent",
-            icon: faRobot,
-            callback: () => app.agentAdapter.runLocalPrompt(),
-        },
-    ];
+    const items = [];
 
     if (isDev) {
         items.push({
             label: "Show Agent Context",
             icon: faEye,
-            callback: async () => /** @returns {Promise<void>} */ {
+            callback: async () => {
                 await showAgentContextDialog(app);
             },
         });
