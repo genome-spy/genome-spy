@@ -43,15 +43,18 @@ export default function setupStore() {
         const nextState = combinedReducer(state, action);
 
         if (action.type === intentStatusSlice.actions.setError.type) {
-            const lastSuccessfulIndex =
-                action.payload?.lastSuccessfulIndex ??
-                state?.intentStatus?.lastSuccessfulIndex;
-            if (typeof lastSuccessfulIndex === "number") {
+            const rollbackIndex =
+                action.payload?.submissionKind === "agent"
+                    ? (action.payload?.startIndex ??
+                      state?.intentStatus?.startIndex)
+                    : (action.payload?.lastSuccessfulIndex ??
+                      state?.intentStatus?.lastSuccessfulIndex);
+            if (typeof rollbackIndex === "number") {
                 return {
                     ...nextState,
                     provenance: provenanceReducer(
                         nextState.provenance,
-                        ActionCreators.jumpToPast(lastSuccessfulIndex)
+                        ActionCreators.jumpToPast(rollbackIndex)
                     ),
                 };
             }

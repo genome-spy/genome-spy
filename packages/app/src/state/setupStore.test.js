@@ -49,4 +49,56 @@ describe("setupStore", () => {
             store.getState().provenance.present.sampleView;
         expect(sampleMetadata.attributeNames).toEqual([]);
     });
+
+    it("rolls back an agent submission to the batch start and clears the error state", () => {
+        const store = setupStore();
+        const startIndex = store.getState().provenance.past.length;
+
+        store.dispatch(
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                ],
+            })
+        );
+        const afterSamples = store.getState().provenance.past.length;
+
+        store.dispatch(
+            sampleSlice.actions.addMetadata({
+                columnarMetadata: {
+                    sample: ["s1", "s2"],
+                    status: ["ok", "ok"],
+                },
+            })
+        );
+
+        store.dispatch(
+            intentStatusSlice.actions.setError({
+                startIndex,
+                lastSuccessfulIndex: afterSamples,
+                submissionKind: "agent",
+                failedAction: sampleSlice.actions.addMetadata({
+                    columnarMetadata: {
+                        sample: ["s1", "s2"],
+                        status: ["ok", "ok"],
+                    },
+                }),
+                error: "Boom",
+            })
+        );
+
+        expect(store.getState().intentStatus).toMatchObject({
+            status: "error",
+            submissionKind: "agent",
+            startIndex,
+        });
+        expect(
+            store.getState().provenance.present.sampleView.sampleMetadata
+                .attributeNames
+        ).toEqual([]);
+
+        store.dispatch(intentStatusSlice.actions.clearStatus());
+        expect(store.getState().intentStatus).toEqual({ status: "idle" });
+    });
 });

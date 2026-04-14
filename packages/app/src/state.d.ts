@@ -80,6 +80,7 @@ export interface State {
      */
     intentStatus?: {
         status: "idle" | "running" | "error" | "canceled";
+        submissionKind?: "user" | "agent" | "bookmark";
         startIndex?: number;
         lastSuccessfulIndex?: number;
         totalActions?: number;

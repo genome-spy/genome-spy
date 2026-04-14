@@ -193,7 +193,9 @@ export function attachIntentStatusUi({
             }
 
             if (next?.status === "error" && prev?.status !== "error") {
-                void showErrorDialog(next.failedAction, next.error);
+                if (next.submissionKind !== "agent") {
+                    void showErrorDialog(next.failedAction, next.error);
+                }
             }
         }
     );
