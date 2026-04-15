@@ -181,6 +181,18 @@ roughly like this:
 }
 ```
 
+When categorical data is returned, the result should stay bounded. The tool
+should not emit very large category lists for high-cardinality metadata
+attributes.
+
+- Do not return hundreds of categories by default.
+- As a concrete guardrail, the tool should avoid returning results on the
+  order of 500 categories.
+- A reasonable v0 default is to cap returned categories at 15 and mark the
+  result as truncated when more observed categories exist.
+- If later workflows need a different cap, it can be exposed as an explicit
+  optional parameter instead of making the default unbounded.
+
 A v0 quantitative result should look roughly like this:
 
 ```json
@@ -305,6 +317,8 @@ That helper should remain narrow:
      - `missingCount`
      - `distinctCount`
      - capped `categories`
+       - use a default cap such as 15
+       - do not allow unbounded high-cardinality outputs by default
      - `truncated`
 
 7. Keep ordinal handling factual.
