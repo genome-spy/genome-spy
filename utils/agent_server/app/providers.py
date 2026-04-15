@@ -306,10 +306,6 @@ class OpenAIChatCompletionsProvider(BaseProvider):
 
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
         prompt = build_prompt_ir(request)
-        payload = {
-            "model": self._settings.model,
-            "messages": build_chat_completions_messages(prompt),
-        }
         _log_model_request(prompt.instructions, prompt.context_text, [])
         endpoint = self._settings.base_url + "/chat/completions"
         headers = _build_auth_headers(self._settings)
@@ -317,6 +313,9 @@ class OpenAIChatCompletionsProvider(BaseProvider):
         async with httpx.AsyncClient(
             timeout=self._settings.timeout_seconds
         ) as client:
+            payload = _build_chat_completions_payload(
+                prompt, self._settings.model, merged_context=False
+            )
             try:
                 response = await client.post(
                     endpoint,
@@ -334,6 +333,34 @@ class OpenAIChatCompletionsProvider(BaseProvider):
                 raise ProviderError(
                     "Provider HTTP request failed: " + repr(exc)
                 ) from exc
+
+        if (
+            response.status_code == 400
+            and _should_retry_with_merged_system_message(response.text)
+        ):
+            async with httpx.AsyncClient(
+                timeout=self._settings.timeout_seconds
+            ) as client:
+                payload = _build_chat_completions_payload(
+                    prompt, self._settings.model, merged_context=True
+                )
+                try:
+                    response = await client.post(
+                        endpoint,
+                        json=payload,
+                        headers=headers,
+                    )
+                except httpx.ReadTimeout as exc:
+                    raise ProviderError(
+                        "Provider request timed out after "
+                        + str(self._settings.timeout_seconds)
+                        + " seconds. Local models may need extra warm-up time on "
+                        + "their first request."
+                    ) from exc
+                except Exception as exc:
+                    raise ProviderError(
+                        "Provider HTTP request failed: " + repr(exc)
+                    ) from exc
 
         if response.status_code >= 400:
             _log_provider_auth_diagnostic(
@@ -379,30 +406,6 @@ class OpenAIChatCompletionsProvider(BaseProvider):
         self, request: ProviderRequest
     ) -> AsyncIterator[ProviderStreamEvent]:
         prompt = build_prompt_ir(request)
-        payload = {
-            "model": self._settings.model,
-            "messages": build_chat_completions_messages(prompt),
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "genomespy_plan_response",
-                    "strict": True,
-                    "schema": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["type", "message"],
-                        "properties": {
-                            "type": {
-                                "type": "string",
-                                "enum": ["answer", "clarify"],
-                            },
-                            "message": {"type": "string"},
-                        },
-                    },
-                },
-            },
-            "stream": True,
-        }
         _log_model_request(prompt.instructions, prompt.context_text, [])
         endpoint = self._settings.base_url + "/chat/completions"
         headers = _build_auth_headers(self._settings)
@@ -410,111 +413,136 @@ class OpenAIChatCompletionsProvider(BaseProvider):
         async with httpx.AsyncClient(
             timeout=self._settings.timeout_seconds
         ) as client:
-            try:
-                async with client.stream(
-                    "POST",
-                    endpoint,
-                    json=payload,
-                    headers=headers,
-                ) as response:
-                    if response.status_code >= 400:
-                        _log_provider_auth_diagnostic(
-                            "chat_completions",
-                            endpoint,
-                            self._settings,
-                            response.status_code,
-                        )
-                        body = await response.aread()
-                        body_preview = body.decode("utf-8", errors="replace").strip()
-                        logger.error(
-                            "Provider request failed with status %s: %s",
-                            response.status_code,
-                            body_preview,
-                        )
-                        raise ProviderError(
-                            "Provider returned HTTP "
-                            + str(response.status_code)
-                            + ": "
-                            + (body_preview or "no response body")
-                        )
-
-                    text_parts: list[str] = []
-                    reasoning_parts: list[str] = []
-                    stream_mode: str | None = None
-                    final_snapshot_text = ""
-                    async for event_name, data_text in _iter_sse_events(response):
-                        logger.debug(
-                            "Provider raw SSE event %s from Responses API:\n%s",
-                            event_name,
-                            data_text,
-                        )
-                        if data_text == "[DONE]":
-                            break
-
-                        payload = _load_stream_event_payload(data_text)
-                        if event_name.endswith(".done"):
-                            snapshot_text = _extract_stream_text(payload, event_name)
-                            if snapshot_text:
-                                final_snapshot_text = snapshot_text
-                            continue
-
-                        text_delta = _extract_stream_text(payload, event_name)
-                        if text_delta:
-                            text_parts.append(text_delta)
-                            if stream_mode is None:
-                                stream_mode = _classify_stream_text("".join(text_parts))
-                                if stream_mode == "prose":
-                                    yield ProviderStreamEvent(
-                                        type="delta",
-                                        delta="".join(text_parts),
-                                    )
-                            elif stream_mode == "prose":
-                                yield ProviderStreamEvent(
-                                    type="delta",
-                                    delta=text_delta,
+            for merged_context in (False, True):
+                payload = _build_chat_completions_payload(
+                    prompt,
+                    self._settings.model,
+                    merged_context=merged_context,
+                    stream=True,
+                )
+                try:
+                    async with client.stream(
+                        "POST",
+                        endpoint,
+                        json=payload,
+                        headers=headers,
+                    ) as response:
+                        if response.status_code >= 400:
+                            body = await response.aread()
+                            body_preview = body.decode(
+                                "utf-8", errors="replace"
+                            ).strip()
+                            if (
+                                not merged_context
+                                and response.status_code == 400
+                                and _should_retry_with_merged_system_message(
+                                    body_preview
                                 )
+                            ):
+                                continue
 
-                        reasoning_delta = _extract_stream_reasoning(payload, event_name)
-                        if reasoning_delta:
-                            reasoning_parts.append(reasoning_delta)
-                            yield ProviderStreamEvent(
-                                type="reasoning_delta",
-                                reasoning=reasoning_delta,
+                            _log_provider_auth_diagnostic(
+                                "chat_completions",
+                                endpoint,
+                                self._settings,
+                                response.status_code,
+                            )
+                            logger.error(
+                                "Provider request failed with status %s: %s",
+                                response.status_code,
+                                body_preview,
+                            )
+                            raise ProviderError(
+                                "Provider returned HTTP "
+                                + str(response.status_code)
+                                + ": "
+                                + (body_preview or "no response body")
                             )
 
-                        if _is_stream_heartbeat(event_name, payload):
-                            yield ProviderStreamEvent(type="heartbeat")
+                        text_parts: list[str] = []
+                        reasoning_parts: list[str] = []
+                        stream_mode: str | None = None
+                        final_snapshot_text = ""
+                        async for event_name, data_text in _iter_sse_events(response):
+                            logger.debug(
+                                "Provider raw SSE event %s from Responses API:\n%s",
+                                event_name,
+                                data_text,
+                            )
+                            if data_text == "[DONE]":
+                                break
 
-                    final_text = final_snapshot_text or "".join(text_parts).strip()
-                    if not final_text and reasoning_parts:
-                        final_text = "".join(reasoning_parts).strip()
+                            payload = _load_stream_event_payload(data_text)
+                            if event_name.endswith(".done"):
+                                snapshot_text = _extract_stream_text(
+                                    payload, event_name
+                                )
+                                if snapshot_text:
+                                    final_snapshot_text = snapshot_text
+                                continue
 
-                    logger.debug(
-                        (
-                            "Provider stream collected final text: "
-                            "parts=%d reasoning_parts=%d preview=%s"
-                        ),
-                        len(text_parts),
-                        len(reasoning_parts),
-                        _truncate_logged_content(final_text),
-                    )
-                    yield ProviderStreamEvent(
-                        type="final",
-                        response=_parse_provider_response_text(
-                            final_text, allow_repair=True
-                        ),
-                    )
-            except httpx.ReadTimeout as exc:
-                raise ProviderError(
-                    "Provider request timed out after "
-                    + str(self._settings.timeout_seconds)
-                    + " seconds. Local models may need extra warm-up time on "
-                    + "their first request."
-                ) from exc
-            except Exception as exc:
-                raise ProviderError(
-                    "Provider HTTP request failed: " + repr(exc)
-                ) from exc
+                            text_delta = _extract_stream_text(payload, event_name)
+                            if text_delta:
+                                text_parts.append(text_delta)
+                                if stream_mode is None:
+                                    stream_mode = _classify_stream_text(
+                                        "".join(text_parts)
+                                    )
+                                    if stream_mode == "prose":
+                                        yield ProviderStreamEvent(
+                                            type="delta",
+                                            delta="".join(text_parts),
+                                        )
+                                elif stream_mode == "prose":
+                                    yield ProviderStreamEvent(
+                                        type="delta",
+                                        delta=text_delta,
+                                    )
+
+                            reasoning_delta = _extract_stream_reasoning(
+                                payload, event_name
+                            )
+                            if reasoning_delta:
+                                reasoning_parts.append(reasoning_delta)
+                                yield ProviderStreamEvent(
+                                    type="reasoning_delta",
+                                    reasoning=reasoning_delta,
+                                )
+
+                            if _is_stream_heartbeat(event_name, payload):
+                                yield ProviderStreamEvent(type="heartbeat")
+
+                        final_text = final_snapshot_text or "".join(text_parts).strip()
+                        if not final_text and reasoning_parts:
+                            final_text = "".join(reasoning_parts).strip()
+
+                        logger.debug(
+                            (
+                                "Provider stream collected final text: "
+                                "parts=%d reasoning_parts=%d preview=%s"
+                            ),
+                            len(text_parts),
+                            len(reasoning_parts),
+                            _truncate_logged_content(final_text),
+                        )
+                        yield ProviderStreamEvent(
+                            type="final",
+                            response=_parse_provider_response_text(
+                                final_text, allow_repair=True
+                            ),
+                        )
+                        return
+                except httpx.ReadTimeout as exc:
+                    raise ProviderError(
+                        "Provider request timed out after "
+                        + str(self._settings.timeout_seconds)
+                        + " seconds. Local models may need extra warm-up time on "
+                        + "their first request."
+                    ) from exc
+                except Exception as exc:
+                    raise ProviderError(
+                        "Provider HTTP request failed: " + repr(exc)
+                    ) from exc
 
 
 def _build_responses_tools() -> list[dict[str, Any]]:
@@ -524,6 +552,52 @@ def _build_responses_tools() -> list[dict[str, Any]]:
     from .tool_catalog import build_responses_tool_definitions
 
     return build_responses_tool_definitions()
+
+
+def _build_chat_completions_payload(
+    prompt: Any, model: str, *, merged_context: bool, stream: bool = False
+) -> dict[str, Any]:
+    messages = build_chat_completions_messages(prompt)
+    if merged_context:
+        messages = [
+            {
+                "role": "system",
+                "content": prompt.instructions + "\n\n" + prompt.context_text,
+            },
+            *messages[2:],
+        ]
+
+    payload: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+    }
+    if stream:
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "genomespy_plan_response",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["type", "message"],
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["answer", "clarify"],
+                        },
+                        "message": {"type": "string"},
+                    },
+                },
+            },
+        }
+        payload["stream"] = True
+
+    return payload
+
+
+def _should_retry_with_merged_system_message(text: str) -> bool:
+    return "system message must be at the beginning" in text.lower()
 
 
 def _log_model_request(

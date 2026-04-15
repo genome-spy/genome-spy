@@ -1,192 +1,97 @@
-# GenomeSpy Agent Server PoC
+# GenomeSpy Agent Server
 
-This directory contains the minimal Python relay service for the read-only
-conversation PoC described in
-`packages/app/src/agent/LLM_PLAN/conversation-server-PoC.md`.
+This directory contains the thin Python relay that sits between GenomeSpy in
+the browser and a model server.
 
-## Scope
+The relay accepts GenomeSpy’s `POST /v1/agent-turn` request, forwards the
+assembled prompt to a model server, and normalizes the reply into the shape
+GenomeSpy expects.
 
-The service is intentionally thin:
+The model server can be local or remote. Common options are vLLM, Ollama,
+LM Studio, and MLX-based servers.
 
-- accepts `POST /v1/agent-turn`
-- reads `message`, `history`, and `context` as-is
-- prepends a fixed internal system prompt
-- forwards the assembled prompt to one LLM provider
-- normalizes the result to `answer`, `clarify`, or `tool_call`
-- can also stream the turn as SSE when the client asks for it
+## Quick Start
 
-The service does not:
+1. Install `uv`.
+2. Sync the relay project.
+3. Start a model server.
+4. Start the GenomeSpy relay.
+5. Point GenomeSpy at the relay.
 
-- rebuild GenomeSpy context
-- validate GenomeSpy semantics
-- perform retries, truncation, or summarization
+### Install uv
 
-The browser app executes local tools such as view expansion and visibility
-changes after the relay returns a `tool_call` turn.
-
-## Tech stack
-
-- `FastAPI`
-- `httpx`
-- `pydantic`
-- `uvicorn`
-- `pytest`
-- `ruff`
-- `mypy`
-
-## Configuration
-
-The server prefers one OpenAI-compatible Responses adapter.
-An OpenAI-compatible chat-completions adapter remains available as a fallback.
-
-Required environment variables:
-
-- `GENOMESPY_AGENT_MODEL`
-
-Optional environment variables:
-
-- `GENOMESPY_AGENT_BASE_URL`
-  - default: `http://127.0.0.1:11434/v1`
-- `GENOMESPY_AGENT_API_KEY`
-  - default: `ollama`
-- `GENOMESPY_AGENT_API_STYLE`
-  - default: `responses`
-  - set to `chat_completions` to use the fallback adapter
-- `GENOMESPY_AGENT_ENABLE_STREAMING`
-  - default: `true`
-  - set to `false` to force the non-streaming JSON path, which is useful for
-    local providers with broken SSE output
-- `GENOMESPY_AGENT_TIMEOUT_SECONDS`
-  - default: `180`
-- `GENOMESPY_AGENT_SYSTEM_PROMPT`
-  - overrides the built-in GenomeSpy system prompt
-
-The default base URL targets a local OpenAI-compatible endpoint. This works for
-providers such as LM Studio or Ollama when configured with a compatible API.
-
-## Ollama warm-up
-
-When the relay talks to a local model, the first request can take much longer
-than later ones because the model may need to load into memory. The relay
-therefore defaults to a `180` second timeout.
-
-If the first request still times out, try warming the model with a direct
-request first:
+On macOS and Linux:
 
 ```bash
-curl http://127.0.0.1:11434/v1/responses \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ollama" \
-  -d '{
-    "model": "gemma4:e4b",
-    "instructions": "You are a helpful assistant.",
-    "input": [
-      {
-        "role": "user",
-        "content": [
-          { "type": "input_text", "text": "Say hello in one sentence." }
-        ]
-      }
-    ]
-  }'
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-If needed, increase the timeout explicitly:
+Restart your shell so `uv` is on `PATH`.
 
-```bash
-export GENOMESPY_AGENT_TIMEOUT_SECONDS=300
-```
-
-## Run
-
-### 1. Start GenomeSpy
-
-From the repo root, start the GenomeSpy dev server with agent support enabled
-and point it at the local Python relay:
-
-```bash
-VITE_AGENT_ENABLED=true VITE_AGENT_BASE_URL=http://127.0.0.1:8000 npm start
-```
-
-This starts the GenomeSpy example app on `http://localhost:8080/`.
-
-### 2. Start or verify Ollama
-
-Ollama usually runs as a background service. If it is not already running, you
-can start it with:
-
-```bash
-ollama serve
-```
-
-If you get an "address already in use" message, Ollama is already running and
-you can leave it alone.
-
-To verify Ollama is responding:
-
-```bash
-curl http://127.0.0.1:11434/api/tags
-```
-
-To pull the example model used in this README:
-
-```bash
-ollama pull gemma4:e4b
-```
-
-To confirm the model is available:
-
-```bash
-ollama list
-```
-
-### 3. Start the Python relay
+### Install the relay
 
 From the repo root:
 
 ```bash
-export GENOMESPY_AGENT_MODEL=gemma4:e4b
-export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:11434/v1
-export GENOMESPY_AGENT_API_KEY=ollama
-
-uv run --project utils/agent_server uvicorn app.main:app --reload --app-dir utils/agent_server
+cd utils/agent_server
+uv sync
 ```
 
-### 4. Use the GenomeSpy chat panel
+### Relay command
 
-Open the GenomeSpy app in the browser at `http://localhost:8080/` and load one
-of the example visualizations.
+From the repo root:
 
-Then:
+```bash
+export GENOMESPY_AGENT_MODEL=<model-name>
+export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:<model-port>/v1
+export GENOMESPY_AGENT_API_STYLE=<responses|chat_completions>
+export GENOMESPY_AGENT_API_KEY=<api-key-or-placeholder>
+export GENOMESPY_AGENT_ENABLE_STREAMING=false
 
-1. Open the local agent chat panel from the toolbar.
-2. Type a question such as:
-   - `What is in this visualization?`
-   - `How are methylation levels encoded?`
-3. Submit the message.
+UV_CACHE_DIR=/tmp/uv-cache uv run --project utils/agent_server \
+  uvicorn app.main:app \
+  --host 0.0.0.0 \
+  --port 8001 \
+  --app-dir utils/agent_server
+```
 
-The chat panel request should travel from GenomeSpy to the Python relay as a
-`POST` request to:
+### Browser command
+
+From the repo root on the machine running GenomeSpy:
+
+```bash
+VITE_AGENT_ENABLED=true \
+VITE_AGENT_BASE_URL=http://<relay-host>:8001 \
+npm start
+```
+
+## Relay Diagram
 
 ```text
-http://127.0.0.1:8000/v1/agent-turn
+GenomeSpy browser
+  -> GenomeSpy agent relay (/v1/agent-turn)
+    -> model server (/v1/chat/completions or /v1/responses)
+      -> model
+    <- normalized relay response
+  <- assistant message in the chat panel
 ```
 
-The Python relay then forwards the assembled prompt to the configured provider
-and returns a normalized `answer` or `clarify` response back to the chat panel.
-If the request carries `Accept: text/event-stream` or `?stream=true`, the relay
-streams `start`, `delta`, `reasoning_delta`, `heartbeat`, and `final` SSE
-events instead of a single JSON body. Plain Markdown replies stream directly.
-If the reply starts with `{` or a fenced JSON block, the relay buffers it as
-structured output and emits only the final parsed JSON response.
+## How It Works
 
-If everything is wired correctly, you should see:
+- GenomeSpy sends the relay a `message`, `history`, and `context`.
+- The relay adds the system prompt and prompt context.
+- The relay forwards the turn to the configured model server.
+- The relay normalizes the provider response to `answer`, `clarify`, or
+  `tool_call`.
+- If streaming is enabled, the relay can also forward SSE events.
 
-- the browser app running on `http://localhost:8080/`
-- the Python relay logging `POST /v1/agent-turn`
-- the chat panel rendering the returned assistant message
+## Installation
 
-## Test
+The relay uses `uv`, `FastAPI`, `httpx`, and `pydantic`.
+
+Install `uv` first, then run `uv sync` in `utils/agent_server/`.
+
+Useful checks:
 
 ```bash
 uv run --project utils/agent_server pytest
@@ -194,29 +99,192 @@ uv run --project utils/agent_server ruff check .
 uv run --project utils/agent_server mypy app
 ```
 
-## Request shape
+## Providers
 
-```json
-{
-  "message": "How are methylation levels encoded?",
-  "history": [
-    {
-      "id": "msg_001",
-      "role": "user",
-      "text": "What is in this visualization?"
+### vLLM
+
+vLLM exposes an OpenAI-compatible API. Start it with:
+
+```bash
+vllm serve <model-or-path> \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --api-key placeholder \
+  --max-model-len 262144 \
+  --quantization moe_wna16 \
+  --gpu-memory-utilization 0.80
+```
+
+Then point the relay at it:
+
+```bash
+export GENOMESPY_AGENT_MODEL=<model-name>
+export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:8000/v1
+export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_KEY=placeholder
+export GENOMESPY_AGENT_ENABLE_STREAMING=false
+```
+
+#### Optional DGX setup
+
+If you want to run vLLM on a DGX and point a MacBook at it, see
+[`DGX_VLLM_SETUP.md`](./DGX_VLLM_SETUP.md).
+
+### LM Studio
+
+LM Studio exposes an OpenAI-compatible local server.
+
+Start the local server in the LM Studio app and load a model. The local server
+usually listens on port `1234`.
+
+```bash
+export GENOMESPY_AGENT_MODEL=<model-name>
+export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:1234/v1
+export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_KEY=lm-studio
+```
+
+If you want LM Studio to listen on your LAN, enable the local server’s network
+access in the LM Studio UI and point the relay at that machine’s IP address.
+
+### oMLX
+
+oMLX is the Mac-native MLX server. It is a good fit when you want local
+inference on Apple Silicon.
+
+Install and start it with:
+
+```bash
+git clone https://github.com/jundot/omlx
+cd omlx
+pip install -e .
+omlx serve --model-dir ~/models
+```
+
+oMLX exposes an OpenAI-compatible API on `http://127.0.0.1:8000/v1`.
+
+```bash
+export GENOMESPY_AGENT_MODEL=<model-name>
+export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:8000/v1
+export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_KEY=omlx
+```
+
+If you already use LM Studio models, point `--model-dir` at the same model
+directory.
+
+### Ollama
+
+Ollama works with the relay through the chat-completions path.
+
+```bash
+ollama serve
+ollama pull gemma4:e4b
+
+export GENOMESPY_AGENT_MODEL=gemma4:e4b
+export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:11434/v1
+export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_KEY=ollama
+```
+
+If the first request is slow, keep `GENOMESPY_AGENT_ENABLE_STREAMING=false`
+until the setup is stable.
+
+### OpenAI-compatible servers
+
+Use this for local or remote servers that expose an OpenAI-style API.
+
+```bash
+export GENOMESPY_AGENT_MODEL=<model-name>
+export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:<port>/v1
+export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_KEY=<api-key-or-placeholder>
+```
+
+## Example Requests
+
+The relay accepts `POST /v1/agent-turn`.
+
+### Minimal payload
+
+```bash
+curl -s http://127.0.0.1:8001/v1/agent-turn \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "message": "What is this visualization about?",
+    "history": [],
+    "context": {
+      "schemaVersion": 1
     }
-  ],
-  "context": {
-    "schemaVersion": 1
-  }
-}
+  }'
 ```
 
-## Response shape
+### GenomeSpy-shaped payload
 
-```json
-{
-  "type": "answer",
-  "message": "Methylation levels are encoded with the beta-value track."
-}
+```bash
+curl -s http://127.0.0.1:8001/v1/agent-turn \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "message": "Summarize the active view in one sentence.",
+    "history": [
+      {
+        "id": "msg_001",
+        "role": "user",
+        "text": "What is on the screen?"
+      }
+    ],
+    "context": {
+      "schemaVersion": 1,
+      "sampleSummary": {
+        "sampleCount": 2,
+        "groupCount": 1
+      },
+      "actionCatalog": [],
+      "toolCatalog": [],
+      "attributes": [],
+      "viewWorkflows": {
+        "workflows": []
+      },
+      "provenance": [],
+      "lifecycle": {
+        "appInitialized": true
+      },
+      "viewRoot": {
+        "title": "Example genomic track",
+        "type": "view",
+        "name": "viewRoot"
+      }
+    }
+  }'
 ```
+
+If you want SSE output, append `?stream=true` to the relay URL.
+
+## Use From Another Machine
+
+If the relay runs on another machine:
+
+1. Find the relay host IP:
+   ```bash
+   hostname -I
+   ```
+2. Start GenomeSpy on your MacBook or other laptop:
+   ```bash
+   VITE_AGENT_ENABLED=true \
+   VITE_AGENT_BASE_URL=http://<relay-host-ip>:8001 \
+   npm start
+   ```
+3. Keep the browser local and point it at the relay, not the model server.
+
+## Troubleshooting
+
+- `VIRTUAL_ENV=.venv does not match the project environment path`
+  - `uv` wants to use the project environment instead of the active one.
+  - Fix: add `--active` or let `uv` use the project environment directly.
+- `curl http://127.0.0.1:8001/...` from the Mac fails
+  - The relay is on the remote host, not the Mac.
+  - Fix: use `http://<relay-host-ip>:8001/...` instead.
+
+If you are using DGX + vLLM, see
+[`DGX_VLLM_SETUP.md`](./DGX_VLLM_SETUP.md) for the CUDA, Python, GPU, and
+vLLM-specific troubleshooting notes.

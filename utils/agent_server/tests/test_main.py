@@ -2,8 +2,14 @@ from _pytest.logging import LogCaptureFixture
 from fastapi.testclient import TestClient
 
 from app.config import load_default_system_prompt
-from app.main import app, get_settings, log_startup_summary
+from app.main import (
+    app,
+    get_provider,
+    get_settings,
+    log_startup_summary,
+)
 from app.models import ProviderResponse, ProviderStreamEvent, ToolCall
+from app.providers import OpenAIChatCompletionsProvider
 
 
 class StubProvider:
@@ -65,6 +71,24 @@ class StreamingProvider:
 
 def reset_settings_cache() -> None:
     get_settings.cache_clear()
+
+
+def reset_provider_cache() -> None:
+    get_provider.cache_clear()
+
+
+def test_get_provider_uses_chat_completions_for_vllm(monkeypatch) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    monkeypatch.setenv("GENOMESPY_AGENT_API_STYLE", "chat_completions")
+    reset_settings_cache()
+    reset_provider_cache()
+
+    try:
+        provider = get_provider()
+    finally:
+        reset_provider_cache()
+
+    assert isinstance(provider, OpenAIChatCompletionsProvider)
 
 
 def test_agent_turn_endpoint_returns_normalized_response(monkeypatch) -> None:
