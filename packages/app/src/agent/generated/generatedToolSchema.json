@@ -1061,6 +1061,9 @@
       "additionalProperties": false,
       "description": "Tool inputs exposed to the agent.",
       "properties": {
+        "buildSelectionAggregationAttribute": {
+          "$ref": "#/definitions/BuildSelectionAggregationAttributeToolInput"
+        },
         "clearViewVisibility": {
           "$ref": "#/definitions/ClearViewVisibilityToolInput"
         },
@@ -1075,9 +1078,6 @@
         },
         "jumpToProvenanceState": {
           "$ref": "#/definitions/JumpToProvenanceStateToolInput"
-        },
-        "resolveSelectionAggregationCandidate": {
-          "$ref": "#/definitions/ResolveSelectionAggregationCandidateToolInput"
         },
         "searchViewDatums": {
           "$ref": "#/definitions/SearchViewDatumsToolInput"
@@ -1096,7 +1096,7 @@
         "clearViewVisibility",
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
-        "resolveSelectionAggregationCandidate",
+        "buildSelectionAggregationAttribute",
         "searchViewDatums",
         "submitIntentProgram"
       ],
@@ -1106,6 +1106,28 @@
       "description": "Aggregation operators supported by interval-based attribute access.",
       "enum": ["min", "max", "weightedMean", "variance", "count"],
       "type": "string"
+    },
+    "BuildSelectionAggregationAttributeToolInput": {
+      "additionalProperties": false,
+      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the `submitIntentProgram` tool after using this tool. If the requested locus or interval is not the current selection, update the selection first.",
+      "examples": [
+        {
+          "aggregation": "max",
+          "candidateId": "brush@foo:bar"
+        }
+      ],
+      "properties": {
+        "aggregation": {
+          "$ref": "#/definitions/AggregationOp",
+          "description": "Aggregation op to apply to the candidate field."
+        },
+        "candidateId": {
+          "description": "Stable identifier for the selected candidate row. The identifiers are available in `selectionAggregationCandidates` in the view context. They become available after a selection is made with a successful `paramChange` action.",
+          "type": "string"
+        }
+      },
+      "required": ["candidateId", "aggregation"],
+      "type": "object"
     },
     "ClearViewVisibilityToolInput": {
       "additionalProperties": false,
@@ -1187,28 +1209,6 @@
         }
       },
       "required": ["provenanceId"],
-      "type": "object"
-    },
-    "ResolveSelectionAggregationCandidateToolInput": {
-      "additionalProperties": false,
-      "description": "Resolve a selection aggregation candidate into an `AttributeIdentifier` that can be used for subsequent intent actions. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not apply any aggregation itself. Use the `submitIntentProgram` tool after using this tool.",
-      "examples": [
-        {
-          "aggregation": "max",
-          "candidateId": "brush@foo:bar"
-        }
-      ],
-      "properties": {
-        "aggregation": {
-          "$ref": "#/definitions/AggregationOp",
-          "description": "Aggregation op to apply to the candidate field."
-        },
-        "candidateId": {
-          "description": "Stable identifier for the selected candidate row. The identifiers are available in `selectionAggregationCandidates` in the view context. They become available after a selection is made with a successful `paramChange` action.",
-          "type": "string"
-        }
-      },
-      "required": ["candidateId", "aggregation"],
       "type": "object"
     },
     "SearchViewDatumsToolInput": {

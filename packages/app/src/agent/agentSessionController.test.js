@@ -924,7 +924,7 @@ describe("createAgentSessionController", () => {
         const results = await controller.executeToolCalls([
             {
                 callId: "call-resolve",
-                name: "resolveSelectionAggregationCandidate",
+                name: "buildSelectionAggregationAttribute",
                 arguments: {
                     candidateId: "brush@track:beta",
                     aggregation: "max",
@@ -936,7 +936,7 @@ describe("createAgentSessionController", () => {
         expect(results).toEqual([
             expect.objectContaining({
                 rejected: false,
-                text: "Resolved max(beta) for brush@track:beta. Remember to use the resolution in a subsequent intent program action to apply the aggregation.",
+                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use content.attribute as payload.attribute in the next `submitIntentProgram` action. If you need a different locus or interval, update the selection first.",
                 content: expect.objectContaining({
                     kind: "selection_aggregation_resolution",
                     candidateId: "brush@track:beta",

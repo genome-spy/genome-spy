@@ -27,7 +27,7 @@ descriptor can drive multiple consumers.
     and reused by the context menu and the agent context.
   - The agent context already exposes active interval selections and
     aggregatable fields through `selectionAggregationContext.js`.
-  - `resolveSelectionAggregationCandidate(candidateId, aggregation)` resolves
+  - `buildSelectionAggregationAttribute(candidateId, aggregation)` resolves
     a candidate row into the canonical attribute and a short preview.
   - The canonical `VALUE_AT_LOCUS` builder exists in
     `selectionAggregationAttributes.js`.
@@ -99,7 +99,7 @@ What is available today:
     `sampleView/deriveMetadata`.
   - `paramProvenance/expandPointSelection` exists, but it is for point
     selections and is not part of the interval-selection flow.
-- `resolveSelectionAggregationCandidate` resolves a candidate row into the
+- `buildSelectionAggregationAttribute` resolves a candidate row into the
   canonical attribute preview.
   - It takes `candidateId` and `aggregation`.
   - It returns the canonical `VALUE_AT_LOCUS` attribute plus a short preview.

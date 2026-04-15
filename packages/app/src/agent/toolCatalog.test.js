@@ -18,7 +18,7 @@ describe("toolCatalog", () => {
             "clearViewVisibility",
             "jumpToProvenanceState",
             "jumpToInitialProvenanceState",
-            "resolveSelectionAggregationCandidate",
+            "buildSelectionAggregationAttribute",
             "searchViewDatums",
             "submitIntentProgram",
         ]);
@@ -60,7 +60,7 @@ describe("toolCatalog", () => {
         expect(toolDefinitions[5].parameters.properties).toEqual({});
         expect(toolDefinitions[5].strict).toBe(true);
         expect(toolDefinitions[6].name).toBe(
-            "resolveSelectionAggregationCandidate"
+            "buildSelectionAggregationAttribute"
         );
         expect(toolDefinitions[6].parameters.type).toBe("object");
         expect(toolDefinitions[6].strict).toBe(true);

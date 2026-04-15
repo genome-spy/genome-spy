@@ -115,11 +115,12 @@ export interface JumpToProvenanceStateToolInput {
 export interface JumpToInitialProvenanceStateToolInput {}
 
 /**
- * Resolve a selection aggregation candidate into an `AttributeIdentifier`
- * that can be used for subsequent intent actions. Before using this tool,
- * you must make an interval selection using a parameter or ensure that
- * one already exists. This tool does not apply any aggregation itself.
- * Use the `submitIntentProgram` tool after using this tool.
+ * Build an `AttributeIdentifier` for a selection-derived aggregation so it can
+ * be used in a later intent action. Before using this tool, you must make an
+ * interval selection using a parameter or ensure that one already exists. This
+ * tool does not compute or return an aggregated value. Use the
+ * `submitIntentProgram` tool after using this tool. If the requested locus or
+ * interval is not the current selection, update the selection first.
  *
  * @example
  * {
@@ -127,7 +128,7 @@ export interface JumpToInitialProvenanceStateToolInput {}
  *   "aggregation": "max"
  * }
  */
-export interface ResolveSelectionAggregationCandidateToolInput {
+export interface BuildSelectionAggregationAttributeToolInput {
     /**
      * Stable identifier for the selected candidate row. The identifiers are
      * available in `selectionAggregationCandidates` in the view context.
@@ -225,7 +226,7 @@ export interface AgentToolInputs {
     clearViewVisibility: ClearViewVisibilityToolInput;
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
-    resolveSelectionAggregationCandidate: ResolveSelectionAggregationCandidateToolInput;
+    buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     submitIntentProgram: SubmitIntentProgramToolInput;
 }

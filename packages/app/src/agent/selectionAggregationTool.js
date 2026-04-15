@@ -10,7 +10,7 @@ import { buildSelectionAggregationAttributeIdentifier } from "../sampleView/sele
  * @param {import("../sampleView/types.js").AggregationOp} aggregation
  * @returns {import("./types.js").SelectionAggregationResolution}
  */
-export function resolveSelectionAggregationCandidate(
+export function buildSelectionAggregationAttribute(
     context,
     candidateId,
     aggregation

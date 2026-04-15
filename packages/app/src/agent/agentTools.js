@@ -1,4 +1,4 @@
-import { resolveSelectionAggregationCandidate } from "./selectionAggregationTool.js";
+import { buildSelectionAggregationAttribute } from "./selectionAggregationTool.js";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 
@@ -14,7 +14,7 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {import("./agentToolInputs.d.ts").ClearViewVisibilityToolInput} ClearViewVisibilityToolInput
  * @typedef {import("./agentToolInputs.d.ts").JumpToProvenanceStateToolInput} JumpToProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").JumpToInitialProvenanceStateToolInput} JumpToInitialProvenanceStateToolInput
- * @typedef {import("./agentToolInputs.d.ts").ResolveSelectionAggregationCandidateToolInput} ResolveSelectionAggregationCandidateToolInput
+ * @typedef {import("./agentToolInputs.d.ts").BuildSelectionAggregationAttributeToolInput} BuildSelectionAggregationAttributeToolInput
  * @typedef {import("./agentToolInputs.d.ts").SubmitIntentProgramToolInput} SubmitIntentProgramToolInput
  * @typedef {import("./types.d.ts").AgentContext} AgentContext
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
@@ -59,8 +59,7 @@ export const agentTools = {
     clearViewVisibility,
     jumpToProvenanceState,
     jumpToInitialProvenanceState,
-    resolveSelectionAggregationCandidate:
-        resolveSelectionAggregationCandidateTool,
+    buildSelectionAggregationAttribute: buildSelectionAggregationAttributeTool,
     searchViewDatums: searchViewDatumsTool,
     submitIntentProgram: submitIntentProgramTool,
 };
@@ -169,19 +168,24 @@ export function jumpToInitialProvenanceState(runtime, input) {
  * Resolves a selection aggregation candidate into an attribute identifier.
  *
  * @param {AgentToolRuntime} runtime
- * @param {ResolveSelectionAggregationCandidateToolInput} input
+ * @param {BuildSelectionAggregationAttributeToolInput} input
  * @returns {AgentToolExecutionResult}
  */
-export function resolveSelectionAggregationCandidateTool(runtime, input) {
+export function buildSelectionAggregationAttributeTool(runtime, input) {
     try {
-        const resolution = resolveSelectionAggregationCandidate(
+        const resolution = buildSelectionAggregationAttribute(
             runtime.getAgentContext(),
             input.candidateId,
             input.aggregation
         );
 
         return {
-            text: `Resolved ${resolution.title} for ${input.candidateId}. Remember to use the resolution in a subsequent intent program action to apply the aggregation.`,
+            text:
+                `Built an AttributeIdentifier for ${resolution.title} from ` +
+                `${input.candidateId}. No aggregated value was computed. ` +
+                "Use content.attribute as payload.attribute in the next " +
+                "`submitIntentProgram` action. If you need a different locus " +
+                "or interval, update the selection first.",
             content: resolution,
         };
     } catch (error) {

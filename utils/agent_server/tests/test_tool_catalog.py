@@ -13,7 +13,8 @@ def test_build_responses_tool_definitions_reads_generated_contract() -> None:
         "clearViewVisibility",
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
-        "resolveSelectionAggregationCandidate",
+        "buildSelectionAggregationAttribute",
+        "searchViewDatums",
         "submitIntentProgram",
     ]
     serialized = json.dumps(tools)

@@ -372,7 +372,7 @@ describe("getAgentContext", () => {
             "clearViewVisibility",
             "jumpToProvenanceState",
             "jumpToInitialProvenanceState",
-            "resolveSelectionAggregationCandidate",
+            "buildSelectionAggregationAttribute",
             "searchViewDatums",
             "submitIntentProgram",
         ]);

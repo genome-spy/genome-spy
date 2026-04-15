@@ -155,12 +155,12 @@ describe("agentTools", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.resolveSelectionAggregationCandidate(runtime, {
+        const result = tools.buildSelectionAggregationAttribute(runtime, {
             candidateId: "brush@track:beta",
             aggregation: "max",
         });
 
-        expect(result.text).toContain("Resolved");
+        expect(result.text).toContain("Built an AttributeIdentifier");
         expect(result.content).toEqual(
             expect.objectContaining({
                 kind: "selection_aggregation_resolution",
@@ -473,7 +473,7 @@ describe("agentTools", () => {
         const tools = agentTools;
 
         expect(() =>
-            tools.resolveSelectionAggregationCandidate(runtime, {
+            tools.buildSelectionAggregationAttribute(runtime, {
                 candidateId: "missing-candidate",
                 aggregation: "max",
             })

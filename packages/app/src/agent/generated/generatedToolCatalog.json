@@ -112,9 +112,9 @@
     "strict": true
   },
   {
-    "toolName": "resolveSelectionAggregationCandidate",
-    "description": "Resolve a selection aggregation candidate into an `AttributeIdentifier` that can be used for subsequent intent actions.",
-    "inputType": "ResolveSelectionAggregationCandidateToolInput",
+    "toolName": "buildSelectionAggregationAttribute",
+    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action.",
+    "inputType": "BuildSelectionAggregationAttributeToolInput",
     "inputFields": [
       {
         "name": "candidateId",

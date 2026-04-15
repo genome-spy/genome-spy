@@ -22,7 +22,7 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
   - Implemented in [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js).
   - Validates and executes a batch through `IntentPipeline.submit(actions)`.
 
-- `resolveSelectionAggregationCandidate(candidateId, aggregation)`
+- `buildSelectionAggregationAttribute(candidateId, aggregation)`
   - Implemented in [`selectionAggregationTool.js`](../src/agent/selectionAggregationTool.js).
   - Resolves an agent-visible selection aggregation row into the canonical
     attribute identifier and a short preview.

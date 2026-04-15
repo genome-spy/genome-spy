@@ -37,7 +37,8 @@ describe("generateAgentToolCatalog", () => {
             "clearViewVisibility",
             "jumpToProvenanceState",
             "jumpToInitialProvenanceState",
-            "resolveSelectionAggregationCandidate",
+            "buildSelectionAggregationAttribute",
+            "searchViewDatums",
             "submitIntentProgram",
         ]);
         expect(new Set(toolNames).size).toBe(toolNames.length);
