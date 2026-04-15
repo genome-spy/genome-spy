@@ -8,6 +8,7 @@ import { summarizeProvenanceActions } from "./actionCatalog.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
+import templateResultToString from "../utils/templateResultToString.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -87,6 +88,9 @@ export function createAgentAdapter(app) {
         clearViewVisibility: (
             /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector
         ) => clearViewVisibility(app, selector),
+        getMetadataAttributeSummarySource: (
+            /** @type {import("../sampleView/types.d.ts").AttributeIdentifier} */ attribute
+        ) => getMetadataAttributeSummarySource(app, attribute),
         jumpToProvenanceState: (/** @type {string} */ provenanceId) =>
             jumpToProvenanceState(app, provenanceId),
         jumpToInitialProvenanceState: () => jumpToInitialProvenanceState(app),
@@ -110,6 +114,48 @@ export function createAgentAdapter(app) {
                 allowStreaming,
                 contextOptions,
             }),
+    };
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+ * @returns {import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined}
+ */
+function getMetadataAttributeSummarySource(app, attribute) {
+    if (
+        attribute?.type !== "SAMPLE_ATTRIBUTE" ||
+        typeof attribute.specifier !== "string"
+    ) {
+        return undefined;
+    }
+
+    const sampleView = app.getSampleView();
+    if (!sampleView) {
+        return undefined;
+    }
+
+    const sampleHierarchy = sampleView.sampleHierarchy;
+    if (!sampleHierarchy) {
+        return undefined;
+    }
+
+    const info =
+        sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
+
+    const sampleIds = sampleHierarchy.sampleData.ids;
+    const metadata = sampleHierarchy.sampleMetadata.entities;
+    const attributeName = attribute.specifier;
+
+    return {
+        attribute,
+        title: templateResultToString(info.title),
+        description: info.description,
+        dataType: info.type,
+        sampleIds,
+        values: sampleIds.map(
+            (sampleId) => metadata[sampleId]?.[attributeName]
+        ),
     };
 }
 

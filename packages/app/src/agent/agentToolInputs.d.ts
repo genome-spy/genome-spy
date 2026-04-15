@@ -12,6 +12,11 @@ type ViewSelector = {
     view: string;
 };
 
+type SampleAttributeIdentifier = {
+    type: "SAMPLE_ATTRIBUTE";
+    specifier: string;
+};
+
 /**
  * Expand a collapsed view branch in the agent context. The result is only
  * visible in the context and not observable by the user.
@@ -144,6 +149,27 @@ export interface BuildSelectionAggregationAttributeToolInput {
 }
 
 /**
+ * Return a compact summary of one metadata attribute's current values. Use
+ * this when the agent needs factual grounding about which category values
+ * exist or what numeric range is present in current sample metadata.
+ *
+ * @example
+ * {
+ *   "attribute": {
+ *     "type": "SAMPLE_ATTRIBUTE",
+ *     "specifier": "sex"
+ *   }
+ * }
+ */
+export interface GetMetadataAttributeSummaryToolInput {
+    /**
+     * Stable attributeIdentifier for the metadata attribute to summarize. In v0, this
+     * must be a `SAMPLE_ATTRIBUTE` identifier from the current context.
+     */
+    attribute: SampleAttributeIdentifier;
+}
+
+/**
  * Search datum objects in one specific searchable view.
  *
  * @example
@@ -230,6 +256,7 @@ export interface AgentToolInputs {
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;
+    getMetadataAttributeSummary: GetMetadataAttributeSummaryToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     submitIntentActions: SubmitIntentActionsToolInput;
 }

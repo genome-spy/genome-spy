@@ -125,6 +125,41 @@ export interface AgentToolCall {
 }
 
 /**
+ * Runtime source used by the metadata summary tool.
+ */
+export interface AgentMetadataAttributeSummarySource {
+    /**
+     * Stable identifier of the metadata attribute.
+     */
+    attribute: AttributeIdentifier;
+
+    /**
+     * User-visible title for the attribute.
+     */
+    title: string;
+
+    /**
+     * Human-readable description of the attribute, if available.
+     */
+    description?: string;
+
+    /**
+     * Current metadata data type.
+     */
+    dataType: string;
+
+    /**
+     * Sample ids covered by the summary scope.
+     */
+    sampleIds: string[];
+
+    /**
+     * Raw values aligned with `sampleIds`.
+     */
+    values: unknown[];
+}
+
+/**
  * Structured summary for a view-state mutation performed by an agent tool.
  */
 export interface AgentViewStateChange {
@@ -1027,6 +1062,13 @@ export interface AgentAdapter {
      * Clears the configured visibility override for a view.
      */
     clearViewVisibility(selector: ViewSelector): void;
+
+    /**
+     * Returns the current value source for one metadata attribute.
+     */
+    getMetadataAttributeSummarySource(
+        attribute: AttributeIdentifier
+    ): AgentMetadataAttributeSummarySource | undefined;
 
     /**
      * Activates a provenance state by id.

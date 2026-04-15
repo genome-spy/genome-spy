@@ -68,7 +68,7 @@ const payloadValidatorsByActionType = new Map(
 );
 
 /**
- * @param {unknown} program
+ * @param {unknown} batch
  * @returns {import("./types.js").ShapeValidationResult}
  */
 export function validateIntentBatchShape(batch) {

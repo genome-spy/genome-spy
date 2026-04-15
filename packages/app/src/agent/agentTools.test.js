@@ -5,6 +5,28 @@ import { agentTools } from "./agentTools.js";
 function createRuntimeStub() {
     let expanded = false;
     let visible = true;
+    const metadataSummarySources = {
+        sex: {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "sex",
+            },
+            title: "sex",
+            dataType: "nominal",
+            sampleIds: ["sampleA", "sampleB", "sampleC"],
+            values: ["F", "M", "F"],
+        },
+        age: {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "age",
+            },
+            title: "age",
+            dataType: "quantitative",
+            sampleIds: ["sampleA", "sampleB", "sampleC"],
+            values: [42, undefined, 36],
+        },
+    };
     const searchData = [
         {
             gene_symbol: "TP53",
@@ -63,6 +85,9 @@ function createRuntimeStub() {
         clearViewVisibility: vi.fn(() => {
             visible = true;
         }),
+        getMetadataAttributeSummarySource: vi.fn(
+            (attribute) => metadataSummarySources[attribute.specifier]
+        ),
         jumpToProvenanceState: vi.fn(() => true),
         jumpToInitialProvenanceState: vi.fn(() => true),
         getAgentContext: vi.fn(() => ({
@@ -169,6 +194,66 @@ describe("agentTools", () => {
             })
         );
         expect(runtime.getAgentContext).toHaveBeenCalledTimes(1);
+    });
+
+    it("summarizes categorical metadata attributes", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.getMetadataAttributeSummary(runtime, {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "sex",
+            },
+        });
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                text: "Summarized metadata attribute sex with 2 observed categories.",
+                content: expect.objectContaining({
+                    kind: "metadata_attribute_summary",
+                    dataType: "nominal",
+                    sampleCount: 3,
+                    nonMissingCount: 3,
+                    missingCount: 0,
+                    distinctCount: 2,
+                    categories: [
+                        { value: "F", count: 2 },
+                        { value: "M", count: 1 },
+                    ],
+                    truncated: false,
+                }),
+            })
+        );
+        expect(runtime.getMetadataAttributeSummarySource).toHaveBeenCalledWith({
+            type: "SAMPLE_ATTRIBUTE",
+            specifier: "sex",
+        });
+    });
+
+    it("summarizes quantitative metadata attributes", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.getMetadataAttributeSummary(runtime, {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "age",
+            },
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "metadata_attribute_summary",
+                dataType: "quantitative",
+                sampleCount: 3,
+                nonMissingCount: 2,
+                missingCount: 1,
+                min: 36,
+                max: 42,
+                mean: 39,
+            })
+        );
     });
 
     it("looks up datums in one searchable view", () => {
@@ -348,6 +433,27 @@ describe("agentTools", () => {
                 query: "TP53",
                 field: "",
                 mode: "exact",
+            })
+        ).toThrow(ToolCallRejectionError);
+    });
+
+    it("rejects metadata summary requests for unsupported attribute kinds", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        expect(() =>
+            tools.getMetadataAttributeSummary(runtime, {
+                attribute: {
+                    type: "VALUE_AT_LOCUS",
+                    specifier: {
+                        view: {
+                            scope: [],
+                            view: "track",
+                        },
+                        field: "beta",
+                        locus: 1,
+                    },
+                },
             })
         ).toThrow(ToolCallRejectionError);
     });

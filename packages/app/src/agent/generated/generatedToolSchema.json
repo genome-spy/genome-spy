@@ -1052,6 +1052,9 @@
         "expandViewNode": {
           "$ref": "#/definitions/ExpandViewNodeToolInput"
         },
+        "getMetadataAttributeSummary": {
+          "$ref": "#/definitions/GetMetadataAttributeSummaryToolInput"
+        },
         "jumpToInitialProvenanceState": {
           "$ref": "#/definitions/JumpToInitialProvenanceStateToolInput"
         },
@@ -1076,6 +1079,7 @@
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
         "buildSelectionAggregationAttribute",
+        "getMetadataAttributeSummary",
         "searchViewDatums",
         "submitIntentActions"
       ],
@@ -1168,6 +1172,26 @@
       "required": ["selector"],
       "type": "object"
     },
+    "GetMetadataAttributeSummaryToolInput": {
+      "additionalProperties": false,
+      "description": "Return a compact summary of one metadata attribute's current values. Use this when the agent needs factual grounding about which category values exist or what numeric range is present in current sample metadata.",
+      "examples": [
+        {
+          "attribute": {
+            "specifier": "sex",
+            "type": "SAMPLE_ATTRIBUTE"
+          }
+        }
+      ],
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/SampleAttributeIdentifier",
+          "description": "Stable identifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context."
+        }
+      },
+      "required": ["attribute"],
+      "type": "object"
+    },
     "JumpToInitialProvenanceStateToolInput": {
       "additionalProperties": false,
       "description": "Jump to the initial provenance state before any actions were dispatched.",
@@ -1188,6 +1212,20 @@
         }
       },
       "required": ["provenanceId"],
+      "type": "object"
+    },
+    "SampleAttributeIdentifier": {
+      "additionalProperties": false,
+      "properties": {
+        "specifier": {
+          "type": "string"
+        },
+        "type": {
+          "const": "SAMPLE_ATTRIBUTE",
+          "type": "string"
+        }
+      },
+      "required": ["type", "specifier"],
       "type": "object"
     },
     "SearchViewDatumsToolInput": {

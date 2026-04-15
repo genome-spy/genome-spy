@@ -1,5 +1,6 @@
 import { buildSelectionAggregationAttribute } from "./selectionAggregationTool.js";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
+import { getMetadataAttributeSummaryTool } from "./metadataAttributeSummaryTool.js";
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 
 /*
@@ -15,9 +16,11 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {import("./agentToolInputs.d.ts").JumpToProvenanceStateToolInput} JumpToProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").JumpToInitialProvenanceStateToolInput} JumpToInitialProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").BuildSelectionAggregationAttributeToolInput} BuildSelectionAggregationAttributeToolInput
+ * @typedef {import("./agentToolInputs.d.ts").GetMetadataAttributeSummaryToolInput} GetMetadataAttributeSummaryToolInput
  * @typedef {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} SubmitIntentActionsToolInput
  * @typedef {import("./types.d.ts").AgentContext} AgentContext
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
+ * @typedef {import("./types.d.ts").AgentMetadataAttributeSummarySource} AgentMetadataAttributeSummarySource
  * @typedef {import("./types.d.ts").AgentProvenanceAction} AgentProvenanceAction
  * @typedef {import("./types.d.ts").IntentBatch} IntentBatch
  * @typedef {import("./types.d.ts").IntentBatchExecutionResult} IntentBatchExecutionResult
@@ -31,6 +34,9 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  *     resolveViewSelector(selector: ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
  *     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
  *     clearViewVisibility(selector: ViewSelector): void;
+ *     getMetadataAttributeSummarySource(
+ *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
+ *     ): AgentMetadataAttributeSummarySource | undefined;
  *     expandViewNode?(selector: ViewSelector): boolean;
  *     collapseViewNode?(selector: ViewSelector): boolean;
  *     submitIntentActions(
@@ -60,6 +66,7 @@ export const agentTools = {
     jumpToProvenanceState,
     jumpToInitialProvenanceState,
     buildSelectionAggregationAttribute: buildSelectionAggregationAttributeTool,
+    getMetadataAttributeSummary: getMetadataAttributeSummaryTool,
     searchViewDatums: searchViewDatumsTool,
     submitIntentActions: submitIntentActionsTool,
 };

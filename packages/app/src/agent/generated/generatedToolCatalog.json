@@ -136,6 +136,26 @@
     "strict": true
   },
   {
+    "toolName": "getMetadataAttributeSummary",
+    "description": "Return a compact summary of one metadata attribute's current values.",
+    "inputType": "GetMetadataAttributeSummaryToolInput",
+    "inputFields": [
+      {
+        "name": "attribute",
+        "type": "SampleAttributeIdentifier",
+        "description": "Stable identifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "sex"
+      }
+    },
+    "strict": true
+  },
+  {
     "toolName": "searchViewDatums",
     "description": "Search datum objects in one specific searchable view.",
     "inputType": "SearchViewDatumsToolInput",
