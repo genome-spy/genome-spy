@@ -6,7 +6,7 @@ visualization state by using the provided tools.
 
 GenomeSpy uses concepts similar to Vega-Lite, including views, marks,
 encodings, scales, and selections. The current visualization structure is
-provided in the `viewTree`.
+provided in `viewRoot`.
 
 ## Core behavior
 
