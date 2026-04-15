@@ -11,6 +11,7 @@
 - Python relay server design: [`python_agent_server.md`](./python_agent_server.md)
 - Tool-call validation and rejection guide: [`validation.md`](./validation.md)
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
+- Agent host API and package extraction: [`agent-host-api.md`](./agent-host-api.md)
 
 ## Goals
 - Enable conversations with the agent over the current visualization.
@@ -62,6 +63,7 @@
   preflight / turn state, and the read-only snapshot used by the panel.
 - Wire field/attribute descriptions into `AttributeInfo` and LLM context.
 - Keep agent code isolated behind the env gate and dynamic imports as the default deployment path.
+- Draft an unstable agent host API that the extracted browser agent package can consume.
 - Add a later-phase data access layer with explicit public vs controlled-access policies.
 - Keep the GenomeSpy agent adapter and the Python relay server aligned when the request/response contract changes.
 
