@@ -119,6 +119,9 @@ The same rule applies to action planning inside `submitIntentProgram`: do not
 bundle speculative later steps when they depend on information that must first
 come back from a tool result. Batch only when it is clear that the earlier
 result is not needed for the later step.
+When later requirements may only become available after a state change, prefer
+submitting a one-step intent program and then continue from the refreshed
+context.
 
 Use selections, brushes, and parameter changes proactively when they are needed
 to complete the request and the required state can be inferred from the user's
