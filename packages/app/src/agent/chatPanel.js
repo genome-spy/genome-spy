@@ -110,6 +110,7 @@ export default class AgentChatPanel extends LitElement {
         panelTitle: { type: String },
         snapshot: { state: true },
         draft: { state: true },
+        expandedToolResultKeys: { state: true },
         streamTurnId: { state: true },
         streamStatus: { state: true },
         streamDraftText: { state: true },
@@ -461,6 +462,60 @@ export default class AgentChatPanel extends LitElement {
                 background: rgb(79 138 79 / 7%);
             }
 
+            .tool-result-toggle {
+                justify-self: start;
+                padding: 0;
+                border: none;
+                background: none;
+                color: var(--gs-theme-primary, #6c82ab);
+                font: inherit;
+                font-size: 0.82rem;
+                font-weight: 600;
+                cursor: pointer;
+                text-decoration: underline;
+                text-underline-offset: 0.12em;
+            }
+
+            .tool-result-toggle:hover {
+                color: color-mix(
+                    in oklab,
+                    var(--gs-theme-primary, #6c82ab) 80%,
+                    black
+                );
+            }
+
+            .tool-result-toggle:focus-visible {
+                outline: 2px solid
+                    color-mix(
+                        in oklab,
+                        var(--gs-theme-primary, #6c82ab) 55%,
+                        white
+                    );
+                outline-offset: 2px;
+                border-radius: 3px;
+            }
+
+            .tool-result-payload {
+                margin: 0;
+                padding: 0.6rem 0.7rem;
+                border: 1px solid rgb(79 138 79 / 18%);
+                border-radius: 4px;
+                background: rgb(255 255 255 / 85%);
+                color: #2b2b2b;
+                font-family: var(
+                    --gs-mono-font-family,
+                    ui-monospace,
+                    SFMono-Regular,
+                    Consolas,
+                    "Liberation Mono",
+                    monospace
+                );
+                font-size: 0.8rem;
+                line-height: 1.35;
+                white-space: pre-wrap;
+                overflow-x: auto;
+            }
+
             .message-dev-note {
                 margin-top: 0.2rem;
                 color: #777;
@@ -573,6 +628,8 @@ export default class AgentChatPanel extends LitElement {
         this.draft = "";
         /** @type {ChatSessionSnapshot} */
         this.snapshot = EMPTY_SNAPSHOT;
+        /** @type {string[]} */
+        this.expandedToolResultKeys = [];
         this.streamTurnId = 0;
         this.streamStatus = "idle";
         this.streamDraftText = "";
@@ -792,6 +849,11 @@ export default class AgentChatPanel extends LitElement {
                 </article>
             `;
         } else if (message.kind === "tool_result") {
+            const disclosureKey = this.#getToolResultDisclosureKey(message);
+            const hasStructuredContent = message.content !== undefined;
+            const payloadExpanded =
+                hasStructuredContent &&
+                this.expandedToolResultKeys.includes(disclosureKey);
             return html`
                 <article class="message tool-result">
                     <div class="message-title">
@@ -804,6 +866,27 @@ export default class AgentChatPanel extends LitElement {
                         <div class="tool-result-text">
                             ${this.#renderMarkdown(message.text ?? "")}
                         </div>
+                        ${hasStructuredContent
+                            ? html`
+                                  <button
+                                      class="tool-result-toggle"
+                                      type="button"
+                                      @click=${() =>
+                                          this.#toggleToolResultPayload(
+                                              disclosureKey
+                                          )}
+                                  >
+                                      ${payloadExpanded
+                                          ? "Hide JSON payload"
+                                          : "Show JSON payload"}
+                                  </button>
+                                  ${payloadExpanded
+                                      ? html`<pre class="tool-result-payload">
+${this.#formatToolArguments(message.content)}</pre
+                                        >`
+                                      : nothing}
+                              `
+                            : nothing}
                     </div>
                     ${this.#renderTimingNote(message.durationMs)}
                 </article>
@@ -930,6 +1013,27 @@ ${this.#formatToolArguments(toolCall.arguments)}</pre
         } catch {
             return String(value);
         }
+    }
+
+    /**
+     * @param {ChatMessage} message
+     * @returns {string}
+     */
+    #getToolResultDisclosureKey(message) {
+        return message.toolCallId
+            ? `tool-call:${message.toolCallId}`
+            : `message:${message.id}`;
+    }
+
+    /**
+     * @param {string} key
+     */
+    #toggleToolResultPayload(key) {
+        this.expandedToolResultKeys = this.expandedToolResultKeys.includes(key)
+            ? this.expandedToolResultKeys.filter(
+                  (existingKey) => existingKey !== key
+              )
+            : [...this.expandedToolResultKeys, key];
     }
 
     /**
