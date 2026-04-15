@@ -44,20 +44,20 @@
 - Semantic `description` fields should be carried through to views, encodings,
   params, data sources, and other objects the agent needs to reason about.
 - For the MVP, the agent should answer visualization questions and dispatch
-  intent programs; direct data access comes later.
+  intent batches; direct data access comes later.
 - Agent support is Vite-gated and loaded on demand:
   - `VITE_AGENT_ENABLED=true` enables the feature at build time.
   - `agentBaseUrl` is required at runtime.
   - Agent modules are loaded with dynamic `import()` so they stay out of the generic app path.
 
 ## Composition Strategy
-- Treat multi-step requests as an "intent program": ordered actions + validation + execution.
+- Treat multi-step requests as an "intent batch": ordered actions + validation + execution.
 - Execute sequences via `IntentPipeline.submit(actions)` to guarantee ordering, readiness, and rollback.
 - Consider macros that expand into multiple intents to reduce prompt errors.
 
 ## Next Implementation Candidates
 - Build a read-only LLM context snapshot (views, attributes, scales, actions, provenance).
-- Add intent program validation + execution helper.
+- Add intent batch validation + execution helper.
 - Introduce an agent session controller that owns transcript history,
   preflight / turn state, and the read-only snapshot used by the panel.
 - Wire field/attribute descriptions into `AttributeInfo` and LLM context.

@@ -15,13 +15,13 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {import("./agentToolInputs.d.ts").JumpToProvenanceStateToolInput} JumpToProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").JumpToInitialProvenanceStateToolInput} JumpToInitialProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").BuildSelectionAggregationAttributeToolInput} BuildSelectionAggregationAttributeToolInput
- * @typedef {import("./agentToolInputs.d.ts").SubmitIntentProgramToolInput} SubmitIntentProgramToolInput
+ * @typedef {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} SubmitIntentActionsToolInput
  * @typedef {import("./types.d.ts").AgentContext} AgentContext
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
  * @typedef {import("./types.d.ts").AgentProvenanceAction} AgentProvenanceAction
- * @typedef {import("./types.d.ts").IntentProgram} IntentProgram
- * @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult
- * @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine
+ * @typedef {import("./types.d.ts").IntentBatch} IntentBatch
+ * @typedef {import("./types.d.ts").IntentBatchExecutionResult} IntentBatchExecutionResult
+ * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
  * @typedef {import("./types.d.ts").AgentViewStateChange} AgentViewStateChange
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {{
@@ -33,11 +33,11 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  *     clearViewVisibility(selector: ViewSelector): void;
  *     expandViewNode?(selector: ViewSelector): boolean;
  *     collapseViewNode?(selector: ViewSelector): boolean;
- *     submitIntentProgram(
- *         program: IntentProgram,
+ *     submitIntentActions(
+ *         batch: IntentBatch,
  *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
- *     ): Promise<IntentProgramExecutionResult>;
- *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
+ *     ): Promise<IntentBatchExecutionResult>;
+ *     summarizeExecutionResult(result: IntentBatchExecutionResult): string;
  * }} AgentToolRuntime
  */
 
@@ -45,7 +45,7 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {{
  *     text: string;
  *     content?: unknown;
- *     summaries?: IntentProgramSummaryLine[];
+ *     summaries?: IntentBatchSummaryLine[];
  * }} AgentToolExecutionResult
  */
 
@@ -61,7 +61,7 @@ export const agentTools = {
     jumpToInitialProvenanceState,
     buildSelectionAggregationAttribute: buildSelectionAggregationAttributeTool,
     searchViewDatums: searchViewDatumsTool,
-    submitIntentProgram: submitIntentProgramTool,
+    submitIntentActions: submitIntentActionsTool,
 };
 
 /**
@@ -184,7 +184,7 @@ export function buildSelectionAggregationAttributeTool(runtime, input) {
                 `Built an AttributeIdentifier for ${resolution.title} from ` +
                 `${input.candidateId}. No aggregated value was computed. ` +
                 "Use content.attribute as payload.attribute in the next " +
-                "`submitIntentProgram` action. If you need a different locus " +
+                "`submitIntentActions` call. If you need a different locus " +
                 "or interval, update the selection first.",
             content: resolution,
         };
@@ -196,17 +196,24 @@ export function buildSelectionAggregationAttributeTool(runtime, input) {
 }
 
 /**
- * Executes a provenance-changing intent program.
+ * Executes provenance-changing actions.
  *
  * @param {AgentToolRuntime} runtime
- * @param {SubmitIntentProgramToolInput} input
+ * @param {SubmitIntentActionsToolInput} input
  * @returns {Promise<AgentToolExecutionResult>}
  */
-export async function submitIntentProgramTool(runtime, input) {
+export async function submitIntentActionsTool(runtime, input) {
     try {
-        const result = await runtime.submitIntentProgram(input.program, {
-            submissionKind: "agent",
-        });
+        const result = await runtime.submitIntentActions(
+            {
+                schemaVersion: 1,
+                steps: input.actions,
+                rationale: input.note,
+            },
+            {
+                submissionKind: "agent",
+            }
+        );
         return {
             text: runtime.summarizeExecutionResult(result),
             content: result.content,

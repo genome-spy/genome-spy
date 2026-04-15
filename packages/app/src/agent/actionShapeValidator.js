@@ -23,10 +23,10 @@ function createSchemaWrapper(schema) {
     };
 }
 
-const intentProgramContainerSchema = createSchemaWrapper({
-    ...generatedActionSchema.definitions.AgentIntentProgram,
+const intentBatchContainerSchema = createSchemaWrapper({
+    ...generatedActionSchema.definitions.AgentIntentBatch,
     properties: {
-        ...generatedActionSchema.definitions.AgentIntentProgram.properties,
+        ...generatedActionSchema.definitions.AgentIntentBatch.properties,
         steps: {
             type: "array",
             minItems: 1,
@@ -46,12 +46,12 @@ const intentProgramContainerSchema = createSchemaWrapper({
         },
     },
 });
-const validateIntentProgramContainerSchema = ajv.compile(
-    intentProgramContainerSchema
+const validateIntentBatchContainerSchema = ajv.compile(
+    intentBatchContainerSchema
 );
 
 const stepVariants =
-    generatedActionSchema.definitions.AgentIntentProgramStep.anyOf;
+    generatedActionSchema.definitions.AgentIntentBatchStep.anyOf;
 
 /** @type {Set<string>} */
 const supportedActionTypes = new Set(
@@ -71,9 +71,9 @@ const payloadValidatorsByActionType = new Map(
  * @param {unknown} program
  * @returns {import("./types.js").ShapeValidationResult}
  */
-export function validateIntentProgramShape(program) {
-    if (program && typeof program === "object") {
-        const candidate = /** @type {{ steps?: unknown[] }} */ (program);
+export function validateIntentBatchShape(batch) {
+    if (batch && typeof batch === "object") {
+        const candidate = /** @type {{ steps?: unknown[] }} */ (batch);
         if (Array.isArray(candidate.steps) && candidate.steps.length) {
             for (const [index, step] of candidate.steps.entries()) {
                 const action = /** @type {{ actionType?: unknown }} */ (step);
@@ -93,18 +93,18 @@ export function validateIntentProgramShape(program) {
         }
     }
 
-    if (!validateIntentProgramContainerSchema(program)) {
+    if (!validateIntentBatchContainerSchema(batch)) {
         return {
             ok: false,
             errors: formatAjvErrors(
                 "$",
-                validateIntentProgramContainerSchema.errors
+                validateIntentBatchContainerSchema.errors
             ),
         };
     }
 
-    if (program && typeof program === "object") {
-        const candidate = /** @type {{ steps?: unknown[] }} */ (program);
+    if (batch && typeof batch === "object") {
+        const candidate = /** @type {{ steps?: unknown[] }} */ (batch);
         if (Array.isArray(candidate.steps)) {
             /** @type {string[]} */
             const errors = [];

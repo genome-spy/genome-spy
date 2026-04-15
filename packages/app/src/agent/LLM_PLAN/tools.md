@@ -14,11 +14,11 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 ## Status
 
 ### Implemented
-- `validateIntentProgram(program)`
+- `validateIntentBatch(batch)`
   - Implemented in [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js).
   - Validates action types, payload shape, and app-specific attribute existence.
 
-- `submitIntentProgram(program)`
+- `submitIntentActions(actions, note)`
   - Implemented in [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js).
   - Validates and executes a batch through `IntentPipeline.submit(actions)`.
 
@@ -47,7 +47,7 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 - `setViewVisibility(selector, visibility)` / `clearViewVisibility(selector)`
   - Implemented through the agent adapter and the app's visibility state.
   - Tool-level visibility control, separate from the agent action catalog and
-    provenance-backed intent programs.
+    provenance-backed intent batches.
 
 ### Partially Implemented
 - `getViewHierarchySummary()`
@@ -77,7 +77,7 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 ### Planned
 - `getScaleSummaries()`
 - `resolveAttributeByName(query)`
-- `previewIntentProgram(program)`
+- `previewIntentBatch(batch)`
 - `getActionSchema(actionType)`
 - `forgetActionSchema(actionType)`
 
@@ -93,7 +93,7 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 ## Tool Surface
 The OpenAI-facing tool list should stay coarse-grained.
 
-- Use `submitIntentProgram` as the public mutation tool for sample-view and
+- Use `submitIntentActions` as the public mutation tool for sample-view and
   provenance-changing Redux actions.
 - Keep the detailed Redux action inventory inside the nested intent-program
   contract, not as one OpenAI tool per Redux action.
@@ -117,7 +117,7 @@ Build the tool surface in small generated steps:
    - Maintain a set of expanded view nodes.
    - Make `expandViewNode(selector)` add to that set.
    - Make `collapseViewNode(selector)` remove from that set.
-   - Keep this state out of provenance and `submitIntentProgram`.
+   - Keep this state out of provenance and `submitIntentActions`.
 
 4. Wire tool execution into the agent turn loop.
    - Parse tool calls from the model response.
@@ -125,17 +125,17 @@ Build the tool surface in small generated steps:
    - Return tool outputs to the model with the matching call id or request
      another turn
      locally after applying the tool result, depending on the transport layer.
-   - Keep `submitIntentProgram` only for provenance-backed mutations.
+   - Keep `submitIntentActions` only for provenance-backed mutations.
 
 5. Add app-state tools as separate direct state changes.
    - Use them for app state, not intent provenance.
-   - Do not route them through `submitIntentProgram`.
+   - Do not route them through `submitIntentActions`.
    - Keep them explicit so the model does not conflate them with view exploration.
 
 6. Update the system prompt and agent instructions.
    - Tell the model when to use exploration tools.
    - Tell the model when to use app-state tools.
-   - Clarify that only provenance-changing actions belong in intent programs.
+   - Clarify that only provenance-changing actions belong in intent batches.
 
 7. Add tests for the generated catalog and tool handling.
    - Validate the generated schemas.
@@ -196,10 +196,10 @@ These gather context without mutating state.
 ## Action Tools
 These mutate state and should run through `IntentPipeline`.
 
-- `validateIntentProgram(program)`
+- `validateIntentBatch(batch)`
   - Checks action types, payload schema, and attribute existence.
 
-- `submitIntentProgram(program)`
+- `submitIntentActions(actions, note)`
   - Executes a batch via `IntentPipeline.submit(actions)`.
   - Returns status, any error, and a short provenance summary of what changed.
 
@@ -210,7 +210,7 @@ These mutate state and should run through `IntentPipeline`.
 - `explainAction(action)`
   - Renders action info to human-readable text for confirmation or debugging.
 
-- `previewIntentProgram(program)`
+- `previewIntentBatch(batch)`
   - Returns a dry-run summary with warnings but no execution.
 
 ## Safety and UX

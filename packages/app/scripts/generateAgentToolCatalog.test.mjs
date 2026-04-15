@@ -39,7 +39,7 @@ describe("generateAgentToolCatalog", () => {
             "jumpToInitialProvenanceState",
             "buildSelectionAggregationAttribute",
             "searchViewDatums",
-            "submitIntentProgram",
+            "submitIntentActions",
         ]);
         expect(new Set(toolNames).size).toBe(toolNames.length);
     });

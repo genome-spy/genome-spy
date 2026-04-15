@@ -1,8 +1,8 @@
 {
-  "$ref": "#/definitions/AgentIntentProgram",
+  "$ref": "#/definitions/AgentIntentBatch",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "AgentIntentProgram": {
+    "AgentIntentBatch": {
       "additionalProperties": false,
       "properties": {
         "rationale": {
@@ -14,7 +14,7 @@
         },
         "steps": {
           "items": {
-            "$ref": "#/definitions/AgentIntentProgramStep"
+            "$ref": "#/definitions/AgentIntentBatchStep"
           },
           "minItems": 1,
           "type": "array"
@@ -23,7 +23,7 @@
       "required": ["schemaVersion", "steps"],
       "type": "object"
     },
-    "AgentIntentProgramStep": {
+    "AgentIntentBatchStep": {
       "anyOf": [
         {
           "additionalProperties": false,

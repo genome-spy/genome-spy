@@ -6,7 +6,7 @@ import { ParamSelector } from "../sampleView/sampleViewTypes.js";
 import type { AggregationOp } from "../sampleView/types.d.ts";
 import type {
     AgentActionType as GeneratedAgentActionType,
-    AgentIntentProgramStep as GeneratedAgentIntentProgramStep,
+    AgentIntentBatchStep as GeneratedAgentIntentBatchStep,
 } from "./generated/generatedActionTypes.js";
 import type { ViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import type { ParamValue } from "../state/paramProvenanceTypes.d.ts";
@@ -924,9 +924,9 @@ export interface AgentActionSummary {
 }
 
 /**
- * Renderable summary line for an agent-authored intent step.
+ * Renderable summary line for an agent-authored intent action.
  */
-export interface IntentProgramSummaryLine {
+export interface IntentBatchSummaryLine {
     /**
      * Renderable content for chat UIs.
      */
@@ -942,7 +942,7 @@ export interface IntentProgramSummaryLine {
  * Visible sample and grouping counts reported before and after a sample-view
  * mutation.
  */
-export interface IntentProgramExecutionSampleViewSummary {
+export interface IntentBatchExecutionSampleViewSummary {
     /**
      * Visible sample count before execution.
      */
@@ -965,23 +965,23 @@ export interface IntentProgramExecutionSampleViewSummary {
 }
 
 /**
- * Structured content returned when an intent program executes.
+ * Structured content returned when an intent batch executes.
  */
-export interface IntentProgramExecutionContent {
+export interface IntentBatchExecutionContent {
     /**
      * Content discriminator.
      */
-    kind: "intent_program_result";
+    kind: "intent_batch_result";
 
     /**
-     * Executed program.
+     * Executed batch.
      */
-    program: IntentProgram;
+    batch: IntentBatch;
 
     /**
      * Visible sample counts for sample-view mutations.
      */
-    sampleView?: IntentProgramExecutionSampleViewSummary;
+    sampleView?: IntentBatchExecutionSampleViewSummary;
 
     /**
      * Provenance ids for the actions dispatched by the program.
@@ -999,17 +999,17 @@ export interface AgentAdapter {
     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
 
     /**
-     * Validates an agent-authored intent program.
+     * Validates an agent-authored intent batch.
      */
-    validateIntentProgram(program: unknown): IntentProgramValidationResult;
+    validateIntentBatch(batch: unknown): IntentBatchValidationResult;
 
     /**
-     * Submits a validated intent program for execution.
+     * Submits a validated intent batch for execution.
      */
-    submitIntentProgram(
-        program: IntentProgram,
+    submitIntentActions(
+        batch: IntentBatch,
         options?: { submissionKind?: IntentSubmissionKind }
-    ): Promise<IntentProgramExecutionResult>;
+    ): Promise<IntentBatchExecutionResult>;
 
     /**
      * Resolves a view selector against the current real view hierarchy.
@@ -1041,14 +1041,14 @@ export interface AgentAdapter {
     /**
      * Summarizes an execution result for display.
      */
-    summarizeExecutionResult(result: IntentProgramExecutionResult): string;
+    summarizeExecutionResult(result: IntentBatchExecutionResult): string;
 
     /**
      * Summarizes provenance actions after a history index.
      */
     summarizeProvenanceActionsSince(
         startIndex: number
-    ): IntentProgramSummaryLine[];
+    ): IntentBatchSummaryLine[];
 
     /**
      * Requests an agent turn from the configured agent service.
@@ -1255,26 +1255,26 @@ export interface AgentConversationMessage {
     content?: unknown;
 }
 
-export type AgentIntentProgramStep = GeneratedAgentIntentProgramStep;
+export type AgentIntentBatchStep = GeneratedAgentIntentBatchStep;
 
 /**
- * Backward-compatible alias for intent program steps.
+ * Backward-compatible alias for intent batch steps.
  */
-export type IntentProgramStep = AgentIntentProgramStep;
+export type IntentBatchStep = AgentIntentBatchStep;
 
 /**
  * Ordered list of actions proposed by the agent.
  */
-export interface IntentProgram {
+export interface IntentBatch {
     /**
-     * Schema version for the intent program.
+     * Schema version for the intent batch.
      */
     schemaVersion: 1;
 
     /**
      * Ordered action steps.
      */
-    steps: AgentIntentProgramStep[];
+    steps: AgentIntentBatchStep[];
 
     /**
      * Optional agent rationale.
@@ -1299,9 +1299,9 @@ export interface ShapeValidationResult {
 }
 
 /**
- * Result of validating an intent program against the current visualization.
+ * Result of validating an intent batch against the current visualization.
  */
-export interface IntentProgramValidationResult {
+export interface IntentBatchValidationResult {
     /**
      * Whether validation succeeded.
      */
@@ -1313,15 +1313,15 @@ export interface IntentProgramValidationResult {
     errors: string[];
 
     /**
-     * Normalized program when validation succeeds.
+     * Normalized batch when validation succeeds.
      */
-    program?: IntentProgram;
+    batch?: IntentBatch;
 }
 
 /**
- * Result of executing a validated intent program.
+ * Result of executing a validated intent batch.
  */
-export interface IntentProgramExecutionResult {
+export interface IntentBatchExecutionResult {
     /**
      * Whether execution succeeded.
      */
@@ -1335,17 +1335,17 @@ export interface IntentProgramExecutionResult {
     /**
      * Structured execution content.
      */
-    content: IntentProgramExecutionContent;
+    content: IntentBatchExecutionContent;
 
     /**
      * Human-readable summaries of the executed steps.
      */
-    summaries: IntentProgramSummaryLine[];
+    summaries: IntentBatchSummaryLine[];
 
     /**
-     * Executed program.
+     * Executed batch.
      */
-    program: IntentProgram;
+    batch: IntentBatch;
 }
 
 /**

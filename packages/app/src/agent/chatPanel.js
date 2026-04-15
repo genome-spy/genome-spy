@@ -10,7 +10,7 @@ import { createAgentSessionController } from "./agentSessionController.js";
 import safeMarkdown from "../utils/safeMarkdown.js";
 
 /**
- * @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine
+ * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
  * @typedef {{
  *     value: string;
  *     label: string;
@@ -30,7 +30,7 @@ import safeMarkdown from "../utils/safeMarkdown.js";
  *         | "tool_result"
  *         | "error";
  *     text?: string | import("lit").TemplateResult;
- *     lines?: IntentProgramSummaryLine[];
+ *     lines?: IntentBatchSummaryLine[];
  *     options?: ChatClarificationOption[];
  *     toolCalls?: AgentToolCall[];
  *     toolCallId?: string;

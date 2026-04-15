@@ -194,7 +194,7 @@ export type AgentActionType =
     | "sampleView/retainMatched"
     | "paramProvenance/paramChange";
 
-export type AgentIntentProgramStep =
+export type AgentIntentBatchStep =
     | {
           actionType: "sampleView/addMetadata";
           payload: SetMetadata;

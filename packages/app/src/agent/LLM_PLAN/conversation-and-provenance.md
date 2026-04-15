@@ -225,9 +225,9 @@ Draft idea:
       "toolCalls": [
         {
           "callId": "call_123",
-          "name": "submitIntentProgram",
+          "name": "submitIntentActions",
           "arguments": {
-            "steps": []
+            "actions": []
           }
         }
       ],
@@ -239,7 +239,7 @@ Draft idea:
       "id": "msg_005",
       "role": "tool",
       "toolCallId": "call_123",
-      "name": "submitIntentProgram",
+      "name": "submitIntentActions",
       "content": {
         "ok": true
       },

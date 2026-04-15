@@ -308,14 +308,13 @@ function createMockAgentController(scenario, options = {}) {
             return {
                 response: {
                     type: "tool_call",
-                    message:
-                        "I should submit an intent program to sort the samples.",
+                    message: "I should submit actions to sort the samples.",
                     toolCalls: [
                         {
-                            callId: "call_submit_intent_program",
-                            name: "submitIntentProgram",
+                            callId: "call_submit_intent_batch",
+                            name: "submitIntentActions",
                             arguments: /** @type {any} */ ({
-                                program: buildMockIntentProgram(normalized),
+                                ...buildMockIntentActionRequest(normalized),
                             }),
                         },
                     ],
@@ -326,31 +325,31 @@ function createMockAgentController(scenario, options = {}) {
                 },
             };
         },
-        submitIntentProgram: async (/** @type {any} */ program) => {
-            const summaries = program.steps.map((/** @type {any} */ step) =>
+        submitIntentActions: async (/** @type {any} */ batch) => {
+            const summaries = batch.steps.map((/** @type {any} */ step) =>
                 summarizeMockStep(step)
             );
-            const provenanceIds = program.steps.map(
+            const provenanceIds = batch.steps.map(
                 (/** @type {any} */ _step, /** @type {number} */ index) =>
                     "provenance-" + (provenanceHistory.length + index)
             );
-            for (let index = 0; index < program.steps.length; index += 1) {
+            for (let index = 0; index < batch.steps.length; index += 1) {
                 provenanceHistory.push({
                     summary: summaries[index].text,
                     provenanceId: provenanceIds[index],
-                    type: program.steps[index].actionType,
-                    payload: program.steps[index].payload,
+                    type: batch.steps[index].actionType,
+                    payload: batch.steps[index].payload,
                 });
             }
 
             return {
                 ok: true,
-                executedActions: program.steps.length,
+                executedActions: batch.steps.length,
                 summaries,
-                program,
+                batch,
                 content: {
-                    kind: "intent_program_result",
-                    program,
+                    kind: "intent_batch_result",
+                    batch,
                     provenanceIds,
                 },
             };
@@ -460,12 +459,11 @@ function splitIntoChunks(text) {
  * @param {string} normalizedMessage
  * @returns {any}
  */
-function buildMockIntentProgram(normalizedMessage) {
+function buildMockIntentActionRequest(normalizedMessage) {
     if (normalizedMessage.includes("filter")) {
         return {
-            schemaVersion: 1,
-            rationale: "Filter the cohort by a discrete attribute.",
-            steps: [
+            note: "Filter the cohort by a discrete attribute.",
+            actions: [
                 {
                     actionType: "sampleView/filterByNominal",
                     payload: {
@@ -482,9 +480,8 @@ function buildMockIntentProgram(normalizedMessage) {
 
     if (normalizedMessage.includes("sort")) {
         return {
-            schemaVersion: 1,
-            rationale: "Sort the cohort by a quantitative attribute.",
-            steps: [
+            note: "Sort the cohort by a quantitative attribute.",
+            actions: [
                 {
                     actionType: "sampleView/sortBy",
                     payload: {
@@ -499,9 +496,8 @@ function buildMockIntentProgram(normalizedMessage) {
     }
 
     return {
-        schemaVersion: 1,
-        rationale: "Group the cohort by quartiles.",
-        steps: [
+        note: "Group the cohort by quartiles.",
+        actions: [
             {
                 actionType: "sampleView/groupToQuartiles",
                 payload: {
@@ -517,7 +513,7 @@ function buildMockIntentProgram(normalizedMessage) {
 
 /**
  * @param {any} step
- * @returns {import("./types.d.ts").IntentProgramSummaryLine}
+ * @returns {import("./types.d.ts").IntentBatchSummaryLine}
  */
 function summarizeMockStep(step) {
     if (step.actionType === "sampleView/sortBy") {
@@ -620,7 +616,7 @@ export const Clarify = {
     render: renderChatPanel,
 };
 
-export const SubmitIntentProgram = {
+export const SubmitIntentActions = {
     args: {
         scenario: "tool_call",
     },

@@ -73,7 +73,7 @@ reasoning summary, show it by default.
 
 - raw chain-of-thought
 - partial structured JSON
-- incomplete intent programs as if they were final
+- incomplete intent batches as if they were final
 - half-built clarification options
 
 If the final response is not ready yet, the panel should render the stream as a
@@ -123,7 +123,7 @@ For clarifications:
 - show choice buttons only after the final clarification text is parsed
 - do not render partial choices
 
-For intent programs:
+For intent batches:
 
 - stream any explanatory prose if useful
 - keep the action preview and execution summary as final committed content
@@ -270,9 +270,9 @@ Status: implemented in `chatPanel.js`.
 ### Phase 5: Finish structured turns
 
 1. Validate the final structured response after the stream ends.
-2. Commit `answer`, `clarify`, and `intent_program` turns normally.
+2. Commit `answer`, `clarify`, and `intent_batch` turns normally.
 3. For clarifications, parse options only after the final text is complete.
-4. For intent programs, keep action previews and execution results committed
+4. For intent batches, keep action previews and execution results committed
    only after validation succeeds.
 5. Handle cancellation and error paths without leaving stale draft state
    behind.

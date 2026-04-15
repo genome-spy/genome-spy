@@ -102,11 +102,11 @@ export function getActionCatalogEntry(actionType) {
 
 /**
  * @param {import("../app.js").default} app
- * @param {import("./types.js").IntentProgram} program
- * @returns {import("./types.js").IntentProgramSummaryLine[]}
+ * @param {import("./types.js").IntentBatch} batch
+ * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
-export function summarizeIntentProgram(app, program) {
-    const actions = program.steps.map(
+export function summarizeIntentBatch(app, batch) {
+    const actions = batch.steps.map(
         (step) =>
             /** @type {ActionInfoInput} */ (
                 getActionCatalogEntry(step.actionType).actionCreator(
@@ -120,7 +120,7 @@ export function summarizeIntentProgram(app, program) {
 /**
  * @param {import("../app.js").default} app
  * @param {SummarizableAction[]} actions
- * @returns {import("./types.js").IntentProgramSummaryLine[]}
+ * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
 export function summarizeProvenanceActions(app, actions) {
     return summarizeActions(app, actions);
@@ -129,7 +129,7 @@ export function summarizeProvenanceActions(app, actions) {
 /**
  * @param {import("../app.js").default} app
  * @param {SummarizableAction[]} actions
- * @returns {import("./types.js").IntentProgramSummaryLine[]}
+ * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
 function summarizeActions(app, actions) {
     return actions.map((action) => {

@@ -374,7 +374,7 @@ describe("getAgentContext", () => {
             "jumpToInitialProvenanceState",
             "buildSelectionAggregationAttribute",
             "searchViewDatums",
-            "submitIntentProgram",
+            "submitIntentActions",
         ]);
         expect(context.searchableViews).toEqual([
             expect.objectContaining({

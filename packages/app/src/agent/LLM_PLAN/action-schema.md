@@ -20,7 +20,7 @@ Rationale: enables programmatic validation of LLM-proposed steps.
 
 Current implementation:
 - `generated/generatedActionCatalog.json` is the machine-facing source for action payloads and examples.
-- `generated/generatedActionSchema.json` is the generated JSON Schema contract for agent-authored intent programs and excludes internal-only `@hidden` payload fields.
+- `generated/generatedActionSchema.json` is the generated JSON Schema contract for agent-authored intent batches and excludes internal-only `@hidden` payload fields.
 - Runtime shape validation uses Ajv against that generated schema.
 - `generated/generatedActionSummaries.json` is the compact presentation layer used in the agent context.
 - `actionInfo` and `paramActionInfo` remain the runtime human-readable formatters used by the app UI and provenance rendering.
@@ -28,7 +28,7 @@ Current implementation:
   `getActionSchema(actionType)` when the model needs exact field constraints or
   literal values.
 - The OpenAI-facing tool surface can stay coarse-grained. For this app, the
-  nested intent-program contract is the machine-readable description of the
+  nested intent-batch contract is the machine-readable description of the
   Redux sub-actions, so the model does not need one OpenAI tool per Redux
   action.
 
@@ -87,11 +87,11 @@ only carries the current runtime values for those declarations.
 Use action info to provide:
 - Recent bookmarkable actions in structured form.
 - An inline human-readable `summary` for each action.
-- Optional grouping into multi-step "programs".
+- Optional grouping into multi-step batches.
 
 Rationale: keeps the LLM aware of current state and avoids redundant steps.
 
 ## Composition Notes
-- Multi-step requests should be represented as an ordered "intent program".
+- Multi-step requests should be represented as an ordered "intent batch".
 - Validate each step against the action catalog before execution.
 - Execute sequences via `IntentPipeline.submit(actions)` to ensure ordering and rollback.

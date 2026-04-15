@@ -7,7 +7,7 @@ import {
     getActionCatalogEntry,
     listAgentActions,
     summarizeProvenanceActions,
-    summarizeIntentProgram,
+    summarizeIntentBatch,
 } from "./actionCatalog.js";
 
 function createAppStub() {
@@ -89,8 +89,8 @@ describe("actionCatalog", () => {
         ]);
     });
 
-    it("summarizes programs using action titles", () => {
-        const summaries = summarizeIntentProgram(createAppStub(), {
+    it("summarizes batches using action titles", () => {
+        const summaries = summarizeIntentBatch(createAppStub(), {
             schemaVersion: 1,
             steps: [
                 {

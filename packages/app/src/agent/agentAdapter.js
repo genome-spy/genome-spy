@@ -1,9 +1,9 @@
 import { getAgentContext } from "./contextBuilder.js";
 import {
-    submitIntentProgram,
+    submitIntentActions,
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
-import { validateIntentProgram } from "./intentProgramValidator.js";
+import { validateIntentBatch } from "./intentProgramValidator.js";
 import { summarizeProvenanceActions } from "./actionCatalog.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
@@ -64,12 +64,12 @@ export function createAgentAdapter(app) {
                 app
             )
         ) => getAgentContext(app, contextOptions),
-        validateIntentProgram: (/** @type {unknown} */ program) =>
-            validateIntentProgram(app, program),
-        submitIntentProgram: (
-            /** @type {import("./types.js").IntentProgram} */ program,
+        validateIntentBatch: (/** @type {unknown} */ batch) =>
+            validateIntentBatch(app, batch),
+        submitIntentActions: (
+            /** @type {import("./types.js").IntentBatch} */ batch,
             /** @type {{submissionKind?: "agent" | "bookmark" | "user"}} */ options
-        ) => submitIntentProgram(app, program, options),
+        ) => submitIntentActions(app, batch, options),
         resolveViewSelector: (
             /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector
         ) => {

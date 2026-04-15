@@ -257,7 +257,7 @@ export async function createGeneratedToolCatalog() {
                 toolSource
             ),
             exampleInput,
-            strict: toolName !== "submitIntentProgram",
+            strict: toolName !== "submitIntentActions",
         });
     }
 

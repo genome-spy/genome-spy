@@ -2,28 +2,7 @@
   "$ref": "#/definitions/AgentToolInputs",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "AgentIntentProgram": {
-      "additionalProperties": false,
-      "properties": {
-        "rationale": {
-          "type": "string"
-        },
-        "schemaVersion": {
-          "const": 1,
-          "type": "number"
-        },
-        "steps": {
-          "items": {
-            "$ref": "#/definitions/AgentIntentProgramStep"
-          },
-          "minItems": 1,
-          "type": "array"
-        }
-      },
-      "required": ["schemaVersion", "steps"],
-      "type": "object"
-    },
-    "AgentIntentProgramStep": {
+    "AgentIntentBatchStep": {
       "anyOf": [
         {
           "additionalProperties": false,
@@ -1085,8 +1064,8 @@
         "setViewVisibility": {
           "$ref": "#/definitions/SetViewVisibilityToolInput"
         },
-        "submitIntentProgram": {
-          "$ref": "#/definitions/SubmitIntentProgramToolInput"
+        "submitIntentActions": {
+          "$ref": "#/definitions/SubmitIntentActionsToolInput"
         }
       },
       "required": [
@@ -1098,7 +1077,7 @@
         "jumpToInitialProvenanceState",
         "buildSelectionAggregationAttribute",
         "searchViewDatums",
-        "submitIntentProgram"
+        "submitIntentActions"
       ],
       "type": "object"
     },
@@ -1109,7 +1088,7 @@
     },
     "BuildSelectionAggregationAttributeToolInput": {
       "additionalProperties": false,
-      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the `submitIntentProgram` tool after using this tool. If the requested locus or interval is not the current selection, update the selection first.",
+      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the `submitIntentActions` tool after using this tool. If the requested locus or interval is not the current selection, update the selection first.",
       "examples": [
         {
           "aggregation": "max",
@@ -1272,34 +1251,40 @@
       "required": ["selector", "visibility"],
       "type": "object"
     },
-    "SubmitIntentProgramToolInput": {
+    "SubmitIntentActionsToolInput": {
       "additionalProperties": false,
-      "description": "Execute a provenance-changing intent program with one or more ordered actions. Actions are additive. Before submitting new actions, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the intent program, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results. If not, submit actions one by one and consult the updated context after each action, instead of submitting them all at once.",
+      "description": "Execute one or more provenance-changing actions. Actions are additive. Before submitting new actions, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the action list, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results. If not, submit actions one by one and consult the updated context after each action, instead of submitting them all at once.",
       "examples": [
         {
-          "program": {
-            "schemaVersion": 1,
-            "steps": [
-              {
-                "actionType": "sampleView/groupToQuartiles",
-                "payload": {
-                  "attribute": {
-                    "specifier": "age",
-                    "type": "SAMPLE_ATTRIBUTE"
-                  }
+          "actions": [
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "payload": {
+                "attribute": {
+                  "specifier": "age",
+                  "type": "SAMPLE_ATTRIBUTE"
                 }
               }
-            ]
-          }
+            }
+          ],
+          "note": "Group the cohort by quartiles."
         }
       ],
       "properties": {
-        "program": {
-          "$ref": "#/definitions/AgentIntentProgram",
-          "description": "Structured intent program to execute."
+        "actions": {
+          "description": "Ordered actions to execute.",
+          "items": {
+            "$ref": "#/definitions/AgentIntentBatchStep"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "note": {
+          "description": "Optional short note about the intended change.",
+          "type": "string"
         }
       },
-      "required": ["program"],
+      "required": ["actions"],
       "type": "object"
     },
     "ViewSelector": {

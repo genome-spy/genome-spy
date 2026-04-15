@@ -73,15 +73,12 @@ export function formatToolCallRejection(toolName, errors) {
         if (action) {
             const exampleProgram = JSON.stringify(
                 {
-                    program: {
-                        schemaVersion: 1,
-                        steps: [
-                            {
-                                actionType: toolName,
-                                payload: action.examplePayload,
-                            },
-                        ],
-                    },
+                    actions: [
+                        {
+                            actionType: toolName,
+                            payload: action.examplePayload,
+                        },
+                    ],
                 },
                 null,
                 2
@@ -90,7 +87,7 @@ export function formatToolCallRejection(toolName, errors) {
             return [
                 "Tool call was incorrect and rejected. Correct it before trying again.",
                 `${toolName} is an actionType, not a callable tool.`,
-                "Use `submitIntentProgram` and put that actionType inside `program.steps`.",
+                "Use `submitIntentActions` and put that actionType inside `actions`.",
                 "Example input:",
                 exampleProgram,
                 validationText,
@@ -212,7 +209,7 @@ function getToolArgumentsValidator(toolName) {
 function projectToolSchema(
     schema,
     definitions,
-    excludedDefinitionNames = new Set(["AgentIntentProgramStep"]),
+    excludedDefinitionNames = new Set(["AgentIntentBatchStep"]),
     visited = new Set()
 ) {
     if (schema === null || typeof schema !== "object") {

@@ -6,7 +6,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 /**
  * @returns {{
  *     requestAgentTurn: ReturnType<typeof vi.fn>;
- *     submitIntentProgram: ReturnType<typeof vi.fn>;
+ *     submitIntentActions: ReturnType<typeof vi.fn>;
  *     getAgentContext: ReturnType<typeof vi.fn>;
  *     resolveViewSelector: ReturnType<typeof vi.fn>;
  *     setViewVisibility: ReturnType<typeof vi.fn>;
@@ -18,7 +18,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 function createRuntimeMock() {
     return {
         requestAgentTurn: vi.fn(),
-        submitIntentProgram: vi.fn(),
+        submitIntentActions: vi.fn(),
         getAgentContext: vi.fn(() => ({
             selectionAggregation: {
                 fields: [],
@@ -60,7 +60,7 @@ describe("createAgentSessionController", () => {
         expect(controller.getSnapshot().expandedViewNodeKeys).toEqual([]);
     });
 
-    it("summarizes provenance changes after submitIntentProgram tool calls", async () => {
+    it("summarizes provenance changes after submitIntentActions tool calls", async () => {
         const runtime = createRuntimeMock();
         const provenanceHistory = [];
         let agentTurnCallCount = 0;
@@ -71,9 +71,9 @@ describe("createAgentSessionController", () => {
                     text: action.summary,
                 }))
         );
-        runtime.submitIntentProgram.mockImplementation(async (program) => {
+        runtime.submitIntentActions.mockImplementation(async (batch) => {
             const provenanceIds = [];
-            for (const step of program.steps) {
+            for (const step of batch.steps) {
                 const provenanceId =
                     "provenance-" + (provenanceHistory.length + 1);
                 provenanceIds.push(provenanceId);
@@ -90,10 +90,10 @@ describe("createAgentSessionController", () => {
 
             return {
                 ok: true,
-                executedActions: program.steps.length,
+                executedActions: batch.steps.length,
                 content: {
-                    kind: "intent_program_result",
-                    program,
+                    kind: "intent_batch_result",
+                    batch,
                     provenanceIds,
                 },
                 summaries: [
@@ -102,7 +102,7 @@ describe("createAgentSessionController", () => {
                         text: "ignored",
                     },
                 ],
-                program,
+                batch,
             };
         });
         runtime.summarizeExecutionResult.mockReturnValue(
@@ -131,23 +131,19 @@ describe("createAgentSessionController", () => {
                             toolCalls: [
                                 {
                                     callId: "call-1",
-                                    name: "submitIntentProgram",
+                                    name: "submitIntentActions",
                                     arguments: {
-                                        program: {
-                                            schemaVersion: 1,
-                                            steps: [
-                                                {
-                                                    actionType:
-                                                        "sampleView/sortBy",
-                                                    payload: {
-                                                        attribute: {
-                                                            type: "SAMPLE_ATTRIBUTE",
-                                                            specifier: "age",
-                                                        },
+                                        actions: [
+                                            {
+                                                actionType: "sampleView/sortBy",
+                                                payload: {
+                                                    attribute: {
+                                                        type: "SAMPLE_ATTRIBUTE",
+                                                        specifier: "age",
                                                     },
                                                 },
-                                            ],
-                                        },
+                                            },
+                                        ],
                                     },
                                 },
                             ],
@@ -546,14 +542,14 @@ describe("createAgentSessionController", () => {
         ).rejects.toThrow("boom");
     });
 
-    it("summarizes intent program tool results for sample-view actions", async () => {
+    it("summarizes intent batch tool results for sample-view actions", async () => {
         const runtime = createRuntimeMock();
-        runtime.submitIntentProgram.mockResolvedValue({
+        runtime.submitIntentActions.mockResolvedValue({
             ok: true,
             executedActions: 2,
             content: {
-                kind: "intent_program_result",
-                program: {
+                kind: "intent_batch_result",
+                batch: {
                     schemaVersion: 1,
                     steps: [
                         {
@@ -603,7 +599,7 @@ describe("createAgentSessionController", () => {
                     text: "Group levels after: 1",
                 },
             ],
-            program: {
+            batch: {
                 schemaVersion: 1,
                 steps: [
                     {
@@ -635,42 +631,39 @@ describe("createAgentSessionController", () => {
         const results = await controller.executeToolCalls([
             {
                 callId: "call-intent",
-                name: "submitIntentProgram",
+                name: "submitIntentActions",
                 arguments: {
-                    program: {
-                        schemaVersion: 1,
-                        steps: [
-                            {
-                                actionType: "sampleView/sortBy",
-                                payload: {
-                                    attribute: {
-                                        type: "SAMPLE_ATTRIBUTE",
-                                        specifier: "age",
-                                    },
+                    actions: [
+                        {
+                            actionType: "sampleView/sortBy",
+                            payload: {
+                                attribute: {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "age",
                                 },
                             },
-                            {
-                                actionType: "sampleView/groupByNominal",
-                                payload: {
-                                    attribute: {
-                                        type: "SAMPLE_ATTRIBUTE",
-                                        specifier: "diagnosis",
-                                    },
+                        },
+                        {
+                            actionType: "sampleView/groupByNominal",
+                            payload: {
+                                attribute: {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "diagnosis",
                                 },
                             },
-                        ],
-                    },
+                        },
+                    ],
                 },
             },
         ]);
 
-        expect(runtime.submitIntentProgram).toHaveBeenCalledTimes(1);
+        expect(runtime.submitIntentActions).toHaveBeenCalledTimes(1);
         expect(results[0]).toEqual(
             expect.objectContaining({
                 rejected: false,
                 content: expect.objectContaining({
-                    kind: "intent_program_result",
-                    program: expect.objectContaining({
+                    kind: "intent_batch_result",
+                    batch: expect.objectContaining({
                         schemaVersion: 1,
                         steps: [
                             {
@@ -709,8 +702,8 @@ describe("createAgentSessionController", () => {
                     kind: "tool_result",
                     toolCallId: "call-intent",
                     content: expect.objectContaining({
-                        kind: "intent_program_result",
-                        program: expect.objectContaining({
+                        kind: "intent_batch_result",
+                        batch: expect.objectContaining({
                             schemaVersion: 1,
                             steps: [
                                 {
@@ -746,10 +739,10 @@ describe("createAgentSessionController", () => {
         );
     });
 
-    it("returns an intent program failure to the agent as a rejected tool result", async () => {
+    it("returns an intent batch failure to the agent as a rejected tool result", async () => {
         const runtime = createRuntimeMock();
         let returnedToolCall = false;
-        runtime.submitIntentProgram.mockRejectedValue(
+        runtime.submitIntentActions.mockRejectedValue(
             new Error("No such attribute: mean beta")
         );
         runtime.requestAgentTurn.mockImplementation(
@@ -775,23 +768,19 @@ describe("createAgentSessionController", () => {
                             toolCalls: [
                                 {
                                     callId: "call-intent",
-                                    name: "submitIntentProgram",
+                                    name: "submitIntentActions",
                                     arguments: {
-                                        program: {
-                                            schemaVersion: 1,
-                                            steps: [
-                                                {
-                                                    actionType:
-                                                        "sampleView/sortBy",
-                                                    payload: {
-                                                        attribute: {
-                                                            type: "SAMPLE_ATTRIBUTE",
-                                                            specifier: "age",
-                                                        },
+                                        actions: [
+                                            {
+                                                actionType: "sampleView/sortBy",
+                                                payload: {
+                                                    attribute: {
+                                                        type: "SAMPLE_ATTRIBUTE",
+                                                        specifier: "age",
                                                     },
                                                 },
-                                            ],
-                                        },
+                                            },
+                                        ],
                                     },
                                 },
                             ],
@@ -840,7 +829,7 @@ describe("createAgentSessionController", () => {
         await controller.open();
         await controller.sendMessage("Add mean beta to metadata.");
 
-        expect(runtime.submitIntentProgram).toHaveBeenCalledTimes(1);
+        expect(runtime.submitIntentActions).toHaveBeenCalledTimes(1);
         expect(controller.getSnapshot().messages).toHaveLength(4);
         expect(controller.getSnapshot().messages[2]).toMatchObject({
             kind: "tool_result",
@@ -936,7 +925,7 @@ describe("createAgentSessionController", () => {
         expect(results).toEqual([
             expect.objectContaining({
                 rejected: false,
-                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use content.attribute as payload.attribute in the next `submitIntentProgram` action. If you need a different locus or interval, update the selection first.",
+                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use content.attribute as payload.attribute in the next `submitIntentActions` call. If you need a different locus or interval, update the selection first.",
                 content: expect.objectContaining({
                     kind: "selection_aggregation_resolution",
                     candidateId: "brush@track:beta",
@@ -991,11 +980,11 @@ describe("createAgentSessionController", () => {
                 },
             });
         });
-        runtime.submitIntentProgram.mockResolvedValue({
+        runtime.submitIntentActions.mockResolvedValue({
             ok: true,
             executedActions: 0,
             summaries: [],
-            program: {
+            batch: {
                 schemaVersion: 1,
                 steps: [],
             },

@@ -1,23 +1,23 @@
-import { validateIntentProgramShape } from "./actionShapeValidator.js";
+import { validateIntentBatchShape } from "./actionShapeValidator.js";
 
 /**
  * @param {import("../app.js").default} app
- * @param {unknown} program
- * @returns {import("./types.js").IntentProgramValidationResult}
+ * @param {unknown} batch
+ * @returns {import("./types.js").IntentBatchValidationResult}
  */
-export function validateIntentProgram(app, program) {
+export function validateIntentBatch(app, batch) {
     /** @type {string[]} */
     const errors = [];
 
-    if (!program || typeof program !== "object") {
+    if (!batch || typeof batch !== "object") {
         return {
             ok: false,
-            errors: ["Intent program must be an object."],
+            errors: ["Intent batch must be an object."],
         };
     }
 
-    const candidate = /** @type {Record<string, any>} */ (program);
-    const shapeValidation = validateIntentProgramShape(candidate);
+    const candidate = /** @type {Record<string, any>} */ (batch);
+    const shapeValidation = validateIntentBatchShape(candidate);
     if (!shapeValidation.ok) {
         return {
             ok: false,
@@ -29,8 +29,12 @@ export function validateIntentProgram(app, program) {
     if (!sampleView) {
         errors.push("SampleView is not available.");
     }
+    const getAttributeInfo =
+        sampleView?.compositeAttributeInfoSource.getAttributeInfo.bind(
+            sampleView.compositeAttributeInfoSource
+        );
 
-    /** @type {import("./types.js").IntentProgramStep[]} */
+    /** @type {import("./types.js").IntentBatchStep[]} */
     const normalizedSteps = [];
 
     for (const [, step] of candidate.steps.entries()) {
@@ -39,6 +43,7 @@ export function validateIntentProgram(app, program) {
             stepObject.actionType
         );
         const payload = stepObject.payload;
+        validatePayloadAttributes(getAttributeInfo, payload, errors);
 
         normalizedSteps.push({
             actionType,
@@ -53,7 +58,7 @@ export function validateIntentProgram(app, program) {
     return {
         ok: true,
         errors: [],
-        program: {
+        batch: {
             schemaVersion: 1,
             rationale:
                 typeof candidate.rationale === "string"
@@ -62,4 +67,27 @@ export function validateIntentProgram(app, program) {
             steps: normalizedSteps,
         },
     };
+}
+
+/**
+ * @param {((attribute: unknown) => unknown) | undefined} getAttributeInfo
+ * @param {unknown} payload
+ * @param {string[]} errors
+ */
+function validatePayloadAttributes(getAttributeInfo, payload, errors) {
+    if (!getAttributeInfo || !payload || typeof payload !== "object") {
+        return;
+    }
+
+    const candidate = /** @type {{ attribute?: unknown }} */ (payload);
+    if (candidate.attribute === undefined) {
+        return;
+    }
+
+    try {
+        getAttributeInfo(candidate.attribute);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        errors.push(message[0].toLowerCase() + message.slice(1));
+    }
 }

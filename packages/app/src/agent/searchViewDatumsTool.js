@@ -3,7 +3,7 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
 
 /**
  * @typedef {import("./agentToolInputs.d.ts").SearchViewDatumsToolInput} SearchViewDatumsToolInput
- * @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine
+ * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {{
  *     resolveViewSelector(selector: ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
@@ -11,7 +11,7 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
  * @typedef {{
  *     text: string;
  *     content?: unknown;
- *     summaries?: IntentProgramSummaryLine[];
+ *     summaries?: IntentBatchSummaryLine[];
  * }} AgentToolExecutionResult
  */
 

@@ -34,7 +34,7 @@ export async function generateSchemaText() {
             "--path",
             "src/agent/schemaContract.ts",
             "--type",
-            "AgentIntentProgram",
+            "AgentIntentBatch",
             "--no-type-check",
         ],
         {

@@ -9,7 +9,7 @@ import generatedActionCatalog from "../src/agent/generated/generatedActionCatalo
 describe("generatedActionSchema", () => {
     it("covers the current agent action set", () => {
         const stepVariants =
-            generatedActionSchema.definitions.AgentIntentProgramStep.anyOf;
+            generatedActionSchema.definitions.AgentIntentBatchStep.anyOf;
         expect(stepVariants).toHaveLength(generatedActionCatalog.length);
         expect(
             stepVariants

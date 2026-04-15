@@ -1,17 +1,17 @@
 import {
     getActionCatalogEntry,
-    summarizeIntentProgram,
+    summarizeIntentBatch,
 } from "./actionCatalog.js";
-import { validateIntentProgram } from "./intentProgramValidator.js";
+import { validateIntentBatch } from "./intentProgramValidator.js";
 
 /**
  * @param {import("../app.js").default} app
- * @param {import("./types.js").IntentProgram} program
+ * @param {import("./types.js").IntentBatch} batch
  * @param {{submissionKind?: "agent" | "bookmark" | "user"}} [options]
- * @returns {Promise<import("./types.js").IntentProgramExecutionResult>}
+ * @returns {Promise<import("./types.js").IntentBatchExecutionResult>}
  */
-export async function submitIntentProgram(app, program, options = {}) {
-    const validation = validateIntentProgram(app, program);
+export async function submitIntentActions(app, batch, options = {}) {
+    const validation = validateIntentBatch(app, batch);
     if (!validation.ok) {
         throw new Error(validation.errors.join("\n"));
     }
@@ -26,11 +26,11 @@ export async function submitIntentProgram(app, program, options = {}) {
             sampleView.compositeAttributeInfoSource
         );
     const provenanceStartIndex = app.provenance.getActionHistory().length;
-    const actions = validation.program.steps.map((step) =>
+    const actions = validation.batch.steps.map((step) =>
         getActionCatalogEntry(step.actionType).actionCreator(step.payload)
     );
 
-    const hasSampleViewMutation = validation.program.steps.some((step) =>
+    const hasSampleViewMutation = validation.batch.steps.some((step) =>
         step.actionType.startsWith("sampleView/")
     );
     const beforeVisibleSampleCount = hasSampleViewMutation
@@ -46,11 +46,11 @@ export async function submitIntentProgram(app, program, options = {}) {
     });
     const provenanceIds = getDispatchedProvenanceIds(app, provenanceStartIndex);
 
-    const summaries = summarizeIntentProgram(app, validation.program);
-    /** @type {import("./types.js").IntentProgramExecutionContent} */
+    const summaries = summarizeIntentBatch(app, validation.batch);
+    /** @type {import("./types.js").IntentBatchExecutionContent} */
     const content = {
-        kind: "intent_program_result",
-        program: validation.program,
+        kind: "intent_batch_result",
+        batch: validation.batch,
         provenanceIds,
     };
     if (hasSampleViewMutation) {
@@ -88,12 +88,12 @@ export async function submitIntentProgram(app, program, options = {}) {
         executedActions: actions.length,
         content,
         summaries,
-        program: validation.program,
+        batch: validation.batch,
     };
 }
 
 /**
- * @param {import("./types.js").IntentProgramExecutionResult} result
+ * @param {import("./types.js").IntentBatchExecutionResult} result
  * @returns {string}
  */
 export function summarizeExecutionResult(result) {

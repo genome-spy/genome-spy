@@ -92,8 +92,8 @@ What is available today:
     `getAgentContext(app)`.
   - If the agent needs a refreshed snapshot, it gets one on the next agent
     turn after the app rebuilds context.
-- The available mutation entry point is `submitIntentProgram`.
-  - To make or update an interval selection, the agent uses an intent program
+- The available mutation entry point is `submitIntentActions`.
+  - To make or update an interval selection, the agent uses an intent batch
     with `paramProvenance/paramChange`.
   - To turn the resolved view field into derived metadata, the agent uses
     `sampleView/deriveMetadata`.

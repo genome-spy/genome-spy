@@ -15,10 +15,10 @@ def test_build_responses_tool_definitions_reads_generated_contract() -> None:
         "jumpToInitialProvenanceState",
         "buildSelectionAggregationAttribute",
         "searchViewDatums",
-        "submitIntentProgram",
+        "submitIntentActions",
     ]
     serialized = json.dumps(tools)
-    assert "AgentIntentProgramStep" not in serialized
+    assert "AgentIntentBatchStep" not in serialized
     assert tools[0]["parameters"]["type"] == "object"
     assert tools[4]["name"] == "jumpToProvenanceState"
     assert tools[4]["parameters"]["type"] == "object"

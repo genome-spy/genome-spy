@@ -55,7 +55,7 @@ Default posture: keep gateway thin; move logic server-side only when needed (e.g
 
 ## System Prompt Strategy
 - Include system prompt on every request (or prepend server-side per session).
-- Use strict output schema (e.g., `clarify`, `intent_program`, `answer`).
+- Use strict output schema (e.g., `clarify`, `intent_batch`, `answer`).
 - Require the model to avoid inventing attributes or view ids.
 - Ask for clarification when context is missing.
 
@@ -70,7 +70,7 @@ Notes:
 ## Message Flow (High-Level)
 1. User message + context snapshot -> gateway.
 2. Gateway forwards to LLM with system prompt + tools.
-3. LLM returns JSON response (intent program or clarification).
+3. LLM returns JSON response (intent batch or clarification).
 4. Client validates and executes intents.
 5. Client returns summary (provenance) to LLM (optional).
 

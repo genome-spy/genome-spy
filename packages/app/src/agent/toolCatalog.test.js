@@ -20,7 +20,7 @@ describe("toolCatalog", () => {
             "jumpToInitialProvenanceState",
             "buildSelectionAggregationAttribute",
             "searchViewDatums",
-            "submitIntentProgram",
+            "submitIntentActions",
         ]);
         expect(tools[4].strict).toBe(true);
         expect(tools[5].strict).toBe(true);
@@ -41,7 +41,7 @@ describe("toolCatalog", () => {
             })
         );
         expect(JSON.stringify(toolDefinitions)).not.toContain(
-            "AgentIntentProgramStep"
+            "AgentIntentBatchStep"
         );
         expect(toolDefinitions[2]).toEqual(
             expect.objectContaining({
@@ -125,7 +125,7 @@ describe("toolCatalog", () => {
         expect(message).toContain(
             "paramProvenance/paramChange is an actionType, not a callable tool."
         );
-        expect(message).toContain("Use `submitIntentProgram`");
+        expect(message).toContain("Use `submitIntentActions`");
         expect(message).toContain(
             '"actionType": "paramProvenance/paramChange"'
         );

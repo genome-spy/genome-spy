@@ -177,32 +177,36 @@
     "strict": true
   },
   {
-    "toolName": "submitIntentProgram",
-    "description": "Execute a provenance-changing intent program with one or more ordered actions.",
-    "inputType": "SubmitIntentProgramToolInput",
+    "toolName": "submitIntentActions",
+    "description": "Execute one or more provenance-changing actions.",
+    "inputType": "SubmitIntentActionsToolInput",
     "inputFields": [
       {
-        "name": "program",
-        "type": "AgentIntentProgram",
-        "description": "Structured intent program to execute.",
+        "name": "actions",
+        "type": "AgentIntentActionRequest[\"actions\"]",
+        "description": "Ordered actions to execute.",
         "required": true
+      },
+      {
+        "name": "note",
+        "type": "AgentIntentActionRequest[\"note\"]",
+        "description": "Optional short note about the intended change.",
+        "required": false
       }
     ],
     "exampleInput": {
-      "program": {
-        "schemaVersion": 1,
-        "steps": [
-          {
-            "actionType": "sampleView/groupToQuartiles",
-            "payload": {
-              "attribute": {
-                "type": "SAMPLE_ATTRIBUTE",
-                "specifier": "age"
-              }
+      "actions": [
+        {
+          "actionType": "sampleView/groupToQuartiles",
+          "payload": {
+            "attribute": {
+              "type": "SAMPLE_ATTRIBUTE",
+              "specifier": "age"
             }
           }
-        ]
-      }
+        }
+      ],
+      "note": "Group the cohort by quartiles."
     },
     "strict": false
   }

@@ -2,12 +2,12 @@
 import { describe, expect, it } from "vitest";
 import {
     validateActionPayloadShape,
-    validateIntentProgramShape,
+    validateIntentBatchShape,
 } from "./actionShapeValidator.js";
 
 describe("actionShapeValidator", () => {
-    it("accepts a valid intent program shape", () => {
-        const result = validateIntentProgramShape({
+    it("accepts a valid intent batch shape", () => {
+        const result = validateIntentBatchShape({
             schemaVersion: 1,
             rationale: "Sort by age",
             steps: [
@@ -68,8 +68,8 @@ describe("actionShapeValidator", () => {
         );
     });
 
-    it("rejects malformed intent programs", () => {
-        const result = validateIntentProgramShape({
+    it("rejects malformed intent batches", () => {
+        const result = validateIntentBatchShape({
             schemaVersion: 1,
             steps: [
                 {
@@ -90,7 +90,7 @@ describe("actionShapeValidator", () => {
     });
 
     it("does not report unrelated step-branch errors for a known actionType", () => {
-        const result = validateIntentProgramShape({
+        const result = validateIntentBatchShape({
             schemaVersion: 1,
             steps: [
                 {

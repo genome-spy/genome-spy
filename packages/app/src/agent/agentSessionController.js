@@ -15,9 +15,9 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
 import { agentTools } from "./agentTools.js";
 
 /** @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage */
-/** @typedef {import("./types.d.ts").IntentProgram} IntentProgram */
-/** @typedef {import("./types.d.ts").IntentProgramExecutionResult} IntentProgramExecutionResult */
-/** @typedef {import("./types.d.ts").IntentProgramSummaryLine} IntentProgramSummaryLine */
+/** @typedef {import("./types.d.ts").IntentBatch} IntentBatch */
+/** @typedef {import("./types.d.ts").IntentBatchExecutionResult} IntentBatchExecutionResult */
+/** @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine */
 /** @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions */
 /** @typedef {import("./types.d.ts").AgentContext} AgentContext */
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
@@ -73,7 +73,7 @@ import { agentTools } from "./agentTools.js";
  *         | "tool_result"
  *         | "error";
  *     text?: string | import("lit").TemplateResult;
- *     lines?: IntentProgramSummaryLine[];
+ *     lines?: IntentBatchSummaryLine[];
  *     options?: ChatClarificationOption[];
  *     toolCalls?: AgentToolCall[];
  *     toolCallId?: string;
@@ -102,14 +102,14 @@ import { agentTools } from "./agentTools.js";
  *         contextOptions?: AgentContextOptions,
  *         signal?: AbortSignal
  *     ): Promise<{ response: ChatAgentTurnResponse; trace: Record<string, any> }>;
- *     submitIntentProgram(
- *         program: IntentProgram,
+ *     submitIntentActions(
+ *         batch: IntentBatch,
  *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
- *     ): Promise<IntentProgramExecutionResult>;
+ *     ): Promise<IntentBatchExecutionResult>;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
  *     summarizeProvenanceActionsSince(
  *         startIndex: number
- *     ): IntentProgramSummaryLine[];
+ *     ): IntentBatchSummaryLine[];
  *     jumpToProvenanceState(provenanceId: string): boolean;
  *     jumpToInitialProvenanceState(): boolean;
  *     resolveViewSelector(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
@@ -117,7 +117,7 @@ import { agentTools } from "./agentTools.js";
  *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     setViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector, visibility: boolean): void;
  *     clearViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): void;
- *     summarizeExecutionResult(result: IntentProgramExecutionResult): string;
+ *     summarizeExecutionResult(result: IntentBatchExecutionResult): string;
  * }} AgentSessionRuntime
  */
 
@@ -969,7 +969,7 @@ export class AgentSessionController {
         if (
             currentStartIndex !== null ||
             !toolCalls.some(
-                (toolCall) => toolCall.name === "submitIntentProgram"
+                (toolCall) => toolCall.name === "submitIntentActions"
             )
         ) {
             return currentStartIndex;

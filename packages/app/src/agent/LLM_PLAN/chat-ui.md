@@ -37,10 +37,10 @@ It focuses on component shape, interaction flow, and implementation constraints.
 - The agent responds with one of:
   - `answer`
   - `clarify`
-  - `intent_program`
+  - `intent_batch`
 - If the response is a direct answer, show it in the transcript.
 - If the response is a clarification request, render selectable follow-up options.
-- If the response is an intent program, show a short proposal preview and execute it immediately after validation.
+- If the response is an intent batch, show a short proposal preview and execute it immediately after validation.
 - Do not require a confirmation step by default for undoable, non-destructive actions.
 - Use provenance and undo as the safety net after execution.
 - Do not persist message history across reloads for the first version.
@@ -89,7 +89,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 - The mock should simulate:
   - plain answers
   - clarification requests
-  - valid intent programs
+  - valid intent batches
   - execution summaries
   - simple error states
 - The mock should also simulate preflight success, preflight failure, and queued user input while preflight is active.

@@ -1,4 +1,4 @@
-import type { AgentIntentProgram } from "./schemaContract.js";
+import type { AgentIntentActionRequest } from "./schemaContract.js";
 import type { AggregationOp } from "../sampleView/types.d.ts";
 
 /*
@@ -119,7 +119,7 @@ export interface JumpToInitialProvenanceStateToolInput {}
  * be used in a later intent action. Before using this tool, you must make an
  * interval selection using a parameter or ensure that one already exists. This
  * tool does not compute or return an aggregated value. Use the
- * `submitIntentProgram` tool after using this tool. If the requested locus or
+ * `submitIntentActions` tool after using this tool. If the requested locus or
  * interval is not the current selection, update the selection first.
  *
  * @example
@@ -181,39 +181,42 @@ export interface SearchViewDatumsToolInput {
 }
 
 /**
- * Execute a provenance-changing intent program with one or more ordered
- * actions. Actions are additive. Before submitting new actions, always
+ * Execute one or more provenance-changing actions. Actions are additive.
+ * Before submitting new actions, always
  * consult the current provenance state that defines the state of the
  * analysis. Jump to a prior provenance state if necessary to continue from
  * an earlier point in the analysis. In addition, before constructing the
- * intent program, ensure that every `attribute` (AttributeIdentifier) is
+ * action list, ensure that every `attribute` (AttributeIdentifier) is
  * presented to you in the context or tool results. If not, submit actions
  * one by one and consult the updated context after each action, instead
  * of submitting them all at once.
  *
  * @example
  * {
- *   "program": {
- *     "schemaVersion": 1,
- *     "steps": [
- *       {
- *         "actionType": "sampleView/groupToQuartiles",
- *         "payload": {
- *           "attribute": {
- *             "type": "SAMPLE_ATTRIBUTE",
- *             "specifier": "age"
- *           }
+ *   "actions": [
+ *     {
+ *       "actionType": "sampleView/groupToQuartiles",
+ *       "payload": {
+ *         "attribute": {
+ *           "type": "SAMPLE_ATTRIBUTE",
+ *           "specifier": "age"
  *         }
  *       }
- *     ]
- *   }
+ *     }
+ *   ],
+ *   "note": "Group the cohort by quartiles."
  * }
  */
-export interface SubmitIntentProgramToolInput {
+export interface SubmitIntentActionsToolInput {
     /**
-     * Structured intent program to execute.
+     * Ordered actions to execute.
      */
-    program: AgentIntentProgram;
+    actions: AgentIntentActionRequest["actions"];
+
+    /**
+     * Optional short note about the intended change.
+     */
+    note?: AgentIntentActionRequest["note"];
 }
 
 /**
@@ -228,5 +231,5 @@ export interface AgentToolInputs {
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
-    submitIntentProgram: SubmitIntentProgramToolInput;
+    submitIntentActions: SubmitIntentActionsToolInput;
 }

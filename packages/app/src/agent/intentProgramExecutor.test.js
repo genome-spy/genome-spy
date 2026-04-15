@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { describe, expect, it, vi } from "vitest";
 import {
-    submitIntentProgram,
+    submitIntentActions,
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
 
@@ -67,11 +67,11 @@ function createAppStub() {
     };
 }
 
-describe("submitIntentProgram", () => {
+describe("submitIntentActions", () => {
     it("submits validated steps through the intent pipeline", async () => {
         const app = createAppStub();
 
-        const result = await submitIntentProgram(app, {
+        const result = await submitIntentActions(app, {
             schemaVersion: 1,
             steps: [
                 {
@@ -106,9 +106,9 @@ describe("submitIntentProgram", () => {
         expect(result.executedActions).toBe(2);
         expect(result.content).toEqual(
             expect.objectContaining({
-                kind: "intent_program_result",
+                kind: "intent_batch_result",
                 provenanceIds: [],
-                program: expect.objectContaining({
+                batch: expect.objectContaining({
                     schemaVersion: 1,
                     steps: [
                         {

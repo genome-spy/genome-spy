@@ -219,7 +219,7 @@ export function renderGeneratedActionTypes(catalog) {
         "export type AgentActionType =",
         actionTypes + ";",
         "",
-        "export type AgentIntentProgramStep =",
+        "export type AgentIntentBatchStep =",
         stepVariants + ";",
         "",
     ].join("\n");

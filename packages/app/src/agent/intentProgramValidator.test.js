@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { describe, expect, it } from "vitest";
-import { validateIntentProgram } from "./intentProgramValidator.js";
+import { validateIntentBatch } from "./intentProgramValidator.js";
 
 function createAppStub() {
     return {
@@ -26,9 +26,9 @@ function createAppStub() {
     };
 }
 
-describe("validateIntentProgram", () => {
-    it("accepts a valid supported program", () => {
-        const result = validateIntentProgram(createAppStub(), {
+describe("validateIntentBatch", () => {
+    it("accepts a valid supported batch", () => {
+        const result = validateIntentBatch(createAppStub(), {
             schemaVersion: 1,
             steps: [
                 {
@@ -47,7 +47,7 @@ describe("validateIntentProgram", () => {
     });
 
     it("accepts quartile grouping for a quantitative attribute", () => {
-        const result = validateIntentProgram(createAppStub(), {
+        const result = validateIntentBatch(createAppStub(), {
             schemaVersion: 1,
             steps: [
                 {
@@ -66,7 +66,7 @@ describe("validateIntentProgram", () => {
     });
 
     it("rejects unknown action types", () => {
-        const result = validateIntentProgram(createAppStub(), {
+        const result = validateIntentBatch(createAppStub(), {
             schemaVersion: 1,
             steps: [{ actionType: "dropDatabase", payload: {} }],
         });
@@ -76,7 +76,7 @@ describe("validateIntentProgram", () => {
     });
 
     it("rejects unknown attributes", () => {
-        const result = validateIntentProgram(createAppStub(), {
+        const result = validateIntentBatch(createAppStub(), {
             schemaVersion: 1,
             steps: [
                 {
@@ -96,7 +96,7 @@ describe("validateIntentProgram", () => {
     });
 
     it("rejects malformed quantitative filters", () => {
-        const result = validateIntentProgram(createAppStub(), {
+        const result = validateIntentBatch(createAppStub(), {
             schemaVersion: 1,
             steps: [
                 {
@@ -119,7 +119,7 @@ describe("validateIntentProgram", () => {
     });
 
     it("rejects malformed threshold groupings", () => {
-        const result = validateIntentProgram(createAppStub(), {
+        const result = validateIntentBatch(createAppStub(), {
             schemaVersion: 1,
             steps: [
                 {

@@ -84,10 +84,10 @@ function createRuntimeStub() {
                 ],
             },
         })),
-        submitIntentProgram: vi.fn(async () => ({
+        submitIntentActions: vi.fn(async () => ({
             executedActions: 1,
             content: {
-                kind: "intent_program_result",
+                kind: "intent_batch_result",
             },
             summaries: [
                 {
@@ -401,45 +401,59 @@ describe("agentTools", () => {
         expect(runtime.jumpToInitialProvenanceState).toHaveBeenCalledTimes(1);
     });
 
-    it("summarizes intent program execution through the runtime", async () => {
+    it("summarizes intent action execution through the runtime", async () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = await tools.submitIntentProgram(runtime, {
-            program: {
-                schemaVersion: 1,
-                steps: [],
-            },
+        const result = await tools.submitIntentActions(runtime, {
+            actions: [
+                {
+                    actionType: "sampleView/sortBy",
+                    payload: {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "age",
+                        },
+                    },
+                },
+            ],
         });
 
         expect(result).toEqual(
             expect.objectContaining({
                 text: "Executed 1 action.",
                 content: expect.objectContaining({
-                    kind: "intent_program_result",
+                    kind: "intent_batch_result",
                 }),
             })
         );
-        expect(runtime.submitIntentProgram).toHaveBeenCalledTimes(1);
+        expect(runtime.submitIntentActions).toHaveBeenCalledTimes(1);
         expect(runtime.summarizeExecutionResult).toHaveBeenCalledTimes(1);
     });
 
-    it("rethrows intent program failures as rejected tool calls", async () => {
+    it("rethrows intent action failures as rejected tool calls", async () => {
         const runtime = createRuntimeStub();
-        runtime.submitIntentProgram.mockRejectedValue(
+        runtime.submitIntentActions.mockRejectedValue(
             new Error("No such attribute: mean beta")
         );
         const tools = agentTools;
 
         await expect(
-            tools.submitIntentProgram(runtime, {
-                program: {
-                    schemaVersion: 1,
-                    steps: [],
-                },
+            tools.submitIntentActions(runtime, {
+                actions: [
+                    {
+                        actionType: "sampleView/sortBy",
+                        payload: {
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                        },
+                    },
+                ],
             })
         ).rejects.toThrow(ToolCallRejectionError);
-        expect(runtime.submitIntentProgram).toHaveBeenCalledWith(
+        expect(runtime.submitIntentActions).toHaveBeenCalledWith(
             expect.any(Object),
             expect.objectContaining({
                 submissionKind: "agent",

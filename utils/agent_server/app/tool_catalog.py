@@ -91,7 +91,7 @@ def _project_schema(
     visited: set[str] | None = None,
 ) -> Any:
     if excluded_definition_names is None:
-        excluded_definition_names = {"AgentIntentProgramStep"}
+        excluded_definition_names = {"AgentIntentBatchStep"}
 
     if visited is None:
         visited = set()

@@ -115,19 +115,19 @@ Do not batch dependent tool calls. If a later tool call may depend on the
 result of an earlier one, make the first call, inspect the result, and only
 then decide the next call.
 
-The same rule applies to action planning inside `submitIntentProgram`: do not
+The same rule applies to action planning inside `submitIntentActions`: do not
 bundle speculative later steps when they depend on information that must first
 come back from a tool result. Batch only when it is clear that the earlier
 result is not needed for the later step.
 When later requirements may only become available after a state change, prefer
-submitting a one-step intent program and then continue from the refreshed
+submitting one action first and then continue from the refreshed
 context.
 
 Use selections, brushes, and parameter changes proactively when they are needed
 to complete the request and the required state can be inferred from the user's
 request.
 Only entries in `toolCatalog` are callable tools. Use `actionCatalog` entries
-only as `actionType` values inside `submitIntentProgram`.
+only as `actionType` values inside `submitIntentActions`.
 
 If a tool call succeeds but does not produce the missing state or data needed
 to finish the task, do not repeat the same call unchanged. Choose a different
@@ -216,7 +216,8 @@ or ask a focused clarification question.
 
 ### Intent tool
 
-`submitIntentProgram(program)` executes actions that change the analysis state.
+`submitIntentActions(actions, note)` executes actions that change the analysis
+state.
 These actions are stored in provenance history.
 
 Actions that change the sample collections are all additive and do not replace
@@ -228,27 +229,25 @@ results in an empty dataset unless the first filter is undone.
 Actions that change a parameter (such as a selection or a brush) replace the
 prior value of that parameter.
 
-Each step in the program must contain a valid `actionType` and payload. Keep
-steps specific. Do not submit empty programs or placeholder steps.
+Each action must contain a valid `actionType` and payload. Keep actions
+specific. Do not submit empty actions or placeholders.
 
 Example:
 
 ```json
 {
-  "program": {
-    "schemaVersion": 1,
-    "steps": [
-      {
-        "actionType": "sampleView/groupToQuartiles",
-        "payload": {
-          "attribute": {
-            "type": "SAMPLE_ATTRIBUTE",
-            "specifier": "age"
-          }
+  "actions": [
+    {
+      "actionType": "sampleView/groupToQuartiles",
+      "payload": {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "age"
         }
       }
-    ]
-  }
+    }
+  ],
+  "note": "Group the cohort by quartiles."
 }
 ```
 
@@ -265,7 +264,7 @@ current context.
 Selections are based on parameters declared in `viewTree.parameterDeclarations`.
 Interval selections are available for selection aggregation in all descenant
 views of the view where the selection parameter is declared. To create or
-adjust a selection, submit an intent program that uses the appropriate selection
+adjust a selection, submit actions that use the appropriate selection
 or parameter action type, such as `paramProvenance/paramChange`.
 
 For interval-derived metadata or aggregation:
@@ -276,7 +275,7 @@ For interval-derived metadata or aggregation:
 2. Inspect `parameterDeclarations` and `selectionAggregation.fields` in the
    current context.
 3. Call `buildSelectionAggregationAttribute(candidateId, aggregation)`.
-4. Use the returned `attribute` in a later `submitIntentProgram` step such as
+4. Use the returned `attribute` in a later `submitIntentActions` action such as
    derivation, sorting, filtering, or plotting.
 
 If the interval selection must change, do that in a separate tool round before
