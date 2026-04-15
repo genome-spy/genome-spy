@@ -9,6 +9,7 @@ import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import templateResultToString from "../utils/templateResultToString.js";
+import { collectVisibleSampleIds } from "./sampleHierarchyScope.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -143,7 +144,7 @@ function getMetadataAttributeSummarySource(app, attribute) {
     const info =
         sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
 
-    const sampleIds = sampleHierarchy.sampleData.ids;
+    const sampleIds = collectVisibleSampleIds(sampleHierarchy.rootGroup);
     const metadata = sampleHierarchy.sampleMetadata.entities;
     const attributeName = attribute.specifier;
 
@@ -152,6 +153,7 @@ function getMetadataAttributeSummarySource(app, attribute) {
         title: templateResultToString(info.title),
         description: info.description,
         dataType: info.type,
+        scope: "visible_samples",
         sampleIds,
         values: sampleIds.map(
             (sampleId) => metadata[sampleId]?.[attributeName]

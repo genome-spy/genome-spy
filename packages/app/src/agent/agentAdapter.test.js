@@ -94,12 +94,22 @@ function createAppStub(encoding = undefined) {
             sampleMetadata: {
                 attributeNames: [],
                 attributeDefs: {},
+                entities: {
+                    sampleA: { sex: "F", age: 42 },
+                    sampleB: { sex: "M", age: 36 },
+                    sampleC: { sex: "F", age: 61 },
+                },
             },
             groupMetadata: [],
             rootGroup: {
                 name: "ROOT",
-                samples: ["sampleA", "sampleB"],
-                groups: [{ name: "group", samples: ["sampleA", "sampleB"] }],
+                groups: [
+                    {
+                        name: "group",
+                        title: "group",
+                        samples: ["sampleA", "sampleB"],
+                    },
+                ],
             },
         },
         visit: (visitor) => visitor(betaView),
@@ -264,6 +274,29 @@ describe("agentAdapter", () => {
                 ],
             })
         );
+    });
+
+    it("builds metadata summaries from the current visible hierarchy", () => {
+        const app = createAppStub();
+        const adapter = createAgentAdapter(app);
+
+        const source = adapter.getMetadataAttributeSummarySource({
+            type: "SAMPLE_ATTRIBUTE",
+            specifier: "sex",
+        });
+
+        expect(source).toEqual({
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "sex",
+            },
+            title: "",
+            description: undefined,
+            dataType: "quantitative",
+            scope: "visible_samples",
+            sampleIds: ["sampleA", "sampleB"],
+            values: ["F", "M"],
+        });
     });
 
     it("posts structured conversation history to the agent-turn endpoint", async () => {

@@ -149,6 +149,11 @@ export interface AgentMetadataAttributeSummarySource {
     dataType: string;
 
     /**
+     * Summary scope represented by the aligned sample ids.
+     */
+    scope: "visible_samples";
+
+    /**
      * Sample ids covered by the summary scope.
      */
     sampleIds: string[];

@@ -13,8 +13,9 @@ function createRuntimeStub() {
             },
             title: "sex",
             dataType: "nominal",
-            sampleIds: ["sampleA", "sampleB", "sampleC"],
-            values: ["F", "M", "F"],
+            scope: "visible_samples",
+            sampleIds: ["sampleA", "sampleB"],
+            values: ["F", "M"],
         },
         age: {
             attribute: {
@@ -23,8 +24,9 @@ function createRuntimeStub() {
             },
             title: "age",
             dataType: "quantitative",
-            sampleIds: ["sampleA", "sampleB", "sampleC"],
-            values: [42, undefined, 36],
+            scope: "visible_samples",
+            sampleIds: ["sampleA", "sampleB"],
+            values: [42, undefined],
         },
     };
     const searchData = [
@@ -213,12 +215,13 @@ describe("agentTools", () => {
                 content: expect.objectContaining({
                     kind: "metadata_attribute_summary",
                     dataType: "nominal",
-                    sampleCount: 3,
-                    nonMissingCount: 3,
+                    scope: "visible_samples",
+                    sampleCount: 2,
+                    nonMissingCount: 2,
                     missingCount: 0,
                     distinctCount: 2,
                     categories: [
-                        { value: "F", count: 2 },
+                        { value: "F", count: 1 },
                         { value: "M", count: 1 },
                     ],
                     truncated: false,
@@ -246,12 +249,13 @@ describe("agentTools", () => {
             expect.objectContaining({
                 kind: "metadata_attribute_summary",
                 dataType: "quantitative",
-                sampleCount: 3,
-                nonMissingCount: 2,
+                scope: "visible_samples",
+                sampleCount: 2,
+                nonMissingCount: 1,
                 missingCount: 1,
-                min: 36,
                 max: 42,
-                mean: 39,
+                min: 42,
+                mean: 42,
             })
         );
     });
