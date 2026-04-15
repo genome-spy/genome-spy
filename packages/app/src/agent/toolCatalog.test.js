@@ -116,4 +116,19 @@ describe("toolCatalog", () => {
         expect(message).toContain('"visibility": false');
         expect(message).toContain("Validation errors:");
     });
+
+    it("explains when an actionType is mistakenly called as a tool", () => {
+        const message = formatToolCallRejection("paramProvenance/paramChange", [
+            "Unsupported agent tool paramProvenance/paramChange.",
+        ]);
+
+        expect(message).toContain(
+            "paramProvenance/paramChange is an actionType, not a callable tool."
+        );
+        expect(message).toContain("Use `submitIntentProgram`");
+        expect(message).toContain(
+            '"actionType": "paramProvenance/paramChange"'
+        );
+        expect(message).toContain("Validation errors:");
+    });
 });

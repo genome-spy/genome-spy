@@ -2,6 +2,7 @@
 import Ajv from "ajv";
 import generatedToolCatalog from "./generated/generatedToolCatalog.json" with { type: "json" };
 import generatedToolSchema from "./generated/generatedToolSchema.json" with { type: "json" };
+import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
 import { formatAjvErrors } from "./validationErrorFormatter.js";
 
 // These generated artifacts are derived from agentToolInputs.d.ts and are the
@@ -59,6 +60,9 @@ export function formatToolCallRejection(toolName, errors) {
     const tool = generatedToolCatalog.find(
         (entry) => entry.toolName === toolName
     );
+    const action = generatedActionCatalog.find(
+        (entry) => entry.actionType === toolName
+    );
 
     const validationText =
         errors.length > 0
@@ -66,6 +70,33 @@ export function formatToolCallRejection(toolName, errors) {
             : "Validation failed.";
 
     if (!tool) {
+        if (action) {
+            const exampleProgram = JSON.stringify(
+                {
+                    program: {
+                        schemaVersion: 1,
+                        steps: [
+                            {
+                                actionType: toolName,
+                                payload: action.examplePayload,
+                            },
+                        ],
+                    },
+                },
+                null,
+                2
+            );
+
+            return [
+                "Tool call was incorrect and rejected. Correct it before trying again.",
+                `${toolName} is an actionType, not a callable tool.`,
+                "Use `submitIntentProgram` and put that actionType inside `program.steps`.",
+                "Example input:",
+                exampleProgram,
+                validationText,
+            ].join("\n");
+        }
+
         return (
             "Tool call was incorrect and rejected. Correct it before trying again. " +
             validationText

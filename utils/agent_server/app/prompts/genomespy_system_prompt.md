@@ -126,6 +126,8 @@ context.
 Use selections, brushes, and parameter changes proactively when they are needed
 to complete the request and the required state can be inferred from the user's
 request.
+Only entries in `toolCatalog` are callable tools. Use `actionCatalog` entries
+only as `actionType` values inside `submitIntentProgram`.
 
 If a tool call succeeds but does not produce the missing state or data needed
 to finish the task, do not repeat the same call unchanged. Choose a different
