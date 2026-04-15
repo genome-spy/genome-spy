@@ -143,7 +143,7 @@
       {
         "name": "attribute",
         "type": "SampleAttributeIdentifier",
-        "description": "Stable identifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.",
+        "description": "Stable attributeIdentifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.",
         "required": true
       }
     ],
@@ -151,6 +151,26 @@
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
         "specifier": "sex"
+      }
+    },
+    "strict": true
+  },
+  {
+    "toolName": "getGroupedMetadataAttributeSummary",
+    "description": "Return grouped summaries for one metadata attribute using the current visible grouping hierarchy.",
+    "inputType": "GetGroupedMetadataAttributeSummaryToolInput",
+    "inputFields": [
+      {
+        "name": "attribute",
+        "type": "SampleAttributeIdentifier",
+        "description": "Stable attributeIdentifier for the metadata attribute to summarize by visible groups. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "tissue"
       }
     },
     "strict": true

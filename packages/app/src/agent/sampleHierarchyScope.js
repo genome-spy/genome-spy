@@ -33,3 +33,54 @@ export function collectVisibleSampleIds(rootGroup) {
 
     return Array.from(sampleIds);
 }
+
+/**
+ * Collects the visible leaf groups from the current analysis hierarchy.
+ *
+ * @param {import("../sampleView/state/sampleState.d.ts").Group | undefined} rootGroup
+ * @returns {Array<{
+ *     path: string[];
+ *     titles: string[];
+ *     title: string;
+ *     sampleIds: string[];
+ * }>}
+ */
+export function collectVisibleSampleGroups(rootGroup) {
+    if (!rootGroup) {
+        return [];
+    }
+
+    /** @type {Array<{ path: string[]; titles: string[]; title: string; sampleIds: string[] }>} */
+    const groups = [];
+
+    /**
+     * @param {import("../sampleView/state/sampleState.d.ts").Group} group
+     * @param {string[]} path
+     * @param {string[]} titles
+     */
+    const visit = (group, path, titles) => {
+        if ("samples" in group) {
+            groups.push({
+                path,
+                titles,
+                title: group.title,
+                sampleIds: [...group.samples],
+            });
+            return;
+        }
+
+        for (const child of group.groups) {
+            visit(child, [...path, child.name], [...titles, child.title]);
+        }
+    };
+
+    if ("samples" in rootGroup) {
+        visit(rootGroup, [], []);
+    } else {
+        for (const child of rootGroup.groups) {
+            visit(child, [child.name], [child.title]);
+        }
+    }
+
+    return groups;
+}

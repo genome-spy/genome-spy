@@ -165,6 +165,76 @@ export interface AgentMetadataAttributeSummarySource {
 }
 
 /**
+ * One visible leaf group used by the grouped metadata summary tool.
+ */
+export interface AgentVisibleSampleGroupSource {
+    /**
+     * Stable path of group names from the visible hierarchy root.
+     */
+    path: string[];
+
+    /**
+     * Human-readable titles along the same visible group path.
+     */
+    titles: string[];
+
+    /**
+     * User-visible title for the leaf group.
+     */
+    title: string;
+
+    /**
+     * Sample ids currently present in this visible leaf group.
+     */
+    sampleIds: string[];
+}
+
+/**
+ * Runtime source used by the grouped metadata summary tool.
+ */
+export interface AgentGroupedMetadataAttributeSummarySource {
+    /**
+     * Stable identifier of the metadata attribute.
+     */
+    attribute: AttributeIdentifier;
+
+    /**
+     * User-visible title for the attribute.
+     */
+    title: string;
+
+    /**
+     * Human-readable description of the attribute, if available.
+     */
+    description?: string;
+
+    /**
+     * Current metadata data type.
+     */
+    dataType: string;
+
+    /**
+     * Summary scope represented by the visible groups.
+     */
+    scope: "visible_groups";
+
+    /**
+     * Active grouping levels in the visible hierarchy.
+     */
+    groupLevels: AgentSampleGroupLevel[];
+
+    /**
+     * Visible leaf groups in the current hierarchy.
+     */
+    groups: AgentVisibleSampleGroupSource[];
+
+    /**
+     * Metadata values keyed by sample id.
+     */
+    valuesBySampleId: Record<string, unknown>;
+}
+
+/**
  * Structured summary for a view-state mutation performed by an agent tool.
  */
 export interface AgentViewStateChange {
@@ -1074,6 +1144,13 @@ export interface AgentAdapter {
     getMetadataAttributeSummarySource(
         attribute: AttributeIdentifier
     ): AgentMetadataAttributeSummarySource | undefined;
+
+    /**
+     * Returns the current visible grouped value source for one metadata attribute.
+     */
+    getGroupedMetadataAttributeSummarySource(
+        attribute: AttributeIdentifier
+    ): AgentGroupedMetadataAttributeSummarySource | undefined;
 
     /**
      * Activates a provenance state by id.

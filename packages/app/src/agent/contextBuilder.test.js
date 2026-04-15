@@ -374,6 +374,7 @@ describe("getAgentContext", () => {
             "jumpToInitialProvenanceState",
             "buildSelectionAggregationAttribute",
             "getMetadataAttributeSummary",
+            "getGroupedMetadataAttributeSummary",
             "searchViewDatums",
             "submitIntentActions",
         ]);

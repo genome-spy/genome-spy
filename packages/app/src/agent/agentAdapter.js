@@ -9,7 +9,10 @@ import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import templateResultToString from "../utils/templateResultToString.js";
-import { collectVisibleSampleIds } from "./sampleHierarchyScope.js";
+import {
+    collectVisibleSampleGroups,
+    collectVisibleSampleIds,
+} from "./sampleHierarchyScope.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -92,6 +95,9 @@ export function createAgentAdapter(app) {
         getMetadataAttributeSummarySource: (
             /** @type {import("../sampleView/types.d.ts").AttributeIdentifier} */ attribute
         ) => getMetadataAttributeSummarySource(app, attribute),
+        getGroupedMetadataAttributeSummarySource: (
+            /** @type {import("../sampleView/types.d.ts").AttributeIdentifier} */ attribute
+        ) => getGroupedMetadataAttributeSummarySource(app, attribute),
         jumpToProvenanceState: (/** @type {string} */ provenanceId) =>
             jumpToProvenanceState(app, provenanceId),
         jumpToInitialProvenanceState: () => jumpToInitialProvenanceState(app),
@@ -157,6 +163,63 @@ function getMetadataAttributeSummarySource(app, attribute) {
         sampleIds,
         values: sampleIds.map(
             (sampleId) => metadata[sampleId]?.[attributeName]
+        ),
+    };
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+ * @returns {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined}
+ */
+function getGroupedMetadataAttributeSummarySource(app, attribute) {
+    if (
+        attribute?.type !== "SAMPLE_ATTRIBUTE" ||
+        typeof attribute.specifier !== "string"
+    ) {
+        return undefined;
+    }
+
+    const sampleView = app.getSampleView();
+    if (!sampleView) {
+        return undefined;
+    }
+
+    const sampleHierarchy = sampleView.sampleHierarchy;
+    if (!sampleHierarchy) {
+        return undefined;
+    }
+
+    const info =
+        sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
+
+    const attributeName = attribute.specifier;
+    const metadata = sampleHierarchy.sampleMetadata.entities;
+
+    return {
+        attribute,
+        title: templateResultToString(info.title),
+        description: info.description,
+        dataType: info.type,
+        scope: "visible_groups",
+        groupLevels: sampleHierarchy.groupMetadata.map((entry, level) => {
+            const groupInfo =
+                sampleView.compositeAttributeInfoSource.getAttributeInfo(
+                    entry.attribute
+                );
+
+            return {
+                level,
+                attribute: entry.attribute,
+                title: templateResultToString(groupInfo.title),
+            };
+        }),
+        groups: collectVisibleSampleGroups(sampleHierarchy.rootGroup),
+        valuesBySampleId: Object.fromEntries(
+            Object.entries(metadata).map(([sampleId, values]) => [
+                sampleId,
+                values?.[attributeName],
+            ])
         ),
     };
 }

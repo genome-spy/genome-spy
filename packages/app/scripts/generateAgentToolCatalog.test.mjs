@@ -39,6 +39,7 @@ describe("generateAgentToolCatalog", () => {
             "jumpToInitialProvenanceState",
             "buildSelectionAggregationAttribute",
             "getMetadataAttributeSummary",
+            "getGroupedMetadataAttributeSummary",
             "searchViewDatums",
             "submitIntentActions",
         ]);

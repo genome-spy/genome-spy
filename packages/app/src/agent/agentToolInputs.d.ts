@@ -170,6 +170,27 @@ export interface GetMetadataAttributeSummaryToolInput {
 }
 
 /**
+ * Return grouped summaries for one metadata attribute using the current visible
+ * grouping hierarchy.
+ *
+ * @example
+ * {
+ *   "attribute": {
+ *     "type": "SAMPLE_ATTRIBUTE",
+ *     "specifier": "tissue"
+ *   }
+ * }
+ */
+export interface GetGroupedMetadataAttributeSummaryToolInput {
+    /**
+     * Stable attributeIdentifier for the metadata attribute to summarize by
+     * visible groups. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from
+     * the current context.
+     */
+    attribute: SampleAttributeIdentifier;
+}
+
+/**
  * Search datum objects in one specific searchable view.
  *
  * @example
@@ -257,6 +278,7 @@ export interface AgentToolInputs {
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;
     getMetadataAttributeSummary: GetMetadataAttributeSummaryToolInput;
+    getGroupedMetadataAttributeSummary: GetGroupedMetadataAttributeSummaryToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     submitIntentActions: SubmitIntentActionsToolInput;
 }

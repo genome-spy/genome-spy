@@ -128,10 +128,16 @@ function createAppStub(encoding = undefined) {
             }),
         },
         compositeAttributeInfoSource: {
-            getAttributeInfo: () => ({
+            getAttributeInfo: (attribute) => ({
                 accessor: () => undefined,
                 valuesProvider: () => [],
-                type: "quantitative",
+                type:
+                    attribute?.specifier === "sex" ||
+                    attribute?.specifier === "diagnosis"
+                        ? "nominal"
+                        : "quantitative",
+                title: attribute?.specifier ?? "",
+                description: undefined,
             }),
         },
     };
@@ -290,12 +296,87 @@ describe("agentAdapter", () => {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "sex",
             },
-            title: "",
+            title: "sex",
             description: undefined,
-            dataType: "quantitative",
+            dataType: "nominal",
             scope: "visible_samples",
             sampleIds: ["sampleA", "sampleB"],
             values: ["F", "M"],
+        });
+    });
+
+    it("builds grouped metadata summaries from the visible hierarchy", () => {
+        const app = createAppStub();
+        app.getSampleView().sampleHierarchy.groupMetadata = [
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+            },
+        ];
+        app.getSampleView().sampleHierarchy.rootGroup = {
+            name: "ROOT",
+            title: "ROOT",
+            groups: [
+                {
+                    name: "A",
+                    title: "A",
+                    samples: ["sampleA"],
+                },
+                {
+                    name: "B",
+                    title: "B",
+                    samples: ["sampleB"],
+                },
+            ],
+        };
+
+        const adapter = createAgentAdapter(app);
+
+        const source = adapter.getGroupedMetadataAttributeSummarySource({
+            type: "SAMPLE_ATTRIBUTE",
+            specifier: "sex",
+        });
+
+        expect(source).toEqual({
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "sex",
+            },
+            title: "sex",
+            description: undefined,
+            dataType: "nominal",
+            scope: "visible_groups",
+            groupLevels: [
+                {
+                    level: 0,
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
+                    title: "diagnosis",
+                },
+            ],
+            groups: [
+                {
+                    path: ["A"],
+                    titles: ["A"],
+                    title: "A",
+                    sampleIds: ["sampleA"],
+                },
+                {
+                    path: ["B"],
+                    titles: ["B"],
+                    title: "B",
+                    sampleIds: ["sampleB"],
+                },
+            ],
+            valuesBySampleId: {
+                sampleA: "F",
+                sampleB: "M",
+                sampleC: "F",
+            },
         });
     });
 

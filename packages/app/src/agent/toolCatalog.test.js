@@ -20,6 +20,7 @@ describe("toolCatalog", () => {
             "jumpToInitialProvenanceState",
             "buildSelectionAggregationAttribute",
             "getMetadataAttributeSummary",
+            "getGroupedMetadataAttributeSummary",
             "searchViewDatums",
             "submitIntentActions",
         ]);
@@ -28,13 +29,14 @@ describe("toolCatalog", () => {
         expect(tools[6].strict).toBe(true);
         expect(tools[7].strict).toBe(true);
         expect(tools[8].strict).toBe(true);
-        expect(tools[9].strict).toBe(false);
+        expect(tools[9].strict).toBe(true);
+        expect(tools[10].strict).toBe(false);
     });
 
     it("builds Responses API function tool definitions", () => {
         const toolDefinitions = buildResponsesToolDefinitions();
 
-        expect(toolDefinitions).toHaveLength(10);
+        expect(toolDefinitions).toHaveLength(11);
         expect(toolDefinitions[0]).toEqual(
             expect.objectContaining({
                 type: "function",
@@ -70,28 +72,34 @@ describe("toolCatalog", () => {
         expect(toolDefinitions[7].parameters.type).toBe("object");
         expect(toolDefinitions[7].parameters.required).toEqual(["attribute"]);
         expect(toolDefinitions[7].strict).toBe(true);
-        expect(toolDefinitions[8].name).toBe("searchViewDatums");
+        expect(toolDefinitions[8].name).toBe(
+            "getGroupedMetadataAttributeSummary"
+        );
         expect(toolDefinitions[8].parameters.type).toBe("object");
-        expect(toolDefinitions[8].parameters.required).toEqual([
+        expect(toolDefinitions[8].parameters.required).toEqual(["attribute"]);
+        expect(toolDefinitions[8].strict).toBe(true);
+        expect(toolDefinitions[9].name).toBe("searchViewDatums");
+        expect(toolDefinitions[9].parameters.type).toBe("object");
+        expect(toolDefinitions[9].parameters.required).toEqual([
             "selector",
             "query",
             "field",
             "mode",
         ]);
-        expect(toolDefinitions[8].parameters.properties.field).toEqual({
+        expect(toolDefinitions[9].parameters.properties.field).toEqual({
             type: "string",
             description:
                 "Search field name. Use an empty string to search all configured fields.",
         });
-        expect(toolDefinitions[8].parameters.properties.mode).toEqual({
+        expect(toolDefinitions[9].parameters.properties.mode).toEqual({
             type: "string",
             enum: ["exact", "prefix"],
             description:
                 "Search mode. `exact` matches the whole field value. `prefix` matches the beginning of the field value.",
         });
-        expect(toolDefinitions[8].strict).toBe(true);
-        expect(toolDefinitions[9].parameters.type).toBe("object");
-        expect(toolDefinitions[9].strict).toBe(false);
+        expect(toolDefinitions[9].strict).toBe(true);
+        expect(toolDefinitions[10].parameters.type).toBe("object");
+        expect(toolDefinitions[10].strict).toBe(false);
     });
 
     it("validates tool arguments against the generated schema", () => {

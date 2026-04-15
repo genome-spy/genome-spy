@@ -1,5 +1,6 @@
 import { buildSelectionAggregationAttribute } from "./selectionAggregationTool.js";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
+import { getGroupedMetadataAttributeSummaryTool } from "./groupedMetadataAttributeSummaryTool.js";
 import { getMetadataAttributeSummaryTool } from "./metadataAttributeSummaryTool.js";
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 
@@ -17,9 +18,11 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {import("./agentToolInputs.d.ts").JumpToInitialProvenanceStateToolInput} JumpToInitialProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").BuildSelectionAggregationAttributeToolInput} BuildSelectionAggregationAttributeToolInput
  * @typedef {import("./agentToolInputs.d.ts").GetMetadataAttributeSummaryToolInput} GetMetadataAttributeSummaryToolInput
+ * @typedef {import("./agentToolInputs.d.ts").GetGroupedMetadataAttributeSummaryToolInput} GetGroupedMetadataAttributeSummaryToolInput
  * @typedef {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} SubmitIntentActionsToolInput
  * @typedef {import("./types.d.ts").AgentContext} AgentContext
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
+ * @typedef {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource} AgentGroupedMetadataAttributeSummarySource
  * @typedef {import("./types.d.ts").AgentMetadataAttributeSummarySource} AgentMetadataAttributeSummarySource
  * @typedef {import("./types.d.ts").AgentProvenanceAction} AgentProvenanceAction
  * @typedef {import("./types.d.ts").IntentBatch} IntentBatch
@@ -37,6 +40,9 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  *     getMetadataAttributeSummarySource(
  *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
  *     ): AgentMetadataAttributeSummarySource | undefined;
+ *     getGroupedMetadataAttributeSummarySource(
+ *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
+ *     ): AgentGroupedMetadataAttributeSummarySource | undefined;
  *     expandViewNode?(selector: ViewSelector): boolean;
  *     collapseViewNode?(selector: ViewSelector): boolean;
  *     submitIntentActions(
@@ -67,6 +73,7 @@ export const agentTools = {
     jumpToInitialProvenanceState,
     buildSelectionAggregationAttribute: buildSelectionAggregationAttributeTool,
     getMetadataAttributeSummary: getMetadataAttributeSummaryTool,
+    getGroupedMetadataAttributeSummary: getGroupedMetadataAttributeSummaryTool,
     searchViewDatums: searchViewDatumsTool,
     submitIntentActions: submitIntentActionsTool,
 };

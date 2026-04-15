@@ -29,6 +29,46 @@ function createRuntimeStub() {
             values: [42, undefined],
         },
     };
+    const groupedMetadataSummarySources = {
+        tissue: {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "tissue",
+            },
+            title: "tissue",
+            dataType: "nominal",
+            scope: "visible_groups",
+            groupLevels: [
+                {
+                    level: 0,
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
+                    title: "diagnosis",
+                },
+            ],
+            groups: [
+                {
+                    path: ["A"],
+                    titles: ["A"],
+                    title: "A",
+                    sampleIds: ["sampleA", "sampleB"],
+                },
+                {
+                    path: ["B"],
+                    titles: ["B"],
+                    title: "B",
+                    sampleIds: ["sampleC"],
+                },
+            ],
+            valuesBySampleId: {
+                sampleA: "blood",
+                sampleB: "bone marrow",
+                sampleC: "blood",
+            },
+        },
+    };
     const searchData = [
         {
             gene_symbol: "TP53",
@@ -89,6 +129,9 @@ function createRuntimeStub() {
         }),
         getMetadataAttributeSummarySource: vi.fn(
             (attribute) => metadataSummarySources[attribute.specifier]
+        ),
+        getGroupedMetadataAttributeSummarySource: vi.fn(
+            (attribute) => groupedMetadataSummarySources[attribute.specifier]
         ),
         jumpToProvenanceState: vi.fn(() => true),
         jumpToInitialProvenanceState: vi.fn(() => true),
@@ -258,6 +301,72 @@ describe("agentTools", () => {
                 mean: 42,
             })
         );
+    });
+
+    it("summarizes metadata attributes across visible groups", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.getGroupedMetadataAttributeSummary(runtime, {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "tissue",
+            },
+        });
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                text: "Summarized metadata attribute tissue across 2 visible groups.",
+                content: expect.objectContaining({
+                    kind: "grouped_metadata_attribute_summary",
+                    dataType: "nominal",
+                    scope: "visible_groups",
+                    groupCount: 2,
+                    truncatedGroups: false,
+                    groupLevels: [
+                        {
+                            level: 0,
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "diagnosis",
+                            },
+                            title: "diagnosis",
+                        },
+                    ],
+                    groups: [
+                        {
+                            path: ["A"],
+                            titles: ["A"],
+                            title: "A",
+                            nonMissingCount: 2,
+                            missingCount: 0,
+                            distinctCount: 2,
+                            categories: [
+                                { value: "blood", count: 1 },
+                                { value: "bone marrow", count: 1 },
+                            ],
+                            truncated: false,
+                        },
+                        {
+                            path: ["B"],
+                            titles: ["B"],
+                            title: "B",
+                            nonMissingCount: 1,
+                            missingCount: 0,
+                            distinctCount: 1,
+                            categories: [{ value: "blood", count: 1 }],
+                            truncated: false,
+                        },
+                    ],
+                }),
+            })
+        );
+        expect(
+            runtime.getGroupedMetadataAttributeSummarySource
+        ).toHaveBeenCalledWith({
+            type: "SAMPLE_ATTRIBUTE",
+            specifier: "tissue",
+        });
     });
 
     it("looks up datums in one searchable view", () => {
@@ -457,6 +566,32 @@ describe("agentTools", () => {
                         field: "beta",
                         locus: 1,
                     },
+                },
+            })
+        ).toThrow(ToolCallRejectionError);
+    });
+
+    it("rejects grouped metadata summaries when no visible groups exist", () => {
+        const runtime = createRuntimeStub();
+        runtime.getGroupedMetadataAttributeSummarySource.mockReturnValueOnce({
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "tissue",
+            },
+            title: "tissue",
+            dataType: "nominal",
+            scope: "visible_groups",
+            groupLevels: [],
+            groups: [],
+            valuesBySampleId: {},
+        });
+        const tools = agentTools;
+
+        expect(() =>
+            tools.getGroupedMetadataAttributeSummary(runtime, {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "tissue",
                 },
             })
         ).toThrow(ToolCallRejectionError);

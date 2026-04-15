@@ -1052,6 +1052,9 @@
         "expandViewNode": {
           "$ref": "#/definitions/ExpandViewNodeToolInput"
         },
+        "getGroupedMetadataAttributeSummary": {
+          "$ref": "#/definitions/GetGroupedMetadataAttributeSummaryToolInput"
+        },
         "getMetadataAttributeSummary": {
           "$ref": "#/definitions/GetMetadataAttributeSummaryToolInput"
         },
@@ -1080,6 +1083,7 @@
         "jumpToInitialProvenanceState",
         "buildSelectionAggregationAttribute",
         "getMetadataAttributeSummary",
+        "getGroupedMetadataAttributeSummary",
         "searchViewDatums",
         "submitIntentActions"
       ],
@@ -1172,6 +1176,26 @@
       "required": ["selector"],
       "type": "object"
     },
+    "GetGroupedMetadataAttributeSummaryToolInput": {
+      "additionalProperties": false,
+      "description": "Return grouped summaries for one metadata attribute using the current visible grouping hierarchy.",
+      "examples": [
+        {
+          "attribute": {
+            "specifier": "tissue",
+            "type": "SAMPLE_ATTRIBUTE"
+          }
+        }
+      ],
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/SampleAttributeIdentifier",
+          "description": "Stable attributeIdentifier for the metadata attribute to summarize by visible groups. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context."
+        }
+      },
+      "required": ["attribute"],
+      "type": "object"
+    },
     "GetMetadataAttributeSummaryToolInput": {
       "additionalProperties": false,
       "description": "Return a compact summary of one metadata attribute's current values. Use this when the agent needs factual grounding about which category values exist or what numeric range is present in current sample metadata.",
@@ -1186,7 +1210,7 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/SampleAttributeIdentifier",
-          "description": "Stable identifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context."
+          "description": "Stable attributeIdentifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context."
         }
       },
       "required": ["attribute"],

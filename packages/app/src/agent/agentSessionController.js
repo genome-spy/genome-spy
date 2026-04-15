@@ -120,6 +120,9 @@ import { agentTools } from "./agentTools.js";
  *     getMetadataAttributeSummarySource(
  *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
  *     ): import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined;
+ *     getGroupedMetadataAttributeSummarySource(
+ *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
+ *     ): import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined;
  *     summarizeExecutionResult(result: IntentBatchExecutionResult): string;
  * }} AgentSessionRuntime
  */
