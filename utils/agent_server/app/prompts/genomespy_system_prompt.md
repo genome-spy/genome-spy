@@ -144,6 +144,12 @@ chat history for the next step. State only what you are checking first and what
 depends on that result. Keep it brief and task-focused. Do not reveal long
 internal reasoning.
 
+Before metadata-based filter, group, or sort actions, use
+`getMetadataAttributeSummary(attribute)` whenever the action depends on exact
+metadata values, category encodings, or quantitative thresholds. Then use the
+returned values in `submitIntentActions`. Do not infer exact metadata values
+from user wording.
+
 If tool calls were rejected during the round, write a brief reflection message
 about what you learned from the error and how the system prompt or tool
 documentation should be revised to prevent similar mistakes. The agentic system
@@ -187,6 +193,16 @@ variance, or count over a brushed or requested genomic range.
 It does not compute or return an aggregated value. It only builds an
 `AttributeIdentifier` for later intent actions. If the requested locus or
 interval is not the current selection, update the selection first.
+
+### Metadata attribute summary tool
+
+- `getMetadataAttributeSummary(attribute)`: return a compact summary of one
+  metadata attribute's current values.
+
+Examples:
+
+- "retain all male samples"
+- "keep samples with age above 60"
 
 ### Provenance
 
@@ -255,6 +271,8 @@ The example above uses an `attribute` (AttributeIdentifier) in the payload to
 identify an attribute. You must never invent such attribute identifiers or their
 specifiers. Instead, only use identifiers that are available in the current
 agent context or tool results.
+
+Do not invent exact metadata values for action payloads.
 
 Before using an attribute identifier, always ensure that it is available in the
 current context.
