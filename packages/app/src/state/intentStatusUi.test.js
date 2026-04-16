@@ -14,7 +14,14 @@ vi.mock("../components/dialogs/intentErrorDialog.js", () => ({
 import { showIntentErrorDialog } from "../components/dialogs/intentErrorDialog.js";
 
 /**
- * @returns {import("@reduxjs/toolkit").Store & {setState?: (action: any) => void}}
+ * @typedef {object} TestStore
+ * @prop {() => {intentStatus: import("./intentStatusSlice.js").IntentStatus}} getState
+ * @prop {(action: any) => any} dispatch
+ * @prop {(listener: () => void) => () => void} subscribe
+ */
+
+/**
+ * @returns {TestStore}
  */
 function createStore() {
     /** @type {{intentStatus: import("./intentStatusSlice.js").IntentStatus}} */
@@ -90,7 +97,7 @@ describe("attachIntentStatusUi", () => {
             getActionInfo: vi.fn(),
         };
 
-        showIntentErrorDialog.mockResolvedValue("accept");
+        vi.mocked(showIntentErrorDialog).mockResolvedValue("accept");
 
         const detach = attachIntentStatusUi({
             store: /** @type {any} */ (store),

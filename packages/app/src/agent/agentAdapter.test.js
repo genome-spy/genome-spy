@@ -211,9 +211,6 @@ function createMockPlannerContext() {
             fields: [],
         },
         provenance: [],
-        lifecycle: {
-            appInitialized: true,
-        },
     };
 }
 

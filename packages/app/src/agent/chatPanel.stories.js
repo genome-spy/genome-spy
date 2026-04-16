@@ -166,9 +166,6 @@ function createMockAgentController(scenario, options = {}) {
                 type: "sampleView/setSamples",
             },
         ],
-        lifecycle: {
-            appInitialized: true,
-        },
     });
     let issuedToolCall = false;
 

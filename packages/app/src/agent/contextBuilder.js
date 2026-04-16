@@ -24,8 +24,7 @@ const searchableViewSummaryCache = new WeakMap();
  */
 export function getAgentContext(app, options = {}) {
     const sampleView = app.getSampleView();
-    const state = app.store.getState();
-    const sampleState = app.provenance.getPresentState()?.sampleView;
+    const sampleHierarchy = app.provenance.getPresentState()?.sampleView;
     const provenance = app.provenance.getActionHistory() ?? [];
     const selectionAggregation = getSelectionAggregationContext(app);
     const { root: viewRoot } = buildViewTree(app, options);
@@ -48,30 +47,27 @@ export function getAgentContext(app, options = {}) {
             exampleInput: entry.exampleInput,
         })),
         attributes: sampleView
-            ? buildAttributeSummary(sampleView, sampleState)
+            ? buildAttributeSummary(sampleView, sampleHierarchy)
             : [],
         searchableViews,
         selectionAggregation,
         provenance: buildProvenanceActions(app, provenance),
-        sampleSummary: buildSampleSummary(sampleState),
+        sampleSummary: buildSampleSummary(sampleHierarchy),
         sampleGroupLevels: sampleView
-            ? buildSampleGroupLevels(sampleView, sampleState)
+            ? buildSampleGroupLevels(sampleView, sampleHierarchy)
             : [],
-        lifecycle: {
-            appInitialized: state.lifecycle.appInitialized,
-        },
         viewRoot,
     };
 }
 
 /**
- * @param {any} sampleState
+ * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentSampleSummary}
  */
-function buildSampleSummary(sampleState) {
-    const sampleCount = sampleState?.sampleData?.ids?.length ?? 0;
-    const groupCount = sampleState?.groupMetadata?.length ?? 0;
-    const visibleSampleCount = countVisibleSamples(sampleState?.rootGroup);
+function buildSampleSummary(sampleHierarchy) {
+    const sampleCount = sampleHierarchy.sampleData.ids.length;
+    const groupCount = sampleHierarchy.groupMetadata.length;
+    const visibleSampleCount = countVisibleSamples(sampleHierarchy?.rootGroup);
 
     return {
         sampleCount,
@@ -82,11 +78,11 @@ function buildSampleSummary(sampleState) {
 
 /**
  * @param {import("../sampleView/sampleView.js").default} sampleView
- * @param {any} sampleState
+ * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentAttributeSummary[]}
  */
-function buildAttributeSummary(sampleView, sampleState) {
-    const { attributeNames, attributeDefs } = sampleState.sampleMetadata;
+function buildAttributeSummary(sampleView, sampleHierarchy) {
+    const { attributeNames, attributeDefs } = sampleHierarchy.sampleMetadata;
 
     const getAttributeInfo = (
         /** @type {import("../sampleView/types.js").AttributeIdentifier} */ attributeIdentifier
@@ -115,12 +111,11 @@ function buildAttributeSummary(sampleView, sampleState) {
 
 /**
  * @param {import("../sampleView/sampleView.js").default} sampleView
- * @param {any} sampleState
+ * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentSampleGroupLevel[]}
  */
-function buildSampleGroupLevels(sampleView, sampleState) {
-    /** @type {Array<{ attribute: import("./types.js").AgentAttributeSummary["id"] }>} */
-    const groupMetadata = sampleState?.groupMetadata ?? [];
+function buildSampleGroupLevels(sampleView, sampleHierarchy) {
+    const groupMetadata = sampleHierarchy.groupMetadata;
 
     return groupMetadata.map((entry, level) => {
         const info = sampleView.compositeAttributeInfoSource.getAttributeInfo(
@@ -140,7 +135,7 @@ function buildSampleGroupLevels(sampleView, sampleState) {
  * @returns {import("./types.js").AgentSearchableViewSummary[]}
  */
 function buildSearchableViews(app) {
-    const searchableViews = app.genomeSpy?.getSearchableViews?.() ?? [];
+    const searchableViews = app.genomeSpy.getSearchableViews();
 
     return searchableViews
         .map((view) => buildSearchableViewSummary(view))

@@ -210,13 +210,6 @@ function createAppStub(options = {}) {
         },
         searchView,
         searchCollector,
-        store: {
-            getState: () => ({
-                lifecycle: {
-                    appInitialized: true,
-                },
-            }),
-        },
         provenance: {
             getPresentState: () => ({
                 sampleView: {
@@ -275,7 +268,6 @@ describe("getAgentContext", () => {
             "provenance",
             "sampleSummary",
             "sampleGroupLevels",
-            "lifecycle",
             "viewRoot",
         ]);
 

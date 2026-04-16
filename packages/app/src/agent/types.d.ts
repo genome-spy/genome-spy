@@ -310,11 +310,6 @@ export interface AgentAttributeSummary {
     id: AttributeIdentifier;
 
     /**
-     * Attribute name in the current sample collection.
-     */
-    name: string;
-
-    /**
      * Human-readable title.
      */
     title: string;
@@ -328,11 +323,6 @@ export interface AgentAttributeSummary {
      * Attribute data type.
      */
     dataType: string;
-
-    /**
-     * Origin of the attribute, e.g. sample metadata or a view-backed field.
-     */
-    source: AttributeIdentifierType;
 
     /**
      * Whether the attribute is visible in the current UI.
@@ -1255,13 +1245,6 @@ export interface AgentContext {
      * Current grouping levels in the sample hierarchy.
      */
     sampleGroupLevels: AgentSampleGroupLevel[];
-
-    /**
-     * Application lifecycle state.
-     */
-    lifecycle: {
-        appInitialized: boolean;
-    };
 
     /**
      * Root node of the normalized view hierarchy snapshot.
