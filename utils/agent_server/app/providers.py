@@ -383,7 +383,7 @@ class OpenAIChatCompletionsProvider(BaseProvider):
             response_json = response.json()
         except Exception as exc:
             logger.warning(
-                "Provider raw outer response from Responses API: %r",
+                "Provider raw outer response from Chat Completions API: %r",
                 response.text,
             )
             raise ProviderError(
@@ -392,12 +392,12 @@ class OpenAIChatCompletionsProvider(BaseProvider):
             ) from exc
 
         logger.debug(
-            "Provider raw outer response from Responses API: %r",
+            "Provider raw outer response from Chat Completions API: %r",
             response.text,
         )
         response_payload = _parse_chat_completions_response(response_json)
         logger.debug(
-            "Provider parsed response from Responses API: %r",
+            "Provider parsed response from Chat Completions API: %r",
             response_payload.model_dump(),
         )
         return response_payload
@@ -465,7 +465,7 @@ class OpenAIChatCompletionsProvider(BaseProvider):
                         final_snapshot_text = ""
                         async for event_name, data_text in _iter_sse_events(response):
                             logger.debug(
-                                "Provider raw SSE event %s from Responses API:\n%s",
+                                "Provider raw SSE event %s from Chat Completions API:\n%s",
                                 event_name,
                                 data_text,
                             )

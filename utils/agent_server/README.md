@@ -55,6 +55,10 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --project utils/agent_server \
   --app-dir utils/agent_server
 ```
 
+The example intentionally does not use `--reload`. It is not needed for normal
+relay use, and in this repo it can trigger aggressive file watching across the
+GenomeSpy tree and cause high CPU and battery usage.
+
 ### Browser command
 
 From the repo root on the machine running GenomeSpy:
@@ -70,7 +74,7 @@ npm start
 ```text
 GenomeSpy browser
   -> GenomeSpy agent relay (/v1/agent-turn)
-    -> model server (/v1/chat/completions or /v1/responses)
+    -> model server (/v1/responses or /v1/chat/completions)
       -> model
     <- normalized relay response
   <- assistant message in the chat panel
@@ -98,6 +102,12 @@ uv run --project utils/agent_server pytest
 uv run --project utils/agent_server ruff check .
 uv run --project utils/agent_server mypy app
 ```
+
+## Transport Selection
+
+- `GENOMESPY_AGENT_API_STYLE=responses` is the preferred and default relay mode.
+- Use `GENOMESPY_AGENT_API_STYLE=chat_completions` only for providers that do not support `/v1/responses` or that work more reliably through the legacy compatibility path.
+- The relay keeps both transports so local and hosted providers can be compared behind the same `/v1/agent-turn` API.
 
 ## Providers
 
@@ -140,7 +150,7 @@ usually listens on port `1234`.
 ```bash
 export GENOMESPY_AGENT_MODEL=<model-name>
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:1234/v1
-export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_STYLE=responses
 export GENOMESPY_AGENT_API_KEY=lm-studio
 ```
 
@@ -166,7 +176,7 @@ oMLX exposes an OpenAI-compatible API on `http://127.0.0.1:8000/v1`.
 ```bash
 export GENOMESPY_AGENT_MODEL=<model-name>
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:8000/v1
-export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_STYLE=responses
 export GENOMESPY_AGENT_API_KEY=omlx
 ```
 
@@ -175,7 +185,7 @@ directory.
 
 ### Ollama
 
-Ollama works with the relay through the chat-completions path.
+Ollama currently uses the `chat_completions` relay mode.
 
 ```bash
 ollama serve
@@ -197,7 +207,7 @@ If you are using OpenAI directly, export the relay variables like this:
 ```bash
 export GENOMESPY_AGENT_MODEL=gpt-4.1-mini
 export GENOMESPY_AGENT_BASE_URL=https://api.openai.com/v1
-export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_STYLE=responses
 export GENOMESPY_AGENT_API_KEY=$OPENAI_API_KEY
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 ```
@@ -215,7 +225,7 @@ Use this for local or remote servers that expose an OpenAI-style API.
 ```bash
 export GENOMESPY_AGENT_MODEL=<model-name>
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:<port>/v1
-export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_STYLE=responses
 export GENOMESPY_AGENT_API_KEY=<api-key-or-placeholder>
 ```
 

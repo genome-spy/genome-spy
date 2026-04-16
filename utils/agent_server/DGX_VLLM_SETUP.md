@@ -5,7 +5,7 @@ remote model server on a DGX machine.
 
 The setup has two servers on the DGX:
 
-- `vllm serve` runs the model and exposes an OpenAI-compatible chat API.
+- `vllm serve` runs the model and exposes an OpenAI-compatible API.
 - `uvicorn` runs the GenomeSpy agent relay and exposes `/v1/agent-turn`.
 
 GenomeSpy in the browser talks to the relay, not directly to vLLM.
@@ -119,10 +119,11 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --project utils/agent_server \
 Why these values:
 
 - `GENOMESPY_AGENT_BASE_URL` points the relay at local vLLM.
-- `GENOMESPY_AGENT_API_STYLE=chat_completions` selects the OpenAI-compatible
-  chat path.
+- `GENOMESPY_AGENT_API_STYLE=chat_completions` matches this vLLM setup.
 - `GENOMESPY_AGENT_ENABLE_STREAMING=false` avoids provider-specific streaming
   quirks while the setup is being verified.
+- The command intentionally omits `--reload`. It is not needed here and can
+  cause heavy file watching, CPU load, and battery drain.
 
 Important relay issues we hit:
 

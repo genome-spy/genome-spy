@@ -28,6 +28,15 @@ def test_load_settings_logs_masked_api_key(
     assert "sk-test-1234567890" not in caplog.text
 
 
+def test_load_settings_defaults_to_responses(monkeypatch) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    monkeypatch.delenv("GENOMESPY_AGENT_API_STYLE", raising=False)
+
+    settings = load_settings()
+
+    assert settings.api_style == "responses"
+
+
 def test_provider_auth_diagnostic_logs_masked_api_key(
     caplog: LogCaptureFixture,
 ) -> None:

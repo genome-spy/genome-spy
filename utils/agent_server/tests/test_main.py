@@ -9,7 +9,7 @@ from app.main import (
     log_startup_summary,
 )
 from app.models import ProviderResponse, ProviderStreamEvent, ToolCall
-from app.providers import OpenAIChatCompletionsProvider
+from app.providers import OpenAIChatCompletionsProvider, OpenAIResponsesProvider
 
 
 class StubProvider:
@@ -89,6 +89,20 @@ def test_get_provider_uses_chat_completions_for_vllm(monkeypatch) -> None:
         reset_provider_cache()
 
     assert isinstance(provider, OpenAIChatCompletionsProvider)
+
+
+def test_get_provider_uses_responses_by_default(monkeypatch) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    monkeypatch.delenv("GENOMESPY_AGENT_API_STYLE", raising=False)
+    reset_settings_cache()
+    reset_provider_cache()
+
+    try:
+        provider = get_provider()
+    finally:
+        reset_provider_cache()
+
+    assert isinstance(provider, OpenAIResponsesProvider)
 
 
 def test_agent_turn_endpoint_returns_normalized_response(monkeypatch) -> None:
