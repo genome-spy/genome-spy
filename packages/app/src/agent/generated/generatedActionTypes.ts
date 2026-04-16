@@ -169,13 +169,6 @@ type ParamProvenanceEntry = {
     origin?: ParamOrigin;
 };
 
-type ViewSettingsSetVisibility = {
-    key: string;
-    visibility: boolean;
-};
-
-type ViewSettingsRestoreDefaultVisibility = string;
-
 export type AgentActionType =
     | "sampleView/addMetadata"
     | "sampleView/deriveMetadata"

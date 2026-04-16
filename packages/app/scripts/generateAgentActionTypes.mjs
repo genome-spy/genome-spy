@@ -186,13 +186,6 @@ export function renderGeneratedActionTypes(catalog) {
         "    origin?: ParamOrigin;",
         "};",
         "",
-        'type ViewSettingsSetVisibility = {',
-        "    key: string;",
-        "    visibility: boolean;",
-        "};",
-        "",
-        "type ViewSettingsRestoreDefaultVisibility = string;",
-        "",
     ];
 
     const actionTypes = catalog

@@ -117,7 +117,7 @@ export interface JumpToProvenanceStateToolInput {
 /**
  * Jump to the initial provenance state before any actions were dispatched.
  */
-export interface JumpToInitialProvenanceStateToolInput {}
+export type JumpToInitialProvenanceStateToolInput = Record<string, never>;
 
 /**
  * Build an `AttributeIdentifier` for a selection-derived aggregation so it can
