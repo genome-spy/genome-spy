@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Module Cohesion Review"
+  short_description: "Move misplaced agent_server code to the right module"
+  default_prompt: "Review the targeted utils/agent_server Python files for module-placement and cohesion problems, then move only high-confidence cohesive code clusters and update imports safely."

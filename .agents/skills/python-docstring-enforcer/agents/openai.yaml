@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Docstring Enforcer"
+  short_description: "Fix agent_server docstrings to match local rules"
+  default_prompt: "Review the targeted utils/agent_server Python files for docstring violations against AGENTS.md and fix them with minimal diffs."
