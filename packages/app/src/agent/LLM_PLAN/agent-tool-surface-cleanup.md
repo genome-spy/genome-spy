@@ -172,20 +172,17 @@ changes:
   - schema validation failure
   - rejection message formatting
 - [`agentTools.test.js`](../src/agent/agentTools.test.js)
-  - dispatches to the runtime
-  - fails fast on unresolved selectors
+  - nontrivial derivation and rejection-path coverage
 - [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js)
   - malformed argument rejection
   - repeated rejected tool call handling
   - validation failure text
 - [`agentAdapter.test.js`](../src/agent/agentAdapter.test.js)
-  - direct store dispatch for visibility changes
+  - context assembly and agent-turn transport
 - [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js)
   - includes `setViewVisibility` in the current tool catalog snapshot
 - [`scripts/generateAgentToolCatalog.test.mjs`](../../../scripts/generateAgentToolCatalog.test.mjs)
   - asserts the generated tool set includes `setViewVisibility`
-- [`scripts/generatedToolSchema.test.mjs`](../../../scripts/generatedToolSchema.test.mjs)
-  - checks the generated schema covers the current tool set
 - [`utils/agent_server/tests/test_tool_catalog.py`](../../../../utils/agent_server/tests/test_tool_catalog.py)
   - asserts the server mirror exposes `setViewVisibility`
 - [`utils/agent_server/tests/test_provider_parser.py`](../../../../utils/agent_server/tests/test_provider_parser.py)
@@ -202,6 +199,21 @@ The goal here is not to delete every test that mentions a tool. The goal is to
 keep one or two tests per boundary and drop the ones that only restate the same
 tool inventory in a different place.
 
+The following cases have already been pruned in code:
+
+- the duplicate planner-facing inventory check in
+  [`scripts/generateAgentActionCatalog.test.mjs`](../../../scripts/generateAgentActionCatalog.test.mjs)
+- the duplicate ordered action summary list in
+  [`scripts/generateAgentActionSummaries.test.mjs`](../../../scripts/generateAgentActionSummaries.test.mjs)
+- the direct visibility-dispatch assertion in
+  [`agentAdapter.test.js`](../src/agent/agentAdapter.test.js)
+- the expand/collapse wrapper assertion in
+  [`agentTools.test.js`](../src/agent/agentTools.test.js)
+- the explicit `jumpToInitialProvenanceState` assertion in
+  [`agentTools.test.js`](../src/agent/agentTools.test.js)
+- the generated-schema freshness test
+- the toolbar menu smoke test
+
 #### Keep as canonical boundary tests
 
 - [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js)
@@ -211,6 +223,12 @@ tool inventory in a different place.
 - [`scripts/generateAgentToolCatalog.test.mjs`](../../../scripts/generateAgentToolCatalog.test.mjs)
   - Keep the file-vs-generator comparison.
   - This is the main generator fidelity check.
+- [`scripts/generateAgentActionCatalog.test.mjs`](../../../scripts/generateAgentActionCatalog.test.mjs)
+  - Keep the file-vs-generator comparison.
+  - Do not reassert the full planner-facing action inventory here.
+- [`scripts/generateAgentActionSummaries.test.mjs`](../../../scripts/generateAgentActionSummaries.test.mjs)
+  - Keep the file-vs-generator comparison.
+  - Do not reassert the full ordered action-summary list here.
 - [`utils/agent_server/tests/test_tool_catalog.py`](../../../../utils/agent_server/tests/test_tool_catalog.py)
   - Keep one server-side mirror test if the Python side needs a boundary
     guard.
@@ -220,30 +238,24 @@ tool inventory in a different place.
 
 #### Drop or trim as redundant
 
-- [`scripts/generatedToolSchema.test.mjs`](../../../scripts/generatedToolSchema.test.mjs)
-  - Drop this entire test file unless it starts checking behavior that the
-    generator-file comparison cannot cover.
-  - The schema freshness script already guards the generated file, and the
-    runtime contract test already checks the shape the app actually consumes.
-- [`scripts/generateAgentToolCatalog.test.mjs`](../../../scripts/generateAgentToolCatalog.test.mjs)
-  - Drop the second test, `produces the planner-facing tool set`.
-  - The exact tool-name array is already asserted in the runtime catalog test
-    and the server mirror test.
-  - Keep only the generator-vs-committed-file check.
 - [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js)
   - Remove the exact `toolCatalog` name-list assertion.
   - Keep only a shape-level check that the context includes the generated tool
     catalog.
 - [`utils/agent_server/tests/test_tool_catalog.py`](../../../../utils/agent_server/tests/test_tool_catalog.py)
-  - Replace the exact ordered name-list assertion with a smaller mirror-shape
-    check if the Python boundary still needs one.
-  - The current full list is just repeating the same inventory one more time.
+  - Replace the remaining exact name-list assertions with a smaller
+    mirror-shape check if the Python boundary still needs one.
+  - If the Python boundary stops adding unique coverage, delete this file.
 - [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js)
   - Keep one malformed-tool rejection path for the controller.
   - Remove extra tool-specific validation tests when they only reassert the
     same generated tool contract and rejection phrasing.
   - Prefer a single representative tool for controller error-path coverage, not
     one per tool family.
+- [`agentTools.test.js`](../src/agent/agentTools.test.js)
+  - Keep the nontrivial derivation and error-path tests.
+  - Avoid direct wrapper assertions that only repeat a helper call with no
+    extra behavior.
 
 #### What should still be covered somewhere
 
@@ -254,9 +266,84 @@ tool inventory in a different place.
 - one app-context snapshot test that proves the tool catalog is attached
 - one server-side mirror check if the Python path still needs it
 - one controller rejection path for malformed tool calls
+- one representative behavioral test per real tool family, not per trivial
+  wrapper
 
 Anything beyond that should justify its existence by testing a different
 boundary, not by repeating the same list of tools again.
+
+### 8. Remaining agent test triage
+
+This is the broader pass across the remaining agent tests. The principle is to
+keep tests that prove boundaries and delete tests that only recheck trivial
+plumbing or repeat the same contract shape.
+
+#### Keep
+
+- [`actionShapeValidator.test.js`](../src/agent/actionShapeValidator.test.js)
+  - real validation boundary for action payloads
+- [`intentProgramValidator.test.js`](../src/agent/intentProgramValidator.test.js)
+  - real validation boundary against app state
+- [`intentProgramExecutor.test.js`](../src/agent/intentProgramExecutor.test.js)
+  - async execution and error propagation boundary
+- [`actionCatalog.test.js`](../src/agent/actionCatalog.test.js)
+  - action summary/creator contract, not just trivial forwarding
+- [`selectionAggregationContext.test.js`](../src/agent/selectionAggregationContext.test.js)
+  - selection aggregation derivation is real logic
+- [`viewTree.test.js`](../src/agent/viewTree.test.js)
+  - view normalization has enough branching to justify coverage
+- [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js)
+  - keep the runtime metadata and rejection-path checks, but not exact
+    inventory duplication
+- [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js)
+  - keep queueing, retry, clarification, and turn-lifecycle behavior
+- [`agentTools.test.js`](../src/agent/agentTools.test.js)
+  - keep the non-trivial handler behavior
+- [`scripts/generateAgentActionCatalog.test.mjs`](../../../scripts/generateAgentActionCatalog.test.mjs)
+  - keep the generator-vs-committed-file check
+- [`scripts/generateAgentActionSummaries.test.mjs`](../../../scripts/generateAgentActionSummaries.test.mjs)
+  - keep the generator-vs-committed-file check
+- [`scripts/generateAgentActionTypes.test.mjs`](../../../scripts/generateAgentActionTypes.test.mjs)
+  - keep the generator-vs-committed-file check
+- [`utils/agent_server/tests/test_main.py`](../../../../utils/agent_server/tests/test_main.py)
+  - keep endpoint, streaming, and provider-selection behavior
+- [`utils/agent_server/tests/test_prompt_builder.py`](../../../../utils/agent_server/tests/test_prompt_builder.py)
+  - keep prompt serialization behavior
+- [`utils/agent_server/tests/test_provider_parser.py`](../../../../utils/agent_server/tests/test_provider_parser.py)
+  - keep provider-response parsing and stream normalization
+- [`utils/agent_server/tests/test_auth_logging.py`](../../../../utils/agent_server/tests/test_auth_logging.py)
+  - keep masking and logging behavior
+
+#### Trim
+
+- [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js)
+  - keep only a shape-level check that `toolCatalog` is attached
+- [`generateAgentToolCatalog.test.mjs`](../../../scripts/generateAgentToolCatalog.test.mjs)
+  - keep only generator-vs-file freshness
+- [`generateAgentActionCatalog.test.mjs`](../../../scripts/generateAgentActionCatalog.test.mjs)
+  - keep only generator-vs-file freshness
+- [`generateAgentActionSummaries.test.mjs`](../../../scripts/generateAgentActionSummaries.test.mjs)
+  - keep only generator-vs-file freshness
+- [`agentAdapter.test.js`](../src/agent/agentAdapter.test.js)
+  - keep only one smoke test if the adapter boundary still needs it
+  - direct pass-through assertions should go away
+- [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js)
+  - remove tool-specific cases that are already covered by toolCatalog and
+    tool-handler tests
+- [`agentTools.test.js`](../src/agent/agentTools.test.js)
+  - remove trivial wrapper tests when a caller-boundary test already covers the
+    behavior
+
+#### Delete when the remaining boundary is covered elsewhere
+
+- [`agentAdapter.test.js`](../src/agent/agentAdapter.test.js) direct-dispatch
+  cases
+- [`utils/agent_server/tests/test_tool_catalog.py`](../../../../utils/agent_server/tests/test_tool_catalog.py)
+  if the Python mirror stops providing unique coverage
+
+The rule of thumb is simple: if a test only reasserts a generated list, a thin
+forwarding call, or a shape that is already checked at a stronger boundary, it
+should be trimmed or removed.
 
 ## How This Aligns With `agent-host-api.md`
 

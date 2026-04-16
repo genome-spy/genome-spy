@@ -66,9 +66,9 @@
 - Keep agent code isolated behind the env gate and dynamic imports as the default deployment path.
 - Draft an unstable agent host API that the extracted browser agent package can consume.
 - Clean up the agent tool surface by consolidating its source of truth,
-  reducing duplicated contract docs, tool-list assertions, and redundant
-  schema tests, and minimizing the number of files touched when tools are
-  added or removed.
+  reducing duplicated contract docs, tool-list assertions, redundant schema
+  tests, and trivial wrapper coverage, and minimizing the number of files
+  touched when tools are added or removed.
 - Add a later-phase data access layer with explicit public vs controlled-access policies.
 - Keep the GenomeSpy agent adapter and the Python relay server aligned when the request/response contract changes.
 

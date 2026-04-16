@@ -225,25 +225,6 @@ describe("agentAdapter", () => {
         });
     });
 
-    it("dispatches view visibility tools directly to the store", () => {
-        const app = createAppStub();
-
-        const adapter = createAgentAdapter(app);
-        adapter.setViewVisibility(
-            {
-                scope: [],
-                view: "collapsed-track",
-            },
-            false
-        );
-
-        expect(app.store.dispatch).toHaveBeenCalledWith(
-            expect.objectContaining({
-                type: "viewSettings/setVisibility",
-            })
-        );
-    });
-
     it("uses the agent session controller expansion state for agent context snapshots", () => {
         const app = createAppStub();
         getAgentState(app).agentSessionController = {

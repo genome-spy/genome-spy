@@ -168,56 +168,6 @@ function createRuntimeStub() {
 }
 
 describe("agentTools", () => {
-    it("delegates expand and collapse operations to the runtime", () => {
-        const runtime = createRuntimeStub();
-        const tools = agentTools;
-
-        expect(
-            tools.expandViewNode(runtime, {
-                selector: {
-                    scope: [],
-                    view: "track",
-                },
-            })
-        ).toEqual(
-            expect.objectContaining({
-                text: "Expanded the requested view branch.",
-                content: expect.objectContaining({
-                    kind: "view_state_change",
-                    domain: "agent_context",
-                    field: "collapsed",
-                }),
-            })
-        );
-
-        expect(
-            tools.collapseViewNode(runtime, {
-                selector: {
-                    scope: [],
-                    view: "track",
-                },
-            })
-        ).toEqual(
-            expect.objectContaining({
-                text: "Collapsed the requested view branch.",
-                content: expect.objectContaining({
-                    kind: "view_state_change",
-                    domain: "agent_context",
-                    field: "collapsed",
-                }),
-            })
-        );
-
-        expect(runtime.expandViewNode).toHaveBeenCalledWith({
-            scope: [],
-            view: "track",
-        });
-        expect(runtime.collapseViewNode).toHaveBeenCalledWith({
-            scope: [],
-            view: "track",
-        });
-    });
-
     it("resolves selection aggregation candidates through the current context", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
@@ -626,21 +576,9 @@ describe("agentTools", () => {
             })
         );
 
-        expect(tools.jumpToInitialProvenanceState(runtime, {})).toEqual(
-            expect.objectContaining({
-                text: "Jumped to the initial provenance state.",
-                content: expect.objectContaining({
-                    kind: "provenance_state_activation",
-                    initial: true,
-                    changed: true,
-                }),
-            })
-        );
-
         expect(runtime.jumpToProvenanceState).toHaveBeenCalledWith(
             "provenance-1"
         );
-        expect(runtime.jumpToInitialProvenanceState).toHaveBeenCalledTimes(1);
     });
 
     it("summarizes intent action execution through the runtime", async () => {

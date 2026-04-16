@@ -25,23 +25,4 @@ describe("generateAgentToolCatalog", () => {
 
         expect(actual).toBe(expected);
     });
-
-    it("produces the planner-facing tool set", async () => {
-        const generatedToolCatalog = await createGeneratedToolCatalog();
-        const toolNames = generatedToolCatalog.map((entry) => entry.toolName);
-
-        expect(toolNames).toEqual([
-            "expandViewNode",
-            "collapseViewNode",
-            "setViewVisibility",
-            "jumpToProvenanceState",
-            "jumpToInitialProvenanceState",
-            "buildSelectionAggregationAttribute",
-            "getMetadataAttributeSummary",
-            "getGroupedMetadataAttributeSummary",
-            "searchViewDatums",
-            "submitIntentActions",
-        ]);
-        expect(new Set(toolNames).size).toBe(toolNames.length);
-    });
 });

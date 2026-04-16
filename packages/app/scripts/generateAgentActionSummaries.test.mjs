@@ -27,29 +27,4 @@ describe("generateAgentActionSummaries", () => {
 
         expect(actual).toBe(expected);
     });
-
-    it("produces one summary per planner-facing action", async () => {
-        const generatedActionSummaries = await createGeneratedActionSummaries();
-
-        expect(
-            generatedActionSummaries.map((entry) => entry.actionType)
-        ).toEqual([
-            "sampleView/addMetadata",
-            "sampleView/deriveMetadata",
-            "sampleView/addMetadataFromSource",
-            "sampleView/sortBy",
-            "sampleView/retainFirstOfEach",
-            "sampleView/retainFirstNCategories",
-            "sampleView/filterByQuantitative",
-            "sampleView/filterByNominal",
-            "sampleView/removeUndefined",
-            "sampleView/groupCustomCategories",
-            "sampleView/groupByNominal",
-            "sampleView/groupToQuartiles",
-            "sampleView/groupByThresholds",
-            "sampleView/removeGroup",
-            "sampleView/retainMatched",
-            "paramProvenance/paramChange",
-        ]);
-    });
 });
