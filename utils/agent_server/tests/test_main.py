@@ -133,6 +133,42 @@ def test_agent_turn_endpoint_returns_normalized_response(monkeypatch) -> None:
     }
 
 
+def test_agent_turn_endpoint_logs_token_summary(
+    caplog: LogCaptureFixture, monkeypatch
+) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    reset_settings_cache()
+    monkeypatch.setattr("app.main.get_provider", lambda: StubProvider())
+    client = TestClient(app)
+
+    with caplog.at_level("INFO", logger="uvicorn.error"):
+        response = client.post(
+            "/v1/agent-turn",
+            json={
+                "message": "How are methylation levels encoded?",
+                "history": [
+                    {
+                        "id": "msg_001",
+                        "role": "user",
+                        "text": "What is in this visualization?",
+                    }
+                ],
+                "context": {
+                    "schemaVersion": 1,
+                    "viewRoot": {"title": "Example"},
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Agent token usage:" in caplog.text
+    assert "  total: " in caplog.text
+    assert "  context: " in caplog.text
+    assert "  message: " in caplog.text
+    assert "top context: viewRoot =" in caplog.text
+    assert "%" in caplog.text
+
+
 def test_agent_turn_endpoint_returns_tool_call_response(monkeypatch) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
     reset_settings_cache()

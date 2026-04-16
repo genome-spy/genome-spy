@@ -13,13 +13,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from .config import Settings, describe_api_key_for_logs, load_settings
-from .models import AgentTurnRequest, AgentTurnResponse, ProviderRequest, ProviderResponse
+from .models import (
+    AgentTurnRequest,
+    AgentTurnResponse,
+    ProviderRequest,
+    ProviderResponse,
+)
 from .providers import (
     BaseProvider,
     OpenAIChatCompletionsProvider,
     OpenAIResponsesProvider,
     ProviderError,
 )
+from .token_debugger import TokenDebugSummary, summarize_prompt_tokens
 
 logger = logging.getLogger(__name__)
 startup_logger = logging.getLogger("uvicorn.error")
@@ -108,6 +114,7 @@ async def agent_turn(
         history=request.history,
         message=request.message,
     )
+    _log_token_summary(summarize_prompt_tokens(provider_request, settings.model))
 
     should_stream = settings.enable_streaming and (
         stream or "text/event-stream" in http_request.headers.get("accept", "")
@@ -127,7 +134,7 @@ async def agent_turn(
     return AgentTurnResponse(
         type=response.type,
         message=response.message,
-        tool_calls=response.tool_calls,
+        toolCalls=response.tool_calls,
     )
 
 
@@ -213,3 +220,51 @@ def _encode_sse_event(event_name: str, payload: dict[str, object]) -> str:
         + json.dumps(payload, ensure_ascii=False)
         + "\n\n"
     )
+
+
+def _log_token_summary(summary: TokenDebugSummary) -> None:
+    """Log a compact developer-facing prompt token summary."""
+    top_context_key, top_context_tokens = _find_top_context_key(summary)
+    total = summary.total
+    context_total = summary.context
+    startup_logger.info(
+        (
+            "Agent token usage:\n"
+            "  model: %s\n"
+            "  total: %s\n"
+            "  system: %s (%s)\n"
+            "  context: %s (%s)\n"
+            "  history: %s (%s)\n"
+            "  message: %s (%s)\n"
+            "  top context: %s = %s (%s of context)"
+        ),
+        summary.model,
+        total,
+        summary.system_prompt,
+        _format_percentage(summary.system_prompt, total),
+        summary.context,
+        _format_percentage(summary.context, total),
+        summary.history,
+        _format_percentage(summary.history, total),
+        summary.message,
+        _format_percentage(summary.message, total),
+        top_context_key,
+        top_context_tokens,
+        _format_percentage(top_context_tokens, context_total),
+    )
+
+
+def _find_top_context_key(summary: TokenDebugSummary) -> tuple[str, int]:
+    """Return the largest top-level context contributor."""
+    if not summary.context_by_key:
+        return "n/a", 0
+
+    return max(summary.context_by_key.items(), key=lambda item: item[1])
+
+
+def _format_percentage(part: int, whole: int) -> str:
+    """Format a percentage for log output."""
+    if whole <= 0:
+        return "0.0%"
+
+    return f"{(part / whole) * 100:.1f}%"
