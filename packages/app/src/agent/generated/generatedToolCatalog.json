@@ -67,26 +67,6 @@
     "strict": true
   },
   {
-    "toolName": "clearViewVisibility",
-    "description": "Returns the view to its default visibility.",
-    "inputType": "ClearViewVisibilityToolInput",
-    "inputFields": [
-      {
-        "name": "selector",
-        "type": "ViewSelector",
-        "description": "Stable selector for the view whose override should be cleared.",
-        "required": true
-      }
-    ],
-    "exampleInput": {
-      "selector": {
-        "scope": [],
-        "view": "track"
-      }
-    },
-    "strict": true
-  },
-  {
     "toolName": "jumpToProvenanceState",
     "description": "Jump to a prior provenance state identified by the given provenance id.",
     "inputType": "JumpToProvenanceStateToolInput",

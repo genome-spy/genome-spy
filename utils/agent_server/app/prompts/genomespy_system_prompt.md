@@ -58,8 +58,7 @@ to them in the user-facing answer.
 This is user-visible state. If the user asks what is shown, what is hidden, or
 to show or hide something, reason about `visible`, not `collapsed`.
 
-Use `setViewVisibility` or `clearViewVisibility` when the user asks to change
-what is visible.
+Use `setViewVisibility` when the user asks to change what is visible.
 
 ## Selectors
 

@@ -124,14 +124,17 @@ function parseExamples(tags) {
 
 /**
  * @param {ts.SourceFile} sourceFile
- * @returns {Map<string, ts.InterfaceDeclaration>}
+ * @returns {Map<string, ts.InterfaceDeclaration | ts.TypeAliasDeclaration>}
  */
 function getInterfaceNodes(sourceFile) {
-    /** @type {Map<string, ts.InterfaceDeclaration>} */
+    /** @type {Map<string, ts.InterfaceDeclaration | ts.TypeAliasDeclaration>} */
     const interfaces = new Map();
 
     for (const statement of sourceFile.statements) {
-        if (ts.isInterfaceDeclaration(statement)) {
+        if (
+            ts.isInterfaceDeclaration(statement) ||
+            ts.isTypeAliasDeclaration(statement)
+        ) {
             interfaces.set(statement.name.text, statement);
         }
     }
@@ -141,7 +144,7 @@ function getInterfaceNodes(sourceFile) {
 
 /**
  * @param {string} name
- * @param {Map<string, ts.InterfaceDeclaration>} interfaces
+ * @param {Map<string, ts.InterfaceDeclaration | ts.TypeAliasDeclaration>} interfaces
  * @param {ts.SourceFile} sourceFile
  * @param {Set<string>} [visited]
  * @returns {import("../src/agent/types.js").AgentPayloadField[]}
@@ -154,6 +157,10 @@ function collectInterfaceFields(name, interfaces, sourceFile, visited = new Set(
 
     const node = interfaces.get(name);
     if (!node) {
+        return [];
+    }
+
+    if (!ts.isInterfaceDeclaration(node)) {
         return [];
     }
 
@@ -251,11 +258,9 @@ export async function createGeneratedToolCatalog() {
             toolName,
             description: firstSentence(summary) || summary,
             inputType,
-            inputFields: collectInterfaceFields(
-                inputType,
-                interfaces,
-                toolSource
-            ),
+            inputFields: ts.isInterfaceDeclaration(inputNode)
+                ? collectInterfaceFields(inputType, interfaces, toolSource)
+                : [],
             exampleInput,
             strict: toolName !== "submitIntentActions",
         });

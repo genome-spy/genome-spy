@@ -227,9 +227,6 @@ describe("agentAdapter", () => {
 
     it("dispatches view visibility tools directly to the store", () => {
         const app = createAppStub();
-        resolveViewSelectorMock.mockReturnValue({
-            explicitName: "collapsed-track",
-        });
 
         const adapter = createAgentAdapter(app);
         adapter.setViewVisibility(
@@ -239,19 +236,10 @@ describe("agentAdapter", () => {
             },
             false
         );
-        adapter.clearViewVisibility({
-            scope: [],
-            view: "collapsed-track",
-        });
 
         expect(app.store.dispatch).toHaveBeenCalledWith(
             expect.objectContaining({
                 type: "viewSettings/setVisibility",
-            })
-        );
-        expect(app.store.dispatch).toHaveBeenCalledWith(
-            expect.objectContaining({
-                type: "viewSettings/restoreDefaultVisibility",
             })
         );
     });

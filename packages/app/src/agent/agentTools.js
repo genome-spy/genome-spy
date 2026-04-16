@@ -13,7 +13,6 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {import("./agentToolInputs.d.ts").ExpandViewNodeToolInput} ExpandViewNodeToolInput
  * @typedef {import("./agentToolInputs.d.ts").CollapseViewNodeToolInput} CollapseViewNodeToolInput
  * @typedef {import("./agentToolInputs.d.ts").SetViewVisibilityToolInput} SetViewVisibilityToolInput
- * @typedef {import("./agentToolInputs.d.ts").ClearViewVisibilityToolInput} ClearViewVisibilityToolInput
  * @typedef {import("./agentToolInputs.d.ts").JumpToProvenanceStateToolInput} JumpToProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").JumpToInitialProvenanceStateToolInput} JumpToInitialProvenanceStateToolInput
  * @typedef {import("./agentToolInputs.d.ts").BuildSelectionAggregationAttributeToolInput} BuildSelectionAggregationAttributeToolInput
@@ -36,7 +35,6 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  *     jumpToInitialProvenanceState(): boolean;
  *     resolveViewSelector(selector: ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
  *     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
- *     clearViewVisibility(selector: ViewSelector): void;
  *     getMetadataAttributeSummarySource(
  *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
  *     ): AgentMetadataAttributeSummarySource | undefined;
@@ -68,7 +66,6 @@ export const agentTools = {
     expandViewNode,
     collapseViewNode,
     setViewVisibility,
-    clearViewVisibility,
     jumpToProvenanceState,
     jumpToInitialProvenanceState,
     buildSelectionAggregationAttribute: buildSelectionAggregationAttributeTool,
@@ -108,21 +105,8 @@ export function collapseViewNode(runtime, input) {
  * @returns {AgentToolExecutionResult}
  */
 export function setViewVisibility(runtime, input) {
-    return updateViewVisibility(runtime, input.selector, false, () =>
+    return updateViewVisibility(runtime, input.selector, () =>
         runtime.setViewVisibility(input.selector, input.visibility)
-    );
-}
-
-/**
- * Clears the visibility override for a view.
- *
- * @param {AgentToolRuntime} runtime
- * @param {ClearViewVisibilityToolInput} input
- * @returns {AgentToolExecutionResult}
- */
-export function clearViewVisibility(runtime, input) {
-    return updateViewVisibility(runtime, input.selector, true, () =>
-        runtime.clearViewVisibility(input.selector)
     );
 }
 
@@ -294,11 +278,10 @@ function updateViewNodeExpansion(runtime, selector, expanded) {
 /**
  * @param {AgentToolRuntime} runtime
  * @param {ViewSelector} selector
- * @param {boolean} clearing
  * @param {() => void} applyChange
  * @returns {AgentToolExecutionResult}
  */
-function updateViewVisibility(runtime, selector, clearing, applyChange) {
+function updateViewVisibility(runtime, selector, applyChange) {
     const view = ensureResolvedView(runtime, selector);
     const before = view.isVisible();
     applyChange();
@@ -307,12 +290,8 @@ function updateViewVisibility(runtime, selector, clearing, applyChange) {
     return {
         text:
             after === before
-                ? clearing
-                    ? "The visibility override was already clear."
-                    : "The view was already in the requested visibility state."
-                : clearing
-                  ? "Cleared the requested view visibility override."
-                  : "Updated the requested view visibility.",
+                ? "The view was already in the requested visibility state."
+                : "Updated the requested view visibility.",
         content: createViewStateChange(
             "user_visibility",
             "visible",

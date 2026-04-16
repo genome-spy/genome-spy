@@ -79,24 +79,6 @@ export interface SetViewVisibilityToolInput {
 }
 
 /**
- * Returns the view to its default visibility.
- *
- * @example
- * {
- *   "selector": {
- *     "scope": [],
- *     "view": "track"
- *   }
- * }
- */
-export interface ClearViewVisibilityToolInput {
-    /**
-     * Stable selector for the view whose override should be cleared.
-     */
-    selector: ViewSelector;
-}
-
-/**
  * Jump to a prior provenance state identified by the given provenance id.
  * Consult provenance history first when a request should continue from an
  * earlier analysis state, even if the user did not explicitly ask to jump
@@ -273,7 +255,6 @@ export interface AgentToolInputs {
     expandViewNode: ExpandViewNodeToolInput;
     collapseViewNode: CollapseViewNodeToolInput;
     setViewVisibility: SetViewVisibilityToolInput;
-    clearViewVisibility: ClearViewVisibilityToolInput;
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;

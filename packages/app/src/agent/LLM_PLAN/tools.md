@@ -44,7 +44,7 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
   - Expands or collapses the agent-only view-context overlay without touching
     provenance.
 
-- `setViewVisibility(selector, visibility)` / `clearViewVisibility(selector)`
+- `setViewVisibility(selector, visibility)`
   - Implemented through the agent adapter and the app's visibility state.
   - Tool-level visibility control, separate from the agent action catalog and
     provenance-backed intent batches.

@@ -1043,9 +1043,6 @@
         "buildSelectionAggregationAttribute": {
           "$ref": "#/definitions/BuildSelectionAggregationAttributeToolInput"
         },
-        "clearViewVisibility": {
-          "$ref": "#/definitions/ClearViewVisibilityToolInput"
-        },
         "collapseViewNode": {
           "$ref": "#/definitions/CollapseViewNodeToolInput"
         },
@@ -1078,7 +1075,6 @@
         "expandViewNode",
         "collapseViewNode",
         "setViewVisibility",
-        "clearViewVisibility",
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
         "buildSelectionAggregationAttribute",
@@ -1114,26 +1110,6 @@
         }
       },
       "required": ["candidateId", "aggregation"],
-      "type": "object"
-    },
-    "ClearViewVisibilityToolInput": {
-      "additionalProperties": false,
-      "description": "Returns the view to its default visibility.",
-      "examples": [
-        {
-          "selector": {
-            "scope": [],
-            "view": "track"
-          }
-        }
-      ],
-      "properties": {
-        "selector": {
-          "$ref": "#/definitions/ViewSelector",
-          "description": "Stable selector for the view whose override should be cleared."
-        }
-      },
-      "required": ["selector"],
       "type": "object"
     },
     "CollapseViewNodeToolInput": {
@@ -1217,7 +1193,9 @@
       "type": "object"
     },
     "JumpToInitialProvenanceStateToolInput": {
-      "additionalProperties": false,
+      "additionalProperties": {
+        "not": {}
+      },
       "description": "Jump to the initial provenance state before any actions were dispatched.",
       "type": "object"
     },

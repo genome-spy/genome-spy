@@ -124,9 +124,6 @@ function createRuntimeStub() {
         setViewVisibility: vi.fn((selector, nextVisible) => {
             visible = nextVisible;
         }),
-        clearViewVisibility: vi.fn(() => {
-            visible = true;
-        }),
         getMetadataAttributeSummarySource: vi.fn(
             (attribute) => metadataSummarySources[attribute.specifier]
         ),

@@ -275,30 +275,6 @@ export function createAgentAdapter(app) {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
-     */
-    function clearViewVisibility(selector) {
-        const key = makeViewSelectorKey(selector);
-        app.store.dispatch(
-            viewSettingsSlice.actions.restoreDefaultVisibility(key)
-        );
-
-        const viewRoot = app.genomeSpy?.viewRoot;
-        if (!viewRoot) {
-            return;
-        }
-
-        const view = resolveCoreViewSelector(viewRoot, selector);
-        if (view?.explicitName && view.explicitName !== key) {
-            app.store.dispatch(
-                viewSettingsSlice.actions.restoreDefaultVisibility(
-                    view.explicitName
-                )
-            );
-        }
-    }
-
-    /**
      * @param {string} provenanceId
      * @returns {boolean}
      */
@@ -409,7 +385,6 @@ export function createAgentAdapter(app) {
         submitIntentActions,
         resolveViewSelector,
         setViewVisibility,
-        clearViewVisibility,
         getMetadataAttributeSummarySource,
         getGroupedMetadataAttributeSummarySource,
         jumpToProvenanceState,

@@ -163,7 +163,6 @@ export interface AgentAdapter {
         selector: ViewSelector
     ): import("@genome-spy/core/view/view.js").default | undefined;
     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
-    clearViewVisibility(selector: ViewSelector): void;
     getMetadataAttributeSummarySource(
         attribute: AttributeIdentifier
     ): AgentMetadataAttributeSummarySource | undefined;

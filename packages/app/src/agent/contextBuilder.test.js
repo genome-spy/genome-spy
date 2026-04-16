@@ -361,7 +361,6 @@ describe("getAgentContext", () => {
             "expandViewNode",
             "collapseViewNode",
             "setViewVisibility",
-            "clearViewVisibility",
             "jumpToProvenanceState",
             "jumpToInitialProvenanceState",
             "buildSelectionAggregationAttribute",

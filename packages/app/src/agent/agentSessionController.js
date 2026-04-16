@@ -116,7 +116,6 @@ import { agentTools } from "./agentTools.js";
  *     expandViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     setViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector, visibility: boolean): void;
- *     clearViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): void;
  *     getMetadataAttributeSummarySource(
  *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
  *     ): import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined;

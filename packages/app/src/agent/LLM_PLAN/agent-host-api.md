@@ -183,7 +183,6 @@ export interface AgentAnalysisHost {
   ): Promise<IntentBatchExecutionResult>;
 
   setViewVisibility(selector: ViewSelector, visibility: boolean): void;
-  clearViewVisibility(selector: ViewSelector): void;
   jumpToProvenanceState(provenanceId: string): boolean;
   jumpToInitialProvenanceState(): boolean;
 
@@ -300,7 +299,6 @@ export interface AgentToolHost {
   ): Promise<IntentBatchExecutionResult>;
 
   setViewVisibility(selector: ViewSelector, visibility: boolean): void;
-  clearViewVisibility(selector: ViewSelector): void;
   jumpToProvenanceState(provenanceId: string): boolean;
   jumpToInitialProvenanceState(): boolean;
 }

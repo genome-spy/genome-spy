@@ -10,7 +10,6 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  *     getAgentContext: ReturnType<typeof vi.fn>;
  *     resolveViewSelector: ReturnType<typeof vi.fn>;
  *     setViewVisibility: ReturnType<typeof vi.fn>;
- *     clearViewVisibility: ReturnType<typeof vi.fn>;
  *     summarizeExecutionResult: ReturnType<typeof vi.fn>;
  *     summarizeProvenanceActionsSince: ReturnType<typeof vi.fn>;
  * }}
@@ -28,7 +27,6 @@ function createRuntimeMock() {
             isVisible: vi.fn(() => true),
         })),
         setViewVisibility: vi.fn(),
-        clearViewVisibility: vi.fn(),
         summarizeExecutionResult: vi.fn(),
         summarizeProvenanceActionsSince: vi.fn(() => []),
     };
@@ -423,7 +421,6 @@ describe("createAgentSessionController", () => {
         runtime.setViewVisibility.mockImplementation((selector, visibility) => {
             visible = visibility;
         });
-        runtime.clearViewVisibility.mockImplementation(() => {});
 
         const controller = createAgentSessionController(runtime);
 
@@ -477,41 +474,6 @@ describe("createAgentSessionController", () => {
                         before: false,
                         after: true,
                         changed: true,
-                    },
-                }),
-            ])
-        );
-
-        await controller.executeToolCalls([
-            {
-                callId: "call-visibility-noop",
-                name: "clearViewVisibility",
-                arguments: {
-                    selector: {
-                        scope: [],
-                        view: "reference-sequence",
-                    },
-                },
-            },
-        ]);
-
-        expect(controller.getSnapshot().messages).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    kind: "tool_result",
-                    toolCallId: "call-visibility-noop",
-                    text: "The visibility override was already clear.",
-                    content: {
-                        kind: "view_state_change",
-                        domain: "user_visibility",
-                        field: "visible",
-                        selector: {
-                            scope: [],
-                            view: "reference-sequence",
-                        },
-                        before: true,
-                        after: true,
-                        changed: false,
                     },
                 }),
             ])
