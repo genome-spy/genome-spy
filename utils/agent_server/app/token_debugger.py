@@ -116,34 +116,58 @@ def log_token_summary(
         logger: Logger that should receive the token summary.
         summary: Token breakdown for the current provider request.
     """
-    top_context_key, top_context_tokens = _find_top_context_key(summary)
+    logger.info("%s", format_token_summary(summary))
+
+
+def format_token_summary(summary: TokenDebugSummary, *, max_context_keys: int = 5) -> str:
+    """Format a readable token-usage summary for logs and tests.
+
+    Args:
+        summary: Token breakdown for the current provider request.
+        max_context_keys: Maximum number of ranked context keys to include.
+
+    Returns:
+        Multi-line string describing the main prompt buckets and the largest
+        context contributors.
+    """
     total = summary.total
-    context_total = summary.context
-    logger.info(
+    lines = [
+        "Agent token usage:",
+        f"  model: {summary.model}",
+        f"  total: {total}",
+        "  buckets:",
         (
-            "Agent token usage:\n"
-            "  model: %s\n"
-            "  total: %s\n"
-            "  system: %s (%s)\n"
-            "  context: %s (%s)\n"
-            "  history: %s (%s)\n"
-            "  message: %s (%s)\n"
-            "  top context: %s = %s (%s of context)"
+            "    system = "
+            + str(summary.system_prompt)
+            + " ("
+            + _format_percentage(summary.system_prompt, total)
+            + ")"
         ),
-        summary.model,
-        total,
-        summary.system_prompt,
-        _format_percentage(summary.system_prompt, total),
-        summary.context,
-        _format_percentage(summary.context, total),
-        summary.history,
-        _format_percentage(summary.history, total),
-        summary.message,
-        _format_percentage(summary.message, total),
-        top_context_key,
-        top_context_tokens,
-        _format_percentage(top_context_tokens, context_total),
-    )
+        (
+            "    context = "
+            + str(summary.context)
+            + " ("
+            + _format_percentage(summary.context, total)
+            + ")"
+        ),
+        (
+            "    history = "
+            + str(summary.history)
+            + " ("
+            + _format_percentage(summary.history, total)
+            + ")"
+        ),
+        (
+            "    message = "
+            + str(summary.message)
+            + " ("
+            + _format_percentage(summary.message, total)
+            + ")"
+        ),
+        "  context keys:",
+        *_format_context_breakdown_lines(summary, max_context_keys=max_context_keys),
+    ]
+    return "\n".join(lines)
 
 
 def _resolve_encoding(model: str) -> Any | None:
@@ -169,11 +193,39 @@ def _count_tokens(text: str, encoding: Any | None) -> int:
     return math.ceil(len(text) / 4)
 
 
-def _find_top_context_key(summary: TokenDebugSummary) -> tuple[str, int]:
+def _format_context_breakdown_lines(
+    summary: TokenDebugSummary, *, max_context_keys: int
+) -> list[str]:
     if not summary.context_by_key:
-        return "n/a", 0
+        return ["    n/a = 0 (0.0% of context, 0.0% of total)"]
 
-    return max(summary.context_by_key.items(), key=lambda item: item[1])
+    sorted_items = sorted(
+        summary.context_by_key.items(),
+        key=lambda item: (-item[1], item[0]),
+    )
+    visible_items = sorted_items[:max_context_keys]
+    lines = [
+        (
+            f"    {key} = {tokens} "
+            f"({_format_percentage(tokens, summary.context)} of context, "
+            f"{_format_percentage(tokens, summary.total)} of total)"
+        )
+        for key, tokens in visible_items
+    ]
+
+    if len(sorted_items) > max_context_keys:
+        other_tokens = sum(
+            tokens for _, tokens in sorted_items[max_context_keys:]
+        )
+        lines.append(
+            (
+                f"    other = {other_tokens} "
+                f"({_format_percentage(other_tokens, summary.context)} of context, "
+                f"{_format_percentage(other_tokens, summary.total)} of total)"
+            )
+        )
+
+    return lines
 
 
 def _format_percentage(part: int, whole: int) -> str:

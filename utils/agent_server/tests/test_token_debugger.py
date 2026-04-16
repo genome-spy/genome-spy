@@ -1,5 +1,5 @@
 from app.models import HistoryMessage, ProviderRequest, ToolCall
-from app.token_debugger import summarize_prompt_tokens
+from app.token_debugger import format_token_summary, summarize_prompt_tokens
 
 
 def test_summarize_prompt_tokens_includes_main_buckets() -> None:
@@ -101,3 +101,31 @@ def test_summarize_prompt_tokens_rejects_blank_model_name() -> None:
         assert str(exc) == "Model name must not be blank."
     else:
         raise AssertionError("Expected ValueError for blank model name.")
+
+
+def test_format_token_summary_lists_ranked_context_keys() -> None:
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={
+            "schemaVersion": 1,
+            "sampleSummary": {"sampleCount": 2},
+            "attributes": [{"name": "sample_id"}],
+            "viewRoot": {
+                "title": "Example",
+                "tracks": [{"mark": "rect", "encoding": {"x": "pos"}}],
+            },
+            "provenance": [{"label": "filter"}],
+        },
+        history=[],
+        message="Follow-up question",
+    )
+
+    summary = summarize_prompt_tokens(request, "gpt-4.1-mini")
+    formatted = format_token_summary(summary, max_context_keys=3)
+
+    assert "Agent token usage:" in formatted
+    assert "  buckets:" in formatted
+    assert "    system = " in formatted
+    assert "  context keys:" in formatted
+    assert "viewRoot = " in formatted
+    assert "of context, " in formatted

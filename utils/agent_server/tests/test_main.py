@@ -163,9 +163,11 @@ def test_agent_turn_endpoint_logs_token_summary(
     assert response.status_code == 200
     assert "Agent token usage:" in caplog.text
     assert "  total: " in caplog.text
-    assert "  context: " in caplog.text
-    assert "  message: " in caplog.text
-    assert "top context: viewRoot =" in caplog.text
+    assert "  buckets:" in caplog.text
+    assert "    context = " in caplog.text
+    assert "    message = " in caplog.text
+    assert "  context keys:" in caplog.text
+    assert "    viewRoot = " in caplog.text
     assert "%" in caplog.text
 
 
