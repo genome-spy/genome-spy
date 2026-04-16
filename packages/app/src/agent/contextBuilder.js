@@ -86,28 +86,28 @@ function buildSampleSummary(sampleState) {
  * @returns {import("./types.js").AgentAttributeSummary[]}
  */
 function buildAttributeSummary(sampleView, sampleState) {
-    const attributeNames = sampleState?.sampleMetadata?.attributeNames ?? [];
-    const attributeDefs = sampleState?.sampleMetadata?.attributeDefs ?? {};
-    const getAttributeInfo =
-        sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
-            sampleView.compositeAttributeInfoSource
+    const { attributeNames, attributeDefs } = sampleState.sampleMetadata;
+
+    const getAttributeInfo = (
+        /** @type {import("../sampleView/types.js").AttributeIdentifier} */ attributeIdentifier
+    ) =>
+        sampleView.compositeAttributeInfoSource.getAttributeInfo(
+            attributeIdentifier
         );
 
     return attributeNames.map((/** @type {string} */ name) => {
-        const identifier = {
+        const info = getAttributeInfo({
             type: SAMPLE_ATTRIBUTE,
             specifier: name,
-        };
-        const info = getAttributeInfo(identifier);
+        });
+
         const def = attributeDefs[name] ?? {};
 
         return {
-            id: identifier,
-            name,
+            id: info.attribute,
             title: templateResultToString(info.title),
             description: info.description,
             dataType: info.type,
-            source: SAMPLE_ATTRIBUTE,
             visible: def.visible === false ? false : undefined,
         };
     });
