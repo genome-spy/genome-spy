@@ -1,6 +1,7 @@
 import { css, html } from "lit";
 import BaseDialog, { showDialog } from "../generic/baseDialog.js";
 import { showMessageDialog } from "../generic/messageDialog.js";
+import { getAgentState } from "../../agent/agentState.js";
 
 export default class AgentContextDialog extends BaseDialog {
     static properties = {
@@ -83,7 +84,7 @@ customElements.define("gs-agent-context-dialog", AgentContextDialog);
  * @returns {Promise<void>}
  */
 export async function showAgentContextDialog(app) {
-    const context = app.agentAdapter?.getAgentContext?.();
+    const context = getAgentState(app).agentAdapter?.getAgentContext?.();
     if (!context) {
         await showMessageDialog("No agent context is available yet.", {
             title: "Agent Context",

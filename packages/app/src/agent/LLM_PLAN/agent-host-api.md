@@ -19,7 +19,12 @@ The current agent implementation is coupled to `App` internals:
 - it mutates `viewSettings` and provenance-backed intent state
 - it resolves views through `GenomeSpy`
 - it mounts its panel into the app shell
-- it keeps a live session controller on the `App` instance
+- it keeps agent runtime state attached to the app shell
+
+In the current tree, the browser agent state is already centralized in
+`agentState.js` rather than exposed as top-level `App` fields. The remaining
+coupling is mostly the agent package reaching into app-shell internals, not
+the other way around.
 
 That works well for fast iteration, but it makes the agent hard to extract as a
 separate package. The minimum useful step is to define a narrow host interface
@@ -36,8 +41,11 @@ This section maps the current agent code to the `App` internals it depends on.
 
 The adapter is the broadest consumer of `App`.
 
-- `app.options.agentBaseUrl`
-  - Used when sending `/v1/agent-turn` requests.
+- `agentState.js`
+  - Stores the agent base URL for `/v1/agent-turn` requests.
+  - Stores the current agent session controller overlay.
+- `app.options`
+  - Used for generic app embed configuration.
 - `app.store`
   - Used to dispatch `viewSettings` updates.
   - Used indirectly by provenance and intent execution helpers.
@@ -50,9 +58,6 @@ The adapter is the broadest consumer of `App`.
 - `app.getSampleView()`
   - Used by `getAgentContext()` to inspect sample metadata and the current
     sample hierarchy.
-- `app.agentSessionController`
-  - Used to include the current expanded agent-context overlay in the prompt
-    context.
 - `app.intentPipeline`
   - Used by intent execution helpers.
 - `app.rootSpec`
@@ -104,10 +109,9 @@ The panel is browser-only UI.
   components.
 - Uses app CSS variables such as `--gs-basic-spacing`,
   `--gs-theme-primary`, and `--gs-dialog-stroke-color`.
-- `app.agentAdapter`
+- `agentState.js`
   - Determines whether the panel can open.
-- `app.agentSessionController`
-  - Holds the active session state.
+  - Stores the active session controller.
 - `app.appContainer`
   - Provides the host element for the docked panel.
 - `appRoot` DOM structure
@@ -117,7 +121,7 @@ The panel is browser-only UI.
 
 The toolbar entry is also browser-only.
 
-- `app.agentAdapter`
+- `agentState.js`
   - Determines whether the agent menu item should exist.
 
 ### `App` itself
@@ -131,9 +135,7 @@ Current `App` fields that the agent relies on are:
 - `rootSpec`
 - `appContainer`
 - `options`
-- `agentAdapter`
-- `agentSessionController`
-- `toolbarMenuItems`
+- `ui`
 
 ## What The Agent Actually Needs
 
@@ -324,6 +326,7 @@ Owns the app shell and implements the host API.
 
 Owns the current agent code after extraction.
 
+- `agentState`
 - `AgentSessionController`
 - `contextBuilder`
 - `agentAdapter`

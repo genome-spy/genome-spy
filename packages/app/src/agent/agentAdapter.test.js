@@ -35,6 +35,7 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
 }));
 
 import { createAgentAdapter } from "./agentAdapter.js";
+import { getAgentState } from "./agentState.js";
 
 function createResponse(body) {
     return {
@@ -257,7 +258,7 @@ describe("agentAdapter", () => {
 
     it("uses the agent session controller expansion state for agent context snapshots", () => {
         const app = createAppStub();
-        app.agentSessionController = {
+        getAgentState(app).agentSessionController = {
             getSnapshot: () => ({
                 expandedViewNodeKeys: [
                     JSON.stringify({ scope: [], view: "reference-sequence" }),
@@ -477,7 +478,7 @@ describe("agentAdapter", () => {
 
     it("uses the configured base URL for agent turns", async () => {
         const app = createAppStub();
-        app.options.agentBaseUrl = "http://example.test";
+        getAgentState(app).agentBaseUrl = "http://example.test";
         getAgentContext.mockReturnValue(createMockPlannerContext());
         const adapter = createAgentAdapter(app);
         globalThis.fetch.mockResolvedValueOnce(

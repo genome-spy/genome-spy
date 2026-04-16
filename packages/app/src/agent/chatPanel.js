@@ -8,6 +8,7 @@ import { css, html, LitElement, nothing } from "lit";
 import { faStyles, formStyles } from "../components/generic/componentStyles.js";
 import { createAgentSessionController } from "./agentSessionController.js";
 import safeMarkdown from "../utils/safeMarkdown.js";
+import { getAgentState } from "./agentState.js";
 
 /**
  * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
@@ -1214,7 +1215,8 @@ customElements.define("gs-agent-chat-panel", AgentChatPanel);
  * @returns {Promise<void>}
  */
 export async function toggleAgentChatPanel(app) {
-    if (!app.agentAdapter) {
+    const agentState = getAgentState(app);
+    if (!agentState.agentAdapter) {
         return;
     }
 
@@ -1248,10 +1250,10 @@ export async function toggleAgentChatPanel(app) {
         const panel = /** @type {AgentChatPanel} */ (
             document.createElement("gs-agent-chat-panel")
         );
-        app.agentSessionController ??= createAgentSessionController(
-            app.agentAdapter
+        agentState.agentSessionController ??= createAgentSessionController(
+            agentState.agentAdapter
         );
-        panel.controller = app.agentSessionController;
+        panel.controller = agentState.agentSessionController;
         host.append(panel);
 
         appRoot.append(host);

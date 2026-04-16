@@ -13,6 +13,7 @@ import {
     collectVisibleSampleGroups,
     collectVisibleSampleIds,
 } from "./sampleHierarchyScope.js";
+import { getAgentState } from "./agentState.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -237,7 +238,7 @@ function getGroupedMetadataAttributeSummarySource(app, attribute) {
  * @returns {Promise<{ response: import("./types.js").AgentTurnResponse, trace: Record<string, any> }>}
  */
 async function requestAgentTurn(app, options) {
-    const baseUrl = app.options.agentBaseUrl ?? DEFAULT_AGENT_BASE_URL;
+    const baseUrl = getAgentState(app).agentBaseUrl ?? DEFAULT_AGENT_BASE_URL;
     const startedAt = now();
     const contextStartedAt = now();
     const context = getAgentContext(app, options.contextOptions);
@@ -535,9 +536,10 @@ function handleAgentTurnStreamEvent(
  * @returns {import("./types.d.ts").AgentContextOptions}
  */
 function getCurrentAgentContextOptions(app) {
+    const agentState = getAgentState(app);
     return {
         expandedViewNodeKeys:
-            app.agentSessionController?.getSnapshot().expandedViewNodeKeys ??
-            [],
+            agentState.agentSessionController?.getSnapshot()
+                .expandedViewNodeKeys ?? [],
     };
 }

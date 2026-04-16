@@ -48,6 +48,7 @@ import {
     createDefaultAppKeyboardShortcuts,
     setupAppKeyboardShortcuts,
 } from "./appKeyboardShortcuts.js";
+import AppUiRegistry from "./appUiRegistry.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -70,13 +71,8 @@ export default class App {
             inputBindingContainer: /** @type {"none"} */ ("none"),
         };
 
-        this.agentAdapter = this.options.agentAdapterFactory?.(this);
-        /** @type {import("./agent/agentSessionController.js").AgentSessionController | undefined} */
-        this.agentSessionController = undefined;
-
-        /** @type {import("./utils/ui/contextMenu.js").MenuItem[]} */
-        this.toolbarMenuItems =
-            this.options.toolbarMenuItemsFactory?.(this) ?? [];
+        /** @type {import("./appTypes.js").AppUiRegistry} */
+        this.ui = new AppUiRegistry();
 
         this.#setupStoreAndProvenance();
 

@@ -1,19 +1,33 @@
 import { BookmarkEntry } from "./bookmark/databaseSchema.js";
 import { EmbedResult } from "@genome-spy/core/types/embedApi.js";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
 export type UrlHash = Partial<BookmarkEntry>;
 
 export type AppEmbedOptions =
     import("@genome-spy/core/types/embedApi.js").EmbedOptions & {
         showInspectorButton?: boolean;
-        agentBaseUrl?: string;
-        agentAdapterFactory?: (
-            app: import("./app.js").default
-        ) => import("./agent/types.js").AgentAdapter;
-        toolbarMenuItemsFactory?: (
-            app: import("./app.js").default
-        ) => import("./utils/ui/contextMenu.js").MenuItem[];
     };
+
+export interface ToolbarButtonSpec {
+    title: string;
+    icon: IconDefinition;
+    onClick: () => void | Promise<void>;
+}
+
+export interface AppUiHost {
+    registerToolbarButton(button: ToolbarButtonSpec): () => void;
+    registerToolbarMenuItem(
+        item: import("./utils/ui/contextMenu.js").MenuItem
+    ): () => void;
+}
+
+export interface AppUiRegistry extends AppUiHost, EventTarget {
+    readonly toolbarButtons: Set<ToolbarButtonSpec>;
+    readonly toolbarMenuItems: Set<
+        import("./utils/ui/contextMenu.js").MenuItem
+    >;
+}
 
 export type AppEmbedFunction = (
     el: HTMLElement | string,

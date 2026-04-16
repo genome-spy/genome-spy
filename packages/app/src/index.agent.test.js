@@ -8,15 +8,21 @@ const { createAgentAdapterMock } = vi.hoisted(() => ({
     })),
 }));
 
-const { getAgentMenuItemsMock } = vi.hoisted(() => ({
-    getAgentMenuItemsMock: vi.fn(() => []),
+const { registerAgentUiMock } = vi.hoisted(() => ({
+    registerAgentUiMock: vi.fn(),
 }));
 
 const { AppMock } = vi.hoisted(() => ({
     AppMock: vi.fn(function App() {
         this.options = arguments[2];
-        this.agentAdapter = this.options.agentAdapterFactory?.(this);
-        this.toolbarMenuItems = this.options.toolbarMenuItemsFactory?.(this);
+        this.ui = {
+            toolbarButtons: new Set(),
+            toolbarMenuItems: new Set(),
+            registerToolbarButton: vi.fn(),
+            registerToolbarMenuItem: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+        };
         this.genomeSpy = {
             destroy: vi.fn(),
             addEventListener: vi.fn(),
@@ -40,8 +46,8 @@ vi.mock("./agent/agentAdapter.js", () => ({
     createAgentAdapter: createAgentAdapterMock,
 }));
 
-vi.mock("./agent/toolbarMenu.js", () => ({
-    getAgentMenuItems: getAgentMenuItemsMock,
+vi.mock("./agent/agentUi.js", () => ({
+    registerAgentUi: registerAgentUiMock,
 }));
 
 vi.mock("@genome-spy/core/index.js", () => ({
@@ -49,6 +55,7 @@ vi.mock("@genome-spy/core/index.js", () => ({
 }));
 
 import { embed } from "./index.js";
+import { getAgentState } from "./agent/agentState.js";
 
 describe("embed", () => {
     beforeEach(() => {
@@ -67,9 +74,14 @@ describe("embed", () => {
         const handle = await embed(element, {}, { agentBaseUrl: "http://x" });
 
         expect(createAgentAdapterMock).toHaveBeenCalledTimes(1);
-        expect(getAgentMenuItemsMock).toHaveBeenCalledTimes(1);
+        expect(registerAgentUiMock).toHaveBeenCalledTimes(1);
         expect(AppMock).toHaveBeenCalledTimes(1);
-        expect(AppMock.mock.instances[0].options.agentBaseUrl).toBe("http://x");
+        expect(getAgentState(AppMock.mock.instances[0]).agentBaseUrl).toBe(
+            "http://x"
+        );
+        expect(getAgentState(AppMock.mock.instances[0]).agentAdapter).toEqual(
+            createAgentAdapterMock.mock.results[0].value
+        );
 
         handle.finalize();
     });
@@ -83,9 +95,11 @@ describe("embed", () => {
         const handle = await embed(element, {}, { agentBaseUrl: "http://x" });
 
         expect(createAgentAdapterMock).not.toHaveBeenCalled();
-        expect(getAgentMenuItemsMock).not.toHaveBeenCalled();
+        expect(registerAgentUiMock).not.toHaveBeenCalled();
         expect(AppMock).toHaveBeenCalledTimes(1);
-        expect(AppMock.mock.instances[0].options.agentBaseUrl).toBeUndefined();
+        expect(
+            getAgentState(AppMock.mock.instances[0]).agentBaseUrl
+        ).toBeUndefined();
 
         handle.finalize();
     });
