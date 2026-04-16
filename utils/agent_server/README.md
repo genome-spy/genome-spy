@@ -190,6 +190,24 @@ export GENOMESPY_AGENT_API_KEY=ollama
 If the first request is slow, keep `GENOMESPY_AGENT_ENABLE_STREAMING=false`
 until the setup is stable.
 
+### OpenAI
+
+If you are using OpenAI directly, export the relay variables like this:
+
+```bash
+export GENOMESPY_AGENT_MODEL=gpt-4.1-mini
+export GENOMESPY_AGENT_BASE_URL=https://api.openai.com/v1
+export GENOMESPY_AGENT_API_STYLE=chat_completions
+export GENOMESPY_AGENT_API_KEY=$OPENAI_API_KEY
+export GENOMESPY_AGENT_ENABLE_STREAMING=false
+```
+
+If `OPENAI_API_KEY` is not already set in your shell:
+
+```bash
+export OPENAI_API_KEY=<your-openai-api-key>
+```
+
 ### OpenAI-compatible servers
 
 Use this for local or remote servers that expose an OpenAI-style API.
