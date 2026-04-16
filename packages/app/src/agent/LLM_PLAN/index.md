@@ -12,11 +12,12 @@
 - Tool-call validation and rejection guide: [`validation.md`](./validation.md)
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
 - Agent host API and package extraction: [`agent-host-api.md`](./agent-host-api.md)
+- Agent tool surface cleanup and contract consolidation: [`agent-tool-surface-cleanup.md`](./agent-tool-surface-cleanup.md)
 
 ## Goals
 - Enable conversations with the agent over the current visualization.
 - Help users understand the visualization itself: semantics, available attributes, encodings, scales, and related metadata.
-- Dispatch intent actions that change the visualization state: sample collection manipulation, selections, parameter updates, and metadata derivation from aggregated selection regions. Use separate tools for view visibility.
+- Dispatch intent actions that change the visualization state: sample collection manipulation, selections, parameter updates, and metadata derivation from aggregated selection regions.
 - Run efficiently with a local LLM.
 
 ## Product Phases
@@ -64,6 +65,10 @@
 - Wire field/attribute descriptions into `AttributeInfo` and LLM context.
 - Keep agent code isolated behind the env gate and dynamic imports as the default deployment path.
 - Draft an unstable agent host API that the extracted browser agent package can consume.
+- Clean up the agent tool surface by consolidating its source of truth,
+  reducing duplicated contract docs, tool-list assertions, and redundant
+  schema tests, and minimizing the number of files touched when tools are
+  added or removed.
 - Add a later-phase data access layer with explicit public vs controlled-access policies.
 - Keep the GenomeSpy agent adapter and the Python relay server aligned when the request/response contract changes.
 
