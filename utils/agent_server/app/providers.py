@@ -35,13 +35,37 @@ class ProviderError(RuntimeError):
 
 
 class BaseProvider(ABC):
+    """Define the shared interface for upstream provider adapters."""
+
     @abstractmethod
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
+        """Generate one complete provider response for a relay turn.
+
+        Args:
+            request: Normalized provider request for the current relay turn.
+
+        Returns:
+            Final normalized provider response.
+
+        Raises:
+            NotImplementedError: Always raised by the abstract base implementation.
+        """
         raise NotImplementedError
 
     async def generate_stream(
         self, request: ProviderRequest
     ) -> AsyncIterator[ProviderStreamEvent]:
+        """Stream provider events for a relay turn.
+
+        The default implementation falls back to `generate` and emits a single
+        final event when a provider does not support incremental streaming.
+
+        Args:
+            request: Normalized provider request for the current relay turn.
+
+        Returns:
+            Async iterator of normalized provider stream events.
+        """
         response = await self.generate(request)
         yield ProviderStreamEvent(type="final", response=response)
 
@@ -76,10 +100,24 @@ def _log_provider_auth_diagnostic(
 
 
 class OpenAIResponsesProvider(BaseProvider):
+    """Implement relay requests against the OpenAI Responses API shape."""
+
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
+        """Generate one complete response through the Responses API.
+
+        Args:
+            request: Normalized provider request for the current relay turn.
+
+        Returns:
+            Final normalized provider response parsed from the Responses API.
+
+        Raises:
+            ProviderError: If the HTTP request fails or the provider response
+                is invalid.
+        """
         prompt = build_prompt_ir(request)
         tools = _build_responses_tools()
         payload = {
@@ -158,6 +196,18 @@ class OpenAIResponsesProvider(BaseProvider):
     async def generate_stream(
         self, request: ProviderRequest
     ) -> AsyncIterator[ProviderStreamEvent]:
+        """Stream a response through the Responses API.
+
+        Args:
+            request: Normalized provider request for the current relay turn.
+
+        Returns:
+            Async iterator of normalized provider stream events.
+
+        Raises:
+            ProviderError: If the HTTP request fails or the provider response
+                is invalid.
+        """
         prompt = build_prompt_ir(request)
         tools = _build_responses_tools()
         payload = {
@@ -301,10 +351,24 @@ class OpenAIResponsesProvider(BaseProvider):
 
 
 class OpenAIChatCompletionsProvider(BaseProvider):
+    """Implement relay requests against the Chat Completions API shape."""
+
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
+        """Generate one complete response through the Chat Completions API.
+
+        Args:
+            request: Normalized provider request for the current relay turn.
+
+        Returns:
+            Final normalized provider response parsed from the Chat Completions API.
+
+        Raises:
+            ProviderError: If the HTTP request fails or the provider response
+                is invalid.
+        """
         prompt = build_prompt_ir(request)
         _log_model_request(prompt.instructions, prompt.context_text, [])
         endpoint = self._settings.base_url + "/chat/completions"
@@ -405,6 +469,18 @@ class OpenAIChatCompletionsProvider(BaseProvider):
     async def generate_stream(
         self, request: ProviderRequest
     ) -> AsyncIterator[ProviderStreamEvent]:
+        """Stream a response through the Chat Completions API.
+
+        Args:
+            request: Normalized provider request for the current relay turn.
+
+        Returns:
+            Async iterator of normalized provider stream events.
+
+        Raises:
+            ProviderError: If the HTTP request fails or the provider response
+                is invalid.
+        """
         prompt = build_prompt_ir(request)
         _log_model_request(prompt.instructions, prompt.context_text, [])
         endpoint = self._settings.base_url + "/chat/completions"
@@ -465,7 +541,10 @@ class OpenAIChatCompletionsProvider(BaseProvider):
                         final_snapshot_text = ""
                         async for event_name, data_text in _iter_sse_events(response):
                             logger.debug(
-                                "Provider raw SSE event %s from Chat Completions API:\n%s",
+                                (
+                                    "Provider raw SSE event %s from Chat "
+                                    "Completions API:\n%s"
+                                ),
                                 event_name,
                                 data_text,
                             )

@@ -19,6 +19,18 @@ class PromptIR:
 
 
 def build_prompt_ir(request: ProviderRequest) -> PromptIR:
+    """Build the provider-neutral prompt representation for one turn.
+
+    Normalizes the request into the relay's shared prompt structure so provider
+    adapters can build their own payloads from one consistent source.
+
+    Args:
+        request: Provider request containing the system prompt, context, history,
+            and current user message.
+
+    Returns:
+        PromptIR containing the canonical prompt pieces for the current turn.
+    """
     context_text = _build_context_text(request.context)
     return PromptIR(
         instructions=request.system_prompt,
@@ -30,6 +42,17 @@ def build_prompt_ir(request: ProviderRequest) -> PromptIR:
 
 
 def build_chat_completions_messages(prompt: PromptIR) -> list[dict[str, Any]]:
+    """Build Chat Completions messages from the shared prompt structure.
+
+    Converts the provider-neutral prompt representation into the ordered message
+    list expected by the Chat Completions API.
+
+    Args:
+        prompt: Shared prompt representation for the current turn.
+
+    Returns:
+        Chat Completions message objects ready for request serialization.
+    """
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": prompt.instructions},
         {
@@ -44,6 +67,17 @@ def build_chat_completions_messages(prompt: PromptIR) -> list[dict[str, Any]]:
 
 
 def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
+    """Build Responses API input items from the shared prompt structure.
+
+    Converts the provider-neutral prompt representation into the structured
+    message list expected by the Responses API.
+
+    Args:
+        prompt: Shared prompt representation for the current turn.
+
+    Returns:
+        Responses API input items ready for request serialization.
+    """
     messages: list[dict[str, Any]] = [
         {
             "role": "developer",

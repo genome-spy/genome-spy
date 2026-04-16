@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class HistoryMessage(BaseModel):
+    """Represent one prior conversation item from the browser client."""
+
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     id: str
@@ -20,6 +22,8 @@ class HistoryMessage(BaseModel):
 
 
 class ToolCall(BaseModel):
+    """Represent one tool call emitted by the model or browser history."""
+
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     call_id: str = Field(alias="callId")
@@ -28,6 +32,8 @@ class ToolCall(BaseModel):
 
 
 class AgentTurnRequest(BaseModel):
+    """Represent the browser payload for one agent turn request."""
+
     model_config = ConfigDict(extra="ignore")
 
     message: str
@@ -36,6 +42,8 @@ class AgentTurnRequest(BaseModel):
 
 
 class AgentTurnResponse(BaseModel):
+    """Represent the relay response payload for one completed agent turn."""
+
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     type: Literal["answer", "clarify", "tool_call"]
@@ -44,6 +52,8 @@ class AgentTurnResponse(BaseModel):
 
 
 class ProviderResponse(BaseModel):
+    """Represent the normalized provider response used inside the relay."""
+
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     type: Literal["answer", "clarify", "tool_call"]
@@ -53,6 +63,8 @@ class ProviderResponse(BaseModel):
 
 @dataclass(frozen=True, slots=True)
 class ProviderStreamEvent:
+    """Represent one normalized event emitted during a provider stream."""
+
     type: Literal["delta", "reasoning_delta", "heartbeat", "final"]
     delta: str | None = None
     reasoning: str | None = None
@@ -60,6 +72,8 @@ class ProviderStreamEvent:
 
 
 class ProviderRequest(BaseModel):
+    """Represent the normalized provider request built from browser input."""
+
     system_prompt: str
     context: dict[str, Any]
     history: list[HistoryMessage]

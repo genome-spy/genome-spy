@@ -25,7 +25,7 @@ from .providers import (
     OpenAIResponsesProvider,
     ProviderError,
 )
-from .token_debugger import TokenDebugSummary, summarize_prompt_tokens
+from .token_debugger import log_token_summary, summarize_prompt_tokens
 
 logger = logging.getLogger(__name__)
 startup_logger = logging.getLogger("uvicorn.error")
@@ -33,11 +33,21 @@ startup_logger = logging.getLogger("uvicorn.error")
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return the cached relay settings.
+
+    Loads the settings once per process and reuses the same immutable settings
+    object across request handling.
+    """
     return load_settings()
 
 
 @lru_cache
 def get_provider() -> BaseProvider:
+    """Return the cached provider implementation for current settings.
+
+    Chooses the provider adapter based on the configured API style and reuses
+    the same instance for subsequent requests.
+    """
     settings = get_settings()
     if settings.api_style == "chat_completions":
         return OpenAIChatCompletionsProvider(settings)
@@ -45,6 +55,11 @@ def get_provider() -> BaseProvider:
 
 
 def log_startup_summary() -> None:
+    """Log the relay startup configuration summary.
+
+    Emits a single startup log line that captures the selected provider, model,
+    base URL, and sanitized API-key metadata for debugging deployment issues.
+    """
     settings = get_settings()
     provider = get_provider()
     api_key_source = (
@@ -94,6 +109,7 @@ app.add_middleware(
 
 @app.get("/health")
 async def health() -> dict[str, str]:
+    """Return the relay health status."""
     return {"status": "ok"}
 
 
@@ -107,6 +123,23 @@ async def agent_turn(
     http_request: Request,
     stream: bool = Query(default=False),
 ) -> AgentTurnResponse | StreamingResponse:
+    """Handle one browser-to-model agent turn.
+
+    Builds the provider request from the browser payload, logs prompt-token
+    diagnostics, and returns either a normal response or an SSE stream.
+
+    Args:
+        request: Browser request payload for the current agent turn.
+        http_request: Incoming FastAPI request used to inspect client headers.
+        stream: Whether the caller explicitly requested server-sent events.
+
+    Returns:
+        Final agent-turn payload or a streaming SSE response, depending on the request.
+
+    Raises:
+        HTTPException: If the upstream provider request fails before a
+            non-streaming response is returned.
+    """
     settings = get_settings()
     provider_request = ProviderRequest(
         system_prompt=settings.system_prompt,
@@ -114,7 +147,10 @@ async def agent_turn(
         history=request.history,
         message=request.message,
     )
-    _log_token_summary(summarize_prompt_tokens(provider_request, settings.model))
+    log_token_summary(
+        startup_logger,
+        summarize_prompt_tokens(provider_request, settings.model),
+    )
 
     should_stream = settings.enable_streaming and (
         stream or "text/event-stream" in http_request.headers.get("accept", "")
@@ -220,51 +256,3 @@ def _encode_sse_event(event_name: str, payload: dict[str, object]) -> str:
         + json.dumps(payload, ensure_ascii=False)
         + "\n\n"
     )
-
-
-def _log_token_summary(summary: TokenDebugSummary) -> None:
-    """Log a compact developer-facing prompt token summary."""
-    top_context_key, top_context_tokens = _find_top_context_key(summary)
-    total = summary.total
-    context_total = summary.context
-    startup_logger.info(
-        (
-            "Agent token usage:\n"
-            "  model: %s\n"
-            "  total: %s\n"
-            "  system: %s (%s)\n"
-            "  context: %s (%s)\n"
-            "  history: %s (%s)\n"
-            "  message: %s (%s)\n"
-            "  top context: %s = %s (%s of context)"
-        ),
-        summary.model,
-        total,
-        summary.system_prompt,
-        _format_percentage(summary.system_prompt, total),
-        summary.context,
-        _format_percentage(summary.context, total),
-        summary.history,
-        _format_percentage(summary.history, total),
-        summary.message,
-        _format_percentage(summary.message, total),
-        top_context_key,
-        top_context_tokens,
-        _format_percentage(top_context_tokens, context_total),
-    )
-
-
-def _find_top_context_key(summary: TokenDebugSummary) -> tuple[str, int]:
-    """Return the largest top-level context contributor."""
-    if not summary.context_by_key:
-        return "n/a", 0
-
-    return max(summary.context_by_key.items(), key=lambda item: item[1])
-
-
-def _format_percentage(part: int, whole: int) -> str:
-    """Format a percentage for log output."""
-    if whole <= 0:
-        return "0.0%"
-
-    return f"{(part / whole) * 100:.1f}%"

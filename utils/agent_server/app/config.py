@@ -22,17 +22,44 @@ class Settings:
 
 
 def describe_api_key_for_logs(api_key: str) -> str:
+    """Describe an API key for safe log output.
+
+    Replaces the raw key with its length and a short SHA-256 prefix so logs can
+    distinguish values without exposing the secret itself.
+
+    Args:
+        api_key: Raw API key configured for the upstream provider.
+
+    Returns:
+        Log-safe key description that includes the key length and digest prefix.
+    """
     digest = hashlib.sha256(api_key.encode("utf-8")).hexdigest()
     return "len=" + str(len(api_key)) + " sha256=" + digest[:12]
 
 
 def load_default_system_prompt() -> str:
+    """Load the bundled default system prompt text.
+
+    Reads the relay's checked-in prompt template from the package resources and
+    trims surrounding whitespace before returning it.
+    """
     return resources.files(__package__).joinpath(
         "prompts/genomespy_system_prompt.md"
     ).read_text(encoding="utf-8").strip()
 
 
 def load_settings() -> Settings:
+    """Load relay settings from environment variables.
+
+    Builds the immutable runtime settings object used by the relay, applying
+    defaults for optional values and validating the API style.
+
+    Returns:
+        Settings object populated from the current process environment.
+
+    Raises:
+        ValueError: If an environment variable has an invalid value.
+    """
     api_style = os.environ.get("GENOMESPY_AGENT_API_STYLE", "responses")
     if api_style not in {"responses", "chat_completions"}:
         raise ValueError(

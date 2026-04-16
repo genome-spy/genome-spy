@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from typing import Any
@@ -106,6 +107,45 @@ def summarize_prompt_tokens(
     )
 
 
+def log_token_summary(
+    logger: logging.Logger, summary: TokenDebugSummary
+) -> None:
+    """Log a compact token-usage summary for one provider request.
+
+    Args:
+        logger: Logger that should receive the token summary.
+        summary: Token breakdown for the current provider request.
+    """
+    top_context_key, top_context_tokens = _find_top_context_key(summary)
+    total = summary.total
+    context_total = summary.context
+    logger.info(
+        (
+            "Agent token usage:\n"
+            "  model: %s\n"
+            "  total: %s\n"
+            "  system: %s (%s)\n"
+            "  context: %s (%s)\n"
+            "  history: %s (%s)\n"
+            "  message: %s (%s)\n"
+            "  top context: %s = %s (%s of context)"
+        ),
+        summary.model,
+        total,
+        summary.system_prompt,
+        _format_percentage(summary.system_prompt, total),
+        summary.context,
+        _format_percentage(summary.context, total),
+        summary.history,
+        _format_percentage(summary.history, total),
+        summary.message,
+        _format_percentage(summary.message, total),
+        top_context_key,
+        top_context_tokens,
+        _format_percentage(top_context_tokens, context_total),
+    )
+
+
 def _resolve_encoding(model: str) -> Any | None:
     if tiktoken is None:
         return None
@@ -120,7 +160,6 @@ def _resolve_encoding(model: str) -> Any | None:
 
 
 def _count_tokens(text: str, encoding: Any | None) -> int:
-    """Count tokens, or estimate them when no tokenizer is available."""
     if encoding is not None:
         return len(encoding.encode(text))
 
@@ -128,6 +167,20 @@ def _count_tokens(text: str, encoding: Any | None) -> int:
         return 0
 
     return math.ceil(len(text) / 4)
+
+
+def _find_top_context_key(summary: TokenDebugSummary) -> tuple[str, int]:
+    if not summary.context_by_key:
+        return "n/a", 0
+
+    return max(summary.context_by_key.items(), key=lambda item: item[1])
+
+
+def _format_percentage(part: int, whole: int) -> str:
+    if whole <= 0:
+        return "0.0%"
+
+    return f"{(part / whole) * 100:.1f}%"
 
 
 def _build_history_texts(history: list[Any]) -> list[str]:

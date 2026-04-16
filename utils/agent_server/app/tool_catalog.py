@@ -13,6 +13,17 @@ _TOOL_SCHEMA_PATH = _GENERATED_AGENT_DIR / "generatedToolSchema.json"
 
 @lru_cache(maxsize=1)
 def load_generated_tool_catalog() -> list[dict[str, Any]]:
+    """Load the generated browser tool catalog.
+
+    Reads the generated JSON file emitted by the app build and validates that
+    the top-level payload is a list.
+
+    Returns:
+        Generated tool catalog entries as raw JSON-like dictionaries.
+
+    Raises:
+        ValueError: If the generated catalog payload is not a list.
+    """
     with _TOOL_CATALOG_PATH.open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
 
@@ -24,6 +35,17 @@ def load_generated_tool_catalog() -> list[dict[str, Any]]:
 
 @lru_cache(maxsize=1)
 def load_generated_tool_schema() -> dict[str, Any]:
+    """Load the generated browser tool schema.
+
+    Reads the generated JSON schema emitted by the app build and validates that
+    the top-level payload is an object.
+
+    Returns:
+        Generated tool schema as a raw JSON-like dictionary.
+
+    Raises:
+        ValueError: If the generated schema payload is not an object.
+    """
     with _TOOL_SCHEMA_PATH.open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
 
@@ -35,6 +57,18 @@ def load_generated_tool_schema() -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def build_responses_tool_definitions() -> list[dict[str, Any]]:
+    """Build Responses API tool definitions from generated app artifacts.
+
+    Joins the generated tool catalog with the generated schema definitions and
+    projects each tool input type into the function schema shape expected by the
+    Responses API.
+
+    Returns:
+        Tool definition objects ready to send in a Responses API request.
+
+    Raises:
+        ValueError: If the generated catalog or schema is missing required fields.
+    """
     catalog = load_generated_tool_catalog()
     schema = load_generated_tool_schema()
     definitions = schema.get("definitions")
