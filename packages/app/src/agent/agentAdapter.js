@@ -1,13 +1,13 @@
-import { getAgentContext } from "./contextBuilder.js";
+import { getAgentContext as buildAgentContext } from "./contextBuilder.js";
 import {
-    submitIntentActions,
+    submitIntentActions as submitIntentActionsForApp,
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
-import { validateIntentBatch } from "./intentProgramValidator.js";
+import { validateIntentBatch as validateIntentBatchForApp } from "./intentProgramValidator.js";
 import { summarizeProvenanceActions } from "./actionCatalog.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
-import { resolveViewSelector } from "@genome-spy/core/view/viewSelectors.js";
+import { resolveViewSelector as resolveCoreViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import templateResultToString from "../utils/templateResultToString.js";
 import {
     collectVisibleSampleGroups,
@@ -64,259 +64,360 @@ function normalizeConversationHistory(history) {
  * @param {import("../app.js").default} app
  */
 export function createAgentAdapter(app) {
-    return {
-        getAgentContext: (
-            /** @type {AgentContextOptions} */ contextOptions = getCurrentAgentContextOptions(
-                app
-            )
-        ) => getAgentContext(app, contextOptions),
-        validateIntentBatch: (/** @type {unknown} */ batch) =>
-            validateIntentBatch(app, batch),
-        submitIntentActions: (
-            /** @type {import("./types.js").IntentBatch} */ batch,
-            /** @type {{submissionKind?: "agent" | "bookmark" | "user"}} */ options
-        ) => submitIntentActions(app, batch, options),
-        resolveViewSelector: (
-            /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector
-        ) => {
-            const viewRoot = app.genomeSpy?.viewRoot;
-            if (!viewRoot) {
-                return undefined;
-            }
+    const agentState = getAgentState(app);
 
-            return resolveViewSelector(viewRoot, selector);
-        },
-        setViewVisibility: (
-            /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector,
-            /** @type {boolean} */ visibility
-        ) => setViewVisibility(app, selector, visibility),
-        clearViewVisibility: (
-            /** @type {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} */ selector
-        ) => clearViewVisibility(app, selector),
-        getMetadataAttributeSummarySource: (
-            /** @type {import("../sampleView/types.d.ts").AttributeIdentifier} */ attribute
-        ) => getMetadataAttributeSummarySource(app, attribute),
-        getGroupedMetadataAttributeSummarySource: (
-            /** @type {import("../sampleView/types.d.ts").AttributeIdentifier} */ attribute
-        ) => getGroupedMetadataAttributeSummarySource(app, attribute),
-        jumpToProvenanceState: (/** @type {string} */ provenanceId) =>
-            jumpToProvenanceState(app, provenanceId),
-        jumpToInitialProvenanceState: () => jumpToInitialProvenanceState(app),
-        summarizeProvenanceActionsSince: (/** @type {number} */ startIndex) =>
-            summarizeProvenanceActions(
-                app,
-                app.provenance.getActionHistory().slice(startIndex)
+    /**
+     * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+     * @returns {import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined}
+     */
+    function getMetadataAttributeSummarySource(attribute) {
+        if (
+            attribute?.type !== "SAMPLE_ATTRIBUTE" ||
+            typeof attribute.specifier !== "string"
+        ) {
+            return undefined;
+        }
+
+        const sampleView = app.getSampleView();
+        if (!sampleView) {
+            return undefined;
+        }
+
+        const sampleHierarchy = sampleView.sampleHierarchy;
+        if (!sampleHierarchy) {
+            return undefined;
+        }
+
+        const info =
+            sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
+
+        const sampleIds = collectVisibleSampleIds(sampleHierarchy.rootGroup);
+        const metadata = sampleHierarchy.sampleMetadata.entities;
+        const attributeName = attribute.specifier;
+
+        return {
+            attribute,
+            title: templateResultToString(info.title),
+            description: info.description,
+            dataType: info.type,
+            scope: "visible_samples",
+            sampleIds,
+            values: sampleIds.map(
+                (sampleId) => metadata[sampleId]?.[attributeName]
             ),
-        summarizeExecutionResult,
-        requestAgentTurn: (
-            /** @type {string} */ message,
-            /** @type {Array<string | AgentConversationMessage>} */ history = [],
-            /** @type {import("./agentSessionController.js").AgentStreamCallbacks} */ streamCallbacks = {},
-            /** @type {boolean} */ allowStreaming = true,
-            /** @type {AgentContextOptions} */ contextOptions = {}
-        ) =>
-            requestAgentTurn(app, {
-                message,
-                history,
-                streamCallbacks,
-                allowStreaming,
-                contextOptions,
+        };
+    }
+
+    /**
+     * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+     * @returns {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined}
+     */
+    function getGroupedMetadataAttributeSummarySource(attribute) {
+        if (
+            attribute?.type !== "SAMPLE_ATTRIBUTE" ||
+            typeof attribute.specifier !== "string"
+        ) {
+            return undefined;
+        }
+
+        const sampleView = app.getSampleView();
+        if (!sampleView) {
+            return undefined;
+        }
+
+        const sampleHierarchy = sampleView.sampleHierarchy;
+        if (!sampleHierarchy) {
+            return undefined;
+        }
+
+        const info =
+            sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
+
+        const attributeName = attribute.specifier;
+        const metadata = sampleHierarchy.sampleMetadata.entities;
+
+        return {
+            attribute,
+            title: templateResultToString(info.title),
+            description: info.description,
+            dataType: info.type,
+            scope: "visible_groups",
+            groupLevels: sampleHierarchy.groupMetadata.map((entry, level) => {
+                const groupInfo =
+                    sampleView.compositeAttributeInfoSource.getAttributeInfo(
+                        entry.attribute
+                    );
+
+                return {
+                    level,
+                    attribute: entry.attribute,
+                    title: templateResultToString(groupInfo.title),
+                };
             }),
-    };
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
- * @returns {import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined}
- */
-function getMetadataAttributeSummarySource(app, attribute) {
-    if (
-        attribute?.type !== "SAMPLE_ATTRIBUTE" ||
-        typeof attribute.specifier !== "string"
-    ) {
-        return undefined;
+            groups: collectVisibleSampleGroups(sampleHierarchy.rootGroup),
+            valuesBySampleId: Object.fromEntries(
+                Object.entries(metadata).map(([sampleId, values]) => [
+                    sampleId,
+                    values?.[attributeName],
+                ])
+            ),
+        };
     }
 
-    const sampleView = app.getSampleView();
-    if (!sampleView) {
-        return undefined;
-    }
+    /**
+     * @param {{
+     *   message: string,
+     *   history?: Array<string | AgentConversationMessage>,
+     *   streamCallbacks?: import("./agentSessionController.js").AgentStreamCallbacks,
+     *   allowStreaming?: boolean,
+     *   contextOptions?: AgentContextOptions,
+     *   signal?: AbortSignal
+     * }} options
+     * @returns {Promise<{ response: import("./types.js").AgentTurnResponse, trace: Record<string, any> }>}
+     */
+    async function requestAgentTurnImpl(options) {
+        const baseUrl = agentState.agentBaseUrl ?? DEFAULT_AGENT_BASE_URL;
+        const startedAt = now();
+        const contextStartedAt = now();
+        const context = buildAgentContext(app, options.contextOptions);
+        const contextBuildMs = elapsedMilliseconds(contextStartedAt);
+        const history = normalizeConversationHistory(options.history ?? []);
+        const shouldStream =
+            options.allowStreaming !== false &&
+            shouldUseStreaming(options.streamCallbacks);
+        if (options.signal?.aborted) {
+            throw createAbortError();
+        }
+        const requestPayload = {
+            message: options.message,
+            history,
+            context,
+        };
 
-    const sampleHierarchy = sampleView.sampleHierarchy;
-    if (!sampleHierarchy) {
-        return undefined;
-    }
+        const requestStartedAt = now();
+        const response = await fetch(baseUrl + "/v1/agent-turn", {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                ...(shouldStream ? { accept: "text/event-stream" } : {}),
+            },
+            body: JSON.stringify(requestPayload),
+            signal: options.signal,
+        });
+        const requestMs = elapsedMilliseconds(requestStartedAt);
 
-    const info =
-        sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
+        if (!response.ok) {
+            throw new Error(
+                "Agent turn request failed with status " + response.status + "."
+            );
+        }
 
-    const sampleIds = collectVisibleSampleIds(sampleHierarchy.rootGroup);
-    const metadata = sampleHierarchy.sampleMetadata.entities;
-    const attributeName = attribute.specifier;
-
-    return {
-        attribute,
-        title: templateResultToString(info.title),
-        description: info.description,
-        dataType: info.type,
-        scope: "visible_samples",
-        sampleIds,
-        values: sampleIds.map(
-            (sampleId) => metadata[sampleId]?.[attributeName]
-        ),
-    };
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
- * @returns {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined}
- */
-function getGroupedMetadataAttributeSummarySource(app, attribute) {
-    if (
-        attribute?.type !== "SAMPLE_ATTRIBUTE" ||
-        typeof attribute.specifier !== "string"
-    ) {
-        return undefined;
-    }
-
-    const sampleView = app.getSampleView();
-    if (!sampleView) {
-        return undefined;
-    }
-
-    const sampleHierarchy = sampleView.sampleHierarchy;
-    if (!sampleHierarchy) {
-        return undefined;
-    }
-
-    const info =
-        sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
-
-    const attributeName = attribute.specifier;
-    const metadata = sampleHierarchy.sampleMetadata.entities;
-
-    return {
-        attribute,
-        title: templateResultToString(info.title),
-        description: info.description,
-        dataType: info.type,
-        scope: "visible_groups",
-        groupLevels: sampleHierarchy.groupMetadata.map((entry, level) => {
-            const groupInfo =
-                sampleView.compositeAttributeInfoSource.getAttributeInfo(
-                    entry.attribute
-                );
+        if (
+            shouldStream &&
+            response.headers.get("content-type")?.includes("text/event-stream")
+        ) {
+            const parseStartedAt = now();
+            const streamedResponse = await consumeAgentTurnStream(
+                response,
+                options.streamCallbacks ?? {}
+            );
+            const responseParseMs = elapsedMilliseconds(parseStartedAt);
 
             return {
-                level,
-                attribute: entry.attribute,
-                title: templateResultToString(groupInfo.title),
+                response: streamedResponse.response,
+                trace: {
+                    message: options.message,
+                    contextBuildMs,
+                    requestMs,
+                    responseParseMs,
+                    serverTiming:
+                        response.headers.get("server-timing") ?? "n/a",
+                    agentServerTotalMs:
+                        response.headers.get("x-genomespy-agent-total-ms") ??
+                        "n/a",
+                    totalMs: elapsedMilliseconds(startedAt),
+                },
             };
-        }),
-        groups: collectVisibleSampleGroups(sampleHierarchy.rootGroup),
-        valuesBySampleId: Object.fromEntries(
-            Object.entries(metadata).map(([sampleId, values]) => [
-                sampleId,
-                values?.[attributeName],
-            ])
-        ),
-    };
-}
+        } else {
+            const parseStartedAt = now();
+            const parsedResponse = await response.json();
+            const responseParseMs = elapsedMilliseconds(parseStartedAt);
 
-/**
- * @param {import("../app.js").default} app
- * @param {{
- *   message: string,
- *   history?: Array<string | AgentConversationMessage>,
- *   streamCallbacks?: import("./agentSessionController.js").AgentStreamCallbacks,
- *   allowStreaming?: boolean,
- *   contextOptions?: AgentContextOptions,
- *   signal?: AbortSignal
- * }} options
- * @returns {Promise<{ response: import("./types.js").AgentTurnResponse, trace: Record<string, any> }>}
- */
-async function requestAgentTurn(app, options) {
-    const baseUrl = getAgentState(app).agentBaseUrl ?? DEFAULT_AGENT_BASE_URL;
-    const startedAt = now();
-    const contextStartedAt = now();
-    const context = getAgentContext(app, options.contextOptions);
-    const contextBuildMs = elapsedMilliseconds(contextStartedAt);
-    const history = normalizeConversationHistory(options.history ?? []);
-    const shouldStream =
-        options.allowStreaming !== false &&
-        shouldUseStreaming(options.streamCallbacks);
-    if (options.signal?.aborted) {
-        throw createAbortError();
+            return {
+                response: parsedResponse,
+                trace: {
+                    message: options.message,
+                    contextBuildMs,
+                    requestMs,
+                    responseParseMs,
+                    serverTiming:
+                        response.headers.get("server-timing") ?? "n/a",
+                    agentServerTotalMs:
+                        response.headers.get("x-genomespy-agent-total-ms") ??
+                        "n/a",
+                    totalMs: elapsedMilliseconds(startedAt),
+                },
+            };
+        }
     }
-    const requestPayload = {
-        message: options.message,
-        history,
-        context,
-    };
 
-    const requestStartedAt = now();
-    const response = await fetch(baseUrl + "/v1/agent-turn", {
-        method: "POST",
-        headers: {
-            "content-type": "application/json",
-            ...(shouldStream ? { accept: "text/event-stream" } : {}),
-        },
-        body: JSON.stringify(requestPayload),
-        signal: options.signal,
-    });
-    const requestMs = elapsedMilliseconds(requestStartedAt);
-
-    if (!response.ok) {
-        throw new Error(
-            "Agent turn request failed with status " + response.status + "."
+    /**
+     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     * @param {boolean} visibility
+     */
+    function setViewVisibility(selector, visibility) {
+        app.store.dispatch(
+            viewSettingsSlice.actions.setVisibility({
+                key: makeViewSelectorKey(selector),
+                visibility,
+            })
         );
     }
 
-    if (
-        shouldStream &&
-        response.headers.get("content-type")?.includes("text/event-stream")
+    /**
+     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     */
+    function clearViewVisibility(selector) {
+        const key = makeViewSelectorKey(selector);
+        app.store.dispatch(
+            viewSettingsSlice.actions.restoreDefaultVisibility(key)
+        );
+
+        const viewRoot = app.genomeSpy?.viewRoot;
+        if (!viewRoot) {
+            return;
+        }
+
+        const view = resolveCoreViewSelector(viewRoot, selector);
+        if (view?.explicitName && view.explicitName !== key) {
+            app.store.dispatch(
+                viewSettingsSlice.actions.restoreDefaultVisibility(
+                    view.explicitName
+                )
+            );
+        }
+    }
+
+    /**
+     * @param {string} provenanceId
+     * @returns {boolean}
+     */
+    function jumpToProvenanceState(provenanceId) {
+        const currentIndex = app.provenance.getCurrentIndex();
+        app.provenance.activateState(provenanceId);
+        return app.provenance.getCurrentIndex() !== currentIndex;
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    function jumpToInitialProvenanceState() {
+        const currentIndex = app.provenance.getCurrentIndex();
+        app.provenance.activateInitialState();
+        return app.provenance.getCurrentIndex() !== currentIndex;
+    }
+
+    /**
+     * @returns {import("./types.d.ts").AgentContextOptions}
+     */
+    function getCurrentAgentContextOptions() {
+        return {
+            expandedViewNodeKeys:
+                agentState.agentSessionController?.getSnapshot()
+                    .expandedViewNodeKeys ?? [],
+        };
+    }
+
+    /**
+     * @param {AgentContextOptions} [contextOptions]
+     * @returns {ReturnType<typeof buildAgentContext>}
+     */
+    function getAgentContext(contextOptions = getCurrentAgentContextOptions()) {
+        return buildAgentContext(app, contextOptions);
+    }
+
+    /**
+     * @param {unknown} batch
+     */
+    function validateIntentBatch(batch) {
+        return validateIntentBatchForApp(app, batch);
+    }
+
+    /**
+     * @param {import("./types.js").IntentBatch} batch
+     * @param {{submissionKind?: "agent" | "bookmark" | "user"}} options
+     */
+    function submitIntentActions(batch, options) {
+        return submitIntentActionsForApp(app, batch, options);
+    }
+
+    /**
+     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     * @returns {import("@genome-spy/core/view/view.js").default | undefined}
+     */
+    function resolveViewSelector(selector) {
+        const viewRoot = app.genomeSpy?.viewRoot;
+        if (!viewRoot) {
+            return undefined;
+        }
+
+        return resolveCoreViewSelector(viewRoot, selector);
+    }
+
+    /**
+     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+     * @param {boolean} visibility
+     */
+    /**
+     * @param {number} startIndex
+     * @returns {import("./types.d.ts").IntentBatchSummaryLine[]}
+     */
+    function summarizeProvenanceActionsSince(startIndex) {
+        return summarizeProvenanceActions(
+            app,
+            app.provenance.getActionHistory().slice(startIndex)
+        );
+    }
+
+    /**
+     * @param {string} message
+     * @param {Array<string | AgentConversationMessage>} [history]
+     * @param {import("./agentSessionController.js").AgentStreamCallbacks} [streamCallbacks]
+     * @param {boolean} [allowStreaming]
+     * @param {AgentContextOptions} [contextOptions]
+     * @returns {Promise<{ response: import("./types.js").AgentTurnResponse, trace: Record<string, any> }>}
+     */
+    function requestAgentTurn(
+        message,
+        history = [],
+        streamCallbacks = {},
+        allowStreaming = true,
+        contextOptions = {}
     ) {
-        const parseStartedAt = now();
-        const streamedResponse = await consumeAgentTurnStream(
-            response,
-            options.streamCallbacks ?? {}
-        );
-        const responseParseMs = elapsedMilliseconds(parseStartedAt);
-
-        return {
-            response: streamedResponse.response,
-            trace: {
-                message: options.message,
-                contextBuildMs,
-                requestMs,
-                responseParseMs,
-                serverTiming: response.headers.get("server-timing") ?? "n/a",
-                agentServerTotalMs:
-                    response.headers.get("x-genomespy-agent-total-ms") ?? "n/a",
-                totalMs: elapsedMilliseconds(startedAt),
-            },
-        };
-    } else {
-        const parseStartedAt = now();
-        const parsedResponse = await response.json();
-        const responseParseMs = elapsedMilliseconds(parseStartedAt);
-
-        return {
-            response: parsedResponse,
-            trace: {
-                message: options.message,
-                contextBuildMs,
-                requestMs,
-                responseParseMs,
-                serverTiming: response.headers.get("server-timing") ?? "n/a",
-                agentServerTotalMs:
-                    response.headers.get("x-genomespy-agent-total-ms") ?? "n/a",
-                totalMs: elapsedMilliseconds(startedAt),
-            },
-        };
+        return requestAgentTurnImpl({
+            message,
+            history,
+            streamCallbacks,
+            allowStreaming,
+            contextOptions,
+        });
     }
+
+    return {
+        getAgentContext,
+        validateIntentBatch,
+        submitIntentActions,
+        resolveViewSelector,
+        setViewVisibility,
+        clearViewVisibility,
+        getMetadataAttributeSummarySource,
+        getGroupedMetadataAttributeSummarySource,
+        jumpToProvenanceState,
+        jumpToInitialProvenanceState,
+        summarizeProvenanceActionsSince,
+        summarizeExecutionResult,
+        requestAgentTurn,
+    };
 }
 
 /**
@@ -326,64 +427,6 @@ function createAbortError() {
     const error = new Error("Aborted");
     error.name = "AbortError";
     return error;
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
- * @param {boolean} visibility
- */
-function setViewVisibility(app, selector, visibility) {
-    app.store.dispatch(
-        viewSettingsSlice.actions.setVisibility({
-            key: makeViewSelectorKey(selector),
-            visibility,
-        })
-    );
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
- */
-function clearViewVisibility(app, selector) {
-    const key = makeViewSelectorKey(selector);
-    app.store.dispatch(viewSettingsSlice.actions.restoreDefaultVisibility(key));
-
-    const viewRoot = app.genomeSpy?.viewRoot;
-    if (!viewRoot) {
-        return;
-    }
-
-    const view = resolveViewSelector(viewRoot, selector);
-    if (view?.explicitName && view.explicitName !== key) {
-        app.store.dispatch(
-            viewSettingsSlice.actions.restoreDefaultVisibility(
-                view.explicitName
-            )
-        );
-    }
-}
-
-/**
- * @param {import("../app.js").default} app
- * @param {string} provenanceId
- * @returns {boolean}
- */
-function jumpToProvenanceState(app, provenanceId) {
-    const currentIndex = app.provenance.getCurrentIndex();
-    app.provenance.activateState(provenanceId);
-    return app.provenance.getCurrentIndex() !== currentIndex;
-}
-
-/**
- * @param {import("../app.js").default} app
- * @returns {boolean}
- */
-function jumpToInitialProvenanceState(app) {
-    const currentIndex = app.provenance.getCurrentIndex();
-    app.provenance.activateInitialState();
-    return app.provenance.getCurrentIndex() !== currentIndex;
 }
 
 /**
@@ -529,17 +572,4 @@ function handleAgentTurnStreamEvent(
     }
 
     return finalResponse;
-}
-
-/**
- * @param {import("../app.js").default} app
- * @returns {import("./types.d.ts").AgentContextOptions}
- */
-function getCurrentAgentContextOptions(app) {
-    const agentState = getAgentState(app);
-    return {
-        expandedViewNodeKeys:
-            agentState.agentSessionController?.getSnapshot()
-                .expandedViewNodeKeys ?? [],
-    };
 }

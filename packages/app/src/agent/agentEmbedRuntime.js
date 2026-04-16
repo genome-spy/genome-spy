@@ -27,8 +27,6 @@ export async function setupAgentRuntime(app, options) {
 
     const agentState = getAgentState(app);
     agentState.agentBaseUrl = agentBaseUrl;
-    agentState.agentAdapter = (
-        options.agentAdapterFactory ?? agentAdapterModule.createAgentAdapter
-    )(app);
+    agentState.agentAdapter = agentAdapterModule.createAgentAdapter(app);
     agentUiModule.registerAgentUi(app);
 }
