@@ -92,6 +92,9 @@ as a companion guide to the principles below.
   protocols when the shape matters.
 - Prefer standard-library solutions unless an extra dependency clearly pays for
   itself.
+- Prefer `pathlib` over `os` when working with filesystem paths.
+- Use `os` for environment variables or non-path process concerns, not for path
+  manipulation.
 - Prefer functions over single-use classes.
 - Do not introduce a class when a small stateless helper or a couple of
   functions would solve the problem more clearly.
@@ -105,14 +108,27 @@ as a companion guide to the principles below.
 - Public functions should have docstrings by default.
 - Private helpers should have docstrings only when their behavior is not
   obvious from the code alone.
-- All public APIs require six sections:
+- Prefer the smallest docstring that captures useful behavior. Do not add
+  sections mechanically.
+- Public docstrings should use this structure:
   1. Summary     — one-line, imperative verb: "Compute", "Return", "Validate"
-  2. Description — algorithm, assumptions, non-obvious behavior (omit for trivial functions)
-  3. Args        — description only (no types); for tensors: shape (named axes) and value range
-  4. Returns     — semantics only (type is in the annotation)
-  5. Raises      — every exception with triggering condition
-  6. Example     — executable >>> doctest block (MUST actually run)
+  2. Description — algorithm, assumptions, or non-obvious behavior; omit for
+     trivial functions
+- Optional public-doc sections:
+  - Args     — include only when the function takes arguments; description only
+    (no types)
+  - Returns  — include when the return semantics are not obvious from the name
+    and annotation alone
+  - Raises   — include only for exceptions the function explicitly raises, or
+    for a deliberate public exception contract the reader needs to know
+  - Example  — include only when it materially helps usage and can be kept
+    correct and executable; omit for trivial functions
 - Forbidden:
+  - Empty or boilerplate sections such as `Args:` on zero-argument functions
+  - `Raises:` sections for exceptions that are not explicitly raised or
+    intentionally documented as part of the function contract
+  - `Example:` sections on trivial functions where the example adds no real
+    value
   - Lengthy private-helper docstrings
   - Docstring that literally repeats the function name ("get_value: Gets the value")
   - Examples that don't run or produce wrong output
@@ -148,6 +164,14 @@ def build_context_text(context: dict[str, object]) -> str:
         ... )
         'Current GenomeSpy context snapshot:\\n{\\n  "schemaVersion": 1,\\n  "viewRoot": {\\n    "title": "Example"\\n  }\\n}'
     """
+```
+
+For a trivial zero-argument function, prefer a short docstring without
+boilerplate sections:
+
+```python
+def load_default_system_prompt() -> str:
+    """Load the bundled default system prompt text."""
 ```
 
 ## Style and formatting
