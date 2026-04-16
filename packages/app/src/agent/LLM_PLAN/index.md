@@ -70,6 +70,9 @@
 ## Data + Visualization Context
 - See [`data-schema.md`](./data-schema.md) for the proposed LLM-facing context schema.
 - See [`view-tree.md`](./view-tree.md) for the proposed normalized view-tree IR.
+- See [`explanatory-affordance-context.md`](./explanatory-affordance-context.md)
+  for the draft explanatory context layer that helps the agent describe what the
+  user is currently seeing and what actions are likely to make sense next.
 - See [`searchable-data-lookup.md`](./searchable-data-lookup.md) for the proposed searchable-view context and view-scoped datum lookup flow.
 - See [`chat-ui.md`](./chat-ui.md) for the proposed chat surface and component shape.
 
