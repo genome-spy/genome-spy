@@ -385,6 +385,25 @@ The cleanup should aim for these outcomes:
 - a narrower adapter boundary
 - an eventual host boundary that matches the draft in `agent-host-api.md`
 
+## Conservative Scope
+
+This plan keeps the current provider-facing tools and the current intent-action
+surface for now. The near-term cleanup should not rename tools, merge tools,
+replace `submitIntentActions`, or remove the generated action catalog.
+
+The immediate goal is less code through ownership cleanup:
+
+- the browser owns tool definitions and tool execution
+- the Python relay owns provider transport, prompt/history serialization, and
+  provider-response normalization
+- the Python relay does not mirror browser-generated tool files
+- the relay uses only the Responses API path for tool-capable turns
+- duplicate inventory tests are deleted instead of rewritten into new mirrors
+
+Keep `agentToolInputs.d.ts` and the current generated tool artifacts as the
+browser-side source for this pass. More aggressive registry or command-language
+changes can stay in the separate aggressive plan.
+
 ## Proposed Cleanup Plan
 
 ### Phase 0: Classify the current surface
@@ -416,38 +435,59 @@ Success criteria:
 - the inventory makes it obvious which files are contract, projection, and
   commentary
 
-### Phase 1: Consolidate the source of truth
+### Phase 1: Consolidate ownership and delete relay duplication
 
-Goal: make the contract live in one place and derive everything else from it.
+Goal: keep the current tool and intent-action surface, but make the browser the
+only owner of tool definitions and remove duplicate relay/provider code.
 
 Steps:
 
-1. Keep a single machine-readable tool inventory as the source of truth.
-2. Treat the generated catalog and schema as projections of that inventory.
-3. Keep `agentToolInputs.d.ts` as the type-level contract only if it stays in
-   sync with the inventory, not as a second place where the tool list is
-   curated.
-4. Make the generator accept both interfaces and type aliases for object-shaped
-   and zero-field tool inputs.
-5. Replace repeated hand-written tool lists with generated or shared
-   assertions where possible.
-6. Replace duplicated contract prose with references to the inventory instead of
-   restating the same list in each doc.
+1. Keep `agentToolInputs.d.ts` as the current browser-side source for tool
+   input docs and generated artifacts.
+2. Treat the generated catalog and schema as browser-owned projections of that
+   source.
+3. Send provider-ready tool definitions from the browser to the Python relay in
+   every agent-turn request.
+4. Make the Python relay use only those request-provided tool definitions. It
+   should not read `packages/app/src/agent/generated` from disk or rebuild the
+   browser tool catalog.
+5. Remove `toolCatalog` from the server-bound context once provider-ready
+   `tools` are sent separately.
+6. Drop the Python Chat Completions provider path. Tool-capable agent turns
+   should use the Responses API path only, so tool definition handling has one
+   provider shape.
+7. Delete Python tool-catalog mirror code and tests after request-provided
+   tools are wired through.
+8. Treat hash-based tool-definition caching as a later network optimization,
+   not as part of the first cleanup. A future protocol can send a
+   `toolCatalogHash` by default and include full tool definitions only when the
+   relay has no matching cached definitions, but that should wait until the
+   mirror and provider-path simplifications are done.
+9. Replace repeated hand-written tool lists with generated or shared assertions
+   where possible.
+10. Replace duplicated contract prose with references to the current source
+    instead of restating the same list in each doc.
 
 Why this phase matters:
 
-- this is the fastest way to reduce churn without changing the runtime shape
-- it also exposes whether the current source-of-truth file is the right long
-  term owner
+- this is the fastest way to delete code without changing the tool/action
+  surface
+- it removes Python-side catalog ownership instead of making that mirror more
+  complete
 - it is the main lever for shrinking the number of files touched by a tool
   addition or removal
-- it should reduce the amount of repeated copy-editing across the tool docs
+- it reduces provider branching before any larger tool redesign
 
 Success criteria:
 
-- adding or removing a tool changes one canonical source and then regenerates
-  the projections
-- the generator no longer cares about interface-vs-type-alias syntax
+- the current tools and intent actions still work
+- the relay does not mirror the browser tool catalog or depend on app generated
+  files on disk
+- there is no Chat Completions fallback path with separate prompt/tool behavior
+- server-bound context no longer carries a duplicate `toolCatalog`
+- the first cleanup remains a deletion and ownership cleanup, not a cache
+  protocol project
+- Python relay line count goes down
 - tests still protect the contract, but with less duplication
 - the overview docs reference the inventory instead of duplicating it
 
@@ -484,11 +524,13 @@ Goal: keep the tool surface lean and easy to understand.
 
 Steps:
 
-1. Keep the tools that are still needed by the current agent workflow.
-2. Remove docs and prompt text for tools that no longer exist.
-3. Keep the host vocabulary aligned with the runtime capabilities that are
+1. Keep the current tools for this conservative pass.
+2. Avoid adding new tool variants unless they solve a demonstrated agent
+   failure mode.
+3. Remove docs and prompt text for tools that no longer exist.
+4. Keep the host vocabulary aligned with the runtime capabilities that are
    actually present.
-4. Revisit the surface only when a new tool has a clear user-facing purpose.
+5. Revisit tool merging or command-language replacement only in a later pass.
 
 Why this matters:
 
@@ -502,6 +544,7 @@ Success criteria:
 - the model is not exposed to stale tool names or stale host wording
 - the tool surface is easier to explain and easier to keep stable
 - the docs for a tool change are updated in fewer places than before
+- the conservative pass does not become a tool redesign
 
 ### Phase 4: Reduce duplicated assertions and mirrored expectations
 
@@ -512,16 +555,24 @@ Steps:
 1. Keep one app-side test that validates the generated tool catalog.
 2. Keep one generator test that checks the generator output against the
    committed artifacts.
-3. Keep the agent-server mirror test only where it protects a real boundary.
-4. Turn prompt text and docs into consumers of the same source where possible.
-5. Prefer a small number of end-to-end contract checks over repeated full
+3. Delete the agent-server tool-catalog mirror tests once the relay receives
+   browser-provided tool definitions.
+4. Delete Chat Completions provider/parser tests once the relay is
+   Responses-only.
+5. Turn prompt text and docs into consumers of the same source where possible.
+6. Prefer a small number of end-to-end contract checks over repeated full
    list asserts.
+7. Prefer deleting tests with no unique boundary over rewriting them around the
+   same duplicated inventory.
 
 Success criteria:
 
 - tool-list churn only updates a few high-value checks
 - the tests still catch contract drift without duplicating the contract
-- mirrored server checks only remain where they catch a real integration gap
+- mirrored server checks are gone when the relay no longer mirrors the catalog
+- provider tests cover one supported provider path instead of two divergent
+  prompt/tool shapes
+- test line count goes down while behavior coverage remains focused
 
 ### Phase 5: Make extraction easier later
 
@@ -553,10 +604,16 @@ Success criteria:
 - Do not invent a plugin framework yet.
 - Do not split the agent into packages until the host boundary is stable
   enough to be worth extracting.
+- Do not replace the current tools or `submitIntentActions` in this
+  conservative cleanup.
+- Do not remove the generated action catalog while intent actions remain the
+  model-facing mutation path.
 - Do not add new tool variants unless they solve a real agent failure mode.
 - Do not push browser DOM ownership into the agent package if a declarative UI
   host is enough.
 - Do not over-normalize the adapter if the simpler shape is still readable.
+- Do not add hash-based tool caching until the simpler request-provided tool
+  path is implemented and measured.
 
 ## Practical Rule
 
