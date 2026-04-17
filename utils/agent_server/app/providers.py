@@ -84,13 +84,12 @@ def _log_provider_auth_diagnostic(
     logger.warning(
         (
             "Provider auth diagnostic: provider=%s endpoint=%s base_url=%s "
-            "api_style=%s model=%s api_key=%s api_key_has_whitespace=%s "
+            "model=%s api_key=%s api_key_has_whitespace=%s "
             "authorization=Bearer <redacted>"
         ),
         provider_name,
         endpoint,
         settings.base_url,
-        settings.api_style,
         settings.model,
         describe_api_key_for_logs(settings.api_key),
         settings.api_key != settings.api_key.strip(),

@@ -88,7 +88,6 @@ def reset_provider_cache() -> None:
 
 def test_get_provider_uses_responses_by_default(monkeypatch) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
-    monkeypatch.delenv("GENOMESPY_AGENT_API_STYLE", raising=False)
     reset_settings_cache()
     reset_provider_cache()
 
@@ -336,7 +335,6 @@ def test_startup_summary_logs_provider_and_masked_key(
 ) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
     monkeypatch.setenv("GENOMESPY_AGENT_BASE_URL", "https://api.openai.com/v1")
-    monkeypatch.setenv("GENOMESPY_AGENT_API_STYLE", "responses")
     monkeypatch.setenv("GENOMESPY_AGENT_API_KEY", "sk-test-1234567890")
     reset_settings_cache()
 

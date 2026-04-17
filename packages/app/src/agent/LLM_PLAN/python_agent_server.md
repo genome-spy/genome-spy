@@ -33,7 +33,7 @@ The first PoC may start with one local provider, but the overall structure
 should remain provider-agnostic.
 
 For the first implementation, the preferred OpenAI-style transport is the
-Responses API. Chat Completions can remain a fallback adapter, but it should
+Responses API. The old fallback adapter can remain temporarily, but it should
 not be the default path.
 
 ## Architectural Direction
@@ -164,7 +164,7 @@ Tooling notes:
 Preferred provider adapter shape:
 
 - Responses API first
-- Chat Completions as an explicit fallback adapter only
+- The old fallback adapter as an explicit temporary adapter only
 - Shared GenomeSpy contract inputs: `message`, `history`, `context`
 - Shared output shape: `answer` or `clarify`
 

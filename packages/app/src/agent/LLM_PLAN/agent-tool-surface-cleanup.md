@@ -453,7 +453,7 @@ Steps:
    browser tool catalog.
 5. Remove `toolCatalog` from the server-bound context once provider-ready
    `tools` are sent separately.
-6. Drop the Python Chat Completions provider path. Tool-capable agent turns
+6. Drop the Python legacy provider path. Tool-capable agent turns
    should use the Responses API path only, so tool definition handling has one
    provider shape.
 7. Delete Python tool-catalog mirror code and tests after request-provided
@@ -483,7 +483,7 @@ Success criteria:
 - the current tools and intent actions still work
 - the relay does not mirror the browser tool catalog or depend on app generated
   files on disk
-- there is no Chat Completions fallback path with separate prompt/tool behavior
+- there is no legacy fallback path with separate prompt/tool behavior
 - server-bound context no longer carries a duplicate `toolCatalog`
 - the first cleanup remains a deletion and ownership cleanup, not a cache
   protocol project
@@ -572,6 +572,9 @@ Current status:
 - The context snapshot no longer carries `toolCatalog`.
 - The generator tests for tool and action artifacts are already narrow
   file-vs-generator freshness checks.
+- The Phase 4 trim is implemented: the controller and catalog tests are
+  narrower, stale provider config/test surface is removed, and the measured
+  line set dropped from 2,797 to 2,497 lines.
 
 Measured baseline:
 
@@ -602,7 +605,7 @@ Remaining duplication:
   `setViewVisibility`; those belong primarily in the catalog/validator tests.
 - Python provider tests should keep request/response behavior, but they should
   not become another exact browser tool inventory check.
-- Stale Chat Completions configuration and tests should be removed or renamed
+- Stale provider configuration and tests should be removed or renamed
   as part of the Responses-only cleanup.
 
 Steps:
@@ -651,9 +654,9 @@ Steps:
      and malformed-provider behavior.
    - do not assert the full browser tool inventory in Python.
 7. Finish the Responses-only cleanup:
-   - remove stale `chat_completions` configuration values and error messages
-     if the provider path is already gone.
-   - delete or rewrite tests that only preserve the old Chat Completions
+   - remove stale provider configuration values and error messages if the
+     provider path is already gone.
+   - delete or rewrite tests that only preserve the old provider path
      configuration surface.
    Target: Python relay/provider/prompt tests should have a net reduction, not
    just renamed expectations.

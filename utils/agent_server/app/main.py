@@ -62,12 +62,11 @@ def log_startup_summary() -> None:
     startup_logger.info(
         (
             "GenomeSpy agent server startup: provider=%s base_url=%s "
-            "api_style=%s model=%s api_key_source=%s api_key=%s "
+            "model=%s api_key_source=%s api_key=%s "
             "streaming=%s timeout_seconds=%s"
         ),
         provider.__class__.__name__,
         settings.base_url,
-        settings.api_style,
         settings.model,
         api_key_source,
         describe_api_key_for_logs(settings.api_key),

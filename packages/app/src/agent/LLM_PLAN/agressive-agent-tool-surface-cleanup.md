@@ -195,16 +195,16 @@ The Python relay should use `request.tools` for Responses API tool payloads.
 It should not import browser generated JSON files. This deletes the Python tool
 catalog mirror and makes the app the sole owner of executable app tools.
 
-The relay should also drop the Chat Completions provider path. Tool-capable
-agent turns should have one provider shape: Responses API requests with
-browser-provided tool definitions. Keeping Chat Completions means keeping a
-second prompt path that does not advertise tools the same way and keeps parser
+The relay should also drop the legacy provider path. Tool-capable agent turns
+should have one provider shape: Responses API requests with browser-provided
+tool definitions. Keeping the legacy provider path means keeping a second
+prompt path that does not advertise tools the same way and keeps parser
 fallback code alive for no useful maintenance benefit.
 
 Hash-based tool-definition caching can be added later if request size becomes a
 real issue. That protocol can send `toolCatalogHash` first and include full
 tool definitions only when the relay cache misses. It should not be part of the
-first cleanup because deleting the filesystem mirror and the Chat Completions
+first cleanup because deleting the filesystem mirror and the legacy provider
 path matters more than optimizing a small provider tool payload.
 
 ### One command language for mutations
@@ -336,7 +336,7 @@ Steps:
    request.
 3. Update the Python request model to accept `tools`.
 4. Make the Responses provider use `request.tools`.
-5. Delete the Chat Completions provider path and its provider-specific tests.
+5. Delete the legacy provider path and its provider-specific tests.
 6. Delete `utils/agent_server/app/tool_catalog.py`.
 7. Delete `utils/agent_server/tests/test_tool_catalog.py`.
 8. Defer hash-based tool caching until after the relay has one tool path.
@@ -432,7 +432,7 @@ Likely removals or large shrinkage:
   registry entries
 - `utils/agent_server/app/tool_catalog.py`: delete
 - `utils/agent_server/tests/test_tool_catalog.py`: delete
-- Chat Completions provider/parser fallback code and tests: delete
+- Legacy provider/parser fallback code and tests: delete
 - repeated tool assertions in app tests: delete
 - generated action artifacts: delete in the later command phase if the action
   catalog stops being model-facing
@@ -470,7 +470,8 @@ behind nicer names.
 - Do not continue exposing reducer/action names just because generators already
   exist.
 - Do not add new provider-specific schema projection logic in Python.
-- Do not keep Chat Completions as a parallel provider path for agent turns.
+- Do not keep the legacy provider path as a parallel provider path for agent
+  turns.
 - Do not keep a tool only because a test or prompt currently mentions it.
 
 ## Decision Rules

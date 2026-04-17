@@ -5,7 +5,6 @@ import logging
 import os
 from dataclasses import dataclass
 from importlib import resources
-from typing import Literal, cast
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +16,6 @@ class Settings:
     api_key: str
     timeout_seconds: float
     system_prompt: str
-    api_style: Literal["responses", "chat_completions"]
     enable_streaming: bool
 
 
@@ -60,12 +58,6 @@ def load_settings() -> Settings:
     Raises:
         ValueError: If an environment variable has an invalid value.
     """
-    api_style = os.environ.get("GENOMESPY_AGENT_API_STYLE", "responses")
-    if api_style not in {"responses", "chat_completions"}:
-        raise ValueError(
-            "GENOMESPY_AGENT_API_STYLE must be one of: responses, chat_completions"
-        )
-
     api_key_env = os.environ.get("GENOMESPY_AGENT_API_KEY")
     api_key = api_key_env if api_key_env is not None else "ollama"
     settings = Settings(
@@ -80,18 +72,16 @@ def load_settings() -> Settings:
         system_prompt=os.environ.get(
             "GENOMESPY_AGENT_SYSTEM_PROMPT", load_default_system_prompt()
         ),
-        api_style=cast(Literal["responses", "chat_completions"], api_style),
         enable_streaming=_load_bool_env("GENOMESPY_AGENT_ENABLE_STREAMING", True),
     )
 
     logger.info(
         (
             "Loaded GenomeSpy agent settings: "
-            "base_url=%s api_style=%s model=%s api_key_source=%s api_key=%s "
+            "base_url=%s model=%s api_key_source=%s api_key=%s "
             "streaming=%s timeout_seconds=%s"
         ),
         settings.base_url,
-        settings.api_style,
         settings.model,
         "GENOMESPY_AGENT_API_KEY" if api_key_env is not None else "default",
         describe_api_key_for_logs(settings.api_key),
