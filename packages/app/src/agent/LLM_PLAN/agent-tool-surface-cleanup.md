@@ -435,6 +435,62 @@ Success criteria:
 - the inventory makes it obvious which files are contract, projection, and
   commentary
 
+#### Phase 0 Source-File Roles
+
+The main confusion is not the list of tools. It is that the human-edited files
+do not advertise their responsibility clearly enough. The current conservative
+target is this ownership split:
+
+- [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts) is the
+  provider-tool contract source. It owns tool names, input shapes,
+  model-facing descriptions, and examples. A tool add/remove should start
+  here.
+- [`agentTools.js`](../src/agent/agentTools.js) is the provider-tool runtime
+  dispatch table. It should stay thin: validate local preconditions, call a
+  focused helper or runtime method, and return a tool result. Tool-specific
+  implementation details belong in focused helpers such as
+  [`selectionAggregationTool.js`](../src/agent/selectionAggregationTool.js),
+  [`metadataAttributeSummaryTool.js`](../src/agent/metadataAttributeSummaryTool.js),
+  [`groupedMetadataAttributeSummaryTool.js`](../src/agent/groupedMetadataAttributeSummaryTool.js),
+  and [`searchViewDatumsTool.js`](../src/agent/searchViewDatumsTool.js).
+- [`toolCatalog.js`](../src/agent/toolCatalog.js) is a browser-side projection
+  adapter. It turns generated browser-owned tool metadata into provider-ready
+  tool definitions and local validation helpers. It should not contain
+  semantic tool behavior.
+- [`contextBuilder.js`](../src/agent/contextBuilder.js) owns stable
+  prompt-grounding context. [`volatileContextBuilder.js`](../src/agent/volatileContextBuilder.js)
+  owns high-churn per-turn context. These builders decide what the model can
+  see; tools should consume their output but should not redefine the context
+  contract.
+- [`agentAdapter.js`](../src/agent/agentAdapter.js) owns browser-to-relay
+  transport and host runtime access. It assembles `message`, `history`,
+  `context`, `volatileContext`, and `tools`; it should not own tool input
+  contracts or provider prompt serialization.
+- [`agentSessionController.js`](../src/agent/agentSessionController.js) owns
+  conversation/session orchestration: history shaping, preflight, streaming,
+  tool-call execution, rejected-tool retries, and reruns after local tool
+  execution. It should not know provider schema details beyond the normalized
+  tool-call shape it receives.
+- [`schemaContract.ts`](../src/agent/schemaContract.ts),
+  [`actionCatalog.js`](../src/agent/actionCatalog.js),
+  [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), and
+  [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js) own the
+  intent-action surface behind `submitIntentActions`. This is a separate
+  mutation contract, not just another provider-tool schema.
+- `utils/agent_server/app/*` owns relay concerns only: request models,
+  provider prompt serialization, provider transport, response normalization,
+  logging, and token diagnostics. The relay should treat browser-provided
+  `tools` and `volatileContext` as opaque request data.
+- [`LLM_PLAN/`](.) files are explanatory commentary. They should describe
+  intended ownership and workflows, but generated artifacts and runtime code
+  must not depend on them.
+
+Generated files should remain projections, not additional sources of truth.
+Tests should verify the boundary owned by the nearby source file: contract
+projection near the generator/catalog, runtime behavior near tool helpers,
+session behavior near the session controller, and relay serialization near the
+Python relay. Avoid adding broad inventory tests that mirror the whole surface.
+
 ### Phase 1: Consolidate ownership and delete relay duplication
 
 Goal: keep the current tool and intent-action surface, but make the browser the
