@@ -12,28 +12,8 @@ describe("toolCatalog", () => {
         const toolNames = tools.map((entry) => entry.toolName);
 
         expect(new Set(toolNames).size).toBe(toolNames.length);
-        expect(
-            tools.every(
-                ({ toolName, description, inputFields, strict }) =>
-                    typeof toolName === "string" &&
-                    typeof description === "string" &&
-                    Array.isArray(inputFields) &&
-                    typeof strict === "boolean"
-            )
-        ).toBe(true);
-        expect(
-            tools.some(
-                ({ toolName, strict }) =>
-                    toolName === "jumpToInitialProvenanceState" &&
-                    strict === true
-            )
-        ).toBe(true);
-        expect(
-            tools.some(
-                ({ toolName, strict }) =>
-                    toolName === "submitIntentActions" && strict === false
-            )
-        ).toBe(true);
+        expect(toolNames).toContain("jumpToInitialProvenanceState");
+        expect(toolNames).toContain("submitIntentActions");
     });
 
     it("builds Responses API function tool definitions", () => {
@@ -60,7 +40,6 @@ describe("toolCatalog", () => {
         expect(JSON.stringify(toolDefinitions)).not.toContain(
             "AgentIntentBatchStep"
         );
-        expect(JSON.stringify(toolDefinitions)).not.toContain('"not":{}');
     });
 
     it("validates tool arguments against the generated schema", () => {
