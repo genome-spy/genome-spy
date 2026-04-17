@@ -105,7 +105,6 @@ From the repo root on the DGX:
 ```bash
 export GENOMESPY_AGENT_MODEL=Qwen/Qwen3.5-35B-A3B-GPTQ-Int4
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:8000/v1
-export GENOMESPY_AGENT_API_STYLE=chat_completions
 export GENOMESPY_AGENT_API_KEY=placeholder
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 
@@ -119,7 +118,6 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --project utils/agent_server \
 Why these values:
 
 - `GENOMESPY_AGENT_BASE_URL` points the relay at local vLLM.
-- `GENOMESPY_AGENT_API_STYLE=chat_completions` matches this vLLM setup.
 - `GENOMESPY_AGENT_ENABLE_STREAMING=false` avoids provider-specific streaming
   quirks while the setup is being verified.
 - The command intentionally omits `--reload`. It is not needed here and can
@@ -129,10 +127,6 @@ Important relay issues we hit:
 
 - `VIRTUAL_ENV=.venv does not match the project environment path`
   - Fix: use `--active` or let `uv` use the project environment
-- `System message must be at the beginning`
-  - Cause: the provider rejected the default two-system-message chat prompt
-  - Fix: the relay retries with a merged system/context prompt only for that
-    exact error
 
 ## Use From a MacBook
 
@@ -240,10 +234,6 @@ If you want SSE output, append `?stream=true` to the relay URL.
     ```bash
     --gpu-memory-utilization 0.75
     ```
-- `System message must be at the beginning`
-  - Some chat-completions providers reject the default two-system-message
-    prompt shape.
-  - Fix: restart the relay after the fallback patch and retry the request.
 - `Failed to infer device type`
   - The shell cannot see a usable CUDA runtime.
   - Fix: confirm the GPU is visible in the same shell and that `CUDA_HOME` is

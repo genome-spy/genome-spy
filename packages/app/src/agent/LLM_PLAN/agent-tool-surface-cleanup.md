@@ -491,6 +491,17 @@ Success criteria:
 - tests still protect the contract, but with less duplication
 - the overview docs reference the inventory instead of duplicating it
 
+Status: completed in the current implementation.
+
+- the browser now sends provider-ready tool definitions with each agent-turn
+  request
+- the Python relay consumes request-provided tools and no longer mirrors the
+  browser tool catalog from disk
+- the Python relay only uses the Responses API path for tool-capable turns
+- the OpenAI tool schema projection normalizes the zero-field tool to a plain
+  empty object shape
+- the remaining tests cover the relay boundary without the old mirror checks
+
 ### Phase 2: Split the runtime boundary into host seams
 
 Goal: make the runtime align with the draft host API instead of one giant

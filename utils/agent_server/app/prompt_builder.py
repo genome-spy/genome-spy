@@ -41,31 +41,6 @@ def build_prompt_ir(request: ProviderRequest) -> PromptIR:
     )
 
 
-def build_chat_completions_messages(prompt: PromptIR) -> list[dict[str, Any]]:
-    """Build Chat Completions messages from the shared prompt structure.
-
-    Converts the provider-neutral prompt representation into the ordered message
-    list expected by the Chat Completions API.
-
-    Args:
-        prompt: Shared prompt representation for the current turn.
-
-    Returns:
-        Chat Completions message objects ready for request serialization.
-    """
-    messages: list[dict[str, Any]] = [
-        {"role": "system", "content": prompt.instructions},
-        {
-            "role": "system",
-            "content": prompt.context_text,
-        },
-    ]
-
-    messages.extend(_build_text_messages(prompt.history))
-    messages.append({"role": "user", "content": prompt.message})
-    return messages
-
-
 def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
     """Build Responses API input items from the shared prompt structure.
 
@@ -114,49 +89,7 @@ def _build_context_text(context: dict[str, Any]) -> str:
 
 
 def _build_prompt_context(context: dict[str, Any]) -> dict[str, Any]:
-    prompt_context = dict(context)
-    prompt_context.pop("toolCatalog", None)
-    return prompt_context
-
-
-def _build_text_messages(history: list[HistoryMessage]) -> list[dict[str, Any]]:
-    messages: list[dict[str, Any]] = []
-    for message in history:
-        if message.role == "tool":
-            messages.append(
-                {
-                    "role": "tool",
-                    "content": _stringify_content(message.content, message.text),
-                }
-            )
-        elif message.tool_calls:
-            content: dict[str, Any] = {
-                "role": "assistant",
-                "content": message.text,
-                "tool_calls": [
-                    {
-                        "id": tool_call.call_id,
-                        "type": "function",
-                        "function": {
-                            "name": tool_call.name,
-                            "arguments": _stringify_content(
-                                tool_call.arguments, "{}"
-                            ),
-                        },
-                    }
-                    for tool_call in message.tool_calls
-                ],
-            }
-            messages.append(content)
-        else:
-            messages.append(
-                {
-                    "role": message.role,
-                    "content": message.text,
-                }
-            )
-
-    return messages
+    return dict(context)
 
 
 def _build_response_messages(history: list[HistoryMessage]) -> list[dict[str, Any]]:

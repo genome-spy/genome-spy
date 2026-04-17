@@ -156,7 +156,9 @@ function getToolParameters(inputType) {
         );
     }
 
-    return projectToolSchema(schema, schemaDefinitions);
+    return normalizeOpenAiToolSchema(
+        projectToolSchema(schema, schemaDefinitions)
+    );
 }
 
 /**
@@ -331,6 +333,85 @@ function projectToolSchema(
     }
 
     return projected;
+}
+
+/**
+ * @param {Record<string, any>} schema
+ * @returns {Record<string, any>}
+ */
+function normalizeOpenAiToolSchema(schema) {
+    if (schema === null || typeof schema !== "object") {
+        return schema;
+    }
+
+    if (Array.isArray(schema)) {
+        return schema.map((item) => normalizeOpenAiToolSchema(item));
+    }
+
+    /** @type {Record<string, any>} */
+    const normalized = {};
+    for (const [key, value] of Object.entries(schema)) {
+        if (
+            key === "additionalProperties" &&
+            _isImpossibleOpenAiSchema(value)
+        ) {
+            normalized[key] = false;
+            continue;
+        }
+
+        if (
+            key === "properties" ||
+            key === "items" ||
+            key === "not" ||
+            key === "if" ||
+            key === "then" ||
+            key === "else" ||
+            key === "additionalProperties"
+        ) {
+            normalized[key] = normalizeOpenAiToolSchema(value);
+            continue;
+        }
+
+        if (key === "anyOf" || key === "allOf" || key === "oneOf") {
+            normalized[key] = Array.isArray(value)
+                ? value.map((item) => normalizeOpenAiToolSchema(item))
+                : value;
+            continue;
+        }
+
+        normalized[key] = value;
+    }
+
+    if (normalized.type === "object" && normalized.properties === undefined) {
+        normalized.properties = {};
+    }
+
+    if (
+        normalized.type === "object" &&
+        _isImpossibleOpenAiSchema(normalized.additionalProperties)
+    ) {
+        normalized.additionalProperties = false;
+    }
+
+    return normalized;
+}
+
+/**
+ * @param {unknown} schema
+ * @returns {boolean}
+ */
+function _isImpossibleOpenAiSchema(schema) {
+    return (
+        schema !== null &&
+        typeof schema === "object" &&
+        !Array.isArray(schema) &&
+        Object.keys(schema).length === 1 &&
+        Object.prototype.hasOwnProperty.call(schema, "not") &&
+        schema.not &&
+        typeof schema.not === "object" &&
+        !Array.isArray(schema.not) &&
+        Object.keys(schema.not).length === 0
+    );
 }
 
 /**

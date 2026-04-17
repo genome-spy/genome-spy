@@ -14,14 +14,12 @@ import httpx
 from .config import Settings, describe_api_key_for_logs
 from .models import ProviderRequest, ProviderResponse, ProviderStreamEvent, ToolCall
 from .prompt_builder import (
-    build_chat_completions_messages,
     build_prompt_ir,
     build_responses_input,
 )
 
 logger = logging.getLogger(__name__)
 MAX_LOGGED_PROVIDER_CONTENT = 4000
-ENABLE_RESPONSES_TOOLS = True
 PREFLIGHT_LOG_PATH = Path(
     os.environ.get(
         "GENOMESPY_AGENT_PREFLIGHT_LOG_PATH",
@@ -119,7 +117,7 @@ class OpenAIResponsesProvider(BaseProvider):
                 is invalid.
         """
         prompt = build_prompt_ir(request)
-        tools = _build_responses_tools()
+        tools = [tool.model_dump() for tool in request.tools]
         payload = {
             "model": self._settings.model,
             "instructions": prompt.instructions,
@@ -209,7 +207,7 @@ class OpenAIResponsesProvider(BaseProvider):
                 is invalid.
         """
         prompt = build_prompt_ir(request)
-        tools = _build_responses_tools()
+        tools = [tool.model_dump() for tool in request.tools]
         payload = {
             "model": self._settings.model,
             "instructions": prompt.instructions,
@@ -348,335 +346,6 @@ class OpenAIResponsesProvider(BaseProvider):
                 raise ProviderError(
                     "Provider HTTP request failed: " + repr(exc)
                 ) from exc
-
-
-class OpenAIChatCompletionsProvider(BaseProvider):
-    """Implement relay requests against the Chat Completions API shape."""
-
-    def __init__(self, settings: Settings) -> None:
-        self._settings = settings
-
-    async def generate(self, request: ProviderRequest) -> ProviderResponse:
-        """Generate one complete response through the Chat Completions API.
-
-        Args:
-            request: Normalized provider request for the current relay turn.
-
-        Returns:
-            Final normalized provider response parsed from the Chat Completions API.
-
-        Raises:
-            ProviderError: If the HTTP request fails or the provider response
-                is invalid.
-        """
-        prompt = build_prompt_ir(request)
-        _log_model_request(prompt.instructions, prompt.context_text, [])
-        endpoint = self._settings.base_url + "/chat/completions"
-        headers = _build_auth_headers(self._settings)
-
-        async with httpx.AsyncClient(
-            timeout=self._settings.timeout_seconds
-        ) as client:
-            payload = _build_chat_completions_payload(
-                prompt, self._settings.model, merged_context=False
-            )
-            try:
-                response = await client.post(
-                    endpoint,
-                    json=payload,
-                    headers=headers,
-                )
-            except httpx.ReadTimeout as exc:
-                raise ProviderError(
-                    "Provider request timed out after "
-                    + str(self._settings.timeout_seconds)
-                    + " seconds. Local models may need extra warm-up time on "
-                    + "their first request."
-                ) from exc
-            except Exception as exc:
-                raise ProviderError(
-                    "Provider HTTP request failed: " + repr(exc)
-                ) from exc
-
-        if (
-            response.status_code == 400
-            and _should_retry_with_merged_system_message(response.text)
-        ):
-            async with httpx.AsyncClient(
-                timeout=self._settings.timeout_seconds
-            ) as client:
-                payload = _build_chat_completions_payload(
-                    prompt, self._settings.model, merged_context=True
-                )
-                try:
-                    response = await client.post(
-                        endpoint,
-                        json=payload,
-                        headers=headers,
-                    )
-                except httpx.ReadTimeout as exc:
-                    raise ProviderError(
-                        "Provider request timed out after "
-                        + str(self._settings.timeout_seconds)
-                        + " seconds. Local models may need extra warm-up time on "
-                        + "their first request."
-                    ) from exc
-                except Exception as exc:
-                    raise ProviderError(
-                        "Provider HTTP request failed: " + repr(exc)
-                    ) from exc
-
-        if response.status_code >= 400:
-            _log_provider_auth_diagnostic(
-                "chat_completions", endpoint, self._settings, response.status_code
-            )
-            body_preview = response.text.strip()
-            logger.error(
-                "Provider request failed with status %s: %s",
-                response.status_code,
-                body_preview,
-            )
-            raise ProviderError(
-                "Provider returned HTTP "
-                + str(response.status_code)
-                + ": "
-                + (body_preview or "no response body")
-            )
-
-        try:
-            response_json = response.json()
-        except Exception as exc:
-            logger.warning(
-                "Provider raw outer response from Chat Completions API: %r",
-                response.text,
-            )
-            raise ProviderError(
-                "Provider response was not valid JSON: "
-                + _truncate_logged_content(response.text)
-            ) from exc
-
-        logger.debug(
-            "Provider raw outer response from Chat Completions API: %r",
-            response.text,
-        )
-        response_payload = _parse_chat_completions_response(response_json)
-        logger.debug(
-            "Provider parsed response from Chat Completions API: %r",
-            response_payload.model_dump(),
-        )
-        return response_payload
-
-    async def generate_stream(
-        self, request: ProviderRequest
-    ) -> AsyncIterator[ProviderStreamEvent]:
-        """Stream a response through the Chat Completions API.
-
-        Args:
-            request: Normalized provider request for the current relay turn.
-
-        Returns:
-            Async iterator of normalized provider stream events.
-
-        Raises:
-            ProviderError: If the HTTP request fails or the provider response
-                is invalid.
-        """
-        prompt = build_prompt_ir(request)
-        _log_model_request(prompt.instructions, prompt.context_text, [])
-        endpoint = self._settings.base_url + "/chat/completions"
-        headers = _build_auth_headers(self._settings)
-
-        async with httpx.AsyncClient(
-            timeout=self._settings.timeout_seconds
-        ) as client:
-            for merged_context in (False, True):
-                payload = _build_chat_completions_payload(
-                    prompt,
-                    self._settings.model,
-                    merged_context=merged_context,
-                    stream=True,
-                )
-                try:
-                    async with client.stream(
-                        "POST",
-                        endpoint,
-                        json=payload,
-                        headers=headers,
-                    ) as response:
-                        if response.status_code >= 400:
-                            body = await response.aread()
-                            body_preview = body.decode(
-                                "utf-8", errors="replace"
-                            ).strip()
-                            if (
-                                not merged_context
-                                and response.status_code == 400
-                                and _should_retry_with_merged_system_message(
-                                    body_preview
-                                )
-                            ):
-                                continue
-
-                            _log_provider_auth_diagnostic(
-                                "chat_completions",
-                                endpoint,
-                                self._settings,
-                                response.status_code,
-                            )
-                            logger.error(
-                                "Provider request failed with status %s: %s",
-                                response.status_code,
-                                body_preview,
-                            )
-                            raise ProviderError(
-                                "Provider returned HTTP "
-                                + str(response.status_code)
-                                + ": "
-                                + (body_preview or "no response body")
-                            )
-
-                        text_parts: list[str] = []
-                        reasoning_parts: list[str] = []
-                        stream_mode: str | None = None
-                        final_snapshot_text = ""
-                        async for event_name, data_text in _iter_sse_events(response):
-                            logger.debug(
-                                (
-                                    "Provider raw SSE event %s from Chat "
-                                    "Completions API:\n%s"
-                                ),
-                                event_name,
-                                data_text,
-                            )
-                            if data_text == "[DONE]":
-                                break
-
-                            payload = _load_stream_event_payload(data_text)
-                            if event_name.endswith(".done"):
-                                snapshot_text = _extract_stream_text(
-                                    payload, event_name
-                                )
-                                if snapshot_text:
-                                    final_snapshot_text = snapshot_text
-                                continue
-
-                            text_delta = _extract_stream_text(payload, event_name)
-                            if text_delta:
-                                text_parts.append(text_delta)
-                                if stream_mode is None:
-                                    stream_mode = _classify_stream_text(
-                                        "".join(text_parts)
-                                    )
-                                    if stream_mode == "prose":
-                                        yield ProviderStreamEvent(
-                                            type="delta",
-                                            delta="".join(text_parts),
-                                        )
-                                elif stream_mode == "prose":
-                                    yield ProviderStreamEvent(
-                                        type="delta",
-                                        delta=text_delta,
-                                    )
-
-                            reasoning_delta = _extract_stream_reasoning(
-                                payload, event_name
-                            )
-                            if reasoning_delta:
-                                reasoning_parts.append(reasoning_delta)
-                                yield ProviderStreamEvent(
-                                    type="reasoning_delta",
-                                    reasoning=reasoning_delta,
-                                )
-
-                            if _is_stream_heartbeat(event_name, payload):
-                                yield ProviderStreamEvent(type="heartbeat")
-
-                        final_text = final_snapshot_text or "".join(text_parts).strip()
-                        if not final_text and reasoning_parts:
-                            final_text = "".join(reasoning_parts).strip()
-
-                        logger.debug(
-                            (
-                                "Provider stream collected final text: "
-                                "parts=%d reasoning_parts=%d preview=%s"
-                            ),
-                            len(text_parts),
-                            len(reasoning_parts),
-                            _truncate_logged_content(final_text),
-                        )
-                        yield ProviderStreamEvent(
-                            type="final",
-                            response=_parse_provider_response_text(
-                                final_text, allow_repair=True
-                            ),
-                        )
-                        return
-                except httpx.ReadTimeout as exc:
-                    raise ProviderError(
-                        "Provider request timed out after "
-                        + str(self._settings.timeout_seconds)
-                        + " seconds. Local models may need extra warm-up time on "
-                        + "their first request."
-                    ) from exc
-                except Exception as exc:
-                    raise ProviderError(
-                        "Provider HTTP request failed: " + repr(exc)
-                    ) from exc
-
-
-def _build_responses_tools() -> list[dict[str, Any]]:
-    if not ENABLE_RESPONSES_TOOLS:
-        return []
-
-    from .tool_catalog import build_responses_tool_definitions
-
-    return build_responses_tool_definitions()
-
-
-def _build_chat_completions_payload(
-    prompt: Any, model: str, *, merged_context: bool, stream: bool = False
-) -> dict[str, Any]:
-    messages = build_chat_completions_messages(prompt)
-    if merged_context:
-        messages = [
-            {
-                "role": "system",
-                "content": prompt.instructions + "\n\n" + prompt.context_text,
-            },
-            *messages[2:],
-        ]
-
-    payload: dict[str, Any] = {
-        "model": model,
-        "messages": messages,
-    }
-    if stream:
-        payload["response_format"] = {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "genomespy_plan_response",
-                "strict": True,
-                "schema": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["type", "message"],
-                    "properties": {
-                        "type": {
-                            "type": "string",
-                            "enum": ["answer", "clarify"],
-                        },
-                        "message": {"type": "string"},
-                    },
-                },
-            },
-        }
-        payload["stream"] = True
-
-    return payload
-
-
-def _should_retry_with_merged_system_message(text: str) -> bool:
-    return "system message must be at the beginning" in text.lower()
 
 
 def _log_model_request(
@@ -906,55 +575,6 @@ def _parse_responses_response(payload: dict[str, Any]) -> ProviderResponse:
     return _parse_provider_response_text(text, allow_repair=True)
 
 
-def _parse_chat_completions_response(payload: dict[str, Any]) -> ProviderResponse:
-    try:
-        message = payload["choices"][0]["message"]
-    except (KeyError, IndexError, TypeError) as exc:
-        raise ProviderError("Provider response is missing message content.") from exc
-
-    if not isinstance(message, dict):
-        raise ProviderError("Provider response message must be an object.")
-
-    parsed = message.get("parsed")
-    if isinstance(parsed, dict):
-        return _parse_provider_response_payload(parsed)
-
-    tool_calls = _extract_chat_tool_calls(message)
-    if tool_calls:
-        content = _select_message_content(message)
-        if isinstance(content, list):
-            text = _parse_message_parts(content)
-        elif isinstance(content, str):
-            text = content
-        elif isinstance(content, dict):
-            text = json.dumps(content, ensure_ascii=False, sort_keys=True)
-        else:
-            text = ""
-
-        if _looks_like_structured_response(text):
-            text = ""
-
-        return ProviderResponse(
-            type="tool_call",
-            message=_normalize_provider_text(text) if text else None,
-            tool_calls=tool_calls,
-        )
-
-    content = _select_message_content(message)
-    if isinstance(content, dict):
-        parsed = content
-    elif isinstance(content, list):
-        parsed = _parse_message_parts(content)
-    elif isinstance(content, str):
-        return _parse_provider_response_text(content, allow_repair=True)
-    else:
-        raise ProviderError(
-            "Provider response content must be a string, list, or JSON object."
-        )
-
-    return _parse_provider_response_payload(_ensure_object_payload(parsed))
-
-
 def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderResponse:
     try:
         response = ProviderResponse.model_validate(payload)
@@ -1062,36 +682,6 @@ def _extract_function_calls(items: list[Any]) -> list[ToolCall]:
     return tool_calls
 
 
-def _extract_chat_tool_calls(message: dict[str, Any]) -> list[ToolCall]:
-    tool_calls = message.get("tool_calls")
-    if not isinstance(tool_calls, list):
-        return []
-
-    parsed_calls: list[ToolCall] = []
-    for tool_call in tool_calls:
-        if not isinstance(tool_call, dict):
-            continue
-
-        call_id = tool_call.get("id") or tool_call.get("call_id")
-        function = tool_call.get("function")
-        if not isinstance(call_id, str) or not isinstance(function, dict):
-            continue
-
-        name = function.get("name")
-        if not isinstance(name, str):
-            continue
-
-        parsed_calls.append(
-            ToolCall(
-                call_id=call_id,
-                name=name,
-                arguments=_parse_tool_arguments(function.get("arguments")),
-            )
-        )
-
-    return parsed_calls
-
-
 def _parse_tool_arguments(arguments: Any) -> Any:
     if isinstance(arguments, str):
         try:
@@ -1100,32 +690,6 @@ def _parse_tool_arguments(arguments: Any) -> Any:
             return arguments
 
     return arguments
-
-
-def _select_message_content(message: dict[str, Any]) -> Any:
-    content = message.get("content")
-    if isinstance(content, str) and content.strip() == "":
-        reasoning_content = message.get("reasoning_content")
-        if isinstance(reasoning_content, str) and reasoning_content.strip() != "":
-            return reasoning_content
-
-    if content is not None:
-        return content
-
-    reasoning_content = message.get("reasoning_content")
-    if reasoning_content is not None:
-        return reasoning_content
-
-    return content
-
-
-def _parse_message_parts(parts: list[Any]) -> Any:
-    text = "".join(
-        part["text"]
-        for part in parts
-        if isinstance(part, dict) and isinstance(part.get("text"), str)
-    )
-    return _load_json_content(text, allow_repair=True)
 
 
 def _load_json_content(content: str, allow_repair: bool = False) -> Any:

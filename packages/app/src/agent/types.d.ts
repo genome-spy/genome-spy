@@ -113,6 +113,26 @@ export interface AgentToolCatalogEntry {
     strict?: boolean;
 }
 
+/**
+ * Provider-ready function tool definition sent to the relay.
+ */
+export interface AgentProviderToolDefinition {
+    /** OpenAI Responses API tool kind. */
+    type: "function";
+
+    /** Stable tool name. */
+    name: string;
+
+    /** User-facing tool description. */
+    description: string;
+
+    /** JSON Schema for the tool arguments. */
+    parameters: Record<string, any>;
+
+    /** Whether the provider should enforce strict argument matching. */
+    strict: boolean;
+}
+
 /** One tool invocation requested by the agent. */
 export interface AgentToolCall {
     /** Stable call identifier returned by the provider. */
@@ -196,7 +216,6 @@ export interface AgentStreamCallbacks {
 export interface AgentContext {
     schemaVersion: 1;
     actionCatalog: AgentActionCatalogContextEntry[];
-    toolCatalog: AgentToolCatalogEntry[];
     attributes: AgentAttributeSummary[];
     searchableViews: AgentSearchableViewSummary[];
     selectionAggregation: AgentSelectionAggregationContext;
@@ -204,6 +223,14 @@ export interface AgentContext {
     sampleSummary: AgentSampleSummary;
     sampleGroupLevels: AgentSampleGroupLevel[];
     viewRoot: AgentViewNode;
+}
+
+/** Browser turn request sent to the agent server. */
+export interface AgentTurnRequest {
+    message: string;
+    history: AgentConversationMessage[];
+    context: AgentContext;
+    tools: AgentProviderToolDefinition[];
 }
 
 /** Optional context overlay used while building the agent snapshot. */

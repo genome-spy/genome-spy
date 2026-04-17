@@ -31,6 +31,18 @@ class ToolCall(BaseModel):
     arguments: Any
 
 
+class ProviderToolDefinition(BaseModel):
+    """Represent one provider-ready function tool definition."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    type: Literal["function"]
+    name: str
+    description: str
+    parameters: dict[str, Any]
+    strict: bool
+
+
 class AgentTurnRequest(BaseModel):
     """Represent the browser payload for one agent turn request."""
 
@@ -39,6 +51,7 @@ class AgentTurnRequest(BaseModel):
     message: str
     history: list[HistoryMessage] = Field(default_factory=list)
     context: dict[str, Any]
+    tools: list[ProviderToolDefinition] = Field(default_factory=list)
 
 
 class AgentTurnResponse(BaseModel):
@@ -74,7 +87,10 @@ class ProviderStreamEvent:
 class ProviderRequest(BaseModel):
     """Represent the normalized provider request built from browser input."""
 
+    model_config = ConfigDict(extra="ignore")
+
     system_prompt: str
     context: dict[str, Any]
     history: list[HistoryMessage]
     message: str
+    tools: list[ProviderToolDefinition] = Field(default_factory=list)

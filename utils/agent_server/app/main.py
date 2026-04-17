@@ -21,7 +21,6 @@ from .models import (
 )
 from .providers import (
     BaseProvider,
-    OpenAIChatCompletionsProvider,
     OpenAIResponsesProvider,
     ProviderError,
 )
@@ -43,15 +42,8 @@ def get_settings() -> Settings:
 
 @lru_cache
 def get_provider() -> BaseProvider:
-    """Return the cached provider implementation for current settings.
-
-    Chooses the provider adapter based on the configured API style and reuses
-    the same instance for subsequent requests.
-    """
-    settings = get_settings()
-    if settings.api_style == "chat_completions":
-        return OpenAIChatCompletionsProvider(settings)
-    return OpenAIResponsesProvider(settings)
+    """Return the cached provider implementation for current settings."""
+    return OpenAIResponsesProvider(get_settings())
 
 
 def log_startup_summary() -> None:
@@ -146,6 +138,7 @@ async def agent_turn(
         context=request.context,
         history=request.history,
         message=request.message,
+        tools=request.tools,
     )
     log_token_summary(
         startup_logger,

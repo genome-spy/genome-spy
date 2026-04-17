@@ -8,7 +8,6 @@ def test_summarize_prompt_tokens_includes_main_buckets() -> None:
         context={
             "schemaVersion": 1,
             "sampleSummary": {"sampleCount": 2},
-            "toolCatalog": [{"name": "expandViewNode"}],
             "viewRoot": {"title": "Example"},
         },
         history=[
@@ -68,23 +67,6 @@ def test_summarize_prompt_tokens_breaks_context_down_by_key() -> None:
     assert "attributes" in summary.context_by_key
     assert "viewRoot" in summary.context_by_key
     assert summary.context_by_key["viewRoot"] > 0
-
-
-def test_summarize_prompt_tokens_excludes_tool_catalog_from_context_breakdown() -> None:
-    request = ProviderRequest(
-        system_prompt="system prompt",
-        context={
-            "schemaVersion": 1,
-            "toolCatalog": [{"name": "expandViewNode"}],
-            "viewRoot": {"title": "Example"},
-        },
-        history=[],
-        message="Follow-up question",
-    )
-
-    summary = summarize_prompt_tokens(request, "gpt-4.1-mini")
-
-    assert "toolCatalog" not in summary.context_by_key
 
 
 def test_summarize_prompt_tokens_rejects_blank_model_name() -> None:

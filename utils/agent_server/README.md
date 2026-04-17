@@ -19,7 +19,7 @@ LM Studio, and MLX-based servers. For remote providers, we have been using OpenA
 ```text
 GenomeSpy browser
   -> GenomeSpy agent relay (/v1/agent-turn)
-    -> model server (/v1/responses or /v1/chat/completions)
+    -> model server (/v1/responses)
       -> model
     <- normalized relay response
   <- assistant message in the chat panel
@@ -57,7 +57,6 @@ From the repo root:
 export OPENAI_API_KEY=<your-openai-api-key>
 export GENOMESPY_AGENT_MODEL=gpt-5.4-mini
 export GENOMESPY_AGENT_BASE_URL=https://api.openai.com/v1
-export GENOMESPY_AGENT_API_STYLE=responses
 export GENOMESPY_AGENT_API_KEY=$OPENAI_API_KEY
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 ```
@@ -84,7 +83,7 @@ This is the easiest setup because it does not require a separate local model ser
 
 ### Ollama
 
-Ollama currently uses the `chat_completions` relay mode.
+The current relay path expects a Responses API-compatible server.
 
 ```bash
 ollama serve
@@ -92,7 +91,6 @@ ollama pull gemma4:e4b
 
 export GENOMESPY_AGENT_MODEL=gemma4:e4b
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:11434/v1
-export GENOMESPY_AGENT_API_STYLE=chat_completions
 export GENOMESPY_AGENT_API_KEY=ollama
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 ```
@@ -110,7 +108,6 @@ usually listens on port `1234`.
 ```bash
 export GENOMESPY_AGENT_MODEL=<model-name>
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:1234/v1
-export GENOMESPY_AGENT_API_STYLE=responses
 export GENOMESPY_AGENT_API_KEY=lm-studio
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 ```
@@ -137,7 +134,6 @@ Then point the relay at it:
 ```bash
 export GENOMESPY_AGENT_MODEL=<model-name>
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:8000/v1
-export GENOMESPY_AGENT_API_STYLE=chat_completions
 export GENOMESPY_AGENT_API_KEY=placeholder
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 ```
@@ -166,7 +162,6 @@ oMLX exposes an OpenAI-compatible API on `http://127.0.0.1:8000/v1`.
 ```bash
 export GENOMESPY_AGENT_MODEL=<model-name>
 export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:8000/v1
-export GENOMESPY_AGENT_API_STYLE=responses
 export GENOMESPY_AGENT_API_KEY=omlx
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 ```

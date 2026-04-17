@@ -261,7 +261,6 @@ describe("getAgentContext", () => {
         expect(Object.keys(context)).toEqual([
             "schemaVersion",
             "actionCatalog",
-            "toolCatalog",
             "attributes",
             "searchableViews",
             "selectionAggregation",
@@ -357,15 +356,6 @@ describe("getAgentContext", () => {
         });
         expect(context.attributes[0].description).toBe("Description diagnosis");
         expect(context.actionCatalog.length).toBeGreaterThan(0);
-        expect(context.toolCatalog).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    toolName: "expandViewNode",
-                    description: expect.any(String),
-                    inputType: expect.any(String),
-                }),
-            ])
-        );
         expect(context.searchableViews).toEqual([
             expect.objectContaining({
                 selector: {

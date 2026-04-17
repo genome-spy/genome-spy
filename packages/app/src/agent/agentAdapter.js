@@ -14,6 +14,7 @@ import {
     collectVisibleSampleIds,
 } from "./sampleHierarchyScope.js";
 import { getAgentState } from "./agentState.js";
+import { buildResponsesToolDefinitions } from "./toolCatalog.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -32,6 +33,7 @@ function elapsedMilliseconds(startedAt) {
 /**
  * @typedef {import("./types.d.ts").AgentConversationMessage} AgentConversationMessage
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
+ * @typedef {import("./types.d.ts").AgentTurnRequest} AgentTurnRequest
  */
 
 /**
@@ -182,16 +184,19 @@ export function createAgentAdapter(app) {
         const context = buildAgentContext(app, options.contextOptions);
         const contextBuildMs = elapsedMilliseconds(contextStartedAt);
         const history = normalizeConversationHistory(options.history ?? []);
+        const tools = buildResponsesToolDefinitions();
         const shouldStream =
             options.allowStreaming !== false &&
             shouldUseStreaming(options.streamCallbacks);
         if (options.signal?.aborted) {
             throw createAbortError();
         }
+        /** @type {AgentTurnRequest} */
         const requestPayload = {
             message: options.message,
             history,
             context,
+            tools,
         };
 
         const requestStartedAt = now();

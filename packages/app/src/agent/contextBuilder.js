@@ -1,6 +1,5 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { listAgentActions } from "./actionCatalog.js";
-import { listAgentTools } from "./toolCatalog.js";
 import { buildViewTree } from "./viewTree.js";
 import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 import { isBaselineAction } from "../state/provenanceBaseline.js";
@@ -38,13 +37,6 @@ export function getAgentContext(app, options = {}) {
             description: entry.description,
             payloadFields: entry.payloadFields,
             examplePayload: entry.examplePayload,
-        })),
-        toolCatalog: listAgentTools().map((entry) => ({
-            toolName: entry.toolName,
-            description: entry.description,
-            inputType: entry.inputType,
-            inputFields: entry.inputFields,
-            exampleInput: entry.exampleInput,
         })),
         attributes: sampleView
             ? buildAttributeSummary(sampleView, sampleHierarchy)

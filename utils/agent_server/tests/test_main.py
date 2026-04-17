@@ -9,7 +9,7 @@ from app.main import (
     log_startup_summary,
 )
 from app.models import ProviderResponse, ProviderStreamEvent, ToolCall
-from app.providers import OpenAIChatCompletionsProvider, OpenAIResponsesProvider
+from app.providers import OpenAIResponsesProvider
 
 
 class StubProvider:
@@ -40,6 +40,15 @@ class ToolCallProvider:
                 )
             ],
         )
+
+
+class ToolAwareProvider:
+    async def generate(self, request):  # type: ignore[no-untyped-def]
+        assert len(request.tools) == 1
+        assert request.tools[0].name == "expandViewNode"
+        assert request.tools[0].strict is True
+        assert request.tools[0].parameters["type"] == "object"
+        return ProviderResponse(type="answer", message="Tools arrived.")
 
 
 class StreamingProvider:
@@ -75,20 +84,6 @@ def reset_settings_cache() -> None:
 
 def reset_provider_cache() -> None:
     get_provider.cache_clear()
-
-
-def test_get_provider_uses_chat_completions_for_vllm(monkeypatch) -> None:
-    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
-    monkeypatch.setenv("GENOMESPY_AGENT_API_STYLE", "chat_completions")
-    reset_settings_cache()
-    reset_provider_cache()
-
-    try:
-        provider = get_provider()
-    finally:
-        reset_provider_cache()
-
-    assert isinstance(provider, OpenAIChatCompletionsProvider)
 
 
 def test_get_provider_uses_responses_by_default(monkeypatch) -> None:
@@ -201,6 +196,55 @@ def test_agent_turn_endpoint_returns_tool_call_response(monkeypatch) -> None:
                 },
             }
         ],
+    }
+
+
+def test_agent_turn_endpoint_passes_tools_to_provider(monkeypatch) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    reset_settings_cache()
+    monkeypatch.setattr("app.main.get_provider", lambda: ToolAwareProvider())
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/agent-turn",
+        json={
+            "message": "Expand the collapsed node.",
+            "history": [],
+            "context": {"schemaVersion": 1},
+            "tools": [
+                {
+                    "type": "function",
+                    "name": "expandViewNode",
+                    "description": "Expand a collapsed view branch.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "selector": {
+                                "type": "object",
+                                "properties": {
+                                    "scope": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                    },
+                                    "view": {"type": "string"},
+                                },
+                                "required": ["scope", "view"],
+                                "additionalProperties": False,
+                            }
+                        },
+                        "required": ["selector"],
+                        "additionalProperties": False,
+                    },
+                    "strict": True,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "type": "answer",
+        "message": "Tools arrived.",
     }
 
 

@@ -1,15 +1,10 @@
-from app.models import ProviderRequest, ProviderResponse, ToolCall
+from app.models import ProviderResponse, ToolCall
 from app.providers import (
     _classify_stream_text,
-    _build_chat_completions_payload,
     _extract_stream_text,
-    _parse_chat_completions_response,
     _parse_provider_response_text,
     _parse_responses_response,
-    _should_retry_with_merged_system_message,
 )
-from app.prompt_builder import build_prompt_ir
-
 
 def test_parse_responses_response_returns_normalized_shape() -> None:
     payload = {
@@ -238,93 +233,6 @@ def test_parse_provider_response_text_repairs_decoded_inner_json() -> None:
     )
 
 
-def test_parse_chat_completions_response_prefers_parsed_payload() -> None:
-    payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": "ignored text",
-                    "parsed": {
-                        "type": "answer",
-                        "message": "This view shows methylation.",
-                    },
-                }
-            }
-        ]
-    }
-
-    response = _parse_chat_completions_response(payload)
-
-    assert response == ProviderResponse(
-        type="answer", message="This view shows methylation."
-    )
-
-
-def test_parse_chat_completions_response_uses_reasoning_content_when_content_is_empty(
-) -> None:
-    payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": "",
-                    "reasoning_content": (
-                        '{ "type": "answer", "message": "This is the answer." }'
-                    ),
-                }
-            }
-        ]
-    }
-
-    response = _parse_chat_completions_response(payload)
-
-    assert response == ProviderResponse(
-        type="answer", message="This is the answer."
-    )
-
-
-def test_parse_chat_completions_response_normalizes_escaped_line_breaks() -> None:
-    payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": (
-                        '{"type":"answer","message":"Line 1\\\\n- item 1\\\\n- item 2"}'
-                    )
-                }
-            }
-        ]
-    }
-
-    response = _parse_chat_completions_response(payload)
-
-    assert response == ProviderResponse(
-        type="answer",
-        message="Line 1\n- item 1\n- item 2",
-    )
-
-
-def test_parse_chat_completions_response_falls_back_to_raw_text() -> None:
-    payload = {
-        "choices": [
-            {
-                "message": {
-                    "content": (
-                        "The beta values are shown as rectangles with a y-axis "
-                        "from 0 to 100%."
-                    )
-                }
-            }
-        ]
-    }
-
-    response = _parse_chat_completions_response(payload)
-
-    assert response == ProviderResponse(
-        type="answer",
-        message="The beta values are shown as rectangles with a y-axis from 0 to 100%.",
-    )
-
-
 def test_parse_provider_response_text_uses_last_fenced_json_block() -> None:
     text = (
         "```json\n"
@@ -373,30 +281,3 @@ def test_classify_stream_text_distinguishes_prose_and_structured_json() -> None:
     assert _classify_stream_text(
         '"selector": {"scope": [], "view": "reference-sequence"}'
     ) == "structured"
-
-
-def test_build_chat_completions_payload_can_merge_context_for_vllm() -> None:
-    request = ProviderRequest(
-        system_prompt="system prompt",
-        context={"schemaVersion": 1, "viewRoot": {"title": "Example"}},
-        history=[],
-        message="Follow-up question",
-    )
-
-    prompt = build_prompt_ir(request)
-    payload = _build_chat_completions_payload(
-        prompt, "test-model", merged_context=True
-    )
-
-    assert payload["messages"][0]["role"] == "system"
-    assert payload["messages"][0]["content"].startswith("system prompt\n\n")
-    assert len([message for message in payload["messages"] if message["role"] == "system"]) == 1
-
-
-def test_should_retry_with_merged_system_message_is_specific() -> None:
-    assert _should_retry_with_merged_system_message(
-        "System message must be at the beginning."
-    )
-    assert not _should_retry_with_merged_system_message(
-        "Some other provider error."
-    )

@@ -36,33 +36,48 @@ describe("toolCatalog", () => {
 
     it("builds Responses API function tool definitions", () => {
         const toolDefinitions = buildResponsesToolDefinitions();
+        const expandViewNode = toolDefinitions.find(
+            (tool) => tool.name === "expandViewNode"
+        );
+        const setViewVisibility = toolDefinitions.find(
+            (tool) => tool.name === "setViewVisibility"
+        );
+        const jumpToInitialProvenanceState = toolDefinitions.find(
+            (tool) => tool.name === "jumpToInitialProvenanceState"
+        );
+        const submitIntentActions = toolDefinitions.find(
+            (tool) => tool.name === "submitIntentActions"
+        );
 
         expect(toolDefinitions).toHaveLength(10);
-        expect(toolDefinitions).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    type: "function",
-                    name: "expandViewNode",
-                    strict: true,
-                }),
-                expect.objectContaining({
-                    name: "setViewVisibility",
-                    description: expect.stringContaining(
-                        "visibility of a view"
-                    ),
-                    parameters: expect.objectContaining({
-                        type: "object",
-                    }),
-                }),
-                expect.objectContaining({
-                    name: "submitIntentActions",
-                    strict: false,
-                }),
-            ])
-        );
+        expect(expandViewNode).toMatchObject({
+            type: "function",
+            name: "expandViewNode",
+            strict: true,
+        });
+        expect(setViewVisibility).toMatchObject({
+            name: "setViewVisibility",
+            description: expect.stringContaining("visibility of a view"),
+            parameters: expect.objectContaining({
+                type: "object",
+            }),
+        });
+        expect(jumpToInitialProvenanceState).toMatchObject({
+            name: "jumpToInitialProvenanceState",
+            parameters: {
+                type: "object",
+                properties: {},
+                additionalProperties: false,
+            },
+        });
+        expect(submitIntentActions).toMatchObject({
+            name: "submitIntentActions",
+            strict: false,
+        });
         expect(JSON.stringify(toolDefinitions)).not.toContain(
             "AgentIntentBatchStep"
         );
+        expect(JSON.stringify(toolDefinitions)).not.toContain('"not":{}');
     });
 
     it("validates tool arguments against the generated schema", () => {
