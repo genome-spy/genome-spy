@@ -559,30 +559,120 @@ Success criteria:
 
 ### Phase 4: Reduce duplicated assertions and mirrored expectations
 
-Goal: stop restating the same contract in every layer.
+Goal: stop restating the same contract in every layer and reduce test code
+without weakening the real boundaries.
+
+Current status:
+
+- The browser already sends provider-ready tool definitions with each
+  agent-turn request.
+- The Python request model and Responses provider already consume
+  request-provided tools.
+- The old Python tool-catalog mirror test is gone.
+- The context snapshot no longer carries `toolCatalog`.
+- The generator tests for tool and action artifacts are already narrow
+  file-vs-generator freshness checks.
+
+Measured baseline:
+
+- The main Phase 4 test files currently total about 2,739 lines:
+  - [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js): 110 lines
+  - [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js): 454 lines
+  - [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js):
+    1,296 lines
+  - agent generator freshness tests: 117 lines total
+  - Python relay/provider/prompt tests: 762 lines total
+- Phase 4 should remove at least 300 net lines from that set.
+- A good outcome removes 500 or more net lines.
+- Do not hide the reduction by moving duplicated assertions into new helper
+  files. New helper code only counts if the net line count still drops
+  substantially and the helper tests a real boundary.
+- Record the before/after `wc -l` output when implementing this phase.
+
+Remaining duplication:
+
+- [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js) is still the main
+  app-side tool contract test, but it restates too much exact inventory and
+  per-tool metadata.
+- [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js) still
+  restates the full generated action catalog order even though action catalog
+  generation has its own freshness test.
+- [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js)
+  still has controller tests that assert tool-specific rejection wording for
+  `setViewVisibility`; those belong primarily in the catalog/validator tests.
+- Python provider tests should keep request/response behavior, but they should
+  not become another exact browser tool inventory check.
+- Stale Chat Completions configuration and tests should be removed or renamed
+  as part of the Responses-only cleanup.
 
 Steps:
 
-1. Keep one app-side test that validates the generated tool catalog.
-2. Keep one generator test that checks the generator output against the
-   committed artifacts.
-3. Delete the agent-server tool-catalog mirror tests once the relay receives
-   browser-provided tool definitions.
-4. Delete Chat Completions provider/parser tests once the relay is
-   Responses-only.
-5. Turn prompt text and docs into consumers of the same source where possible.
-6. Prefer a small number of end-to-end contract checks over repeated full
-   list asserts.
-7. Prefer deleting tests with no unique boundary over rewriting them around the
+1. Trim [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js) to one
+   canonical contract test per behavior:
+   - `listAgentTools()` returns unique entries with required fields.
+   - `buildResponsesToolDefinitions()` emits valid function-tool shapes.
+   - one representative zero-field tool still projects to an empty object
+     schema.
+   - one representative non-strict tool still exposes `strict: false`.
+   - schema projection does not leak internal helper definitions such as
+     `AgentIntentBatchStep`.
+   - one malformed-argument validation case still formats AJV errors.
+   - one action-as-tool rejection case still points the model to
+     `submitIntentActions`.
+   Target: reduce from 110 lines to around 70-80 lines.
+2. Remove exact tool-count and broad name-list assertions from
+   [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js) unless they protect
+   one of the specific behaviors above.
+3. Trim [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js):
+   - keep the top-level context wire-shape assertion.
+   - keep a shape-level assertion that `actionCatalog` entries are attached.
+   - remove the exact ordered action type list from the context-builder test.
+     The action generator freshness test owns that contract.
+   Target: remove the exact catalog-list block and any now-redundant fixtures;
+   this file should shrink rather than grow.
+4. Trim [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js):
+   - keep controller behavior for retry budget, repeated rejected calls,
+     transcript updates, and turn lifecycle.
+   - remove assertions that duplicate exact catalog rejection wording.
+   - keep only generic checks that malformed tool calls produce a rejected
+     `tool_result` and prevent handler execution.
+   Target: remove at least 150 lines from this file. It is the largest test
+   file in the set, so Phase 4 is not successful if this file stays roughly the
+   same size.
+5. Keep the generator tests narrow:
+   - keep `generateAgentToolCatalog.test.mjs` as file-vs-generator freshness.
+   - keep action catalog/type/summary generator tests as file-vs-generator
+     freshness while intent actions remain model-facing.
+   - do not add hand-written inventory assertions to generator tests.
+6. Keep Python tests at provider/relay boundaries:
+   - keep one endpoint test proving request-provided `tools` reach the
+     provider request.
+   - keep Responses parser tests for answer, clarification, tool-call, stream,
+     and malformed-provider behavior.
+   - do not assert the full browser tool inventory in Python.
+7. Finish the Responses-only cleanup:
+   - remove stale `chat_completions` configuration values and error messages
+     if the provider path is already gone.
+   - delete or rewrite tests that only preserve the old Chat Completions
+     configuration surface.
+   Target: Python relay/provider/prompt tests should have a net reduction, not
+   just renamed expectations.
+8. Turn prompt text and docs into consumers of the same source where possible.
+9. Prefer deleting tests with no unique boundary over rewriting them around the
    same duplicated inventory.
 
 Success criteria:
 
-- tool-list churn only updates a few high-value checks
+- tool-list churn updates the generated artifact, the canonical catalog test,
+  and only behavior tests for tools whose behavior changed
 - the tests still catch contract drift without duplicating the contract
-- mirrored server checks are gone when the relay no longer mirrors the catalog
-- provider tests cover one supported provider path instead of two divergent
+- context-builder tests do not restate generated action inventory
+- controller tests do not pin exact catalog rejection prose
+- Python tests cover relay/provider behavior, not browser tool inventory
+- provider tests cover one supported Responses path instead of two divergent
   prompt/tool shapes
+- the measured Phase 4 file set drops by at least 300 net lines, with 500+
+  net lines as the target for a strong cleanup
 - test line count goes down while behavior coverage remains focused
 
 ### Phase 5: Make extraction easier later
