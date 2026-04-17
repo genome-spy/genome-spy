@@ -175,7 +175,6 @@ export interface AgentActionSummary {
 export interface AgentAdapter {
     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
     getAgentVolatileContext(): AgentVolatileContext;
-    validateIntentBatch(batch: unknown): IntentBatchValidationResult;
     submitIntentActions(
         batch: IntentBatch,
         options?: { submissionKind?: IntentSubmissionKind }

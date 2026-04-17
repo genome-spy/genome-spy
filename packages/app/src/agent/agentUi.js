@@ -1,5 +1,4 @@
-import { faRobot } from "@fortawesome/free-solid-svg-icons";
-import { getAgentMenuItems } from "./toolbarMenu.js";
+import { faEye, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { getAgentState } from "./agentState.js";
 
 /**
@@ -22,14 +21,20 @@ export function registerAgentUi(app) {
         },
     });
 
-    const removeMenuItems = getAgentMenuItems(app).map((item) =>
-        app.ui.registerToolbarMenuItem(item)
-    );
+    const removeMenuItem = import.meta.env.DEV
+        ? app.ui.registerToolbarMenuItem({
+              label: "Show Agent Context",
+              icon: faEye,
+              callback: async () => {
+                  const { showAgentContextDialog } =
+                      await import("../components/dialogs/agentContextDialog.js");
+                  await showAgentContextDialog(app);
+              },
+          })
+        : () => {};
 
     return () => {
         removeButton();
-        for (const removeMenuItem of removeMenuItems) {
-            removeMenuItem();
-        }
+        removeMenuItem();
     };
 }

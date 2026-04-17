@@ -4,7 +4,6 @@ import {
     submitIntentActions as submitIntentActionsForApp,
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
-import { validateIntentBatch as validateIntentBatchForApp } from "./intentProgramValidator.js";
 import { summarizeProvenanceActions } from "./actionCatalog.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
@@ -304,19 +303,17 @@ export function createAgentAdapter(app) {
     /**
      * @returns {import("./types.d.ts").AgentContextOptions}
      */
-    function getCurrentAgentContextOptions() {
-        return {
-            expandedViewNodeKeys:
-                agentState.agentSessionController?.getSnapshot()
-                    .expandedViewNodeKeys ?? [],
-        };
-    }
-
     /**
      * @param {AgentContextOptions} [contextOptions]
      * @returns {ReturnType<typeof buildAgentContext>}
      */
-    function getAgentContext(contextOptions = getCurrentAgentContextOptions()) {
+    function getAgentContext(
+        contextOptions = {
+            expandedViewNodeKeys:
+                agentState.agentSessionController?.getSnapshot()
+                    .expandedViewNodeKeys ?? [],
+        }
+    ) {
         return buildAgentContext(app, contextOptions);
     }
 
@@ -325,13 +322,6 @@ export function createAgentAdapter(app) {
      */
     function getAgentVolatileContext() {
         return buildAgentVolatileContext(app);
-    }
-
-    /**
-     * @param {unknown} batch
-     */
-    function validateIntentBatch(batch) {
-        return validateIntentBatchForApp(app, batch);
     }
 
     /**
@@ -397,7 +387,6 @@ export function createAgentAdapter(app) {
     return {
         getAgentContext,
         getAgentVolatileContext,
-        validateIntentBatch,
         submitIntentActions,
         resolveViewSelector,
         setViewVisibility,

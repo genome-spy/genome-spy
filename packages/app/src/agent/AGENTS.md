@@ -24,3 +24,8 @@ current visualization state and propose actions. The project is still in early s
 - The agent loop, tool definitions, etc., should follow the best practices and established patterns from the LLM agent design community.
 - Ideally, the agent could be run on a small local LLM without any custom fine-tuning, so the tools and context should be designed with that in mind.
 - If a design choice was discarded, document the reason at a high level when it helps explain the current approach. Do not turn the design docs into a changelog of removed fields or prior IR shapes.
+
+## Commits
+
+- Before commiting, check the diff to ensure that the commit message is accurate
+- Summarize the changes in the commit message body

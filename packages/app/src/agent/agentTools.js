@@ -10,46 +10,9 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  */
 
 /**
- * @typedef {import("./agentToolInputs.d.ts").ExpandViewNodeToolInput} ExpandViewNodeToolInput
- * @typedef {import("./agentToolInputs.d.ts").CollapseViewNodeToolInput} CollapseViewNodeToolInput
- * @typedef {import("./agentToolInputs.d.ts").SetViewVisibilityToolInput} SetViewVisibilityToolInput
- * @typedef {import("./agentToolInputs.d.ts").JumpToProvenanceStateToolInput} JumpToProvenanceStateToolInput
- * @typedef {import("./agentToolInputs.d.ts").JumpToInitialProvenanceStateToolInput} JumpToInitialProvenanceStateToolInput
- * @typedef {import("./agentToolInputs.d.ts").BuildSelectionAggregationAttributeToolInput} BuildSelectionAggregationAttributeToolInput
- * @typedef {import("./agentToolInputs.d.ts").GetMetadataAttributeSummaryToolInput} GetMetadataAttributeSummaryToolInput
- * @typedef {import("./agentToolInputs.d.ts").GetGroupedMetadataAttributeSummaryToolInput} GetGroupedMetadataAttributeSummaryToolInput
- * @typedef {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} SubmitIntentActionsToolInput
- * @typedef {import("./types.d.ts").AgentContext} AgentContext
- * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
- * @typedef {import("./types.d.ts").AgentVolatileContext} AgentVolatileContext
- * @typedef {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource} AgentGroupedMetadataAttributeSummarySource
- * @typedef {import("./types.d.ts").AgentMetadataAttributeSummarySource} AgentMetadataAttributeSummarySource
- * @typedef {import("./types.d.ts").AgentProvenanceAction} AgentProvenanceAction
- * @typedef {import("./types.d.ts").IntentBatch} IntentBatch
- * @typedef {import("./types.d.ts").IntentBatchExecutionResult} IntentBatchExecutionResult
- * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
- * @typedef {import("./types.d.ts").AgentViewStateChange} AgentViewStateChange
- * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
- * @typedef {{
- *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
- *     getAgentVolatileContext(): AgentVolatileContext;
- *     jumpToProvenanceState(provenanceId: string): boolean;
- *     jumpToInitialProvenanceState(): boolean;
- *     resolveViewSelector(selector: ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
- *     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
- *     getMetadataAttributeSummarySource(
- *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
- *     ): AgentMetadataAttributeSummarySource | undefined;
- *     getGroupedMetadataAttributeSummarySource(
- *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
- *     ): AgentGroupedMetadataAttributeSummarySource | undefined;
- *     expandViewNode?(selector: ViewSelector): boolean;
- *     collapseViewNode?(selector: ViewSelector): boolean;
- *     submitIntentActions(
- *         batch: IntentBatch,
- *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
- *     ): Promise<IntentBatchExecutionResult>;
- *     summarizeExecutionResult(result: IntentBatchExecutionResult): string;
+ * @typedef {Omit<import("./types.d.ts").AgentAdapter, "requestAgentTurn"> & {
+ *     expandViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
+ *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  * }} AgentToolRuntime
  */
 
@@ -57,7 +20,7 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {{
  *     text: string;
  *     content?: unknown;
- *     summaries?: IntentBatchSummaryLine[];
+ *     summaries?: import("./types.d.ts").IntentBatchSummaryLine[];
  * }} AgentToolExecutionResult
  */
 
@@ -65,175 +28,146 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * Concrete agent tool handlers keyed by agent tool name.
  */
 export const agentTools = {
-    expandViewNode,
-    collapseViewNode,
-    setViewVisibility,
-    jumpToProvenanceState,
-    jumpToInitialProvenanceState,
-    buildSelectionAggregationAttribute: buildSelectionAggregationAttributeTool,
-    getMetadataAttributeSummary: getMetadataAttributeSummaryTool,
-    getGroupedMetadataAttributeSummary: getGroupedMetadataAttributeSummaryTool,
-    searchViewDatums: searchViewDatumsTool,
-    submitIntentActions: submitIntentActionsTool,
-};
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").ExpandViewNodeToolInput} input
+     */
+    expandViewNode(runtime, input) {
+        return updateViewNodeExpansion(runtime, input.selector, true);
+    },
 
-/**
- * Expands a collapsed view branch in the current session context.
- *
- * @param {AgentToolRuntime} runtime
- * @param {ExpandViewNodeToolInput} input
- * @returns {AgentToolExecutionResult}
- */
-export function expandViewNode(runtime, input) {
-    return updateViewNodeExpansion(runtime, input.selector, true);
-}
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").CollapseViewNodeToolInput} input
+     */
+    collapseViewNode(runtime, input) {
+        return updateViewNodeExpansion(runtime, input.selector, false);
+    },
 
-/**
- * Collapses a previously expanded view branch in the current session context.
- *
- * @param {AgentToolRuntime} runtime
- * @param {CollapseViewNodeToolInput} input
- * @returns {AgentToolExecutionResult}
- */
-export function collapseViewNode(runtime, input) {
-    return updateViewNodeExpansion(runtime, input.selector, false);
-}
-
-/**
- * Sets the configured visibility of a view.
- *
- * @param {AgentToolRuntime} runtime
- * @param {SetViewVisibilityToolInput} input
- * @returns {AgentToolExecutionResult}
- */
-export function setViewVisibility(runtime, input) {
-    return updateViewVisibility(runtime, input.selector, () =>
-        runtime.setViewVisibility(input.selector, input.visibility)
-    );
-}
-
-/**
- * Jumps to a provenance state by id.
- *
- * @param {AgentToolRuntime} runtime
- * @param {JumpToProvenanceStateToolInput} input
- * @returns {AgentToolExecutionResult}
- */
-export function jumpToProvenanceState(runtime, input) {
-    const provenanceAction = findProvenanceAction(runtime, input.provenanceId);
-    const changed = runtime.jumpToProvenanceState(input.provenanceId);
-
-    return {
-        text:
-            changed && provenanceAction
-                ? "Jumped to provenance state: " +
-                  (provenanceAction.summary ?? provenanceAction.type) +
-                  "."
-                : "The requested provenance state was already active.",
-        content: createProvenanceStateActivation(
-            input.provenanceId,
-            provenanceAction,
-            false,
-            changed
-        ),
-    };
-}
-
-/**
- * Jumps to the initial provenance state.
- *
- * @param {AgentToolRuntime} runtime
- * @param {JumpToInitialProvenanceStateToolInput} input
- * @returns {AgentToolExecutionResult}
- */
-export function jumpToInitialProvenanceState(runtime, input) {
-    void input;
-
-    const changed = runtime.jumpToInitialProvenanceState();
-
-    return {
-        text: changed
-            ? "Jumped to the initial provenance state."
-            : "The initial provenance state was already active.",
-        content: createProvenanceStateActivation(
-            undefined,
-            undefined,
-            true,
-            changed
-        ),
-    };
-}
-
-/**
- * Resolves a selection aggregation candidate into an attribute identifier.
- *
- * @param {AgentToolRuntime} runtime
- * @param {BuildSelectionAggregationAttributeToolInput} input
- * @returns {AgentToolExecutionResult}
- */
-export function buildSelectionAggregationAttributeTool(runtime, input) {
-    try {
-        const resolution = buildSelectionAggregationAttribute(
-            runtime.getAgentVolatileContext(),
-            input.candidateId,
-            input.aggregation
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").SetViewVisibilityToolInput} input
+     */
+    setViewVisibility(runtime, input) {
+        return updateViewVisibility(runtime, input.selector, () =>
+            runtime.setViewVisibility(input.selector, input.visibility)
         );
+    },
+
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").JumpToProvenanceStateToolInput} input
+     */
+    jumpToProvenanceState(runtime, input) {
+        const provenanceAction = findProvenanceAction(
+            runtime,
+            input.provenanceId
+        );
+        const changed = runtime.jumpToProvenanceState(input.provenanceId);
 
         return {
             text:
-                `Built an AttributeIdentifier for ${resolution.title} from ` +
-                `${input.candidateId}. No aggregated value was computed. ` +
-                "Use content.attribute as payload.attribute in the next " +
-                "`submitIntentActions` call. If you need a different locus " +
-                "or interval, update the selection first.",
-            content: resolution,
+                changed && provenanceAction
+                    ? "Jumped to provenance state: " +
+                      (provenanceAction.summary ?? provenanceAction.type) +
+                      "."
+                    : "The requested provenance state was already active.",
+            content: createProvenanceStateActivation(
+                input.provenanceId,
+                provenanceAction,
+                false,
+                changed
+            ),
         };
-    } catch (error) {
-        throw new ToolCallRejectionError(
-            error instanceof Error ? error.message : String(error)
-        );
-    }
-}
+    },
 
-/**
- * Executes provenance-changing actions.
- *
- * @param {AgentToolRuntime} runtime
- * @param {SubmitIntentActionsToolInput} input
- * @returns {Promise<AgentToolExecutionResult>}
- */
-export async function submitIntentActionsTool(runtime, input) {
-    try {
-        const result = await runtime.submitIntentActions(
-            {
-                schemaVersion: 1,
-                steps: input.actions,
-                rationale: input.note,
-            },
-            {
-                submissionKind: "agent",
-            }
-        );
+    /**
+     * @param {AgentToolRuntime} runtime
+     */
+    jumpToInitialProvenanceState(runtime) {
+        const changed = runtime.jumpToInitialProvenanceState();
+
         return {
-            text: runtime.summarizeExecutionResult(result),
-            content: result.content,
-            summaries: result.summaries,
+            text: changed
+                ? "Jumped to the initial provenance state."
+                : "The initial provenance state was already active.",
+            content: createProvenanceStateActivation(
+                undefined,
+                undefined,
+                true,
+                changed
+            ),
         };
-    } catch (error) {
-        // Surface intent execution failures back to the model as a rejected tool call.
-        if (error instanceof ToolCallRejectionError) {
-            throw error;
-        }
+    },
 
-        throw new ToolCallRejectionError(
-            error instanceof Error ? error.message : String(error)
-        );
-    }
-}
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").BuildSelectionAggregationAttributeToolInput} input
+     */
+    buildSelectionAggregationAttribute(runtime, input) {
+        try {
+            const resolution = buildSelectionAggregationAttribute(
+                runtime.getAgentVolatileContext(),
+                input.candidateId,
+                input.aggregation
+            );
+
+            return {
+                text:
+                    `Built an AttributeIdentifier for ${resolution.title} from ` +
+                    `${input.candidateId}. No aggregated value was computed. ` +
+                    "Use content.attribute as payload.attribute in the next " +
+                    "`submitIntentActions` call. If you need a different locus " +
+                    "or interval, update the selection first.",
+                content: resolution,
+            };
+        } catch (error) {
+            throw new ToolCallRejectionError(
+                error instanceof Error ? error.message : String(error)
+            );
+        }
+    },
+
+    getMetadataAttributeSummary: getMetadataAttributeSummaryTool,
+    getGroupedMetadataAttributeSummary: getGroupedMetadataAttributeSummaryTool,
+    searchViewDatums: searchViewDatumsTool,
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} input
+     */
+    async submitIntentActions(runtime, input) {
+        try {
+            const result = await runtime.submitIntentActions(
+                {
+                    schemaVersion: 1,
+                    steps: input.actions,
+                    rationale: input.note,
+                },
+                {
+                    submissionKind: "agent",
+                }
+            );
+            return {
+                text: runtime.summarizeExecutionResult(result),
+                content: result.content,
+                summaries: result.summaries,
+            };
+        } catch (error) {
+            // Surface intent execution failures back to the model as a rejected tool call.
+            if (error instanceof ToolCallRejectionError) {
+                throw error;
+            }
+
+            throw new ToolCallRejectionError(
+                error instanceof Error ? error.message : String(error)
+            );
+        }
+    },
+};
 
 /**
  * @param {AgentToolRuntime} runtime
- * @param {ViewSelector} selector
+ * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
  */
 function ensureResolvedView(runtime, selector) {
     const view = runtime.resolveViewSelector(selector);
@@ -247,7 +181,7 @@ function ensureResolvedView(runtime, selector) {
 
 /**
  * @param {AgentToolRuntime} runtime
- * @param {ViewSelector} selector
+ * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
  * @param {boolean} expanded
  * @returns {AgentToolExecutionResult}
  */
@@ -279,7 +213,7 @@ function updateViewNodeExpansion(runtime, selector, expanded) {
 
 /**
  * @param {AgentToolRuntime} runtime
- * @param {ViewSelector} selector
+ * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
  * @param {() => void} applyChange
  * @returns {AgentToolExecutionResult}
  */
@@ -305,12 +239,12 @@ function updateViewVisibility(runtime, selector, applyChange) {
 }
 
 /**
- * @param {AgentViewStateChange["domain"]} domain
- * @param {AgentViewStateChange["field"]} field
- * @param {ViewSelector} selector
+ * @param {import("./types.d.ts").AgentViewStateChange["domain"]} domain
+ * @param {import("./types.d.ts").AgentViewStateChange["field"]} field
+ * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
  * @param {boolean} before
  * @param {boolean} after
- * @returns {AgentViewStateChange}
+ * @returns {import("./types.d.ts").AgentViewStateChange}
  */
 function createViewStateChange(domain, field, selector, before, after) {
     return {
@@ -326,7 +260,7 @@ function createViewStateChange(domain, field, selector, before, after) {
 
 /**
  * @param {string | undefined} provenanceId
- * @param {AgentProvenanceAction | undefined} action
+ * @param {import("./types.d.ts").AgentProvenanceAction | undefined} action
  * @param {boolean} initial
  * @param {boolean} changed
  * @returns {{
@@ -361,7 +295,7 @@ function createProvenanceStateActivation(
 /**
  * @param {AgentToolRuntime} runtime
  * @param {string} provenanceId
- * @returns {AgentProvenanceAction}
+ * @returns {import("./types.d.ts").AgentProvenanceAction}
  */
 function findProvenanceAction(runtime, provenanceId) {
     const action = runtime
