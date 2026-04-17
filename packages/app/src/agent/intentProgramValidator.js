@@ -29,10 +29,6 @@ export function validateIntentBatch(app, batch) {
     if (!sampleView) {
         errors.push("SampleView is not available.");
     }
-    const getAttributeInfo =
-        sampleView?.compositeAttributeInfoSource.getAttributeInfo.bind(
-            sampleView.compositeAttributeInfoSource
-        );
 
     /** @type {import("./types.js").IntentBatchStep[]} */
     const normalizedSteps = [];
@@ -43,7 +39,6 @@ export function validateIntentBatch(app, batch) {
             stepObject.actionType
         );
         const payload = stepObject.payload;
-        validatePayloadAttributes(getAttributeInfo, payload, errors);
 
         normalizedSteps.push({
             actionType,
@@ -67,27 +62,4 @@ export function validateIntentBatch(app, batch) {
             steps: normalizedSteps,
         },
     };
-}
-
-/**
- * @param {((attribute: unknown) => unknown) | undefined} getAttributeInfo
- * @param {unknown} payload
- * @param {string[]} errors
- */
-function validatePayloadAttributes(getAttributeInfo, payload, errors) {
-    if (!getAttributeInfo || !payload || typeof payload !== "object") {
-        return;
-    }
-
-    const candidate = /** @type {{ attribute?: unknown }} */ (payload);
-    if (candidate.attribute === undefined) {
-        return;
-    }
-
-    try {
-        getAttributeInfo(candidate.attribute);
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        errors.push(message[0].toLowerCase() + message.slice(1));
-    }
 }
