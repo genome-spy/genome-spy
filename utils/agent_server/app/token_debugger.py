@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
 from dataclasses import dataclass
@@ -37,6 +38,7 @@ class TokenDebugSummary:
         context: Estimated tokens for the serialized context snapshot.
         volatile_context: Estimated tokens for the serialized volatile context.
         history: Estimated tokens for the serialized conversation history.
+        tools: Rough estimated tokens for provider tool definitions.
         message: Estimated tokens for the current user message.
         total: Sum of the main prompt buckets.
         context_by_key: Estimated tokens for each top-level prompt-context key.
@@ -47,6 +49,7 @@ class TokenDebugSummary:
     context: int
     volatile_context: int
     history: int
+    tools: int
     message: int
     total: int
     context_by_key: dict[str, int]
@@ -57,13 +60,15 @@ def summarize_prompt_tokens(request: ProviderRequest, model: str) -> TokenDebugS
 
     Builds the same provider-neutral prompt representation used by the relay and
     counts the major prompt buckets that developers care about most: system
-    prompt, stable context snapshot, volatile context, history, and the current
-    user message. The top-level context-key breakdown is included to help
-    identify whether parts such as `viewRoot` dominate the prompt budget.
+    prompt, stable context snapshot, volatile context, history, tool
+    definitions, and the current user message. Tool-definition tokens are a
+    rough estimate because providers may serialize tool metadata differently.
+    The top-level context-key breakdown is included to help identify whether
+    parts such as `viewRoot` dominate the prompt budget.
 
     Args:
         request: Provider request containing system prompt, stable context,
-            volatile context, history, and current user message.
+            volatile context, history, tools, and current user message.
         model: Model name used for tokenizer selection when available.
 
     Returns:
@@ -103,6 +108,7 @@ def summarize_prompt_tokens(request: ProviderRequest, model: str) -> TokenDebugS
         if prompt.volatile_context_text
         else 0
     )
+    tools_tokens = _count_tokens(_build_tools_text(request), encoding)
     message_tokens = _count_tokens(prompt.message, encoding)
 
     return TokenDebugSummary(
@@ -111,12 +117,14 @@ def summarize_prompt_tokens(request: ProviderRequest, model: str) -> TokenDebugS
         context=context_tokens,
         volatile_context=volatile_context_tokens,
         history=history_tokens,
+        tools=tools_tokens,
         message=message_tokens,
         total=(
             system_prompt_tokens
             + context_tokens
             + volatile_context_tokens
             + history_tokens
+            + tools_tokens
             + message_tokens
         ),
         context_by_key=context_by_key,
@@ -178,6 +186,13 @@ def format_token_summary(
             + str(summary.history)
             + " ("
             + _format_percentage(summary.history, total)
+            + ")"
+        ),
+        (
+            "    tools (rough estimate) = "
+            + str(summary.tools)
+            + " ("
+            + _format_percentage(summary.tools, total)
             + ")"
         ),
         (
@@ -280,6 +295,15 @@ def _stringify_text(content: Any, fallback: str) -> str:
     if content is None:
         return fallback
 
-    from json import dumps
+    return json.dumps(content, ensure_ascii=False, sort_keys=True)
 
-    return dumps(content, ensure_ascii=False, sort_keys=True)
+
+def _build_tools_text(request: ProviderRequest) -> str:
+    if not request.tools:
+        return ""
+
+    return json.dumps(
+        [tool.model_dump() for tool in request.tools],
+        ensure_ascii=False,
+        sort_keys=True,
+    )

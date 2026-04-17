@@ -1,4 +1,9 @@
-from app.models import HistoryMessage, ProviderRequest, ToolCall
+from app.models import (
+    HistoryMessage,
+    ProviderRequest,
+    ProviderToolDefinition,
+    ToolCall,
+)
 from app.token_debugger import format_token_summary, summarize_prompt_tokens
 
 
@@ -41,12 +46,14 @@ def test_summarize_prompt_tokens_includes_main_buckets() -> None:
     assert summary.context > 0
     assert summary.volatile_context == 0
     assert summary.history > 0
+    assert summary.tools == 0
     assert summary.message > 0
     assert summary.total == (
         summary.system_prompt
         + summary.context
         + summary.volatile_context
         + summary.history
+        + summary.tools
         + summary.message
     )
 
@@ -88,6 +95,55 @@ def test_summarize_prompt_tokens_includes_volatile_context_bucket() -> None:
         + summary.context
         + summary.volatile_context
         + summary.history
+        + summary.tools
+        + summary.message
+    )
+
+
+def test_summarize_prompt_tokens_includes_tools_bucket() -> None:
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={"schemaVersion": 1},
+        history=[],
+        message="Follow-up question",
+        tools=[
+            ProviderToolDefinition(
+                type="function",
+                name="expandViewNode",
+                description="Expand a collapsed view branch.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "selector": {
+                            "type": "object",
+                            "properties": {
+                                "scope": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "view": {"type": "string"},
+                            },
+                            "required": ["scope", "view"],
+                            "additionalProperties": False,
+                        }
+                    },
+                    "required": ["selector"],
+                    "additionalProperties": False,
+                },
+                strict=True,
+            )
+        ],
+    )
+
+    summary = summarize_prompt_tokens(request, "gpt-4.1-mini")
+
+    assert summary.tools > 0
+    assert summary.total == (
+        summary.system_prompt
+        + summary.context
+        + summary.volatile_context
+        + summary.history
+        + summary.tools
         + summary.message
     )
 
@@ -132,6 +188,7 @@ def test_format_token_summary_lists_ranked_context_keys() -> None:
     assert "  buckets:" in formatted
     assert "    system = " in formatted
     assert "    volatile context = " in formatted
+    assert "    tools (rough estimate) = " in formatted
     assert "  context keys:" in formatted
     assert "viewRoot = " in formatted
     assert "of context, " in formatted
