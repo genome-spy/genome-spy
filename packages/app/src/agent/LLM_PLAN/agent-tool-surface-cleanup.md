@@ -572,19 +572,20 @@ Current status:
 - The context snapshot no longer carries `toolCatalog`.
 - The generator tests for tool and action artifacts are already narrow
   file-vs-generator freshness checks.
-- The Phase 4 trim is implemented: the controller and catalog tests are
-  narrower, stale provider config/test surface is removed, and the measured
-  line set dropped from 2,797 to 2,497 lines.
+- The JS-side trim is implemented: the controller and catalog tests are
+  narrower, stale provider config/test surface is removed, and the current
+  measured set is about 2,721 lines once generator freshness tests and Python
+  boundary tests are counted.
 
 Measured baseline:
 
-- The main Phase 4 test files currently total about 2,739 lines:
-  - [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js): 110 lines
-  - [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js): 454 lines
+- The main Phase 4 test files currently total about 2,721 lines:
+  - [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js): 72 lines
+  - [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js): 417 lines
   - [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js):
-    1,296 lines
+    1,190 lines
   - agent generator freshness tests: 117 lines total
-  - Python relay/provider/prompt tests: 762 lines total
+  - Python relay/provider/prompt tests: 925 lines total
 - Phase 4 should remove at least 300 net lines from that set.
 - A good outcome removes 500 or more net lines.
 - Do not hide the reduction by moving duplicated assertions into new helper
@@ -594,15 +595,9 @@ Measured baseline:
 
 Remaining duplication:
 
-- [`toolCatalog.test.js`](../src/agent/toolCatalog.test.js) is still the main
-  app-side tool contract test, but it restates too much exact inventory and
-  per-tool metadata.
-- [`contextBuilder.test.js`](../src/agent/contextBuilder.test.js) still
-  restates the full generated action catalog order even though action catalog
-  generation has its own freshness test.
 - [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js)
-  still has controller tests that assert tool-specific rejection wording for
-  `setViewVisibility`; those belong primarily in the catalog/validator tests.
+  still repeats rejected-call handling across several controller paths; keep
+  those checks representative rather than exhaustive.
 - Python provider tests should keep request/response behavior, but they should
   not become another exact browser tool inventory check.
 - Stale provider configuration and tests should be removed or renamed

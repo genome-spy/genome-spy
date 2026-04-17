@@ -254,31 +254,13 @@ function createAppStub(options = {}) {
 }
 
 describe("getAgentContext", () => {
-    it("keeps the agent context wire shape stable", () => {
-        const app = createAppStub();
-        const context = getAgentContext(app);
-
-        expect(Object.keys(context)).toEqual([
-            "schemaVersion",
-            "actionCatalog",
-            "attributes",
-            "searchableViews",
-            "selectionAggregation",
-            "provenance",
-            "sampleSummary",
-            "sampleGroupLevels",
-            "viewRoot",
-        ]);
-
-        expect(() => JSON.stringify(context)).not.toThrow();
-        expect(context.actionCatalog.length).toBeGreaterThan(0);
-    });
-
     it("builds a compact agent context from app state", () => {
         const app = createAppStub();
         const context = getAgentContext(app);
 
         expect(context.schemaVersion).toBe(1);
+        expect(() => JSON.stringify(context)).not.toThrow();
+        expect(context.actionCatalog.length).toBeGreaterThan(0);
         expect(context.sampleSummary).toEqual({
             sampleCount: 2,
             groupCount: 1,
@@ -318,7 +300,6 @@ describe("getAgentContext", () => {
             specifier: "diagnosis",
         });
         expect(context.attributes[0].description).toBe("Description diagnosis");
-        expect(context.actionCatalog.length).toBeGreaterThan(0);
         expect(context.searchableViews).toEqual([
             expect.objectContaining({
                 selector: {
@@ -347,18 +328,13 @@ describe("getAgentContext", () => {
             }),
         ]);
         expect(context.selectionAggregation.fields).toEqual([]);
-        expect(context.provenance).toEqual([
+        expect(context.provenance[0]).toEqual(
             expect.objectContaining({
                 summary: "Brush brush (0-1) in Patient Cohort",
                 type: "paramProvenance/paramChange",
                 provenanceId: "provenance-1",
-            }),
-            expect.objectContaining({
-                summary: "Sort by min(purity) in selection brush",
-                type: "sampleView/sortBy",
-                provenanceId: "provenance-2",
-            }),
-        ]);
+            })
+        );
     });
 
     it("caches searchable view examples across context rebuilds", () => {
