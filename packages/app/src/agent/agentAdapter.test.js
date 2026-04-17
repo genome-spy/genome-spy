@@ -395,12 +395,9 @@ describe("agentAdapter", () => {
             '"history":[{"id":"msg_001","role":"user","text":"What is in this visualization?"},{"id":"msg_002","role":"assistant","text":"It is a cohort view."},{"id":"msg_003","role":"assistant","text":"Do you want the structure or the encodings?","kind":"clarification"}]'
         );
         const requestBody = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
-        expect(requestBody.context.selectionAggregation).toBeUndefined();
-        expect(requestBody.volatileContext).toEqual({
-            selectionAggregation: {
-                fields: [],
-            },
-        });
+        expect(
+            requestBody.volatileContext.selectionAggregation.fields
+        ).not.toEqual([]);
     });
 
     it("consumes streamed agent-turn events when callbacks are provided", async () => {

@@ -1,5 +1,4 @@
 import { getAgentContext as buildAgentContext } from "./contextBuilder.js";
-import { getAgentVolatileContext as buildAgentVolatileContext } from "./volatileContextBuilder.js";
 import {
     submitIntentActions as submitIntentActionsForApp,
     summarizeExecutionResult,
@@ -15,6 +14,7 @@ import {
 } from "./sampleHierarchyScope.js";
 import { getAgentState } from "./agentState.js";
 import { buildResponsesToolDefinitions } from "./toolCatalog.js";
+import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -182,7 +182,7 @@ export function createAgentAdapter(app) {
         const startedAt = now();
         const contextStartedAt = now();
         const context = buildAgentContext(app, options.contextOptions);
-        const volatileContext = buildAgentVolatileContext(app);
+        const volatileContext = getAgentVolatileContext();
         const contextBuildMs = elapsedMilliseconds(contextStartedAt);
         const history = normalizeConversationHistory(options.history ?? []);
         const tools = buildResponsesToolDefinitions();
@@ -318,10 +318,12 @@ export function createAgentAdapter(app) {
     }
 
     /**
-     * @returns {ReturnType<typeof buildAgentVolatileContext>}
+     * @returns {import("./types.d.ts").AgentVolatileContext}
      */
     function getAgentVolatileContext() {
-        return buildAgentVolatileContext(app);
+        return {
+            selectionAggregation: getSelectionAggregationContext(app),
+        };
     }
 
     /**

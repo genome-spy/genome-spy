@@ -49,9 +49,26 @@ export const agentTools = {
      * @param {import("./agentToolInputs.d.ts").SetViewVisibilityToolInput} input
      */
     setViewVisibility(runtime, input) {
-        return updateViewVisibility(runtime, input.selector, () =>
-            runtime.setViewVisibility(input.selector, input.visibility)
-        );
+        const selector = input.selector;
+
+        const view = ensureResolvedView(runtime, selector);
+        const before = view.isVisible();
+        runtime.setViewVisibility(selector, input.visibility);
+        const after = view.isVisible();
+
+        return {
+            text:
+                after === before
+                    ? "The view was already in the requested visibility state."
+                    : "Updated the requested view visibility.",
+            content: createViewStateChange(
+                "user_visibility",
+                "visible",
+                selector,
+                before,
+                after
+            ),
+        };
     },
 
     /**
@@ -207,33 +224,6 @@ function updateViewNodeExpansion(runtime, selector, expanded) {
             selector,
             before,
             expanded
-        ),
-    };
-}
-
-/**
- * @param {AgentToolRuntime} runtime
- * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
- * @param {() => void} applyChange
- * @returns {AgentToolExecutionResult}
- */
-function updateViewVisibility(runtime, selector, applyChange) {
-    const view = ensureResolvedView(runtime, selector);
-    const before = view.isVisible();
-    applyChange();
-    const after = view.isVisible();
-
-    return {
-        text:
-            after === before
-                ? "The view was already in the requested visibility state."
-                : "Updated the requested view visibility.",
-        content: createViewStateChange(
-            "user_visibility",
-            "visible",
-            selector,
-            before,
-            after
         ),
     };
 }
