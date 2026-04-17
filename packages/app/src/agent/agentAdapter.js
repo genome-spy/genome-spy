@@ -1,4 +1,5 @@
 import { getAgentContext as buildAgentContext } from "./contextBuilder.js";
+import { getAgentVolatileContext as buildAgentVolatileContext } from "./volatileContextBuilder.js";
 import {
     submitIntentActions as submitIntentActionsForApp,
     summarizeExecutionResult,
@@ -182,6 +183,7 @@ export function createAgentAdapter(app) {
         const startedAt = now();
         const contextStartedAt = now();
         const context = buildAgentContext(app, options.contextOptions);
+        const volatileContext = buildAgentVolatileContext(app);
         const contextBuildMs = elapsedMilliseconds(contextStartedAt);
         const history = normalizeConversationHistory(options.history ?? []);
         const tools = buildResponsesToolDefinitions();
@@ -196,6 +198,7 @@ export function createAgentAdapter(app) {
             message: options.message,
             history,
             context,
+            volatileContext,
             tools,
         };
 
@@ -318,6 +321,13 @@ export function createAgentAdapter(app) {
     }
 
     /**
+     * @returns {ReturnType<typeof buildAgentVolatileContext>}
+     */
+    function getAgentVolatileContext() {
+        return buildAgentVolatileContext(app);
+    }
+
+    /**
      * @param {unknown} batch
      */
     function validateIntentBatch(batch) {
@@ -386,6 +396,7 @@ export function createAgentAdapter(app) {
 
     return {
         getAgentContext,
+        getAgentVolatileContext,
         validateIntentBatch,
         submitIntentActions,
         resolveViewSelector,

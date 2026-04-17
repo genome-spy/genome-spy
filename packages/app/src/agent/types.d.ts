@@ -174,6 +174,7 @@ export interface AgentActionSummary {
 /** Agent adapter API exposed to the UI and the embed entry point. */
 export interface AgentAdapter {
     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
+    getAgentVolatileContext(): AgentVolatileContext;
     validateIntentBatch(batch: unknown): IntentBatchValidationResult;
     submitIntentActions(
         batch: IntentBatch,
@@ -218,11 +219,15 @@ export interface AgentContext {
     actionCatalog: AgentActionCatalogContextEntry[];
     attributes: AgentAttributeSummary[];
     searchableViews: AgentSearchableViewSummary[];
-    selectionAggregation: AgentSelectionAggregationContext;
     provenance: AgentProvenanceAction[];
     sampleSummary: AgentSampleSummary;
     sampleGroupLevels: AgentSampleGroupLevel[];
     viewRoot: AgentViewNode;
+}
+
+/** High-churn context sent late in the provider prompt for the current turn. */
+export interface AgentVolatileContext {
+    selectionAggregation: AgentSelectionAggregationContext;
 }
 
 /** Browser turn request sent to the agent server. */
@@ -230,6 +235,7 @@ export interface AgentTurnRequest {
     message: string;
     history: AgentConversationMessage[];
     context: AgentContext;
+    volatileContext: AgentVolatileContext;
     tools: AgentProviderToolDefinition[];
 }
 

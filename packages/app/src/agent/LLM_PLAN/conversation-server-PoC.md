@@ -87,12 +87,23 @@ The server should prepend a fixed system prompt internally, for example:
 
 The app does not send provider-specific formatting.
 
-The server should build the LLM prompt in this order:
+The server should keep stable prompt prefix content ahead of volatile app
+state. Build the LLM prompt in this order:
 
 1. system prompt
-2. context snapshot
-3. conversation history
-4. latest user message
+2. conversation history
+3. stable app-state context block
+4. volatile app-state context block
+5. latest user message
+
+The browser sends stable `context` and high-churn `volatileContext` as separate
+request objects. `volatileContext` may include active selections and current
+zoomable scale domains / viewport coordinates. Treat the volatile block as
+opaque per-turn developer context, not as a saved conversation message. The
+latest volatile block is authoritative for app state and overrides stale state
+mentioned earlier in history. Keeping volatile state near the end improves
+prompt-prefix caching because user and assistant history can remain a stable
+prefix across turns.
 
 ### Request Example
 
@@ -132,6 +143,11 @@ The server should build the LLM prompt in this order:
       "title": "viewRoot",
       "description": "Functional Segmentation (FUSE) of ENCODE WGBS data",
       "children": []
+    }
+  },
+  "volatileContext": {
+    "selectionAggregation": {
+      "fields": []
     }
   }
 }

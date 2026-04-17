@@ -46,11 +46,14 @@ class ProviderToolDefinition(BaseModel):
 class AgentTurnRequest(BaseModel):
     """Represent the browser payload for one agent turn request."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     message: str
     history: list[HistoryMessage] = Field(default_factory=list)
     context: dict[str, Any]
+    volatile_context: dict[str, Any] = Field(
+        default_factory=dict, alias="volatileContext"
+    )
     tools: list[ProviderToolDefinition] = Field(default_factory=list)
 
 
@@ -87,10 +90,13 @@ class ProviderStreamEvent:
 class ProviderRequest(BaseModel):
     """Represent the normalized provider request built from browser input."""
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     system_prompt: str
     context: dict[str, Any]
+    volatile_context: dict[str, Any] = Field(
+        default_factory=dict, alias="volatileContext"
+    )
     history: list[HistoryMessage]
     message: str
     tools: list[ProviderToolDefinition] = Field(default_factory=list)

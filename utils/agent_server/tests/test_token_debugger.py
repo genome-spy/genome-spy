@@ -39,11 +39,13 @@ def test_summarize_prompt_tokens_includes_main_buckets() -> None:
     assert summary.model == "gpt-4.1-mini"
     assert summary.system_prompt > 0
     assert summary.context > 0
+    assert summary.volatile_context == 0
     assert summary.history > 0
     assert summary.message > 0
     assert summary.total == (
         summary.system_prompt
         + summary.context
+        + summary.volatile_context
         + summary.history
         + summary.message
     )
@@ -67,6 +69,27 @@ def test_summarize_prompt_tokens_breaks_context_down_by_key() -> None:
     assert "attributes" in summary.context_by_key
     assert "viewRoot" in summary.context_by_key
     assert summary.context_by_key["viewRoot"] > 0
+
+
+def test_summarize_prompt_tokens_includes_volatile_context_bucket() -> None:
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={"schemaVersion": 1},
+        volatile_context={"selectionAggregation": {"fields": []}},
+        history=[],
+        message="Follow-up question",
+    )
+
+    summary = summarize_prompt_tokens(request, "gpt-4.1-mini")
+
+    assert summary.volatile_context > 0
+    assert summary.total == (
+        summary.system_prompt
+        + summary.context
+        + summary.volatile_context
+        + summary.history
+        + summary.message
+    )
 
 
 def test_summarize_prompt_tokens_rejects_blank_model_name() -> None:
@@ -108,6 +131,7 @@ def test_format_token_summary_lists_ranked_context_keys() -> None:
     assert "Agent token usage:" in formatted
     assert "  buckets:" in formatted
     assert "    system = " in formatted
+    assert "    volatile context = " in formatted
     assert "  context keys:" in formatted
     assert "viewRoot = " in formatted
     assert "of context, " in formatted

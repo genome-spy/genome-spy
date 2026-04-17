@@ -157,9 +157,6 @@ function createMockAgentController(scenario, options = {}) {
             },
         ],
         actionCatalog: [],
-        selectionAggregation: {
-            fields: [],
-        },
         provenance: [
             {
                 summary: "Set samples",
@@ -171,6 +168,11 @@ function createMockAgentController(scenario, options = {}) {
 
     const runtime = /** @type {any} */ ({
         getAgentContext: () => baseContext,
+        getAgentVolatileContext: () => ({
+            selectionAggregation: {
+                fields: /** @type {import("./types.d.ts").AgentSelectionAggregationContext["fields"]} */ ([]),
+            },
+        }),
         requestAgentTurn: async (
             /** @type {string} */ message,
             /** @type {Array<any>} */ _history = [],

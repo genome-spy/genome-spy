@@ -42,6 +42,7 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
 }));
 
 import { getAgentContext } from "./contextBuilder.js";
+import { getAgentVolatileContext } from "./volatileContextBuilder.js";
 
 function createAppStub(options = {}) {
     const geneSearchData = options.geneSearchData ?? [
@@ -327,7 +328,6 @@ describe("getAgentContext", () => {
                 dataFields: ["gene_symbol", "gene_name"],
             }),
         ]);
-        expect(context.selectionAggregation.fields).toEqual([]);
         expect(context.provenance[0]).toEqual(
             expect.objectContaining({
                 summary: "Brush brush (0-1) in Patient Cohort",
@@ -389,5 +389,15 @@ describe("getAgentContext", () => {
             "breast cancer 1",
             "epidermal growth factor receptor",
         ]);
+    });
+});
+
+describe("getAgentVolatileContext", () => {
+    it("builds high-churn selection aggregation state separately", () => {
+        const app = createAppStub();
+
+        const volatileContext = getAgentVolatileContext(app);
+
+        expect(volatileContext.selectionAggregation.fields).toEqual([]);
     });
 });

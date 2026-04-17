@@ -132,7 +132,8 @@ function createRuntimeStub() {
         ),
         jumpToProvenanceState: vi.fn(() => true),
         jumpToInitialProvenanceState: vi.fn(() => true),
-        getAgentContext: vi.fn(() => ({
+        getAgentContext: vi.fn(() => ({})),
+        getAgentVolatileContext: vi.fn(() => ({
             selectionAggregation: {
                 fields: [
                     {
@@ -185,7 +186,7 @@ describe("agentTools", () => {
                 aggregation: "max",
             })
         );
-        expect(runtime.getAgentContext).toHaveBeenCalledTimes(1);
+        expect(runtime.getAgentVolatileContext).toHaveBeenCalledTimes(1);
     });
 
     it("summarizes categorical metadata attributes", () => {
@@ -659,7 +660,7 @@ describe("agentTools", () => {
 
     it("rejects unknown selection aggregation candidates as tool errors", () => {
         const runtime = createRuntimeStub();
-        runtime.getAgentContext.mockReturnValueOnce({
+        runtime.getAgentVolatileContext.mockReturnValueOnce({
             selectionAggregation: {
                 fields: [],
             },

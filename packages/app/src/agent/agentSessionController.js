@@ -20,6 +20,7 @@ import { agentTools } from "./agentTools.js";
 /** @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine */
 /** @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions */
 /** @typedef {import("./types.d.ts").AgentContext} AgentContext */
+/** @typedef {import("./types.d.ts").AgentVolatileContext} AgentVolatileContext */
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
 /** @typedef {keyof typeof agentTools} AgentToolName */
 /** @typedef {import("./types.d.ts").AgentTurnResponse | {
@@ -107,6 +108,7 @@ import { agentTools } from "./agentTools.js";
  *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
  *     ): Promise<IntentBatchExecutionResult>;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
+ *     getAgentVolatileContext(): AgentVolatileContext;
  *     summarizeProvenanceActionsSince(
  *         startIndex: number
  *     ): IntentBatchSummaryLine[];

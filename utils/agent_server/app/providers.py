@@ -125,13 +125,16 @@ class OpenAIResponsesProvider(BaseProvider):
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
-        _log_model_request(prompt.instructions, prompt.context_text, tools)
+        _log_model_request(
+            prompt.instructions,
+            prompt.context_text,
+            prompt.volatile_context_text,
+            tools,
+        )
         endpoint = self._settings.base_url + "/responses"
         headers = _build_auth_headers(self._settings)
 
-        async with httpx.AsyncClient(
-            timeout=self._settings.timeout_seconds
-        ) as client:
+        async with httpx.AsyncClient(timeout=self._settings.timeout_seconds) as client:
             try:
                 response = await client.post(
                     endpoint,
@@ -216,13 +219,16 @@ class OpenAIResponsesProvider(BaseProvider):
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
-        _log_model_request(prompt.instructions, prompt.context_text, tools)
+        _log_model_request(
+            prompt.instructions,
+            prompt.context_text,
+            prompt.volatile_context_text,
+            tools,
+        )
         endpoint = self._settings.base_url + "/responses"
         headers = _build_auth_headers(self._settings)
 
-        async with httpx.AsyncClient(
-            timeout=self._settings.timeout_seconds
-        ) as client:
+        async with httpx.AsyncClient(timeout=self._settings.timeout_seconds) as client:
             try:
                 async with client.stream(
                     "POST",
@@ -348,8 +354,16 @@ class OpenAIResponsesProvider(BaseProvider):
 
 
 def _log_model_request(
-    instructions: str, context_text: str, tools: list[dict[str, Any]]
+    instructions: str,
+    context_text: str,
+    volatile_context_text: str | None,
+    tools: list[dict[str, Any]],
 ) -> None:
+    volatile_dump = (
+        "\n\nVolatile context:\n" + volatile_context_text
+        if volatile_context_text
+        else ""
+    )
     dump = (
         "\n=== GenomeSpy agent preflight ===\n"
         + "Timestamp: "
@@ -359,6 +373,7 @@ def _log_model_request(
         + instructions
         + "\n\nContext:\n"
         + context_text
+        + volatile_dump
         + "\n\nTools:\n"
         + json.dumps(tools, ensure_ascii=False, indent=2)
         + "\n=== End preflight ===\n"

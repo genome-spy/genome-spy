@@ -5,17 +5,17 @@ import { buildSelectionAggregationAttributeIdentifier } from "../sampleView/sele
  * Resolves a selection-aggregation candidate into an `AttributeIdentifier`
  * for intent actions, plus a short preview.
  *
- * @param {import("./types.js").AgentContext} context
+ * @param {import("./types.js").AgentVolatileContext} volatileContext
  * @param {string} candidateId
  * @param {import("../sampleView/types.js").AggregationOp} aggregation
  * @returns {import("./types.js").SelectionAggregationResolution}
  */
 export function buildSelectionAggregationAttribute(
-    context,
+    volatileContext,
     candidateId,
     aggregation
 ) {
-    const candidate = context.selectionAggregation.fields.find(
+    const candidate = volatileContext.selectionAggregation.fields.find(
         (field) => field.candidateId === candidateId
     );
     if (!candidate) {

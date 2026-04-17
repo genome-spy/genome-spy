@@ -6,7 +6,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from .models import ProviderRequest
-from .prompt_builder import _build_context_text, _build_prompt_context, build_prompt_ir
+from .prompt_builder import (
+    _build_context_text,
+    _build_prompt_context,
+    build_prompt_ir,
+)
 
 TiktokenModule = Any
 
@@ -31,6 +35,7 @@ class TokenDebugSummary:
         model: Model name used to choose the tokenizer when possible.
         system_prompt: Estimated tokens for the system instructions.
         context: Estimated tokens for the serialized context snapshot.
+        volatile_context: Estimated tokens for the serialized volatile context.
         history: Estimated tokens for the serialized conversation history.
         message: Estimated tokens for the current user message.
         total: Sum of the main prompt buckets.
@@ -40,26 +45,25 @@ class TokenDebugSummary:
     model: str
     system_prompt: int
     context: int
+    volatile_context: int
     history: int
     message: int
     total: int
     context_by_key: dict[str, int]
 
 
-def summarize_prompt_tokens(
-    request: ProviderRequest, model: str
-) -> TokenDebugSummary:
+def summarize_prompt_tokens(request: ProviderRequest, model: str) -> TokenDebugSummary:
     """Estimate token usage for the main relay prompt components.
 
     Builds the same provider-neutral prompt representation used by the relay and
     counts the major prompt buckets that developers care about most: system
-    prompt, context snapshot, history, and the current user message. The
-    top-level context-key breakdown is included to help identify whether parts
-    such as `viewRoot` dominate the prompt budget.
+    prompt, stable context snapshot, volatile context, history, and the current
+    user message. The top-level context-key breakdown is included to help
+    identify whether parts such as `viewRoot` dominate the prompt budget.
 
     Args:
-        request: Provider request containing system prompt, context, history,
-            and current user message.
+        request: Provider request containing system prompt, stable context,
+            volatile context, history, and current user message.
         model: Model name used for tokenizer selection when available.
 
     Returns:
@@ -94,22 +98,32 @@ def summarize_prompt_tokens(
 
     system_prompt_tokens = _count_tokens(prompt.instructions, encoding)
     context_tokens = _count_tokens(prompt.context_text, encoding)
+    volatile_context_tokens = (
+        _count_tokens(prompt.volatile_context_text, encoding)
+        if prompt.volatile_context_text
+        else 0
+    )
     message_tokens = _count_tokens(prompt.message, encoding)
 
     return TokenDebugSummary(
         model=model,
         system_prompt=system_prompt_tokens,
         context=context_tokens,
+        volatile_context=volatile_context_tokens,
         history=history_tokens,
         message=message_tokens,
-        total=system_prompt_tokens + context_tokens + history_tokens + message_tokens,
+        total=(
+            system_prompt_tokens
+            + context_tokens
+            + volatile_context_tokens
+            + history_tokens
+            + message_tokens
+        ),
         context_by_key=context_by_key,
     )
 
 
-def log_token_summary(
-    logger: logging.Logger, summary: TokenDebugSummary
-) -> None:
+def log_token_summary(logger: logging.Logger, summary: TokenDebugSummary) -> None:
     """Log a compact token-usage summary for one provider request.
 
     Args:
@@ -119,7 +133,9 @@ def log_token_summary(
     logger.info("%s", format_token_summary(summary))
 
 
-def format_token_summary(summary: TokenDebugSummary, *, max_context_keys: int = 5) -> str:
+def format_token_summary(
+    summary: TokenDebugSummary, *, max_context_keys: int = 5
+) -> str:
     """Format a readable token-usage summary for logs and tests.
 
     Args:
@@ -148,6 +164,13 @@ def format_token_summary(summary: TokenDebugSummary, *, max_context_keys: int = 
             + str(summary.context)
             + " ("
             + _format_percentage(summary.context, total)
+            + ")"
+        ),
+        (
+            "    volatile context = "
+            + str(summary.volatile_context)
+            + " ("
+            + _format_percentage(summary.volatile_context, total)
             + ")"
         ),
         (
@@ -214,9 +237,7 @@ def _format_context_breakdown_lines(
     ]
 
     if len(sorted_items) > max_context_keys:
-        other_tokens = sum(
-            tokens for _, tokens in sorted_items[max_context_keys:]
-        )
+        other_tokens = sum(tokens for _, tokens in sorted_items[max_context_keys:])
         lines.append(
             (
                 f"    other = {other_tokens} "

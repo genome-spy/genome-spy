@@ -17,6 +17,7 @@ class StubProvider:
         assert request.message == "How are methylation levels encoded?"
         assert request.history[0].text == "What is in this visualization?"
         assert request.context["schemaVersion"] == 1
+        assert request.volatile_context == {}
         return ProviderResponse(
             type="answer",
             message="The beta-value track encodes it.",
@@ -48,6 +49,7 @@ class ToolAwareProvider:
         assert request.tools[0].name == "expandViewNode"
         assert request.tools[0].strict is True
         assert request.tools[0].parameters["type"] == "object"
+        assert request.volatile_context["selectionAggregation"]["fields"] == []
         return ProviderResponse(type="answer", message="Tools arrived.")
 
 
@@ -65,9 +67,7 @@ class StreamingProvider:
         )
         yield ProviderStreamEvent(
             type="delta",
-            delta=(
-                '"type":"answer","message":"The beta-value track encodes it."}'
-            ),
+            delta=('"type":"answer","message":"The beta-value track encodes it."}'),
         )
         yield ProviderStreamEvent(
             type="final",
@@ -210,6 +210,7 @@ def test_agent_turn_endpoint_passes_tools_to_provider(monkeypatch) -> None:
             "message": "Expand the collapsed node.",
             "history": [],
             "context": {"schemaVersion": 1},
+            "volatileContext": {"selectionAggregation": {"fields": []}},
             "tools": [
                 {
                     "type": "function",

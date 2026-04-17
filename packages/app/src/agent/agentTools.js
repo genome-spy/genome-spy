@@ -21,6 +21,7 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} SubmitIntentActionsToolInput
  * @typedef {import("./types.d.ts").AgentContext} AgentContext
  * @typedef {import("./types.d.ts").AgentContextOptions} AgentContextOptions
+ * @typedef {import("./types.d.ts").AgentVolatileContext} AgentVolatileContext
  * @typedef {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource} AgentGroupedMetadataAttributeSummarySource
  * @typedef {import("./types.d.ts").AgentMetadataAttributeSummarySource} AgentMetadataAttributeSummarySource
  * @typedef {import("./types.d.ts").AgentProvenanceAction} AgentProvenanceAction
@@ -31,6 +32,7 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {{
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
+ *     getAgentVolatileContext(): AgentVolatileContext;
  *     jumpToProvenanceState(provenanceId: string): boolean;
  *     jumpToInitialProvenanceState(): boolean;
  *     resolveViewSelector(selector: ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
@@ -172,7 +174,7 @@ export function jumpToInitialProvenanceState(runtime, input) {
 export function buildSelectionAggregationAttributeTool(runtime, input) {
     try {
         const resolution = buildSelectionAggregationAttribute(
-            runtime.getAgentContext(),
+            runtime.getAgentVolatileContext(),
             input.candidateId,
             input.aggregation
         );

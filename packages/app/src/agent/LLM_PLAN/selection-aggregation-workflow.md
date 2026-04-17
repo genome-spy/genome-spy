@@ -76,7 +76,7 @@ construction.
 
 What is available today:
 
-- Read-only agent context already includes `selectionAggregation`.
+- Volatile agent context includes `selectionAggregation`.
   - `selectionAggregation.fields` lists one row per selection-field pair for
     the current active interval selections.
   - Each field summary already carries a stable `candidateId`,
@@ -88,8 +88,8 @@ What is available today:
   - The agent should read them from `parameterDeclarations`, not from
     `selectionAggregation`.
 - There is no dedicated candidate-query tool.
-  - The agent gets candidate information from the context snapshot returned by
-    `getAgentContext(app)`.
+  - The agent gets candidate information from the volatile context snapshot
+    returned by `getAgentVolatileContext(app)`.
   - If the agent needs a refreshed snapshot, it gets one on the next agent
     turn after the app rebuilds context.
 - The available mutation entry point is `submitIntentActions`.

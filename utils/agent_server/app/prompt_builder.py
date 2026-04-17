@@ -14,6 +14,8 @@ class PromptIR:
     instructions: str
     context: dict[str, Any]
     context_text: str
+    volatile_context: dict[str, Any]
+    volatile_context_text: str | None
     history: list[HistoryMessage]
     message: str
 
@@ -25,17 +27,20 @@ def build_prompt_ir(request: ProviderRequest) -> PromptIR:
     adapters can build their own payloads from one consistent source.
 
     Args:
-        request: Provider request containing the system prompt, context, history,
-            and current user message.
+        request: Provider request containing the system prompt, stable context,
+            volatile context, history, and current user message.
 
     Returns:
         PromptIR containing the canonical prompt pieces for the current turn.
     """
     context_text = _build_context_text(request.context)
+    volatile_context_text = _build_volatile_context_text(request.volatile_context)
     return PromptIR(
         instructions=request.system_prompt,
         context=request.context,
         context_text=context_text,
+        volatile_context=request.volatile_context,
+        volatile_context_text=volatile_context_text,
         history=request.history,
         message=request.message,
     )
@@ -45,7 +50,9 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
     """Build Responses API input items from the shared prompt structure.
 
     Converts the provider-neutral prompt representation into the structured
-    message list expected by the Responses API.
+    message list expected by the Responses API. Stable history and context are
+    emitted before the volatile context block, which keeps high-churn browser
+    state near the current user message.
 
     Args:
         prompt: Shared prompt representation for the current turn.
@@ -53,19 +60,11 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
     Returns:
         Responses API input items ready for request serialization.
     """
-    messages: list[dict[str, Any]] = [
-        {
-            "role": "developer",
-            "content": [
-                {
-                    "type": "input_text",
-                    "text": prompt.context_text,
-                }
-            ],
-        }
-    ]
-
+    messages: list[dict[str, Any]] = []
     messages.extend(_build_response_messages(prompt.history))
+    messages.append(_build_developer_text_item(prompt.context_text))
+    if prompt.volatile_context_text:
+        messages.append(_build_developer_text_item(prompt.volatile_context_text))
     messages.append(
         {
             "role": "user",
@@ -82,10 +81,39 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
 
 def _build_context_text(context: dict[str, Any]) -> str:
     prompt_context = _build_prompt_context(context)
-    return (
-        "Current GenomeSpy context snapshot:\n"
-        + json.dumps(prompt_context, indent=2, ensure_ascii=False)
+    return "Current GenomeSpy context snapshot:\n" + json.dumps(
+        prompt_context, indent=2, ensure_ascii=False
     )
+
+
+def _build_volatile_context_text(volatile_context: dict[str, Any]) -> str | None:
+    """Serialize browser-owned volatile state as an opaque late prompt block.
+
+    GenomeSpy App decides which fields belong in volatile context. The Python
+    relay deliberately does not inspect those fields because this keeps the
+    server independent of browser-side interaction details. The relay only
+    serializes the object after conversation history and stable context, close
+    to the current user message, so high-churn interaction state does not
+    invalidate more of the prompt prefix than necessary.
+    """
+    if not volatile_context:
+        return None
+
+    return "Current volatile GenomeSpy state:\n" + json.dumps(
+        volatile_context, indent=2, ensure_ascii=False
+    )
+
+
+def _build_developer_text_item(text: str) -> dict[str, Any]:
+    return {
+        "role": "developer",
+        "content": [
+            {
+                "type": "input_text",
+                "text": text,
+            }
+        ],
+    }
 
 
 def _build_prompt_context(context: dict[str, Any]) -> dict[str, Any]:

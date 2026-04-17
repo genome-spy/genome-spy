@@ -118,7 +118,7 @@ export type JumpToInitialProvenanceStateToolInput = Record<string, never>;
 export interface BuildSelectionAggregationAttributeToolInput {
     /**
      * Stable identifier for the selected candidate row. The identifiers are
-     * available in `selectionAggregationCandidates` in the view context.
+     * available in `selectionAggregation.fields` in the volatile context.
      * They become available after a selection is made with a successful
      * `paramChange` action.
      */

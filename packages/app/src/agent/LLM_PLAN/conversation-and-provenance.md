@@ -189,6 +189,22 @@ Rationale:
   visualization context independently of the chat history.
 - The POC can still send both pieces together in one request body.
 
+## Prompt Ordering And Volatile State
+
+For provider prompt caching, keep stable content before volatile app state. The
+preferred order is: system/developer instructions, conversation history, stable
+app-state context, volatile app-state context, and then the latest user
+message.
+
+The browser should send stable `context` and high-churn `volatileContext` as
+separate request objects. Highly volatile state such as active selections,
+brush intervals, current zoomable scale domains, and viewport coordinates can
+then be injected as a compact per-turn developer/context block immediately
+before the latest user message. Do not store that block as a normal
+conversation message. It is an attention hint and current-state grounding for
+the current turn. The latest current-state block is authoritative and overrides
+stale selections or viewport coordinates mentioned earlier in the transcript.
+
 ## Draft Message History Shape
 
 Draft idea:

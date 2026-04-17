@@ -8,6 +8,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  *     requestAgentTurn: ReturnType<typeof vi.fn>;
  *     submitIntentActions: ReturnType<typeof vi.fn>;
  *     getAgentContext: ReturnType<typeof vi.fn>;
+ *     getAgentVolatileContext: ReturnType<typeof vi.fn>;
  *     resolveViewSelector: ReturnType<typeof vi.fn>;
  *     setViewVisibility: ReturnType<typeof vi.fn>;
  *     summarizeExecutionResult: ReturnType<typeof vi.fn>;
@@ -18,7 +19,8 @@ function createRuntimeMock() {
     return {
         requestAgentTurn: vi.fn(),
         submitIntentActions: vi.fn(),
-        getAgentContext: vi.fn(() => ({
+        getAgentContext: vi.fn(() => ({})),
+        getAgentVolatileContext: vi.fn(() => ({
             selectionAggregation: {
                 fields: [],
             },
@@ -608,7 +610,7 @@ describe("createAgentSessionController", () => {
 
     it("resolves a selection aggregation candidate into the canonical attribute", async () => {
         const runtime = createRuntimeMock();
-        runtime.getAgentContext.mockReturnValue({
+        runtime.getAgentVolatileContext.mockReturnValue({
             selectionAggregation: {
                 fields: [
                     {
@@ -648,7 +650,7 @@ describe("createAgentSessionController", () => {
             },
         ]);
 
-        expect(runtime.getAgentContext).toHaveBeenCalledTimes(1);
+        expect(runtime.getAgentVolatileContext).toHaveBeenCalledTimes(1);
         expect(results).toEqual([
             expect.objectContaining({
                 rejected: false,

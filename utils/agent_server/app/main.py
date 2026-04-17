@@ -135,6 +135,7 @@ async def agent_turn(
     provider_request = ProviderRequest(
         system_prompt=settings.system_prompt,
         context=request.context,
+        volatile_context=request.volatile_context,
         history=request.history,
         message=request.message,
         tools=request.tools,
@@ -191,9 +192,7 @@ async def _stream_plan(
             if event.type == "delta" and event.delta:
                 yield _encode_sse_event("delta", {"delta": event.delta})
             elif event.type == "reasoning_delta" and event.reasoning:
-                yield _encode_sse_event(
-                    "reasoning_delta", {"delta": event.reasoning}
-                )
+                yield _encode_sse_event("reasoning_delta", {"delta": event.reasoning})
             elif event.type == "heartbeat":
                 yield _encode_sse_event("heartbeat", {"status": "working"})
             elif event.type == "final":

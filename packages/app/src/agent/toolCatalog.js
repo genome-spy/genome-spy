@@ -401,16 +401,23 @@ function normalizeOpenAiToolSchema(schema) {
  * @returns {boolean}
  */
 function _isImpossibleOpenAiSchema(schema) {
+    if (
+        schema === null ||
+        typeof schema !== "object" ||
+        Array.isArray(schema)
+    ) {
+        return false;
+    }
+
+    const objectSchema = /** @type {Record<string, unknown>} */ (schema);
+
     return (
-        schema !== null &&
-        typeof schema === "object" &&
-        !Array.isArray(schema) &&
-        Object.keys(schema).length === 1 &&
-        Object.prototype.hasOwnProperty.call(schema, "not") &&
-        schema.not &&
-        typeof schema.not === "object" &&
-        !Array.isArray(schema.not) &&
-        Object.keys(schema.not).length === 0
+        Object.keys(objectSchema).length === 1 &&
+        Object.prototype.hasOwnProperty.call(objectSchema, "not") &&
+        objectSchema.not &&
+        typeof objectSchema.not === "object" &&
+        !Array.isArray(objectSchema.not) &&
+        Object.keys(objectSchema.not).length === 0
     );
 }
 

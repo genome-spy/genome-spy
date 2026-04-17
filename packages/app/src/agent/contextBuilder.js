@@ -1,7 +1,6 @@
 import templateResultToString from "../utils/templateResultToString.js";
 import { listAgentActions } from "./actionCatalog.js";
 import { buildViewTree } from "./viewTree.js";
-import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 import { isBaselineAction } from "../state/provenanceBaseline.js";
 import { getEncodingSearchFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import { getViewSelector } from "@genome-spy/core/view/viewSelectors.js";
@@ -25,7 +24,6 @@ export function getAgentContext(app, options = {}) {
     const sampleView = app.getSampleView();
     const sampleHierarchy = app.provenance.getPresentState()?.sampleView;
     const provenance = app.provenance.getActionHistory() ?? [];
-    const selectionAggregation = getSelectionAggregationContext(app);
     const { root: viewRoot } = buildViewTree(app, options);
     const actionCatalog = listAgentActions();
     const searchableViews = buildSearchableViews(app);
@@ -42,7 +40,6 @@ export function getAgentContext(app, options = {}) {
             ? buildAttributeSummary(sampleView, sampleHierarchy)
             : [],
         searchableViews,
-        selectionAggregation,
         provenance: buildProvenanceActions(app, provenance),
         sampleSummary: buildSampleSummary(sampleHierarchy),
         sampleGroupLevels: sampleView
