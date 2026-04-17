@@ -117,6 +117,7 @@ export default class AgentChatPanel extends LitElement {
         streamDraftText: { state: true },
         streamReasoningText: { state: true },
         streamHeartbeatTick: { state: true },
+        devMode: { type: Boolean },
     };
 
     static styles = [
@@ -130,6 +131,14 @@ export default class AgentChatPanel extends LitElement {
                 min-height: 640px;
                 color: #222;
                 font-family: var(--gs-font-family, sans-serif);
+            }
+
+            .tool-call {
+                --accent-color: #c77d20;
+            }
+
+            .tool-result {
+                --accent-color: #4f8a4f;
             }
 
             .panel {
@@ -248,8 +257,6 @@ export default class AgentChatPanel extends LitElement {
                 padding: var(--gs-basic-spacing, 10px);
                 border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
                 border-radius: 4px;
-                border-left-width: 4px;
-                border-left-color: var(--gs-theme-primary, #6c82ab);
                 background: white;
                 color: #444;
             }
@@ -274,48 +281,38 @@ export default class AgentChatPanel extends LitElement {
                 border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
                 border-radius: 4px;
                 background: white;
-                border-left-width: 4px;
-            }
 
-            .message.user {
-                align-self: flex-end;
-                max-width: min(78%, 40rem);
-                border-left-color: var(--gs-theme-primary, #6c82ab);
-                border-color: color-mix(
-                    in oklab,
-                    var(--gs-theme-primary, #6c82ab) 30%,
-                    #d0d0d0
-                );
-                background: color-mix(
-                    in oklab,
-                    var(--gs-theme-primary, #6c82ab) 8%,
-                    white
-                );
-                border-radius: 14px 14px 4px 14px;
-            }
+                &.user {
+                    align-self: flex-end;
+                    max-width: min(78%, 40rem);
+                    border: none;
+                    background: #ececec;
+                    border-radius: 14px 14px 2px 14px;
+                }
 
-            .message.assistant {
-                align-self: flex-start;
-                max-width: min(84%, 44rem);
-                padding: 0.25rem 0.15rem;
-                border: none;
-                background: transparent;
-                border-left-width: 0;
-            }
+                &.assistant {
+                    align-self: flex-start;
+                    max-width: min(84%, 44rem);
+                    padding: 0.25rem 0.15rem;
+                    border: none;
+                    background: transparent;
+                    border-left-width: 0;
+                }
 
-            .message.assistant.streaming {
-                display: grid;
-                gap: 0.45rem;
-                max-width: min(84%, 44rem);
-                padding: 0.25rem 0.15rem;
-                border: none;
-                background: transparent;
-                border-left-width: 0;
+                &.assistant.streaming {
+                    display: grid;
+                    gap: 0.45rem;
+                    max-width: min(84%, 44rem);
+                    padding: 0.25rem 0.15rem;
+                    border: none;
+                    background: transparent;
+                    border-left-width: 0;
+                }
             }
 
             .assistant-body {
                 display: grid;
-                gap: 0.6rem;
+                gap: 0.5em;
             }
 
             .streaming-body {
@@ -354,12 +351,14 @@ export default class AgentChatPanel extends LitElement {
                 font-size: 0.88rem;
             }
 
-            .assistant-body .markdown > :first-child {
-                margin-top: 0;
-            }
+            .markdown {
+                > :first-child {
+                    margin-top: 0;
+                }
 
-            .assistant-body .markdown > :last-child {
-                margin-bottom: 0;
+                > :last-child {
+                    margin-bottom: 0;
+                }
             }
 
             .message.result {
@@ -372,16 +371,6 @@ export default class AgentChatPanel extends LitElement {
 
             .message.error {
                 border-left-color: #b55454;
-            }
-
-            .message.tool-call {
-                border-left-color: #c77d20;
-                background: color-mix(in oklab, #c77d20 6%, white);
-            }
-
-            .message.tool-result {
-                border-left-color: #4f8a4f;
-                background: color-mix(in oklab, #4f8a4f 6%, white);
             }
 
             .message-title {
@@ -405,62 +394,67 @@ export default class AgentChatPanel extends LitElement {
                 color: #222;
             }
 
-            .tool-call-list {
+            .message.tool {
+                border-color: color-mix(
+                    in oklab,
+                    var(--accent-color) 30%,
+                    white
+                );
+                background-color: color-mix(
+                    in oklab,
+                    var(--accent-color) 7%,
+                    white
+                );
+            }
+
+            .tool-list {
                 display: grid;
                 gap: 0.5rem;
                 margin: 0;
                 padding: 0;
             }
 
-            .tool-call-item {
+            .tool-item {
                 display: grid;
                 gap: 0.3rem;
                 padding: 0.55rem 0.65rem;
-                border: 1px solid rgb(199 125 32 / 20%);
+                border: 1px solid;
                 border-radius: 4px;
-                background: rgb(199 125 32 / 6%);
+                border-color: color-mix(
+                    in oklab,
+                    var(--accent-color) 50%,
+                    white
+                );
+                background: color-mix(in oklab, var(--accent-color) 15%, white);
             }
 
-            .tool-call-name {
+            .tool-name {
                 font-size: 0.9rem;
                 font-weight: 700;
-                color: #7a4b0f;
+                color: color-mix(in oklab, var(--accent-color) 62%, black);
             }
 
-            .tool-call-meta,
-            .tool-result-meta {
+            .tool-meta {
                 color: #6d6d6d;
                 font-size: 0.78rem;
             }
 
-            .tool-call-args,
-            .tool-result-text {
+            .tool-args,
+            .tool-text {
                 margin: 0;
                 padding: 0.5rem 0.6rem;
                 border-radius: 4px;
                 background: rgb(255 255 255 / 75%);
-                color: #2b2b2b;
-                font-family: var(
-                    --gs-mono-font-family,
-                    ui-monospace,
-                    SFMono-Regular,
-                    Consolas,
-                    "Liberation Mono",
-                    monospace
-                );
+                color: color-mix(in oklab, var(--accent-color) 40%, black);
+                font-family: var(--gs-mono-font-family, monospace);
                 font-size: 0.8rem;
                 line-height: 1.35;
                 overflow-x: auto;
             }
 
-            .tool-result-body {
+            .tool-body {
                 display: grid;
                 gap: 0.5rem;
-            }
-
-            .tool-result-text {
-                border: 1px solid rgb(79 138 79 / 18%);
-                background: rgb(79 138 79 / 7%);
             }
 
             .tool-result-toggle {
@@ -496,21 +490,15 @@ export default class AgentChatPanel extends LitElement {
                 border-radius: 3px;
             }
 
-            .tool-result-payload {
+            .tool-payload {
                 margin: 0;
                 padding: 0.6rem 0.7rem;
-                border: 1px solid rgb(79 138 79 / 18%);
                 border-radius: 4px;
-                background: rgb(255 255 255 / 85%);
+
+                background: color-mix(in oklab, var(--accent-color) 5%, white);
+
                 color: #2b2b2b;
-                font-family: var(
-                    --gs-mono-font-family,
-                    ui-monospace,
-                    SFMono-Regular,
-                    Consolas,
-                    "Liberation Mono",
-                    monospace
-                );
+                font-family: var(--gs-mono-font-family, monospace);
                 font-size: 0.8rem;
                 line-height: 1.35;
                 white-space: pre-wrap;
@@ -636,6 +624,7 @@ export default class AgentChatPanel extends LitElement {
         this.streamDraftText = "";
         this.streamReasoningText = "";
         this.streamHeartbeatTick = 0;
+        this.devMode = false;
     }
 
     /** @type {(() => void) | null} */
@@ -746,18 +735,6 @@ export default class AgentChatPanel extends LitElement {
                                 ${this.#hasActiveLoop() ? "Stop" : "Send"}
                             </button>
                         </div>
-
-                        <div class="composer-footer">
-                            <div class="composer-hint">
-                                Shift+Enter inserts a new line.
-                                ${snapshot.lastError
-                                    ? html`<span>
-                                          Last error:
-                                          ${snapshot.lastError}</span
-                                      >`
-                                    : nothing}
-                            </div>
-                        </div>
                     </form>
                 </div>
             </section>
@@ -777,8 +754,6 @@ export default class AgentChatPanel extends LitElement {
                 </div>
                 <ul class="empty-examples">
                     <li>What does this view show?</li>
-                    <li>Sort samples by age.</li>
-                    <li>Filter to diagnosis = AML.</li>
                 </ul>
             </article>
         `;
@@ -786,163 +761,229 @@ export default class AgentChatPanel extends LitElement {
 
     /**
      * @param {ChatMessage} message
-     * @returns {import("lit").TemplateResult}
      */
     #renderMessage(message) {
-        if (message.kind === "clarification") {
-            return html`
-                <article class="message clarification">
-                    <div class="message-title">
-                        ${icon(faInfoCircle).node[0]} Clarification
+        switch (message.kind) {
+            case "clarification":
+                return this.#renderClarification(message);
+            case "result":
+                return this.#renderResult(message);
+            case "error":
+                return this.#renderError(message);
+            case "tool_result":
+                return this.#renderToolResult(message);
+            case "tool_call":
+                return this.#renderToolCall(message);
+            case "assistant":
+                return this.#renderAssistant(message);
+            default:
+                return this.#renderUser(message);
+        }
+    }
+
+    /* Individual render helpers for message kinds */
+    /**
+     * @param {ChatMessage} message
+     */
+    #renderClarification(message) {
+        return html`
+            <article class="message clarification">
+                <div class="message-title">
+                    ${icon(faInfoCircle).node[0]} Clarification
+                </div>
+                <div class="message-text">
+                    ${this.#renderMarkdown(message.text ?? "")}
+                </div>
+                ${message.options?.length
+                    ? html`<div class="clarification-options">
+                          ${message.options.map(
+                              (option) => html`
+                                  <button
+                                      class="btn"
+                                      type="button"
+                                      @click=${() =>
+                                          this.#submitMessage(option.value)}
+                                  >
+                                      ${option.label}
+                                  </button>
+                              `
+                          )}
+                      </div>`
+                    : nothing}
+                ${this.#renderTimingNote(message.durationMs)}
+            </article>
+        `;
+    }
+
+    /**
+     * @param {ChatMessage} message
+     */
+    #renderResult(message) {
+        return html`
+            <article class="message result">
+                <div class="message-title">
+                    ${icon(faInfoCircle).node[0]} Execution result
+                </div>
+                ${message.text
+                    ? html`<div class="message-text">
+                          ${this.#renderMarkdown(message.text)}
+                      </div>`
+                    : nothing}
+                ${message.lines?.length
+                    ? html`
+                          <ol class="message-lines">
+                              ${message.lines.map(
+                                  (line) => html`<li>${line.content}</li>`
+                              )}
+                          </ol>
+                      `
+                    : nothing}
+                ${this.#renderTimingNote(message.durationMs)}
+            </article>
+        `;
+    }
+
+    /**
+     * @param {ChatMessage} message
+     */
+    #renderError(message) {
+        return html`
+            <article class="message error">
+                <div class="message-title">
+                    ${icon(faExclamationTriangle).node[0]} Error
+                </div>
+                <div class="message-text">${message.text ?? ""}</div>
+            </article>
+        `;
+    }
+
+    /**
+     * @param {ChatMessage} message
+     */
+    #renderToolResult(message) {
+        if (!this.devMode) {
+            return nothing;
+        }
+
+        const disclosureKey = this.#getToolResultDisclosureKey(message);
+        const hasStructuredContent = message.content !== undefined;
+        const payloadExpanded =
+            hasStructuredContent &&
+            this.expandedToolResultKeys.includes(disclosureKey);
+        return html`
+            <article class="message tool tool-result">
+                <div class="message-title">
+                    ${icon(faInfoCircle).node[0]} Tool result
+                </div>
+                <div class="tool-item">
+                    <div class="tool-meta">
+                        Call id: ${message.toolCallId ?? "n/a"}
                     </div>
-                    <div class="message-text">
+                    <div class="tool-text">
                         ${this.#renderMarkdown(message.text ?? "")}
                     </div>
-                    ${message.options?.length
-                        ? html`<div class="clarification-options">
-                              ${message.options.map(
-                                  (option) => html`
-                                      <button
-                                          class="btn"
-                                          type="button"
-                                          @click=${() =>
-                                              this.#submitMessage(option.value)}
-                                      >
-                                          ${option.label}
-                                      </button>
-                                  `
-                              )}
-                          </div>`
+                    ${hasStructuredContent
+                        ? html`
+                              <button
+                                  class="tool-result-toggle"
+                                  type="button"
+                                  @click=${() =>
+                                      this.#toggleToolResultPayload(
+                                          disclosureKey
+                                      )}
+                              >
+                                  ${payloadExpanded
+                                      ? "Hide JSON payload"
+                                      : "Show JSON payload"}
+                              </button>
+                              ${payloadExpanded
+                                  ? html`<pre class="tool-payload">
+${this.#formatToolArguments(message.content)}</pre
+                                    >`
+                                  : nothing}
+                          `
                         : nothing}
-                    ${this.#renderTimingNote(message.durationMs)}
-                </article>
-            `;
-        } else if (message.kind === "result") {
-            return html`
-                <article class="message result">
-                    <div class="message-title">
-                        ${icon(faInfoCircle).node[0]} Execution result
-                    </div>
+                </div>
+                ${this.#renderTimingNote(message.durationMs)}
+            </article>
+        `;
+    }
+
+    /**
+     * @param {ChatMessage} message
+     */
+    #renderToolCall(message) {
+        const renderToolCalls = () => {
+            return html`<div class="tool-list">
+                ${message.toolCalls.map(
+                    (toolCall) => html`
+                        <div class="tool-item">
+                            <div class="tool-name">${toolCall.name}</div>
+                            <div class="tool-meta">
+                                Call id: ${toolCall.callId}
+                            </div>
+                            <pre class="tool-payload">
+${this.#formatToolArguments(toolCall.arguments)}</pre
+                            >
+                        </div>
+                    `
+                )}
+            </div>`;
+        };
+
+        const renderCompactToolCalls = () => {
+            return message.toolCalls.map(
+                (toolCall) => html`
+                    <div class="tool-name">${toolCall.name}</div>
+                `
+            );
+        };
+
+        return html`
+            <article class="message tool tool-call">
+                <div class="message-title">
+                    ${icon(faRobot).node[0]} Tool call
+                </div>
+                <div class="assistant-body">
                     ${message.text
                         ? html`<div class="message-text">
                               ${this.#renderMarkdown(message.text)}
                           </div>`
                         : nothing}
-                    ${message.lines?.length
-                        ? html`
-                              <ol class="message-lines">
-                                  ${message.lines.map(
-                                      (line) => html`<li>${line.content}</li>`
-                                  )}
-                              </ol>
-                          `
+                    ${message.toolCalls?.length
+                        ? this.devMode
+                            ? renderToolCalls()
+                            : renderCompactToolCalls()
                         : nothing}
-                    ${this.#renderTimingNote(message.durationMs)}
-                </article>
-            `;
-        } else if (message.kind === "error") {
-            return html`
-                <article class="message error">
-                    <div class="message-title">
-                        ${icon(faExclamationTriangle).node[0]} Error
-                    </div>
-                    <div class="message-text">${message.text ?? ""}</div>
-                </article>
-            `;
-        } else if (message.kind === "tool_result") {
-            const disclosureKey = this.#getToolResultDisclosureKey(message);
-            const hasStructuredContent = message.content !== undefined;
-            const payloadExpanded =
-                hasStructuredContent &&
-                this.expandedToolResultKeys.includes(disclosureKey);
-            return html`
-                <article class="message tool-result">
-                    <div class="message-title">
-                        ${icon(faInfoCircle).node[0]} Tool result
-                    </div>
-                    <div class="tool-result-body">
-                        <div class="tool-result-meta">
-                            Call id: ${message.toolCallId ?? "n/a"}
-                        </div>
-                        <div class="tool-result-text">
-                            ${this.#renderMarkdown(message.text ?? "")}
-                        </div>
-                        ${hasStructuredContent
-                            ? html`
-                                  <button
-                                      class="tool-result-toggle"
-                                      type="button"
-                                      @click=${() =>
-                                          this.#toggleToolResultPayload(
-                                              disclosureKey
-                                          )}
-                                  >
-                                      ${payloadExpanded
-                                          ? "Hide JSON payload"
-                                          : "Show JSON payload"}
-                                  </button>
-                                  ${payloadExpanded
-                                      ? html`<pre class="tool-result-payload">
-${this.#formatToolArguments(message.content)}</pre
-                                        >`
-                                      : nothing}
-                              `
-                            : nothing}
-                    </div>
-                    ${this.#renderTimingNote(message.durationMs)}
-                </article>
-            `;
-        } else if (message.kind === "tool_call") {
-            return html`
-                <article class="message tool-call">
-                    <div class="message-title">
-                        ${icon(faRobot).node[0]} Tool call
-                    </div>
-                    <div class="assistant-body">
-                        ${message.text
-                            ? html`<div class="message-text">
-                                  ${this.#renderMarkdown(message.text)}
-                              </div>`
-                            : nothing}
-                        ${message.toolCalls?.length
-                            ? html`<div class="tool-call-list">
-                                  ${message.toolCalls.map(
-                                      (toolCall) => html`
-                                          <div class="tool-call-item">
-                                              <div class="tool-call-name">
-                                                  ${toolCall.name}
-                                              </div>
-                                              <div class="tool-call-meta">
-                                                  Call id: ${toolCall.callId}
-                                              </div>
-                                              <pre class="tool-call-args">
-${this.#formatToolArguments(toolCall.arguments)}</pre
-                                              >
-                                          </div>
-                                      `
-                                  )}
-                              </div>`
-                            : nothing}
-                    </div>
-                    ${this.#renderTimingNote(message.durationMs)}
-                </article>
-            `;
-        } else if (message.kind === "assistant") {
-            return html`
-                <article class="message assistant">
-                    <div class="assistant-body">
-                        ${this.#renderMarkdown(message.text ?? "")}
-                    </div>
-                    ${this.#renderTimingNote(message.durationMs)}
-                </article>
-            `;
-        } else {
-            return html`
-                <article class="message user">
-                    <div class="message-text">${message.text ?? ""}</div>
-                </article>
-            `;
-        }
+                </div>
+                ${this.#renderTimingNote(message.durationMs)}
+            </article>
+        `;
+    }
+
+    /**
+     * @param {ChatMessage} message
+     */
+    #renderAssistant(message) {
+        return html`
+            <article class="message assistant">
+                <div class="assistant-body">
+                    ${this.#renderMarkdown(message.text ?? "")}
+                </div>
+                ${this.#renderTimingNote(message.durationMs)}
+            </article>
+        `;
+    }
+
+    /**
+     * @param {ChatMessage} message
+     */
+    #renderUser(message) {
+        return html`
+            <article class="message user">
+                <div class="message-text">${message.text ?? ""}</div>
+            </article>
+        `;
     }
 
     /**
@@ -1254,6 +1295,7 @@ export async function toggleAgentChatPanel(app) {
             agentState.agentAdapter
         );
         panel.controller = agentState.agentSessionController;
+        panel.devMode = true;
         host.append(panel);
 
         appRoot.append(host);

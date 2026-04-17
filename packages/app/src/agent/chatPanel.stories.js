@@ -566,6 +566,7 @@ function summarizeMockStep(step) {
  *     preflightFails?: boolean;
  *     streamDelayMs?: number;
  *     heartbeatIntervalMs?: number;
+ *     devMode?: boolean;
  * }} args
  * @returns {import("lit").TemplateResult}
  */
@@ -592,6 +593,7 @@ function renderChatPanel(args) {
         <div style="width: min(100%, 520px); height: 760px;">
             <gs-agent-chat-panel
                 .controller=${controller}
+                ?devMode=${args.devMode}
             ></gs-agent-chat-panel>
         </div>
     `;
@@ -625,6 +627,14 @@ export const SubmitIntentActions = {
 export const ErrorState = {
     args: {
         scenario: "error",
+    },
+    render: renderChatPanel,
+};
+
+export const DevToolCall = {
+    args: {
+        scenario: "tool_call",
+        devMode: true,
     },
     render: renderChatPanel,
 };
