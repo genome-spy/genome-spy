@@ -563,13 +563,63 @@ Status: completed in the current implementation.
 Goal: make the runtime align with the draft host API instead of one giant
 adapter, so tool changes do not fan out through unrelated code.
 
+This phase should start with a small runtime-declaration cleanup, not with the
+full `AgentAnalysisHost` extraction. The host split is useful later, but the
+immediate pain is that capability names such as `setViewVisibility` are
+redeclared in several human-edited runtime typedefs and wrapper functions.
+
 Steps:
 
-1. Keep `agentTools.js` focused on tool behavior and result formatting.
-2. Move analysis and mutation capabilities toward a smaller host object.
-3. Keep browser UI registration separate from analysis/mutation capabilities.
-4. Make `agentAdapter.js` compose the host seams instead of owning everything.
-5. Avoid adding new adapter methods unless they are clearly host capabilities.
+1. Add a shared runtime capability interface to
+   [`types.d.ts`](../src/agent/types.d.ts), such as `AgentToolRuntime`.
+   It should contain the capabilities that tool handlers actually call:
+   `getAgentContext`, `getAgentVolatileContext`, `resolveViewSelector`,
+   `setViewVisibility`, provenance jumps, metadata summary sources,
+   intent-action submission, and execution-result formatting.
+2. Replace the copied object-shaped runtime typedefs in
+   [`agentTools.js`](../src/agent/agentTools.js) and
+   [`agentSessionController.js`](../src/agent/agentSessionController.js) with
+   imports of the shared runtime type. This makes `setViewVisibility` and
+   similar host capabilities declared once at the type boundary instead of
+   repeated in multiple JSDoc blocks.
+3. Keep [`agentTools.js`](../src/agent/agentTools.js) focused on tool behavior
+   and result formatting. After the runtime type is centralized, inline simple
+   pass-through handlers directly in the `agentTools` registry when they are
+   not imported by name elsewhere. For example, `setViewVisibility` can be a
+   registry method that calls `runtime.setViewVisibility(...)`, instead of a
+   registry entry plus a separate exported wrapper function.
+4. Keep focused helper modules for tools that do real work, such as
+   [`selectionAggregationTool.js`](../src/agent/selectionAggregationTool.js),
+   [`metadataAttributeSummaryTool.js`](../src/agent/metadataAttributeSummaryTool.js),
+   [`groupedMetadataAttributeSummaryTool.js`](../src/agent/groupedMetadataAttributeSummaryTool.js),
+   and [`searchViewDatumsTool.js`](../src/agent/searchViewDatumsTool.js).
+   The goal is to delete trivial wrapper declarations, not to collapse useful
+   implementation files.
+5. Do not introduce `AgentAnalysisHost` yet. For now, keep
+   [`agentAdapter.js`](../src/agent/agentAdapter.js) as the implementation of
+   host capabilities such as `setViewVisibility`. Treat those methods as app
+   capability implementations, not as additional tool declarations.
+6. Remove or narrow tests that only verify duplicated tool-name lists. Keep
+   boundary tests close to the source they protect: catalog projection in
+   `toolCatalog.test.js`, behavior in `agentTools.test.js`, and execution-loop
+   behavior in `agentSessionController.test.js`.
+7. After those smaller cleanups, revisit the draft `AgentAnalysisHost` from
+   [`agent-host-api.md`](./agent-host-api.md). At that point the extracted
+   host should be a mechanical move from a clearer runtime boundary, not a
+   simultaneous tool-surface redesign.
+
+Suggested first commits:
+
+1. `refactor(app): centralize agent tool runtime type`
+   - add the shared runtime interface to `types.d.ts`
+   - replace duplicated JSDoc runtime shapes with imported typedefs
+   - avoid behavior changes
+2. `refactor(app): inline simple agent tool handlers`
+   - inline trivial handlers such as `expandViewNode`, `collapseViewNode`,
+     `setViewVisibility`, and simple provenance jumps when they are only used
+     through `agentTools`
+   - keep complex helper modules intact
+   - update focused runtime tests only where the public import surface changes
 
 Relationship to `agent-host-api.md`:
 
