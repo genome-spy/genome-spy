@@ -3,7 +3,7 @@ import logging
 from _pytest.logging import LogCaptureFixture
 
 from app.config import Settings, describe_api_key_for_logs, load_settings
-from app.providers import _log_provider_auth_diagnostic
+from app.providers.openai_responses import _log_provider_auth_diagnostic
 
 
 def test_describe_api_key_for_logs_returns_masked_fingerprint() -> None:

@@ -9,7 +9,7 @@ from app.main import (
     log_startup_summary,
 )
 from app.models import ProviderResponse, ProviderStreamEvent, ToolCall
-from app.providers import OpenAIResponsesProvider
+from app.providers.openai_responses import OpenAIResponsesProvider
 
 
 class StubProvider:

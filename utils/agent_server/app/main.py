@@ -12,19 +12,16 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from .config import Settings, describe_api_key_for_logs, load_settings
-from .models import (
+from app.config import Settings, describe_api_key_for_logs, load_settings
+from app.models import (
     AgentTurnRequest,
     AgentTurnResponse,
     ProviderRequest,
     ProviderResponse,
 )
-from .providers import (
-    BaseProvider,
-    OpenAIResponsesProvider,
-    ProviderError,
-)
-from .token_debugger import log_token_summary, summarize_prompt_tokens
+from app.providers import ProviderError
+from app.providers.openai_responses import BaseProvider, OpenAIResponsesProvider
+from app.token_debugger import log_token_summary, summarize_prompt_tokens
 
 logger = logging.getLogger(__name__)
 startup_logger = logging.getLogger("uvicorn.error")

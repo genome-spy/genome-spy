@@ -1,10 +1,11 @@
 from app.models import ProviderResponse, ToolCall
-from app.providers import (
+from app.providers.parsing import (
     _classify_stream_text,
-    _extract_stream_text,
     _parse_provider_response_text,
     _parse_responses_response,
 )
+from app.providers.streaming import _extract_stream_text
+
 
 def test_parse_responses_response_returns_normalized_shape() -> None:
     payload = {
