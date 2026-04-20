@@ -35,6 +35,9 @@ Focus on these local rules:
 - Keep the relay thin.
 - Make surgical changes only.
 - Prefer readability, predictability, and debuggability over cleverness.
+- Prefer explicit module boundaries and imports over clever indirection.
+- Treat one-file abstractions and tiny wrapper modules as suspect unless they
+  clearly improve structure.
 
 ## High-Confidence Simplification Signals
 
@@ -45,6 +48,10 @@ Focus on these local rules:
 - The abstraction is longer and harder to follow than the direct implementation.
 - Path handling uses `os.path` or manual path string manipulation where
   `pathlib` would be clearer.
+- A package-level re-export, lazy import, or wrapper file hides the real owner
+  of functionality without adding meaningful clarity.
+- A tiny module exists only to hold one trivial symbol and does not help
+  organize a larger subsystem.
 
 ## Caution Signals
 

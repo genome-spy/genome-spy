@@ -26,6 +26,8 @@ Do not perform a full-repo sweep unless the user explicitly asks for one.
 - Remove private helper docstrings that are unnecessary.
 - Remove private helper docstrings that restate the function name or narrate obvious code.
 - Keep a private helper docstring only when the behavior is genuinely non-obvious from code alone.
+- When a private helper docstring is warranted, prefer a short summary that
+  improves scanability.
 - Keep public docstrings compatible with Google style via Napoleon.
 - Normalize malformed public docstrings only when the needed content can be written confidently from local context.
 - Do not add sections mechanically.
@@ -53,6 +55,7 @@ Do not perform a full-repo sweep unless the user explicitly asks for one.
 For private helpers, ask:
 
 - Is the behavior obvious from the function body and name?
+- Would a one-line summary materially improve scanability for this helper?
 - Does the docstring merely repeat the name or parameters?
 - Is the docstring longer than the helper needs?
 - Does it repeat annotated types?

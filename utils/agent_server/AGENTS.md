@@ -79,6 +79,11 @@ as a companion guide to the principles below.
   should not grow into a large orchestration layer.
 - Prefer provider-neutral prompt assembly and narrow provider-specific shims.
 - Optimize for readability, predictability, and debuggability over cleverness.
+- Group code by responsibility, not by whether it is a "helper" or by when it
+  was added.
+- Keep orchestration modules shallow. Move dense parsing, streaming, logging,
+  or formatting mechanics behind focused modules when that makes the top-level
+  flow easier to scan.
 - Developer tooling is welcome when it stays small and directly supports relay
   work.
 
@@ -101,6 +106,10 @@ as a companion guide to the principles below.
 - Fail fast with clear error messages. Do not silently swallow invalid states.
 - Avoid speculative abstraction. Duplicate a little first; extract only when
   the reuse is real.
+- Prefer explicit imports and module boundaries over clever re-export,
+  indirection, or lazy-import tricks.
+- Do not create a separate module for a tiny abstraction unless it improves the
+  structure of a real subsystem.
 
 ## Docstrings
 
@@ -223,6 +232,10 @@ the relevant checks, say so explicitly.
 - Reuse existing prompt-building helpers instead of rebuilding prompt pieces in
   multiple places.
 - Keep provider-specific compatibility logic narrow, explicit, and tested.
+- When a subsystem grows several closely related modules, prefer a focused
+  package with clear ownership over a flat set of vaguely named files.
+- Prefer direct imports from concrete modules when that makes ownership
+  clearer; avoid package-level magic that hides where a symbol actually lives.
 - Avoid adding new HTTP endpoints unless they are clearly needed.
 - If a debugging feature can live as an internal helper instead of an API
   surface, prefer the helper first.

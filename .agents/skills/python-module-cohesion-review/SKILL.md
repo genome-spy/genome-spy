@@ -47,6 +47,9 @@ Focus on these local rules:
 - Keep support logic near the subsystem it supports.
 - Prefer moving cohesive clusters over isolated leaf helpers.
 - Keep refactors surgical and easy to follow.
+- When related concerns form a real subsystem, prefer a focused package over a
+  loose collection of flat sibling files.
+- Prefer import paths that make the owning module obvious.
 
 ## High-Confidence Signals
 
@@ -55,6 +58,10 @@ Focus on these local rules:
 - A helper's only callers live in another subsystem module.
 - A support concern was appended to an entrypoint file instead of its owning module.
 - Path, parsing, formatting, or logging helpers are mixed into a module that mainly owns request flow.
+- Several sibling files share a strong naming stem and concern, suggesting they
+  want to live in one package.
+- A package API relies on re-export or lazy-import tricks that obscure where a
+  symbol is defined.
 
 ## Caution Signals
 
