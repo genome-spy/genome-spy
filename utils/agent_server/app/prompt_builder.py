@@ -80,9 +80,8 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
 
 
 def _build_context_text(context: dict[str, Any]) -> str:
-    prompt_context = _build_prompt_context(context)
     return "Current GenomeSpy context snapshot:\n" + json.dumps(
-        prompt_context, indent=2, ensure_ascii=False
+        context, indent=2, ensure_ascii=False
     )
 
 
@@ -116,65 +115,56 @@ def _build_developer_text_item(text: str) -> dict[str, Any]:
     }
 
 
-def _build_prompt_context(context: dict[str, Any]) -> dict[str, Any]:
-    return dict(context)
-
-
 def _build_response_messages(history: list[HistoryMessage]) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = []
     for message in history:
         if message.role == "tool":
-            output = _stringify_content(message.content, message.text)
-            messages.append(
-                {
-                    "type": "function_call_output",
-                    "call_id": message.tool_call_id or message.id,
-                    "output": output,
-                }
-            )
+            messages.append(_build_tool_output_message(message))
             continue
 
         if message.tool_calls:
-            if message.text:
-                messages.append(
-                    {
-                        "id": _normalize_message_id(message.id),
-                        "type": "message",
-                        "status": "completed",
-                        "role": "assistant",
-                        "content": [
-                            {
-                                "type": "output_text",
-                                "text": message.text,
-                            }
-                        ],
-                    }
-                )
-
-            messages.extend(
-                {
-                    "type": "function_call",
-                    "call_id": tool_call.call_id,
-                    "name": tool_call.name,
-                    "arguments": _stringify_content(tool_call.arguments, "{}"),
-                }
-                for tool_call in message.tool_calls
-            )
+            messages.extend(_build_assistant_tool_messages(message))
             continue
 
-        content_type = "output_text" if message.role == "assistant" else "input_text"
-        content = [{"type": content_type, "text": message.text}]
-        messages.append(
-            {
-                "id": _normalize_message_id(message.id),
-                "type": "message",
-                "status": "completed",
-                "role": message.role,
-                "content": content,
-            }
-        )
+        messages.append(_build_standard_message(message))
 
     return messages
+
+
+def _build_tool_output_message(message: HistoryMessage) -> dict[str, Any]:
+    return {
+        "type": "function_call_output",
+        "call_id": message.tool_call_id or message.id,
+        "output": _stringify_content(message.content, message.text),
+    }
+
+
+def _build_assistant_tool_messages(message: HistoryMessage) -> list[dict[str, Any]]:
+    messages: list[dict[str, Any]] = []
+    if message.text:
+        messages.append(_build_standard_message(message))
+
+    messages.extend(
+        {
+            "type": "function_call",
+            "call_id": tool_call.call_id,
+            "name": tool_call.name,
+            "arguments": _stringify_content(tool_call.arguments, "{}"),
+        }
+        for tool_call in message.tool_calls
+    )
+    return messages
+
+
+def _build_standard_message(message: HistoryMessage) -> dict[str, Any]:
+    content_type = "output_text" if message.role == "assistant" else "input_text"
+    return {
+        "id": _normalize_message_id(message.id),
+        "type": "message",
+        "status": "completed",
+        "role": message.role,
+        "content": [{"type": content_type, "text": message.text}],
+    }
 
 
 def _stringify_content(content: Any, fallback: str) -> str:
