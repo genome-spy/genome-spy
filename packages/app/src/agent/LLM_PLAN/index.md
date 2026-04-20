@@ -13,7 +13,7 @@
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
 - Agent host API and package extraction: [`agent-host-api.md`](./agent-host-api.md)
 - Agent tool surface cleanup and contract consolidation: [`agent-tool-surface-cleanup.md`](./agent-tool-surface-cleanup.md)
-- Agent benchmarking plan: [`benchmarking.md`](./benchmarking.md)
+- Agent benchmarking plan: [`../benchmarks/plan/benchmarking.md`](../benchmarks/plan/benchmarking.md)
 
 ## Goals
 - Enable conversations with the agent over the current visualization.
