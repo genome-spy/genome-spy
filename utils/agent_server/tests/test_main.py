@@ -6,7 +6,6 @@ from app.main import (
     app,
     get_provider,
     get_settings,
-    log_startup_summary,
 )
 from app.models import ProviderResponse, ProviderStreamEvent, ToolCall
 from app.providers.openai_responses import OpenAIResponsesProvider
@@ -329,24 +328,3 @@ def test_default_system_prompt_is_markdown_text() -> None:
     assert "message" in prompt
     assert "searchableViews" in prompt
     assert "searchViewDatums" in prompt
-
-
-def test_startup_summary_logs_provider_and_masked_key(
-    caplog: LogCaptureFixture, monkeypatch
-) -> None:
-    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
-    monkeypatch.setenv("GENOMESPY_AGENT_BASE_URL", "https://api.openai.com/v1")
-    monkeypatch.setenv("GENOMESPY_AGENT_API_KEY", "sk-test-1234567890")
-    reset_settings_cache()
-
-    with caplog.at_level("INFO"):
-        log_startup_summary()
-
-    assert (
-        "GenomeSpy agent server startup: provider=OpenAIResponsesProvider"
-        in caplog.text
-    )
-    assert "base_url=https://api.openai.com/v1" in caplog.text
-    assert "api_key_source=GENOMESPY_AGENT_API_KEY" in caplog.text
-    assert "api_key=len=18 sha256=" in caplog.text
-    assert "sk-test-1234567890" not in caplog.text

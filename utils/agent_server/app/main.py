@@ -29,7 +29,32 @@ startup_logger = logging.getLogger("uvicorn.error")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    log_startup_summary()
+    """Log the relay startup configuration summary.
+
+    Emits a single startup log line that captures the selected provider, model,
+    base URL, and sanitized API-key metadata for debugging deployment issues.
+    """
+    settings = get_settings()
+    provider = get_provider()
+    api_key_source = (
+        "GENOMESPY_AGENT_API_KEY"
+        if os.environ.get("GENOMESPY_AGENT_API_KEY") is not None
+        else "default"
+    )
+    startup_logger.info(
+        (
+            "GenomeSpy agent server startup: provider=%s base_url=%s "
+            "model=%s api_key_source=%s api_key=%s "
+            "streaming=%s timeout_seconds=%s"
+        ),
+        provider.__class__.__name__,
+        settings.base_url,
+        settings.model,
+        api_key_source,
+        describe_api_key_for_logs(settings.api_key),
+        settings.enable_streaming,
+        settings.timeout_seconds,
+    )
     yield
 
 
@@ -277,31 +302,3 @@ def _encode_sse_event(event_name: str, payload: dict[str, object]) -> str:
         + "\n\n"
     )
 
-
-def log_startup_summary() -> None:
-    """Log the relay startup configuration summary.
-
-    Emits a single startup log line that captures the selected provider, model,
-    base URL, and sanitized API-key metadata for debugging deployment issues.
-    """
-    settings = get_settings()
-    provider = get_provider()
-    api_key_source = (
-        "GENOMESPY_AGENT_API_KEY"
-        if os.environ.get("GENOMESPY_AGENT_API_KEY") is not None
-        else "default"
-    )
-    startup_logger.info(
-        (
-            "GenomeSpy agent server startup: provider=%s base_url=%s "
-            "model=%s api_key_source=%s api_key=%s "
-            "streaming=%s timeout_seconds=%s"
-        ),
-        provider.__class__.__name__,
-        settings.base_url,
-        settings.model,
-        api_key_source,
-        describe_api_key_for_logs(settings.api_key),
-        settings.enable_streaming,
-        settings.timeout_seconds,
-    )
