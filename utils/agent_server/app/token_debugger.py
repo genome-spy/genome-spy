@@ -9,7 +9,6 @@ from typing import Any
 from .models import ProviderRequest
 from .prompt_builder import (
     _build_context_text,
-    _build_prompt_context,
     build_prompt_ir,
 )
 
@@ -98,7 +97,7 @@ def summarize_prompt_tokens(request: ProviderRequest, model: str) -> TokenDebugS
     history_tokens = sum(_count_tokens(text, encoding) for text in history_messages)
     context_by_key = {
         key: _count_tokens(_build_context_text({key: value}), encoding)
-        for key, value in _build_prompt_context(prompt.context).items()
+        for key, value in prompt.context.items()
     }
 
     system_prompt_tokens = _count_tokens(prompt.instructions, encoding)
