@@ -57,6 +57,12 @@ transforms.mergeFacets = MergeSampleFacets;
  */
 export default class App {
     /**
+     * Lazily created agent boundary.
+     * @type {Promise<import("./agentApi/index.js").AgentApi> | undefined}
+     */
+    #agentApiPromise;
+
+    /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
      * @param {import("./appTypes.js").AppEmbedOptions} options
@@ -138,6 +144,26 @@ export default class App {
             )
         );
         this.#setupViewVisibilityHandling();
+    }
+
+    /**
+     * Returns the app-owned agent boundary.
+     *
+     * The module is loaded lazily so the boundary stays out of the default app
+     * path when the agent feature is unused.
+     *
+     * @returns {Promise<import("./agentApi/index.js").AgentApi>}
+     */
+    getAgentApi() {
+        if (!this.#agentApiPromise) {
+            this.#agentApiPromise = import("./agentApi/index.js").then(
+                ({ createAgentApi }) => {
+                    return createAgentApi(this);
+                }
+            );
+        }
+
+        return this.#agentApiPromise;
     }
 
     #setupStoreAndProvenance() {

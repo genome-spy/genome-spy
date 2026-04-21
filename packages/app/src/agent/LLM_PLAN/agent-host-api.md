@@ -50,6 +50,13 @@ The app should know as little as possible about the future agent package. It
 should provide only the essential hooks the agent needs and stay out of the
 agent package's internal structure.
 
+All future agent-to-App communication for analysis, state access, and
+mutation should go through `AgentApi`. Toolbar and other shell UI registration
+stay on the existing `app.ui` API and should not be added to `AgentApi`. If a
+needed host hook is missing, add it only after careful planning and explicit
+discussion. Extend the API conservatively so the agent does not gradually
+bloat the app.
+
 The first extraction pass should stay handle-oriented. Use the existing app
 interfaces and method calls as the boundary, and only introduce snapshot-like
 abstractions when they clearly reduce coupling or repetition.
@@ -61,14 +68,19 @@ The split is intentional:
 - `agent` is the runtime and generated metadata consumer that depends on that
   surface.
 - `agent` should not reach back into app internals once extraction starts.
+- all future agent-to-App communication should go through `AgentApi`.
 - `agentApi` should start with the minimum set of handles needed by the
   extracted package.
 - `agentApi` should not expose agent-package internals, packaging concerns, or
   future abstractions before they are needed.
+- toolbar and shell UI registration stay on the existing `app.ui` API, not in
+  `AgentApi`.
 - `getSampleView()` should not be part of the boundary; its current uses should
   be decomposed into smaller hooks.
 - `createAgentAdapter`, `getAgentState`, and `registerAgentUi` belong with the
   extracted `agent` package, not with `agentApi`.
+- if an essential hook is missing, add it to `AgentApi` only after planning
+  and discussion, then keep the addition narrow.
 
 ## Current App Dependencies Used By The Agent
 
@@ -199,12 +211,12 @@ The initial `agentApi` should be a thin factory, not a facade class:
   - `jumpToProvenanceState(provenanceId)`
   - `jumpToInitialProvenanceState()`
   - `getAppContainer()`
-  - `registerToolbarButton(spec)`
-  - `registerToolbarMenuItem(spec)` if the agent menu stays app-owned
 - re-export the small shared types those hooks need
 - keep the implementations in `src/agent` for now
 - do not introduce `AgentAnalysisHost`, `AgentToolHost`, or snapshot types at
   the start
+- extend `AgentApi` conservatively; do not add hooks just because a new use case
+  is convenient if the current surface already covers the need
 
 This keeps the first boundary concrete and incremental. The extracted package
 can receive one bound object and never see `App` at each call site. If repeated
@@ -240,8 +252,6 @@ Owns the app shell and exports the app-owned boundary.
     - `jumpToProvenanceState(provenanceId)`
     - `jumpToInitialProvenanceState()`
     - `getAppContainer()`
-    - `registerToolbarButton(spec)`
-    - `registerToolbarMenuItem(spec)` if the agent menu stays app-owned
   - and the small shared types those hooks need
   - stable definitions that the extracted agent package can consume
   - no knowledge of the extracted agent package beyond those hooks
@@ -308,6 +318,8 @@ Future package.
    - Use the smallest concrete bound method that covers each call site instead
      of introducing a wider host interface.
    - Keep the current app-side modules available for now.
+   - If a required hook is missing, stop and plan the addition explicitly
+     before expanding `AgentApi`.
    - This makes the eventual extraction a packaging change first, not a logic
      rewrite.
 

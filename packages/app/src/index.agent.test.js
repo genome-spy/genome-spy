@@ -34,6 +34,7 @@ const { AppMock } = vi.hoisted(() => ({
             getLogicalCanvasSize: vi.fn(),
             exportCanvas: vi.fn(),
         };
+        this.getAgentApi = vi.fn(async () => ({}));
         this.launch = vi.fn(async () => true);
     }),
 }));
@@ -75,6 +76,7 @@ describe("embed", () => {
 
         expect(createAgentAdapterMock).toHaveBeenCalledTimes(1);
         expect(registerAgentUiMock).toHaveBeenCalledTimes(1);
+        expect(AppMock.mock.instances[0].getAgentApi).toHaveBeenCalledTimes(1);
         expect(AppMock).toHaveBeenCalledTimes(1);
         expect(getAgentState(AppMock.mock.instances[0]).agentBaseUrl).toBe(
             "http://x"
@@ -96,6 +98,7 @@ describe("embed", () => {
 
         expect(createAgentAdapterMock).not.toHaveBeenCalled();
         expect(registerAgentUiMock).not.toHaveBeenCalled();
+        expect(AppMock.mock.instances[0].getAgentApi).not.toHaveBeenCalled();
         expect(AppMock).toHaveBeenCalledTimes(1);
         expect(
             getAgentState(AppMock.mock.instances[0]).agentBaseUrl

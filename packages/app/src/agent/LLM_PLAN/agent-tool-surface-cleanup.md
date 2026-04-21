@@ -20,6 +20,11 @@ surface note, several per-tool drafts, generated artifacts, tests, and the
 agent-server mirror. That duplication is a bigger maintenance burden than any
 single tool implementation.
 
+The cleanup path should keep `AgentApi` as the only app-owned boundary the
+agent/tool surface depends on. If a new host hook is required, add it
+conservatively after planning and discussion rather than letting the surface
+grow ad hoc.
+
 Target budget: a tool add/remove should ideally require one canonical contract
 edit, one runtime behavior edit when behavior changes, generated artifact
 refreshes, and only the minimum number of docs and tests that are genuinely
@@ -68,7 +73,8 @@ unrelated responsibilities:
 
 That is not wrong, but it makes the adapter a catch-all layer. The host API
 draft in `agent-host-api.md` suggests a cleaner split: analysis/mutation
-capabilities on one side and browser UI registration on the other.
+capabilities on one side and browser UI registration on the other, with all
+agent-to-App communication routed through `AgentApi`.
 
 ### 4. Tool vocabulary still needs to stay simple
 

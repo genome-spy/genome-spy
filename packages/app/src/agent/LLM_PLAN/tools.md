@@ -2,6 +2,10 @@
 
 This document outlines what tools should be exposed to an LLM agent, with emphasis on safe composition, validation, and minimal state mutation.
 
+Any app-side capability the tools need should flow through `AgentApi`, not
+through direct reach into `App` internals. Add new hooks conservatively and
+only after the need has been planned and discussed.
+
 ## Code References
 - Context/tool assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
 - Selection and field discovery: [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
@@ -89,6 +93,8 @@ This document outlines what tools should be exposed to an LLM agent, with emphas
 - Fail fast with clear errors when inputs are invalid.
 - Keep agent tooling behind the same Vite/runtime gate as the app bootstrap.
 - Load agent-only tooling lazily so the generic app path stays free of agent imports.
+- Treat `AgentApi` as the only app-owned boundary the agent/tool layer should
+  depend on.
 
 ## Tool Surface
 The OpenAI-facing tool list should stay coarse-grained.
