@@ -145,23 +145,6 @@ function elapsedMilliseconds(startedAt) {
 }
 
 /**
- * @returns {AgentSessionSnapshot}
- */
-function createInitialSessionState() {
-    return {
-        status: "ready",
-        preflightState: "idle",
-        messages: [],
-        pendingRequest: null,
-        pendingResponsePlaceholder: "",
-        queuedMessageCount: 0,
-        lastError: "",
-        lastResponseDurationMs: null,
-        expandedViewNodeKeys: [],
-    };
-}
-
-/**
  * @param {AgentSessionRuntime} runtime
  * @returns {AgentSessionController}
  */
@@ -189,12 +172,20 @@ export class AgentSessionController {
          * the UI contract.
          * @type {AgentSessionSnapshot}
          */
-        this.#state = createInitialSessionState();
+        this.#state = {
+            status: "ready",
+            preflightState: "idle",
+            messages: [],
+            pendingRequest: null,
+            pendingResponsePlaceholder: "",
+            queuedMessageCount: 0,
+            lastError: "",
+            lastResponseDurationMs: null,
+            expandedViewNodeKeys: [],
+        };
 
         /** @type {Promise<void> | null} */
         this.#preflightPromise = null;
-        /** @type {number} */
-        this.#preflightPromiseGeneration = 0;
         /** @type {boolean} */
         this.#drainingQueue = false;
         /** @type {number} */
@@ -211,8 +202,6 @@ export class AgentSessionController {
         this.#activeRequestAbortController = null;
         /** @type {Set<number>} */
         this.#cancelledTurnIds = new Set();
-        /** @type {number} */
-        this.#preflightGeneration = 0;
         this.#runtime.expandViewNode = (selector) =>
             this.expandViewNode(selector);
         this.#runtime.collapseViewNode = (selector) =>
@@ -233,9 +222,6 @@ export class AgentSessionController {
 
     /** @type {Promise<void> | null} */
     #preflightPromise;
-
-    /** @type {number} */
-    #preflightPromiseGeneration;
 
     /** @type {boolean} */
     #drainingQueue;
@@ -260,9 +246,6 @@ export class AgentSessionController {
 
     /** @type {Set<number>} */
     #cancelledTurnIds;
-
-    /** @type {number} */
-    #preflightGeneration;
 
     /**
      * @param {(snapshot: AgentSessionSnapshot) => void} listener
@@ -324,29 +307,12 @@ export class AgentSessionController {
     close() {}
 
     /**
-     * Clears the transcript and returns the session to its initial state.
-     */
-    reset() {
-        this.stopCurrentTurn();
-        this.#preflightGeneration += 1;
-        this.#preflightPromise = null;
-        this.#preflightPromiseGeneration = 0;
-        this.#drainingQueue = false;
-        this.#state = createInitialSessionState();
-        this.#expandedViewNodeKeys = new Set();
-        this.#notifyActiveTurn();
-        this.#notify();
-    }
-
-    /**
      * Forces the preflight to run again.
      *
      * @returns {Promise<void>}
      */
     async refreshPreflight() {
-        this.#preflightGeneration += 1;
         this.#preflightPromise = null;
-        this.#preflightPromiseGeneration = 0;
         this.#state.preflightState = "idle";
         this.#state.status = "ready";
         this.#notify();
@@ -522,14 +488,7 @@ export class AgentSessionController {
      */
     async #ensurePreflight(force = false) {
         if (this.#preflightPromise) {
-            if (
-                this.#preflightPromiseGeneration === this.#preflightGeneration
-            ) {
-                return this.#preflightPromise;
-            }
-
-            this.#preflightPromise = null;
-            this.#preflightPromiseGeneration = 0;
+            return this.#preflightPromise;
         }
 
         if (!force && this.#state.preflightState === "ready") {
@@ -541,10 +500,8 @@ export class AgentSessionController {
         this.#state.lastError = "";
         this.#notify();
 
-        const preflightGeneration = this.#preflightGeneration;
-        const preflightPromise = this.#runPreflight(preflightGeneration);
+        const preflightPromise = this.#runPreflight();
         this.#preflightPromise = preflightPromise;
-        this.#preflightPromiseGeneration = preflightGeneration;
 
         try {
             await preflightPromise;
@@ -558,11 +515,8 @@ export class AgentSessionController {
     /**
      * Runs a harmless agent request to prime the server prompt cache and
      * verify the transport path before the first real user turn.
-     *
-     * @param {number} preflightGeneration
-     * @returns {Promise<void>}
      */
-    async #runPreflight(preflightGeneration) {
+    async #runPreflight() {
         try {
             const { response } = await this.#runtime.requestAgentTurn(
                 PREFLIGHT_MESSAGE,
@@ -571,10 +525,6 @@ export class AgentSessionController {
                 false,
                 this.#buildContextOptions()
             );
-
-            if (preflightGeneration !== this.#preflightGeneration) {
-                return;
-            }
 
             if (!this.#looksDecent(response)) {
                 throw new Error(
@@ -587,10 +537,6 @@ export class AgentSessionController {
             this.#notify();
             await this.#drainQueue();
         } catch (error) {
-            if (preflightGeneration !== this.#preflightGeneration) {
-                return;
-            }
-
             console.error("Agent preflight failed:", error);
             this.#state.preflightState = "failed";
             this.#state.status = "unavailable";
@@ -821,12 +767,6 @@ export class AgentSessionController {
         } finally {
             this.#drainingQueue = false;
             this.#notify();
-            if (
-                this.#queuedMessages.length > 0 &&
-                this.#state.preflightState === "ready"
-            ) {
-                void this.#drainQueue();
-            }
         }
     }
 

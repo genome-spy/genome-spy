@@ -36,8 +36,9 @@ export function registerAgentUi(app) {
     const clearChatHistoryMenuItem = app.ui.registerToolbarMenuItem({
         label: "Clear chat history",
         icon: faTrash,
-        callback: () => {
-            getAgentState(app).agentSessionController?.reset();
+        callback: async () => {
+            const { clearAgentChatHistory } = await import("./chatPanel.js");
+            clearAgentChatHistory(app);
         },
     });
 

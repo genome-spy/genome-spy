@@ -81,7 +81,6 @@ import { getAgentState } from "./agentState.js";
  *     ): () => void;
  *     open(): Promise<void>;
  *     close(): void;
- *     reset(): void;
  *     sendMessage(message: string): Promise<void>;
  *     queueMessage(message: string): Promise<void>;
  *     refreshPreflight(): Promise<void>;
@@ -1316,5 +1315,32 @@ export async function toggleAgentChatPanel(app) {
             const textarea = panel.renderRoot.querySelector("textarea");
             textarea?.focus();
         }
+    }
+}
+
+/**
+ * Replaces the current chat session with a fresh controller.
+ *
+ * @param {import("../app.js").default} app
+ */
+export function clearAgentChatHistory(app) {
+    const agentState = getAgentState(app);
+    if (!agentState.agentAdapter) {
+        return;
+    }
+
+    agentState.agentSessionController?.stopCurrentTurn?.();
+    agentState.agentSessionController = createAgentSessionController(
+        agentState.agentAdapter
+    );
+
+    const appRoot = /** @type {HTMLElement | null} */ (
+        app.appContainer.querySelector(".genome-spy-app")
+    );
+    const panel = /** @type {AgentChatPanel | null} */ (
+        appRoot?.querySelector("gs-agent-chat-panel")
+    );
+    if (panel) {
+        panel.controller = agentState.agentSessionController;
     }
 }
