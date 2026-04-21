@@ -65,6 +65,10 @@ The split is intentional:
   extracted package.
 - `agentApi` should not expose agent-package internals, packaging concerns, or
   future abstractions before they are needed.
+- `getSampleView()` should not be part of the boundary; its current uses should
+  be decomposed into smaller hooks.
+- `createAgentAdapter`, `getAgentState`, and `registerAgentUi` belong with the
+  extracted `agent` package, not with `agentApi`.
 
 ## Current App Dependencies Used By The Agent
 
@@ -173,29 +177,39 @@ Current `App` fields that the agent relies on are:
 ## What The Agent Actually Needs
 
 The agent does not need a new host object at the start. It needs one app-owned
-import boundary that re-exports the concrete helpers and type contracts already
-used by the current implementation.
+import boundary that creates a bound handle object and exposes the concrete
+helpers and type contracts already used by the current implementation.
 
-The initial `agentApi` should be a thin barrel module, not a facade object:
+The initial `agentApi` should be a thin factory, not a facade class:
 
-- re-export the runtime helpers the current agent code already calls
-  - `createAgentAdapter(app)`
-  - `getAgentState(app)`
-  - `registerAgentUi(app)`
-- re-export the current agent-facing types and generated contracts
-  - types from `types.d.ts`
-  - context types from `agentContextTypes.d.ts`
-  - tool input types from `agentToolInputs.d.ts`
-  - generated action, tool, and schema artifacts that the agent package still
-    needs
+- create the handle object once from the app shell
+- expose the concrete app-side hooks the extracted package needs as bound
+  methods
+  - `getSampleHierarchy()` for sample metadata and hierarchy data
+  - `getSampleAttributeInfo(attribute)` for attribute title, description, and
+    type
+  - `getSampleParamConfig(paramName)` if selection descriptions still need it
+  - `getSearchableViews()`
+  - `getViewRoot()`
+  - `resolveViewSelector(selector)`
+  - `getActionHistory()`
+  - `getPresentProvenanceState()`
+  - `submitIntentActions(batch, options)`
+  - `setViewVisibility(selector, visibility)`
+  - `jumpToProvenanceState(provenanceId)`
+  - `jumpToInitialProvenanceState()`
+  - `getAppContainer()`
+  - `registerToolbarButton(spec)`
+  - `registerToolbarMenuItem(spec)` if the agent menu stays app-owned
+- re-export the small shared types those hooks need
 - keep the implementations in `src/agent` for now
 - do not introduce `AgentAnalysisHost`, `AgentToolHost`, or snapshot types at
   the start
 
 This keeps the first boundary concrete and incremental. The extracted package
-can depend on one app-owned path without forcing a second layer of abstraction.
-If repeated call patterns emerge later, factor those into smaller helpers or
-interfaces at that point.
+can receive one bound object and never see `App` at each call site. If repeated
+call patterns emerge later, factor those into smaller helpers or interfaces at
+that point.
 
 ## Possible Future Abstractions
 
@@ -210,7 +224,25 @@ split, not as the starting point.
 Owns the app shell and exports the app-owned boundary.
 
 - `src/agentApi`
-  - app-owned barrel of the essential hooks and types the agent needs
+  - app-owned factory for the essential hooks and types the agent needs
+  - likely exports:
+    - `createAgentApi(app)` returning bound methods for the existing
+      `SampleHierarchy`
+    - `getSampleAttributeInfo(attribute)` for attribute title/description/type
+    - `getSampleParamConfig(paramName)` if the selection context still needs it
+    - `getSearchableViews()`
+    - `getViewRoot()`
+    - `resolveViewSelector(selector)`
+    - `getActionHistory()`
+    - `getPresentProvenanceState()`
+    - `submitIntentActions(batch, options)`
+    - `setViewVisibility(selector, visibility)`
+    - `jumpToProvenanceState(provenanceId)`
+    - `jumpToInitialProvenanceState()`
+    - `getAppContainer()`
+    - `registerToolbarButton(spec)`
+    - `registerToolbarMenuItem(spec)` if the agent menu stays app-owned
+  - and the small shared types those hooks need
   - stable definitions that the extracted agent package can consume
   - no knowledge of the extracted agent package beyond those hooks
 - app bootstrap
@@ -225,6 +257,7 @@ Owns the app shell and exports the app-owned boundary.
 Owns the extracted agent implementation as a first-class package in the
 monorepo. This is the first extraction target before any separate repo split.
 
+- agent bootstrap and runtime composition
 - `agentState`
 - `AgentSessionController`
 - `contextBuilder`
@@ -253,20 +286,28 @@ Future package.
 ## Extraction Sequence
 
 1. Define the initial `agentApi` barrel in the app package.
-   - Create `src/agentApi` as a thin barrel of named re-exports.
-   - Start by re-exporting the concrete runtime helpers the current agent code
-     already uses: `createAgentAdapter`, `getAgentState`, and `registerAgentUi`.
-   - Re-export only the concrete types those hooks need to compile and run.
+   - Create `src/agentApi` as a thin factory that returns a bound handle
+     object.
+   - Re-export only the concrete app-side hooks and small shared types listed
+     above as zero-arg or narrow-arg methods on that object.
    - Keep the initial export surface minimal; do not publish extra agent-facing
      abstractions yet.
+   - Do not export `createAgentAdapter`, `getAgentState`, or `registerAgentUi`
+     from `agentApi`; those are agent runtime helpers and should stay with the
+     extracted package.
    - Keep the underlying implementation in `src/agent` for now.
    - Do not wrap these exports in a new host object or snapshot model yet.
 
-2. Point the current app-side agent code at `agentApi`.
-   - Use the barrel import as the only public seam inside `packages/app`.
-   - Keep the underlying modules available for now.
-   - The app should treat the future agent package as an external consumer, not
-     as something it needs to understand in detail.
+2. Replace the current direct `App` and `SampleView` reads with `agentApi`
+   hooks, one capability area at a time.
+   - Start with the places that still call `app.getSampleView()` directly:
+     `contextBuilder.js`, `selectionAggregationContext.js`,
+     `intentProgramExecutor.js`, and `viewTree.js`.
+   - Then move the remaining direct `App` reads in the agent runtime wiring
+     onto the same boundary.
+   - Use the smallest concrete bound method that covers each call site instead
+     of introducing a wider host interface.
+   - Keep the current app-side modules available for now.
    - This makes the eventual extraction a packaging change first, not a logic
      rewrite.
 
@@ -280,8 +321,9 @@ Future package.
    - The package should depend on `agentApi`, not on app source files.
    - Keep the first version narrow and concrete.
 
-5. Replace direct `App` reads only where the extracted package still needs them.
-   - First target `agentAdapter.js` and `contextBuilder.js`.
+5. Clean up any residual direct `App` reads uncovered by extraction.
+   - First target the runtime wiring in `agentAdapter.js` if anything still
+     reaches into app internals.
    - Keep method calls and existing handles if they are enough.
    - Introduce a smaller abstraction only when a repeated call pattern becomes
      awkward.
