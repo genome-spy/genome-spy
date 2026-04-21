@@ -157,9 +157,12 @@ export default class App {
     getAgentApi() {
         if (!this.#agentApiPromise) {
             this.#agentApiPromise = import("./agentApi/index.js").then(
-                ({ createAgentApi }) => {
-                    return createAgentApi(this);
-                }
+                (module) =>
+                    /** @type {{
+                     *     createAgentApi(app: import("./app.js").default): import("./agentApi/index.js").AgentApi;
+                     * }} */ (/** @type {unknown} */ (module)).createAgentApi(
+                        this
+                    )
             );
         }
 

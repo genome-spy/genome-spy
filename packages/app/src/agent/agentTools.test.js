@@ -106,8 +106,17 @@ function createRuntimeStub() {
         })),
         isVisible: vi.fn(() => visible),
     };
+    const agentApi = {
+        resolveViewSelector: vi.fn(() => view),
+        setViewVisibility: vi.fn((selector, nextVisible) => {
+            visible = nextVisible;
+        }),
+        jumpToProvenanceState: vi.fn(() => true),
+        jumpToInitialProvenanceState: vi.fn(() => true),
+    };
 
     return {
+        agentApi,
         expandViewNode: vi.fn(() => {
             const wasExpanded = expanded;
             expanded = true;
@@ -118,20 +127,18 @@ function createRuntimeStub() {
             expanded = false;
             return wasExpanded;
         }),
-        resolveViewSelector: vi.fn(() => view),
+        resolveViewSelector: agentApi.resolveViewSelector,
         isViewNodeExpanded: vi.fn(() => expanded),
         isViewVisible: vi.fn(() => visible),
-        setViewVisibility: vi.fn((selector, nextVisible) => {
-            visible = nextVisible;
-        }),
+        setViewVisibility: agentApi.setViewVisibility,
         getMetadataAttributeSummarySource: vi.fn(
             (attribute) => metadataSummarySources[attribute.specifier]
         ),
         getGroupedMetadataAttributeSummarySource: vi.fn(
             (attribute) => groupedMetadataSummarySources[attribute.specifier]
         ),
-        jumpToProvenanceState: vi.fn(() => true),
-        jumpToInitialProvenanceState: vi.fn(() => true),
+        jumpToProvenanceState: agentApi.jumpToProvenanceState,
+        jumpToInitialProvenanceState: agentApi.jumpToInitialProvenanceState,
         getAgentContext: vi.fn(() => ({})),
         getAgentVolatileContext: vi.fn(() => ({
             selectionAggregation: {

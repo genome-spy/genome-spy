@@ -13,6 +13,9 @@ import {
 
 function createAppStub() {
     return {
+        getActionInfo(action) {
+            return this.provenance.getActionInfo(action);
+        },
         provenance: {
             getActionInfo: (action) => {
                 if (action.type === "sampleView/sortBy") {

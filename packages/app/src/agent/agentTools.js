@@ -12,6 +12,7 @@ import generatedActionSchema from "./generated/generatedActionSchema.json" with 
 
 /**
  * @typedef {Omit<import("./types.d.ts").AgentAdapter, "requestAgentTurn"> & {
+ *     agentApi: import("../agentApi/index.js").AgentApi;
  *     expandViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  * }} AgentToolRuntime
@@ -54,7 +55,7 @@ export const agentTools = {
 
         const view = ensureResolvedView(runtime, selector);
         const before = view.isVisible();
-        runtime.setViewVisibility(selector, input.visibility);
+        runtime.agentApi.setViewVisibility(selector, input.visibility);
         const after = view.isVisible();
 
         return {
@@ -81,7 +82,9 @@ export const agentTools = {
             runtime,
             input.provenanceId
         );
-        const changed = runtime.jumpToProvenanceState(input.provenanceId);
+        const changed = runtime.agentApi.jumpToProvenanceState(
+            input.provenanceId
+        );
 
         return {
             text:
@@ -103,7 +106,7 @@ export const agentTools = {
      * @param {AgentToolRuntime} runtime
      */
     jumpToInitialProvenanceState(runtime) {
-        const changed = runtime.jumpToInitialProvenanceState();
+        const changed = runtime.agentApi.jumpToInitialProvenanceState();
 
         return {
             text: changed
@@ -237,7 +240,7 @@ function getActionPayloadSchema(actionType) {
  * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
  */
 function ensureResolvedView(runtime, selector) {
-    const view = runtime.resolveViewSelector(selector);
+    const view = runtime.agentApi.resolveViewSelector(selector);
     if (!view) {
         throw new ToolCallRejectionError(
             "Selector did not resolve in the current view hierarchy."

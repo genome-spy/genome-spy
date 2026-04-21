@@ -177,24 +177,20 @@ export interface AgentIntentActionSummary {
 
 /** Agent adapter API exposed to the UI and the embed entry point. */
 export interface AgentAdapter {
+    agentApi: import("../agentApi/index.js").AgentApi;
+
     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
     getAgentVolatileContext(): AgentVolatileContext;
     submitIntentActions(
         batch: IntentBatch,
         options?: { submissionKind?: IntentSubmissionKind }
     ): Promise<IntentBatchExecutionResult>;
-    resolveViewSelector(
-        selector: ViewSelector
-    ): import("@genome-spy/core/view/view.js").default | undefined;
-    setViewVisibility(selector: ViewSelector, visibility: boolean): void;
     getMetadataAttributeSummarySource(
         attribute: AttributeIdentifier
     ): AgentMetadataAttributeSummarySource | undefined;
     getGroupedMetadataAttributeSummarySource(
         attribute: AttributeIdentifier
     ): AgentGroupedMetadataAttributeSummarySource | undefined;
-    jumpToProvenanceState(provenanceId: string): boolean;
-    jumpToInitialProvenanceState(): boolean;
     summarizeExecutionResult(result: IntentBatchExecutionResult): string;
     summarizeProvenanceActionsSince(
         startIndex: number

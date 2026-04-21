@@ -52,7 +52,11 @@ export function validateIntentBatch(agentApi, batch) {
         if (
             attribute?.type === "SAMPLE_ATTRIBUTE" &&
             typeof attribute.specifier === "string" &&
-            !agentApi.getAttributeInfo(attribute)
+            !agentApi.getAttributeInfo(
+                /** @type {import("../sampleView/types.d.ts").AttributeIdentifier} */ (
+                    attribute
+                )
+            )
         ) {
             errors.push(
                 `$.steps[${normalizedSteps.length - 1}].payload.attribute references unknown attribute ${attribute.specifier}.`

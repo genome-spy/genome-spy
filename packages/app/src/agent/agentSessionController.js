@@ -107,17 +107,14 @@ import { agentTools } from "./agentTools.js";
  *         batch: IntentBatch,
  *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
  *     ): Promise<IntentBatchExecutionResult>;
+ *     agentApi: import("../agentApi/index.js").AgentApi;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
  *     getAgentVolatileContext(): AgentVolatileContext;
  *     summarizeProvenanceActionsSince(
  *         startIndex: number
  *     ): IntentBatchSummaryLine[];
- *     jumpToProvenanceState(provenanceId: string): boolean;
- *     jumpToInitialProvenanceState(): boolean;
- *     resolveViewSelector(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
  *     expandViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
- *     setViewVisibility(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector, visibility: boolean): void;
  *     getMetadataAttributeSummarySource(
  *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
  *     ): import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined;

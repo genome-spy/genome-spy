@@ -6,7 +6,7 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
  * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {{
- *     resolveViewSelector(selector: ViewSelector): import("@genome-spy/core/view/view.js").default | undefined;
+ *     agentApi: import("../agentApi/index.js").AgentApi;
  * }} SearchViewDatumsToolRuntime
  * @typedef {{
  *     text: string;
@@ -87,7 +87,7 @@ export function searchViewDatumsTool(runtime, input) {
  * @returns {import("@genome-spy/core/view/view.js").default}
  */
 function ensureResolvedView(runtime, selector) {
-    const view = runtime.resolveViewSelector(selector);
+    const view = runtime.agentApi.resolveViewSelector(selector);
     if (!view) {
         throw new ToolCallRejectionError(
             "Selector did not resolve in the current view hierarchy."

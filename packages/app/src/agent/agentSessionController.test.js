@@ -9,6 +9,12 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  *     submitIntentActions: ReturnType<typeof vi.fn>;
  *     getAgentContext: ReturnType<typeof vi.fn>;
  *     getAgentVolatileContext: ReturnType<typeof vi.fn>;
+ *     agentApi: {
+ *         resolveViewSelector: ReturnType<typeof vi.fn>;
+ *         setViewVisibility: ReturnType<typeof vi.fn>;
+ *         jumpToProvenanceState: ReturnType<typeof vi.fn>;
+ *         jumpToInitialProvenanceState: ReturnType<typeof vi.fn>;
+ *     };
  *     resolveViewSelector: ReturnType<typeof vi.fn>;
  *     setViewVisibility: ReturnType<typeof vi.fn>;
  *     summarizeExecutionResult: ReturnType<typeof vi.fn>;
@@ -16,6 +22,15 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  * }}
  */
 function createRuntimeMock() {
+    const agentApi = {
+        resolveViewSelector: vi.fn(() => ({
+            isVisible: vi.fn(() => true),
+        })),
+        setViewVisibility: vi.fn(),
+        jumpToProvenanceState: vi.fn(),
+        jumpToInitialProvenanceState: vi.fn(),
+    };
+
     return {
         requestAgentTurn: vi.fn(),
         submitIntentActions: vi.fn(),
@@ -25,10 +40,9 @@ function createRuntimeMock() {
                 fields: [],
             },
         })),
-        resolveViewSelector: vi.fn(() => ({
-            isVisible: vi.fn(() => true),
-        })),
-        setViewVisibility: vi.fn(),
+        agentApi,
+        resolveViewSelector: agentApi.resolveViewSelector,
+        setViewVisibility: agentApi.setViewVisibility,
         summarizeExecutionResult: vi.fn(),
         summarizeProvenanceActionsSince: vi.fn(() => []),
     };

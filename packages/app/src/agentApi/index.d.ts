@@ -6,6 +6,7 @@ import type {
 import type { AppRootSpec } from "../spec/appSpec.d.ts";
 import type { SampleHierarchy } from "../sampleView/state/sampleState.js";
 import type { ViewSelector } from "../sampleView/sampleViewTypes.d.ts";
+import type UnitView from "@genome-spy/core/view/unitView.js";
 import type { ProvenanceAction } from "../state/provenance.js";
 import type { ActionInfo } from "../state/provenance.js";
 export interface AgentApi {
@@ -20,7 +21,7 @@ export interface AgentApi {
         paramName: string
     ): { description?: string } | undefined;
 
-    getSearchableViews(): unknown[];
+    getSearchableViews(): UnitView[];
 
     getViewRoot(): import("@genome-spy/core/view/view.js").default | undefined;
 

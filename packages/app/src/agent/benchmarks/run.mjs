@@ -240,7 +240,9 @@ async function runCase(page, appUrl, benchmarkCase, options) {
                 viewVisibility:
                     expectedState?.viewVisibility?.map((entry) => {
                         const view =
-                            agentAdapter?.resolveViewSelector?.(entry.selector);
+                            agentAdapter?.agentApi?.resolveViewSelector?.(
+                                entry.selector
+                            );
                         return {
                             selector: entry.selector,
                             visible: view ? view.isVisible() : null,

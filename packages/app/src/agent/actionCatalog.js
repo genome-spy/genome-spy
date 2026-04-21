@@ -137,9 +137,7 @@ export function summarizeIntentBatch(agentApi, batch) {
  * @param {SummarizableAction[]} actions
  * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
-export function summarizeProvenanceActions(agentApi, actions) {
-    return summarizeActions(agentApi, actions);
-}
+export const summarizeProvenanceActions = summarizeActions;
 
 /**
  * @param {import("../agentApi/index.js").AgentApi} agentApi

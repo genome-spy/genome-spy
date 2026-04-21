@@ -256,29 +256,6 @@ export function createAgentAdapter(app, agentApi) {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
-     * @param {boolean} visibility
-     */
-    function setViewVisibility(selector, visibility) {
-        return agentApi.setViewVisibility(selector, visibility);
-    }
-
-    /**
-     * @param {string} provenanceId
-     * @returns {boolean}
-     */
-    function jumpToProvenanceState(provenanceId) {
-        return agentApi.jumpToProvenanceState(provenanceId);
-    }
-
-    /**
-     * @returns {boolean}
-     */
-    function jumpToInitialProvenanceState() {
-        return agentApi.jumpToInitialProvenanceState();
-    }
-
-    /**
      * @returns {import("./types.d.ts").AgentContextOptions}
      */
     /**
@@ -310,18 +287,6 @@ export function createAgentAdapter(app, agentApi) {
         return submitIntentActionsForApp(agentApi, batch, options);
     }
 
-    /**
-     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
-     * @returns {import("@genome-spy/core/view/view.js").default | undefined}
-     */
-    function resolveViewSelector(selector) {
-        return agentApi.resolveViewSelector(selector);
-    }
-
-    /**
-     * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
-     * @param {boolean} visibility
-     */
     /**
      * @param {number} startIndex
      * @returns {import("./types.d.ts").IntentBatchSummaryLine[]}
@@ -358,15 +323,12 @@ export function createAgentAdapter(app, agentApi) {
     }
 
     return {
+        agentApi,
         getAgentContext,
         getAgentVolatileContext,
         submitIntentActions,
-        resolveViewSelector,
-        setViewVisibility,
         getMetadataAttributeSummarySource,
         getGroupedMetadataAttributeSummarySource,
-        jumpToProvenanceState,
-        jumpToInitialProvenanceState,
         summarizeProvenanceActionsSince,
         summarizeExecutionResult,
         requestAgentTurn,
