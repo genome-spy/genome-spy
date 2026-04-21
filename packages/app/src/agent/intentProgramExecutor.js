@@ -112,7 +112,7 @@ export function summarizeExecutionResult(result) {
 /**
  * Counts the distinct samples currently present in the visible hierarchy.
  *
- * @param {import("../sampleView/state/sampleState.js").Group} group
+ * @param {import("../sampleView/state/sampleState.d.ts").Group} group
  * @param {Set<string>} [sampleIds]
  * @returns {number}
  */

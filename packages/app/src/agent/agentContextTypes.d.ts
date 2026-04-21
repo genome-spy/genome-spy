@@ -1,12 +1,10 @@
 import type {
-    ViewSelector,
-    ParamSelector,
-} from "../sampleView/sampleViewTypes.d.ts";
-import type {
     AttributeIdentifier,
     AggregationOp,
-} from "../sampleView/types.d.ts";
-import type { ParamValue } from "../state/paramProvenanceTypes.d.ts";
+    ParamSelector,
+    ParamValue,
+    ViewSelector,
+} from "../agentShared/index.d.ts";
 import type { Scale } from "@genome-spy/core/spec/scale.js";
 
 /**

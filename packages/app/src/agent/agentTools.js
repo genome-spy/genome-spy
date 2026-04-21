@@ -303,7 +303,7 @@ function createViewStateChange(domain, field, selector, before, after) {
 
 /**
  * @param {string | undefined} provenanceId
- * @param {import("./types.d.ts").AgentProvenanceAction | undefined} action
+ * @param {import("./agentContextTypes.d.ts").AgentProvenanceAction | undefined} action
  * @param {boolean} initial
  * @param {boolean} changed
  * @returns {{
@@ -338,7 +338,7 @@ function createProvenanceStateActivation(
 /**
  * @param {AgentToolRuntime} runtime
  * @param {string} provenanceId
- * @returns {import("./types.d.ts").AgentProvenanceAction}
+ * @returns {import("./agentContextTypes.d.ts").AgentProvenanceAction}
  */
 function findProvenanceAction(runtime, provenanceId) {
     const action = runtime

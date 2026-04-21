@@ -1,5 +1,7 @@
-import type { AttributeIdentifier } from "../sampleView/types.d.ts";
-import type { ViewSelector } from "../sampleView/sampleViewTypes.d.ts";
+import type {
+    AttributeIdentifier,
+    ViewSelector,
+} from "../agentShared/index.d.ts";
 import type {
     AgentAttributeSummary,
     AgentGroupedMetadataAttributeSummarySource,
@@ -22,7 +24,6 @@ export type {
     AgentAttributeSummary,
     AgentGroupedMetadataAttributeSummarySource,
     AgentMetadataAttributeSummarySource,
-    AgentProvenanceAction,
     AgentRootConfigSummary,
     AgentSampleGroupLevel,
     AgentSampleSummary,
@@ -31,6 +32,7 @@ export type {
     AgentSearchableViewSummary,
     AgentSelectionAggregationContext,
     AgentSelectionSummary,
+    AgentProvenanceAction,
     AgentViewDataSummary,
     AgentViewEncodingSummary,
     AgentViewEncodings,

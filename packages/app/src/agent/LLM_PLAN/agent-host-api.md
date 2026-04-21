@@ -56,8 +56,14 @@ should not be copied into `agent` and should not be pushed through
 
 This shared utility surface already exists as `packages/app/src/agentShared`.
 It is an exposure layer, not a refactor target for app internals.
+It should stay thin:
 
-- the shared surface should only expose pure helpers
+- pure helpers live here
+- app-owned types are re-exported here from their source-of-truth modules
+- no copied type model, no mirrored app internals
+- no new `Agent*` naming layer on the app side
+
+- the shared surface should only expose pure helpers and type re-exports
 - it may depend on public `@genome-spy/core` exports
 - it should not require refactoring app internals to work
 - it should be the place for helpers that are neither host state nor agent
@@ -119,9 +125,10 @@ Owns the app shell and exports the app-owned boundary.
 
 Owns the pure helpers that both the app and the agent package need.
 
-- public barrel or package, not an app-private reach-in
+- thin barrel in `packages/app/src/agentShared`
+- pure helpers plus type re-exports from the source-of-truth app modules
 - may depend on public `@genome-spy/core` exports
-- must not depend on `packages/app/src/...`
+- must not depend on `packages/app/src/...` by copying or mirroring app state
 - should carry helpers that are shared, stable, and not host-state-specific
 
 ### `@genome-spy/app-agent`
@@ -180,6 +187,7 @@ The near-term goal is a clean internal boundary that:
 
 - preserves fast iteration
 - removes direct `App` coupling from the agent package
+- keeps shared types centralized without duplicating app internals
 - keeps room open for a future MCP server
 - makes `agent` an extracted package in the monorepo first, with the option to
   split it into a separate repository later

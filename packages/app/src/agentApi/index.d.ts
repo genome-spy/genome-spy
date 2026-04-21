@@ -1,14 +1,21 @@
+/**
+ * App-owned boundary exposed to the agent package.
+ *
+ * `AgentApi` is the centralized handle for host state, provenance, and view
+ * mutations that the extracted agent package may use.
+ */
 import type { Action } from "@reduxjs/toolkit";
 import type {
+    ActionInfo,
     AttributeIdentifier,
     AttributeInfo,
-} from "../sampleView/types.d.ts";
-import type { AppRootSpec } from "../spec/appSpec.d.ts";
-import type { SampleHierarchy } from "../sampleView/state/sampleState.js";
-import type { ViewSelector } from "../sampleView/sampleViewTypes.d.ts";
+    AppRootSpec,
+    AppState,
+    ProvenanceAction,
+    SampleHierarchy,
+    ViewSelector,
+} from "../agentShared/index.d.ts";
 import type UnitView from "@genome-spy/core/view/unitView.js";
-import type { ProvenanceAction } from "../state/provenance.js";
-import type { ActionInfo } from "../state/provenance.js";
 export interface AgentApi {
     /**
      * Returns the current sample hierarchy used by the agent context.
@@ -66,9 +73,7 @@ export interface AgentApi {
     /**
      * Returns the current provenance state used by selection and timeline tools.
      */
-    getPresentProvenanceState():
-        | import("../state/setupStore.js").AppState["provenance"]["present"]
-        | undefined;
+    getPresentProvenanceState(): AppState["provenance"]["present"] | undefined;
 
     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
 

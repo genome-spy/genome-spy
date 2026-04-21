@@ -17,6 +17,56 @@ export { formatAggregationExpression } from "../sampleView/attributeAggregation/
 export { default as templateResultToString } from "../utils/templateResultToString.js";
 export { faStyles, formStyles } from "../components/generic/componentStyles.js";
 export { default as safeMarkdown } from "../utils/safeMarkdown.js";
+export type { ParamSelector, ViewSelector } from "./types.d.ts";
+export type {
+    AggregationOp,
+    AttributeIdentifier,
+    AttributeIdentifierType,
+    AttributeInfo,
+    AttributeEnsureContext,
+    AttributeValuesScope,
+    AggregationSpec,
+    Interval,
+    IntervalPoint,
+} from "../sampleView/types.d.ts";
+export type { AppRootSpec } from "../spec/appSpec.d.ts";
+export type { ActionInfo, ProvenanceAction } from "../state/provenance.js";
+export type { AppState } from "../state/setupStore.js";
+export type {
+    BaseGroup,
+    Group,
+    GroupGroup,
+    GroupMetadata,
+    Metadatum,
+    Metadata,
+    Sample,
+    SampleGroup,
+    SampleHierarchy,
+    SampleId,
+    SampleMetadata,
+} from "../sampleView/state/sampleState.d.ts";
+export type {
+    ExpandPointSelectionActionPayload,
+    ParamOrigin,
+    ParamProvenanceEntry,
+    ParamProvenanceState,
+    ParamValue,
+    ParamValueInterval,
+    ParamValueLiteral,
+    ParamValuePoint,
+    ParamValuePointExpand,
+    PointExpandMatcher,
+    PointExpandOrigin,
+} from "../state/paramProvenanceTypes.d.ts";
+export type {
+    IntervalCarrier,
+    IntervalReference,
+    IntervalSpecifier,
+    LocusSpecifier,
+    SelectionIntervalSource,
+    ViewAttributeSpecifier,
+    ViewRef,
+} from "../sampleView/sampleViewTypes.d.ts";
 
 type SupportedActionType =
     | `sampleView/${import("../sampleView/state/sampleSlice.js").SampleActionType}`

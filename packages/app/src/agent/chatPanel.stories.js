@@ -70,7 +70,7 @@ function createMockAgentController(scenario, options = {}) {
         streamDelayMs = 0,
         heartbeatIntervalMs = 0,
     } = options;
-    /** @type {import("./types.d.ts").AgentProvenanceAction[]} */
+    /** @type {import("./agentContextTypes.d.ts").AgentProvenanceAction[]} */
     const provenanceHistory = [];
     const baseContext = /** @type {any} */ ({
         schemaVersion: 1,
@@ -365,7 +365,7 @@ function createMockAgentController(scenario, options = {}) {
                 .slice(startIndex)
                 .map(
                     (
-                        /** @type {import("./types.d.ts").AgentProvenanceAction} */ action
+                        /** @type {import("./agentContextTypes.d.ts").AgentProvenanceAction} */ action
                     ) => ({
                         content: action.summary ?? action.type,
                         text: action.summary ?? action.type,

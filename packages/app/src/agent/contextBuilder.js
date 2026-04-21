@@ -50,7 +50,7 @@ export function getAgentContext(agentApi, options = {}) {
 }
 
 /**
- * @param {import("../sampleView/state/sampleState.js").SampleHierarchy | undefined} sampleHierarchy
+ * @param {import("../sampleView/state/sampleState.d.ts").SampleHierarchy | undefined} sampleHierarchy
  * @returns {import("./types.js").AgentSampleSummary}
  */
 function buildSampleSummary(sampleHierarchy) {
@@ -75,7 +75,7 @@ function buildSampleSummary(sampleHierarchy) {
 
 /**
  * @param {AgentApi} agentApi
- * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../sampleView/state/sampleState.d.ts").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentAttributeSummary[]}
  */
 function buildAttributeSummary(agentApi, sampleHierarchy) {
@@ -101,7 +101,7 @@ function buildAttributeSummary(agentApi, sampleHierarchy) {
 
 /**
  * @param {AgentApi} agentApi
- * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../sampleView/state/sampleState.d.ts").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentSampleGroupLevel[]}
  */
 function buildSampleGroupLevels(agentApi, sampleHierarchy) {
@@ -300,7 +300,7 @@ function getViewSelectorOrUndefined(view) {
 /**
  * @param {AgentApi} agentApi
  * @param {import("@reduxjs/toolkit").Action[]} provenanceActions
- * @returns {import("./types.js").AgentProvenanceAction[]}
+ * @returns {import("./agentContextTypes.d.ts").AgentProvenanceAction[]}
  */
 function buildProvenanceActions(agentApi, provenanceActions) {
     return provenanceActions
@@ -308,7 +308,7 @@ function buildProvenanceActions(agentApi, provenanceActions) {
         .slice(-10)
         .map((action) => {
             const info = agentApi.getActionInfo(
-                /** @type {import("../agent/agentContextTypes.d.ts").AgentProvenanceAction} */ (
+                /** @type {import("./agentContextTypes.d.ts").AgentProvenanceAction} */ (
                     action
                 )
             );

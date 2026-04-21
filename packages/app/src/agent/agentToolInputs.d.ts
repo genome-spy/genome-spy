@@ -1,16 +1,11 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
-import type { AggregationOp } from "../sampleView/types.d.ts";
+import type { AggregationOp, ViewSelector } from "../agentShared/index.d.ts";
 
 /*
  * Source of truth for agent-visible tool input shapes and their field
  * documentation. The generator scripts read this file to produce the runtime
  * catalog and JSON Schema artifacts.
  */
-
-type ViewSelector = {
-    scope: string[];
-    view: string;
-};
 
 type SampleAttributeIdentifier = {
     type: "SAMPLE_ATTRIBUTE";
