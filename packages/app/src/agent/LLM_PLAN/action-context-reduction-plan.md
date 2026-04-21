@@ -22,10 +22,10 @@ examples behind explicit lookup tools.
 
 ## Design Goal
 
-Keep a compact action summary list in the always-on context:
+Keep a compact intent-action summary list in the always-on context:
 
 ```ts
-actionSummaries: {
+intentActionSummaries: {
     actionType: AgentActionType;
     description: string;
 }[];
@@ -35,7 +35,7 @@ Move detailed action information behind a stateless lookup tool:
 
 ```ts
 getActionDetails({
-    actionTypes: AgentActionType[];
+    actionType: AgentActionType;
     includeSchema?: boolean;
 })
 ```
@@ -71,34 +71,25 @@ Purpose: make the optimization target concrete before changing behavior.
 
 Implementation:
 
-- Measure serialized sizes for each top-level request section:
-  - `message`
-  - `history`
-  - `context`
-  - `volatileContext`
-  - `tools`
-- Break down `context` at least by:
-  - action context
-  - attributes
-  - searchable views
-  - provenance
-  - view tree
-- Record the current size of the always-on action context.
+- Use the existing Python context/token measurement tool to record the current
+  per-turn request size.
+- Include a breakdown that identifies the always-on intent-action context.
+- Keep the measurement logic in one place. Do not add a duplicate JavaScript
+  measurement utility unless the Python tool cannot access the required request
+  shape.
 
 Acceptance criteria:
 
-- A repeatable measurement command or script exists.
-- The baseline clearly shows how much of each request is action-related.
+- The existing measurement command produces a repeatable baseline.
+- The baseline clearly shows how much of the request is intent-action-related.
 - The results distinguish generated artifact size from actual per-turn request
   size.
 
 Notes:
 
-- This can be implemented either in the existing Python token tool or as a small
-  local debugging utility.
 - Do this before v0.1 so later wins are measurable.
 
-### v0.1: Use Action Summaries in Base Context
+### v0.1: Use Intent Action Summaries in Base Context
 
 Purpose: remove detailed payload fields and examples from the always-on context.
 
@@ -106,8 +97,8 @@ Implementation:
 
 - Import `generated/generatedActionSummaries.json` in `actionCatalog.js` or
   `contextBuilder.js`.
-- Add a `listAgentActionSummaries()` helper.
-- Replace `context.actionCatalog` with `context.actionSummaries`.
+- Add a `listAgentIntentActionSummaries()` helper.
+- Replace `context.actionCatalog` with `context.intentActionSummaries`.
 - Shape each summary as:
 
 ```ts
@@ -130,7 +121,7 @@ Acceptance criteria:
 
 Recommended tests:
 
-- `contextBuilder.test.js` asserts `actionSummaries` is present.
+- `contextBuilder.test.js` asserts `intentActionSummaries` is present.
 - `contextBuilder.test.js` asserts action summaries do not expose payload fields.
 - `actionCatalog.test.js` covers the new summary helper.
 
@@ -144,7 +135,7 @@ Implementation:
 
 ```ts
 export interface GetActionDetailsToolInput {
-    actionTypes: AgentActionType[];
+    actionType: AgentActionType;
     includeSchema?: boolean;
 }
 ```
@@ -152,21 +143,20 @@ export interface GetActionDetailsToolInput {
 - Add `getActionDetails` to `AgentToolInputs`.
 - Generate updated tool catalog/schema artifacts.
 - Add a handler in `agentTools.js`.
-- Resolve each requested action from the generated action catalog.
+- Resolve the requested action from the generated action catalog.
 - Return compact detail objects without `payloadType`.
-- Reject unknown action types with a clear tool-call error.
+- Reject an unknown action type with a clear tool-call error.
 
 Acceptance criteria:
 
-- The agent can request details for one or more action types.
+- The agent can request details for one action type at a time.
 - Detail responses include payload fields and examples.
 - Detail responses do not include `payloadType`.
 - Existing `submitIntentActions` validation remains unchanged.
 
 Recommended tests:
 
-- `agentTools.test.js` covers valid lookup, multiple action lookup, and unknown
-  action rejection.
+- `agentTools.test.js` covers valid lookup and unknown action rejection.
 - Generated tool catalog/schema checks pass.
 
 ### v0.3: Prompt and Workflow Guidance
@@ -178,13 +168,12 @@ Implementation:
 - Update agent prompt/instructions consumed by the Python relay or app-side
   prompt source.
 - Guidance should say:
-  - Use `actionSummaries` to identify candidate actions.
+  - Use `intentActionSummaries` to identify candidate intent actions.
   - Use `getActionDetails` before constructing unfamiliar action payloads.
   - Use `submitIntentActions` for provenance-changing actions.
   - Do not invent payload fields or attributes that are absent from context or
     tool results.
-  - Fetch details for all likely actions in one lookup call when planning a
-    multi-step change.
+  - Fetch details only for the next action whose payload shape is needed.
 
 Acceptance criteria:
 
@@ -241,7 +230,7 @@ Purpose: expose raw payload schema only when it is actually useful.
 
 Implementation:
 
-- If `includeSchema` is true, include a projected schema for each requested
+- If `includeSchema` is true, include a projected schema for the requested
   action payload.
 - Keep the default response schema-free.
 - Reuse existing generated schema definitions instead of creating a second
@@ -273,7 +262,7 @@ Implementation:
   - whether the action appeared in the latest successful `submitIntentActions`
 - Compact or omit stale action-detail tool results when building future
   requests.
-- Keep action summaries always-on.
+- Keep intent action summaries always-on.
 - Keep details for actions used in the latest successful submission.
 - Drop or summarize details unused for a small number of turns.
 
@@ -318,8 +307,8 @@ Start with v0.1 after v0.0 measurement exists.
 
 Small first patch scope:
 
-- Add `listAgentActionSummaries()`.
-- Change `AgentContext.actionCatalog` to `AgentContext.actionSummaries`.
+- Add `listAgentIntentActionSummaries()`.
+- Change `AgentContext.actionCatalog` to `AgentContext.intentActionSummaries`.
 - Update `contextBuilder.js`.
 - Update focused tests.
 
