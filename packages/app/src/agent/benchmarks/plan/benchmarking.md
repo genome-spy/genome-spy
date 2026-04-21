@@ -41,7 +41,7 @@ The runner is already runnable and supports:
   - `action`
   - `description`
 - optional suppression of browser warnings in CLI output
-- result JSON and screenshots
+- JSON results and optional screenshots
 
 Interactive mode currently does more than just show the browser:
 
@@ -52,16 +52,18 @@ Interactive mode currently does more than just show the browser:
 
 The runner currently does the following for each case:
 
-1. loads the requested visualization route/spec
+1. loads the requested visualization route/spec if it is not already loaded
 2. waits until the app and sample hierarchy are ready
 3. removes blocking bookmark-tour overlays
 4. initializes the real browser-side `AgentSessionController`
-5. optionally opens the real chat panel in interactive mode
-6. sends the case prompt through the real agent controller
-7. captures a snapshot of the controller transcript
-8. reads a small amount of app state for deterministic verification
-9. saves `before.png`, `after.png`, and `result.json`
-10. writes `suite-result.json` for the full run
+5. restores visualization defaults and rolls provenance back
+6. resets the agent session so previous cases do not leak context
+7. optionally opens the real chat panel in interactive mode
+8. sends the case prompt through the real agent controller
+9. captures a snapshot of the controller transcript
+10. reads a small amount of app state for deterministic verification
+11. saves `result.json` and optional `before.png`/`after.png`
+12. writes `suite-result.json` for the full run
 
 The runner intentionally reuses the real browser runtime instead of creating a
 benchmark-only agent path.
@@ -77,6 +79,7 @@ The runner currently accepts these flags:
 - `--agent-url`
 - `--output-dir`
 - `--interactive`
+- `--screenshots`
 - `--quiet-browser-warnings`
 - `--timeout-ms`
 
@@ -122,6 +125,7 @@ The runner currently takes:
 - an optional case-mode filter
 - app/agent server URLs
 - interactive/headless choice
+- screenshot capture choice
 - output directory
 - timeout
 
@@ -198,7 +202,7 @@ Current evidence:
 - `finalAnswer`
 - `messages`
 - `appState`
-- screenshot paths
+- screenshot paths when `--screenshots` is enabled
 
 ## Current Oracle
 
@@ -329,7 +333,7 @@ The current implementation already satisfies the practical V1 goals:
 - one small generic runner
 - local suite JSON files
 - headless and interactive execution
-- screenshots and JSON artifacts
+- JSON artifacts and optional screenshots
 - action and description filtering
 - reuse of the real agent runtime
 

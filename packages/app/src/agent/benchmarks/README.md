@@ -64,6 +64,7 @@ node packages/app/src/agent/benchmarks/run.mjs \
 - `--app-url`: use an already running GenomeSpy app server
 - `--agent-url`: use an already running relay/agent server
 - `--quiet-browser-warnings`: hide browser warnings from CLI output
+- `--screenshots`: capture `before.png` and `after.png` for each case
 - `--output-dir`: custom artifact output directory
 - `--timeout-ms`: per-case timeout in milliseconds
 
@@ -77,11 +78,12 @@ with:
 
 For each case, it:
 
-1. loads the requested visualization
-2. initializes the real browser-side agent session
-3. sends the prompt through the existing controller
-4. captures screenshots and a JSON result
-5. evaluates the case oracle
+1. loads the requested visualization if it is not already loaded
+2. restores visualization defaults and rolls provenance back
+3. resets the browser-side agent session
+4. sends the prompt through the existing controller
+5. writes a JSON result and optional screenshots
+6. evaluates the case oracle
 
 ## Folder Structure
 
@@ -142,9 +144,12 @@ Each run writes:
 
 - `suite-result.json`
 - one subdirectory per case
+- `result.json`
+
+When `--screenshots` is passed, each case directory also includes:
+
 - `before.png`
 - `after.png`
-- `result.json`
 
 ## Current Limitations
 

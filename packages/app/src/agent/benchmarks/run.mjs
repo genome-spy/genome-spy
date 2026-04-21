@@ -24,6 +24,7 @@ Options:
   --agent-url URL      Agent server URL. Default: http://127.0.0.1:8000
   --output-dir PATH    Directory for result artifacts.
   --interactive        Run headed and keep the browser open after execution.
+  --screenshots        Capture before.png and after.png for each case.
   --quiet-browser-warnings
                        Suppress browser console warnings in CLI output.
   --timeout-ms NUMBER  Per-case timeout in milliseconds. Default: 90000
@@ -90,9 +91,11 @@ async function main() {
             for (const benchmarkCase of cases) {
                 console.log(`Running ${benchmarkCase.id}`);
                 const result = await runCase(page, appUrl, benchmarkCase, {
+                    defaultSetup: suite.setup ?? {},
                     outputDir,
                     timeoutMs: options.timeoutMs,
                     interactive: options.interactive,
+                    screenshots: options.screenshots,
                 });
                 results.push(result);
                 printCaseResult(result);
@@ -135,7 +138,13 @@ async function main() {
  * @param {import("playwright").Page} page
  * @param {string} appUrl
  * @param {any} benchmarkCase
- * @param {{ outputDir: string; timeoutMs: number; interactive: boolean }} options
+ * @param {{
+ *     defaultSetup: any;
+ *     outputDir: string;
+ *     timeoutMs: number;
+ *     interactive: boolean;
+ *     screenshots: boolean;
+ * }} options
  */
 async function runCase(page, appUrl, benchmarkCase, options) {
     const startedAt = Date.now();
@@ -145,21 +154,25 @@ async function runCase(page, appUrl, benchmarkCase, options) {
     );
     fs.mkdirSync(caseDir, { recursive: true });
 
-    const caseUrl = new URL(benchmarkCase.setup?.route ?? "/", appUrl);
-    if (benchmarkCase.setup?.specPath) {
+    const setup = {
+        ...options.defaultSetup,
+        ...(benchmarkCase.setup ?? {}),
+    };
+    const caseUrl = new URL(setup.route ?? "/", appUrl);
+    if (setup.specPath) {
         caseUrl.searchParams.set(
             "spec",
-            String(benchmarkCase.setup.specPath).replace(/^\/+/, "")
+            String(setup.specPath).replace(/^\/+/, "")
         );
     }
 
-    await page.goto(caseUrl.toString(), { waitUntil: "load" });
-    await waitForApp(page, options.timeoutMs);
-    await dismissBlockingOverlays(page);
-    await installBenchmarkSession(page, options.timeoutMs, options.interactive);
+    await ensureCasePage(page, caseUrl, options);
+    await resetCaseState(page, options.timeoutMs);
 
     const beforePath = path.join(caseDir, "before.png");
-    await page.screenshot({ path: beforePath });
+    if (options.screenshots) {
+        await page.screenshot({ path: beforePath });
+    }
 
     const execution = await page.evaluate(
         async ({ prompt, timeoutMs }) => {
@@ -189,7 +202,9 @@ async function runCase(page, appUrl, benchmarkCase, options) {
     );
 
     const afterPath = path.join(caseDir, "after.png");
-    await page.screenshot({ path: afterPath });
+    if (options.screenshots) {
+        await page.screenshot({ path: afterPath });
+    }
 
     const actualState = await page.evaluate(
         async ({ expectedState }) => {
@@ -302,10 +317,12 @@ async function runCase(page, appUrl, benchmarkCase, options) {
             finalAnswer: evidence.finalAnswer,
             messages: evidence.messages,
             appState: actualState,
-            artifacts: {
-                beforeScreenshot: path.relative(repoRoot, beforePath),
-                afterScreenshot: path.relative(repoRoot, afterPath),
-            },
+            artifacts: options.screenshots
+                ? {
+                      beforeScreenshot: path.relative(repoRoot, beforePath),
+                      afterScreenshot: path.relative(repoRoot, afterPath),
+                  }
+                : {},
         },
     };
 
@@ -313,6 +330,29 @@ async function runCase(page, appUrl, benchmarkCase, options) {
     fs.writeFileSync(outputPath, JSON.stringify(result, null, 2));
 
     return result;
+}
+
+/**
+ * @param {import("playwright").Page} page
+ * @param {URL} caseUrl
+ * @param {{ timeoutMs: number; interactive: boolean }} options
+ */
+async function ensureCasePage(page, caseUrl, options) {
+    const currentUrl = new URL(page.url());
+    const currentBaseUrl =
+        currentUrl.origin + currentUrl.pathname + currentUrl.search;
+    const targetBaseUrl = caseUrl.origin + caseUrl.pathname + caseUrl.search;
+
+    if (currentBaseUrl !== targetBaseUrl) {
+        await page.goto(caseUrl.toString(), { waitUntil: "load" });
+        await waitForApp(page, options.timeoutMs);
+        await dismissBlockingOverlays(page);
+        await installBenchmarkSession(
+            page,
+            options.timeoutMs,
+            options.interactive
+        );
+    }
 }
 
 /**
@@ -433,6 +473,43 @@ async function installBenchmarkSession(page, timeoutMs, interactive) {
         await agentState.agentSessionController.open();
     }, { interactive });
 
+    await waitForPreflight(page, timeoutMs);
+}
+
+/**
+ * Restore the visualization and agent session before every case while keeping
+ * the already-loaded data and browser page alive.
+ *
+ * @param {import("playwright").Page} page
+ * @param {number} timeoutMs
+ */
+async function resetCaseState(page, timeoutMs) {
+    await page.evaluate(async () => {
+        const benchmarkGlobal = /** @type {any} */ (globalThis);
+        const benchmarkState = benchmarkGlobal.__gsAgentBenchmark;
+        if (!benchmarkState?.app || !benchmarkState?.controller) {
+            throw new Error("Benchmark session was not initialized.");
+        }
+
+        const { resetToDefaultState } = await import(
+            new URL("/bookmark/bookmark.js", globalThis.location.href).toString()
+        );
+
+        resetToDefaultState(benchmarkState.app);
+        await benchmarkState.app.paramProvenanceBridge?.whenApplied?.();
+
+        benchmarkState.controller.reset();
+        await benchmarkState.controller.open();
+    });
+
+    await waitForPreflight(page, timeoutMs);
+}
+
+/**
+ * @param {import("playwright").Page} page
+ * @param {number} timeoutMs
+ */
+async function waitForPreflight(page, timeoutMs) {
     await page.waitForFunction(
         () => {
             const benchmarkGlobal = /** @type {any} */ (globalThis);
@@ -836,6 +913,7 @@ function parseArgs(args) {
      *   agentUrl: string;
      *   outputDir: string | undefined;
      *   interactive: boolean;
+     *   screenshots: boolean;
      *   quietBrowserWarnings: boolean;
      *   timeoutMs: number;
      * }} */
@@ -848,6 +926,7 @@ function parseArgs(args) {
         agentUrl: defaultAgentUrl,
         outputDir: undefined,
         interactive: false,
+        screenshots: false,
         quietBrowserWarnings: false,
         timeoutMs: defaultTimeoutMs,
     };
@@ -880,6 +959,8 @@ function parseArgs(args) {
             options.outputDir = resolvePathArg(args[++index], "--output-dir");
         } else if (arg === "--interactive") {
             options.interactive = true;
+        } else if (arg === "--screenshots") {
+            options.screenshots = true;
         } else if (arg === "--quiet-browser-warnings") {
             options.quietBrowserWarnings = true;
         } else if (arg === "--timeout-ms") {
