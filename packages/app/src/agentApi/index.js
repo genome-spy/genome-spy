@@ -39,7 +39,7 @@ export function createAgentApi(app) {
         /**
          * @param {string} paramName
          */
-        getSampleParamConfig(paramName) {
+        getSampleViewScopedParamConfig(paramName) {
             const sampleView = app.getSampleView();
             if (!sampleView?.paramRuntime?.paramConfigs) {
                 return;

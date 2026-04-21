@@ -17,7 +17,13 @@ export interface AgentApi {
 
     getAttributeInfo(attribute: AttributeIdentifier): AttributeInfo | undefined;
 
-    getSampleParamConfig(
+    /**
+     * Returns the current SampleView-scoped param config.
+     *
+     * TODO(app): Make this unscoped and accept a `ParamSelector` once the
+     * agent boundary no longer needs the SampleView-local lookup.
+     */
+    getSampleViewScopedParamConfig(
         paramName: string
     ): { description?: string } | undefined;
 

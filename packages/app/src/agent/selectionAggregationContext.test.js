@@ -106,7 +106,7 @@ describe("getSelectionAggregationContext", () => {
 
         const agentApi = {
             getViewRoot: () => view,
-            getSampleParamConfig: (paramName) =>
+            getSampleViewScopedParamConfig: (paramName) =>
                 view.paramRuntime.paramConfigs.get(paramName),
             getPresentProvenanceState: () => ({
                 paramProvenance: {

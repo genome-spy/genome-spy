@@ -77,7 +77,7 @@ describe("createAgentApi", () => {
                 type: "quantitative",
             })
         );
-        expect(agentApi.getSampleParamConfig("selection")).toEqual({
+        expect(agentApi.getSampleViewScopedParamConfig("selection")).toEqual({
             description: "Selection",
         });
         expect(agentApi.getSearchableViews()).toEqual(["searchable-view"]);

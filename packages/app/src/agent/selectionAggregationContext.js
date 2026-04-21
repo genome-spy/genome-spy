@@ -36,8 +36,9 @@ function buildSelectionSummaries(agentApi) {
         .map((entry) => ({
             type: "interval",
             label: entry.selector.param,
-            description: agentApi.getSampleParamConfig(entry.selector.param)
-                ?.description,
+            description: agentApi.getSampleViewScopedParamConfig(
+                entry.selector.param
+            )?.description,
             selector: entry.selector,
             active: true,
             nameSuffix: createSelectionNameSuffix(entry.value),

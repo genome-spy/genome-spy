@@ -199,7 +199,8 @@ The initial `agentApi` should be a thin factory, not a facade class:
   methods
   - `getSampleHierarchy()` for sample metadata and hierarchy data
   - `getAttributeInfo(attribute)` for attribute title, description, and type
-  - `getSampleParamConfig(paramName)` if selection descriptions still need it
+  - `getSampleViewScopedParamConfig(paramName)` if selection descriptions
+    still need it
   - `getSearchableViews()`
   - `getViewRoot()`
   - `getFocusedView()` for the current tree collapse and expansion focus
@@ -243,7 +244,8 @@ Owns the app shell and exports the app-owned boundary.
     - `createAgentApi(app)` returning bound methods for the existing
       `SampleHierarchy`
     - `getAttributeInfo(attribute)` for attribute title/description/type
-    - `getSampleParamConfig(paramName)` if the selection context still needs it
+    - `getSampleViewScopedParamConfig(paramName)` if the selection context
+      still needs it
     - `getSearchableViews()`
     - `getViewRoot()`
     - `getFocusedView()`
