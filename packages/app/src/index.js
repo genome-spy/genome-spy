@@ -8,6 +8,7 @@ import { html } from "lit";
 import { setupAgentRuntime } from "./agent/agentEmbedRuntime.js";
 
 export { GenomeSpy, App as GenomeSpyApp, icon, html };
+export * from "./agentShared/index.js";
 
 /**
  * Embeds GenomeSpy App into the DOM.

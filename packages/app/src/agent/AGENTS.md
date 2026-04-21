@@ -11,12 +11,16 @@ current visualization state and propose actions. The project is still in early s
 - Any schemas or metadata needed for the agent should be generated from the app's existing sources of truth where possible, rather than hand-maintained. For example, action schemas can be generated from the Redux slice definitions and JSDoc comments.
 - `generated*.(json|ts)` files are generated artifacts that should not be manually edited.
 - When changing a source contract that feeds generation, regenerate the corresponding `generated*` artifacts before finishing the change. This includes tool catalog/schema files and action schema/type files.
+- All host state and mutation calls between the agent and the App must go through `AgentApi`.
+- All pure helper logic that is shared between the App and the future agent package must go through `agentShared`.
+- Do not add direct `packages/app/src/...` reach-ins when the functionality already exists on `AgentApi` or `agentShared`.
+- Extend `AgentApi` conservatively. If a missing hook seems necessary, plan it first and keep the smallest possible surface.
 
 ## Code organization
 
 - The agent adapter code should be self-contained and not leak into the core app logic.
-- However, functionality must not be duplicated if something similar already exists in the app or core packages.
-- If the adapter needs new capabilities from the `core` or `app` packages, an approval is needed before any code changes.
+- However, functionality must not be duplicated if something similar already exists in the app, core, `AgentApi`, or `agentShared`.
+- If the adapter needs new capabilities from the `core` or `app` packages, or a new `AgentApi` hook, discuss it before making code changes.
 - Changes that touch code outside the adapter (i.e., in the core app or shared packages) must be placed in a separate commit.
 
 ## Design principles
