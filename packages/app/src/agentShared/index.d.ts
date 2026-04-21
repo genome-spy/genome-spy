@@ -15,6 +15,8 @@ export {
 export { buildSelectionAggregationAttributeIdentifier } from "../sampleView/selectionAggregationAttributes.js";
 export { formatAggregationExpression } from "../sampleView/attributeAggregation/aggregationOps.js";
 export { default as templateResultToString } from "../utils/templateResultToString.js";
+export { faStyles, formStyles } from "../components/generic/componentStyles.js";
+export { default as safeMarkdown } from "../utils/safeMarkdown.js";
 
 type SupportedActionType =
     | `sampleView/${import("../sampleView/state/sampleSlice.js").SampleActionType}`

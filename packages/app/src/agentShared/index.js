@@ -14,7 +14,9 @@ import { formatAggregationExpression } from "../sampleView/attributeAggregation/
 import { sampleSlice } from "../sampleView/state/sampleSlice.js";
 import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
+export { faStyles, formStyles } from "../components/generic/componentStyles.js";
 import templateResultToString from "../utils/templateResultToString.js";
+export { default as safeMarkdown } from "../utils/safeMarkdown.js";
 
 export {
     makeViewSelectorKey,
