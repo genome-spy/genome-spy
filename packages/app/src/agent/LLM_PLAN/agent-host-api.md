@@ -54,12 +54,10 @@ Pure helpers that are needed by both the app and the future agent package
 should not be copied into `agent` and should not be pushed through
 `AgentApi`.
 
-Instead, expose them through a small shared utility surface, either as a
-package or a public barrel that both sides can import. This should be an
-exposure layer, not a refactor target for app internals.
+This shared utility surface already exists as `packages/app/src/agentShared`.
+It is an exposure layer, not a refactor target for app internals.
 
-- the shared surface should only expose pure helpers and generated helper
-  contracts
+- the shared surface should only expose pure helpers
 - it may depend on public `@genome-spy/core` exports
 - it should not require refactoring app internals to work
 - it should be the place for helpers that are neither host state nor agent
@@ -68,31 +66,7 @@ exposure layer, not a refactor target for app internals.
 
 ## Extraction Checklist
 
-The remaining work falls into three buckets.
-
-### Shared utility surface
-
-These items should be shared, not copied.
-
-- [`actionCatalog.js`](../actionCatalog.js)
-  - expose the action-definition source of truth through a shared public
-    surface or generated contract so the agent does not import app slices
-    directly
-- [`contextBuilder.js`](../contextBuilder.js)
-  - expose `isBaselineAction` through the shared utility surface if the agent
-    still needs it
-- [`selectionAggregationTool.js`](../selectionAggregationTool.js)
-  - expose the selection aggregation helpers through the shared utility
-    surface
-- [`viewTree.js`](../viewTree.js)
-  - expose `makeViewSelectorKey`, `serializeBookmarkableParamValue`, and
-    `formatScopedParamName` through the shared utility surface
-- [`agentSessionController.js`](../agentSessionController.js)
-  - expose `makeViewSelectorKey` through the shared utility surface
-- [`agentContextTypes.d.ts`](../agentContextTypes.d.ts),
-  [`agentToolInputs.d.ts`](../agentToolInputs.d.ts), and
-  [`types.d.ts`](../types.d.ts)
-  - keep the shared type vocabulary centralized instead of duplicating it
+The remaining work falls into two buckets.
 
 ### Fix directly in `agent`
 
@@ -143,8 +117,7 @@ Owns the app shell and exports the app-owned boundary.
 
 ### Shared utility surface
 
-Owns the pure helpers and generated helper contracts that both the app and the
-agent package need.
+Owns the pure helpers that both the app and the agent package need.
 
 - public barrel or package, not an app-private reach-in
 - may depend on public `@genome-spy/core` exports
@@ -165,7 +138,7 @@ monorepo. This is the first extraction target before any separate repo split.
 - `toolbarMenu`
 - toolbar button registration and panel entry wiring
 - tool catalog and schema handling
-- action and tool catalog generation from the shared utility surface and
+- action and tool catalog generation from local agent contracts and
   `AgentApi` exports
 - agent-local prompt/session logic
 - local or shared styling for the panel surface
@@ -185,37 +158,19 @@ Future package.
 
 ## Concrete Next Steps
 
-1. Create the shared utility surface.
-   - Expose `makeViewSelectorKey`, `formatScopedParamName`,
-     `serializeBookmarkableParamValue`, the selection-aggregation helper
-     logic, and the action-catalog source of truth through a public surface.
-   - Keep the app internals in place; do not refactor them just to make the
-     shared surface exist.
-   - Keep this surface free of `App` state and agent runtime orchestration.
-
-2. Repoint the helper-heavy agent modules to that shared surface.
-   - [`viewTree.js`](../viewTree.js)
-   - [`agentSessionController.js`](../agentSessionController.js)
-   - [`selectionAggregationTool.js`](../selectionAggregationTool.js)
-   - [`contextBuilder.js`](../contextBuilder.js)
-   - [`actionCatalog.js`](../actionCatalog.js)
-   - [`selectionAggregationContext.js`](../selectionAggregationContext.js)
-   - Leave [`searchViewDatumsTool.js`](../searchViewDatumsTool.js) on public
-     `@genome-spy/core` imports plus `AgentApi`.
-
-3. Keep `AgentApi` host-only.
+1. Keep `AgentApi` host-only.
    - Do not move utility helpers into `AgentApi`.
    - The only expected future host addition is replacing
      `getSampleViewScopedParamConfig()` with a selector-based param lookup
      when the selection path becomes unscoped.
 
-4. Extract `agent` into `@genome-spy/app-agent`.
+2. Extract `agent` into `@genome-spy/app-agent`.
    - Make it depend on `AgentApi`, the shared utility surface, and public
      `@genome-spy/core` exports only.
    - Move the browser-agent runtime, panel, tools, and catalog generation into
      that package.
 
-5. Add an MCP adapter later.
+3. Add an MCP adapter later.
    - Reuse the same `AgentApi` boundary.
    - Do not reuse chat or session APIs in MCP.
 

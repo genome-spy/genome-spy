@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
-import { makeViewSelectorKey } from "../viewSettingsUtils.js";
+import { makeViewSelectorKey } from "../agentShared/index.js";
 
 const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
     getAgentContext: vi.fn(() => ({ schemaVersion: 1 })),
@@ -195,6 +195,8 @@ function createAgentApiStub(app) {
                 .getSampleView()
                 .compositeAttributeInfoSource.getAttributeInfo(attribute),
         getSampleParamConfig: (paramName) =>
+            app.getSampleView().paramRuntime?.paramConfigs?.get(paramName),
+        getSampleViewScopedParamConfig: (paramName) =>
             app.getSampleView().paramRuntime?.paramConfigs?.get(paramName),
         getSearchableViews: () => app.genomeSpy.getSearchableViews(),
         getViewRoot: () => app.getSampleView(),

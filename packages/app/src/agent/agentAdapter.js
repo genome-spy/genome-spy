@@ -4,7 +4,7 @@ import {
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
 import { summarizeProvenanceActions } from "./actionCatalog.js";
-import templateResultToString from "../utils/templateResultToString.js";
+import { templateResultToString } from "../agentShared/index.js";
 import {
     collectVisibleSampleGroups,
     collectVisibleSampleIds,

@@ -1,9 +1,11 @@
-import templateResultToString from "../utils/templateResultToString.js";
-import { listAgentIntentActionSummaries } from "./actionCatalog.js";
-import { buildViewTree } from "./viewTree.js";
-import { isBaselineAction } from "../state/provenanceBaseline.js";
+import {
+    isBaselineAction,
+    templateResultToString,
+} from "../agentShared/index.js";
 import { getEncodingSearchFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import { getViewSelector } from "@genome-spy/core/view/viewSelectors.js";
+import { listAgentIntentActionSummaries } from "./actionCatalog.js";
+import { buildViewTree } from "./viewTree.js";
 
 /**
  * @typedef {import("../agentApi/index.js").AgentApi} AgentApi

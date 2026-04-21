@@ -17,9 +17,11 @@ import {
 import { asSelectionConfig } from "@genome-spy/core/selection/selection.js";
 import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
 import { getParamSelector } from "@genome-spy/core/view/viewSelectors.js";
-import { formatScopedParamName } from "../viewScopeUtils.js";
-import { serializeBookmarkableParamValue } from "../state/paramValueSerialization.js";
-import { makeViewSelectorKey } from "../viewSettingsUtils.js";
+import {
+    formatScopedParamName,
+    makeViewSelectorKey,
+    serializeBookmarkableParamValue,
+} from "../agentShared/index.js";
 
 /**
  * Builds a normalized, spec-like view tree for the agent.

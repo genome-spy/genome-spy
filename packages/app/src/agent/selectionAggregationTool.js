@@ -1,5 +1,7 @@
-import { formatAggregationExpression } from "../sampleView/attributeAggregation/aggregationOps.js";
-import { buildSelectionAggregationAttributeIdentifier } from "../sampleView/selectionAggregationAttributes.js";
+import {
+    buildSelectionAggregationAttributeIdentifier,
+    formatAggregationExpression,
+} from "../agentShared/index.js";
 
 /**
  * Resolves a selection-aggregation candidate into an `AttributeIdentifier`

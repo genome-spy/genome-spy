@@ -272,6 +272,8 @@ function createAgentApiStub(app) {
                 .compositeAttributeInfoSource.getAttributeInfo(attribute),
         getSampleParamConfig: (paramName) =>
             app.getSampleView().paramRuntime.paramConfigs.get(paramName),
+        getSampleViewScopedParamConfig: (paramName) =>
+            app.getSampleView().paramRuntime.paramConfigs.get(paramName),
         getSearchableViews: () => app.genomeSpy.getSearchableViews(),
         getViewRoot: () => app.getSampleView(),
         getFocusedView: () => app.getSampleView(),

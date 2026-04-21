@@ -1,7 +1,7 @@
-import { sampleSlice } from "../sampleView/state/sampleSlice.js";
-import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
-import { viewSettingsSlice } from "../viewSettingsSlice.js";
-import templateResultToString from "../utils/templateResultToString.js";
+import {
+    getActionCreator,
+    templateResultToString,
+} from "../agentShared/index.js";
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
 import generatedActionSummaries from "./generated/generatedActionSummaries.json" with { type: "json" };
 
@@ -33,32 +33,6 @@ import generatedActionSummaries from "./generated/generatedActionSummaries.json"
  *     summary?: string;
  * }} ActionInfoInput
  */
-
-/**
- * @param {import("./types.js").AgentActionType} actionType
- * @returns {(payload: any) => import("@reduxjs/toolkit").PayloadAction<any>}
- */
-function getActionCreator(actionType) {
-    if (actionType.startsWith("sampleView/")) {
-        return /** @type {Record<string, any>} */ (sampleSlice.actions)[
-            actionType.slice("sampleView/".length)
-        ];
-    }
-
-    if (actionType.startsWith("paramProvenance/")) {
-        return /** @type {Record<string, any>} */ (
-            paramProvenanceSlice.actions
-        )[actionType.slice("paramProvenance/".length)];
-    }
-
-    if (actionType.startsWith("viewSettings/")) {
-        return /** @type {Record<string, any>} */ (viewSettingsSlice.actions)[
-            actionType.slice("viewSettings/".length)
-        ];
-    }
-
-    throw new Error("Unsupported agent actionType " + actionType + ".");
-}
 
 /**
  * @type {Record<import("./types.js").AgentActionType, ActionCatalogEntry>}

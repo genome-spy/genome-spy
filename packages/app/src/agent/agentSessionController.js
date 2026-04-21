@@ -1,5 +1,7 @@
-import templateResultToString from "../utils/templateResultToString.js";
-import { makeViewSelectorKey } from "../viewSettingsUtils.js";
+import {
+    makeViewSelectorKey,
+    templateResultToString,
+} from "../agentShared/index.js";
 import {
     formatToolCallRejection,
     validateToolArgumentsShape,

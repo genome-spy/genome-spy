@@ -2,7 +2,7 @@ import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import {
     createSelectionAggregationCandidateId,
     getContextMenuFieldInfos,
-} from "../sampleView/selectionAggregationCandidates.js";
+} from "../agentShared/index.js";
 
 /**
  * @param {import("../agentApi/index.js").AgentApi} agentApi
