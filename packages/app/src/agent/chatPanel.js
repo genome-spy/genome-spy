@@ -81,6 +81,7 @@ import { getAgentState } from "./agentState.js";
  *     ): () => void;
  *     open(): Promise<void>;
  *     close(): void;
+ *     reset(): void;
  *     sendMessage(message: string): Promise<void>;
  *     queueMessage(message: string): Promise<void>;
  *     refreshPreflight(): Promise<void>;

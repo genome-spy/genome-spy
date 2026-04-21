@@ -1,4 +1,4 @@
-import { faEye, faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faRobot, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { getAgentState } from "./agentState.js";
 
 /**
@@ -33,8 +33,17 @@ export function registerAgentUi(app) {
           })
         : () => {};
 
+    const clearChatHistoryMenuItem = app.ui.registerToolbarMenuItem({
+        label: "Clear chat history",
+        icon: faTrash,
+        callback: () => {
+            getAgentState(app).agentSessionController?.reset();
+        },
+    });
+
     return () => {
         removeButton();
         removeMenuItem();
+        clearChatHistoryMenuItem();
     };
 }
