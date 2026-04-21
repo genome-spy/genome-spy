@@ -84,6 +84,9 @@
 
 ## Action + State Context
 - See [`action-schema.md`](./action-schema.md) for the proposed action/provenance schema.
+- See [`action-context-reduction-plan.md`](./action-context-reduction-plan.md)
+  for the staged plan to replace always-on action payload docs with summaries
+  and on-demand action detail lookup.
 - See [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
   for the interval-selection summaries used by the agent.
 - See [`selection-aggregation-workflow.md`](./selection-aggregation-workflow.md)
