@@ -3,13 +3,22 @@
 Note: This file is an early draft, not to be implemented yet.
 
 This note sketches the boundary needed to move the current agent code out of
-`packages/app` while still keeping the agent iteration-friendly during
-development.
+`packages/app/src/agent` while still keeping a thin app-owned `agentApi`
+barrel in `packages/app/src/agentApi` during development.
 
 The goal is not to freeze a public plugin contract yet. The goal is to define
-an unstable host API that the extracted browser agent package can consume, and
-that a later MCP package can reuse for GenomeSpy-specific analysis and mutation
-tools.
+an unstable app-owned export surface that the extracted browser agent package
+can consume, and that a later MCP package can reuse for GenomeSpy-specific
+analysis and mutation tools. The app package should keep the boundary only;
+agent-specific catalogs, schemas, and prompt-facing metadata can be generated
+on the agent package side and loaded lazily when the agent feature is enabled.
+
+In this note, `agentApi` means the app-owned boundary that stays in
+`packages/app/src/agentApi`.
+
+In this note, `agent` means the extracted implementation that will move out of
+`packages/app/src/agent` into a dedicated package in the monorepo first, and
+possibly into a separate repository later.
 
 ## Why This Boundary Exists
 
@@ -32,6 +41,30 @@ that replaces direct `App` access without forcing a fully public extension API.
 The sample-state shapes in `sampleState.d.ts` can stay as app-level shared
 contracts; the abstraction target is the heavier `SampleView` and `View`
 objects, not the sample hierarchy data model itself.
+
+The app-owned surface should stay focused on host capabilities. The agent-owned
+surface should own derived catalogs, schemas, and UI orchestration that can be
+pulled in only when the agent plugin is actually used.
+
+The app should know as little as possible about the future agent package. It
+should provide only the essential hooks the agent needs and stay out of the
+agent package's internal structure.
+
+The first extraction pass should stay handle-oriented. Use the existing app
+interfaces and method calls as the boundary, and only introduce snapshot-like
+abstractions when they clearly reduce coupling or repetition.
+
+The split is intentional:
+
+- `agentApi` is the app-owned export surface.
+- `agentApi` is also the place where the required host typings are exported.
+- `agent` is the runtime and generated metadata consumer that depends on that
+  surface.
+- `agent` should not reach back into app internals once extraction starts.
+- `agentApi` should start with the minimum set of handles needed by the
+  extracted package.
+- `agentApi` should not expose agent-package internals, packaging concerns, or
+  future abstractions before they are needed.
 
 ## Current App Dependencies Used By The Agent
 
@@ -139,180 +172,47 @@ Current `App` fields that the agent relies on are:
 
 ## What The Agent Actually Needs
 
-The agent does not need the full `App` object. It needs a much smaller set of
-capabilities:
+The agent does not need a new host object at the start. It needs one app-owned
+import boundary that re-exports the concrete helpers and type contracts already
+used by the current implementation.
 
-- read the current visualization context
-- resolve selectors against the current view tree
-- inspect provenance and the active sample state
-- mutate view visibility
-- submit provenance-backed intent batches
-- maintain agent-local expanded context state
-- mount the browser chat panel when running in the app shell
+The initial `agentApi` should be a thin barrel module, not a facade object:
 
-That suggests two interfaces instead of one:
+- re-export the runtime helpers the current agent code already calls
+  - `createAgentAdapter(app)`
+  - `getAgentState(app)`
+  - `registerAgentUi(app)`
+- re-export the current agent-facing types and generated contracts
+  - types from `types.d.ts`
+  - context types from `agentContextTypes.d.ts`
+  - tool input types from `agentToolInputs.d.ts`
+  - generated action, tool, and schema artifacts that the agent package still
+    needs
+- keep the implementations in `src/agent` for now
+- do not introduce `AgentAnalysisHost`, `AgentToolHost`, or snapshot types at
+  the start
 
-1. a host API for analysis and mutation
-2. a small UI registration API for app-owned controls
+This keeps the first boundary concrete and incremental. The extracted package
+can depend on one app-owned path without forcing a second layer of abstraction.
+If repeated call patterns emerge later, factor those into smaller helpers or
+interfaces at that point.
 
-## Draft Interface 1: Analysis Host
+## Possible Future Abstractions
 
-This is the core host contract that both the browser agent package and a later
-MCP package could consume.
-
-```ts
-export interface AgentAnalysisHost {
-  readonly baseUrl: string | undefined;
-
-  getAppState(): AgentAppStateSnapshot;
-  getSampleContext(): SampleContextSnapshot;
-  getViewContext(): ViewContextSnapshot;
-  getProvenanceContext(): ProvenanceContextSnapshot;
-  resolveViewSelector(selector: ViewSelector): ResolvedViewHandle | undefined;
-  searchViewDatums(
-    selector: ViewSelector,
-    query: string,
-    field: string,
-    mode: "exact" | "prefix"
-  ): SearchViewDatumsResult;
-
-  validateIntentBatch(batch: AgentIntentBatch): ShapeValidationResult;
-  submitIntentActions(
-    batch: AgentIntentBatch,
-    options?: { submissionKind?: "agent" | "bookmark" | "user" }
-  ): Promise<IntentBatchExecutionResult>;
-
-  setViewVisibility(selector: ViewSelector, visibility: boolean): void;
-  jumpToProvenanceState(provenanceId: string): boolean;
-  jumpToInitialProvenanceState(): boolean;
-
-  summarizeProvenanceActionsSince(startIndex: number): IntentBatchSummaryLine[];
-  summarizeExecutionResult(result: IntentBatchExecutionResult): string;
-}
-```
-
-Notes:
-
-- `getAppState()` is intentionally vague. It should return only the current
-  state needed by the agent context builder, not the whole Redux tree.
-- `getSampleContext()`, `getViewContext()`, and `getProvenanceContext()` should
-  return agent-oriented snapshots, not `SampleView` or other app internals.
-- `resolveViewSelector()` should return a lightweight resolved-view handle,
-  not the raw `View` object.
-- `baseUrl` is the transport target for the browser agent. An MCP package may
-  ignore it.
-- `validateIntentBatch()` belongs here because both browser agent and MCP
-  clients need the same guardrails before mutation.
-
-## Draft Interface 2: UI Registration Host
-
-This is the browser-only extension surface for app-owned controls. The agent
-package should not mount arbitrary DOM into the app shell if a declarative
-registration API is enough.
-
-```ts
-export interface AgentUiHost {
-  addToolbarButton(spec: AgentToolbarButtonSpec): () => void;
-  addToolbarMenuItem(spec: AgentToolbarMenuItemSpec): () => void;
-}
-```
-
-Notes:
-
-- `addToolbarButton()` is the preferred seam for the current agent UI.
-- The app should own the actual button rendering and placement.
-- The registration method should return a disposer so the agent package can
-  unregister itself cleanly.
-- Keep the UI API declarative and small; do not expose raw shell DOM unless the
-  agent later needs a richer layout host.
-- The extracted agent package will still need a style strategy for the panel:
-  either share token/style modules with `packages/app` or duplicate the small
-  amount of CSS it relies on today.
-
-## Draft Snapshot Types
-
-These are intentionally smaller than the current app objects.
-The underlying sample hierarchy should stay on the existing
-`sampleState.d.ts` types where that is convenient; the goal is to avoid leaking
-the full `SampleView`, not to re-model the sample data from scratch.
-
-```ts
-export interface SampleContextSnapshot {
-  sampleHierarchy: SampleHierarchy;
-  selectionAggregation: AgentSelectionAggregationSummary;
-  searchableViews: SearchableViewSummary[];
-}
-
-export interface ViewContextSnapshot {
-  root: ViewSummary;
-}
-
-export interface ProvenanceContextSnapshot {
-  actions: IntentBatchSummaryLine[];
-  currentBranchId?: string;
-  lastActionIndex: number;
-}
-
-export interface ResolvedViewHandle {
-  selector: ViewSelector;
-  title: string;
-  description?: string;
-  searchable: boolean;
-}
-
-export interface SearchViewDatumsResult {
-  count: number;
-  matches: unknown[];
-}
-```
-
-Notes:
-
-- Keep the snapshots narrow and serializable where possible.
-- Add fields only when the agent needs them for reasoning or tool execution.
-- Prefer summaries over direct object references.
-- Reuse the existing sample-state model for sample hierarchy, metadata, and
-  groups; do not introduce a second parallel sample data structure.
-
-## Draft Interface 3: Minimal MCP Tool Host
-
-If the MCP server is built later, it should likely consume a smaller tool-facing
-subset of the analysis host rather than the browser shell API.
-
-```ts
-export interface AgentToolHost {
-  getSampleContext(): SampleContextSnapshot;
-  getViewContext(): ViewContextSnapshot;
-  getProvenanceContext(): ProvenanceContextSnapshot;
-  resolveViewSelector(selector: ViewSelector): ResolvedViewHandle | undefined;
-  searchViewDatums(
-    selector: ViewSelector,
-    query: string,
-    field: string,
-    mode: "exact" | "prefix"
-  ): SearchViewDatumsResult;
-
-  validateIntentBatch(batch: AgentIntentBatch): ShapeValidationResult;
-  submitIntentActions(
-    batch: AgentIntentBatch,
-    options?: { submissionKind?: "agent" | "bookmark" | "user" }
-  ): Promise<IntentBatchExecutionResult>;
-
-  setViewVisibility(selector: ViewSelector, visibility: boolean): void;
-  jumpToProvenanceState(provenanceId: string): boolean;
-  jumpToInitialProvenanceState(): boolean;
-}
-```
-
-This is intentionally narrower than the browser agent host. It excludes panel
-mounting, session state, and chat orchestration.
+If the handle-oriented surface starts to sprawl, compact snapshots or a host
+interface can be introduced later. Keep that as a follow-up after the package
+split, not as the starting point.
 
 ## Proposed Package Split
 
 ### `@genome-spy/app`
 
-Owns the app shell and implements the host API.
+Owns the app shell and exports the app-owned boundary.
 
+- `src/agentApi`
+  - app-owned barrel of the essential hooks and types the agent needs
+  - stable definitions that the extracted agent package can consume
+  - no knowledge of the extracted agent package beyond those hooks
 - app bootstrap
 - Redux/provenance state
 - view resolution
@@ -322,7 +222,8 @@ Owns the app shell and implements the host API.
 
 ### `@genome-spy/app-agent`
 
-Owns the current agent code after extraction.
+Owns the extracted agent implementation as a first-class package in the
+monorepo. This is the first extraction target before any separate repo split.
 
 - `agentState`
 - `AgentSessionController`
@@ -332,8 +233,13 @@ Owns the current agent code after extraction.
 - `toolbarMenu`
 - toolbar button registration and panel entry wiring
 - tool catalog and schema handling
+- action and tool catalog generation from the app-owned `agentApi` exports
 - agent-local prompt/session logic
 - local or shared styling for the panel surface
+
+If the agent later becomes a separate repository, this package boundary should
+already be narrow enough that the repo move is mostly a packaging change rather
+than an architecture change.
 
 ### `@genome-spy/app-agent-mcp`
 
@@ -342,49 +248,55 @@ Future package.
 - MCP transport
 - tool registration
 - request/response translation
-- reuse of the shared analysis host contract
+- reuse of the shared `agentApi` barrel
 
 ## Extraction Sequence
 
-1. Define the unstable host interface in the app package.
-   - Keep it small.
-   - Prefer method-based access over exposing raw app internals.
-   - Start with the capabilities already used by `agentAdapter.js` and
-     `contextBuilder.js`.
+1. Define the initial `agentApi` barrel in the app package.
+   - Create `src/agentApi` as a thin barrel of named re-exports.
+   - Start by re-exporting the concrete runtime helpers the current agent code
+     already uses: `createAgentAdapter`, `getAgentState`, and `registerAgentUi`.
+   - Re-export only the concrete types those hooks need to compile and run.
+   - Keep the initial export surface minimal; do not publish extra agent-facing
+     abstractions yet.
+   - Keep the underlying implementation in `src/agent` for now.
+   - Do not wrap these exports in a new host object or snapshot model yet.
 
-2. Move `AgentSessionController` out of `App`.
+2. Point the current app-side agent code at `agentApi`.
+   - Use the barrel import as the only public seam inside `packages/app`.
+   - Keep the underlying modules available for now.
+   - The app should treat the future agent package as an external consumer, not
+     as something it needs to understand in detail.
+   - This makes the eventual extraction a packaging change first, not a logic
+     rewrite.
+
+3. Move `AgentSessionController` out of `App`.
    - The controller should be created by the browser agent package.
    - `App` should stop storing it on the instance.
+   - This is the first step in turning `agent` into a package boundary rather
+     than an app-internal folder.
 
-3. Replace direct `App` reads in the agent code with host calls.
-   - First target `agentAdapter.js`.
-   - Then update `contextBuilder.js` and the selection/provenance helpers.
+4. Extract `agent` into `@genome-spy/app-agent`.
+   - The package should depend on `agentApi`, not on app source files.
+   - Keep the first version narrow and concrete.
 
-4. Move browser-only UI code into the extracted package.
-   - `chatPanel.js`
-   - `toolbarMenu.js`
-   - any small UI helpers that only exist for the agent shell
-
-5. Keep the generated schemas and tool catalogs local to the agent package.
-   - The host should expose data and operations.
-   - The agent package should continue to own LLM-facing schemas.
+5. Replace direct `App` reads only where the extracted package still needs them.
+   - First target `agentAdapter.js` and `contextBuilder.js`.
+   - Keep method calls and existing handles if they are enough.
+   - Introduce a smaller abstraction only when a repeated call pattern becomes
+     awkward.
 
 6. Add an MCP adapter later.
-   - Reuse the same analysis host contract.
+   - Reuse the same `agentApi` barrel and concrete handles.
    - Do not reuse chat/session APIs in MCP.
 
 ## Open Questions
 
-- Should the host surface return snapshots or provide direct methods for each
-  field?
-- Which pieces of provenance state should be exposed as read-only snapshots
-  versus derived summaries?
-- Should visibility mutations stay on the host, or be represented as a smaller
-  mutation service?
-- How much of the current `App` class should be represented in the host API
-  versus hidden behind dedicated methods?
-- Should the browser agent package own the context builder entirely, or should
-  `App` expose a prebuilt agent snapshot?
+- Which concrete helpers should `agentApi` re-export first?
+- Which current imports are best moved over unchanged instead of wrapped?
+- Which repeated call patterns, if any, justify a new abstraction later?
+- Should visibility mutations stay as direct methods, or become a smaller
+  service after extraction?
 
 ## Working Assumption
 
@@ -394,4 +306,6 @@ boundary that:
 - preserves fast iteration
 - removes direct `App` coupling from the agent package
 - keeps room open for a future MCP server
+- makes `agent` an extracted package in the monorepo first, with the option to
+  split it into a separate repository later
 - avoids over-designing a public extension API too early
