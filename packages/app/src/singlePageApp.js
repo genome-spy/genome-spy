@@ -8,7 +8,7 @@ if (specUrl) {
     const agentBaseUrl = import.meta.env.VITE_AGENT_BASE_URL;
 
     if (agentBaseUrl) {
-        const { appAgent } = await import("../../app-agent/src/index.js");
+        const { appAgent } = await import("@genome-spy/app-agent");
         plugins.push(appAgent({ baseUrl: agentBaseUrl }));
     }
 

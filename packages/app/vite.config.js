@@ -13,6 +13,14 @@ export default defineConfig({
     envDir: packageDir,
     root: "src",
     appType: "mpa",
+    resolve: {
+        alias: {
+            "@genome-spy/app-agent": resolve(
+                repoRoot,
+                "packages/app-agent/src/index.js"
+            ),
+        },
+    },
     server: {
         host: process.env.HOST || "127.0.0.1",
         port: 8080,
