@@ -1,14 +1,11 @@
-import {
-    isBaselineAction,
-    templateResultToString,
-} from "../agentShared/index.js";
+import { isBaselineAction, templateResultToString } from "@genome-spy/app";
 import { getEncodingSearchFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import { getViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { listAgentIntentActionSummaries } from "./actionCatalog.js";
 import { buildViewTree } from "./viewTree.js";
 
 /**
- * @typedef {import("../agentApi/index.js").AgentApi} AgentApi
+ * @typedef {import("@genome-spy/app").AgentApi} AgentApi
  */
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
@@ -50,7 +47,7 @@ export function getAgentContext(agentApi, options = {}) {
 }
 
 /**
- * @param {import("../sampleView/state/sampleState.d.ts").SampleHierarchy | undefined} sampleHierarchy
+ * @param {import("@genome-spy/app").SampleHierarchy | undefined} sampleHierarchy
  * @returns {import("./types.js").AgentSampleSummary}
  */
 function buildSampleSummary(sampleHierarchy) {
@@ -75,7 +72,7 @@ function buildSampleSummary(sampleHierarchy) {
 
 /**
  * @param {AgentApi} agentApi
- * @param {import("../sampleView/state/sampleState.d.ts").SampleHierarchy} sampleHierarchy
+ * @param {import("@genome-spy/app").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentAttributeSummary[]}
  */
 function buildAttributeSummary(agentApi, sampleHierarchy) {
@@ -101,7 +98,7 @@ function buildAttributeSummary(agentApi, sampleHierarchy) {
 
 /**
  * @param {AgentApi} agentApi
- * @param {import("../sampleView/state/sampleState.d.ts").SampleHierarchy} sampleHierarchy
+ * @param {import("@genome-spy/app").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentSampleGroupLevel[]}
  */
 function buildSampleGroupLevels(agentApi, sampleHierarchy) {

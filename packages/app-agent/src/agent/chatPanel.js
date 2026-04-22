@@ -5,7 +5,7 @@ import {
     faRobot,
 } from "@fortawesome/free-solid-svg-icons";
 import { css, html, LitElement, nothing } from "lit";
-import { faStyles, formStyles, safeMarkdown } from "../agentShared/index.js";
+import { faStyles, formStyles, safeMarkdown } from "@genome-spy/app";
 import { createAgentSessionController } from "./agentSessionController.js";
 import { getAgentState } from "./agentState.js";
 

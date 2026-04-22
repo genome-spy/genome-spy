@@ -15,6 +15,8 @@ const repoRoot = path.resolve(packageDir, "..");
 
 const sampleSlicePath = path.join(
     packageDir,
+    "..",
+    "app",
     "src",
     "sampleView",
     "state",
@@ -22,6 +24,8 @@ const sampleSlicePath = path.join(
 );
 const payloadTypesPath = path.join(
     packageDir,
+    "..",
+    "app",
     "src",
     "sampleView",
     "state",

@@ -1,7 +1,4 @@
-import type {
-    AttributeIdentifier,
-    ViewSelector,
-} from "../agentShared/index.d.ts";
+import type { AttributeIdentifier, ViewSelector } from "@genome-spy/app";
 import type {
     AgentAttributeSummary,
     AgentGroupedMetadataAttributeSummarySource,
@@ -179,7 +176,7 @@ export interface AgentIntentActionSummary {
 
 /** Agent adapter API exposed to the UI and the embed entry point. */
 export interface AgentAdapter {
-    agentApi: import("../agentApi/index.js").AgentApi;
+    agentApi: import("@genome-spy/app").AgentApi;
 
     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
     getAgentVolatileContext(): AgentVolatileContext;

@@ -38,7 +38,7 @@ export function renderGeneratedActionTypes(catalog) {
         "    RetainMatched,",
         "    SetMetadata,",
         "    SortBy,",
-        '} from "../../agentShared/actionPayloadTypes.d.ts";',
+        '} from "@genome-spy/app";',
     ];
 
     const stepVariants = catalog

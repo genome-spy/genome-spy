@@ -1,8 +1,5 @@
 import { css, html } from "lit";
-import BaseDialog, {
-    showDialog,
-} from "../../../../app/src/components/generic/baseDialog.js";
-import { showMessageDialog } from "../../../../app/src/components/generic/messageDialog.js";
+import { BaseDialog, showDialog, showMessageDialog } from "@genome-spy/app";
 import { getAgentState } from "../../agent/agentState.js";
 
 export default class AgentContextDialog extends BaseDialog {
@@ -79,7 +76,12 @@ export default class AgentContextDialog extends BaseDialog {
     }
 }
 
-customElements.define("gs-agent-context-dialog", AgentContextDialog);
+customElements.define(
+    "gs-agent-context-dialog",
+    /** @type {CustomElementConstructor} */ (
+        /** @type {unknown} */ (AgentContextDialog)
+    )
+);
 
 /**
  * @param {object} app
@@ -95,10 +97,7 @@ export async function showAgentContextDialog(app) {
         return;
     }
 
-    await showDialog(
-        "gs-agent-context-dialog",
-        (/** @type {AgentContextDialog} */ dialog) => {
-            dialog.context = context;
-        }
-    );
+    await showDialog("gs-agent-context-dialog", (/** @type {any} */ dialog) => {
+        dialog.context = context;
+    });
 }

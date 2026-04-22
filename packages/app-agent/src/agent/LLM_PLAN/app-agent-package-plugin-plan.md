@@ -362,7 +362,7 @@ agent source.
 6. [x] Move browser agent source files from `packages/app/src/agent` to
    `packages/app-agent/src`.
 7. [x] Move agent generation scripts and generated artifacts to `packages/app-agent`.
-8. [ ] Update imports so the extracted package uses public `@genome-spy/app` exports
+8. [x] Update imports so the extracted package uses public `@genome-spy/app` exports
    and public `@genome-spy/core` exports only.
 9. [x] Move or replace app-local agent tests with package-local tests.
 10. [ ] Move `utils/agent_server` to `packages/app-agent/server`.

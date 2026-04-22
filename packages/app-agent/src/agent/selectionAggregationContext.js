@@ -2,10 +2,10 @@ import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import {
     createSelectionAggregationCandidateId,
     getContextMenuFieldInfos,
-} from "../agentShared/index.js";
+} from "@genome-spy/app";
 
 /**
- * @param {import("../agentApi/index.js").AgentApi} agentApi
+ * @param {import("@genome-spy/app").AgentApi} agentApi
  * @returns {import("./types.js").AgentSelectionAggregationContext}
  */
 export function getSelectionAggregationContext(agentApi) {
@@ -19,7 +19,7 @@ export function getSelectionAggregationContext(agentApi) {
 }
 
 /**
- * @param {import("../agentApi/index.js").AgentApi} agentApi
+ * @param {import("@genome-spy/app").AgentApi} agentApi
  * @returns {import("./types.js").AgentSelectionSummary[]}
  */
 function buildSelectionSummaries(agentApi) {

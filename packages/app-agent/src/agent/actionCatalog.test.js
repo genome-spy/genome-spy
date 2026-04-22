@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { describe, expect, it } from "vitest";
-import templateResultToString from "../utils/templateResultToString.js";
-import { paramProvenanceSlice } from "../state/paramProvenanceSlice.js";
+import templateResultToString from "../../../app/src/utils/templateResultToString.js";
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
 import {
     getActionCatalogEntry,
@@ -10,6 +9,15 @@ import {
     summarizeProvenanceActions,
     summarizeIntentBatch,
 } from "./actionCatalog.js";
+
+const paramProvenanceSlice = {
+    actions: {
+        paramChange: (payload) => ({
+            type: "paramProvenance/paramChange",
+            payload,
+        }),
+    },
+};
 
 function createAppStub() {
     return {

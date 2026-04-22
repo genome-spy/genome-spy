@@ -1,4 +1,10 @@
 /**
+ * @typedef {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher} SelectionExpansionMatcher
+ * @typedef {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate} SelectionExpansionPredicate
+ * @typedef {import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate} ResolvedSelectionExpansionPredicate
+ */
+
+/**
  * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate | import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate} op
  * @returns {op is import("./selectionExpansionTypes.d.ts").LogicalOr | import("./selectionExpansionTypes.d.ts").ResolvedLogicalOr}
  */

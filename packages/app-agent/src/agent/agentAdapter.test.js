@@ -1,7 +1,15 @@
 // @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { viewSettingsSlice } from "../viewSettingsSlice.js";
-import { makeViewSelectorKey } from "../agentShared/index.js";
+import { makeViewSelectorKey } from "@genome-spy/app";
+
+const viewSettingsSlice = {
+    actions: {
+        setVisibility: (payload) => ({
+            type: "viewSettings/setVisibility",
+            payload,
+        }),
+    },
+};
 
 const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
     getAgentContext: vi.fn(() => ({ schemaVersion: 1 })),

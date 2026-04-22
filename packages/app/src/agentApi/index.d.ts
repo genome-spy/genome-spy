@@ -81,3 +81,5 @@ export interface AgentApi {
 
     jumpToInitialProvenanceState(): boolean;
 }
+
+export declare function createAgentApi(app: any): AgentApi;

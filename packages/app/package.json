@@ -12,8 +12,10 @@
   "main": "dist/index.js",
   "module": "dist/index.es.js",
   "type": "module",
+  "types": "src/index.d.ts",
   "exports": {
     ".": {
+      "types": "./src/index.d.ts",
       "import": "./dist/index.es.js",
       "default": "./dist/index.js"
     },
@@ -29,7 +31,8 @@
     "./style.css": "./dist/style.css"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "src/**/*.d.ts"
   ],
   "repository": {
     "type": "git",

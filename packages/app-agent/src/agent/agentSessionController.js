@@ -1,7 +1,4 @@
-import {
-    makeViewSelectorKey,
-    templateResultToString,
-} from "../agentShared/index.js";
+import { makeViewSelectorKey, templateResultToString } from "@genome-spy/app";
 import {
     formatToolCallRejection,
     validateToolArgumentsShape,
@@ -109,7 +106,7 @@ import { agentTools } from "./agentTools.js";
  *         batch: IntentBatch,
  *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
  *     ): Promise<IntentBatchExecutionResult>;
- *     agentApi: import("../agentApi/index.js").AgentApi;
+ *     agentApi: import("@genome-spy/app").AgentApi;
  *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
  *     getAgentVolatileContext(): AgentVolatileContext;
  *     summarizeProvenanceActionsSince(
@@ -118,10 +115,10 @@ import { agentTools } from "./agentTools.js";
  *     expandViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     getMetadataAttributeSummarySource(
- *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
+ *         attribute: import("@genome-spy/app").AttributeIdentifier
  *     ): import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined;
  *     getGroupedMetadataAttributeSummarySource(
- *         attribute: import("../sampleView/types.d.ts").AttributeIdentifier
+ *         attribute: import("@genome-spy/app").AttributeIdentifier
  *     ): import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined;
  *     summarizeExecutionResult(result: IntentBatchExecutionResult): string;
  * }} AgentSessionRuntime

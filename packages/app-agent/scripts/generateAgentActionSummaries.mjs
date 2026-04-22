@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { getActionInfo } from "../src/sampleView/state/actionInfo.js";
-import templateResultToString from "../src/utils/templateResultToString.js";
+import { getActionInfo } from "../../app/src/sampleView/state/actionInfo.js";
+import templateResultToString from "../../app/src/utils/templateResultToString.js";
 import { createGeneratedActionCatalog } from "./generateAgentActionCatalog.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -19,7 +19,7 @@ const outputPath = path.join(
 
 /**
  * @param {any} attribute
- * @returns {import("../src/sampleView/types.js").AttributeInfo}
+ * @returns {import("@genome-spy/app").AttributeInfo}
  */
 function createAttributeInfo(attribute) {
     const name =

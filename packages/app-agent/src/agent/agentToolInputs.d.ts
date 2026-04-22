@@ -1,5 +1,5 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
-import type { AggregationOp, ViewSelector } from "../agentShared/index.d.ts";
+import type { AggregationOp, ViewSelector } from "@genome-spy/app";
 
 /*
  * Source of truth for agent-visible tool input shapes and their field

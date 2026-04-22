@@ -1,7 +1,7 @@
 import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 
 /**
- * @param {import("../agentApi/index.js").AgentApi} agentApi
+ * @param {import("@genome-spy/app").AgentApi} agentApi
  * @returns {import("./types.d.ts").AgentVolatileContext}
  */
 export function getAgentVolatileContext(agentApi) {

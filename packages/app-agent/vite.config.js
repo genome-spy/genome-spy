@@ -1,12 +1,32 @@
 import { defineConfig } from "vite";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const process = globalThis.process;
+const packageDir = dirname(fileURLToPath(import.meta.url));
+const packagesDir = dirname(packageDir);
+const repoRoot = dirname(packagesDir);
 
-export default defineConfig({
-    envDir: dirname(fileURLToPath(import.meta.url)),
+export default defineConfig(({ command }) => ({
+    envDir: packageDir,
     root: "src",
+    resolve: {
+        alias:
+            command === "serve"
+                ? {
+                      "@genome-spy/app": resolve(
+                          repoRoot,
+                          "packages/app/src/index.js"
+                      ),
+                  }
+                : {},
+    },
+    server: {
+        host: process.env.HOST || "127.0.0.1",
+        fs: {
+            allow: [repoRoot],
+        },
+    },
     build: {
         outDir: "../dist",
         emptyOutDir: true,
@@ -17,7 +37,4 @@ export default defineConfig({
             fileName: (format) => `index.${format === "es" ? "es." : ""}js`,
         },
     },
-    server: {
-        host: process.env.HOST || "127.0.0.1",
-    },
-});
+}));

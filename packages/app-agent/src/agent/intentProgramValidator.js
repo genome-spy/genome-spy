@@ -1,7 +1,7 @@
 import { validateIntentBatchShape } from "./actionShapeValidator.js";
 
 /**
- * @param {import("../agentApi/index.js").AgentApi} agentApi
+ * @param {import("@genome-spy/app").AgentApi} agentApi
  * @param {unknown} batch
  * @returns {import("./types.js").IntentBatchValidationResult}
  */
@@ -53,7 +53,7 @@ export function validateIntentBatch(agentApi, batch) {
             attribute?.type === "SAMPLE_ATTRIBUTE" &&
             typeof attribute.specifier === "string" &&
             !agentApi.getAttributeInfo(
-                /** @type {import("../sampleView/types.d.ts").AttributeIdentifier} */ (
+                /** @type {import("@genome-spy/app").AttributeIdentifier} */ (
                     attribute
                 )
             )

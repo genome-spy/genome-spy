@@ -12,7 +12,7 @@ import generatedActionSchema from "./generated/generatedActionSchema.json" with 
 
 /**
  * @typedef {Omit<import("./types.d.ts").AgentAdapter, "requestAgentTurn"> & {
- *     agentApi: import("../agentApi/index.js").AgentApi;
+ *     agentApi: import("@genome-spy/app").AgentApi;
  *     expandViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  * }} AgentToolRuntime
