@@ -1,17 +1,13 @@
 import { getAgentState } from "./agentState.js";
 
 /**
- * Initializes the agent runtime when it is enabled and configured.
+ * Initializes the agent runtime when it is configured.
  *
  * @param {import("../app.js").default} app
  * @param {import("./agentEmbedOptions.js").AgentEmbedOptions} options
  * @returns {Promise<void>}
  */
 export async function setupAgentRuntime(app, options) {
-    if (import.meta.env.VITE_AGENT_ENABLED !== "true") {
-        return;
-    }
-
     const agentBaseUrl =
         options.agentBaseUrl ??
         /** @type {string | undefined} */ (import.meta.env.VITE_AGENT_BASE_URL);

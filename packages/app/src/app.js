@@ -94,6 +94,12 @@ export default class App {
             this.appContainer
         );
 
+        this.ui.attachAppShell(
+            /** @type {HTMLElement} */ (
+                this.appContainer.querySelector(".genome-spy-app")
+            )
+        );
+
         // Dependency injection
         // TODO: Replace this with something standard-based when such a thing becomes available
         this.appContainer

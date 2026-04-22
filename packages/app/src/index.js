@@ -35,6 +35,8 @@ export async function embed(el, spec, options = {}) {
 
     /** @type {import("@genome-spy/core/genomeSpy.js").default} */
     let genomeSpy;
+    /** @type {(() => void)[]} */
+    let pluginDisposers = [];
 
     try {
         const specObject = isObject(spec) ? spec : await loadSpec(spec);
@@ -49,10 +51,16 @@ export async function embed(el, spec, options = {}) {
                 ...options,
             });
 
-        const app = new App(element, specObject, embedOptions);
+        const { plugins = [], ...appEmbedOptions } =
+            /** @type {import("./embedTypes.js").AppEmbedOptions} */ (
+                embedOptions
+            );
+
+        const app = new App(element, specObject, appEmbedOptions);
         genomeSpy = app.genomeSpy;
+        pluginDisposers = await installAppPlugins(app, plugins);
         await setupAgentRuntime(app, options);
-        applyOptions(genomeSpy, embedOptions);
+        applyOptions(genomeSpy, appEmbedOptions);
         await app.launch();
     } catch (e) {
         element.innerText = e.toString();
@@ -61,7 +69,14 @@ export async function embed(el, spec, options = {}) {
 
     return {
         finalize() {
-            genomeSpy.destroy();
+            const disposers = pluginDisposers;
+            pluginDisposers = [];
+
+            for (let index = disposers.length - 1; index >= 0; index -= 1) {
+                disposers[index]();
+            }
+            genomeSpy?.destroy();
+            genomeSpy = undefined;
             while (element.firstChild) {
                 element.firstChild.remove();
             }
@@ -96,4 +111,30 @@ function applyOptions(genomeSpy, opt) {
     if (opt.namedDataProvider) {
         genomeSpy.registerNamedDataProvider(opt.namedDataProvider);
     }
+}
+
+/**
+ * @param {import("./app.js").default} app
+ * @param {import("./appTypes.js").AppPlugin[]} plugins
+ * @returns {Promise<(() => void)[]>}
+ */
+async function installAppPlugins(app, plugins) {
+    /** @type {(() => void)[]} */
+    const disposers = [];
+
+    try {
+        for (const plugin of plugins) {
+            const disposer = await plugin.install(app);
+            if (typeof disposer === "function") {
+                disposers.push(disposer);
+            }
+        }
+    } catch (error) {
+        for (let index = disposers.length - 1; index >= 0; index -= 1) {
+            disposers[index]();
+        }
+        throw error;
+    }
+
+    return disposers;
 }

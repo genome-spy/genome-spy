@@ -5,6 +5,7 @@
  *     agentBaseUrl?: string;
  *     agentAdapter?: import("./types.js").AgentAdapter;
  *     agentSessionController?: import("./agentSessionController.js").AgentSessionController;
+ *     agentChatPanelHost?: HTMLElement;
  * }} AgentState
  */
 

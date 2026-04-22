@@ -7,7 +7,7 @@ current visualization state and propose actions. The project is still in early s
 
 - The design docs live in `./LLM_PLAN/`. The documentation should describe the current or intended design, not removed fields or obsolete shapes. When a discarded approach matters, capture the broad rationale briefly instead of documenting the old field names in detail.
 - There is absolutely no need to maintain any backwards compatibility for the agent API or context shape at this point. We can iterate rapidly and refactor as needed.
-- A separate server application, which communicates with the LLM, is implemented in Python and doesn't live in this monorepo.
+- The Python relay server is implemented in Python and lives in `packages/app-agent/server` for now.
 - Any schemas or metadata needed for the agent should be generated from the app's existing sources of truth where possible, rather than hand-maintained. For example, action schemas can be generated from the Redux slice definitions and JSDoc comments.
 - `generated*.(json|ts)` files are generated artifacts that should not be manually edited.
 - When changing a source contract that feeds generation, regenerate the corresponding `generated*` artifacts before finishing the change. This includes tool catalog/schema files and action schema/type files.

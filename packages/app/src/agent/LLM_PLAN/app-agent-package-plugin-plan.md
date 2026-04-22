@@ -96,12 +96,11 @@ export interface AppPlugin {
 
 export interface AppPluginHost {
     readonly ui: AppUiHost;
-    readonly appContainer: HTMLElement;
     getAgentApi(): Promise<AgentApi>;
 }
 ```
 
-Use `App` itself as the initial host object if it already provides this surface.
+Use `App` itself as the initial host object if it already provides this narrow surface.
 Keep the type narrow so plugin code does not depend on unrelated App internals.
 
 Add `plugins?: AppPlugin[]` to `AppEmbedOptions`.
@@ -127,28 +126,13 @@ The existing toolbar extension hooks can stay on `app.ui`.
 interface AppUiHost {
     registerToolbarButton(button: ToolbarButtonSpec): () => void;
     registerToolbarMenuItem(item: MenuItem): () => void;
+    registerDockedPanel?(panel: HTMLElement): () => void;
 }
 ```
 
-For the chat panel, prefer adding a small shell hook instead of having the agent
-query and mutate `.genome-spy-app` directly.
-
-```ts
-interface DockedPanelSpec {
-    id: string;
-    element: HTMLElement;
-    placement?: "right";
-    minWidth?: string;
-    width?: string;
-}
-
-interface AppUiHost {
-    registerDockedPanel?(panel: DockedPanelSpec): () => void;
-}
-```
-
-If this is too much for the first extraction step, keep the existing DOM wiring
-temporarily inside `@genome-spy/app-agent`, but track it as a follow-up cleanup.
+Use the docked-panel hook for the chat panel so the plugin does not need direct
+access to the app container. The plugin can style the element before
+registration.
 
 ## User Experience
 
@@ -196,8 +180,8 @@ For published App usage, the plugin import is the feature gate. The App package
 does not need to include agent code unless the embedding page imports
 `@genome-spy/app-agent`.
 
-For local development with `packages/app/dev-server.mjs`, use Vite environment
-variables to opt into the plugin from the dev entry point.
+For local development with `packages/app/dev-server.mjs`, use the relay base URL
+to opt into the plugin from the dev entry point.
 
 ## Developer Experience
 
@@ -261,10 +245,9 @@ the plugin factory, not a reason to install a disabled plugin.
 
 ### Local Dev Loop
 
-Run the App dev server with agent env variables:
+Run the App dev server with the relay URL:
 
 ```bash
-VITE_AGENT_ENABLED=true \
 VITE_AGENT_BASE_URL=http://127.0.0.1:8001 \
 npm start
 ```
@@ -279,13 +262,13 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
   --app-dir packages/app-agent/server
 ```
 
-The App dev entry point should import the plugin only when the Vite env flag is
-enabled:
+The App dev entry point should import the plugin only when the relay base URL is
+provided:
 
 ```js
 const plugins = [];
 
-if (import.meta.env.VITE_AGENT_ENABLED === "true") {
+if (import.meta.env.VITE_AGENT_BASE_URL) {
     const { appAgent } = await import("@genome-spy/app-agent");
     plugins.push(
         appAgent({
@@ -299,8 +282,8 @@ await embed(document.body, specUrl, { plugins });
 ```
 
 This keeps the regular dev URL unchanged. The spec still comes from the
-existing `spec` query parameter used by `singlePageApp.js`; agent configuration
-comes from Vite env variables.
+existing `spec` query parameter used by `singlePageApp.js`; the agent plugin
+only loads when a relay base URL is configured.
 
 Development should not use a prebuilt or bundled app-agent artifact. The app
 dev server should resolve `@genome-spy/app-agent` to workspace source so changes
@@ -370,25 +353,25 @@ agent source.
 
 ## Migration Plan
 
-1. Add `plugins?: AppPlugin[]` to `@genome-spy/app` embed options.
-2. Add plugin installation and disposal to `embed()`.
-3. Add a minimal App plugin host type and tests.
-4. Move `agentEmbedRuntime.js` logic into a new plugin factory in
+1. [x] Add `plugins?: AppPlugin[]` to `@genome-spy/app` embed options.
+2. [x] Add plugin installation and disposal to `embed()`.
+3. [x] Add a minimal App plugin host type and tests.
+4. [ ] Move `agentEmbedRuntime.js` logic into a new plugin factory in
    `packages/app-agent/src/plugin.js`.
-5. Remove the static `setupAgentRuntime` import from `@genome-spy/app`.
-6. Move browser agent source files from `packages/app/src/agent` to
+5. [ ] Remove the static `setupAgentRuntime` import from `@genome-spy/app`.
+6. [ ] Move browser agent source files from `packages/app/src/agent` to
    `packages/app-agent/src`.
-7. Move agent generation scripts and generated artifacts to `packages/app-agent`.
-8. Update imports so the extracted package uses public `@genome-spy/app` exports
+7. [ ] Move agent generation scripts and generated artifacts to `packages/app-agent`.
+8. [ ] Update imports so the extracted package uses public `@genome-spy/app` exports
    and public `@genome-spy/core` exports only.
-9. Move or replace app-local agent tests with package-local tests.
-10. Move `utils/agent_server` to `packages/app-agent/server`.
-11. Update relay commands, README paths, and any benchmark/dev tooling that
+9. [ ] Move or replace app-local agent tests with package-local tests.
+10. [ ] Move `utils/agent_server` to `packages/app-agent/server`.
+11. [ ] Update relay commands, README paths, and any benchmark/dev tooling that
     references `utils/agent_server`.
-12. Update `singlePageApp.js` or a dev-only entry point to install
+12. [ ] Update `singlePageApp.js` or a dev-only entry point to install
     `appAgent({ baseUrl })` from Vite env variables.
-13. Update relay README examples to use the plugin import.
-14. Remove `agentBaseUrl` from `@genome-spy/app` embed options after the plugin
+13. [ ] Update relay README examples to use the plugin import.
+14. [ ] Remove `agentBaseUrl` from `@genome-spy/app` embed options after the plugin
     path is working.
 
 ## Testing
@@ -403,7 +386,7 @@ Add focused coverage for:
 - existing agent adapter tests still pass after import-path updates
 - generated agent catalogs and schemas stay in sync
 - `packages/app/dev-server.mjs` can install the workspace-source plugin through
-  `VITE_AGENT_ENABLED` and `VITE_AGENT_BASE_URL`
+  `VITE_AGENT_BASE_URL`
 
 Run before finishing the extraction:
 

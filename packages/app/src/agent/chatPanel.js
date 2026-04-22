@@ -1260,16 +1260,7 @@ export async function toggleAgentChatPanel(app) {
         return;
     }
 
-    const appRoot = /** @type {HTMLElement | null} */ (
-        app.appContainer.querySelector(".genome-spy-app")
-    );
-    if (!appRoot) {
-        return;
-    }
-
-    let host = /** @type {HTMLElement | null} */ (
-        appRoot.querySelector("[data-agent-chat-panel-host]")
-    );
+    let host = agentState.agentChatPanelHost;
 
     if (!host) {
         host = document.createElement("div");
@@ -1279,8 +1270,6 @@ export async function toggleAgentChatPanel(app) {
         host.style.top = "calc(var(--gs-basic-spacing, 10px) + 38px)";
         host.style.right = "var(--gs-basic-spacing, 10px)";
         host.style.bottom = "var(--gs-basic-spacing, 10px)";
-        host.style.width = "min(42rem, 42vw)";
-        host.style.minWidth = "320px";
         host.style.maxWidth = "100%";
         host.style.zIndex = "40";
         host.style.boxShadow = "-8px 0 24px rgba(0, 0, 0, 0.24)";
@@ -1297,7 +1286,12 @@ export async function toggleAgentChatPanel(app) {
         panel.devMode = true;
         host.append(panel);
 
-        appRoot.append(host);
+        if (app.ui.registerDockedPanel) {
+            app.ui.registerDockedPanel(host);
+        } else {
+            app.appContainer.append(host);
+        }
+        agentState.agentChatPanelHost = host;
         await panel.updateComplete;
         const textarea = panel.renderRoot.querySelector("textarea");
         textarea?.focus();
@@ -1333,11 +1327,8 @@ export function clearAgentChatHistory(app) {
         agentState.agentAdapter
     );
 
-    const appRoot = /** @type {HTMLElement | null} */ (
-        app.appContainer.querySelector(".genome-spy-app")
-    );
     const panel = /** @type {AgentChatPanel | null} */ (
-        appRoot?.querySelector("gs-agent-chat-panel")
+        agentState.agentChatPanelHost?.querySelector("gs-agent-chat-panel")
     );
     if (panel) {
         panel.controller = agentState.agentSessionController;

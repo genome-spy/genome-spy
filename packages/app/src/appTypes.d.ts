@@ -7,6 +7,7 @@ export type UrlHash = Partial<BookmarkEntry>;
 export type AppEmbedOptions =
     import("@genome-spy/core/types/embedApi.js").EmbedOptions & {
         showInspectorButton?: boolean;
+        plugins?: AppPlugin[];
     };
 
 export interface ToolbarButtonSpec {
@@ -20,6 +21,19 @@ export interface AppUiHost {
     registerToolbarMenuItem(
         item: import("./utils/ui/contextMenu.js").MenuItem
     ): () => void;
+    registerDockedPanel?(panel: HTMLElement): () => void;
+}
+
+export interface AppPluginHost {
+    readonly ui: AppUiHost;
+    getAgentApi(): Promise<import("./agentApi/index.js").AgentApi>;
+}
+
+export interface AppPlugin {
+    name?: string;
+    install(
+        host: AppPluginHost
+    ): void | (() => void) | Promise<void | (() => void)>;
 }
 
 export interface AppUiRegistry extends AppUiHost, EventTarget {
@@ -27,6 +41,8 @@ export interface AppUiRegistry extends AppUiHost, EventTarget {
     readonly toolbarMenuItems: Set<
         import("./utils/ui/contextMenu.js").MenuItem
     >;
+    attachAppShell(appShell: HTMLElement): void;
+    registerDockedPanel(panel: HTMLElement): () => void;
 }
 
 export type AppEmbedFunction = (

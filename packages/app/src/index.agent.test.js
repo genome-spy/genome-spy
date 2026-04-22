@@ -20,6 +20,7 @@ const { AppMock } = vi.hoisted(() => ({
             toolbarMenuItems: new Set(),
             registerToolbarButton: vi.fn(),
             registerToolbarMenuItem: vi.fn(),
+            registerDockedPanel: vi.fn(),
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
         };
@@ -61,11 +62,31 @@ import { getAgentState } from "./agent/agentState.js";
 describe("embed", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.stubEnv("VITE_AGENT_ENABLED", "true");
+        vi.stubEnv("VITE_AGENT_BASE_URL", "");
     });
 
     afterEach(() => {
         vi.unstubAllEnvs();
+    });
+
+    it("installs and disposes app plugins", async () => {
+        const pluginDispose = vi.fn();
+        const plugin = {
+            install: vi.fn(async () => pluginDispose),
+        };
+
+        const element = document.createElement("div");
+        document.body.appendChild(element);
+
+        const handle = await embed(element, {}, { plugins: [plugin] });
+
+        expect(plugin.install).toHaveBeenCalledTimes(1);
+        expect(plugin.install).toHaveBeenCalledWith(AppMock.mock.instances[0]);
+        expect(AppMock).toHaveBeenCalledTimes(1);
+
+        handle.finalize();
+
+        expect(pluginDispose).toHaveBeenCalledTimes(1);
     });
 
     it("loads the agent adapter only when an agent base URL is configured", async () => {
@@ -88,13 +109,11 @@ describe("embed", () => {
         handle.finalize();
     });
 
-    it("keeps the agent disabled when the build flag is off", async () => {
-        vi.stubEnv("VITE_AGENT_ENABLED", "false");
-
+    it("keeps the agent disabled when no base URL is configured", async () => {
         const element = document.createElement("div");
         document.body.appendChild(element);
 
-        const handle = await embed(element, {}, { agentBaseUrl: "http://x" });
+        const handle = await embed(element, {});
 
         expect(createAgentAdapterMock).not.toHaveBeenCalled();
         expect(registerAgentUiMock).not.toHaveBeenCalled();
