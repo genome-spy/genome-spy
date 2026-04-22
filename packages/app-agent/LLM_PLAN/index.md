@@ -7,7 +7,6 @@
 - Action catalog and execution: [`actionCatalog.js`](../src/agent/actionCatalog.js), [`actionShapeValidator.js`](../src/agent/actionShapeValidator.js), [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js), [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Chat and entry points: [`chatPanel.js`](../src/agent/chatPanel.js), [`agentAdapter.js`](../src/agent/agentAdapter.js), [`toolbarMenu.js`](../src/agent/toolbarMenu.js)
 - Session controller: owns transcript state, preflight, queueing, and the panel snapshot
-- Streaming design: [`streaming.md`](./streaming.md)
 - Python relay server design: [`python_agent_server.md`](./python_agent_server.md)
 - Tool-call validation and rejection guide: [`validation.md`](./validation.md)
 - Conversation server POC: [`conversation-server-PoC.md`](./conversation-server-PoC.md)
