@@ -9,12 +9,12 @@ const process = globalThis.process;
 const packageDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(packageDir, "..", "..");
 
-export default defineConfig(() => ({
+export default defineConfig(({ command }) => ({
     envDir: packageDir,
     root: "src",
     appType: "mpa",
     resolve: {
-        conditions: ["development"],
+        conditions: command === "serve" ? ["development"] : [],
     },
     server: {
         host: process.env.HOST || "127.0.0.1",

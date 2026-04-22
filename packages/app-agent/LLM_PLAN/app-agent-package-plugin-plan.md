@@ -53,16 +53,29 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
 
 ### 4. Add the minimal regression coverage for the split
 
-- Verify the plugin still installs and disposes cleanly.
-- Verify dev resolves workspace source for the app-agent package.
-- Verify the bundled package still imports through published package exports.
-- Implement a test that shows the production use case works: bundled packages
-  from `dist/` folders work together.
-- Verify the relay startup command documented in the repo still works.
-- Add a targeted check for the package boundary regressions that already
-  happened once, especially source-path resolution and stale dist imports.
+- Add one bundled-build smoke test that imports the packaged app and the
+  packaged agent from their `dist/` entry points.
+- Build both workspaces first, then assert that:
+  - `@genome-spy/app` resolves its public subpaths from `dist/`
+  - `@genome-spy/app-agent` resolves `@genome-spy/app` through package exports
+  - the agent plugin factory can be imported from the built bundle and called
+    with a `baseUrl`
+- Keep the smoke test focused on the JS package boundary only; do not involve
+  the Python relay or any provider transport.
+- Keep a smaller dev-time import check only if it still guards a different
+  failure mode than the built-package smoke test.
+- Cover the specific regressions that already happened once: stale dist entry
+  resolution, broken app-agent imports, and workspace-source vs bundled-entry
+  drift.
 - Keep the coverage close to the code that enforces the split, not in a broad
   end-to-end suite.
+
+Status: implemented in
+[`packages/app-agent/src/agent/packageSplit.test.js`](/Users/klavikka/hautaniemi/genome-spy/packages/app-agent/src/agent/packageSplit.test.js),
+which builds the packaged app and agent, loads both `dist/` entry points, and
+initializes the packaged app with the packaged plugin through `embed(...)`.
+The package Vite configs keep `development` resolution serve-only so the smoke
+test hits the bundled entry points in production builds.
 
 ## Finish Line
 

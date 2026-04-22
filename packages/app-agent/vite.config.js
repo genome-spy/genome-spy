@@ -7,11 +7,11 @@ const packageDir = dirname(fileURLToPath(import.meta.url));
 const packagesDir = dirname(packageDir);
 const repoRoot = dirname(packagesDir);
 
-export default defineConfig(() => ({
+export default defineConfig(({ command }) => ({
     envDir: packageDir,
     root: "src",
     resolve: {
-        conditions: ["development"],
+        conditions: command === "serve" ? ["development"] : [],
     },
     server: {
         host: process.env.HOST || "127.0.0.1",
