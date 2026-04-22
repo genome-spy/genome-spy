@@ -153,7 +153,7 @@ dispatch, prompt text, and mirrored tests.
 - [`contextBuilder.js`](../src/agent/contextBuilder.js)
   - `getAgentContext(app, options)`
   - includes `toolCatalog: listAgentTools()...` in the snapshot
-- [`utils/agent_server/app/prompts/genomespy_system_prompt.md`](../../../../utils/agent_server/app/prompts/genomespy_system_prompt.md)
+- [`packages/app-agent/server/app/prompts/genomespy_system_prompt.md`](../../../server/app/prompts/genomespy_system_prompt.md)
   - instructs the model when to use `setViewVisibility`
   - lists the tool in the visibility-tools section
 
@@ -189,9 +189,9 @@ changes:
   - includes `setViewVisibility` in the current tool catalog snapshot
 - [`scripts/generateAgentToolCatalog.test.mjs`](../../../scripts/generateAgentToolCatalog.test.mjs)
   - asserts the generated tool set includes `setViewVisibility`
-- [`utils/agent_server/tests/test_tool_catalog.py`](../../../../utils/agent_server/tests/test_tool_catalog.py)
+- [`packages/app-agent/server/tests/test_provider_parser.py`](../../../server/tests/test_provider_parser.py)
   - asserts the server mirror exposes `setViewVisibility`
-- [`utils/agent_server/tests/test_provider_parser.py`](../../../../utils/agent_server/tests/test_provider_parser.py)
+- [`packages/app-agent/server/tests/test_provider_parser.py`](../../../server/tests/test_provider_parser.py)
   - parses a provider tool call named `setViewVisibility`
 
 This is the maintenance shape the cleanup plan is trying to shrink: one tool
@@ -235,7 +235,7 @@ The following cases have already been pruned in code:
 - [`scripts/generateAgentActionSummaries.test.mjs`](../../../scripts/generateAgentActionSummaries.test.mjs)
   - Keep the file-vs-generator comparison.
   - Do not reassert the full ordered action-summary list here.
-- [`utils/agent_server/tests/test_tool_catalog.py`](../../../../utils/agent_server/tests/test_tool_catalog.py)
+- [`packages/app-agent/server/tests/test_provider_parser.py`](../../../server/tests/test_provider_parser.py)
   - Keep one server-side mirror test if the Python side needs a boundary
     guard.
 - [`agentSessionController.test.js`](../src/agent/agentSessionController.test.js)
@@ -248,7 +248,7 @@ The following cases have already been pruned in code:
   - Remove the exact `toolCatalog` name-list assertion.
   - Keep only a shape-level check that the context includes the generated tool
     catalog.
-- [`utils/agent_server/tests/test_tool_catalog.py`](../../../../utils/agent_server/tests/test_tool_catalog.py)
+- [`packages/app-agent/server/tests/test_provider_parser.py`](../../../server/tests/test_provider_parser.py)
   - Replace the remaining exact name-list assertions with a smaller
     mirror-shape check if the Python boundary still needs one.
   - If the Python boundary stops adding unique coverage, delete this file.
@@ -311,13 +311,13 @@ plumbing or repeat the same contract shape.
   - keep the generator-vs-committed-file check
 - [`scripts/generateAgentActionTypes.test.mjs`](../../../scripts/generateAgentActionTypes.test.mjs)
   - keep the generator-vs-committed-file check
-- [`utils/agent_server/tests/test_main.py`](../../../../utils/agent_server/tests/test_main.py)
+- [`packages/app-agent/server/tests/test_main.py`](../../../server/tests/test_main.py)
   - keep endpoint, streaming, and provider-selection behavior
-- [`utils/agent_server/tests/test_prompt_builder.py`](../../../../utils/agent_server/tests/test_prompt_builder.py)
+- [`packages/app-agent/server/tests/test_prompt_builder.py`](../../../server/tests/test_prompt_builder.py)
   - keep prompt serialization behavior
-- [`utils/agent_server/tests/test_provider_parser.py`](../../../../utils/agent_server/tests/test_provider_parser.py)
+- [`packages/app-agent/server/tests/test_provider_parser.py`](../../../server/tests/test_provider_parser.py)
   - keep provider-response parsing and stream normalization
-- [`utils/agent_server/tests/test_auth_logging.py`](../../../../utils/agent_server/tests/test_auth_logging.py)
+- [`packages/app-agent/server/tests/test_auth_logging.py`](../../../server/tests/test_auth_logging.py)
   - keep masking and logging behavior
 
 #### Trim
@@ -344,7 +344,7 @@ plumbing or repeat the same contract shape.
 
 - [`agentAdapter.test.js`](../src/agent/agentAdapter.test.js) direct-dispatch
   cases
-- [`utils/agent_server/tests/test_tool_catalog.py`](../../../../utils/agent_server/tests/test_tool_catalog.py)
+- [`packages/app-agent/server/tests/test_provider_parser.py`](../../../server/tests/test_provider_parser.py)
   if the Python mirror stops providing unique coverage
 
 The rule of thumb is simple: if a test only reasserts a generated list, a thin
@@ -483,7 +483,7 @@ target is this ownership split:
   [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js) own the
   intent-action surface behind `submitIntentActions`. This is a separate
   mutation contract, not just another provider-tool schema.
-- `utils/agent_server/app/*` owns relay concerns only: request models,
+- `packages/app-agent/server/app/*` owns relay concerns only: request models,
   provider prompt serialization, provider transport, response normalization,
   logging, and token diagnostics. The relay should treat browser-provided
   `tools` and `volatileContext` as opaque request data.
@@ -511,7 +511,7 @@ Steps:
 3. Send provider-ready tool definitions from the browser to the Python relay in
    every agent-turn request.
 4. Make the Python relay use only those request-provided tool definitions. It
-   should not read `packages/app/src/agent/generated` from disk or rebuild the
+   should not read `packages/app-agent/src/agent/generated` from disk or rebuild the
    browser tool catalog.
 5. Remove `toolCatalog` from the server-bound context once provider-ready
    `tools` are sent separately.

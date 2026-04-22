@@ -71,11 +71,11 @@ mirrored.
 
 ### 1. The source of truth is not executable
 
-[`agentToolInputs.d.ts`](../agentToolInputs.d.ts) is treated as the canonical
+[`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts) is treated as the canonical
 tool contract, but the app cannot execute it. Tool behavior lives in
-[`agentTools.js`](../agentTools.js), validation and provider projection live in
-[`toolCatalog.js`](../toolCatalog.js), and the Python relay rebuilds provider
-tool definitions in `utils/agent_server/app/tool_catalog.py`.
+[`agentTools.js`](../src/agent/agentTools.js), validation and provider projection live in
+[`toolCatalog.js`](../src/agent/toolCatalog.js), and the Python relay rebuilds provider
+tool definitions in `packages/app-agent/server/app/tool_catalog.py`.
 
 That makes a tool definition hard to inspect directly. A maintainer has to
 change declarations, generators, generated artifacts, handlers, tests, and
@@ -337,13 +337,13 @@ Steps:
 3. Update the Python request model to accept `tools`.
 4. Make the Responses provider use `request.tools`.
 5. Delete the legacy provider path and its provider-specific tests.
-6. Delete `utils/agent_server/app/tool_catalog.py`.
-7. Delete `utils/agent_server/tests/test_tool_catalog.py`.
+6. Delete `packages/app-agent/server/app/tool_catalog.py`.
+7. Delete `packages/app-agent/server/tests/test_tool_catalog.py`.
 8. Defer hash-based tool caching until after the relay has one tool path.
 
 Success criteria:
 
-- the relay can run without reading files from `packages/app/src/agent/generated`
+- the relay can run without reading files from `packages/app-agent/src/agent/generated`
 - the Python side does not know browser tool names
 - changing a browser tool does not require Python code or Python test edits
 - provider code has one supported tool-capable request path
@@ -430,8 +430,8 @@ Likely removals or large shrinkage:
 - `toolCatalog.js`: shrink into registry helpers
 - `agentTools.js`: shrink by deleting wrapper tools and moving execution into
   registry entries
-- `utils/agent_server/app/tool_catalog.py`: delete
-- `utils/agent_server/tests/test_tool_catalog.py`: delete
+- `packages/app-agent/server/app/tool_catalog.py`: delete
+- `packages/app-agent/server/tests/test_tool_catalog.py`: delete
 - Legacy provider/parser fallback code and tests: delete
 - repeated tool assertions in app tests: delete
 - generated action artifacts: delete in the later command phase if the action

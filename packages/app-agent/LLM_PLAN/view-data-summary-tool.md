@@ -9,12 +9,12 @@ or duplicating logic that already exists in the view and collector pipeline.
 
 ## Code References
 
-- Agent tool contracts: [`agentToolInputs.d.ts`](../agentToolInputs.d.ts)
-- Agent tool execution entry points: [`agentTools.js`](../agentTools.js)
-- Existing bounded data-read tool: [`searchViewDatumsTool.js`](../searchViewDatumsTool.js)
-- Tool catalog and generated provider-facing schemas: [`toolCatalog.js`](../toolCatalog.js)
-- Agent context assembly: [`contextBuilder.js`](../contextBuilder.js)
-- Agent adapter runtime bridge: [`agentAdapter.js`](../agentAdapter.js)
+- Agent tool contracts: [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts)
+- Agent tool execution entry points: [`agentTools.js`](../src/agent/agentTools.js)
+- Existing bounded data-read tool: [`searchViewDatumsTool.js`](../src/agent/searchViewDatumsTool.js)
+- Tool catalog and generated provider-facing schemas: [`toolCatalog.js`](../src/agent/toolCatalog.js)
+- Agent context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- Agent adapter runtime bridge: [`agentAdapter.js`](../src/agent/agentAdapter.js)
 - View selector creation and resolution: [`viewSelectors.js`](../../core/src/view/viewSelectors.js)
 - Collector wiring in the view pipeline: [`flowBuilder.js`](../../core/src/view/flowBuilder.js)
 - Collector implementation: [`collector.js`](../../core/src/data/collector.js)
@@ -72,15 +72,15 @@ is explicitly designed for that purpose.
 What is available today:
 
 - The agent already has a generated tool surface through
-  [`agentToolInputs.d.ts`](../agentToolInputs.d.ts) and
-  [`toolCatalog.js`](../toolCatalog.js).
+  [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts) and
+  [`toolCatalog.js`](../src/agent/toolCatalog.js).
 - Read-only view data access already exists in a narrow form through
-  [`searchViewDatumsTool.js`](../searchViewDatumsTool.js).
+  [`searchViewDatumsTool.js`](../src/agent/searchViewDatumsTool.js).
   - It resolves a view selector.
   - It accesses collector-backed data from that view.
   - It returns bounded structured output.
 - The current agent context already exposes searchable views through
-  [`contextBuilder.js`](../contextBuilder.js), but it does not provide compact
+  [`contextBuilder.js`](../src/agent/contextBuilder.js), but it does not provide compact
   descriptive summaries of view-backed data.
 - There is no dedicated summary tool for one resolved view yet.
 
@@ -119,7 +119,7 @@ The agent should not assume:
 
 The source of truth for the tool contract should be:
 
-- [`agentToolInputs.d.ts`](../agentToolInputs.d.ts) for the public input shape
+- [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts) for the public input shape
 - generated tool catalog/schema artifacts for validation and provider exposure
 - the resolved view plus its collector-backed data as the runtime data source
 
@@ -205,7 +205,7 @@ Expected reuse path:
 - resolve the view through `runtime.resolveViewSelector(selector)`
 - access data through `view.getCollector()?.getData()`
 - follow the error-handling and result-shaping pattern used by
-  [`searchViewDatumsTool.js`](../searchViewDatumsTool.js)
+  [`searchViewDatumsTool.js`](../src/agent/searchViewDatumsTool.js)
 
 If one small helper is needed, it should likely be a dedicated module such as:
 
@@ -220,13 +220,13 @@ That helper should remain narrow:
 
 ## Implementation Steps
 
-1. Define the tool contract in [`agentToolInputs.d.ts`](../agentToolInputs.d.ts).
+1. Define the tool contract in [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts).
    - Add `SummarizeViewDataToolInput`.
    - Add `summarizeViewData` to `AgentToolInputs`.
 
 2. Add runtime tool behavior.
    - Implement `summarizeViewDataTool(runtime, input)`.
-   - Register it in [`agentTools.js`](../agentTools.js).
+   - Register it in [`agentTools.js`](../src/agent/agentTools.js).
 
 3. Resolve the target view and validate access.
    - Reject clearly if the selector does not resolve.

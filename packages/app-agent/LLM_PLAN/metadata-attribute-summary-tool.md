@@ -10,11 +10,11 @@ prompt snapshot.
 
 ## Code References
 
-- Agent tool contracts: [`agentToolInputs.d.ts`](../agentToolInputs.d.ts)
-- Agent tool execution entry points: [`agentTools.js`](../agentTools.js)
-- Existing bounded read-only tool pattern: [`searchViewDatumsTool.js`](../searchViewDatumsTool.js)
-- Tool catalog and generated provider-facing schemas: [`toolCatalog.js`](../toolCatalog.js)
-- Agent context assembly: [`contextBuilder.js`](../contextBuilder.js)
+- Agent tool contracts: [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts)
+- Agent tool execution entry points: [`agentTools.js`](../src/agent/agentTools.js)
+- Existing bounded read-only tool pattern: [`searchViewDatumsTool.js`](../src/agent/searchViewDatumsTool.js)
+- Tool catalog and generated provider-facing schemas: [`toolCatalog.js`](../src/agent/toolCatalog.js)
+- Agent context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
 - Attribute identifier and attribute info contract: [`types.d.ts`](../../sampleView/types.d.ts)
 - Shared attribute info registry: [`compositeAttributeInfoSource.js`](../../sampleView/compositeAttributeInfoSource.js)
 - Metadata attribute resolution: [`metadataView.js`](../../sampleView/metadata/metadataView.js)
@@ -89,7 +89,7 @@ visualization can provide exact current values.
 What is available today:
 
 - The agent context already exposes metadata attributes through
-  [`contextBuilder.js`](../contextBuilder.js).
+  [`contextBuilder.js`](../src/agent/contextBuilder.js).
   - Each attribute already has a stable `id` that is an
     `AttributeIdentifier`.
   - Each attribute already exposes `name`, `title`, `description`, and
@@ -268,7 +268,7 @@ Expected reuse path:
   `sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute)`
 - read values from `sampleView.sampleHierarchy.sampleMetadata.entities`
 - follow the error-handling and result-shaping pattern used by
-  [`searchViewDatumsTool.js`](../searchViewDatumsTool.js)
+  [`searchViewDatumsTool.js`](../src/agent/searchViewDatumsTool.js)
 
 If one small helper is needed, it should likely be a dedicated module such as:
 
@@ -283,13 +283,13 @@ That helper should remain narrow:
 
 ## Implementation Steps
 
-1. Define the tool contract in [`agentToolInputs.d.ts`](../agentToolInputs.d.ts).
+1. Define the tool contract in [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts).
    - Add `GetMetadataAttributeSummaryToolInput`.
    - Document that v0 accepts only `SAMPLE_ATTRIBUTE`.
 
 2. Add runtime tool behavior.
    - Implement `getMetadataAttributeSummaryTool(runtime, input)`.
-   - Register it in [`agentTools.js`](../agentTools.js).
+   - Register it in [`agentTools.js`](../src/agent/agentTools.js).
 
 3. Extend the tool runtime contract if needed.
    - Ensure the runtime can reach the current sample view.

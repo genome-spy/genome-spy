@@ -29,16 +29,16 @@ next step.
 
 ## Code References
 
-- Agent context assembly: [`contextBuilder.js`](../contextBuilder.js)
-- View normalization and semantic descriptions: [`viewTree.js`](../viewTree.js)
-- Metadata summary sources: [`agentAdapter.js`](../agentAdapter.js)
-- Pooled metadata summary tool: [`metadataAttributeSummaryTool.js`](../metadataAttributeSummaryTool.js)
-- Grouped metadata summary tool: [`groupedMetadataAttributeSummaryTool.js`](../groupedMetadataAttributeSummaryTool.js)
+- Agent context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- View normalization and semantic descriptions: [`viewTree.js`](../src/agent/viewTree.js)
+- Metadata summary sources: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+- Pooled metadata summary tool: [`metadataAttributeSummaryTool.js`](../src/agent/metadataAttributeSummaryTool.js)
+- Grouped metadata summary tool: [`groupedMetadataAttributeSummaryTool.js`](../src/agent/groupedMetadataAttributeSummaryTool.js)
 - Shared metadata reducers: [`metadataSummaryReducers.js`](../metadataSummaryReducers.js)
-- Tool contracts: [`agentToolInputs.d.ts`](../agentToolInputs.d.ts)
+- Tool contracts: [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts)
 - Agent context and tool types: [`types.d.ts`](../types.d.ts)
-- Relay prompt assembly: [`../../../../../utils/agent_server/app/prompt_builder.py`](../../../../../utils/agent_server/app/prompt_builder.py)
-- System prompt instructions: [`../../../../../utils/agent_server/app/prompts/genomespy_system_prompt.md`](../../../../../utils/agent_server/app/prompts/genomespy_system_prompt.md)
+- Relay prompt assembly: [`../../../server/app/prompt_builder.py`](../../../server/app/prompt_builder.py)
+- System prompt instructions: [`../../../server/app/prompts/genomespy_system_prompt.md`](../../../server/app/prompts/genomespy_system_prompt.md)
 
 ## Status
 
@@ -411,7 +411,7 @@ The model should be encouraged to:
      - `visible_groups`
    - Add affordance fields alongside the factual summaries.
 
-4. Add a new compact always-on context section in [`contextBuilder.js`](../contextBuilder.js).
+4. Add a new compact always-on context section in [`contextBuilder.js`](../src/agent/contextBuilder.js).
    - Keep the output capped and local-model-friendly.
    - Include only the most relevant visible attributes and view cues.
 

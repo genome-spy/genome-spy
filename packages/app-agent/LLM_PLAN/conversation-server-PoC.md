@@ -281,10 +281,10 @@ support the mock backend switch:
 Use these files and functions when checking what the app sends to the Python
 server:
 
-- [`packages/app/src/agent/chatPanel.js`](../chatPanel.js)
+- [`packages/app-agent/src/agent/chatPanel.js`](../src/agent/chatPanel.js)
   - `#submitMessage()` prepares the chat request.
   - `#buildHistory()` creates the transcript payload sent to the controller.
-- [`packages/app/src/agent/agentAdapter.js`](../agentAdapter.js)
+- [`packages/app-agent/src/agent/agentAdapter.js`](../src/agent/agentAdapter.js)
   - `requestAgentTurn()` is the transport boundary for the real server.
   - `publishAgentTrace()` publishes timing and high-level execution metadata.
 

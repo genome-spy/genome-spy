@@ -39,7 +39,7 @@ not be the default path.
 ## Architectural Direction
 
 - Keep the AI/server code separate from the main app architecture, even if the
-  first implementation temporarily lives under `utils/`.
+  first implementation lives in `packages/app-agent/server`.
 - Treat GenomeSpy as the single source of truth for all agent-facing schemas,
   contracts, and semantics.
 - Do not duplicate schema validation or tool-definition logic in Python.
@@ -66,20 +66,20 @@ That means:
   [`validation.md`](./validation.md).
 
 This follows the same principle already used for action schemas and generated
-agent artifacts in `packages/app/src/agent`.
+agent artifacts in `packages/app-agent/src/agent`.
 
 ## Existing GenomeSpy Context
 
 Relevant existing files include:
 
-- `packages/app/src/agent/generated/generatedActionSchema.json`
-- `packages/app/src/agent/generated/generatedActionCatalog.json`
-- `packages/app/src/agent/generated/generatedActionSummaries.json`
-- `packages/app/src/agent/schemaContract.ts`
-- `packages/app/src/agent/types.d.ts`
-- `packages/app/src/agent/contextBuilder.js`
-- `packages/app/src/agent/agentAdapter.js`
-- `packages/app/src/agent/LLM_PLAN/tools.md`
+- `packages/app-agent/src/agent/generated/generatedActionSchema.json`
+- `packages/app-agent/src/agent/generated/generatedActionCatalog.json`
+- `packages/app-agent/src/agent/generated/generatedActionSummaries.json`
+- `packages/app-agent/src/agent/schemaContract.ts`
+- `packages/app-agent/src/agent/types.d.ts`
+- `packages/app-agent/src/agent/contextBuilder.js`
+- `packages/app-agent/src/agent/agentAdapter.js`
+- `packages/app-agent/LLM_PLAN/tools.md`
 
 Current request flow:
 
@@ -130,15 +130,16 @@ Optional but useful:
 The Python PoC can live under `utils/` for now, but should still be structured
 as if it were its own service.
 
-Suggested temporary layout:
+Suggested layout:
 
-- `utils/agent_server/`
-- `utils/agent_server/app/`
-- `utils/agent_server/contracts/`
-- `utils/agent_server/README.md`
+- `packages/app-agent/server/`
+- `packages/app-agent/server/app/`
+- `packages/app-agent/server/tests/`
+- `packages/app-agent/server/README.md`
 
-The contract artifacts can either be copied into `utils/agent_server/contracts/`
-as part of a build step or read from a dedicated generated output folder.
+The contract artifacts can either be copied into
+`packages/app-agent/server/contracts/` as part of a build step or read from a
+dedicated generated output folder.
 
 ## Python Implementation Specs
 
@@ -176,7 +177,7 @@ for GenomeSpy, with the temporary Python implementation living under `utils/`
 in this repo.
 
 Context:
-- GenomeSpy already owns the agent logic in `packages/app/src/agent`.
+- GenomeSpy already owns the agent logic in `packages/app-agent/src/agent`.
 - GenomeSpy should remain the source of truth for:
   - context assembly
   - action and intent-program validation
@@ -194,7 +195,8 @@ Context:
   behavior in Python.
 - We do want a clean, versioned interface boundary that a future separate
   Python repo can consume.
-- For now, the Python PoC server can live under `utils/` in this repository.
+- For now, the Python relay lives under `packages/app-agent/server` in this
+  repository.
 - After the PoC works, we may move that Python code into a separate repo.
 - We want to compare multiple inference providers over time, including local
   backends such as Ollama, vLLM, and LM Studio, as well as hosted APIs such as
@@ -203,15 +205,15 @@ Context:
   one provider's request/response shape into the overall server architecture.
 
 Existing files in GenomeSpy:
-- `packages/app/src/agent/generated/generatedActionSchema.json`
-- `packages/app/src/agent/generated/generatedActionCatalog.json`
-- `packages/app/src/agent/generated/generatedActionSummaries.json`
-- `packages/app/src/agent/schemaContract.ts`
-- `packages/app/src/agent/types.d.ts`
-- `packages/app/src/agent/contextBuilder.js`
-- `packages/app/src/agent/agentAdapter.js`
-- `packages/app/src/agent/LLM_PLAN/tools.md`
-- related JSDoc- and typing-driven agent files under `packages/app/src/agent/`
+- `packages/app-agent/src/agent/generated/generatedActionSchema.json`
+- `packages/app-agent/src/agent/generated/generatedActionCatalog.json`
+- `packages/app-agent/src/agent/generated/generatedActionSummaries.json`
+- `packages/app-agent/src/agent/schemaContract.ts`
+- `packages/app-agent/src/agent/types.d.ts`
+- `packages/app-agent/src/agent/contextBuilder.js`
+- `packages/app-agent/src/agent/agentAdapter.js`
+- `packages/app-agent/LLM_PLAN/tools.md`
+- related JSDoc- and typing-driven agent files under `packages/app-agent/src/agent/`
 
 Current request flow:
 - The app posts to `/v1/agent-turn` with a JSON body like:

@@ -110,13 +110,13 @@ useful.
 - `app.genomeSpy.viewRoot`
   - the runtime root container for the visualization tree
   - this is where SampleView and annotation branches hang from
-- `packages/app/src/agent/contextBuilder.js`
+- `packages/app-agent/src/agent/contextBuilder.js`
   - current top-level agent context assembly
   - likely place where `viewTree` is attached
 
 ### Tree and selection traversal
 
-- `packages/app/src/agent/selectionAggregationContext.js`
+- `packages/app-agent/src/agent/selectionAggregationContext.js`
   - already traverses the runtime tree with `sampleView.visit(...)`
   - already extracts parameter declarations, active selections, and selection-driven fields
 

@@ -1,7 +1,7 @@
 # Agent Benchmarking Plan
 
 This note now reflects the benchmark implementation that exists under
-`packages/app/src/agent/benchmarks/`.
+`packages/app-agent/src/agent/benchmarks/`.
 
 The benchmark takes high-level inspiration from GAIA and SWE-bench:
 
@@ -24,10 +24,10 @@ implementation.
 
 The current benchmark implementation consists of:
 
-- `packages/app/src/agent/benchmarks/run.mjs`
-- `packages/app/src/agent/benchmarks/README.md`
-- `packages/app/src/agent/benchmarks/cases/`
-- `packages/app/src/agent/benchmarks/plan/benchmarking.md`
+- `packages/app-agent/src/agent/benchmarks/run.mjs`
+- `packages/app-agent/src/agent/benchmarks/README.md`
+- `packages/app-agent/src/agent/benchmarks/cases/`
+- `packages/app-agent/src/agent/benchmarks/plan/benchmarking.md`
 
 The runner is already runnable and supports:
 
@@ -281,7 +281,7 @@ The benchmark should continue to avoid duplicating:
 
 Relevant architecture note:
 
-- [`python_agent_server.md`](../../LLM_PLAN/python_agent_server.md)
+- [`python_agent_server.md`](../../../../LLM_PLAN/python_agent_server.md)
 
 ## Current Visualization Coverage
 

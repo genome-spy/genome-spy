@@ -45,8 +45,7 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
 ### 3. Keep relay ownership and docs aligned
 
 - Keep relay commands and docs pointing at `packages/app-agent/server`.
-- Remove any stale references to `utils/agent_server` or the pre-split relay
-  path.
+- Remove any stale references to the pre-split relay path.
 - Keep the Python server packaging separate from the browser package payload.
 - Keep the relay README, DGX setup notes, and any runbook snippets in sync with
   the actual startup command.

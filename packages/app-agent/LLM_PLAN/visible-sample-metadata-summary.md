@@ -10,12 +10,12 @@ has changed which samples are currently present in the active analysis state.
 
 ## Code References
 
-- Metadata summary tool: [`metadataAttributeSummaryTool.js`](../metadataAttributeSummaryTool.js)
-- Agent runtime bridge: [`agentAdapter.js`](../agentAdapter.js)
-- Agent tool contracts: [`agentToolInputs.d.ts`](../agentToolInputs.d.ts)
-- Agent tool execution entry points: [`agentTools.js`](../agentTools.js)
-- Agent context summary counts: [`contextBuilder.js`](../contextBuilder.js)
-- Intent execution result summary counts: [`intentProgramExecutor.js`](../intentProgramExecutor.js)
+- Metadata summary tool: [`metadataAttributeSummaryTool.js`](../src/agent/metadataAttributeSummaryTool.js)
+- Agent runtime bridge: [`agentAdapter.js`](../src/agent/agentAdapter.js)
+- Agent tool contracts: [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts)
+- Agent tool execution entry points: [`agentTools.js`](../src/agent/agentTools.js)
+- Agent context summary counts: [`contextBuilder.js`](../src/agent/contextBuilder.js)
+- Intent execution result summary counts: [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
 - Sample hierarchy state: [`sampleState.d.ts`](../../sampleView/state/sampleState.d.ts)
 - Group traversal helpers: [`sampleSlice.js`](../../sampleView/state/sampleSlice.js)
 
@@ -180,7 +180,7 @@ Add shared agent-side helpers to:
 - collect distinct visible sample ids from `rootGroup`
 - collect visible leaf groups from `rootGroup`
 
-These helpers should live in `packages/app/src/agent/` so the agent layer owns
+These helpers should live in `packages/app-agent/src/agent/` so the agent layer owns
 its own view of analysis-visible scope.
 
 They should be reused by:

@@ -23,7 +23,7 @@ It focuses on component shape, interaction flow, and implementation constraints.
 
 - Start with one shadow-DOM web component.
 - Use a single top-level docked component such as `gs-agent-chat-panel`.
-- Keep the implementation under `packages/app/src/agent` so the chat UI stays close to the rest of the agent code.
+- Keep the implementation under `packages/app-agent/src/agent` so the chat UI stays close to the rest of the agent code.
 - Keep transcript rendering, composer handling, clarification UI, and proposal preview inside the same component.
 - Keep the component stateless with respect to agent session data; the controller owns the transcript and turn state.
 - Split into multiple web components only if a subpart becomes reusable or materially harder to maintain.
@@ -144,7 +144,7 @@ The component should expose a small, stable API:
 
 ## Communication Boundary
 
-- Do not have the chat component import deep modules from `packages/app/src/agent`.
+- Do not have the chat component import deep modules from `packages/app-agent/src/agent`.
 - Treat the agent layer as a controller boundary.
 - The panel should talk to one small controller object that is implemented by:
   - the real app agent adapter at runtime

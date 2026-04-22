@@ -3,7 +3,7 @@
 Note: This file is an early draft, not to be implemented yet.
 
 This note tracks the remaining work to move the current agent code out of
-`packages/app/src/agent` while keeping the app-owned `agentApi` boundary in
+`packages/app-agent/src/agent` while keeping the app-owned `agentApi` boundary in
 `packages/app/src/agentApi`.
 
 The goal is not to define a public plugin contract yet. The goal is to keep
@@ -15,7 +15,7 @@ In this note, `agentApi` means the app-owned boundary that stays in
 `packages/app/src/agentApi`.
 
 In this note, `agent` means the extracted implementation that will move out of
-`packages/app/src/agent` into a dedicated package in the monorepo first, and
+`packages/app-agent/src/agent` into a dedicated package in the monorepo first, and
 possibly into a separate repository later.
 
 ## Why This Boundary Exists
@@ -79,28 +79,28 @@ The remaining work falls into two buckets.
 These items do not need new `AgentApi` hooks. They can stay in the agent
 package and use public shared helpers or public `@genome-spy/core` exports.
 
-- [`contextBuilder.js`](../contextBuilder.js)
+- [`contextBuilder.js`](../src/agent/contextBuilder.js)
   - keep the current `AgentApi` reads
-- [`searchViewDatumsTool.js`](../searchViewDatumsTool.js)
+- [`searchViewDatumsTool.js`](../src/agent/searchViewDatumsTool.js)
   - keep using the current `AgentApi` view hooks
   - the view-local search inspection can use public `@genome-spy/core`
     imports
-- [`intentProgramExecutor.js`](../intentProgramExecutor.js)
+- [`intentProgramExecutor.js`](../src/agent/intentProgramExecutor.js)
   - keep the current `AgentApi` hooks
   - keep the sample-hierarchy before/after counts as local computation
-- [`intentProgramValidator.js`](../intentProgramValidator.js)
+- [`intentProgramValidator.js`](../src/agent/intentProgramValidator.js)
   - keep the current `AgentApi` hooks
   - keep the validation logic local to the agent package
-- [`chatPanel.js`](../chatPanel.js), [`agentUi.js`](../agentUi.js),
-  [`agentEmbedRuntime.js`](../agentEmbedRuntime.js), and
-  [`agentState.js`](../agentState.js)
+- [`chatPanel.js`](../src/agent/chatPanel.js), [`agentUi.js`](../src/agent/agentUi.js),
+  [`agentEmbedRuntime.js`](../src/agent/agentEmbedRuntime.js), and
+  [`agentState.js`](../src/agent/agentState.js)
   - keep these as agent bootstrap or shell wiring
 
 ### Likely `AgentApi` growth
 
 Only the scoped param lookup still looks like a real host-boundary gap.
 
-- [`selectionAggregationContext.js`](../selectionAggregationContext.js)
+- [`selectionAggregationContext.js`](../src/agent/selectionAggregationContext.js)
   - `getSampleViewScopedParamConfig(paramName)` is intentionally temporary
   - when the selection path is made unscoped, replace it with a selector-based
     param lookup on `AgentApi`, likely `getParamConfig(ParamSelector)` or a

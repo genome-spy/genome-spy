@@ -5,7 +5,7 @@ is still in early stages.
 
 ## General guidelines
 
-- The design docs live in `./LLM_PLAN/`. The documentation should describe the current or intended design, not removed fields or obsolete shapes. When a discarded approach matters, capture the broad rationale briefly instead of documenting the old field names in detail.
+- The design docs live in `../../LLM_PLAN/`. The documentation should describe the current or intended design, not removed fields or obsolete shapes. When a discarded approach matters, capture the broad rationale briefly instead of documenting the old field names in detail.
 - There is absolutely no need to maintain any backwards compatibility for the agent API or context shape at this point. We can iterate rapidly and refactor as needed.
 - The Python relay server is implemented in Python and lives in `packages/app-agent/server` for now.
 - Any schemas or metadata needed for the agent should be generated from the app's existing sources of truth where possible, rather than hand-maintained. For example, action schemas can be generated from the Redux slice definitions and JSDoc comments.

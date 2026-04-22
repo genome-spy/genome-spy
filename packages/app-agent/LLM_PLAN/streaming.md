@@ -304,7 +304,7 @@ place; broader coverage for transport-level streaming is still pending.
 
 ## Concrete Checklist
 
-### `packages/app/src/agent/agentAdapter.js`
+### `packages/app-agent/src/agent/agentAdapter.js`
 
 - Request-turn callbacks already flow through the adapter contract.
 - Keep the existing non-streaming code path as the fallback until the relay
@@ -312,7 +312,7 @@ place; broader coverage for transport-level streaming is still pending.
 - Normalize provider stream events into the controller-facing event set when
   the relay starts emitting them.
 
-### `packages/app/src/agent/agentSessionController.js`
+### `packages/app-agent/src/agent/agentSessionController.js`
 
 - Exposes an active-turn stream channel for draft updates.
 - Keeps committed snapshot state separate from transient stream state.
@@ -322,7 +322,7 @@ place; broader coverage for transport-level streaming is still pending.
   cancelled.
 - Preserves the current queueing and preflight behavior.
 
-### `packages/app/src/agent/chatPanel.js`
+### `packages/app-agent/src/agent/chatPanel.js`
 
 - Subscribes to the active-turn stream for draft updates.
 - Renders the streaming draft in the same transcript card as the final result.
@@ -330,17 +330,17 @@ place; broader coverage for transport-level streaming is still pending.
 - Keeps auto-scroll pinned to the latest draft content.
 - Renders reasoning summaries as muted helper text below the draft prose.
 
-### `packages/app/src/agent/clarificationMessage.js`
+### `packages/app-agent/src/agent/clarificationMessage.js`
 
 - Reuse the existing clarification parser for streamed final text.
 - Only render buttons after the final clarification message is complete.
 
-### `packages/app/src/agent/chatPanel.stories.js`
+### `packages/app-agent/src/agent/chatPanel.stories.js`
 
 - Adds stories that simulate slow prose streaming and heartbeat pulses.
 - Exercises clarification chunks with the same fast path.
 
-### `utils/agent_server/app/main.py` and relay helpers
+### `packages/app-agent/server/app/main.py` and relay helpers
 
 - Forward provider streaming events to the app.
 - Preserve the final structured response envelope.
