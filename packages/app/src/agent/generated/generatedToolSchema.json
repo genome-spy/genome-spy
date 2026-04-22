@@ -1361,6 +1361,7 @@
     },
     "ViewSelector": {
       "additionalProperties": false,
+      "description": "Structured view address used by selectors.",
       "properties": {
         "scope": {
           "items": {
