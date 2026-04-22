@@ -1,4 +1,4 @@
-import { getAgentState } from "./agentState.js";
+import { appAgent } from "./appAgent.js";
 
 /**
  * Initializes the agent runtime when it is configured.
@@ -16,18 +16,5 @@ export async function setupAgentRuntime(app, options) {
         return;
     }
 
-    const [agentAdapterModule, agentUiModule] = await Promise.all([
-        import("./agentAdapter.js"),
-        import("./agentUi.js"),
-    ]);
-
-    const agentApi = await app.getAgentApi();
-
-    const agentState = getAgentState(app);
-    agentState.agentBaseUrl = agentBaseUrl;
-    agentState.agentAdapter = agentAdapterModule.createAgentAdapter(
-        app,
-        agentApi
-    );
-    agentUiModule.registerAgentUi(app);
+    await appAgent({ baseUrl: agentBaseUrl }).install(app);
 }

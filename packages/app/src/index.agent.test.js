@@ -9,7 +9,7 @@ const { createAgentAdapterMock } = vi.hoisted(() => ({
 }));
 
 const { registerAgentUiMock } = vi.hoisted(() => ({
-    registerAgentUiMock: vi.fn(),
+    registerAgentUiMock: vi.fn(() => vi.fn()),
 }));
 
 const { AppMock } = vi.hoisted(() => ({

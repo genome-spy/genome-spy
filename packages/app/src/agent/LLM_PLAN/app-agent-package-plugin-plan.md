@@ -356,9 +356,9 @@ agent source.
 1. [x] Add `plugins?: AppPlugin[]` to `@genome-spy/app` embed options.
 2. [x] Add plugin installation and disposal to `embed()`.
 3. [x] Add a minimal App plugin host type and tests.
-4. [ ] Move `agentEmbedRuntime.js` logic into a new plugin factory in
+4. [x] Move `agentEmbedRuntime.js` logic into a new plugin factory in
    `packages/app-agent/src/plugin.js`.
-5. [ ] Remove the static `setupAgentRuntime` import from `@genome-spy/app`.
+5. [x] Remove the static `setupAgentRuntime` import from `@genome-spy/app`.
 6. [ ] Move browser agent source files from `packages/app/src/agent` to
    `packages/app-agent/src`.
 7. [ ] Move agent generation scripts and generated artifacts to `packages/app-agent`.

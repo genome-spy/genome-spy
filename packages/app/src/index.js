@@ -5,7 +5,7 @@ import { loadSpec } from "@genome-spy/core/index.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
-import { setupAgentRuntime } from "./agent/agentEmbedRuntime.js";
+import { appAgent } from "./agent/appAgent.js";
 
 export { GenomeSpy, App as GenomeSpyApp, icon, html };
 export * from "./agentShared/index.js";
@@ -58,8 +58,18 @@ export async function embed(el, spec, options = {}) {
 
         const app = new App(element, specObject, appEmbedOptions);
         genomeSpy = app.genomeSpy;
-        pluginDisposers = await installAppPlugins(app, plugins);
-        await setupAgentRuntime(app, options);
+        const configuredPlugins = [...plugins];
+        const agentBaseUrl =
+            options.agentBaseUrl ??
+            /** @type {string | undefined} */ (
+                import.meta.env.VITE_AGENT_BASE_URL
+            );
+
+        if (agentBaseUrl) {
+            configuredPlugins.push(appAgent({ baseUrl: agentBaseUrl }));
+        }
+
+        pluginDisposers = await installAppPlugins(app, configuredPlugins);
         applyOptions(genomeSpy, appEmbedOptions);
         await app.launch();
     } catch (e) {
