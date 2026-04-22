@@ -13,6 +13,12 @@ export default defineConfig(({ command }) => ({
     envDir: packageDir,
     root: "src",
     appType: "mpa",
+    optimizeDeps:
+        command === "serve"
+            ? {
+                  exclude: ["@genome-spy/app", "@genome-spy/app-agent"],
+              }
+            : undefined,
     resolve: {
         alias:
             command === "serve"

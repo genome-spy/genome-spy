@@ -2,7 +2,7 @@
 
 This directory contains the Python relay that sits between the GenomeSpy app
 and an OpenAI-compatible model server. This file defines local coding
-conventions and LLM-agent expectations for work inside `utils/agent_server/`.
+conventions and LLM-agent expectations for work inside `packages/app-agent/server/`.
 
 The repo-root `AGENTS.md` still applies. This file adds Python-specific rules
 and tighter implementation preferences for the relay.
@@ -217,10 +217,10 @@ can.
 
 Common checks:
 
-- `uv run --project utils/agent_server pytest`
-- `uv run --project utils/agent_server ruff check .`
-- `uv run --project utils/agent_server ruff format --check .`
-- `uv run --project utils/agent_server mypy app`
+- `uv run --project packages/app-agent/server pytest`
+- `uv run --project packages/app-agent/server ruff check .`
+- `uv run --project packages/app-agent/server ruff format --check .`
+- `uv run --project packages/app-agent/server mypy app`
 
 Prefer targeted test runs when they cover the change well. If you could not run
 the relevant checks, say so explicitly.

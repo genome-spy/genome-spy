@@ -72,9 +72,9 @@ an `other` line instead of dumping every small key.
 
 ## Files
 
-- `utils/agent_server/app/token_debugger.py`
-- `utils/agent_server/tests/test_token_debugger.py`
-- `utils/agent_server/tests/test_main.py`
+- `packages/app-agent/server/app/token_debugger.py`
+- `packages/app-agent/server/tests/test_token_debugger.py`
+- `packages/app-agent/server/tests/test_main.py`
 
 ## Implementation steps
 

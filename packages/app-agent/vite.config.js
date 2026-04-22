@@ -21,6 +21,12 @@ export default defineConfig(({ command }) => ({
                   }
                 : {},
     },
+    optimizeDeps:
+        command === "serve"
+            ? {
+                  exclude: ["@genome-spy/app"],
+              }
+            : undefined,
     server: {
         host: process.env.HOST || "127.0.0.1",
         fs: {

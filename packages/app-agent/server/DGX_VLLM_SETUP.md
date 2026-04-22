@@ -108,11 +108,11 @@ export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:8000/v1
 export GENOMESPY_AGENT_API_KEY=placeholder
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 
-UV_CACHE_DIR=/tmp/uv-cache uv run --project utils/agent_server \
+UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
   uvicorn app.main:app \
   --host 0.0.0.0 \
   --port 8001 \
-  --app-dir utils/agent_server
+  --app-dir packages/app-agent/server
 ```
 
 Why these values:
@@ -139,9 +139,7 @@ hostname -I
 Then point GenomeSpy on the MacBook at the relay host:
 
 ```bash
-VITE_AGENT_ENABLED=true \
-VITE_AGENT_BASE_URL=http://<dgx-ip>:8001 \
-npm start
+VITE_AGENT_BASE_URL=http://<dgx-ip>:8001 npm start
 ```
 
 The browser UI stays local on the Mac, but the agent requests go to the DGX

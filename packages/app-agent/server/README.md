@@ -44,7 +44,7 @@ Restart your shell so `uv` is on `PATH`.
 From the repo root:
 
 ```bash
-cd utils/agent_server
+cd packages/app-agent/server
 uv sync
 ```
 
@@ -63,18 +63,16 @@ export GENOMESPY_AGENT_ENABLE_STREAMING=false
 
 **Launch the python relay server**
 ```bash
-UV_CACHE_DIR=/tmp/uv-cache uv run --project utils/agent_server \
+UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
   uvicorn app.main:app \
   --host 127.0.0.1 \
   --port 8001 \
-  --app-dir utils/agent_server
+  --app-dir packages/app-agent/server
 ```
 
 **Set VITE configs to point to the relay server and start the GenomeSpy server**
 ```bash
-VITE_AGENT_ENABLED=true \
-VITE_AGENT_BASE_URL=http://127.0.0.1:8001 \
-npm start
+VITE_AGENT_BASE_URL=http://127.0.0.1:8001 npm start
 ```
 
 This is the easiest setup because it does not require a separate local model server. You just need to have some API-tokens on your OAI account.
@@ -180,10 +178,8 @@ If the relay runs on another machine:
    ```
 2. Start GenomeSpy on your MacBook or other laptop:
    ```bash
-   VITE_AGENT_ENABLED=true \
-   VITE_AGENT_BASE_URL=http://<relay-host-ip>:8001 \
-   npm start
-   ```
+   VITE_AGENT_BASE_URL=http://<relay-host-ip>:8001 npm start
+```
 3. Keep the browser local and point it at the relay, not the model server.
 
 ## Troubleshooting

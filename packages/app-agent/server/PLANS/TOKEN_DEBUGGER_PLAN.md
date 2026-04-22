@@ -53,7 +53,7 @@ Do not include in the first integration step:
 ## Proposed implementation
 
 Keep the token debugger integration at the request boundary in
-`utils/agent_server/app/main.py`.
+`packages/app-agent/server/app/main.py`.
 
 The relay should:
 
@@ -99,8 +99,8 @@ recomputing token summaries in multiple layers.
 
 ## Files to modify
 
-- `utils/agent_server/app/main.py`
-- `utils/agent_server/tests/test_main.py`
+- `packages/app-agent/server/app/main.py`
+- `packages/app-agent/server/tests/test_main.py`
 
 ## Implementation steps
 

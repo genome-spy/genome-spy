@@ -72,8 +72,7 @@ repository with both browser and server code intact.
 
 ### Python relay
 
-Moves from `utils/agent_server` into the app-agent ownership area, likely under
-`packages/app-agent/server`.
+Moves the Python relay into `packages/app-agent/server`.
 
 - receives `/v1/agent-turn` from the browser plugin
 - adds system prompts and provider configuration
@@ -365,12 +364,12 @@ agent source.
 8. [x] Update imports so the extracted package uses public `@genome-spy/app` exports
    and public `@genome-spy/core` exports only.
 9. [x] Move or replace app-local agent tests with package-local tests.
-10. [ ] Move `utils/agent_server` to `packages/app-agent/server`.
-11. [ ] Update relay commands, README paths, and any benchmark/dev tooling that
-    references `utils/agent_server`.
+10. [x] Move `utils/agent_server` to `packages/app-agent/server`.
+11. [x] Update relay commands, README paths, and any benchmark/dev tooling that
+    references `packages/app-agent/server`.
 12. [x] Update `singlePageApp.js` or a dev-only entry point to install
     `appAgent({ baseUrl })` from Vite env variables.
-13. [ ] Update relay README examples to use the plugin import.
+13. [x] Update relay README examples to use the plugin import.
 14. [x] Remove `agentBaseUrl` from `@genome-spy/app` embed options after the plugin
     path is working.
 
