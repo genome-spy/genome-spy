@@ -6,15 +6,10 @@ import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComplexDomain, NumericDomain } from "@genome-spy/core/spec/scale.js";
 import { AggregationSpec, Interval } from "./types.js";
 import ViewContext from "@genome-spy/core/types/viewContext.js";
-
-/**
- * Structured view address used by selectors (import scope + view name).
- */
-export type ViewSelector =
-    import("@genome-spy/core/view/viewSelectors.js").ViewSelector;
-
-export type ParamSelector =
-    import("@genome-spy/core/view/viewSelectors.js").ParamSelector;
+import type {
+    ParamSelector,
+    ViewSelector,
+} from "@genome-spy/core/view/viewUtilTypes.d.ts";
 
 /**
  * View reference used in SampleView actions. Legacy values may be a view name

@@ -3,11 +3,11 @@ import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import type {
     ParamSelector,
     ViewSelector,
-} from "@genome-spy/core/view/viewSelectors.js";
+} from "@genome-spy/core/view/viewUtilTypes.d.ts";
 import type {
     SelectionExpansionPredicate,
     SelectionExpansionRule,
-} from "./selectionExpansion.js";
+} from "./selectionExpansionTypes.d.ts";
 
 /**
  * Shared type aliases for param provenance payloads.
