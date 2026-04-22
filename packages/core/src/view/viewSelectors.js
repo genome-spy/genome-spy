@@ -13,8 +13,8 @@ import {
  */
 
 /**
- * @typedef {{ scope: string[], view: string }} ViewSelector
- * @typedef {{ scope: string[], param: string }} ParamSelector
+ * @typedef {import("./viewUtilTypes.d.ts").ViewSelector} ViewSelector
+ * @typedef {import("./viewUtilTypes.d.ts").ParamSelector} ParamSelector
  * @typedef {{ view: import("./view.js").default, param: import("../spec/parameter.js").Parameter, selector: ParamSelector }} BookmarkableParamEntry
  * @typedef {{ message: string, scope: string[] }} SelectorValidationIssue
  * @typedef {{ name: string | null }} ImportScopeInfo
