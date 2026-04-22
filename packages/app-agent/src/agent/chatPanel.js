@@ -1274,11 +1274,9 @@ export async function toggleAgentChatPanel(app) {
         host.style.top = "calc(var(--gs-basic-spacing, 10px) + 38px)";
         host.style.right = "var(--gs-basic-spacing, 10px)";
         host.style.bottom = "var(--gs-basic-spacing, 10px)";
-        host.style.maxWidth = "100%";
-        host.style.zIndex = "40";
+        host.style.width = "min(70vw, 600px)";
         host.style.boxShadow = "-8px 0 24px rgba(0, 0, 0, 0.24)";
         host.style.background = "white";
-        host.style.overflow = "hidden";
 
         const panel = /** @type {AgentChatPanel} */ (
             document.createElement("gs-agent-chat-panel")
