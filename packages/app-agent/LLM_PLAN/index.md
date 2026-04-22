@@ -84,7 +84,6 @@
 - See [`chat-ui.md`](./chat-ui.md) for the proposed chat surface and component shape.
 
 ## Action + State Context
-- See [`action-schema.md`](./action-schema.md) for the proposed action/provenance schema.
 - See [`action-context-reduction-plan.md`](./action-context-reduction-plan.md)
   for the staged plan to replace always-on action payload docs with summaries
   and on-demand action detail lookup.

@@ -1,6 +1,6 @@
 # LLM Data + Visualization Context (Draft)
 
-This document outlines what the LLM needs to understand a GenomeSpy visualization and the data behind it. The goal is to provide enough structured context for intent planning and validation, without hard-coding domain semantics into the engine. For actions and provenance, see [`action-schema.md`](./action-schema.md).
+This document outlines what the LLM needs to understand a GenomeSpy visualization and the data behind it. The goal is to provide enough structured context for intent planning and validation, without hard-coding domain semantics into the engine. For actions and provenance, see the agent action and provenance code under `../src/agent/`.
 
 ## Code References
 - Context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
