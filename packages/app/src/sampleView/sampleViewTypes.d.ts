@@ -10,7 +10,6 @@ import type {
     ParamSelector,
     ViewSelector,
 } from "@genome-spy/core/view/viewUtilTypes.d.ts";
-export type { ParamSelector, ViewSelector };
 
 /**
  * View reference used in SampleView actions. Legacy values may be a view name
