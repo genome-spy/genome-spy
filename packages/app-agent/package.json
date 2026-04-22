@@ -39,24 +39,20 @@
     "test:tsc:src": "tsc -p tsconfig.json --noEmit",
     "test:tsc:tests": "tsc -p tsconfig.tests.json --noEmit",
     "test": "vitest run",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@floating-ui/dom": "^1.6.1",
     "@fortawesome/fontawesome-free": "^6.4.2",
     "@fortawesome/fontawesome-svg-core": "^6.4.2",
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
     "@genome-spy/core": "^0.75.0",
-    "@reduxjs/toolkit": "^2.11.0",
     "ajv": "^8.18.0",
-    "d3-color": "^3.1.0",
-    "idb": "^7.1.1",
-    "lit": "^3.3.0",
-    "lz-string": "^1.4.4",
-    "mapsort": "^1.0.5",
-    "micromark": "^4.0.0",
-    "redux-undo": "^1.0.1",
-    "zarrita": "^0.6.1"
+    "lit": "^3.3.0"
+  },
+  "devDependencies": {
+    "@reduxjs/toolkit": "^2.11.0"
   },
   "peerDependencies": {
     "@genome-spy/app": "^0.75.0"
