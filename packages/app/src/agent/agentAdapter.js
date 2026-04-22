@@ -299,7 +299,7 @@ export function createAgentAdapter(app, agentApi) {
      * @returns {import("./types.d.ts").AgentVolatileContext}
      */
     function getAgentVolatileContext() {
-        return buildAgentVolatileContext(app);
+        return buildAgentVolatileContext(agentApi);
     }
 
     /**

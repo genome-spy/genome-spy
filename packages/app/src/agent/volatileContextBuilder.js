@@ -1,11 +1,11 @@
 import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @returns {import("./types.d.ts").AgentVolatileContext}
  */
-export function getAgentVolatileContext(app) {
+export function getAgentVolatileContext(agentApi) {
     return {
-        selectionAggregation: getSelectionAggregationContext(app),
+        selectionAggregation: getSelectionAggregationContext(agentApi),
     };
 }
