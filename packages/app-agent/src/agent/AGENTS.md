@@ -11,11 +11,23 @@ is still in early stages.
 - Any schemas or metadata needed for the agent should be generated from the app's existing sources of truth where possible, rather than hand-maintained. For example, action schemas can be generated from the Redux slice definitions and JSDoc comments.
 - `generated*.(json|ts)` files are generated artifacts that should not be manually edited.
 - When changing a source contract that feeds generation, regenerate the corresponding `generated*` artifacts before finishing the change. This includes tool catalog/schema files and action schema/type files.
-- All host state and mutation calls between the agent and the App must go through `AgentApi`.
-- All pure helper logic that is shared between the App and the future agent package must go through `agentShared`.
+- Keep the app-agent split narrow:
+  - do not duplicate app-owned code or types in this package unless there is no
+    practical alternative
+  - route shared behavior through the public app APIs first
+  - expand those APIs deliberately and only when the existing surface is not
+    enough
+  - prefer a small new public export over a copied local shim
+- All host state and mutation calls between the agent and the App must go
+  through `AgentApi`.
+- All pure helper logic that is shared between the App and the future agent
+  package must go through `agentShared`.
+- All UI primitives that the agent needs from the App must go through explicit
+  public app subpaths.
 - Do not add direct `packages/app/src/...` reach-ins when the functionality
-  already exists on `AgentApi` or `agentShared`.
-- Extend `AgentApi` conservatively. If a missing hook seems necessary, plan it first and keep the smallest possible surface.
+  already exists on `AgentApi`, `agentShared`, or another public app export.
+- Extend `AgentApi` conservatively. If a missing hook seems necessary, plan it
+  first and keep the smallest possible surface.
 
 ## Code organization
 
