@@ -17,10 +17,10 @@
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
+      "development": "./src/index.js",
       "import": "./dist/index.es.js",
       "default": "./dist/index.js"
-    },
-    "./*": "./src/*"
+    }
   },
   "files": [
     "dist/"

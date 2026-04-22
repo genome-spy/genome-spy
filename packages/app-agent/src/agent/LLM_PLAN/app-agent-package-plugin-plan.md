@@ -10,8 +10,8 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
 
 - `@genome-spy/app-agent` owns the browser plugin and the Python relay.
 - `@genome-spy/app` owns the app shell and the public host API.
-- Development currently works by resolving workspace source for the app and
-  agent packages.
+- Development now resolves workspace source through package `development`
+  exports, without Vite-specific source aliases.
 - The relay now lives under `packages/app-agent/server`.
 
 ## Remaining Work
@@ -29,25 +29,12 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
 - Verify that the agent package no longer imports from `packages/app/src/**`
   directly.
 
-### 2. Remove dev-only resolution hacks
-
-- Compare the dev-time and bundled package resolution paths for both
-  `@genome-spy/app` and `@genome-spy/app-agent`.
-- Keep source aliases only where they are needed to load workspace packages
-  during development.
-- Remove `optimizeDeps.exclude` entries that exist only to dodge the published
-  build entry points.
-- Prefer package exports over raw source paths when a published entry can serve
-  both dev and bundle builds.
-- Add a regression check that fails if dev starts resolving the wrong package
-  entry again.
-
-### 3. Finish cleaning package boundaries
+### 2. Finish cleaning package boundaries
 
 - Remove any remaining agent-specific wrapper folders that only forward public
   app exports.
-- Confirm that every `app-agent` import comes from public `@genome-spy/app` or
-  `@genome-spy/core` exports.
+- Confirm that every `app-agent` import comes from project-internal app
+  surfaces or public `@genome-spy/core` exports.
 - Keep `@genome-spy/app-agent` marked private in `package.json` until the
   publish story is decided.
 - Ensure the browser package `files` list does not accidentally pull in the
@@ -55,7 +42,7 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
 - Remove stale compatibility files after the plugin code switches to the new
   public surface.
 
-### 4. Keep relay ownership and docs aligned
+### 3. Keep relay ownership and docs aligned
 
 - Keep relay commands and docs pointing at `packages/app-agent/server`.
 - Remove any stale references to `utils/agent_server` or the pre-split relay
@@ -65,7 +52,7 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
   the actual startup command.
 - Avoid introducing browser-package references into the Python server docs.
 
-### 5. Add the minimal regression coverage for the split
+### 4. Add the minimal regression coverage for the split
 
 - Verify the plugin still installs and disposes cleanly.
 - Verify dev resolves workspace source for the app-agent package.
@@ -85,8 +72,8 @@ The split is clean when:
 - `embed()` stays agent-free unless a plugin is explicitly installed.
 - `@genome-spy/app-agent` imports only the project-internal app surfaces
   exposed for it.
-- Dev and bundled builds resolve the same package boundaries without ad hoc
-  path fixes.
+- Dev and bundled builds resolve the same package boundaries through package
+  exports, without ad hoc path fixes.
 - The relay lives under `packages/app-agent/server` and the docs match that
   layout.
 - The browser package stays npm-private and browser-only.

@@ -16,16 +16,19 @@
   "exports": {
     ".": {
       "types": "./src/index.d.ts",
+      "development": "./src/index.js",
       "import": "./dist/index.es.js",
       "default": "./dist/index.js"
     },
     "./agentApi": {
       "types": "./src/agentApi/index.d.ts",
+      "development": "./src/agentApi/index.js",
       "import": "./dist/index.es.js",
       "default": "./dist/index.js"
     },
     "./agentShared": {
       "types": "./src/agentShared/index.d.ts",
+      "development": "./src/agentShared/index.js",
       "import": "./dist/index.es.js",
       "default": "./dist/index.js"
     },
@@ -35,6 +38,7 @@
     },
     "./dialog": {
       "types": "./src/dialog/index.d.ts",
+      "development": "./src/dialog/index.js",
       "import": "./dist/index.es.js",
       "default": "./dist/index.js"
     },
@@ -77,5 +81,8 @@
     "micromark": "^4.0.0",
     "redux-undo": "^1.0.1",
     "zarrita": "^0.6.1"
+  },
+  "devDependencies": {
+    "@genome-spy/app-agent": "0.75.0"
   }
 }

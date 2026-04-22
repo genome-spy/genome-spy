@@ -9,45 +9,12 @@ const process = globalThis.process;
 const packageDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(packageDir, "..", "..");
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(() => ({
     envDir: packageDir,
     root: "src",
     appType: "mpa",
-    optimizeDeps:
-        command === "serve"
-            ? {
-                  exclude: [
-                      "@genome-spy/app",
-                      "@genome-spy/app/agentApi",
-                      "@genome-spy/app/agentShared",
-                      "@genome-spy/app/dialog",
-                      "@genome-spy/app-agent",
-                  ],
-              }
-            : undefined,
     resolve: {
-        alias:
-            command === "serve"
-                ? {
-                      "@genome-spy/app": resolve(packageDir, "src/index.js"),
-                      "@genome-spy/app/agentApi": resolve(
-                          packageDir,
-                          "src/agentApi/index.js"
-                      ),
-                      "@genome-spy/app/agentShared": resolve(
-                          packageDir,
-                          "src/agentShared/index.js"
-                      ),
-                      "@genome-spy/app/dialog": resolve(
-                          packageDir,
-                          "src/dialog/index.js"
-                      ),
-                      "@genome-spy/app-agent": resolve(
-                          repoRoot,
-                          "packages/app-agent/src/index.js"
-                      ),
-                  }
-                : {},
+        conditions: ["development"],
     },
     server: {
         host: process.env.HOST || "127.0.0.1",
