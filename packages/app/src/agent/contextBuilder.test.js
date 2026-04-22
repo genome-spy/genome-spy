@@ -18,6 +18,11 @@ const { isIntervalSelectionConfigMock } = vi.hoisted(() => ({
 const { getBookmarkableParamsMock } = vi.hoisted(() => ({
     getBookmarkableParamsMock: vi.fn(() => []),
 }));
+const { visitNonChromeViewsMock } = vi.hoisted(() => ({
+    visitNonChromeViewsMock: vi.fn((root, visitor) => {
+        root.visit(visitor);
+    }),
+}));
 const { resolveParamSelectorMock } = vi.hoisted(() => ({
     resolveParamSelectorMock: vi.fn(),
 }));
@@ -37,12 +42,13 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
         view: view.explicitName ?? view.name,
     }),
     isChromeView: () => false,
+    visitNonChromeViews: visitNonChromeViewsMock,
     resolveParamSelector: resolveParamSelectorMock,
     visitAddressableViews: (root, visitor) => root.visit(visitor),
 }));
 
 import { getAgentContext } from "./contextBuilder.js";
-import { getAgentVolatileContext } from "./volatileContextBuilder.js";
+import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
 
 function createAppStub(options = {}) {
     const geneSearchData = options.geneSearchData ?? [
@@ -254,10 +260,32 @@ function createAppStub(options = {}) {
     };
 }
 
+/**
+ * @param {ReturnType<typeof createAppStub>} app
+ */
+function createAgentApiStub(app) {
+    return {
+        getSampleHierarchy: () => app.provenance.getPresentState().sampleView,
+        getAttributeInfo: (attribute) =>
+            app
+                .getSampleView()
+                .compositeAttributeInfoSource.getAttributeInfo(attribute),
+        getSampleParamConfig: (paramName) =>
+            app.getSampleView().paramRuntime.paramConfigs.get(paramName),
+        getSearchableViews: () => app.genomeSpy.getSearchableViews(),
+        getViewRoot: () => app.getSampleView(),
+        getFocusedView: () => app.getSampleView(),
+        getRootSpec: () => app.rootSpec,
+        getActionHistory: () => app.provenance.getActionHistory(),
+        getActionInfo: (action) => app.provenance.getActionInfo(action),
+        getPresentProvenanceState: () => app.provenance.getPresentState(),
+    };
+}
+
 describe("getAgentContext", () => {
     it("builds a compact agent context from app state", () => {
         const app = createAppStub();
-        const context = getAgentContext(app);
+        const context = getAgentContext(createAgentApiStub(app));
 
         expect(context.schemaVersion).toBe(1);
         expect(() => JSON.stringify(context)).not.toThrow();
@@ -283,10 +311,7 @@ describe("getAgentContext", () => {
             expect.objectContaining({
                 type: "other",
                 title: "Patient Cohort",
-                selector: {
-                    scope: [],
-                    view: "samples",
-                },
+                selector: undefined,
             })
         );
         expect(context.viewRoot.parameterDeclarations).toEqual(
@@ -346,8 +371,8 @@ describe("getAgentContext", () => {
     it("caches searchable view examples across context rebuilds", () => {
         const app = createAppStub();
 
-        const firstContext = getAgentContext(app);
-        const secondContext = getAgentContext(app);
+        const firstContext = getAgentContext(createAgentApiStub(app));
+        const secondContext = getAgentContext(createAgentApiStub(app));
 
         expect(firstContext.searchableViews).toEqual(
             secondContext.searchableViews
@@ -383,7 +408,7 @@ describe("getAgentContext", () => {
             ],
         });
 
-        const context = getAgentContext(app);
+        const context = getAgentContext(createAgentApiStub(app));
 
         expect(context.searchableViews[0].searchFields[0].examples).toEqual([
             "TP53",
@@ -398,12 +423,14 @@ describe("getAgentContext", () => {
     });
 });
 
-describe("getAgentVolatileContext", () => {
+describe("getSelectionAggregationContext", () => {
     it("builds high-churn selection aggregation state separately", () => {
         const app = createAppStub();
 
-        const volatileContext = getAgentVolatileContext(app);
+        const volatileContext = getSelectionAggregationContext(
+            createAgentApiStub(app)
+        );
 
-        expect(volatileContext.selectionAggregation.fields).toEqual([]);
+        expect(volatileContext.fields).toEqual([]);
     });
 });

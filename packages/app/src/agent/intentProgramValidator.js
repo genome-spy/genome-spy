@@ -1,11 +1,11 @@
 import { validateIntentBatchShape } from "./actionShapeValidator.js";
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @param {unknown} batch
  * @returns {import("./types.js").IntentBatchValidationResult}
  */
-export function validateIntentBatch(app, batch) {
+export function validateIntentBatch(agentApi, batch) {
     /** @type {string[]} */
     const errors = [];
 
@@ -25,8 +25,8 @@ export function validateIntentBatch(app, batch) {
         };
     }
 
-    const sampleView = app.getSampleView();
-    if (!sampleView) {
+    const sampleHierarchy = agentApi.getSampleHierarchy();
+    if (!sampleHierarchy) {
         errors.push("SampleView is not available.");
     }
 
@@ -44,6 +44,20 @@ export function validateIntentBatch(app, batch) {
             actionType,
             payload,
         });
+
+        const attribute =
+            /** @type {{ type?: string; specifier?: unknown } | undefined} */ (
+                payload?.attribute
+            );
+        if (
+            attribute?.type === "SAMPLE_ATTRIBUTE" &&
+            typeof attribute.specifier === "string" &&
+            !agentApi.getAttributeInfo(attribute)
+        ) {
+            errors.push(
+                `$.steps[${normalizedSteps.length - 1}].payload.attribute references unknown attribute ${attribute.specifier}.`
+            );
+        }
     }
 
     if (errors.length) {

@@ -5,7 +5,7 @@ import {
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
 
-function createAppStub() {
+function createAgentApiStub() {
     const getAttributeInfo = (attribute) => ({
         name: String(attribute.specifier),
         attribute,
@@ -17,61 +17,63 @@ function createAppStub() {
     });
 
     return {
-        getSampleView: () => ({
-            sampleHierarchy: {
-                groupMetadata: [
+        getSampleHierarchy: () => ({
+            sampleData: {
+                ids: ["sampleA", "sampleB"],
+            },
+            groupMetadata: [
+                {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
+                },
+            ],
+            rootGroup: {
+                name: "ROOT",
+                title: "Root",
+                samples: ["sampleA", "sampleB"],
+                groups: [
                     {
-                        attribute: {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "diagnosis",
-                        },
+                        name: "group",
+                        title: "Group",
+                        samples: ["sampleA", "sampleB"],
                     },
                 ],
-                rootGroup: {
-                    name: "ROOT",
-                    title: "Root",
-                    samples: ["sampleA", "sampleB"],
-                    groups: [
-                        {
-                            name: "group",
-                            title: "Group",
-                            samples: ["sampleA", "sampleB"],
-                        },
-                    ],
+            },
+            sampleMetadata: {
+                entities: {
+                    sampleA: { diagnosis: "A" },
+                    sampleB: { diagnosis: "B" },
                 },
             },
-            compositeAttributeInfoSource: {
-                getAttributeInfo,
-            },
         }),
-        provenance: {
-            getActionHistory: vi.fn(() => []),
-            getActionInfo: vi.fn((action) => ({
-                title:
-                    action.type === "sampleView/sortBy"
-                        ? "Sort by age"
-                        : action.type === "sampleView/groupByNominal"
-                          ? "Group by diagnosis"
-                          : "Test action",
-                provenanceTitle:
-                    action.type === "sampleView/sortBy"
-                        ? "Sort by age"
-                        : action.type === "sampleView/groupByNominal"
-                          ? "Group by diagnosis"
-                          : "Test action",
-            })),
-        },
-        intentPipeline: {
-            submit: vi.fn(() => Promise.resolve()),
-        },
+        getAttributeInfo,
+        getActionHistory: vi.fn(() => []),
+        getActionInfo: vi.fn((action) => ({
+            title:
+                action.type === "sampleView/sortBy"
+                    ? "Sort by age"
+                    : action.type === "sampleView/groupByNominal"
+                      ? "Group by diagnosis"
+                      : "Test action",
+            provenanceTitle:
+                action.type === "sampleView/sortBy"
+                    ? "Sort by age"
+                    : action.type === "sampleView/groupByNominal"
+                      ? "Group by diagnosis"
+                      : "Test action",
+        })),
+        submitIntentActions: vi.fn(() => Promise.resolve()),
+        getPresentProvenanceState: () => ({}),
     };
 }
 
 describe("submitIntentActions", () => {
     it("submits validated steps through the intent pipeline", async () => {
-        const app = createAppStub();
+        const agentApi = createAgentApiStub();
 
-        const result = await submitIntentActions(app, {
+        const result = await submitIntentActions(agentApi, {
             schemaVersion: 1,
             steps: [
                 {
@@ -95,11 +97,10 @@ describe("submitIntentActions", () => {
             ],
         });
 
-        expect(app.intentPipeline.submit).toHaveBeenCalledTimes(1);
-        expect(app.intentPipeline.submit).toHaveBeenCalledWith(
+        expect(agentApi.submitIntentActions).toHaveBeenCalledTimes(1);
+        expect(agentApi.submitIntentActions).toHaveBeenCalledWith(
             expect.any(Array),
             expect.objectContaining({
-                getAttributeInfo: expect.any(Function),
                 submissionKind: "agent",
             })
         );

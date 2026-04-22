@@ -5,27 +5,23 @@ import {
 import { validateIntentBatch } from "./intentProgramValidator.js";
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @param {import("./types.js").IntentBatch} batch
  * @param {{submissionKind?: "agent" | "bookmark" | "user"}} [options]
  * @returns {Promise<import("./types.js").IntentBatchExecutionResult>}
  */
-export async function submitIntentActions(app, batch, options = {}) {
-    const validation = validateIntentBatch(app, batch);
+export async function submitIntentActions(agentApi, batch, options = {}) {
+    const validation = validateIntentBatch(agentApi, batch);
     if (!validation.ok) {
         throw new Error(validation.errors.join("\n"));
     }
 
-    const sampleView = app.getSampleView();
-    if (!sampleView) {
+    const sampleHierarchy = agentApi.getSampleHierarchy();
+    if (!sampleHierarchy) {
         throw new Error("SampleView is not available.");
     }
 
-    const getAttributeInfo =
-        sampleView.compositeAttributeInfoSource.getAttributeInfo.bind(
-            sampleView.compositeAttributeInfoSource
-        );
-    const provenanceStartIndex = app.provenance.getActionHistory().length;
+    const provenanceStartIndex = agentApi.getActionHistory().length;
     const actions = validation.batch.steps.map((step) =>
         getActionCatalogEntry(step.actionType).actionCreator(step.payload)
     );
@@ -34,19 +30,21 @@ export async function submitIntentActions(app, batch, options = {}) {
         step.actionType.startsWith("sampleView/")
     );
     const beforeVisibleSampleCount = hasSampleViewMutation
-        ? countVisibleSamples(sampleView.sampleHierarchy.rootGroup)
+        ? countVisibleSamples(sampleHierarchy.rootGroup)
         : undefined;
     const beforeGroupLevelCount = hasSampleViewMutation
-        ? (sampleView.sampleHierarchy.groupMetadata?.length ?? 0)
+        ? (sampleHierarchy.groupMetadata?.length ?? 0)
         : undefined;
 
-    await app.intentPipeline.submit(actions, {
-        getAttributeInfo,
+    await agentApi.submitIntentActions(actions, {
         submissionKind: options.submissionKind ?? "agent",
     });
-    const provenanceIds = getDispatchedProvenanceIds(app, provenanceStartIndex);
+    const provenanceIds = getDispatchedProvenanceIds(
+        agentApi,
+        provenanceStartIndex
+    );
 
-    const summaries = summarizeIntentBatch(app, validation.batch);
+    const summaries = summarizeIntentBatch(agentApi, validation.batch);
     /** @type {import("./types.js").IntentBatchExecutionContent} */
     const content = {
         kind: "intent_batch_result",
@@ -55,10 +53,9 @@ export async function submitIntentActions(app, batch, options = {}) {
     };
     if (hasSampleViewMutation) {
         const afterVisibleSampleCount = countVisibleSamples(
-            sampleView.sampleHierarchy.rootGroup
+            sampleHierarchy.rootGroup
         );
-        const afterGroupLevelCount =
-            sampleView.sampleHierarchy.groupMetadata?.length ?? 0;
+        const afterGroupLevelCount = sampleHierarchy.groupMetadata?.length ?? 0;
         content.sampleView = {
             visibleSamplesBefore: beforeVisibleSampleCount,
             visibleSamplesAfter: afterVisibleSampleCount,
@@ -135,12 +132,12 @@ function countVisibleSamples(group, sampleIds = new Set()) {
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @param {number} provenanceStartIndex
  * @returns {string[]}
  */
-function getDispatchedProvenanceIds(app, provenanceStartIndex) {
-    return app.provenance
+function getDispatchedProvenanceIds(agentApi, provenanceStartIndex) {
+    return agentApi
         .getActionHistory()
         .slice(provenanceStartIndex)
         .map((action) => action.provenanceId)

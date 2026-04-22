@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 
 const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
     getAgentContext: vi.fn(() => ({ schemaVersion: 1 })),
@@ -185,6 +187,46 @@ function createAppStub(encoding = undefined) {
     };
 }
 
+function createAgentApiStub(app) {
+    return {
+        getSampleHierarchy: () => app.getSampleView().sampleHierarchy,
+        getAttributeInfo: (attribute) =>
+            app
+                .getSampleView()
+                .compositeAttributeInfoSource.getAttributeInfo(attribute),
+        getSampleParamConfig: (paramName) =>
+            app.getSampleView().paramRuntime?.paramConfigs?.get(paramName),
+        getSearchableViews: () => app.genomeSpy.getSearchableViews(),
+        getViewRoot: () => app.getSampleView(),
+        getFocusedView: () => app.getSampleView(),
+        resolveViewSelector: (selector) =>
+            resolveViewSelectorMock.mock.results.at(-1)?.value ??
+            app.genomeSpy.viewRoot,
+        getActionHistory: () => app.provenance.getActionHistory(),
+        getActionInfo: (action) => app.provenance.getActionInfo(action),
+        getPresentProvenanceState: () => app.provenance.getPresentState(),
+        submitIntentActions: (actions, options) =>
+            app.intentPipeline.submit(actions, options),
+        setViewVisibility: (selector, visibility) =>
+            app.store.dispatch(
+                viewSettingsSlice.actions.setVisibility({
+                    key: makeViewSelectorKey(selector),
+                    visibility,
+                })
+            ),
+        jumpToProvenanceState: (provenanceId) => {
+            const currentIndex = app.provenance.getCurrentIndex();
+            app.provenance.activateState(provenanceId);
+            return app.provenance.getCurrentIndex() !== currentIndex;
+        },
+        jumpToInitialProvenanceState: () => {
+            const currentIndex = app.provenance.getCurrentIndex();
+            app.provenance.activateInitialState();
+            return app.provenance.getCurrentIndex() !== currentIndex;
+        },
+    };
+}
+
 /**
  * @returns {Record<string, any>}
  */
@@ -242,11 +284,14 @@ describe("agentAdapter", () => {
         };
         getAgentContext.mockReturnValue(createMockPlannerContext());
 
-        const adapter = createAgentAdapter(app);
+        const adapter = createAgentAdapter(app, createAgentApiStub(app));
         adapter.getAgentContext();
 
         expect(getAgentContext).toHaveBeenCalledWith(
-            app,
+            expect.objectContaining({
+                getSampleHierarchy: expect.any(Function),
+                getActionHistory: expect.any(Function),
+            }),
             expect.objectContaining({
                 expandedViewNodeKeys: [
                     JSON.stringify({ scope: [], view: "reference-sequence" }),
@@ -257,7 +302,7 @@ describe("agentAdapter", () => {
 
     it("builds metadata summaries from the current visible hierarchy", () => {
         const app = createAppStub();
-        const adapter = createAgentAdapter(app);
+        const adapter = createAgentAdapter(app, createAgentApiStub(app));
 
         const source = adapter.getMetadataAttributeSummarySource({
             type: "SAMPLE_ATTRIBUTE",
@@ -305,7 +350,7 @@ describe("agentAdapter", () => {
             ],
         };
 
-        const adapter = createAgentAdapter(app);
+        const adapter = createAgentAdapter(app, createAgentApiStub(app));
 
         const source = adapter.getGroupedMetadataAttributeSummarySource({
             type: "SAMPLE_ATTRIBUTE",
@@ -355,7 +400,7 @@ describe("agentAdapter", () => {
 
     it("posts structured conversation history to the agent-turn endpoint", async () => {
         const app = createAppStub();
-        const adapter = createAgentAdapter(app);
+        const adapter = createAgentAdapter(app, createAgentApiStub(app));
         globalThis.fetch.mockResolvedValueOnce(
             createResponse({
                 type: "answer",
@@ -425,7 +470,7 @@ describe("agentAdapter", () => {
         const onReasoning = vi.fn();
         const onHeartbeat = vi.fn();
 
-        const adapter = createAgentAdapter(app);
+        const adapter = createAgentAdapter(app, createAgentApiStub(app));
         const result = await adapter.requestAgentTurn(
             "What can I do here?",
             [],
@@ -459,7 +504,7 @@ describe("agentAdapter", () => {
         const app = createAppStub();
         getAgentState(app).agentBaseUrl = "http://example.test";
         getAgentContext.mockReturnValue(createMockPlannerContext());
-        const adapter = createAgentAdapter(app);
+        const adapter = createAgentAdapter(app, createAgentApiStub(app));
         globalThis.fetch.mockResolvedValueOnce(
             createResponse({
                 type: "answer",

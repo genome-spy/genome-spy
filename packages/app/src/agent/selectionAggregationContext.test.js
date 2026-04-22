@@ -104,27 +104,27 @@ describe("getSelectionAggregationContext", () => {
             ]),
         });
 
-        const app = {
-            getSampleView: () => view,
-            provenance: {
-                getPresentState: () => ({
-                    paramProvenance: {
-                        entries: {
-                            brush: {
-                                selector: { scope: [], param: "brush" },
-                                value: { type: "interval", value: [0, 1] },
-                            },
-                            brush2: {
-                                selector: { scope: [], param: "brush2" },
-                                value: { type: "interval", value: [1, 2] },
-                            },
+        const agentApi = {
+            getViewRoot: () => view,
+            getSampleParamConfig: (paramName) =>
+                view.paramRuntime.paramConfigs.get(paramName),
+            getPresentProvenanceState: () => ({
+                paramProvenance: {
+                    entries: {
+                        brush: {
+                            selector: { scope: [], param: "brush" },
+                            value: { type: "interval", value: [0, 1] },
+                        },
+                        brush2: {
+                            selector: { scope: [], param: "brush2" },
+                            value: { type: "interval", value: [1, 2] },
                         },
                     },
-                }),
-            },
+                },
+            }),
         };
 
-        const context = getSelectionAggregationContext(app);
+        const context = getSelectionAggregationContext(agentApi);
 
         expect(context.fields).toEqual([
             expect.objectContaining({

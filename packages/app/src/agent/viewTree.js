@@ -24,18 +24,17 @@ import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 /**
  * Builds a normalized, spec-like view tree for the agent.
  *
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @param {import("./types.d.ts").AgentContextOptions} [options]
  * @returns {import("./types.d.ts").AgentViewTreeRoot}
  */
-export function buildViewTree(app, options = {}) {
-    const sampleView = app.getSampleView();
-    const rootView = app?.genomeSpy?.viewRoot ?? sampleView;
-    const hasStructuralRoot = Boolean(app?.genomeSpy?.viewRoot);
-    const rootSpec = app?.genomeSpy?.spec;
+export function buildViewTree(agentApi, options = {}) {
+    const rootView = agentApi.getViewRoot();
+    const hasStructuralRoot = Boolean(rootView);
+    const rootSpec = agentApi.getRootSpec() ?? rootView?.spec;
     const rootConfig = summarizeRootConfig(rootSpec);
     const expandedViewNodeKeys = new Set(options.expandedViewNodeKeys ?? []);
-    const focusView = sampleView ?? rootView;
+    const focusView = agentApi.getFocusedView() ?? rootView;
     const focusBranch = new Set(
         typeof focusView?.getLayoutAncestors === "function"
             ? focusView.getLayoutAncestors()

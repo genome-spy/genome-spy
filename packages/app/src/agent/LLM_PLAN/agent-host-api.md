@@ -198,19 +198,21 @@ The initial `agentApi` should be a thin factory, not a facade class:
 - expose the concrete app-side hooks the extracted package needs as bound
   methods
   - `getSampleHierarchy()` for sample metadata and hierarchy data
-  - `getSampleAttributeInfo(attribute)` for attribute title, description, and
-    type
+  - `getAttributeInfo(attribute)` for attribute title, description, and type
   - `getSampleParamConfig(paramName)` if selection descriptions still need it
   - `getSearchableViews()`
   - `getViewRoot()`
+  - `getFocusedView()` for the current tree collapse and expansion focus
+  - `getRootSpec()` for the root config summary
   - `resolveViewSelector(selector)`
   - `getActionHistory()`
+  - `getActionInfo(action)` for provenance labels and summaries on plain
+    Redux actions
   - `getPresentProvenanceState()`
-  - `submitIntentActions(batch, options)`
+  - `submitIntentActions(actions, options)`
   - `setViewVisibility(selector, visibility)`
   - `jumpToProvenanceState(provenanceId)`
   - `jumpToInitialProvenanceState()`
-  - `getAppContainer()`
 - re-export the small shared types those hooks need
 - keep the implementations in `src/agent` for now
 - do not introduce `AgentAnalysisHost`, `AgentToolHost`, or snapshot types at
@@ -240,18 +242,20 @@ Owns the app shell and exports the app-owned boundary.
   - likely exports:
     - `createAgentApi(app)` returning bound methods for the existing
       `SampleHierarchy`
-    - `getSampleAttributeInfo(attribute)` for attribute title/description/type
+    - `getAttributeInfo(attribute)` for attribute title/description/type
     - `getSampleParamConfig(paramName)` if the selection context still needs it
     - `getSearchableViews()`
     - `getViewRoot()`
+    - `getFocusedView()`
+    - `getRootSpec()`
     - `resolveViewSelector(selector)`
     - `getActionHistory()`
+    - `getActionInfo(action)`
     - `getPresentProvenanceState()`
-    - `submitIntentActions(batch, options)`
+    - `submitIntentActions(actions, options)`
     - `setViewVisibility(selector, visibility)`
     - `jumpToProvenanceState(provenanceId)`
     - `jumpToInitialProvenanceState()`
-    - `getAppContainer()`
   - and the small shared types those hooks need
   - stable definitions that the extracted agent package can consume
   - no knowledge of the extracted agent package beyond those hooks

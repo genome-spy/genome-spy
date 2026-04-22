@@ -18,7 +18,12 @@ describe("createAgentApi", () => {
         };
 
         app = {
-            appContainer: {},
+            rootSpec: {
+                genomes: {
+                    hg38: {},
+                },
+                assembly: "hg38",
+            },
             genomeSpy: {
                 viewRoot: { id: "root-view" },
                 getSearchableViews: vi.fn(() => ["searchable-view"]),
@@ -36,10 +41,17 @@ describe("createAgentApi", () => {
             })),
             provenance: {
                 getActionHistory: vi.fn(() => [{ provenanceId: "p1" }]),
+                getActionInfo: vi.fn(() => ({
+                    provenanceTitle: "Provenance label",
+                    title: "Fallback label",
+                })),
                 getPresentState: vi.fn(() => ({ present: true })),
                 getCurrentIndex: vi.fn(() => 1),
                 activateState: vi.fn(),
                 activateInitialState: vi.fn(),
+            },
+            intentPipeline: {
+                submit: vi.fn(async () => undefined),
             },
             store: {
                 dispatch: vi.fn(),
@@ -47,14 +59,14 @@ describe("createAgentApi", () => {
         };
     });
 
-    it("exposes the bound sample and provenance handles", () => {
+    it("exposes the bound sample and provenance handles", async () => {
         const agentApi = createAgentApi(app);
 
         expect(agentApi.getSampleHierarchy()).toEqual({
             id: "sample-hierarchy",
         });
         expect(
-            agentApi.getSampleAttributeInfo({
+            agentApi.getAttributeInfo({
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "age",
             })
@@ -70,6 +82,25 @@ describe("createAgentApi", () => {
         });
         expect(agentApi.getSearchableViews()).toEqual(["searchable-view"]);
         expect(agentApi.getViewRoot()).toEqual({ id: "root-view" });
+        expect(agentApi.getFocusedView()).toEqual(
+            expect.objectContaining({
+                sampleHierarchy: { id: "sample-hierarchy" },
+                compositeAttributeInfoSource: expect.objectContaining({
+                    getAttributeInfo: expect.any(Function),
+                }),
+                paramRuntime: expect.objectContaining({
+                    paramConfigs: new Map([
+                        ["selection", { description: "Selection" }],
+                    ]),
+                }),
+            })
+        );
+        expect(agentApi.getRootSpec()).toEqual({
+            genomes: {
+                hg38: {},
+            },
+            assembly: "hg38",
+        });
 
         const agentApiWithoutRoot = createAgentApi({
             ...app,
@@ -85,8 +116,21 @@ describe("createAgentApi", () => {
             })
         ).toBeUndefined();
         expect(agentApi.getActionHistory()).toEqual([{ provenanceId: "p1" }]);
+        expect(
+            agentApi.getActionInfo({ provenanceId: "p1", type: "sample/x" })
+        ).toEqual({
+            provenanceTitle: "Provenance label",
+            title: "Fallback label",
+        });
+        await expect(
+            agentApi.submitIntentActions([], {
+                submissionKind: "agent",
+            })
+        ).resolves.toBeUndefined();
+        expect(app.intentPipeline.submit).toHaveBeenCalledWith([], {
+            submissionKind: "agent",
+        });
         expect(agentApi.getPresentProvenanceState()).toEqual({ present: true });
-        expect(agentApi.getAppContainer()).toBe(app.appContainer);
     });
 
     it("forwards mutation and UI hooks to the app shell", () => {

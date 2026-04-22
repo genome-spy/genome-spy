@@ -4,9 +4,6 @@ import {
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
 import { summarizeProvenanceActions } from "./actionCatalog.js";
-import { viewSettingsSlice } from "../viewSettingsSlice.js";
-import { makeViewSelectorKey } from "../viewSettingsUtils.js";
-import { resolveViewSelector as resolveCoreViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import templateResultToString from "../utils/templateResultToString.js";
 import {
     collectVisibleSampleGroups,
@@ -15,6 +12,10 @@ import {
 import { getAgentState } from "./agentState.js";
 import { buildResponsesToolDefinitions } from "./toolCatalog.js";
 import { getAgentVolatileContext as buildAgentVolatileContext } from "./volatileContextBuilder.js";
+
+/**
+ * @typedef {import("../agentApi/index.js").AgentApi} AgentApi
+ */
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -64,8 +65,9 @@ function normalizeConversationHistory(history) {
 
 /**
  * @param {import("../app.js").default} app
+ * @param {AgentApi} agentApi
  */
-export function createAgentAdapter(app) {
+export function createAgentAdapter(app, agentApi) {
     const agentState = getAgentState(app);
 
     /**
@@ -80,18 +82,12 @@ export function createAgentAdapter(app) {
             return undefined;
         }
 
-        const sampleView = app.getSampleView();
-        if (!sampleView) {
-            return undefined;
-        }
-
-        const sampleHierarchy = sampleView.sampleHierarchy;
+        const sampleHierarchy = agentApi.getSampleHierarchy();
         if (!sampleHierarchy) {
             return undefined;
         }
 
-        const info =
-            sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
+        const info = agentApi.getAttributeInfo(attribute);
 
         const sampleIds = collectVisibleSampleIds(sampleHierarchy.rootGroup);
         const metadata = sampleHierarchy.sampleMetadata.entities;
@@ -122,18 +118,12 @@ export function createAgentAdapter(app) {
             return undefined;
         }
 
-        const sampleView = app.getSampleView();
-        if (!sampleView) {
-            return undefined;
-        }
-
-        const sampleHierarchy = sampleView.sampleHierarchy;
+        const sampleHierarchy = agentApi.getSampleHierarchy();
         if (!sampleHierarchy) {
             return undefined;
         }
 
-        const info =
-            sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
+        const info = agentApi.getAttributeInfo(attribute);
 
         const attributeName = attribute.specifier;
         const metadata = sampleHierarchy.sampleMetadata.entities;
@@ -145,10 +135,7 @@ export function createAgentAdapter(app) {
             dataType: info.type,
             scope: "visible_groups",
             groupLevels: sampleHierarchy.groupMetadata.map((entry, level) => {
-                const groupInfo =
-                    sampleView.compositeAttributeInfoSource.getAttributeInfo(
-                        entry.attribute
-                    );
+                const groupInfo = agentApi.getAttributeInfo(entry.attribute);
 
                 return {
                     level,
@@ -181,7 +168,7 @@ export function createAgentAdapter(app) {
         const baseUrl = agentState.agentBaseUrl ?? DEFAULT_AGENT_BASE_URL;
         const startedAt = now();
         const contextStartedAt = now();
-        const context = buildAgentContext(app, options.contextOptions);
+        const context = buildAgentContext(agentApi, options.contextOptions);
         const volatileContext = getAgentVolatileContext();
         const contextBuildMs = elapsedMilliseconds(contextStartedAt);
         const history = normalizeConversationHistory(options.history ?? []);
@@ -273,12 +260,7 @@ export function createAgentAdapter(app) {
      * @param {boolean} visibility
      */
     function setViewVisibility(selector, visibility) {
-        app.store.dispatch(
-            viewSettingsSlice.actions.setVisibility({
-                key: makeViewSelectorKey(selector),
-                visibility,
-            })
-        );
+        return agentApi.setViewVisibility(selector, visibility);
     }
 
     /**
@@ -286,18 +268,14 @@ export function createAgentAdapter(app) {
      * @returns {boolean}
      */
     function jumpToProvenanceState(provenanceId) {
-        const currentIndex = app.provenance.getCurrentIndex();
-        app.provenance.activateState(provenanceId);
-        return app.provenance.getCurrentIndex() !== currentIndex;
+        return agentApi.jumpToProvenanceState(provenanceId);
     }
 
     /**
      * @returns {boolean}
      */
     function jumpToInitialProvenanceState() {
-        const currentIndex = app.provenance.getCurrentIndex();
-        app.provenance.activateInitialState();
-        return app.provenance.getCurrentIndex() !== currentIndex;
+        return agentApi.jumpToInitialProvenanceState();
     }
 
     /**
@@ -314,7 +292,7 @@ export function createAgentAdapter(app) {
                     .expandedViewNodeKeys ?? [],
         }
     ) {
-        return buildAgentContext(app, contextOptions);
+        return buildAgentContext(agentApi, contextOptions);
     }
 
     /**
@@ -329,7 +307,7 @@ export function createAgentAdapter(app) {
      * @param {{submissionKind?: "agent" | "bookmark" | "user"}} options
      */
     function submitIntentActions(batch, options) {
-        return submitIntentActionsForApp(app, batch, options);
+        return submitIntentActionsForApp(agentApi, batch, options);
     }
 
     /**
@@ -337,12 +315,7 @@ export function createAgentAdapter(app) {
      * @returns {import("@genome-spy/core/view/view.js").default | undefined}
      */
     function resolveViewSelector(selector) {
-        const viewRoot = app.genomeSpy?.viewRoot;
-        if (!viewRoot) {
-            return undefined;
-        }
-
-        return resolveCoreViewSelector(viewRoot, selector);
+        return agentApi.resolveViewSelector(selector);
     }
 
     /**
@@ -355,8 +328,8 @@ export function createAgentAdapter(app) {
      */
     function summarizeProvenanceActionsSince(startIndex) {
         return summarizeProvenanceActions(
-            app,
-            app.provenance.getActionHistory().slice(startIndex)
+            agentApi,
+            agentApi.getActionHistory().slice(startIndex)
         );
     }
 

@@ -2,33 +2,27 @@
 import { describe, expect, it } from "vitest";
 import { validateIntentBatch } from "./intentProgramValidator.js";
 
-function createAppStub() {
+function createAgentApiStub() {
     return {
-        getSampleView: () => ({
-            compositeAttributeInfoSource: {
-                getAttributeInfo: (attribute) => {
-                    if (attribute.specifier === "known") {
-                        return {
-                            name: "known",
-                            attribute,
-                            title: "Known",
-                            emphasizedName: "Known",
-                            accessor: () => undefined,
-                            valuesProvider: () => [],
-                            type: "nominal",
-                        };
-                    }
-
-                    throw new Error("Unknown attribute");
-                },
-            },
-        }),
+        getSampleHierarchy: () => ({ id: "sample-hierarchy" }),
+        getAttributeInfo: (attribute) =>
+            attribute.specifier === "known"
+                ? {
+                      name: "known",
+                      attribute,
+                      title: "Known",
+                      emphasizedName: "Known",
+                      accessor: () => undefined,
+                      valuesProvider: () => [],
+                      type: "nominal",
+                  }
+                : undefined,
     };
 }
 
 describe("validateIntentBatch", () => {
     it("accepts a valid supported batch", () => {
-        const result = validateIntentBatch(createAppStub(), {
+        const result = validateIntentBatch(createAgentApiStub(), {
             schemaVersion: 1,
             steps: [
                 {
@@ -47,7 +41,7 @@ describe("validateIntentBatch", () => {
     });
 
     it("accepts quartile grouping for a quantitative attribute", () => {
-        const result = validateIntentBatch(createAppStub(), {
+        const result = validateIntentBatch(createAgentApiStub(), {
             schemaVersion: 1,
             steps: [
                 {
@@ -66,7 +60,7 @@ describe("validateIntentBatch", () => {
     });
 
     it("rejects unknown action types", () => {
-        const result = validateIntentBatch(createAppStub(), {
+        const result = validateIntentBatch(createAgentApiStub(), {
             schemaVersion: 1,
             steps: [{ actionType: "dropDatabase", payload: {} }],
         });
@@ -76,7 +70,7 @@ describe("validateIntentBatch", () => {
     });
 
     it("rejects unknown attributes", () => {
-        const result = validateIntentBatch(createAppStub(), {
+        const result = validateIntentBatch(createAgentApiStub(), {
             schemaVersion: 1,
             steps: [
                 {
@@ -96,7 +90,7 @@ describe("validateIntentBatch", () => {
     });
 
     it("rejects malformed quantitative filters", () => {
-        const result = validateIntentBatch(createAppStub(), {
+        const result = validateIntentBatch(createAgentApiStub(), {
             schemaVersion: 1,
             steps: [
                 {
@@ -119,7 +113,7 @@ describe("validateIntentBatch", () => {
     });
 
     it("rejects malformed threshold groupings", () => {
-        const result = validateIntentBatch(createAppStub(), {
+        const result = validateIntentBatch(createAgentApiStub(), {
             schemaVersion: 1,
             steps: [
                 {

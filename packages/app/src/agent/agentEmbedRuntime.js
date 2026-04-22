@@ -25,10 +25,13 @@ export async function setupAgentRuntime(app, options) {
         import("./agentUi.js"),
     ]);
 
-    await app.getAgentApi();
+    const agentApi = await app.getAgentApi();
 
     const agentState = getAgentState(app);
     agentState.agentBaseUrl = agentBaseUrl;
-    agentState.agentAdapter = agentAdapterModule.createAgentAdapter(app);
+    agentState.agentAdapter = agentAdapterModule.createAgentAdapter(
+        app,
+        agentApi
+    );
     agentUiModule.registerAgentUi(app);
 }

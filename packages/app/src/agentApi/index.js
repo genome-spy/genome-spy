@@ -25,7 +25,7 @@ export function createAgentApi(app) {
          * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
          * @returns {import("../sampleView/types.d.ts").AttributeInfo | undefined}
          */
-        getSampleAttributeInfo(attribute) {
+        getAttributeInfo(attribute) {
             const sampleView = app.getSampleView();
             if (!sampleView) {
                 return;
@@ -56,6 +56,14 @@ export function createAgentApi(app) {
             return app.genomeSpy.viewRoot;
         },
 
+        getFocusedView() {
+            return app.getSampleView();
+        },
+
+        getRootSpec() {
+            return app.rootSpec;
+        },
+
         /**
          * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
          * @returns {import("@genome-spy/core/view/view.js").default | undefined}
@@ -71,6 +79,23 @@ export function createAgentApi(app) {
 
         getActionHistory() {
             return app.provenance.getActionHistory();
+        },
+
+        /**
+         * @param {import("@reduxjs/toolkit").Action} action
+         * @returns {import("../state/provenance.js").ActionInfo | undefined}
+         */
+        getActionInfo(action) {
+            return app.provenance.getActionInfo(action);
+        },
+
+        /**
+         * @param {import("@reduxjs/toolkit").Action[]} actions
+         * @param {{ submissionKind?: "agent" | "bookmark" | "user" }} [options]
+         * @returns {Promise<void>}
+         */
+        submitIntentActions(actions, options) {
+            return app.intentPipeline.submit(actions, options);
         },
 
         getPresentProvenanceState() {
@@ -107,10 +132,6 @@ export function createAgentApi(app) {
             const currentIndex = app.provenance.getCurrentIndex();
             app.provenance.activateInitialState();
             return app.provenance.getCurrentIndex() !== currentIndex;
-        },
-
-        getAppContainer() {
-            return app.appContainer;
         },
     };
 }

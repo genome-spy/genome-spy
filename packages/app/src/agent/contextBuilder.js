@@ -5,6 +5,10 @@ import { isBaselineAction } from "../state/provenanceBaseline.js";
 import { getEncodingSearchFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import { getViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 
+/**
+ * @typedef {import("../agentApi/index.js").AgentApi} AgentApi
+ */
+
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
 /**
@@ -16,39 +20,46 @@ const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 const searchableViewSummaryCache = new WeakMap();
 
 /**
- * @param {import("../app.js").default} app
+ * @param {AgentApi} agentApi
  * @param {import("./types.js").AgentContextOptions} [options]
  * @returns {import("./types.js").AgentContext}
  */
-export function getAgentContext(app, options = {}) {
-    const sampleView = app.getSampleView();
-    const sampleHierarchy = app.provenance.getPresentState()?.sampleView;
-    const provenance = app.provenance.getActionHistory() ?? [];
-    const { root: viewRoot } = buildViewTree(app, options);
+export function getAgentContext(agentApi, options = {}) {
+    const sampleHierarchy = agentApi.getSampleHierarchy();
+    const provenance = agentApi.getActionHistory() ?? [];
+    const { root: viewRoot } = buildViewTree(agentApi, options);
     const intentActionSummaries = listAgentIntentActionSummaries();
-    const searchableViews = buildSearchableViews(app);
+    const searchableViews = buildSearchableViews(agentApi);
 
     return {
         schemaVersion: 1,
         intentActionSummaries,
-        attributes: sampleView
-            ? buildAttributeSummary(sampleView, sampleHierarchy)
+        attributes: sampleHierarchy
+            ? buildAttributeSummary(agentApi, sampleHierarchy)
             : [],
         searchableViews,
-        provenance: buildProvenanceActions(app, provenance),
+        provenance: buildProvenanceActions(agentApi, provenance),
         sampleSummary: buildSampleSummary(sampleHierarchy),
-        sampleGroupLevels: sampleView
-            ? buildSampleGroupLevels(sampleView, sampleHierarchy)
+        sampleGroupLevels: sampleHierarchy
+            ? buildSampleGroupLevels(agentApi, sampleHierarchy)
             : [],
         viewRoot,
     };
 }
 
 /**
- * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {import("../sampleView/state/sampleState.js").SampleHierarchy | undefined} sampleHierarchy
  * @returns {import("./types.js").AgentSampleSummary}
  */
 function buildSampleSummary(sampleHierarchy) {
+    if (!sampleHierarchy) {
+        return {
+            sampleCount: 0,
+            groupCount: 0,
+            visibleSampleCount: 0,
+        };
+    }
+
     const sampleCount = sampleHierarchy.sampleData.ids.length;
     const groupCount = sampleHierarchy.groupMetadata.length;
     const visibleSampleCount = countVisibleSamples(sampleHierarchy?.rootGroup);
@@ -61,22 +72,15 @@ function buildSampleSummary(sampleHierarchy) {
 }
 
 /**
- * @param {import("../sampleView/sampleView.js").default} sampleView
+ * @param {AgentApi} agentApi
  * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentAttributeSummary[]}
  */
-function buildAttributeSummary(sampleView, sampleHierarchy) {
+function buildAttributeSummary(agentApi, sampleHierarchy) {
     const { attributeNames, attributeDefs } = sampleHierarchy.sampleMetadata;
 
-    const getAttributeInfo = (
-        /** @type {import("../sampleView/types.js").AttributeIdentifier} */ attributeIdentifier
-    ) =>
-        sampleView.compositeAttributeInfoSource.getAttributeInfo(
-            attributeIdentifier
-        );
-
     return attributeNames.map((/** @type {string} */ name) => {
-        const info = getAttributeInfo({
+        const info = agentApi.getAttributeInfo({
             type: SAMPLE_ATTRIBUTE,
             specifier: name,
         });
@@ -94,17 +98,15 @@ function buildAttributeSummary(sampleView, sampleHierarchy) {
 }
 
 /**
- * @param {import("../sampleView/sampleView.js").default} sampleView
+ * @param {AgentApi} agentApi
  * @param {import("../sampleView/state/sampleState.js").SampleHierarchy} sampleHierarchy
  * @returns {import("./types.js").AgentSampleGroupLevel[]}
  */
-function buildSampleGroupLevels(sampleView, sampleHierarchy) {
+function buildSampleGroupLevels(agentApi, sampleHierarchy) {
     const groupMetadata = sampleHierarchy.groupMetadata;
 
     return groupMetadata.map((entry, level) => {
-        const info = sampleView.compositeAttributeInfoSource.getAttributeInfo(
-            entry.attribute
-        );
+        const info = agentApi.getAttributeInfo(entry.attribute);
 
         return {
             level,
@@ -115,11 +117,11 @@ function buildSampleGroupLevels(sampleView, sampleHierarchy) {
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {AgentApi} agentApi
  * @returns {import("./types.js").AgentSearchableViewSummary[]}
  */
-function buildSearchableViews(app) {
-    const searchableViews = app.genomeSpy.getSearchableViews();
+function buildSearchableViews(agentApi) {
+    const searchableViews = agentApi.getSearchableViews();
 
     return searchableViews
         .map((view) => buildSearchableViewSummary(view))
@@ -294,16 +296,20 @@ function getViewSelectorOrUndefined(view) {
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {AgentApi} agentApi
  * @param {import("@reduxjs/toolkit").Action[]} provenanceActions
  * @returns {import("./types.js").AgentProvenanceAction[]}
  */
-function buildProvenanceActions(app, provenanceActions) {
+function buildProvenanceActions(agentApi, provenanceActions) {
     return provenanceActions
         .filter((action) => !isBaselineAction(action))
         .slice(-10)
         .map((action) => {
-            const info = app.provenance.getActionInfo(action);
+            const info = agentApi.getActionInfo(
+                /** @type {import("../agent/agentContextTypes.d.ts").AgentProvenanceAction} */ (
+                    action
+                )
+            );
             const title =
                 info?.provenanceTitle ??
                 info?.title ??

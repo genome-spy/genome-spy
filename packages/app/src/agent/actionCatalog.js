@@ -116,11 +116,11 @@ export function getActionCatalogEntry(actionType) {
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @param {import("./types.js").IntentBatch} batch
  * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
-export function summarizeIntentBatch(app, batch) {
+export function summarizeIntentBatch(agentApi, batch) {
     const actions = batch.steps.map(
         (step) =>
             /** @type {ActionInfoInput} */ (
@@ -129,27 +129,29 @@ export function summarizeIntentBatch(app, batch) {
                 )
             )
     );
-    return summarizeActions(app, actions);
+    return summarizeActions(agentApi, actions);
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @param {SummarizableAction[]} actions
  * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
-export function summarizeProvenanceActions(app, actions) {
-    return summarizeActions(app, actions);
+export function summarizeProvenanceActions(agentApi, actions) {
+    return summarizeActions(agentApi, actions);
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @param {SummarizableAction[]} actions
  * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
-function summarizeActions(app, actions) {
+function summarizeActions(agentApi, actions) {
     return actions.map((action) => {
-        const info = app.provenance.getActionInfo(
-            /** @type {ActionInfoInput} */ (action)
+        const info = agentApi.getActionInfo(
+            /** @type {import("./agentContextTypes.d.ts").AgentProvenanceAction} */ (
+                action
+            )
         );
         const content = info?.provenanceTitle ?? info?.title ?? action.type;
         return {

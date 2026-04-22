@@ -91,6 +91,18 @@ function createMockScaleResolution(options) {
     };
 }
 
+function createAgentApiStub(
+    rootView,
+    focusedView = rootView,
+    rootSpec = rootView?.spec
+) {
+    return {
+        getViewRoot: () => rootView,
+        getFocusedView: () => focusedView,
+        getRootSpec: () => rootSpec,
+    };
+}
+
 describe("buildViewTree", () => {
     it("builds a normalized hierarchy rooted at the top-level spec", () => {
         const rootSibling = createMockView({
@@ -307,19 +319,14 @@ describe("buildViewTree", () => {
             children: [rootSibling, dataTracks],
         });
 
-        const tree = buildViewTree({
-            getSampleView: () => sampleView,
-            genomeSpy: {
-                spec: {
-                    genomes: {
-                        hg38: {},
-                    },
-                    assembly: "hg38",
-                    background: "#fff",
+        const tree = buildViewTree(
+            createAgentApiStub(root, sampleView, {
+                genomes: {
+                    hg38: {},
                 },
-                viewRoot: root,
-            },
-        });
+                assembly: "hg38",
+            })
+        );
 
         expect(tree.rootConfig).toEqual({
             assembly: "hg38",
@@ -563,13 +570,7 @@ describe("buildViewTree", () => {
             },
         });
 
-        const tree = buildViewTree({
-            getSampleView: () => undefined,
-            genomeSpy: {
-                spec: {},
-                viewRoot: root,
-            },
-        });
+        const tree = buildViewTree(createAgentApiStub(root));
 
         expect(tree.root.description).toBe("First line\nSecond line");
     });
@@ -623,18 +624,9 @@ describe("buildViewTree", () => {
             ],
         });
 
-        const tree = buildViewTree(
-            {
-                getSampleView: () => sampleView,
-                genomeSpy: {
-                    spec: {},
-                    viewRoot: root,
-                },
-            },
-            {
-                expandedViewNodeKeys: [expandedKey],
-            }
-        );
+        const tree = buildViewTree(createAgentApiStub(root, sampleView), {
+            expandedViewNodeKeys: [expandedKey],
+        });
 
         expect(tree.root.children[0].children[1]).toMatchObject({
             title: "Annotation track",
@@ -673,13 +665,7 @@ describe("buildViewTree", () => {
             children: [anonymousBranch],
         });
 
-        const tree = buildViewTree({
-            getSampleView: () => root,
-            genomeSpy: {
-                spec: {},
-                viewRoot: root,
-            },
-        });
+        const tree = buildViewTree(createAgentApiStub(root));
 
         expect(tree.root.children[0]).toMatchObject({
             title: "Anonymous branch",
@@ -717,13 +703,7 @@ describe("buildViewTree", () => {
                     : undefined,
         });
 
-        const tree = buildViewTree({
-            getSampleView: () => colorLeaf,
-            genomeSpy: {
-                spec: {},
-                viewRoot: colorLeaf,
-            },
-        });
+        const tree = buildViewTree(createAgentApiStub(colorLeaf));
 
         expect(tree.root.encodings.color).toEqual(
             expect.objectContaining({
@@ -767,13 +747,7 @@ describe("buildViewTree", () => {
                     : undefined,
         });
 
-        const tree = buildViewTree({
-            getSampleView: () => positionalLeaf,
-            genomeSpy: {
-                spec: {},
-                viewRoot: positionalLeaf,
-            },
-        });
+        const tree = buildViewTree(createAgentApiStub(positionalLeaf));
 
         expect(tree.root.encodings.y.scale).toEqual(
             expect.objectContaining({

@@ -5,13 +5,13 @@ import {
 } from "../sampleView/selectionAggregationCandidates.js";
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @returns {import("./types.js").AgentSelectionAggregationContext}
  */
-export function getSelectionAggregationContext(app) {
-    const sampleView = app.getSampleView();
-    const selections = buildSelectionSummaries(app);
-    const fields = buildFieldSummaries(sampleView, selections);
+export function getSelectionAggregationContext(agentApi) {
+    const rootView = agentApi.getViewRoot();
+    const selections = buildSelectionSummaries(agentApi);
+    const fields = buildFieldSummaries(rootView, selections);
 
     return {
         fields,
@@ -19,14 +19,12 @@ export function getSelectionAggregationContext(app) {
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {import("../agentApi/index.js").AgentApi} agentApi
  * @returns {import("./types.js").AgentSelectionSummary[]}
  */
-function buildSelectionSummaries(app) {
-    const sampleView = app.getSampleView();
-    const paramConfigs = sampleView?.paramRuntime?.paramConfigs;
+function buildSelectionSummaries(agentApi) {
     const entries =
-        app.provenance.getPresentState?.()?.paramProvenance?.entries ?? {};
+        agentApi.getPresentProvenanceState()?.paramProvenance?.entries ?? {};
 
     return Object.values(entries)
         .filter(
@@ -38,9 +36,8 @@ function buildSelectionSummaries(app) {
         .map((entry) => ({
             type: "interval",
             label: entry.selector.param,
-            description: /** @type {string | undefined} */ (
-                paramConfigs?.get(entry.selector.param)?.description
-            ),
+            description: agentApi.getSampleParamConfig(entry.selector.param)
+                ?.description,
             selector: entry.selector,
             active: true,
             nameSuffix: createSelectionNameSuffix(entry.value),
@@ -48,26 +45,26 @@ function buildSelectionSummaries(app) {
 }
 
 /**
- * @param {import("../sampleView/sampleView.js").default | undefined} sampleView
+ * @param {import("@genome-spy/core/view/view.js").default | undefined} rootView
  * @param {import("./types.js").AgentSelectionSummary[]} selections
  * @returns {import("./types.js").AgentViewFieldSummary[]}
  */
-function buildFieldSummaries(sampleView, selections) {
-    if (!sampleView) {
+function buildFieldSummaries(rootView, selections) {
+    if (!rootView) {
         return [];
     }
 
     /** @type {import("./types.js").AgentViewFieldSummary[]} */
     const fields = [];
     const layoutRoot =
-        typeof sampleView.getLayoutAncestors === "function"
-            ? (sampleView.getLayoutAncestors().at(-1) ?? sampleView)
-            : sampleView;
+        typeof rootView.getLayoutAncestors === "function"
+            ? (rootView.getLayoutAncestors().at(-1) ?? rootView)
+            : rootView;
 
     for (const selection of selections) {
         let resolved;
         try {
-            resolved = resolveParamSelector(sampleView, selection.selector);
+            resolved = resolveParamSelector(rootView, selection.selector);
         } catch {
             resolved = undefined;
         }
