@@ -1,5 +1,5 @@
 import templateResultToString from "../utils/templateResultToString.js";
-import { listAgentActions } from "./actionCatalog.js";
+import { listAgentIntentActionSummaries } from "./actionCatalog.js";
 import { buildViewTree } from "./viewTree.js";
 import { isBaselineAction } from "../state/provenanceBaseline.js";
 import { getEncodingSearchFields } from "@genome-spy/core/encoder/metadataChannels.js";
@@ -25,17 +25,12 @@ export function getAgentContext(app, options = {}) {
     const sampleHierarchy = app.provenance.getPresentState()?.sampleView;
     const provenance = app.provenance.getActionHistory() ?? [];
     const { root: viewRoot } = buildViewTree(app, options);
-    const actionCatalog = listAgentActions();
+    const intentActionSummaries = listAgentIntentActionSummaries();
     const searchableViews = buildSearchableViews(app);
 
     return {
         schemaVersion: 1,
-        actionCatalog: actionCatalog.map((entry) => ({
-            actionType: entry.actionType,
-            description: entry.description,
-            payloadFields: entry.payloadFields,
-            examplePayload: entry.examplePayload,
-        })),
+        intentActionSummaries,
         attributes: sampleView
             ? buildAttributeSummary(sampleView, sampleHierarchy)
             : [],

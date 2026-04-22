@@ -80,6 +80,9 @@ export interface AgentActionCatalogEntry {
     /** Short action summary. */
     description: string;
 
+    /** Optional usage guidance for choosing and applying the action. */
+    usage?: string;
+
     /** Payload type name used by the schema generator. */
     payloadType: string;
 
@@ -88,6 +91,9 @@ export interface AgentActionCatalogEntry {
 
     /** Minimal example payload. */
     examplePayload: unknown;
+
+    /** Example payloads parsed from reducer JSDoc. */
+    examples: unknown[];
 }
 
 /**
@@ -156,18 +162,16 @@ export interface AgentViewStateChange {
     changed: boolean;
 }
 
-/** Compact action catalog entry sent in the agent context. */
-export interface AgentActionCatalogContextEntry {
-    actionType: AgentActionType;
-    description: string;
-    payloadFields: AgentPayloadField[];
-    examplePayload: unknown;
-}
-
 /** Compact presentation metadata for an action. */
 export interface AgentActionSummary {
     actionType: AgentActionType;
     title: string;
+    description: string;
+}
+
+/** Compact intent action summary sent in the agent context. */
+export interface AgentIntentActionSummary {
+    actionType: AgentActionType;
     description: string;
 }
 
@@ -215,7 +219,7 @@ export interface AgentStreamCallbacks {
 /** Top-level context snapshot sent to the agent. */
 export interface AgentContext {
     schemaVersion: 1;
-    actionCatalog: AgentActionCatalogContextEntry[];
+    intentActionSummaries: AgentIntentActionSummary[];
     attributes: AgentAttributeSummary[];
     searchableViews: AgentSearchableViewSummary[];
     provenance: AgentProvenanceAction[];

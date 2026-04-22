@@ -1049,8 +1049,8 @@
         "expandViewNode": {
           "$ref": "#/definitions/ExpandViewNodeToolInput"
         },
-        "getGroupedMetadataAttributeSummary": {
-          "$ref": "#/definitions/GetGroupedMetadataAttributeSummaryToolInput"
+        "getActionDetails": {
+          "$ref": "#/definitions/GetActionDetailsToolInput"
         },
         "getMetadataAttributeSummary": {
           "$ref": "#/definitions/GetMetadataAttributeSummaryToolInput"
@@ -1079,8 +1079,8 @@
         "jumpToInitialProvenanceState",
         "buildSelectionAggregationAttribute",
         "getMetadataAttributeSummary",
-        "getGroupedMetadataAttributeSummary",
         "searchViewDatums",
+        "getActionDetails",
         "submitIntentActions"
       ],
       "type": "object"
@@ -1152,45 +1152,73 @@
       "required": ["selector"],
       "type": "object"
     },
-    "GetGroupedMetadataAttributeSummaryToolInput": {
+    "GetActionDetailsToolInput": {
       "additionalProperties": false,
-      "description": "Return grouped summaries for one metadata attribute using the current visible grouping hierarchy.",
+      "description": "Return payload fields and examples for one intent action. Use this before constructing an unfamiliar action payload for `submitIntentActions`.",
+      "examples": [
+        {
+          "actionType": "sampleView/groupToQuartiles",
+          "includeSchema": false
+        }
+      ],
+      "properties": {
+        "actionType": {
+          "$ref": "#/definitions/IntentActionType",
+          "description": "Intent action type to inspect."
+        },
+        "includeSchema": {
+          "description": "Whether to include the raw payload schema. The default response is more compact and usually sufficient.",
+          "type": "boolean"
+        }
+      },
+      "required": ["actionType"],
+      "type": "object"
+    },
+    "GetMetadataAttributeSummaryToolInput": {
+      "additionalProperties": false,
+      "description": "Return a compact summary of one metadata attribute across visible samples or within each current visible group. Use `visible_samples` for pooled metadata facts such as available category values or numeric ranges. Use `visible_groups` only after the sample view is already grouped and the user needs per-group facts. If the user asks to group by one attribute and then compare or report another attribute by group, first submit the grouping action, wait for the refreshed context, and then call this tool with `scope: \"visible_groups\"` for the attribute to report.",
       "examples": [
         {
           "attribute": {
             "specifier": "tissue",
             "type": "SAMPLE_ATTRIBUTE"
-          }
-        }
-      ],
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/SampleAttributeIdentifier",
-          "description": "Stable attributeIdentifier for the metadata attribute to summarize by visible groups. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context."
-        }
-      },
-      "required": ["attribute"],
-      "type": "object"
-    },
-    "GetMetadataAttributeSummaryToolInput": {
-      "additionalProperties": false,
-      "description": "Return a compact summary of one metadata attribute's current values. Use this when the agent needs factual grounding about which category values exist or what numeric range is present in current sample metadata.",
-      "examples": [
-        {
-          "attribute": {
-            "specifier": "sex",
-            "type": "SAMPLE_ATTRIBUTE"
-          }
+          },
+          "scope": "visible_groups"
         }
       ],
       "properties": {
         "attribute": {
           "$ref": "#/definitions/SampleAttributeIdentifier",
           "description": "Stable attributeIdentifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context."
+        },
+        "scope": {
+          "$ref": "#/definitions/MetadataSummaryScope",
+          "description": "Summary scope. Use `visible_samples` for a pooled summary across the current visible samples. Use `visible_groups` for summaries within each current visible group after grouping has already been applied."
         }
       },
-      "required": ["attribute"],
+      "required": ["attribute", "scope"],
       "type": "object"
+    },
+    "IntentActionType": {
+      "enum": [
+        "sampleView/addMetadata",
+        "sampleView/deriveMetadata",
+        "sampleView/addMetadataFromSource",
+        "sampleView/sortBy",
+        "sampleView/retainFirstOfEach",
+        "sampleView/retainFirstNCategories",
+        "sampleView/filterByQuantitative",
+        "sampleView/filterByNominal",
+        "sampleView/removeUndefined",
+        "sampleView/groupCustomCategories",
+        "sampleView/groupByNominal",
+        "sampleView/groupToQuartiles",
+        "sampleView/groupByThresholds",
+        "sampleView/removeGroup",
+        "sampleView/retainMatched",
+        "paramProvenance/paramChange"
+      ],
+      "type": "string"
     },
     "JumpToInitialProvenanceStateToolInput": {
       "additionalProperties": {
@@ -1215,6 +1243,10 @@
       },
       "required": ["provenanceId"],
       "type": "object"
+    },
+    "MetadataSummaryScope": {
+      "enum": ["visible_samples", "visible_groups"],
+      "type": "string"
     },
     "SampleAttributeIdentifier": {
       "additionalProperties": false,

@@ -7,13 +7,19 @@ examples behind explicit lookup tools.
 
 ## Current State
 
-- `contextBuilder.js` sends `context.actionCatalog` on every agent turn.
-- The context projection includes action type, description, payload fields, and
-  example payloads.
-- `generated/generatedActionSummaries.json` already exists, but the base context
-  does not use it.
+- `contextBuilder.js` sends `context.intentActionSummaries` on every agent turn.
+- The base context includes action type and description only.
+- Detailed action payload fields and examples stay out of the always-on context.
 - `generated/generatedActionCatalog.json` is still needed as the internal source
   for action payload metadata, examples, and validation support.
+- `generated/generatedActionSummaries.json` is the source for the always-on
+  intent action summary list.
+- The `getActionDetails` tool returns payload fields and examples for one
+  intent action on demand.
+- `getActionDetails` can include the generated payload schema when
+  `includeSchema` is true.
+- The generated action catalog preserves fuller reducer usage guidance and
+  example arrays for action detail lookup.
 - `payloadType` is useful for generation internals but is not useful in the
   LLM-facing context.
 - The browser also sends provider-ready tool definitions on every request, so
@@ -193,6 +199,8 @@ Recommended tests:
 Purpose: make fetched action details more useful than the current first-sentence
 catalog descriptions.
 
+Status: implemented.
+
 Implementation:
 
 - Split generated action docs into:
@@ -227,6 +235,9 @@ Recommended tests:
 ### v0.5: Optional Schema Detail
 
 Purpose: expose raw payload schema only when it is actually useful.
+
+Status: implemented with v0.2 because `includeSchema` is part of the lookup
+tool input.
 
 Implementation:
 

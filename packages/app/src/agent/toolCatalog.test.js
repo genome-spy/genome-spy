@@ -24,6 +24,9 @@ describe("toolCatalog", () => {
         const submitIntentActions = toolDefinitions.find(
             (tool) => tool.name === "submitIntentActions"
         );
+        const getActionDetails = toolDefinitions.find(
+            (tool) => tool.name === "getActionDetails"
+        );
 
         expect(jumpToInitialProvenanceState).toMatchObject({
             name: "jumpToInitialProvenanceState",
@@ -36,6 +39,13 @@ describe("toolCatalog", () => {
         expect(submitIntentActions).toMatchObject({
             name: "submitIntentActions",
             strict: false,
+        });
+        expect(getActionDetails).toMatchObject({
+            name: "getActionDetails",
+            strict: true,
+            parameters: {
+                required: ["actionType", "includeSchema"],
+            },
         });
         expect(JSON.stringify(toolDefinitions)).not.toContain(
             "AgentIntentBatchStep"

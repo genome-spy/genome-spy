@@ -6,6 +6,7 @@ import generatedActionCatalog from "./generated/generatedActionCatalog.json" wit
 import {
     getActionCatalogEntry,
     listAgentActions,
+    listAgentIntentActionSummaries,
     summarizeProvenanceActions,
     summarizeIntentBatch,
 } from "./actionCatalog.js";
@@ -47,6 +48,21 @@ describe("actionCatalog", () => {
         );
     });
 
+    it("lists compact intent action summaries for agent context", () => {
+        const entries = listAgentIntentActionSummaries();
+
+        expect(entries.map((entry) => entry.actionType)).toEqual(
+            generatedActionCatalog.map((entry) => entry.actionType)
+        );
+        expect(entries[0]).toEqual({
+            actionType: generatedActionCatalog[0].actionType,
+            description: generatedActionCatalog[0].description,
+        });
+        expect(entries[0]).not.toHaveProperty("title");
+        expect(entries[0]).not.toHaveProperty("payloadFields");
+        expect(entries[0]).not.toHaveProperty("examplePayload");
+    });
+
     it("provides action creators for supported actions", () => {
         const entry = getActionCatalogEntry("sampleView/sortBy");
         const action = entry.actionCreator({
@@ -72,6 +88,9 @@ describe("actionCatalog", () => {
         const entry = getActionCatalogEntry("sampleView/filterByQuantitative");
 
         expect(entry.description).toContain("quantitative attribute");
+        expect(entry.usage).toBe(
+            "Use this for threshold-based filtering on quantitative attributes."
+        );
         expect(entry.payloadFields).toEqual([
             expect.objectContaining({
                 name: "attribute",
@@ -86,6 +105,16 @@ describe("actionCatalog", () => {
                 name: "operand",
                 required: true,
             }),
+        ]);
+        expect(entry.examples).toEqual([
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "purity",
+                },
+                operator: "gte",
+                operand: 0.6,
+            },
         ]);
     });
 

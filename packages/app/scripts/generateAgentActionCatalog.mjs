@@ -345,6 +345,18 @@ function normalizeActionDescription(text) {
 }
 
 /**
+ * @param {string} text
+ * @returns {string | undefined}
+ */
+function normalizeActionUsage(text) {
+    const summary = normalizeDocText(text);
+    const description = normalizeActionDescription(summary);
+    const remaining = compactDocText(summary.slice(description.length));
+
+    return remaining || undefined;
+}
+
+/**
  * @param {string} actionType
  * @param {string} localActionName
  * @param {ts.PropertyAssignment} node
@@ -354,7 +366,8 @@ function normalizeActionDescription(text) {
 function buildEntry(actionType, localActionName, node, payloadTypeDocs) {
     const { summary, tags } = readJsDoc(node);
     const agentTags = parseAgentTags(tags);
-    const examplePayload = parseExamples(tags)[0] ?? {};
+    const examples = parseExamples(tags);
+    const examplePayload = examples[0] ?? {};
     const payloadType =
         agentTags.payloadType || inferPayloadType(localActionName);
     const payloadTypeDoc = payloadTypeDocs.get(payloadType);
@@ -368,9 +381,11 @@ function buildEntry(actionType, localActionName, node, payloadTypeDocs) {
     return {
         actionType,
         description: normalizeActionDescription(summary),
+        usage: normalizeActionUsage(summary),
         payloadType,
         payloadFields: payloadTypeDoc.fields,
         examplePayload,
+        examples,
     };
 }
 

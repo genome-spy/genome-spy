@@ -1,8 +1,9 @@
 import { buildSelectionAggregationAttribute } from "./selectionAggregationTool.js";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
-import { getGroupedMetadataAttributeSummaryTool } from "./groupedMetadataAttributeSummaryTool.js";
 import { getMetadataAttributeSummaryTool } from "./metadataAttributeSummaryTool.js";
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
+import { getActionCatalogEntry } from "./actionCatalog.js";
+import generatedActionSchema from "./generated/generatedActionSchema.json" with { type: "json" };
 
 /*
  * Tool behavior lives here. The input shapes and user-facing descriptions are
@@ -146,8 +147,37 @@ export const agentTools = {
     },
 
     getMetadataAttributeSummary: getMetadataAttributeSummaryTool,
-    getGroupedMetadataAttributeSummary: getGroupedMetadataAttributeSummaryTool,
     searchViewDatums: searchViewDatumsTool,
+
+    /**
+     * @param {AgentToolRuntime} _runtime
+     * @param {import("./agentToolInputs.d.ts").GetActionDetailsToolInput} input
+     */
+    getActionDetails(_runtime, input) {
+        const entry = getActionCatalogEntry(input.actionType);
+        if (!entry) {
+            throw new ToolCallRejectionError(
+                "Unsupported intent actionType " + input.actionType + "."
+            );
+        }
+
+        const content = {
+            actionType: entry.actionType,
+            description: entry.description,
+            ...(entry.usage ? { usage: entry.usage } : {}),
+            payloadFields: entry.payloadFields,
+            examples: entry.examples,
+            ...(input.includeSchema
+                ? { schema: getActionPayloadSchema(entry.actionType) }
+                : {}),
+        };
+
+        return {
+            text: "Fetched details for " + input.actionType + ".",
+            content,
+        };
+    },
+
     /**
      * @param {AgentToolRuntime} runtime
      * @param {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} input
@@ -181,6 +211,26 @@ export const agentTools = {
         }
     },
 };
+
+/**
+ * @param {import("./types.d.ts").AgentActionType} actionType
+ * @returns {Record<string, any>}
+ */
+function getActionPayloadSchema(actionType) {
+    const stepSchemas =
+        generatedActionSchema.definitions.AgentIntentBatchStep.anyOf;
+    const stepSchema = stepSchemas.find(
+        (schema) => schema.properties.actionType.const === actionType
+    );
+
+    if (!stepSchema) {
+        throw new ToolCallRejectionError(
+            "Missing generated schema for intent actionType " + actionType + "."
+        );
+    }
+
+    return stepSchema.properties.payload;
+}
 
 /**
  * @param {AgentToolRuntime} runtime

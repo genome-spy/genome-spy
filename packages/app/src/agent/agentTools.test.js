@@ -169,6 +169,68 @@ function createRuntimeStub() {
 }
 
 describe("agentTools", () => {
+    it("returns compact action details for an intent action", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.getActionDetails(runtime, {
+            actionType: "sampleView/sortBy",
+        });
+
+        expect(result.text).toBe("Fetched details for sampleView/sortBy.");
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                actionType: "sampleView/sortBy",
+                description: "Sort samples by a selected attribute.",
+                usage: "Use this when the user wants to rank samples by a single attribute. The attribute is typically quantitative or ordinal.",
+                payloadFields: [
+                    expect.objectContaining({
+                        name: "attribute",
+                        type: "AttributeIdentifier",
+                        required: true,
+                    }),
+                ],
+                examples: [
+                    {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "age",
+                        },
+                    },
+                ],
+            })
+        );
+        expect(result.content).not.toHaveProperty("payloadType");
+    });
+
+    it("rejects unknown action detail lookups", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        expect(() =>
+            tools.getActionDetails(runtime, {
+                actionType: "sampleView/doesNotExist",
+            })
+        ).toThrow(ToolCallRejectionError);
+    });
+
+    it("optionally includes action payload schema in action details", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.getActionDetails(runtime, {
+            actionType: "sampleView/sortBy",
+            includeSchema: true,
+        });
+
+        expect(result.content.schema).toEqual(
+            expect.objectContaining({
+                type: "object",
+                required: ["attribute"],
+            })
+        );
+    });
+
     it("resolves selection aggregation candidates through the current context", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
@@ -198,6 +260,7 @@ describe("agentTools", () => {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "sex",
             },
+            scope: "visible_samples",
         });
 
         expect(result).toEqual(
@@ -234,6 +297,7 @@ describe("agentTools", () => {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "age",
             },
+            scope: "visible_samples",
         });
 
         expect(result.content).toEqual(
@@ -255,11 +319,12 @@ describe("agentTools", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.getGroupedMetadataAttributeSummary(runtime, {
+        const result = tools.getMetadataAttributeSummary(runtime, {
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "tissue",
             },
+            scope: "visible_groups",
         });
 
         expect(result).toEqual(
@@ -515,6 +580,7 @@ describe("agentTools", () => {
                         locus: 1,
                     },
                 },
+                scope: "visible_samples",
             })
         ).toThrow(ToolCallRejectionError);
     });
@@ -536,11 +602,12 @@ describe("agentTools", () => {
         const tools = agentTools;
 
         expect(() =>
-            tools.getGroupedMetadataAttributeSummary(runtime, {
+            tools.getMetadataAttributeSummary(runtime, {
                 attribute: {
                     type: "SAMPLE_ATTRIBUTE",
                     specifier: "tissue",
                 },
+                scope: "visible_groups",
             })
         ).toThrow(ToolCallRejectionError);
     });

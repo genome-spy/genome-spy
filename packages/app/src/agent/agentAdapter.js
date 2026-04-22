@@ -14,7 +14,7 @@ import {
 } from "./sampleHierarchyScope.js";
 import { getAgentState } from "./agentState.js";
 import { buildResponsesToolDefinitions } from "./toolCatalog.js";
-import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
+import { getAgentVolatileContext as buildAgentVolatileContext } from "./volatileContextBuilder.js";
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -321,9 +321,7 @@ export function createAgentAdapter(app) {
      * @returns {import("./types.d.ts").AgentVolatileContext}
      */
     function getAgentVolatileContext() {
-        return {
-            selectionAggregation: getSelectionAggregationContext(app),
-        };
+        return buildAgentVolatileContext(app);
     }
 
     /**

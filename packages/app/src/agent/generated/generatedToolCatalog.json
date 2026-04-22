@@ -117,7 +117,7 @@
   },
   {
     "toolName": "getMetadataAttributeSummary",
-    "description": "Return a compact summary of one metadata attribute's current values.",
+    "description": "Return a compact summary of one metadata attribute across visible samples or within each current visible group.",
     "inputType": "GetMetadataAttributeSummaryToolInput",
     "inputFields": [
       {
@@ -125,25 +125,11 @@
         "type": "SampleAttributeIdentifier",
         "description": "Stable attributeIdentifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.",
         "required": true
-      }
-    ],
-    "exampleInput": {
-      "attribute": {
-        "type": "SAMPLE_ATTRIBUTE",
-        "specifier": "sex"
-      }
-    },
-    "strict": true
-  },
-  {
-    "toolName": "getGroupedMetadataAttributeSummary",
-    "description": "Return grouped summaries for one metadata attribute using the current visible grouping hierarchy.",
-    "inputType": "GetGroupedMetadataAttributeSummaryToolInput",
-    "inputFields": [
+      },
       {
-        "name": "attribute",
-        "type": "SampleAttributeIdentifier",
-        "description": "Stable attributeIdentifier for the metadata attribute to summarize by visible groups. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.",
+        "name": "scope",
+        "type": "MetadataSummaryScope",
+        "description": "Summary scope. Use `visible_samples` for a pooled summary across the current visible samples. Use `visible_groups` for summaries within each current visible group after grouping has already been applied.",
         "required": true
       }
     ],
@@ -151,7 +137,8 @@
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
         "specifier": "tissue"
-      }
+      },
+      "scope": "visible_groups"
     },
     "strict": true
   },
@@ -193,6 +180,30 @@
       "query": "TP53",
       "field": "",
       "mode": "exact"
+    },
+    "strict": true
+  },
+  {
+    "toolName": "getActionDetails",
+    "description": "Return payload fields and examples for one intent action.",
+    "inputType": "GetActionDetailsToolInput",
+    "inputFields": [
+      {
+        "name": "actionType",
+        "type": "IntentActionType",
+        "description": "Intent action type to inspect.",
+        "required": true
+      },
+      {
+        "name": "includeSchema",
+        "type": "boolean",
+        "description": "Whether to include the raw payload schema. The default response is more compact and usually sufficient.",
+        "required": false
+      }
+    ],
+    "exampleInput": {
+      "actionType": "sampleView/groupToQuartiles",
+      "includeSchema": false
     },
     "strict": true
   },

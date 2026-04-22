@@ -2,6 +2,7 @@
   {
     "actionType": "sampleView/addMetadata",
     "description": "Import metadata columns into the current sample collection.",
+    "usage": "Use this for metadata uploads or source imports that provide columnar sample attributes.",
     "payloadType": "SetMetadata",
     "payloadFields": [
       {
@@ -23,11 +24,13 @@
         "required": false
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/deriveMetadata",
     "description": "Create a derived metadata column from a selected or aggregated attribute.",
+    "usage": "Use this when the user wants to turn a selected field, selection aggregation, or other resolved attribute into a new sample metadata column.",
     "payloadType": "DeriveMetadata",
     "payloadFields": [
       {
@@ -55,11 +58,13 @@
         "required": false
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/addMetadataFromSource",
     "description": "Import metadata columns from an external source.",
+    "usage": "The payload is resolved by the metadata source machinery before the reducer runs.",
     "payloadType": "AddMetadataFromSource",
     "payloadFields": [
       {
@@ -87,11 +92,13 @@
         "required": false
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/sortBy",
     "description": "Sort samples by a selected attribute.",
+    "usage": "Use this when the user wants to rank samples by a single attribute. The attribute is typically quantitative or ordinal.",
     "payloadType": "SortBy",
     "payloadFields": [
       {
@@ -106,11 +113,20 @@
         "type": "SAMPLE_ATTRIBUTE",
         "specifier": "age"
       }
-    }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "age"
+        }
+      }
+    ]
   },
   {
     "actionType": "sampleView/retainFirstOfEach",
     "description": "Keep the first sample for each category in the current ordering.",
+    "usage": "Use this when the current sort order already encodes the desired representative sample for each category.",
     "payloadType": "RetainFirstOfEach",
     "payloadFields": [
       {
@@ -120,11 +136,13 @@
         "required": true
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/retainFirstNCategories",
     "description": "Keep samples from the first n categories in the current ordering.",
+    "usage": "Use this when the user wants to keep only the leading categories according to a prior sort or ranking.",
     "payloadType": "RetainFirstNCategories",
     "payloadFields": [
       {
@@ -140,11 +158,13 @@
         "required": true
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/filterByQuantitative",
     "description": "Filter samples by comparing a selected quantitative attribute to a threshold.",
+    "usage": "Use this for threshold-based filtering on quantitative attributes.",
     "payloadType": "FilterByQuantitative",
     "payloadFields": [
       {
@@ -173,11 +193,22 @@
       },
       "operator": "gte",
       "operand": 0.6
-    }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "purity"
+        },
+        "operator": "gte",
+        "operand": 0.6
+      }
+    ]
   },
   {
     "actionType": "sampleView/filterByNominal",
     "description": "Filter samples by matching values in a selected attribute.",
+    "usage": "Use this for categorical metadata and exact-match filtering.",
     "payloadType": "FilterByNominal",
     "payloadFields": [
       {
@@ -205,11 +236,21 @@
         "specifier": "diagnosis"
       },
       "values": ["AML"]
-    }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "diagnosis"
+        },
+        "values": ["AML"]
+      }
+    ]
   },
   {
     "actionType": "sampleView/removeUndefined",
     "description": "Remove samples missing a selected attribute value.",
+    "usage": "Use this to clean up incomplete metadata before applying further analysis steps.",
     "payloadType": "RemoveUndefined",
     "payloadFields": [
       {
@@ -219,11 +260,13 @@
         "required": true
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/groupCustomCategories",
     "description": "Group samples by custom categories chosen from a selected attribute.",
+    "usage": "Use this when the user wants to merge specific categories into named groups.",
     "payloadType": "GroupCustom",
     "payloadFields": [
       {
@@ -239,11 +282,13 @@
         "required": true
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/groupByNominal",
     "description": "Group samples by the distinct values of a selected attribute.",
+    "usage": "Use this to stratify the sample collection into one group per category.",
     "payloadType": "GroupByNominal",
     "payloadFields": [
       {
@@ -253,11 +298,13 @@
         "required": true
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/groupToQuartiles",
     "description": "Group samples into quartiles by a selected quantitative attribute.",
+    "usage": "Use this for a fast, coarse stratification into four groups.",
     "payloadType": "GroupToQuartiles",
     "payloadFields": [
       {
@@ -267,11 +314,13 @@
         "required": true
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/groupByThresholds",
     "description": "Group samples by user-defined thresholds on a selected quantitative attribute.",
+    "usage": "Use this when the desired stratification does not match quartiles or a pre-existing categorical split.",
     "payloadType": "GroupByThresholds",
     "payloadFields": [
       {
@@ -302,11 +351,30 @@
           "operand": 0.8
         }
       ]
-    }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "purity"
+        },
+        "thresholds": [
+          {
+            "operator": "lte",
+            "operand": 0.2
+          },
+          {
+            "operator": "lt",
+            "operand": 0.8
+          }
+        ]
+      }
+    ]
   },
   {
     "actionType": "sampleView/removeGroup",
     "description": "Remove a sample group by path.",
+    "usage": "Use this when the user wants to delete a previously created group from the hierarchy.",
     "payloadType": "RemoveGroup",
     "payloadFields": [
       {
@@ -316,11 +384,13 @@
         "required": true
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "sampleView/retainMatched",
     "description": "Keep categories that appear in every current group.",
+    "usage": "Use this for intersection-style cohort refinement.",
     "payloadType": "RetainMatched",
     "payloadFields": [
       {
@@ -330,11 +400,13 @@
         "required": true
       }
     ],
-    "examplePayload": {}
+    "examplePayload": {},
+    "examples": []
   },
   {
     "actionType": "paramProvenance/paramChange",
     "description": "Create or update a reactive selection or parameter value, including point selections, interval selections, and genomic-region selections.",
+    "usage": "Use this for point selections, interval selections, genomic-region selections, and other replayable parameter changes.",
     "payloadType": "ParamProvenanceEntry",
     "payloadFields": [
       {
@@ -376,6 +448,29 @@
           ]
         }
       }
-    }
+    },
+    "examples": [
+      {
+        "selector": {
+          "scope": [],
+          "param": "brush"
+        },
+        "value": {
+          "type": "interval",
+          "intervals": {
+            "x": [
+              {
+                "chrom": "chr17",
+                "pos": 7685012
+              },
+              {
+                "chrom": "chr17",
+                "pos": 7690727
+              }
+            ]
+          }
+        }
+      }
+    ]
   }
 ]

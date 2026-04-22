@@ -156,7 +156,7 @@ function createMockAgentController(scenario, options = {}) {
                 visible: true,
             },
         ],
-        actionCatalog: [],
+        intentActionSummaries: [],
         provenance: [
             {
                 summary: "Set samples",

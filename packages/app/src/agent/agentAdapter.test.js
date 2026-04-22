@@ -5,7 +5,7 @@ const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
     getAgentContext: vi.fn(() => ({ schemaVersion: 1 })),
     getAgentVolatileContext: vi.fn(() => ({
         selectionAggregation: {
-            fields: [],
+            fields: [{ candidateId: "candidate-1" }],
         },
     })),
 }));
@@ -216,7 +216,7 @@ function createMockPlannerContext() {
                 title: "Diagnosis",
             },
         ],
-        actionCatalog: [],
+        intentActionSummaries: [],
         provenance: [],
     };
 }

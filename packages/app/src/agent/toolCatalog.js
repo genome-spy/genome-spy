@@ -388,6 +388,15 @@ function normalizeOpenAiToolSchema(schema) {
 
     if (
         normalized.type === "object" &&
+        normalized.properties &&
+        typeof normalized.properties === "object" &&
+        !Array.isArray(normalized.properties)
+    ) {
+        normalized.required = Object.keys(normalized.properties);
+    }
+
+    if (
+        normalized.type === "object" &&
         _isImpossibleOpenAiSchema(normalized.additionalProperties)
     ) {
         normalized.additionalProperties = false;

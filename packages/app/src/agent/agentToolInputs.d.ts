@@ -17,6 +17,10 @@ type SampleAttributeIdentifier = {
     specifier: string;
 };
 
+type IntentActionType =
+    AgentIntentActionRequest["actions"][number]["actionType"];
+type MetadataSummaryScope = "visible_samples" | "visible_groups";
+
 /**
  * Expand a collapsed view branch in the agent context. The result is only
  * visible in the context and not observable by the user.
@@ -131,45 +135,37 @@ export interface BuildSelectionAggregationAttributeToolInput {
 }
 
 /**
- * Return a compact summary of one metadata attribute's current values. Use
- * this when the agent needs factual grounding about which category values
- * exist or what numeric range is present in current sample metadata.
- *
- * @example
- * {
- *   "attribute": {
- *     "type": "SAMPLE_ATTRIBUTE",
- *     "specifier": "sex"
- *   }
- * }
- */
-export interface GetMetadataAttributeSummaryToolInput {
-    /**
-     * Stable attributeIdentifier for the metadata attribute to summarize. In v0, this
-     * must be a `SAMPLE_ATTRIBUTE` identifier from the current context.
-     */
-    attribute: SampleAttributeIdentifier;
-}
-
-/**
- * Return grouped summaries for one metadata attribute using the current visible
- * grouping hierarchy.
+ * Return a compact summary of one metadata attribute across visible samples or
+ * within each current visible group.
+ * Use `visible_samples` for pooled metadata facts such as available category
+ * values or numeric ranges. Use `visible_groups` only after the sample view is
+ * already grouped and the user needs per-group facts. If the user asks to group
+ * by one attribute and then compare or report another attribute by group, first
+ * submit the grouping action, wait for the refreshed context, and then call
+ * this tool with `scope: "visible_groups"` for the attribute to report.
  *
  * @example
  * {
  *   "attribute": {
  *     "type": "SAMPLE_ATTRIBUTE",
  *     "specifier": "tissue"
- *   }
+ *   },
+ *   "scope": "visible_groups"
  * }
  */
-export interface GetGroupedMetadataAttributeSummaryToolInput {
+export interface GetMetadataAttributeSummaryToolInput {
     /**
-     * Stable attributeIdentifier for the metadata attribute to summarize by
-     * visible groups. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from
-     * the current context.
+     * Stable attributeIdentifier for the metadata attribute to summarize. In v0,
+     * this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.
      */
     attribute: SampleAttributeIdentifier;
+
+    /**
+     * Summary scope. Use `visible_samples` for a pooled summary across the
+     * current visible samples. Use `visible_groups` for summaries within each
+     * current visible group after grouping has already been applied.
+     */
+    scope: MetadataSummaryScope;
 }
 
 /**
@@ -207,6 +203,29 @@ export interface SearchViewDatumsToolInput {
      * beginning of the field value.
      */
     mode: "exact" | "prefix";
+}
+
+/**
+ * Return payload fields and examples for one intent action. Use this before
+ * constructing an unfamiliar action payload for `submitIntentActions`.
+ *
+ * @example
+ * {
+ *   "actionType": "sampleView/groupToQuartiles",
+ *   "includeSchema": false
+ * }
+ */
+export interface GetActionDetailsToolInput {
+    /**
+     * Intent action type to inspect.
+     */
+    actionType: IntentActionType;
+
+    /**
+     * Whether to include the raw payload schema. The default response is more
+     * compact and usually sufficient.
+     */
+    includeSchema?: boolean;
 }
 
 /**
@@ -259,7 +278,7 @@ export interface AgentToolInputs {
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;
     getMetadataAttributeSummary: GetMetadataAttributeSummaryToolInput;
-    getGroupedMetadataAttributeSummary: GetGroupedMetadataAttributeSummaryToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
+    getActionDetails: GetActionDetailsToolInput;
     submitIntentActions: SubmitIntentActionsToolInput;
 }

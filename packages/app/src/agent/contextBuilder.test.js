@@ -261,7 +261,13 @@ describe("getAgentContext", () => {
 
         expect(context.schemaVersion).toBe(1);
         expect(() => JSON.stringify(context)).not.toThrow();
-        expect(context.actionCatalog.length).toBeGreaterThan(0);
+        expect(context.intentActionSummaries.length).toBeGreaterThan(0);
+        expect(context.intentActionSummaries[0]).not.toHaveProperty(
+            "payloadFields"
+        );
+        expect(context.intentActionSummaries[0]).not.toHaveProperty(
+            "examplePayload"
+        );
         expect(context.sampleSummary).toEqual({
             sampleCount: 2,
             groupCount: 1,
