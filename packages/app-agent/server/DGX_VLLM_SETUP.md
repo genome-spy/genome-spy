@@ -109,7 +109,7 @@ export GENOMESPY_AGENT_API_KEY=placeholder
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 
 UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
-  uvicorn app.main:app \
+  python -m uvicorn app.main:app \
   --host 0.0.0.0 \
   --port 8001 \
   --app-dir packages/app-agent/server

@@ -64,7 +64,7 @@ export GENOMESPY_AGENT_ENABLE_STREAMING=false
 **Launch the python relay server**
 ```bash
 UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
-  uvicorn app.main:app \
+  python -m uvicorn app.main:app \
   --host 127.0.0.1 \
   --port 8001 \
   --app-dir packages/app-agent/server
