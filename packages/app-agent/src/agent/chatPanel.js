@@ -1251,7 +1251,7 @@ customElements.define("gs-agent-chat-panel", AgentChatPanel);
 /**
  * Toggle the docked agent chat panel in the app shell.
  *
- * @param {import("../app.js").default} app
+ * @param {any} app
  * @returns {Promise<void>}
  */
 export async function toggleAgentChatPanel(app) {
@@ -1314,7 +1314,7 @@ export async function toggleAgentChatPanel(app) {
 /**
  * Replaces the current chat session with a fresh controller.
  *
- * @param {import("../app.js").default} app
+ * @param {any} app
  */
 export function clearAgentChatHistory(app) {
     const agentState = getAgentState(app);

@@ -49,10 +49,12 @@
   params, data sources, and other objects the agent needs to reason about.
 - For the MVP, the agent should answer visualization questions and dispatch
   intent batches; direct data access comes later.
-- Agent support is Vite-gated and loaded on demand:
-  - `VITE_AGENT_ENABLED=true` enables the feature at build time.
-  - `agentBaseUrl` is required at runtime.
-  - Agent modules are loaded with dynamic `import()` so they stay out of the generic app path.
+- Agent support is loaded on demand from the dev-only entrypoint:
+  - `singlePageApp.js` installs `appAgent({ baseUrl })` only when
+    `VITE_AGENT_BASE_URL` is present.
+  - `appAgent({ baseUrl })` requires a base URL.
+  - Agent modules are loaded with dynamic `import()` so they stay out of the
+    generic app path.
 
 ## Composition Strategy
 - Treat multi-step requests as an "intent batch": ordered actions + validation + execution.

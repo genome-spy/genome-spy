@@ -4,7 +4,7 @@ import { getAgentState } from "./agentState.js";
 /**
  * Registers agent-specific controls in the app shell.
  *
- * @param {import("../app.js").default} app
+ * @param {any} app
  * @returns {() => void}
  */
 export function registerAgentUi(app) {

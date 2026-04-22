@@ -1,7 +1,6 @@
 import { EmbedResult } from "@genome-spy/core/types/embedApi.js";
 
-export type AppEmbedOptions = import("./appTypes.js").AppEmbedOptions &
-    import("./agent/agentEmbedOptions.js").AgentEmbedOptions;
+export type AppEmbedOptions = import("./appTypes.js").AppEmbedOptions;
 
 export type AppEmbedFunction = (
     el: HTMLElement | string,

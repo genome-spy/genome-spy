@@ -3,7 +3,7 @@ import { appAgent } from "./appAgent.js";
 /**
  * Initializes the agent runtime when it is configured.
  *
- * @param {import("../app.js").default} app
+ * @param {object} app
  * @param {import("./agentEmbedOptions.js").AgentEmbedOptions} options
  * @returns {Promise<void>}
  */

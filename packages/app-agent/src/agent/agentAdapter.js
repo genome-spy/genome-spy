@@ -64,7 +64,7 @@ function normalizeConversationHistory(history) {
 }
 
 /**
- * @param {import("../app.js").default} app
+ * @param {any} app
  * @param {AgentApi} agentApi
  */
 export function createAgentAdapter(app, agentApi) {

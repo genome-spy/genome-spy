@@ -1,8 +1,24 @@
 /**
  * This file is generated. Do not edit.
  */
-import type { AddMetadataFromSource, DeriveMetadata, FilterByNominal, FilterByQuantitative, GroupByNominal, GroupByThresholds, GroupCustom, GroupToQuartiles, ParamProvenanceEntry, RemoveGroup, RemoveUndefined, RetainFirstNCategories, RetainFirstOfEach, RetainMatched, SetMetadata, SortBy } from "../../agentShared/actionPayloadTypes.d.ts";
-
+import type {
+    AddMetadataFromSource,
+    DeriveMetadata,
+    FilterByNominal,
+    FilterByQuantitative,
+    GroupByNominal,
+    GroupByThresholds,
+    GroupCustom,
+    GroupToQuartiles,
+    ParamProvenanceEntry,
+    RemoveGroup,
+    RemoveUndefined,
+    RetainFirstNCategories,
+    RetainFirstOfEach,
+    RetainMatched,
+    SetMetadata,
+    SortBy,
+} from "../../agentShared/actionPayloadTypes.d.ts";
 
 export type AgentIntentBatchStep =
     | {

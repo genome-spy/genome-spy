@@ -1,6 +1,7 @@
 {
-  "name": "@genome-spy/app",
-  "description": "GenomeSpy-based visualization tool for analyzing multiple biological samples.",
+  "name": "@genome-spy/app-agent",
+  "private": true,
+  "description": "GenomeSpy browser-side agent plugin.",
   "author": {
     "name": "Kari Lavikka",
     "email": "kari.lavikka@helsinki.fi"
@@ -17,16 +18,7 @@
       "import": "./dist/index.es.js",
       "default": "./dist/index.js"
     },
-    "./browser": {
-      "import": "./dist/index.es.js",
-      "default": "./dist/index.js"
-    },
-    "./agentShared": {
-      "import": "./dist/index.es.js",
-      "default": "./dist/index.js"
-    },
-    "./schema.json": "./dist/schema.json",
-    "./style.css": "./dist/style.css"
+    "./*": "./src/*"
   },
   "files": [
     "dist/"
@@ -34,17 +26,17 @@
   "repository": {
     "type": "git",
     "url": "github:genome-spy/genome-spy",
-    "directory": "packages/app"
+    "directory": "packages/app-agent"
   },
   "scripts": {
-    "dev": "node dev-server.mjs",
-    "build": "rm -rf dist && mkdir -p dist && vite build && npm run build:schema",
-    "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.d.ts' --type AppRootSpec > dist/schema.json",
+    "generate:agent": "node scripts/generateAgentActionCatalog.mjs && node scripts/generateAgentActionTypes.mjs && node scripts/generateAgentActionSchema.mjs && node scripts/generateAgentActionSummaries.mjs && node scripts/generateAgentToolCatalog.mjs && node scripts/generateAgentToolSchema.mjs",
+    "check:agent": "node scripts/checkGeneratedAgentActionCatalog.mjs && node scripts/checkGeneratedAgentActionTypes.mjs && node scripts/checkGeneratedAgentActionSchema.mjs && node scripts/checkGeneratedAgentActionSummaries.mjs && node scripts/checkGeneratedAgentToolCatalog.mjs && node scripts/checkGeneratedAgentToolSchema.mjs",
+    "prebuild": "npm run generate:agent",
+    "build": "rm -rf dist && mkdir -p dist && vite build",
     "test:tsc": "npm run test:tsc:src && npm run test:tsc:tests",
     "test:tsc:src": "tsc -p tsconfig.json --noEmit",
     "test:tsc:tests": "tsc -p tsconfig.tests.json --noEmit",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "test": "vitest run",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {

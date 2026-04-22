@@ -7,6 +7,7 @@ import generatedActionSummaries from "./generated/generatedActionSummaries.json"
 
 /**
  * @typedef {Object} ActionCatalogEntry
+ * @property {import("./types.js").AgentActionType} actionType
  * @property {(payload: any) => import("@reduxjs/toolkit").PayloadAction<any>} actionCreator
  * @property {string} description
  * @property {string | undefined} [usage]

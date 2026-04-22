@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawn } from "node:child_process";
@@ -14,10 +15,10 @@ const defaultAgentUrl = "http://127.0.0.1:8000";
 const defaultTimeoutMs = 90_000;
 
 const helpText = `Usage:
-  node packages/app/src/agent/benchmarks/run.mjs [options]
+  node packages/app-agent/src/agent/benchmarks/run.mjs [options]
 
 Options:
-  --case-file PATH     Benchmark case file. Default: packages/app/src/agent/benchmarks/cases/copy-numbers.json
+  --case-file PATH     Benchmark case file. Default: packages/app-agent/src/agent/benchmarks/cases/copy-numbers.json
   --case-id ID         Run only one case id from the case file.
   --case-mode MODE     all, action, or description. Default: all
   --app-url URL        Use an already running app dev server.
@@ -32,8 +33,7 @@ Options:
 
 Notes:
   - If --app-url is omitted, this script starts packages/app/dev-server.mjs.
-  - The spawned app dev server is configured with VITE_AGENT_ENABLED=true and
-    VITE_AGENT_BASE_URL=<agent-url>.
+  - The spawned app dev server is configured with VITE_AGENT_BASE_URL=<agent-url>.
   - This runner reuses the real browser agent runtime through the existing
     AgentSessionController instead of implementing benchmark-only agent logic.
 `;
@@ -66,6 +66,10 @@ async function main() {
             ? await startAppServer(options.agentUrl)
             : undefined;
     const appUrl = options.appUrl ?? defaultAppUrl;
+    const agentModuleBaseUrl = new URL(
+        "/@fs" + path.join(repoRoot, "packages", "app-agent", "src") + "/",
+        appUrl
+    ).toString();
 
     try {
         await waitForHttpOk(appUrl, appServer);
@@ -96,6 +100,7 @@ async function main() {
                     timeoutMs: options.timeoutMs,
                     interactive: options.interactive,
                     screenshots: options.screenshots,
+                    agentModuleBaseUrl,
                 });
                 results.push(result);
                 printCaseResult(result);
@@ -144,6 +149,7 @@ async function main() {
  *     timeoutMs: number;
  *     interactive: boolean;
  *     screenshots: boolean;
+ *     agentModuleBaseUrl: string;
  * }} options
  */
 async function runCase(page, appUrl, benchmarkCase, options) {
@@ -207,7 +213,7 @@ async function runCase(page, appUrl, benchmarkCase, options) {
     }
 
     const actualState = await page.evaluate(
-        async ({ expectedState }) => {
+        async ({ expectedState, agentModuleBaseUrl }) => {
             const benchmarkGlobal = /** @type {any} */ (globalThis);
             const benchmarkState = benchmarkGlobal.__gsAgentBenchmark;
             if (!benchmarkState?.app) {
@@ -221,7 +227,7 @@ async function runCase(page, appUrl, benchmarkCase, options) {
                 app.provenance?.getBookmarkableActionHistory?.() ?? [];
 
             const { getAgentState } = await import(
-                new URL("/agent/agentState.js", globalThis.location.href).toString()
+                new URL("agent/agentState.js", agentModuleBaseUrl).toString()
             );
             const agentAdapter = getAgentState(app).agentAdapter;
 
@@ -300,6 +306,7 @@ async function runCase(page, appUrl, benchmarkCase, options) {
         },
         {
             expectedState: benchmarkCase.oracle?.expectedState ?? null,
+            agentModuleBaseUrl: options.agentModuleBaseUrl,
         }
     );
 
@@ -337,7 +344,11 @@ async function runCase(page, appUrl, benchmarkCase, options) {
 /**
  * @param {import("playwright").Page} page
  * @param {URL} caseUrl
- * @param {{ timeoutMs: number; interactive: boolean }} options
+ * @param {{
+ *     timeoutMs: number;
+ *     interactive: boolean;
+ *     agentModuleBaseUrl: string;
+ * }} options
  */
 async function ensureCasePage(page, caseUrl, options) {
     const currentUrl = new URL(page.url());
@@ -352,7 +363,8 @@ async function ensureCasePage(page, caseUrl, options) {
         await installBenchmarkSession(
             page,
             options.timeoutMs,
-            options.interactive
+            options.interactive,
+            options.agentModuleBaseUrl
         );
     }
 }
@@ -407,8 +419,13 @@ async function waitForApp(page, timeoutMs) {
  * @param {import("playwright").Page} page
  * @param {number} timeoutMs
  */
-async function installBenchmarkSession(page, timeoutMs, interactive) {
-    await page.evaluate(async ({ interactive }) => {
+async function installBenchmarkSession(
+    page,
+    timeoutMs,
+    interactive,
+    agentModuleBaseUrl
+) {
+    await page.evaluate(async ({ interactive, agentModuleBaseUrl }) => {
         const benchmarkGlobal = /** @type {any} */ (globalThis);
         if (benchmarkGlobal.__gsAgentBenchmark?.controller) {
             return;
@@ -440,22 +457,22 @@ async function installBenchmarkSession(page, timeoutMs, interactive) {
         }
 
         const { getAgentState } = await import(
-            new URL("/agent/agentState.js", globalThis.location.href).toString()
+            new URL("agent/agentState.js", agentModuleBaseUrl).toString()
         );
         const { createAgentSessionController } = await import(
             new URL(
-                "/agent/agentSessionController.js",
-                globalThis.location.href
+                "agent/agentSessionController.js",
+                agentModuleBaseUrl
             ).toString()
         );
         const { toggleAgentChatPanel } = await import(
-            new URL("/agent/chatPanel.js", globalThis.location.href).toString()
+            new URL("agent/chatPanel.js", agentModuleBaseUrl).toString()
         );
 
         const agentState = getAgentState(app);
         if (!agentState.agentAdapter) {
             throw new Error(
-                "Agent runtime is not available. Ensure VITE_AGENT_ENABLED=true and the agent base URL are configured."
+                "Agent runtime is not available. Ensure VITE_AGENT_BASE_URL is configured."
             );
         }
 
@@ -473,7 +490,7 @@ async function installBenchmarkSession(page, timeoutMs, interactive) {
         }
 
         await agentState.agentSessionController.open();
-    }, { interactive });
+    }, { interactive, agentModuleBaseUrl });
 
     await waitForPreflight(page, timeoutMs);
 }
@@ -1032,7 +1049,6 @@ async function startAppServer(agentUrl) {
         env: {
             ...process.env,
             HOST: "127.0.0.1",
-            VITE_AGENT_ENABLED: "true",
             VITE_AGENT_BASE_URL: agentUrl,
         },
         stdio: ["ignore", "pipe", "pipe"],

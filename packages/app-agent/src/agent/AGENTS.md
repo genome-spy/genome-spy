@@ -1,7 +1,7 @@
-# GenomeSpy App AI Agent Adapter
+# GenomeSpy App Agent
 
-This folder implements the core logic for an LLM agent that can understand the
-current visualization state and propose actions. The project is still in early stages.
+This package implements the browser-side agent for GenomeSpy App. The project
+is still in early stages.
 
 ## General guidelines
 
@@ -13,7 +13,8 @@ current visualization state and propose actions. The project is still in early s
 - When changing a source contract that feeds generation, regenerate the corresponding `generated*` artifacts before finishing the change. This includes tool catalog/schema files and action schema/type files.
 - All host state and mutation calls between the agent and the App must go through `AgentApi`.
 - All pure helper logic that is shared between the App and the future agent package must go through `agentShared`.
-- Do not add direct `packages/app/src/...` reach-ins when the functionality already exists on `AgentApi` or `agentShared`.
+- Do not add direct `packages/app/src/...` reach-ins when the functionality
+  already exists on `AgentApi` or `agentShared`.
 - Extend `AgentApi` conservatively. If a missing hook seems necessary, plan it first and keep the smallest possible surface.
 
 ## Code organization

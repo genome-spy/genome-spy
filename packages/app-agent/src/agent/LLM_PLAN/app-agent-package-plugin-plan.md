@@ -359,19 +359,19 @@ agent source.
 4. [x] Move `agentEmbedRuntime.js` logic into a new plugin factory in
    `packages/app-agent/src/plugin.js`.
 5. [x] Remove the static `setupAgentRuntime` import from `@genome-spy/app`.
-6. [ ] Move browser agent source files from `packages/app/src/agent` to
+6. [x] Move browser agent source files from `packages/app/src/agent` to
    `packages/app-agent/src`.
-7. [ ] Move agent generation scripts and generated artifacts to `packages/app-agent`.
+7. [x] Move agent generation scripts and generated artifacts to `packages/app-agent`.
 8. [ ] Update imports so the extracted package uses public `@genome-spy/app` exports
    and public `@genome-spy/core` exports only.
-9. [ ] Move or replace app-local agent tests with package-local tests.
+9. [x] Move or replace app-local agent tests with package-local tests.
 10. [ ] Move `utils/agent_server` to `packages/app-agent/server`.
 11. [ ] Update relay commands, README paths, and any benchmark/dev tooling that
     references `utils/agent_server`.
-12. [ ] Update `singlePageApp.js` or a dev-only entry point to install
+12. [x] Update `singlePageApp.js` or a dev-only entry point to install
     `appAgent({ baseUrl })` from Vite env variables.
 13. [ ] Update relay README examples to use the plugin import.
-14. [ ] Remove `agentBaseUrl` from `@genome-spy/app` embed options after the plugin
+14. [x] Remove `agentBaseUrl` from `@genome-spy/app` embed options after the plugin
     path is working.
 
 ## Testing

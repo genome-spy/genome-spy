@@ -1,6 +1,8 @@
 import { css, html } from "lit";
-import BaseDialog, { showDialog } from "../generic/baseDialog.js";
-import { showMessageDialog } from "../generic/messageDialog.js";
+import BaseDialog, {
+    showDialog,
+} from "../../../../app/src/components/generic/baseDialog.js";
+import { showMessageDialog } from "../../../../app/src/components/generic/messageDialog.js";
 import { getAgentState } from "../../agent/agentState.js";
 
 export default class AgentContextDialog extends BaseDialog {
@@ -80,7 +82,7 @@ export default class AgentContextDialog extends BaseDialog {
 customElements.define("gs-agent-context-dialog", AgentContextDialog);
 
 /**
- * @param {import("../../app.js").default} app
+ * @param {object} app
  * @returns {Promise<void>}
  */
 export async function showAgentContextDialog(app) {

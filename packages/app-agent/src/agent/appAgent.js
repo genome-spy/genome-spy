@@ -6,7 +6,6 @@ import { getAgentState } from "./agentState.js";
  * Creates the browser-side agent plugin.
  *
  * @param {{ baseUrl: string }} options
- * @returns {import("../appTypes.js").AppPlugin}
  */
 export function appAgent(options) {
     if (!options.baseUrl) {
@@ -16,20 +15,17 @@ export function appAgent(options) {
     return {
         name: "@genome-spy/app-agent",
 
-        async install(app) {
-            const appInstance = /** @type {import("../app.js").default} */ (
-                app
-            );
+        async install(/** @type {any} */ app) {
             const agentApi = await app.getAgentApi();
-            const agentState = getAgentState(appInstance);
+            const agentState = getAgentState(app);
 
             agentState.agentBaseUrl = options.baseUrl;
-            agentState.agentAdapter = createAgentAdapter(appInstance, agentApi);
+            agentState.agentAdapter = createAgentAdapter(app, agentApi);
 
-            const disposeUi = registerAgentUi(appInstance);
+            const disposeUi = registerAgentUi(app);
 
             return () => {
-                const state = getAgentState(appInstance);
+                const state = getAgentState(app);
                 state.agentSessionController?.stopCurrentTurn?.();
                 state.agentSessionController = undefined;
                 state.agentAdapter = undefined;

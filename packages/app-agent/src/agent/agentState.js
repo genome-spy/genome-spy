@@ -12,7 +12,7 @@
 const agentStates = new WeakMap();
 
 /**
- * @param {import("../app.js").default} app
+ * @param {object} app
  * @returns {AgentState}
  */
 export function getAgentState(app) {
