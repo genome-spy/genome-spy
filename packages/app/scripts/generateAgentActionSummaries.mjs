@@ -1,9 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { sampleSlice } from "../src/sampleView/state/sampleSlice.js";
-import { paramProvenanceSlice } from "../src/state/paramProvenanceSlice.js";
-import { viewSettingsSlice } from "../src/viewSettingsSlice.js";
 import { getActionInfo } from "../src/sampleView/state/actionInfo.js";
 import templateResultToString from "../src/utils/templateResultToString.js";
 import { createGeneratedActionCatalog } from "./generateAgentActionCatalog.mjs";
@@ -42,41 +39,18 @@ function createAttributeInfo(attribute) {
 }
 
 /**
- * @param {import("../src/agent/types.js").AgentActionType} actionType
- * @returns {(payload: any) => import("@reduxjs/toolkit").PayloadAction<any>}
- */
-function getActionCreator(actionType) {
-    if (actionType.startsWith("sampleView/")) {
-        return sampleSlice.actions[actionType.slice("sampleView/".length)];
-    }
-
-    if (actionType.startsWith("paramProvenance/")) {
-        return paramProvenanceSlice.actions[
-            actionType.slice("paramProvenance/".length)
-        ];
-    }
-
-    if (actionType.startsWith("viewSettings/")) {
-        return viewSettingsSlice.actions[
-            actionType.slice("viewSettings/".length)
-        ];
-    }
-
-    throw new Error("Unsupported agent actionType " + actionType + ".");
-}
-
-/**
  * @returns {Promise<import("../src/agent/types.js").AgentActionSummary[]>}
  */
 export async function createGeneratedActionSummaries() {
     const generatedActionCatalog = await createGeneratedActionCatalog();
 
     return generatedActionCatalog.map((entry) => {
-        const action = getActionCreator(
-            /** @type {import("../src/agent/types.js").AgentActionType} */ (
-                entry.actionType
-            )
-        )(entry.examplePayload);
+        const action = /** @type {import("@reduxjs/toolkit").PayloadAction<any>} */ (
+            {
+                type: entry.actionType,
+                payload: entry.examplePayload,
+            }
+        );
         let info;
         try {
             info = getActionInfo(action, createAttributeInfo);

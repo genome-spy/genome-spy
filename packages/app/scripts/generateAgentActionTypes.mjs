@@ -21,7 +21,24 @@ const outputPath = path.join(
  */
 export function renderGeneratedActionTypes(catalog) {
     const imports = [
-        'import type { AddMetadataFromSource, DeriveMetadata, FilterByNominal, FilterByQuantitative, GroupByNominal, GroupByThresholds, GroupCustom, GroupToQuartiles, ParamProvenanceEntry, RemoveGroup, RemoveUndefined, RetainFirstNCategories, RetainFirstOfEach, RetainMatched, SetMetadata, SortBy } from "../../agentShared/actionPayloadTypes.d.ts";',
+        "import type {",
+        "    AddMetadataFromSource,",
+        "    DeriveMetadata,",
+        "    FilterByNominal,",
+        "    FilterByQuantitative,",
+        "    GroupByNominal,",
+        "    GroupByThresholds,",
+        "    GroupCustom,",
+        "    GroupToQuartiles,",
+        "    ParamProvenanceEntry,",
+        "    RemoveGroup,",
+        "    RemoveUndefined,",
+        "    RetainFirstNCategories,",
+        "    RetainFirstOfEach,",
+        "    RetainMatched,",
+        "    SetMetadata,",
+        "    SortBy,",
+        '} from "../../agentShared/actionPayloadTypes.d.ts";',
     ];
 
     const stepVariants = catalog
@@ -40,7 +57,6 @@ export function renderGeneratedActionTypes(catalog) {
         " * This file is generated. Do not edit.",
         " */",
         ...imports,
-        "",
         "",
         "export type AgentIntentBatchStep =",
         stepVariants + ";",
