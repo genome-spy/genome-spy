@@ -2,8 +2,8 @@
 
 This is a minimal standalone benchmark runner for the GenomeSpy agent.
 
-The benchmark lives under `packages/app-agent/src/agent/benchmarks/` so it
-stays bundled with the agent module.
+The benchmark lives under `packages/app-agent/benchmarks/` so it stays beside
+the agent package.
 
 It reuses the real browser agent runtime through the existing
 `AgentSessionController`. The goal is to keep the first implementation small
@@ -22,8 +22,8 @@ If you already have the relay server and the GenomeSpy app dev server running in
 separate terminals, run the benchmark like this from the repo root:
 
 ```bash
-node packages/app-agent/src/agent/benchmarks/run.mjs \
-  --case-file packages/app-agent/src/agent/benchmarks/cases/fuse-encode.json \
+node packages/app-agent/benchmarks/run.mjs \
+  --case-file packages/app-agent/benchmarks/cases/fuse-encode.json \
   --interactive \
   --case-mode action \
   --app-url http://127.0.0.1:8080 \
@@ -34,8 +34,8 @@ node packages/app-agent/src/agent/benchmarks/run.mjs \
 Run a single case the same way by adding `--case-id <id>`, for example:
 
 ```bash
-node packages/app-agent/src/agent/benchmarks/run.mjs \
-  --case-file packages/app-agent/src/agent/benchmarks/cases/fuse-encode.json \
+node packages/app-agent/benchmarks/run.mjs \
+  --case-file packages/app-agent/benchmarks/cases/fuse-encode.json \
   --case-id fuse-encode.group_by_gender \
   --interactive \
   --case-mode action \
@@ -47,8 +47,8 @@ node packages/app-agent/src/agent/benchmarks/run.mjs \
 Run only description-based cases:
 
 ```bash
-node packages/app-agent/src/agent/benchmarks/run.mjs \
-  --case-file packages/app-agent/src/agent/benchmarks/cases/fuse-encode.json \
+node packages/app-agent/benchmarks/run.mjs \
+  --case-file packages/app-agent/benchmarks/cases/fuse-encode.json \
   --case-mode description \
   --app-url http://127.0.0.1:8080 \
   --agent-url http://127.0.0.1:8000 \
@@ -106,7 +106,7 @@ The main input is a benchmark suite JSON file passed with `--case-file`.
 Example:
 
 ```text
-packages/app-agent/src/agent/benchmarks/cases/fuse-encode.json
+packages/app-agent/benchmarks/cases/fuse-encode.json
 ```
 
 At a high level, a suite contains:
@@ -132,7 +132,7 @@ At a high level, a suite contains:
 Results are written under:
 
 ```text
-packages/app-agent/src/agent/benchmarks/results/<timestamp>/
+packages/app-agent/benchmarks/results/<timestamp>/
 ```
 
 The local `results/` directory is ignored by git.

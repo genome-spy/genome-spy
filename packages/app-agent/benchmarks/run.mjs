@@ -15,10 +15,10 @@ const defaultAgentUrl = "http://127.0.0.1:8000";
 const defaultTimeoutMs = 90_000;
 
 const helpText = `Usage:
-  node packages/app-agent/src/agent/benchmarks/run.mjs [options]
+  node packages/app-agent/benchmarks/run.mjs [options]
 
 Options:
-  --case-file PATH     Benchmark case file. Default: packages/app-agent/src/agent/benchmarks/cases/copy-numbers.json
+  --case-file PATH     Benchmark case file. Default: packages/app-agent/benchmarks/cases/copy-numbers.json
   --case-id ID         Run only one case id from the case file.
   --case-mode MODE     all, action, or description. Default: all
   --app-url URL        Use an already running app dev server.
