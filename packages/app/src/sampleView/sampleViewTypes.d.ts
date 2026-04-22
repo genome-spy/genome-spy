@@ -6,29 +6,10 @@ import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComplexDomain, NumericDomain } from "@genome-spy/core/spec/scale.js";
 import { AggregationSpec, Interval } from "./types.js";
 import ViewContext from "@genome-spy/core/types/viewContext.js";
-
-/**
- * Structured view address used by selectors.
- *
- * The selector identifies a view by its import scope and name, which makes it
- * stable for provenance and replay.
- */
-// Copied here instead of importing the core typedef so the agent schema
-// generator can read it without the import-type alias form.
-export interface ViewSelector {
-    scope: string[];
-    view: string;
-}
-
-/**
- * Structured parameter address used for bookmarkable selections and values.
- */
-// Copied here instead of importing the core typedef so the agent schema
-// generator can read it without the import-type alias form.
-export interface ParamSelector {
-    scope: string[];
-    param: string;
-}
+import type {
+    ParamSelector,
+    ViewSelector,
+} from "@genome-spy/core/view/viewUtilTypes.d.ts";
 
 /**
  * View reference used in SampleView actions. Legacy values may be a view name

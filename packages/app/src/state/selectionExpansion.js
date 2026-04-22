@@ -1,53 +1,31 @@
 /**
- * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
- * @typedef {import("@genome-spy/core/data/flowNode.js").Datum} Datum
- *
- * @typedef {Scalar | null} SelectionLeafValue
- *
- * @typedef {{ field: string, op: "eq", value: SelectionLeafValue } | { field: string, op: "eq", valueFromField: string } | { field: string, op: "in", values: SelectionLeafValue[] }} SelectionExpansionLeafPredicate
- *
- * @typedef {{ and: SelectionExpansionPredicate[] }} LogicalAnd
- * @typedef {{ or: SelectionExpansionPredicate[] }} LogicalOr
- * @typedef {{ not: SelectionExpansionPredicate }} LogicalNot
- * @typedef {SelectionExpansionLeafPredicate | LogicalAnd | LogicalOr | LogicalNot} SelectionExpansionPredicate
- * @typedef {{ kind: "sameFieldValue", field: string }} SelectionExpansionRule
- * @typedef {SelectionExpansionPredicate | SelectionExpansionRule} SelectionExpansionMatcher
- *
- * @typedef {{ field: string, op: "eq", value: SelectionLeafValue } | { field: string, op: "in", values: SelectionLeafValue[] }} ResolvedSelectionExpansionLeafPredicate
- * @typedef {{ and: ResolvedSelectionExpansionPredicate[] }} ResolvedLogicalAnd
- * @typedef {{ or: ResolvedSelectionExpansionPredicate[] }} ResolvedLogicalOr
- * @typedef {{ not: ResolvedSelectionExpansionPredicate }} ResolvedLogicalNot
- * @typedef {ResolvedSelectionExpansionLeafPredicate | ResolvedLogicalAnd | ResolvedLogicalOr | ResolvedLogicalNot} ResolvedSelectionExpansionPredicate
- */
-
-/**
- * @param {SelectionExpansionPredicate | ResolvedSelectionExpansionPredicate} op
- * @returns {op is LogicalOr | ResolvedLogicalOr}
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate | import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate} op
+ * @returns {op is import("./selectionExpansionTypes.d.ts").LogicalOr | import("./selectionExpansionTypes.d.ts").ResolvedLogicalOr}
  */
 export function isLogicalOr(op) {
     return "or" in op;
 }
 
 /**
- * @param {SelectionExpansionPredicate | ResolvedSelectionExpansionPredicate} op
- * @returns {op is LogicalAnd | ResolvedLogicalAnd}
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate | import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate} op
+ * @returns {op is import("./selectionExpansionTypes.d.ts").LogicalAnd | import("./selectionExpansionTypes.d.ts").ResolvedLogicalAnd}
  */
 export function isLogicalAnd(op) {
     return "and" in op;
 }
 
 /**
- * @param {SelectionExpansionPredicate | ResolvedSelectionExpansionPredicate} op
- * @returns {op is LogicalNot | ResolvedLogicalNot}
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate | import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate} op
+ * @returns {op is import("./selectionExpansionTypes.d.ts").LogicalNot | import("./selectionExpansionTypes.d.ts").ResolvedLogicalNot}
  */
 export function isLogicalNot(op) {
     return "not" in op;
 }
 
 /**
- * @param {SelectionExpansionPredicate} op
- * @param {Datum} originDatum
- * @returns {ResolvedSelectionExpansionPredicate}
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate} op
+ * @param {import("@genome-spy/core/data/flowNode.js").Datum} originDatum
+ * @returns {import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate}
  */
 export function normalizeSelectionExpansionPredicate(op, originDatum) {
     if (isLogicalNot(op)) {
@@ -79,9 +57,9 @@ export function normalizeSelectionExpansionPredicate(op, originDatum) {
  * Converts matcher shorthand into a predicate, then resolves origin-dependent
  * references such as `valueFromField`.
  *
- * @param {SelectionExpansionMatcher} matcher
- * @param {Datum} originDatum
- * @returns {ResolvedSelectionExpansionPredicate}
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher} matcher
+ * @param {import("@genome-spy/core/data/flowNode.js").Datum} originDatum
+ * @returns {import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate}
  */
 export function normalizeSelectionExpansionMatcher(matcher, originDatum) {
     return normalizeSelectionExpansionPredicate(
@@ -91,8 +69,8 @@ export function normalizeSelectionExpansionMatcher(matcher, originDatum) {
 }
 
 /**
- * @param {SelectionExpansionMatcher} matcher
- * @returns {SelectionExpansionPredicate}
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher} matcher
+ * @returns {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate}
  */
 export function toSelectionExpansionPredicate(matcher) {
     if (isSelectionExpansionRule(matcher)) {
@@ -115,23 +93,25 @@ export function toSelectionExpansionPredicate(matcher) {
 /**
  * Adds partition constraints to a predicate.
  *
- * @param {ResolvedSelectionExpansionPredicate} predicate
+ * @param {import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate} predicate
  * @param {string[] | undefined} partitionBy
- * @param {Datum} originDatum
- * @returns {ResolvedSelectionExpansionPredicate}
+ * @param {import("@genome-spy/core/data/flowNode.js").Datum} originDatum
+ * @returns {import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate}
  */
 export function withPartitionBy(predicate, partitionBy, originDatum) {
     if (!partitionBy?.length) {
         return predicate;
     }
 
-    /** @type {{ field: string, op: "eq", value: SelectionLeafValue }[]} */
+    /** @type {Array<{ field: string; op: "eq"; value: import("./selectionExpansionTypes.d.ts").SelectionLeafValue }>} */
     const clauses = partitionBy.map((partitionField) => {
         const accessor = createSelectionExpansionFieldAccessor(partitionField);
         return {
             field: partitionField,
             op: "eq",
-            value: /** @type {SelectionLeafValue} */ (accessor(originDatum)),
+            value: /** @type {import("./selectionExpansionTypes.d.ts").SelectionLeafValue} */ (
+                accessor(originDatum)
+            ),
         };
     });
 
@@ -141,8 +121,8 @@ export function withPartitionBy(predicate, partitionBy, originDatum) {
 }
 
 /**
- * @param {ResolvedSelectionExpansionPredicate} predicate
- * @returns {(datum: Datum) => boolean}
+ * @param {import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionPredicate} predicate
+ * @returns {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => boolean}
  */
 export function createSelectionExpansionPredicateFunction(predicate) {
     if (isLogicalNot(predicate)) {
@@ -174,16 +154,16 @@ export function createSelectionExpansionPredicateFunction(predicate) {
  * expansion for now.
  *
  * @param {string} fieldName
- * @returns {(datum: Datum) => unknown}
+ * @returns {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => unknown}
  */
 export function createSelectionExpansionFieldAccessor(fieldName) {
     return (datum) => datum[fieldName];
 }
 
 /**
- * @param {SelectionExpansionLeafPredicate} leaf
- * @param {Datum} originDatum
- * @returns {ResolvedSelectionExpansionLeafPredicate}
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionLeafPredicate} leaf
+ * @param {import("@genome-spy/core/data/flowNode.js").Datum} originDatum
+ * @returns {import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionLeafPredicate}
  */
 function resolveLeafPredicate(leaf, originDatum) {
     if (leaf.op === "eq") {
@@ -200,7 +180,7 @@ function resolveLeafPredicate(leaf, originDatum) {
             return {
                 field: leaf.field,
                 op: "eq",
-                value: /** @type {SelectionLeafValue} */ (leaf.value),
+                value: leaf.value,
             };
         }
 
@@ -216,7 +196,9 @@ function resolveLeafPredicate(leaf, originDatum) {
         return {
             field: leaf.field,
             op: "eq",
-            value: /** @type {SelectionLeafValue} */ (accessor(originDatum)),
+            value: /** @type {import("./selectionExpansionTypes.d.ts").SelectionLeafValue} */ (
+                accessor(originDatum)
+            ),
         };
     }
 
@@ -241,8 +223,8 @@ function resolveLeafPredicate(leaf, originDatum) {
 }
 
 /**
- * @param {ResolvedSelectionExpansionLeafPredicate} leaf
- * @returns {(datum: Datum) => boolean}
+ * @param {import("./selectionExpansionTypes.d.ts").ResolvedSelectionExpansionLeafPredicate} leaf
+ * @returns {(datum: import("@genome-spy/core/data/flowNode.js").Datum) => boolean}
  */
 function createLeafPredicateFunction(leaf) {
     const accessor = createSelectionExpansionFieldAccessor(leaf.field);
@@ -256,7 +238,9 @@ function createLeafPredicateFunction(leaf) {
         const allowedValues = new Set(leaf.values);
         return (datum) =>
             allowedValues.has(
-                /** @type {SelectionLeafValue} */ (accessor(datum))
+                /** @type {import("./selectionExpansionTypes.d.ts").SelectionLeafValue} */ (
+                    accessor(datum)
+                )
             );
     }
 
@@ -267,8 +251,8 @@ function createLeafPredicateFunction(leaf) {
 }
 
 /**
- * @param {SelectionExpansionMatcher} matcher
- * @returns {matcher is SelectionExpansionRule}
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher} matcher
+ * @returns {matcher is import("./selectionExpansionTypes.d.ts").SelectionExpansionRule}
  */
 function isSelectionExpansionRule(matcher) {
     return "kind" in matcher;

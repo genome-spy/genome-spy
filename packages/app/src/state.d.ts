@@ -3,7 +3,7 @@ import { SampleHierarchy } from "./sampleView/state/sampleState.js";
 import {
     ParamSelector,
     ViewSelector,
-} from "@genome-spy/core/view/viewSelectors.js";
+} from "@genome-spy/core/view/viewUtilTypes.d.ts";
 import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 
