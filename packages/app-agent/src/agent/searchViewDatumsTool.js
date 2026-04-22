@@ -6,7 +6,7 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
  * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
  * @typedef {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} ViewSelector
  * @typedef {{
- *     agentApi: import("@genome-spy/app").AgentApi;
+ *     agentApi: import("@genome-spy/app/agentApi").AgentApi;
  * }} SearchViewDatumsToolRuntime
  * @typedef {{
  *     text: string;

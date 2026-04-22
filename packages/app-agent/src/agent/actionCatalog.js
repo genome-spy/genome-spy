@@ -1,4 +1,7 @@
-import { getActionCreator, templateResultToString } from "@genome-spy/app";
+import {
+    getActionCreator,
+    templateResultToString,
+} from "@genome-spy/app/agentShared";
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
 import generatedActionSummaries from "./generated/generatedActionSummaries.json" with { type: "json" };
 
@@ -88,7 +91,7 @@ export function getActionCatalogEntry(actionType) {
 }
 
 /**
- * @param {import("@genome-spy/app").AgentApi} agentApi
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
  * @param {import("./types.js").IntentBatch} batch
  * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
@@ -105,14 +108,14 @@ export function summarizeIntentBatch(agentApi, batch) {
 }
 
 /**
- * @param {import("@genome-spy/app").AgentApi} agentApi
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
  * @param {SummarizableAction[]} actions
  * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */
 export const summarizeProvenanceActions = summarizeActions;
 
 /**
- * @param {import("@genome-spy/app").AgentApi} agentApi
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
  * @param {SummarizableAction[]} actions
  * @returns {import("./types.js").IntentBatchSummaryLine[]}
  */

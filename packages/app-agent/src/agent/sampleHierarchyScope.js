@@ -2,7 +2,7 @@
  * Collects the distinct sample ids represented by the current analysis-visible
  * hierarchy.
  *
- * @param {import("@genome-spy/app").Group | undefined} rootGroup
+ * @param {import("@genome-spy/app/agentShared").Group | undefined} rootGroup
  * @returns {string[]}
  */
 export function collectVisibleSampleIds(rootGroup) {
@@ -14,7 +14,7 @@ export function collectVisibleSampleIds(rootGroup) {
     const sampleIds = new Set();
 
     /**
-     * @param {import("@genome-spy/app").Group} group
+     * @param {import("@genome-spy/app/agentShared").Group} group
      */
     const visit = (group) => {
         if ("samples" in group) {
@@ -37,7 +37,7 @@ export function collectVisibleSampleIds(rootGroup) {
 /**
  * Collects the visible leaf groups from the current analysis hierarchy.
  *
- * @param {import("@genome-spy/app").Group | undefined} rootGroup
+ * @param {import("@genome-spy/app/agentShared").Group | undefined} rootGroup
  * @returns {Array<{
  *     path: string[];
  *     titles: string[];
@@ -54,7 +54,7 @@ export function collectVisibleSampleGroups(rootGroup) {
     const groups = [];
 
     /**
-     * @param {import("@genome-spy/app").Group} group
+     * @param {import("@genome-spy/app/agentShared").Group} group
      * @param {string[]} path
      * @param {string[]} titles
      */

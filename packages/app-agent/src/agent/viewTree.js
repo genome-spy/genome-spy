@@ -21,12 +21,12 @@ import {
     formatScopedParamName,
     makeViewSelectorKey,
     serializeBookmarkableParamValue,
-} from "@genome-spy/app";
+} from "@genome-spy/app/agentShared";
 
 /**
  * Builds a normalized, spec-like view tree for the agent.
  *
- * @param {import("@genome-spy/app").AgentApi} agentApi
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
  * @param {import("./types.d.ts").AgentContextOptions} [options]
  * @returns {import("./types.d.ts").AgentViewTreeRoot}
  */

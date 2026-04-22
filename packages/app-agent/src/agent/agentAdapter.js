@@ -4,7 +4,7 @@ import {
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
 import { summarizeProvenanceActions } from "./actionCatalog.js";
-import { templateResultToString } from "@genome-spy/app";
+import { templateResultToString } from "@genome-spy/app/agentShared";
 import {
     collectVisibleSampleGroups,
     collectVisibleSampleIds,
@@ -14,7 +14,7 @@ import { buildResponsesToolDefinitions } from "./toolCatalog.js";
 import { getAgentVolatileContext as buildAgentVolatileContext } from "./volatileContextBuilder.js";
 
 /**
- * @typedef {import("@genome-spy/app").AgentApi} AgentApi
+ * @typedef {import("@genome-spy/app/agentApi").AgentApi} AgentApi
  */
 
 const DEFAULT_AGENT_BASE_URL = "http://127.0.0.1:8000";
@@ -71,7 +71,7 @@ export function createAgentAdapter(app, agentApi) {
     const agentState = getAgentState(app);
 
     /**
-     * @param {import("@genome-spy/app").AttributeIdentifier} attribute
+     * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} attribute
      * @returns {import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined}
      */
     function getMetadataAttributeSummarySource(attribute) {
@@ -107,7 +107,7 @@ export function createAgentAdapter(app, agentApi) {
     }
 
     /**
-     * @param {import("@genome-spy/app").AttributeIdentifier} attribute
+     * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} attribute
      * @returns {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined}
      */
     function getGroupedMetadataAttributeSummarySource(attribute) {

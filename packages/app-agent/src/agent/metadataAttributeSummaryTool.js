@@ -8,7 +8,7 @@ const DEFAULT_MAX_GROUPS = 20;
 
 /**
  * @typedef {import("./agentToolInputs.d.ts").GetMetadataAttributeSummaryToolInput} GetMetadataAttributeSummaryToolInput
- * @typedef {import("@genome-spy/app").AttributeIdentifier} AttributeIdentifier
+ * @typedef {import("@genome-spy/app/agentShared").AttributeIdentifier} AttributeIdentifier
  * @typedef {import("./agentToolInputs.d.ts").GetMetadataAttributeSummaryToolInput["scope"]} MetadataSummaryScope
  * @typedef {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource} AgentGroupedMetadataAttributeSummarySource
  * @typedef {import("./types.d.ts").AgentMetadataAttributeSummarySource} AgentMetadataAttributeSummarySource

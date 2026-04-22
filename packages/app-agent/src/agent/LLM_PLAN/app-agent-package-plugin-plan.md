@@ -16,10 +16,10 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
 
 ## Remaining Work
 
-### 1. Narrow the public app surface used by the plugin
+### 1. Narrow the app surfaces used by the plugin
 
 - Keep a single source of truth for agent-facing helpers in `@genome-spy/app`.
-- Add explicit public subpath exports for the host helpers the plugin still
+- Add explicit app-internal subpath exports for the helpers the plugin still
   needs.
 - Move `app-agent` imports onto those public subpaths instead of the app root.
 - Remove any shim files in `packages/app-agent/src/**` that only re-export app
@@ -70,6 +70,8 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
 - Verify the plugin still installs and disposes cleanly.
 - Verify dev resolves workspace source for the app-agent package.
 - Verify the bundled package still imports through published package exports.
+- Implement a test that shows the production use case works: bundled packages
+  from `dist/` folders work together.
 - Verify the relay startup command documented in the repo still works.
 - Add a targeted check for the package boundary regressions that already
   happened once, especially source-path resolution and stale dist imports.
@@ -81,7 +83,8 @@ cleaner, removing dev-only seams, and keeping the shared agent surface narrow.
 The split is clean when:
 
 - `embed()` stays agent-free unless a plugin is explicitly installed.
-- `@genome-spy/app-agent` imports only public host APIs.
+- `@genome-spy/app-agent` imports only the project-internal app surfaces
+  exposed for it.
 - Dev and bundled builds resolve the same package boundaries without ad hoc
   path fixes.
 - The relay lives under `packages/app-agent/server` and the docs match that

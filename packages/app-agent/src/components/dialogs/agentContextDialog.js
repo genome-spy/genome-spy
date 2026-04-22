@@ -1,5 +1,9 @@
 import { css, html } from "lit";
-import { BaseDialog, showDialog, showMessageDialog } from "@genome-spy/app";
+import {
+    BaseDialog,
+    showDialog,
+    showMessageDialog,
+} from "@genome-spy/app/dialog";
 import { getAgentState } from "../../agent/agentState.js";
 
 export default class AgentContextDialog extends BaseDialog {

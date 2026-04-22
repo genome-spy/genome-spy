@@ -16,7 +16,13 @@ export default defineConfig(({ command }) => ({
     optimizeDeps:
         command === "serve"
             ? {
-                  exclude: ["@genome-spy/app", "@genome-spy/app-agent"],
+                  exclude: [
+                      "@genome-spy/app",
+                      "@genome-spy/app/agentApi",
+                      "@genome-spy/app/agentShared",
+                      "@genome-spy/app/dialog",
+                      "@genome-spy/app-agent",
+                  ],
               }
             : undefined,
     resolve: {
@@ -24,6 +30,18 @@ export default defineConfig(({ command }) => ({
             command === "serve"
                 ? {
                       "@genome-spy/app": resolve(packageDir, "src/index.js"),
+                      "@genome-spy/app/agentApi": resolve(
+                          packageDir,
+                          "src/agentApi/index.js"
+                      ),
+                      "@genome-spy/app/agentShared": resolve(
+                          packageDir,
+                          "src/agentShared/index.js"
+                      ),
+                      "@genome-spy/app/dialog": resolve(
+                          packageDir,
+                          "src/dialog/index.js"
+                      ),
                       "@genome-spy/app-agent": resolve(
                           repoRoot,
                           "packages/app-agent/src/index.js"

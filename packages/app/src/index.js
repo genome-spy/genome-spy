@@ -5,13 +5,11 @@ import { loadSpec } from "@genome-spy/core/index.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
-import BaseDialog, { showDialog } from "./components/generic/baseDialog.js";
-import { showMessageDialog } from "./components/generic/messageDialog.js";
 export { createAgentApi } from "./agentApi/index.js";
 
 export { GenomeSpy, App as GenomeSpyApp, icon, html };
 export * from "./agentShared/index.js";
-export { BaseDialog, showDialog, showMessageDialog };
+export { BaseDialog, showDialog, showMessageDialog } from "./dialog/index.js";
 
 /**
  * Embeds GenomeSpy App into the DOM.

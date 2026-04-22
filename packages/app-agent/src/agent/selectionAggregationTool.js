@@ -1,7 +1,7 @@
 import {
     buildSelectionAggregationAttributeIdentifier,
     formatAggregationExpression,
-} from "@genome-spy/app";
+} from "@genome-spy/app/agentShared";
 
 /**
  * Resolves a selection-aggregation candidate into an `AttributeIdentifier`
@@ -9,7 +9,7 @@ import {
  *
  * @param {import("./types.js").AgentVolatileContext} volatileContext
  * @param {string} candidateId
- * @param {import("@genome-spy/app").AggregationOp} aggregation
+ * @param {import("@genome-spy/app/agentShared").AggregationOp} aggregation
  * @returns {import("./types.js").SelectionAggregationResolution}
  */
 export function buildSelectionAggregationAttribute(

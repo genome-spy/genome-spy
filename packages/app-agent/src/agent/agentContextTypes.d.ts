@@ -4,7 +4,7 @@ import type {
     ParamSelector,
     ParamValue,
     ViewSelector,
-} from "@genome-spy/app";
+} from "@genome-spy/app/agentShared";
 import type { Scale } from "@genome-spy/core/spec/scale.js";
 
 /**

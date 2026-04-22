@@ -67,6 +67,11 @@ export type {
     ViewAttributeSpecifier,
     ViewRef,
 } from "../sampleView/sampleViewTypes.d.ts";
+export type * from "../sampleView/state/payloadTypes.d.ts";
+export type {
+    SampleAttributeDef,
+    SampleAttributeType,
+} from "../spec/sampleView.d.ts";
 
 type SupportedActionType =
     | `sampleView/${import("../sampleView/state/sampleSlice.js").SampleActionType}`

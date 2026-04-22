@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeViewSelectorKey } from "@genome-spy/app";
+import { makeViewSelectorKey } from "@genome-spy/app/agentShared";
 
 const viewSettingsSlice = {
     actions: {

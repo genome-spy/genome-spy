@@ -5,7 +5,7 @@ import {
 import { validateIntentBatch } from "./intentProgramValidator.js";
 
 /**
- * @param {import("@genome-spy/app").AgentApi} agentApi
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
  * @param {import("./types.js").IntentBatch} batch
  * @param {{submissionKind?: "agent" | "bookmark" | "user"}} [options]
  * @returns {Promise<import("./types.js").IntentBatchExecutionResult>}
@@ -112,7 +112,7 @@ export function summarizeExecutionResult(result) {
 /**
  * Counts the distinct samples currently present in the visible hierarchy.
  *
- * @param {import("@genome-spy/app").Group} group
+ * @param {import("@genome-spy/app/agentShared").Group} group
  * @param {Set<string>} [sampleIds]
  * @returns {number}
  */
@@ -132,7 +132,7 @@ function countVisibleSamples(group, sampleIds = new Set()) {
 }
 
 /**
- * @param {import("@genome-spy/app").AgentApi} agentApi
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
  * @param {number} provenanceStartIndex
  * @returns {string[]}
  */
