@@ -220,7 +220,6 @@ export interface AgentContext {
     intentActionSummaries: AgentIntentActionSummary[];
     attributes: AgentAttributeSummary[];
     searchableViews: AgentSearchableViewSummary[];
-    provenance: AgentProvenanceAction[];
     viewRoot: AgentViewNode;
 }
 
@@ -229,6 +228,7 @@ export interface AgentVolatileContext {
     sampleSummary: AgentSampleSummary;
     sampleGroupLevels: AgentSampleGroupLevel[];
     selectionAggregation: AgentSelectionAggregationContext;
+    provenance: AgentProvenanceAction[];
 }
 
 /** Browser turn request sent to the agent server. */

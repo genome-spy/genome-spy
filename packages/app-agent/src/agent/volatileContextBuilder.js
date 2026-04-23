@@ -1,5 +1,8 @@
 import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
-import { templateResultToString } from "@genome-spy/app/agentShared";
+import {
+    isBaselineAction,
+    templateResultToString,
+} from "@genome-spy/app/agentShared";
 
 /**
  * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
@@ -7,6 +10,7 @@ import { templateResultToString } from "@genome-spy/app/agentShared";
  */
 export function getAgentVolatileContext(agentApi) {
     const sampleHierarchy = agentApi.getSampleHierarchy();
+    const provenance = agentApi.getActionHistory() ?? [];
 
     return {
         sampleSummary: buildSampleSummary(sampleHierarchy),
@@ -14,6 +18,7 @@ export function getAgentVolatileContext(agentApi) {
             ? buildSampleGroupLevels(agentApi, sampleHierarchy)
             : [],
         selectionAggregation: getSelectionAggregationContext(agentApi),
+        provenance: buildProvenanceActions(agentApi, provenance),
     };
 }
 
@@ -77,4 +82,35 @@ function countVisibleSamples(group, sampleIds = new Set()) {
     }
 
     return sampleIds.size;
+}
+
+/**
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
+ * @param {import("@reduxjs/toolkit").Action[]} provenanceActions
+ * @returns {import("./agentContextTypes.d.ts").AgentProvenanceAction[]}
+ */
+function buildProvenanceActions(agentApi, provenanceActions) {
+    return provenanceActions
+        .filter((action) => !isBaselineAction(action))
+        .slice(-10)
+        .map((action) => {
+            const info = agentApi.getActionInfo(
+                /** @type {import("./agentContextTypes.d.ts").AgentProvenanceAction} */ (
+                    action
+                )
+            );
+            const title =
+                info?.provenanceTitle ??
+                info?.title ??
+                action.type.replace("sampleView/", "");
+
+            return {
+                summary: templateResultToString(title),
+                provenanceId: /** @type {any} */ (action).provenanceId,
+                type: action.type,
+                payload: /** @type {any} */ (action).payload,
+                meta: /** @type {any} */ (action).meta,
+                error: /** @type {any} */ (action).error,
+            };
+        });
 }

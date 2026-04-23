@@ -160,13 +160,13 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
             "actionCatalog": [],
             "attributes": [],
             "viewWorkflows": {"workflows": []},
-            "provenance": [],
             "lifecycle": {"appInitialized": True},
             "viewRoot": {"title": "Example"},
         },
         volatile_context={
             "sampleSummary": {"totalSampleCount": 2, "groupCount": 1},
             "sampleGroupLevels": [{"level": 0, "title": "Diagnosis"}],
+            "provenance": [{"summary": "Sort by purity"}],
         },
         history=[],
         message="Follow-up question",
@@ -187,7 +187,6 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
         "actionCatalog",
         "attributes",
         "viewWorkflows",
-        "provenance",
         "lifecycle",
         "viewRoot",
     ]
@@ -196,5 +195,9 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
             "Current volatile GenomeSpy state:\n"
         )
     )
-    assert list(volatile_context_json) == ["sampleSummary", "sampleGroupLevels"]
+    assert list(volatile_context_json) == [
+        "sampleSummary",
+        "sampleGroupLevels",
+        "provenance",
+    ]
     assert prompt.context == request.context

@@ -189,7 +189,6 @@ curl -s http://127.0.0.1:8001/v1/agent-turn \
       "viewWorkflows": {
         "workflows": []
       },
-      "provenance": [],
       "lifecycle": {
         "appInitialized": true
       },
@@ -198,6 +197,9 @@ curl -s http://127.0.0.1:8001/v1/agent-turn \
         "type": "view",
         "name": "viewRoot"
       }
+    },
+    "volatileContext": {
+      "provenance": []
     }
   }'
 ```

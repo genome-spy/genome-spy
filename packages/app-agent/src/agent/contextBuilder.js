@@ -1,7 +1,4 @@
-import {
-    isBaselineAction,
-    templateResultToString,
-} from "@genome-spy/app/agentShared";
+import { templateResultToString } from "@genome-spy/app/agentShared";
 import { getEncodingSearchFields } from "@genome-spy/core/encoder/metadataChannels.js";
 import { getViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { listAgentIntentActionSummaries } from "./actionCatalog.js";
@@ -28,7 +25,6 @@ const searchableViewSummaryCache = new WeakMap();
  */
 export function getAgentContext(agentApi, options = {}) {
     const sampleHierarchy = agentApi.getSampleHierarchy();
-    const provenance = agentApi.getActionHistory() ?? [];
     const { root: viewRoot } = buildViewTree(agentApi, options);
     const intentActionSummaries = listAgentIntentActionSummaries();
     const searchableViews = buildSearchableViews(agentApi);
@@ -40,7 +36,6 @@ export function getAgentContext(agentApi, options = {}) {
             ? buildAttributeSummary(agentApi, sampleHierarchy)
             : [],
         searchableViews,
-        provenance: buildProvenanceActions(agentApi, provenance),
         viewRoot,
     };
 }
@@ -248,35 +243,4 @@ function getViewSelectorOrUndefined(view) {
     } catch {
         return undefined;
     }
-}
-
-/**
- * @param {AgentApi} agentApi
- * @param {import("@reduxjs/toolkit").Action[]} provenanceActions
- * @returns {import("./agentContextTypes.d.ts").AgentProvenanceAction[]}
- */
-function buildProvenanceActions(agentApi, provenanceActions) {
-    return provenanceActions
-        .filter((action) => !isBaselineAction(action))
-        .slice(-10)
-        .map((action) => {
-            const info = agentApi.getActionInfo(
-                /** @type {import("./agentContextTypes.d.ts").AgentProvenanceAction} */ (
-                    action
-                )
-            );
-            const title =
-                info?.provenanceTitle ??
-                info?.title ??
-                action.type.replace("sampleView/", "");
-
-            return {
-                summary: templateResultToString(title),
-                provenanceId: /** @type {any} */ (action).provenanceId,
-                type: action.type,
-                payload: /** @type {any} */ (action).payload,
-                meta: /** @type {any} */ (action).meta,
-                error: /** @type {any} */ (action).error,
-            };
-        });
 }

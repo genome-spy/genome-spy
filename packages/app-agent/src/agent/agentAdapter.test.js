@@ -23,6 +23,13 @@ const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
         selectionAggregation: {
             fields: [{ candidateId: "candidate-1" }],
         },
+        provenance: [
+            {
+                provenanceId: "provenance-1",
+                type: "sampleView/sortBy",
+                summary: "Sort by purity.",
+            },
+        ],
     })),
 }));
 const { resolveParamSelectorMock } = vi.hoisted(() => ({
@@ -270,7 +277,6 @@ function createMockPlannerContext() {
             },
         ],
         intentActionSummaries: [],
-        provenance: [],
     };
 }
 
@@ -453,6 +459,7 @@ describe("agentAdapter", () => {
         const requestBody = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
         expect(requestBody.context).not.toHaveProperty("sampleSummary");
         expect(requestBody.context).not.toHaveProperty("sampleGroupLevels");
+        expect(requestBody.context).not.toHaveProperty("provenance");
         expect(requestBody.volatileContext.sampleSummary).toEqual({
             totalSampleCount: 61,
             groupCount: 1,
@@ -462,6 +469,13 @@ describe("agentAdapter", () => {
         expect(
             requestBody.volatileContext.selectionAggregation.fields
         ).not.toEqual([]);
+        expect(requestBody.volatileContext.provenance).toEqual([
+            expect.objectContaining({
+                provenanceId: "provenance-1",
+                type: "sampleView/sortBy",
+                summary: "Sort by purity.",
+            }),
+        ]);
     });
 
     it("consumes streamed agent-turn events when callbacks are provided", async () => {

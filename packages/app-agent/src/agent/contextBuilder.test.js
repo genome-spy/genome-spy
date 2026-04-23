@@ -351,13 +351,7 @@ describe("getAgentContext", () => {
                 dataFields: ["gene_symbol", "gene_name"],
             }),
         ]);
-        expect(context.provenance[0]).toEqual(
-            expect.objectContaining({
-                summary: "Brush brush (0-1) in Patient Cohort",
-                type: "paramProvenance/paramChange",
-                provenanceId: "provenance-1",
-            })
-        );
+        expect(context).not.toHaveProperty("provenance");
     });
 
     it("caches searchable view examples across context rebuilds", () => {
@@ -446,5 +440,12 @@ describe("getAgentVolatileContext", () => {
             })
         );
         expect(volatileContext.selectionAggregation.fields).toEqual([]);
+        expect(volatileContext.provenance[0]).toEqual(
+            expect.objectContaining({
+                summary: "Brush brush (0-1) in Patient Cohort",
+                type: "paramProvenance/paramChange",
+                provenanceId: "provenance-1",
+            })
+        );
     });
 });

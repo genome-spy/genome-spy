@@ -175,6 +175,8 @@ def test_format_token_summary_lists_ranked_context_keys() -> None:
                 "title": "Example",
                 "tracks": [{"mark": "rect", "encoding": {"x": "pos"}}],
             },
+        },
+        volatile_context={
             "provenance": [{"label": "filter"}],
         },
         history=[],
