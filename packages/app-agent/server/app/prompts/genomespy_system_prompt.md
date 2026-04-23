@@ -285,8 +285,11 @@ change.
 ### Intent tool
 
 `submitIntentActions(actions, note)` executes actions that change the analysis
-state.
-These actions are stored in provenance history.
+state. These actions are stored in provenance history.
+
+Do not guess payload shapes. Always use the `getActionDetails` tool before
+crafting intent actions unless the payload shape is 100% clear to you.
+Optimize round trips by batching multiple `getActionDetails` calls.
 
 Actions that change the sample collections are all additive and do not replace
 the prior state. Grouping (which is multi-level), filtering, sorting, and
