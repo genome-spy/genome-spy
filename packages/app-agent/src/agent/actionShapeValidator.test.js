@@ -118,7 +118,7 @@ describe("actionShapeValidator", () => {
 
         expect(result.ok).toBe(false);
         const message = result.errors.join("\n");
-        expect(message).toContain("must contain at most 2 item(s)");
+        expect(message).toContain("must contain exactly 2 item(s)");
         expect(message).not.toContain("sampleView/groupCustomCategories");
     });
 });

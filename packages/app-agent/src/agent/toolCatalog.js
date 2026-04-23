@@ -3,6 +3,7 @@ import Ajv from "ajv";
 import generatedToolCatalog from "./generated/generatedToolCatalog.json" with { type: "json" };
 import generatedToolSchema from "./generated/generatedToolSchema.json" with { type: "json" };
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
+import { validateSubmitIntentActionsToolShape } from "./submitIntentActionsValidator.js";
 import { formatAjvErrors } from "./validationErrorFormatter.js";
 
 // These generated artifacts are derived from agentToolInputs.d.ts and are the
@@ -120,6 +121,10 @@ export function formatToolCallRejection(toolName, errors) {
  * @returns {import("./types.d.ts").ShapeValidationResult}
  */
 export function validateToolArgumentsShape(toolName, toolArguments) {
+    if (toolName === "submitIntentActions") {
+        return validateSubmitIntentActionsToolShape(toolArguments);
+    }
+
     const validator = getToolArgumentsValidator(toolName);
     if (!validator) {
         return {
