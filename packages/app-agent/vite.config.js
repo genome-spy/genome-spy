@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import rawPlugin from "vite-raw-plugin";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,6 +20,13 @@ export default defineConfig(({ command }) => ({
             allow: [repoRoot],
         },
     },
+    plugins: [
+        {
+            ...rawPlugin({
+                fileRegex: /\.glsl$/,
+            }),
+        },
+    ],
     build: {
         outDir: "../dist",
         emptyOutDir: true,
