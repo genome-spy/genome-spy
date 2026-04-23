@@ -1004,6 +1004,66 @@ describe("createAgentSessionController", () => {
         );
     });
 
+    it("logs unexpected tool call failures before surfacing them in chat", async () => {
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
+        const runtime = createRuntimeMock();
+        runtime.requestAgentTurn.mockImplementation((message) => {
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 9,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "tool_call",
+                    message: "Jump to the previous provenance state.",
+                    toolCalls: [
+                        {
+                            callId: "call-1",
+                            name: "jumpToProvenanceState",
+                            arguments: {
+                                provenanceId: "provenance-1",
+                            },
+                        },
+                    ],
+                },
+                trace: {
+                    totalMs: 10,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("Go back one step.");
+
+        const snapshot = controller.getSnapshot();
+        expect(snapshot.status).toBe("error");
+        expect(snapshot.lastError).toContain(
+            "Cannot read properties of undefined (reading 'find')"
+        );
+        expect(
+            snapshot.messages.some((message) => message.kind === "error")
+        ).toBe(true);
+        expect(consoleError).toHaveBeenCalledWith(
+            "Agent tool call failed:",
+            "jumpToProvenanceState",
+            expect.any(TypeError)
+        );
+        consoleError.mockRestore();
+    });
+
     it("stops promptly when the same rejected tool call repeats", async () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;

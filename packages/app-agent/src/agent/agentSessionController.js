@@ -961,6 +961,7 @@ export class AgentSessionController {
                 };
             }
 
+            console.error("Agent tool call failed:", toolCall.name, error);
             throw error;
         }
     }
