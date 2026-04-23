@@ -197,6 +197,7 @@ function createRuntimeStub() {
         setViewVisibility: vi.fn((selector, nextVisible) => {
             visible = nextVisible;
         }),
+        getActionHistory: vi.fn(() => []),
         jumpToProvenanceState: vi.fn(() => true),
         jumpToInitialProvenanceState: vi.fn(() => true),
     };
@@ -797,14 +798,17 @@ describe("agentTools", () => {
 
     it("activates provenance states through the runtime", () => {
         const runtime = createRuntimeStub();
-        runtime.getAgentContext.mockReturnValueOnce({
-            provenance: [
-                {
-                    provenanceId: "provenance-1",
-                    summary: "Sort by purity",
-                    type: "sampleView/sortBy",
-                },
-            ],
+        runtime.agentApi.getActionHistory.mockReturnValueOnce([
+            {
+                provenanceId: "provenance-1",
+                summary: "Sort by purity",
+                type: "sampleView/sortBy",
+            },
+        ]);
+        runtime.getAgentVolatileContext.mockReturnValueOnce({
+            selectionAggregation: {
+                fields: [],
+            },
         });
 
         const tools = agentTools;

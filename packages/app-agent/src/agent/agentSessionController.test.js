@@ -27,6 +27,13 @@ function createRuntimeMock() {
             isVisible: vi.fn(() => true),
         })),
         setViewVisibility: vi.fn(),
+        getActionHistory: vi.fn(() => [
+            {
+                provenanceId: "provenance-1",
+                summary: "Sort by purity.",
+                type: "sampleView/sortBy",
+            },
+        ]),
         jumpToProvenanceState: vi.fn(),
         jumpToInitialProvenanceState: vi.fn(),
     };
@@ -1009,6 +1016,9 @@ describe("createAgentSessionController", () => {
             .spyOn(console, "error")
             .mockImplementation(() => {});
         const runtime = createRuntimeMock();
+        runtime.agentApi.jumpToProvenanceState.mockImplementation(() => {
+            throw new TypeError("boom");
+        });
         runtime.requestAgentTurn.mockImplementation((message) => {
             if (message === PREFLIGHT_MESSAGE) {
                 return Promise.resolve({
@@ -1050,9 +1060,7 @@ describe("createAgentSessionController", () => {
 
         const snapshot = controller.getSnapshot();
         expect(snapshot.status).toBe("error");
-        expect(snapshot.lastError).toContain(
-            "Cannot read properties of undefined (reading 'find')"
-        );
+        expect(snapshot.lastError).toContain("boom");
         expect(
             snapshot.messages.some((message) => message.kind === "error")
         ).toBe(true);

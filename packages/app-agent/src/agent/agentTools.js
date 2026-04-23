@@ -343,9 +343,9 @@ function createProvenanceStateActivation(
  * @returns {import("./agentContextTypes.d.ts").AgentProvenanceAction}
  */
 function findProvenanceAction(runtime, provenanceId) {
-    const action = runtime
-        .getAgentContext()
-        .provenance.find((entry) => entry.provenanceId === provenanceId);
+    const action = runtime.agentApi
+        .getActionHistory()
+        .find((entry) => entry.provenanceId === provenanceId);
     if (!action) {
         throw new ToolCallRejectionError(
             "Unknown provenance id " + provenanceId + "."
