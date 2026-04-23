@@ -12,11 +12,13 @@ tmp/
 .vscode/
 node_modules/
 .venv/
+.env.local
 
 **/*.local
 **/static/private/
 **/private/
 **/static/examples/drafts/
+/packages/app-agent
 
 /docs/app/
 /docs/examples/
