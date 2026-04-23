@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { formatGeneratedSource } from "./formatGeneratedSource.mjs";
 import {
+    compactDocText,
     firstSentence,
+    normalizeDocText,
     parseExamples,
     readJsDoc,
 } from "./generateAgentCatalogDocHelpers.mjs";
@@ -33,12 +35,16 @@ const payloadTypesPath = path.join(
 );
 const paramProvenanceSlicePath = path.join(
     packageDir,
+    "..",
+    "app",
     "src",
     "state",
     "paramProvenanceSlice.js"
 );
 const paramProvenanceTypesPath = path.join(
     packageDir,
+    "..",
+    "app",
     "src",
     "state",
     "paramProvenanceTypes.d.ts"

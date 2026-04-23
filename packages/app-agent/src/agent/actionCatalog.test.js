@@ -98,9 +98,9 @@ describe("actionCatalog", () => {
     it("exposes payload field metadata for quantitative filters", () => {
         const entry = getActionCatalogEntry("sampleView/filterByQuantitative");
 
-        expect(entry.description).toContain("quantitative attribute");
+        expect(entry.description).toContain("quantitative value");
         expect(entry.usage).toBe(
-            "Use this for threshold-based filtering on quantitative attributes."
+            "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold."
         );
         expect(entry.payloadFields).toEqual([
             expect.objectContaining({

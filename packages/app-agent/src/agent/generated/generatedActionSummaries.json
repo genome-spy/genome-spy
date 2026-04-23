@@ -2,77 +2,77 @@
   {
     "actionType": "sampleView/addMetadata",
     "title": "Add metadata",
-    "description": "Import metadata columns into the current sample collection."
+    "description": "Add sample metadata columns from a columnar payload."
   },
   {
     "actionType": "sampleView/deriveMetadata",
     "title": "Add derived metadata",
-    "description": "Create a derived metadata column from a selected or aggregated attribute."
+    "description": "Add a derived metadata column from a selected or aggregated attribute."
   },
   {
     "actionType": "sampleView/addMetadataFromSource",
     "title": "Import metadata from source",
-    "description": "Import metadata columns from an external source."
+    "description": "Import metadata columns from a configured source."
   },
   {
     "actionType": "sampleView/sortBy",
     "title": "Sort by",
-    "description": "Sort samples by a selected attribute."
+    "description": "Sort samples in descending order by a selected attribute."
   },
   {
     "actionType": "sampleView/retainFirstOfEach",
-    "title": "Retain the first sample of each",
-    "description": "Keep the first sample for each category in the current ordering."
+    "title": "Retain the first sample of each patient_id",
+    "description": "Retain the first sample for each distinct value of a selected attribute."
   },
   {
     "actionType": "sampleView/retainFirstNCategories",
-    "title": "Retain first n categories of ...",
-    "description": "Keep samples from the first n categories in the current ordering."
+    "title": "Retain first n categories of patient_id...",
+    "description": "Retain samples whose value falls in the first n distinct categories in the current ordering."
   },
   {
     "actionType": "sampleView/filterByQuantitative",
     "title": "Retain samples having purity ≥ 0.6",
-    "description": "Filter samples by comparing a selected quantitative attribute to a threshold."
+    "description": "Retain samples whose selected quantitative value satisfies a threshold comparison."
   },
   {
     "actionType": "sampleView/filterByNominal",
     "title": "Retain samples having diagnosis = AML",
-    "description": "Filter samples by matching values in a selected attribute."
+    "description": "Retain or remove samples whose selected attribute matches any of the provided values."
   },
   {
     "actionType": "sampleView/removeUndefined",
     "title": "Remove samples having missing attribute",
-    "description": "Remove samples missing a selected attribute value."
+    "description": "Remove samples whose selected attribute value is missing."
   },
   {
     "actionType": "sampleView/groupCustomCategories",
-    "title": "Group samples by custom categories chosen from a selected attribute.",
-    "description": "Group samples by custom categories chosen from a selected attribute."
+    "title": "Group arbitrarily...",
+    "description": "Group samples into named groups using an explicit mapping of attribute values."
   },
   {
     "actionType": "sampleView/groupByNominal",
     "title": "Group by",
-    "description": "Group samples by the distinct values of a selected attribute."
+    "description": "Group samples by the distinct values of a selected categorical attribute."
   },
   {
     "actionType": "sampleView/groupToQuartiles",
     "title": "Group by quartiles",
-    "description": "Group samples into quartiles by a selected quantitative attribute."
+    "description": "Group samples into quartile-based bins of a selected quantitative attribute."
   },
   {
     "actionType": "sampleView/groupByThresholds",
     "title": "Group by thresholds",
-    "description": "Group samples by user-defined thresholds on a selected quantitative attribute."
+    "description": "Group samples into threshold-defined numeric intervals of a selected quantitative attribute."
   },
   {
     "actionType": "sampleView/removeGroup",
-    "title": "Remove a sample group by path.",
-    "description": "Remove a sample group by path."
+    "title": "Remove group",
+    "description": "Remove a previously created sample group by path."
   },
   {
     "actionType": "sampleView/retainMatched",
-    "title": "Retain group-wise matched samples using",
-    "description": "Keep categories that appear in every current group."
+    "title": "Retain group-wise matched samples using patient_id",
+    "description": "Retain samples whose selected value appears in every current non-empty group."
   },
   {
     "actionType": "paramProvenance/paramChange",

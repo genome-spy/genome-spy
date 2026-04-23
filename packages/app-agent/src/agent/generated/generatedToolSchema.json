@@ -6,22 +6,22 @@
       "additionalProperties": false,
       "properties": {
         "columnIds": {
-          "description": "Columns requested from the source.",
+          "description": "Column ids to import from the selected source.",
           "items": {
             "type": "string"
           },
           "type": "array"
         },
         "groupPath": {
-          "description": "Optional metadata group path override.",
+          "description": "Optional metadata group path override for the imported columns.",
           "type": "string"
         },
         "replace": {
-          "description": "If true, replace existing metadata instead of merging.",
+          "description": "Whether to replace the current metadata set.\n\nIf `true`, only the imported columns remain. If omitted or `false`, the imported columns are merged into the existing metadata.",
           "type": "boolean"
         },
         "sourceId": {
-          "description": "Optional source identifier. If omitted, source resolution is allowed only when exactly one source exists.",
+          "description": "Configured metadata source to read from.\n\nOmit this only when exactly one source is available.",
           "type": "string"
         }
       },
@@ -410,7 +410,7 @@
     },
     "ColumnarMetadata": {
       "additionalProperties": {
-        "description": "Attributes",
+        "description": "Metadata columns keyed by attribute name.",
         "items": {
           "$ref": "#/definitions/Scalar"
         },
@@ -419,7 +419,7 @@
       "description": "Columnar metadata representation Keys are attribute names, values are arrays of attribute values for each sample, in the same order as the samples array.\n\nColumnar format is more efficient for storage in bookmarked actions.",
       "properties": {
         "sample": {
-          "description": "Required sample identifier",
+          "description": "Sample ids for the rows in this payload.\n\nEvery other column must follow this same order.",
           "items": {
             "type": "string"
           },
@@ -468,19 +468,19 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         },
         "groupPath": {
-          "description": "Optional metadata group path for the derived column.",
+          "description": "Optional metadata group path for the derived column.\n\nWhen provided, the resulting attribute is written under `groupPath/name`.",
           "type": "string"
         },
         "name": {
-          "description": "Name of the derived metadata column, should be less than 20 characters.\n\nThe resulting metadata is written under this name.",
+          "description": "Name of the derived metadata column.\n\nThis becomes the leaf attribute name written into metadata. Prefer a short user-facing name.",
           "type": "string"
         },
         "scale": {
           "$ref": "#/definitions/Scale",
-          "description": "Optional scale definition for the derived metadata column."
+          "description": "Optional scale definition attached to the derived metadata column."
         }
       },
       "required": ["attribute", "name"],
@@ -522,14 +522,14 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         },
         "remove": {
-          "description": "If true, matching samples are removed instead of retained.",
+          "description": "Whether to remove matching samples instead of retaining them.\n\nIf omitted or `false`, only matching samples are kept.",
           "type": "boolean"
         },
         "values": {
-          "description": "Discrete values to match.",
+          "description": "Attribute values matched by exact equality.",
           "items": {},
           "type": "array"
         }
@@ -543,15 +543,15 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         },
         "operand": {
-          "description": "Numeric threshold used in the comparison.",
+          "description": "Numeric value on the right-hand side of the comparison.",
           "type": "number"
         },
         "operator": {
           "$ref": "#/definitions/ComparisonOperatorType",
-          "description": "Comparison operator used for thresholding."
+          "description": "Comparison applied as `attributeValue operator operand`."
         }
       },
       "required": ["attribute", "operand", "operator"],
@@ -617,11 +617,11 @@
     },
     "GroupByNominal": {
       "additionalProperties": false,
-      "description": "Payload for grouping by a categorical attribute.",
+      "description": "Payload for grouping by a categorical or ordinal attribute.",
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         }
       },
       "required": ["attribute"],
@@ -632,10 +632,10 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         },
         "thresholds": {
-          "description": "Thresholds used to stratify the samples.",
+          "description": "Thresholds used to stratify the samples.\n\nSupply these in ascending operand order. Adjacent thresholds define the output intervals.",
           "items": {
             "$ref": "#/definitions/Threshold"
           },
@@ -651,11 +651,11 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         },
         "groups": {
           "$ref": "#/definitions/CustomGroups",
-          "description": "A record where the keys are group names and the values are arrays of categories or sample ids."
+          "description": "Mapping from output group name to attribute values assigned to that group.\n\nSamples whose value is not listed in any group are omitted from the grouped result."
         }
       },
       "required": ["attribute", "groups"],
@@ -663,11 +663,11 @@
     },
     "GroupToQuartiles": {
       "additionalProperties": false,
-      "description": "Payload for grouping by quartiles.",
+      "description": "Payload for grouping a quantitative attribute into quartiles.",
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         }
       },
       "required": ["attribute"],
@@ -1192,7 +1192,7 @@
       "additionalProperties": false,
       "properties": {
         "path": {
-          "description": "An array of group names that represent the path to the group. The implicit ROOT group is excluded.",
+          "description": "Group names from outermost to innermost, excluding the implicit ROOT.",
           "items": {
             "type": "string"
           },
@@ -1204,11 +1204,11 @@
     },
     "RemoveUndefined": {
       "additionalProperties": false,
-      "description": "Payload for removing samples missing an attribute value.",
+      "description": "Payload for removing samples whose attribute value is `undefined` or `null`.",
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         }
       },
       "required": ["attribute"],
@@ -1219,10 +1219,10 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         },
         "n": {
-          "description": "Number of categories to retain.",
+          "description": "Maximum number of distinct categories to retain.\n\nCategories are taken in first-seen order within each current group.",
           "minimum": 1,
           "type": "number"
         }
@@ -1232,11 +1232,11 @@
     },
     "RetainFirstOfEach": {
       "additionalProperties": false,
-      "description": "Payload for retaining the first sample of each category.",
+      "description": "Payload for retaining the first sample of each distinct category.",
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         }
       },
       "required": ["attribute"],
@@ -1247,7 +1247,7 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute whose categories must be present in all current groups."
+          "description": "Attribute whose values must be present in every current non-empty group."
         }
       },
       "required": ["attribute"],
@@ -1788,7 +1788,7 @@
           "additionalProperties": {
             "$ref": "#/definitions/SampleAttributeDef"
           },
-          "description": "Optional attribute definitions for the incoming metadata columns.",
+          "description": "Optional attribute definitions for the incoming metadata columns.\n\nUse this to preserve attribute types, titles, scales, or other metadata settings instead of relying on inference.",
           "propertyNames": {
             "description": "An identifier or name for a sample attribute.\n\nAs the identifiers may represent paths in a hierarchy, they are strings where path segments are separated by a forward slash ('/'). Separators in path segments are always escaped to avoid ambiguity."
           },
@@ -1799,7 +1799,7 @@
           "description": "Metadata encoded in columnar form, aligned to the sample order."
         },
         "replace": {
-          "description": "If true, the provided metadata will replace existing metadata instead of being added to them.",
+          "description": "Whether to replace the current metadata set.\n\nIf `true`, only the provided columns remain. If omitted or `false`, the provided columns are merged into the existing metadata.",
           "type": "boolean"
         }
       },
@@ -1833,11 +1833,11 @@
     },
     "SortBy": {
       "additionalProperties": false,
-      "description": "Payload for sorting samples by an attribute.",
+      "description": "Payload for sorting samples in descending order by an attribute.",
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
-          "description": "Attribute identifier used by the action."
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         }
       },
       "required": ["attribute"],
@@ -1889,7 +1889,7 @@
         },
         "operator": {
           "$ref": "#/definitions/ThresholdOperator",
-          "description": "Threshold side to use when creating groups."
+          "description": "Upper-bound comparison used for this threshold.\n\n`lt` creates an open upper bound and `lte` creates a closed upper bound."
         }
       },
       "required": ["operator", "operand"],

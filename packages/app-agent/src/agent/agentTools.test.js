@@ -188,8 +188,9 @@ describe("agentTools", () => {
         expect(result.content).toEqual(
             expect.objectContaining({
                 actionType: "sampleView/sortBy",
-                description: "Sort samples by a selected attribute.",
-                usage: "Use this when the user wants to rank samples by a single attribute. The attribute is typically quantitative or ordinal.",
+                description:
+                    "Sort samples in descending order by a selected attribute.",
+                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping.",
                 payloadFields: [
                     expect.objectContaining({
                         name: "attribute",

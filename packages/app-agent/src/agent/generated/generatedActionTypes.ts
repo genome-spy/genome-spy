@@ -18,7 +18,7 @@ import type {
     RetainMatched,
     SetMetadata,
     SortBy,
-} from "@genome-spy/app/agentShared";
+} from "@genome-spy/app";
 
 export type AgentIntentBatchStep =
     | {
