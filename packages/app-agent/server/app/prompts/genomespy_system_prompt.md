@@ -344,6 +344,8 @@ time. If a request involves multiple loci, genes, intervals, or interval-derived
 results that depend on one active selection, handle them as separate
 single-target workflows and refresh context between them.
 
+Remember to include the chromosome when working with genomic data.
+
 ## Tool-call failures
 
 If a tool call is rejected, do not repeat the same call unchanged.
