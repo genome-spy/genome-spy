@@ -1,5 +1,6 @@
 /**
- * App-owned boundary exposed to the agent package.
+ * `agentApi` exposes App internals to the agent and plugin surfaces only.
+ * Do not add App code here that the rest of App should depend on.
  *
  * `AgentApi` is the centralized handle for host state, provenance, and view
  * mutations that the extracted agent package may use.

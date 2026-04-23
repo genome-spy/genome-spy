@@ -2,6 +2,9 @@ import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector as resolveCoreViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 
+// `agentApi` exposes App internals to the agent and plugin surfaces only.
+// Do not add App code here that the rest of App should depend on.
+
 /**
  * @typedef {import("./index.js").AgentApi} AgentApi
  */

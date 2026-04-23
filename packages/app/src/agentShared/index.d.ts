@@ -1,4 +1,7 @@
 /**
+ * `agentShared` exposes App internals to the agent and plugin surfaces only.
+ * Do not add App code here that the rest of App should depend on.
+ *
  * Shared helper surface for agent-facing utilities used by the App and the
  * future extracted agent package.
  *

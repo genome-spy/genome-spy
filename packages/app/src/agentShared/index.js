@@ -1,5 +1,7 @@
 // Shared helper surface for agent-facing utilities that both the App and the
 // future extracted agent package can import.
+// `agentShared` exposes App internals to the agent and plugin surfaces only.
+// Do not add App code here that the rest of App should depend on.
 // Host state and mutation access stays on AgentApi.
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { formatScopedParamName } from "../viewScopeUtils.js";
