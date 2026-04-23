@@ -78,6 +78,7 @@ describe("createAgentSessionController", () => {
         const runtime = createRuntimeMock();
         const provenanceHistory = [];
         let agentTurnCallCount = 0;
+        const observedHistories = [];
         runtime.summarizeProvenanceActionsSince.mockImplementation(
             (startIndex) =>
                 provenanceHistory.slice(startIndex).map((action) => ({
@@ -125,6 +126,7 @@ describe("createAgentSessionController", () => {
         runtime.requestAgentTurn.mockImplementation(
             (message, history, stream, allowStreaming, contextOptions) => {
                 agentTurnCallCount += 1;
+                observedHistories.push(history);
                 if (message === PREFLIGHT_MESSAGE) {
                     return Promise.resolve({
                         response: {
@@ -211,6 +213,66 @@ describe("createAgentSessionController", () => {
             kind: "assistant",
             text: "Sorted the samples by age.",
         });
+        expect(observedHistories).toEqual([
+            [],
+            [],
+            [
+                {
+                    id: "2",
+                    role: "assistant",
+                    text: "I will sort the samples by age.",
+                    kind: "tool_call",
+                    toolCalls: [
+                        {
+                            callId: "call-1",
+                            name: "submitIntentActions",
+                            arguments: {
+                                actions: [
+                                    {
+                                        actionType: "sampleView/sortBy",
+                                        payload: {
+                                            attribute: {
+                                                type: "SAMPLE_ATTRIBUTE",
+                                                specifier: "age",
+                                            },
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+                {
+                    id: "3",
+                    role: "tool",
+                    text: "Executed 1 action.\n- ignored",
+                    kind: "tool_result",
+                    toolCallId: "call-1",
+                    content: {
+                        kind: "intent_batch_result",
+                        batch: {
+                            steps: [
+                                {
+                                    actionType: "sampleView/sortBy",
+                                    payload: {
+                                        attribute: {
+                                            type: "SAMPLE_ATTRIBUTE",
+                                            specifier: "age",
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        provenanceIds: ["provenance-1"],
+                    },
+                },
+                {
+                    id: "4",
+                    role: "assistant",
+                    text: "Completed 1 action.",
+                },
+            ],
+        ]);
         expect(runtime.summarizeProvenanceActionsSince).toHaveBeenCalledWith(0);
     });
 

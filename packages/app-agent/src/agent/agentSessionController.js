@@ -88,7 +88,7 @@ import { agentTools } from "./agentTools.js";
  *     status: "ready" | "preflighting" | "thinking" | "clarification" | "executing" | "unavailable" | "error";
  *     preflightState: "idle" | "running" | "ready" | "failed";
  *     messages: AgentChatMessage[];
- *     pendingRequest: { message: string } | null;
+ *     pendingRequest: { message: string, messageId: number } | null;
  *     pendingResponsePlaceholder: string;
  *     queuedMessageCount: number;
  *     lastError: string;
@@ -572,12 +572,12 @@ export class AgentSessionController {
             return;
         }
 
-        this.#appendMessage({
+        const messageId = this.#appendMessage({
             kind: "user",
             text: message,
         });
 
-        this.#state.pendingRequest = { message };
+        this.#state.pendingRequest = { message, messageId };
         this.#state.pendingResponsePlaceholder = "Working...";
         this.#state.status = "thinking";
         this.#state.lastError = "";
@@ -776,12 +776,13 @@ export class AgentSessionController {
         return this.#state.messages
             .filter(
                 (message) =>
-                    message.kind === "user" ||
-                    message.kind === "assistant" ||
-                    message.kind === "clarification" ||
-                    message.kind === "result" ||
-                    message.kind === "tool_call" ||
-                    message.kind === "tool_result"
+                    message.id !== this.#state.pendingRequest?.messageId &&
+                    (message.kind === "user" ||
+                        message.kind === "assistant" ||
+                        message.kind === "clarification" ||
+                        message.kind === "result" ||
+                        message.kind === "tool_call" ||
+                        message.kind === "tool_result")
             )
             .map((message) => {
                 const text =
@@ -1191,15 +1192,18 @@ export class AgentSessionController {
 
     /**
      * @param {Omit<AgentChatMessage, "id">} message
+     * @returns {number}
      */
     #appendMessage(message) {
+        const id = this.#nextMessageId++;
         this.#state.messages = [
             ...this.#state.messages,
             {
-                id: this.#nextMessageId++,
+                id,
                 ...message,
             },
         ];
+        return id;
     }
 
     /**

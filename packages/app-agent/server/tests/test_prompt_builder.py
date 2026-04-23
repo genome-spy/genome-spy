@@ -7,7 +7,7 @@ from app.prompt_builder import (
 )
 
 
-def test_build_responses_input_uses_poc_order() -> None:
+def test_build_responses_input_places_context_before_history() -> None:
     request = ProviderRequest(
         system_prompt="system prompt",
         context={"schemaVersion": 1, "viewRoot": {"title": "Example"}},
@@ -21,17 +21,17 @@ def test_build_responses_input_uses_poc_order() -> None:
     prompt = build_prompt_ir(request)
     messages = build_responses_input(prompt)
 
-    assert messages[0]["id"] == "msg_1"
-    assert messages[0]["role"] == "user"
-    assert messages[0]["content"][0] == {
+    assert messages[0]["role"] == "developer"
+    assert messages[0]["content"][0]["type"] == "input_text"
+    assert "schemaVersion" in messages[0]["content"][0]["text"]
+    assert messages[1]["id"] == "msg_1"
+    assert messages[1]["role"] == "user"
+    assert messages[1]["content"][0] == {
         "type": "input_text",
         "text": "First question",
     }
-    assert messages[1]["id"] == "msg_2"
-    assert messages[1]["role"] == "assistant"
-    assert messages[2]["role"] == "developer"
-    assert messages[2]["content"][0]["type"] == "input_text"
-    assert "schemaVersion" in messages[2]["content"][0]["text"]
+    assert messages[2]["id"] == "msg_2"
+    assert messages[2]["role"] == "assistant"
     assert messages[3]["role"] == "user"
     assert messages[3]["content"][0] == {
         "type": "input_text",
@@ -58,11 +58,11 @@ def test_build_responses_input_places_volatile_context_late() -> None:
     prompt = build_prompt_ir(request)
     messages = build_responses_input(prompt)
 
-    assert messages[2]["role"] == "developer"
-    assert messages[2]["content"][0]["text"].startswith(
+    assert messages[0]["role"] == "developer"
+    assert messages[0]["content"][0]["text"].startswith(
         "Current GenomeSpy context snapshot:\n"
     )
-    assert "selectionAggregation" not in messages[2]["content"][0]["text"]
+    assert "selectionAggregation" not in messages[0]["content"][0]["text"]
     assert messages[3]["role"] == "developer"
     assert messages[3]["content"][0]["type"] == "input_text"
     assert messages[3]["content"][0]["text"].startswith(
@@ -129,19 +129,23 @@ def test_build_responses_input_serializes_tool_turns() -> None:
     prompt = build_prompt_ir(request)
     messages = build_responses_input(prompt)
 
-    assert messages[0]["id"] == "msg_1"
-    assert messages[0]["role"] == "assistant"
-    assert messages[0]["content"][0] == {
+    assert messages[0]["role"] == "developer"
+    assert messages[0]["content"][0]["text"].startswith(
+        "Current GenomeSpy context snapshot:\n"
+    )
+    assert messages[1]["id"] == "msg_1"
+    assert messages[1]["role"] == "assistant"
+    assert messages[1]["content"][0] == {
         "type": "output_text",
         "text": "I should open it.",
     }
-    assert messages[1] == {
+    assert messages[2] == {
         "type": "function_call",
         "call_id": "call_1",
         "name": "expandViewNode",
         "arguments": '{"selector": {"scope": [], "view": "track"}}',
     }
-    assert messages[2] == {
+    assert messages[3] == {
         "type": "function_call_output",
         "call_id": "call_1",
         "output": "Expanded the requested view branch.",

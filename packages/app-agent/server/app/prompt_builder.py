@@ -61,8 +61,8 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
         Responses API input items ready for request serialization.
     """
     messages: list[dict[str, Any]] = []
-    messages.extend(_build_response_messages(prompt.history))
     messages.append(_build_developer_text_item(prompt.context_text))
+    messages.extend(_build_response_messages(prompt.history))
     if prompt.volatile_context_text:
         messages.append(_build_developer_text_item(prompt.volatile_context_text))
     messages.append(
