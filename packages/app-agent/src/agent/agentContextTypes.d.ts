@@ -59,7 +59,7 @@ export interface AgentAttributeSummary {
  * Compact summary of the loaded sample collection.
  */
 export interface AgentSampleSummary {
-    sampleCount: number;
+    totalSampleCount: number;
     groupCount: number;
     visibleSampleCount: number;
 }

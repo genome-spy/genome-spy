@@ -49,6 +49,7 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
 
 import { getAgentContext } from "./contextBuilder.js";
 import { getSelectionAggregationContext } from "./selectionAggregationContext.js";
+import { getAgentVolatileContext } from "./volatileContextBuilder.js";
 
 function createAppStub(options = {}) {
     const geneSearchData = options.geneSearchData ?? [
@@ -298,17 +299,6 @@ describe("getAgentContext", () => {
         expect(context.intentActionSummaries[0]).not.toHaveProperty(
             "examplePayload"
         );
-        expect(context.sampleSummary).toEqual({
-            sampleCount: 2,
-            groupCount: 1,
-            visibleSampleCount: 2,
-        });
-        expect(context.sampleGroupLevels[0]).toEqual(
-            expect.objectContaining({
-                level: 0,
-                title: "Title diagnosis",
-            })
-        );
         expect(context.viewRoot).toEqual(
             expect.objectContaining({
                 type: "other",
@@ -434,5 +424,27 @@ describe("getSelectionAggregationContext", () => {
         );
 
         expect(volatileContext.fields).toEqual([]);
+    });
+});
+
+describe("getAgentVolatileContext", () => {
+    it("builds sample state and selection aggregation as volatile context", () => {
+        const app = createAppStub();
+        const volatileContext = getAgentVolatileContext(
+            createAgentApiStub(app)
+        );
+
+        expect(volatileContext.sampleSummary).toEqual({
+            totalSampleCount: 2,
+            groupCount: 1,
+            visibleSampleCount: 2,
+        });
+        expect(volatileContext.sampleGroupLevels[0]).toEqual(
+            expect.objectContaining({
+                level: 0,
+                title: "Title diagnosis",
+            })
+        );
+        expect(volatileContext.selectionAggregation.fields).toEqual([]);
     });
 });

@@ -221,13 +221,13 @@ export interface AgentContext {
     attributes: AgentAttributeSummary[];
     searchableViews: AgentSearchableViewSummary[];
     provenance: AgentProvenanceAction[];
-    sampleSummary: AgentSampleSummary;
-    sampleGroupLevels: AgentSampleGroupLevel[];
     viewRoot: AgentViewNode;
 }
 
 /** High-churn context sent late in the provider prompt for the current turn. */
 export interface AgentVolatileContext {
+    sampleSummary: AgentSampleSummary;
+    sampleGroupLevels: AgentSampleGroupLevel[];
     selectionAggregation: AgentSelectionAggregationContext;
 }
 

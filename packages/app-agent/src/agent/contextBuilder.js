@@ -41,35 +41,7 @@ export function getAgentContext(agentApi, options = {}) {
             : [],
         searchableViews,
         provenance: buildProvenanceActions(agentApi, provenance),
-        sampleSummary: buildSampleSummary(sampleHierarchy),
-        sampleGroupLevels: sampleHierarchy
-            ? buildSampleGroupLevels(agentApi, sampleHierarchy)
-            : [],
         viewRoot,
-    };
-}
-
-/**
- * @param {import("@genome-spy/app/agentShared").SampleHierarchy | undefined} sampleHierarchy
- * @returns {import("./types.js").AgentSampleSummary}
- */
-function buildSampleSummary(sampleHierarchy) {
-    if (!sampleHierarchy) {
-        return {
-            sampleCount: 0,
-            groupCount: 0,
-            visibleSampleCount: 0,
-        };
-    }
-
-    const sampleCount = sampleHierarchy.sampleData.ids.length;
-    const groupCount = sampleHierarchy.groupMetadata.length;
-    const visibleSampleCount = countVisibleSamples(sampleHierarchy?.rootGroup);
-
-    return {
-        sampleCount,
-        groupCount,
-        visibleSampleCount,
     };
 }
 
@@ -95,25 +67,6 @@ function buildAttributeSummary(agentApi, sampleHierarchy) {
             description: info.description,
             dataType: info.type,
             visible: def.visible === false ? false : undefined,
-        };
-    });
-}
-
-/**
- * @param {AgentApi} agentApi
- * @param {import("@genome-spy/app/agentShared").SampleHierarchy} sampleHierarchy
- * @returns {import("./types.js").AgentSampleGroupLevel[]}
- */
-function buildSampleGroupLevels(agentApi, sampleHierarchy) {
-    const groupMetadata = sampleHierarchy.groupMetadata;
-
-    return groupMetadata.map((entry, level) => {
-        const info = agentApi.getAttributeInfo(entry.attribute);
-
-        return {
-            level,
-            attribute: entry.attribute,
-            title: templateResultToString(info.title),
         };
     });
 }
@@ -326,29 +279,4 @@ function buildProvenanceActions(agentApi, provenanceActions) {
                 error: /** @type {any} */ (action).error,
             };
         });
-}
-
-/**
- * @param {any} group
- * @param {Set<string>} [sampleIds]
- * @returns {number}
- */
-function countVisibleSamples(group, sampleIds = new Set()) {
-    if (!group) {
-        return 0;
-    }
-
-    if ("samples" in group) {
-        for (const sampleId of group.samples) {
-            sampleIds.add(sampleId);
-        }
-
-        return sampleIds.size;
-    }
-
-    for (const child of group.groups) {
-        countVisibleSamples(child, sampleIds);
-    }
-
-    return sampleIds.size;
 }

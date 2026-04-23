@@ -14,6 +14,12 @@ const viewSettingsSlice = {
 const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
     getAgentContext: vi.fn(() => ({ schemaVersion: 1 })),
     getAgentVolatileContext: vi.fn(() => ({
+        sampleSummary: {
+            totalSampleCount: 61,
+            groupCount: 1,
+            visibleSampleCount: 61,
+        },
+        sampleGroupLevels: [],
         selectionAggregation: {
             fields: [{ candidateId: "candidate-1" }],
         },
@@ -243,11 +249,6 @@ function createAgentApiStub(app) {
 function createMockPlannerContext() {
     return {
         schemaVersion: 1,
-        sampleSummary: {
-            sampleCount: 61,
-            groupCount: 1,
-            visibleSampleCount: 61,
-        },
         viewRoot: {
             type: "vconcat",
             title: "viewRoot",
@@ -450,6 +451,14 @@ describe("agentAdapter", () => {
             '"history":[{"id":"msg_001","role":"user","text":"What is in this visualization?"},{"id":"msg_002","role":"assistant","text":"It is a cohort view."},{"id":"msg_003","role":"assistant","text":"Do you want the structure or the encodings?","kind":"clarification"}]'
         );
         const requestBody = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
+        expect(requestBody.context).not.toHaveProperty("sampleSummary");
+        expect(requestBody.context).not.toHaveProperty("sampleGroupLevels");
+        expect(requestBody.volatileContext.sampleSummary).toEqual({
+            totalSampleCount: 61,
+            groupCount: 1,
+            visibleSampleCount: 61,
+        });
+        expect(requestBody.volatileContext.sampleGroupLevels).toEqual([]);
         expect(
             requestBody.volatileContext.selectionAggregation.fields
         ).not.toEqual([]);

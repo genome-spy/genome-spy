@@ -157,13 +157,16 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
         system_prompt="system prompt",
         context={
             "schemaVersion": 1,
-            "sampleSummary": {"sampleCount": 2, "groupCount": 1},
             "actionCatalog": [],
             "attributes": [],
             "viewWorkflows": {"workflows": []},
             "provenance": [],
             "lifecycle": {"appInitialized": True},
             "viewRoot": {"title": "Example"},
+        },
+        volatile_context={
+            "sampleSummary": {"totalSampleCount": 2, "groupCount": 1},
+            "sampleGroupLevels": [{"level": 0, "title": "Diagnosis"}],
         },
         history=[],
         message="Follow-up question",
@@ -173,15 +176,14 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
 
     assert prompt.instructions == "system prompt"
     assert prompt.context["schemaVersion"] == 1
-    assert prompt.volatile_context == {}
-    assert prompt.volatile_context_text is None
+    assert prompt.volatile_context == request.volatile_context
+    assert prompt.volatile_context_text is not None
     assert prompt.context_text.startswith("Current GenomeSpy context snapshot:\n")
     context_json = json.loads(
         prompt.context_text.removeprefix("Current GenomeSpy context snapshot:\n")
     )
     assert list(context_json) == [
         "schemaVersion",
-        "sampleSummary",
         "actionCatalog",
         "attributes",
         "viewWorkflows",
@@ -189,4 +191,10 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
         "lifecycle",
         "viewRoot",
     ]
+    volatile_context_json = json.loads(
+        prompt.volatile_context_text.removeprefix(
+            "Current volatile GenomeSpy state:\n"
+        )
+    )
+    assert list(volatile_context_json) == ["sampleSummary", "sampleGroupLevels"]
     assert prompt.context == request.context
