@@ -281,6 +281,9 @@
         "jumpToProvenanceState": {
           "$ref": "#/definitions/JumpToProvenanceStateToolInput"
         },
+        "resolveMetadataAttributeValues": {
+          "$ref": "#/definitions/ResolveMetadataAttributeValuesToolInput"
+        },
         "searchViewDatums": {
           "$ref": "#/definitions/SearchViewDatumsToolInput"
         },
@@ -299,6 +302,7 @@
         "jumpToInitialProvenanceState",
         "buildSelectionAggregationAttribute",
         "getMetadataAttributeSummary",
+        "resolveMetadataAttributeValues",
         "searchViewDatums",
         "getActionDetails",
         "submitIntentActions"
@@ -1212,6 +1216,23 @@
         }
       },
       "required": ["attribute"],
+      "type": "object"
+    },
+    "ResolveMetadataAttributeValuesToolInput": {
+      "additionalProperties": false,
+      "description": "Resolve a free-text metadata value against current visible categorical sample metadata values. Use this when the user names a category value such as `relapse`, `AML`, or `female` but does not name the metadata attribute that contains it. Prefer this tool over guessing the attribute from title similarity alone. Exact case-insensitive matches are preferred. A bounded Levenshtein fallback may return typo-tolerant matches when exact matching finds nothing.",
+      "examples": [
+        {
+          "query": "relapse"
+        }
+      ],
+      "properties": {
+        "query": {
+          "description": "Free-text metadata value to resolve against current visible categorical metadata values.",
+          "type": "string"
+        }
+      },
+      "required": ["query"],
       "type": "object"
     },
     "RetainFirstNCategories": {

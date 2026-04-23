@@ -143,6 +143,23 @@
     "strict": true
   },
   {
+    "toolName": "resolveMetadataAttributeValues",
+    "description": "Resolve a free-text metadata value against current visible categorical sample metadata values.",
+    "inputType": "ResolveMetadataAttributeValuesToolInput",
+    "inputFields": [
+      {
+        "name": "query",
+        "type": "string",
+        "description": "Free-text metadata value to resolve against current visible categorical metadata values.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "query": "relapse"
+    },
+    "strict": true
+  },
+  {
     "toolName": "searchViewDatums",
     "description": "Search datum objects in one specific searchable view.",
     "inputType": "SearchViewDatumsToolInput",

@@ -139,6 +139,13 @@ distributions. Use `scope: "visible_samples"` for pooled metadata facts. Use
 grouped and the user needs per-group facts. Then use the returned values in
 `submitIntentActions`. Do not infer exact metadata values from user wording.
 
+When the user names a metadata category value such as `relapse`, `AML`, or
+`female` without naming the attribute that contains it, use
+`resolveMetadataAttributeValues(query)` before choosing a metadata-based
+action. Prefer the resolved attribute and exact matched value from the tool
+result over guessing from attribute titles alone. If several plausible matches
+remain, ask a brief clarification question instead of choosing arbitrarily.
+
 If the user asks to group by one attribute and then report another attribute by
 group, first submit the grouping action, wait for the refreshed context, and
 then call `getMetadataAttributeSummary` with `scope: "visible_groups"` for the
@@ -241,6 +248,15 @@ Examples:
 - "retain all male samples"
 - "keep samples with age above 60"
 - "group by gender and return the most common tissue types"
+
+### Metadata value resolution tool
+
+- `resolveMetadataAttributeValues(query)`: resolve a free-text metadata value
+  against current visible categorical metadata values.
+- Use this when the user names a metadata value but not the attribute that
+  contains it.
+- Exact case-insensitive matches are preferred. A bounded typo-tolerant
+  fallback may also return Levenshtein matches.
 
 ### Provenance
 

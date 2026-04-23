@@ -164,6 +164,28 @@ export interface GetMetadataAttributeSummaryToolInput {
 }
 
 /**
+ * Resolve a free-text metadata value against current visible categorical sample
+ * metadata values. Use this when the user names a category value such as
+ * `relapse`, `AML`, or `female` but does not name the metadata attribute that
+ * contains it. Prefer this tool over guessing the attribute from title
+ * similarity alone. Exact case-insensitive matches are preferred. A bounded
+ * Levenshtein fallback may return typo-tolerant matches when exact matching
+ * finds nothing.
+ *
+ * @example
+ * {
+ *   "query": "relapse"
+ * }
+ */
+export interface ResolveMetadataAttributeValuesToolInput {
+    /**
+     * Free-text metadata value to resolve against current visible categorical
+     * metadata values.
+     */
+    query: string;
+}
+
+/**
  * Search datum objects in one specific searchable view.
  *
  * @example
@@ -273,6 +295,7 @@ export interface AgentToolInputs {
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;
     getMetadataAttributeSummary: GetMetadataAttributeSummaryToolInput;
+    resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     getActionDetails: GetActionDetailsToolInput;
     submitIntentActions: SubmitIntentActionsToolInput;

@@ -13,6 +13,7 @@ describe("toolCatalog", () => {
 
         expect(new Set(toolNames).size).toBe(toolNames.length);
         expect(toolNames).toContain("jumpToInitialProvenanceState");
+        expect(toolNames).toContain("resolveMetadataAttributeValues");
         expect(toolNames).toContain("submitIntentActions");
     });
 

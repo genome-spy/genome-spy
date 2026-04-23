@@ -1,5 +1,36 @@
 import { describe, expect, it, vi } from "vitest";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
+
+vi.mock("@genome-spy/app/agentShared", () => ({
+    buildSelectionAggregationAttributeIdentifier: ({
+        viewSelector,
+        field,
+        selectionSelector,
+        aggregation,
+    }) => ({
+        kind: "selection_aggregation_resolution",
+        attribute: {
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: viewSelector,
+                field,
+                interval: {
+                    type: "selection",
+                    selector: selectionSelector,
+                },
+                aggregation: { op: aggregation },
+            },
+        },
+    }),
+    formatAggregationExpression: (aggregation, field) =>
+        `${aggregation}(${field})`,
+    getActionCreator: (actionType) => (payload) => ({
+        type: actionType,
+        payload,
+    }),
+    templateResultToString: (value) => String(value),
+}));
+
 import { agentTools } from "./agentTools.js";
 
 function createRuntimeStub() {
@@ -107,6 +138,61 @@ function createRuntimeStub() {
         isVisible: vi.fn(() => visible),
     };
     const agentApi = {
+        getSampleHierarchy: vi.fn(() => ({
+            sampleData: {
+                ids: ["sampleA", "sampleB", "sampleC"],
+                entities: {},
+            },
+            sampleMetadata: {
+                attributeNames: ["sex", "age", "timepoint", "status"],
+                entities: {
+                    sampleA: {
+                        sex: "F",
+                        age: 42,
+                        timepoint: "relapse",
+                        status: "treated",
+                    },
+                    sampleB: {
+                        sex: "M",
+                        age: undefined,
+                        timepoint: "relapse",
+                        status: "naive",
+                    },
+                    sampleC: {
+                        sex: "F",
+                        age: 61,
+                        timepoint: "baseline",
+                        status: "relapse",
+                    },
+                },
+            },
+            groupMetadata: [],
+            rootGroup: {
+                name: "ROOT",
+                title: "ROOT",
+                groups: [
+                    {
+                        name: "visible",
+                        title: "visible",
+                        samples: ["sampleA", "sampleB", "sampleC"],
+                    },
+                ],
+            },
+        })),
+        getAttributeInfo: vi.fn((attribute) => ({
+            attribute,
+            title: attribute.specifier,
+            emphasizedName: String(attribute.specifier),
+            accessor: () => undefined,
+            valuesProvider: () => [],
+            description: undefined,
+            type:
+                attribute?.specifier === "sex" ||
+                attribute?.specifier === "timepoint" ||
+                attribute?.specifier === "status"
+                    ? "nominal"
+                    : "quantitative",
+        })),
         resolveViewSelector: vi.fn(() => view),
         setViewVisibility: vi.fn((selector, nextVisible) => {
             visible = nextVisible;
@@ -231,12 +317,9 @@ describe("agentTools", () => {
             includeSchema: true,
         });
 
-        expect(result.content.schema).toEqual(
-            expect.objectContaining({
-                type: "object",
-                required: ["attribute"],
-            })
-        );
+        expect(result.content.schema).toEqual({
+            $ref: "#/definitions/SortBy",
+        });
     });
 
     it("resolves selection aggregation candidates through the current context", () => {
@@ -393,6 +476,92 @@ describe("agentTools", () => {
         ).toHaveBeenCalledWith({
             type: "SAMPLE_ATTRIBUTE",
             specifier: "tissue",
+        });
+    });
+
+    it("resolves metadata values against visible categorical attributes", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.resolveMetadataAttributeValues(runtime, {
+            query: "relapse",
+        });
+
+        expect(result).toEqual(
+            expect.objectContaining({
+                text: 'Resolved 2 metadata matches for "relapse".',
+                content: {
+                    kind: "metadata_attribute_value_resolution",
+                    query: "relapse",
+                    count: 2,
+                    matches: [
+                        {
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "timepoint",
+                            },
+                            title: "timepoint",
+                            dataType: "nominal",
+                            matchedValue: "relapse",
+                            matchType: "exact",
+                            visibleSampleCount: 2,
+                        },
+                        {
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "status",
+                            },
+                            title: "status",
+                            dataType: "nominal",
+                            matchedValue: "relapse",
+                            matchType: "exact",
+                            visibleSampleCount: 1,
+                        },
+                    ],
+                },
+            })
+        );
+        expect(runtime.agentApi.getSampleHierarchy).toHaveBeenCalledTimes(1);
+    });
+
+    it("uses Levenshtein fallback for typo-tolerant metadata lookup", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.resolveMetadataAttributeValues(runtime, {
+            query: "relaps",
+        });
+
+        expect(result.content).toEqual({
+            kind: "metadata_attribute_value_resolution",
+            query: "relaps",
+            count: 2,
+            matches: [
+                {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "timepoint",
+                    },
+                    title: "timepoint",
+                    dataType: "nominal",
+                    matchedValue: "relapse",
+                    matchType: "levenshtein",
+                    distance: 1,
+                    visibleSampleCount: 2,
+                },
+                {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "status",
+                    },
+                    title: "status",
+                    dataType: "nominal",
+                    matchedValue: "relapse",
+                    matchType: "levenshtein",
+                    distance: 1,
+                    visibleSampleCount: 1,
+                },
+            ],
         });
     });
 
