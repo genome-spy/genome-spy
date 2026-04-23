@@ -251,6 +251,8 @@ describe("createAgentSessionController", () => {
                     content: {
                         kind: "intent_batch_result",
                         batch: {
+                            schemaVersion: 1,
+                            rationale: undefined,
                             steps: [
                                 {
                                     actionType: "sampleView/sortBy",
@@ -265,11 +267,6 @@ describe("createAgentSessionController", () => {
                         },
                         provenanceIds: ["provenance-1"],
                     },
-                },
-                {
-                    id: "4",
-                    role: "assistant",
-                    text: "Completed 1 action.",
                 },
             ],
         ]);
@@ -490,6 +487,7 @@ describe("createAgentSessionController", () => {
             ],
             batch: {
                 schemaVersion: 1,
+                rationale: undefined,
                 steps: [
                     {
                         actionType: "sampleView/sortBy",
@@ -791,6 +789,7 @@ describe("createAgentSessionController", () => {
             summaries: [],
             batch: {
                 schemaVersion: 1,
+                rationale: undefined,
                 steps: [],
             },
         });
