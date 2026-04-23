@@ -43,6 +43,10 @@ export async function submitIntentActions(agentApi, batch, options = {}) {
         agentApi,
         provenanceStartIndex
     );
+    const updatedSampleHierarchy = agentApi.getSampleHierarchy();
+    if (!updatedSampleHierarchy) {
+        throw new Error("SampleView is not available.");
+    }
 
     const summaries = summarizeIntentBatch(agentApi, validation.batch);
     /** @type {import("./types.js").IntentBatchExecutionContent} */
@@ -53,9 +57,10 @@ export async function submitIntentActions(agentApi, batch, options = {}) {
     };
     if (hasSampleViewMutation) {
         const afterVisibleSampleCount = countVisibleSamples(
-            sampleHierarchy.rootGroup
+            updatedSampleHierarchy.rootGroup
         );
-        const afterGroupLevelCount = sampleHierarchy.groupMetadata?.length ?? 0;
+        const afterGroupLevelCount =
+            updatedSampleHierarchy.groupMetadata?.length ?? 0;
         content.sampleView = {
             visibleSamplesBefore: beforeVisibleSampleCount,
             visibleSamplesAfter: afterVisibleSampleCount,

@@ -176,4 +176,104 @@ describe("submitIntentActions", () => {
             "Group levels after: 1"
         );
     });
+
+    it("reads sample-view stats from the updated hierarchy after dispatch", async () => {
+        const beforeSampleHierarchy = {
+            sampleData: {
+                ids: ["sampleA", "sampleB"],
+            },
+            groupMetadata: [],
+            rootGroup: {
+                name: "ROOT",
+                title: "Root",
+                samples: ["sampleA", "sampleB"],
+            },
+        };
+        const afterSampleHierarchy = {
+            sampleData: {
+                ids: ["sampleA", "sampleB"],
+            },
+            groupMetadata: [
+                {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "patient",
+                    },
+                },
+            ],
+            rootGroup: {
+                name: "ROOT",
+                title: "Root",
+                groups: [
+                    {
+                        name: "patient-1",
+                        title: "Patient 1",
+                        samples: ["sampleA"],
+                    },
+                    {
+                        name: "patient-2",
+                        title: "Patient 2",
+                        samples: ["sampleB"],
+                    },
+                ],
+            },
+        };
+        let sampleHierarchy = beforeSampleHierarchy;
+        const agentApi = {
+            ...createAgentApiStub(),
+            getSampleHierarchy: () => sampleHierarchy,
+            getActionInfo: vi.fn((action) => ({
+                title:
+                    action.type === "sampleView/groupByNominal"
+                        ? "Group by patient"
+                        : "Test action",
+                provenanceTitle:
+                    action.type === "sampleView/groupByNominal"
+                        ? "Group by patient"
+                        : "Test action",
+            })),
+            submitIntentActions: vi.fn(async () => {
+                sampleHierarchy = afterSampleHierarchy;
+            }),
+        };
+
+        const result = await submitIntentActions(agentApi, {
+            schemaVersion: 1,
+            steps: [
+                {
+                    actionType: "sampleView/groupByNominal",
+                    payload: {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "patient",
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(result.content.sampleView).toEqual({
+            visibleSamplesBefore: 2,
+            visibleSamplesAfter: 2,
+            groupLevelsBefore: 0,
+            groupLevelsAfter: 1,
+        });
+        expect(result.summaries).toEqual([
+            expect.objectContaining({
+                text: "Group by patient",
+            }),
+            expect.objectContaining({
+                text: "Visible samples before: 2",
+            }),
+            expect.objectContaining({
+                text: "Visible samples after: 2",
+            }),
+            expect.objectContaining({
+                text: "Group levels before: 0",
+            }),
+            expect.objectContaining({
+                text: "Group levels after: 1",
+            }),
+        ]);
+    });
 });
