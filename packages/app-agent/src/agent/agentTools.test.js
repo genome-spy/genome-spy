@@ -283,8 +283,8 @@ describe("agentTools", () => {
                     missingCount: 0,
                     distinctCount: 2,
                     categories: [
-                        { value: "F", count: 1 },
-                        { value: "M", count: 1 },
+                        { value: "F", count: 1, share: 0.5 },
+                        { value: "M", count: 1, share: 0.5 },
                     ],
                     truncated: false,
                 }),
@@ -319,6 +319,10 @@ describe("agentTools", () => {
                 max: 42,
                 min: 42,
                 mean: 42,
+                median: 42,
+                q1: 42,
+                q3: 42,
+                iqr: 0,
             })
         );
     });
@@ -363,8 +367,8 @@ describe("agentTools", () => {
                             missingCount: 0,
                             distinctCount: 2,
                             categories: [
-                                { value: "blood", count: 1 },
-                                { value: "bone marrow", count: 1 },
+                                { value: "blood", count: 1, share: 0.5 },
+                                { value: "bone marrow", count: 1, share: 0.5 },
                             ],
                             truncated: false,
                         },
@@ -375,7 +379,9 @@ describe("agentTools", () => {
                             nonMissingCount: 1,
                             missingCount: 0,
                             distinctCount: 1,
-                            categories: [{ value: "blood", count: 1 }],
+                            categories: [
+                                { value: "blood", count: 1, share: 1 },
+                            ],
                             truncated: false,
                         },
                     ],

@@ -1,4 +1,4 @@
-# Explanatory Affordance Context Draft
+# Explanatory Affordance Context
 
 This document describes the next design step for agent-facing descriptive
 context.
@@ -32,13 +32,13 @@ next step.
 - Agent context assembly: [`contextBuilder.js`](../src/agent/contextBuilder.js)
 - View normalization and semantic descriptions: [`viewTree.js`](../src/agent/viewTree.js)
 - Metadata summary sources: [`agentAdapter.js`](../src/agent/agentAdapter.js)
-- Pooled metadata summary tool: [`metadataAttributeSummaryTool.js`](../src/agent/metadataAttributeSummaryTool.js)
-- Grouped metadata summary tool: [`groupedMetadataAttributeSummaryTool.js`](../src/agent/groupedMetadataAttributeSummaryTool.js)
-- Shared metadata reducers: [`metadataSummaryReducers.js`](../metadataSummaryReducers.js)
+- Shared scope helpers: [`sampleHierarchyScope.js`](../src/agent/sampleHierarchyScope.js)
+- Metadata summary tool: [`metadataAttributeSummaryTool.js`](../src/agent/metadataAttributeSummaryTool.js)
+- Shared metadata reducers: [`metadataSummaryReducers.js`](../src/agent/metadataSummaryReducers.js)
 - Tool contracts: [`agentToolInputs.d.ts`](../src/agent/agentToolInputs.d.ts)
-- Agent context and tool types: [`types.d.ts`](../types.d.ts)
-- Relay prompt assembly: [`../../../server/app/prompt_builder.py`](../../../server/app/prompt_builder.py)
-- System prompt instructions: [`../../../server/app/prompts/genomespy_system_prompt.md`](../../../server/app/prompts/genomespy_system_prompt.md)
+- Agent context and tool types: [`types.d.ts`](../src/agent/types.d.ts)
+- Relay prompt assembly: [`../server/app/prompt_builder.py`](../server/app/prompt_builder.py)
+- System prompt instructions: [`../server/app/prompts/genomespy_system_prompt.md`](../server/app/prompts/genomespy_system_prompt.md)
 
 ## Status
 
@@ -50,10 +50,14 @@ next step.
     - sample counts
     - provenance
     - selection aggregation candidates
-  - `getMetadataAttributeSummary(attribute)` returns pooled visible-sample
-    summaries for one metadata attribute.
-  - `getGroupedMetadataAttributeSummary(attribute)` returns grouped visible-leaf
-    summaries for one metadata attribute.
+  - `getMetadataAttributeSummary(attribute, scope)` is the shipped factual
+    metadata summary tool.
+  - `scope: "visible_samples"` returns pooled summaries across the current
+    analysis-visible population from `rootGroup`.
+  - `scope: "visible_groups"` returns grouped summaries across the current
+    visible leaf groups from the active hierarchy.
+  - Shared helper traversal for visible samples and visible groups already
+    exists in `sampleHierarchyScope.js`.
 
 - Missing:
   - a compact always-on explanation layer that helps the model describe what is
@@ -120,8 +124,8 @@ This means the system needs two layers:
   cohort.
 - Avoid pretending that affordance hints are exact truths. They are summaries
   for planning and explanation.
-- Reuse the existing metadata summary tools and view/context assembly instead of
-  creating a second parallel context pipeline.
+- Reuse the shipped `scope`-based metadata summary tool and existing
+  view/context assembly instead of creating a second parallel context pipeline.
 
 ## Current Problems
 
@@ -206,10 +210,10 @@ without requiring a tool round for every explanation turn.
 
 ### Layer 2: on-demand precise summaries
 
-Keep the existing metadata summary tools as the exact factual layer:
+Keep the existing metadata summary tool as the exact factual layer:
 
-- `getMetadataAttributeSummary(attribute)`
-- `getGroupedMetadataAttributeSummary(attribute)`
+- `getMetadataAttributeSummary(attribute, scope: "visible_samples")`
+- `getMetadataAttributeSummary(attribute, scope: "visible_groups")`
 
 These should remain the source of truth before:
 
@@ -220,6 +224,13 @@ These should remain the source of truth before:
 
 The tools should be upgraded to support explanatory interpretation better, but
 they must remain factual in shape and stable in scope.
+
+The current scope semantics are already implemented and should stay stable:
+
+- `visible_samples`
+  - pooled summary over the current visible samples
+- `visible_groups`
+  - per-group summary over the current visible leaf groups
 
 ## Proposed Summary Shape
 
@@ -388,7 +399,7 @@ The model should be encouraged to:
 
 ## Proposed Implementation Steps
 
-1. Extend the metadata reducers in [`metadataSummaryReducers.js`](../metadataSummaryReducers.js).
+1. Extend the metadata reducers in [`metadataSummaryReducers.js`](../src/agent/metadataSummaryReducers.js).
    - Add richer quantitative summaries:
      - `median`
      - `q1`
@@ -405,8 +416,10 @@ The model should be encouraged to:
    - Do not mix them into the low-level reducers if a clearer helper boundary
      emerges.
 
-3. Upgrade the pooled and grouped metadata summary tools.
-   - Preserve their current scope semantics:
+3. Upgrade the metadata summary tool.
+   - In practice, this means upgrading
+     `getMetadataAttributeSummary(attribute, scope)`.
+   - Preserve its current scope semantics:
      - `visible_samples`
      - `visible_groups`
    - Add affordance fields alongside the factual summaries.

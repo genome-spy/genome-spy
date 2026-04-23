@@ -1,3 +1,5 @@
+import { quantileSorted } from "d3-array";
+
 const DEFAULT_MAX_CATEGORIES = 15;
 const categoryCollator = new Intl.Collator("en", {
     numeric: true,
@@ -12,13 +14,19 @@ const categoryCollator = new Intl.Collator("en", {
  *     min?: number;
  *     max?: number;
  *     mean?: number;
+ *     median?: number;
+ *     p05?: number;
+ *     p95?: number;
+ *     q1?: number;
+ *     q3?: number;
+ *     iqr?: number;
  * }}
  */
 export function buildQuantitativeFieldSummary(values) {
+    /** @type {number[]} */
+    const numericValues = [];
     let nonMissingCount = 0;
     let missingCount = 0;
-    let min = Infinity;
-    let max = -Infinity;
     let sum = 0;
 
     for (const value of values) {
@@ -29,10 +37,19 @@ export function buildQuantitativeFieldSummary(values) {
         }
 
         nonMissingCount++;
-        min = Math.min(min, numericValue);
-        max = Math.max(max, numericValue);
+        numericValues.push(numericValue);
         sum += numericValue;
     }
+
+    numericValues.sort((a, b) => a - b);
+
+    const min = numericValues[0];
+    const max = numericValues[numericValues.length - 1];
+    const p05 = quantileSorted(numericValues, 0.05);
+    const p95 = quantileSorted(numericValues, 0.95);
+    const q1 = quantileSorted(numericValues, 0.25);
+    const median = quantileSorted(numericValues, 0.5);
+    const q3 = quantileSorted(numericValues, 0.75);
 
     return {
         nonMissingCount,
@@ -42,6 +59,12 @@ export function buildQuantitativeFieldSummary(values) {
                   min,
                   max,
                   mean: sum / nonMissingCount,
+                  median,
+                  p05,
+                  p95,
+                  q1,
+                  q3,
+                  iqr: q3 - q1,
               }
             : {}),
     };
@@ -53,8 +76,10 @@ export function buildQuantitativeFieldSummary(values) {
  *     nonMissingCount: number;
  *     missingCount: number;
  *     distinctCount: number;
- *     categories: Array<{ value: unknown; count: number }>;
+ *     categories: Array<{ value: unknown; count: number; share: number }>;
  *     truncated: boolean;
+ *     otherCount?: number;
+ *     otherShare?: number;
  * }}
  */
 export function buildCategoricalFieldSummary(values) {
@@ -73,20 +98,33 @@ export function buildCategoricalFieldSummary(values) {
         counts.set(value, (counts.get(value) ?? 0) + 1);
     }
 
-    const categories = Array.from(counts.entries())
-        .sort(compareCategoryEntries)
+    const sortedCategories = Array.from(counts.entries()).sort(
+        compareCategoryEntries
+    );
+    const categories = sortedCategories
         .slice(0, DEFAULT_MAX_CATEGORIES)
         .map(([value, count]) => ({
             value,
             count,
+            share: count / nonMissingCount,
         }));
+    const otherCount = sortedCategories
+        .slice(DEFAULT_MAX_CATEGORIES)
+        .reduce((sum, [, count]) => sum + count, 0);
+    const truncated = counts.size > DEFAULT_MAX_CATEGORIES;
 
     return {
         nonMissingCount,
         missingCount,
         distinctCount: counts.size,
         categories,
-        truncated: counts.size > DEFAULT_MAX_CATEGORIES,
+        truncated,
+        ...(truncated
+            ? {
+                  otherCount,
+                  otherShare: otherCount / nonMissingCount,
+              }
+            : {}),
     };
 }
 
