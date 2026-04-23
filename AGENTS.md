@@ -53,6 +53,10 @@ aware interactions.
 - Iconography with FontAwesome
 - No external CSS frameworks or component libraries
 
+### App AI Agent
+
+- An LLM agent/chatbot is in early development, implemented in `packages/app-agent/` and the Python relay in `packages/app-agent/server/`.
+
 ### Testing
 
 - Unit tests with Vitest
