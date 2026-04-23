@@ -150,11 +150,9 @@ export default class AgentChatPanel extends LitElement {
                 height: 100%;
                 min-height: 640px;
                 overflow: hidden;
-                border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
                 border-top: 3px solid var(--gs-theme-primary, #6c82ab);
                 border-radius: 4px;
-                background: white;
-                box-shadow: 0px 3px 15px 0px rgba(0, 0, 0, 0.21);
+                box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
             }
 
             header {
@@ -1275,8 +1273,6 @@ export async function toggleAgentChatPanel(app) {
         host.style.right = "var(--gs-basic-spacing, 10px)";
         host.style.bottom = "var(--gs-basic-spacing, 10px)";
         host.style.width = "min(70vw, 600px)";
-        host.style.boxShadow = "-8px 0 24px rgba(0, 0, 0, 0.24)";
-        host.style.background = "white";
 
         const panel = /** @type {AgentChatPanel} */ (
             document.createElement("gs-agent-chat-panel")
