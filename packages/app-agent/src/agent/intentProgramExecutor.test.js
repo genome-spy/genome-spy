@@ -109,29 +109,6 @@ describe("submitIntentActions", () => {
             expect.objectContaining({
                 kind: "intent_batch_result",
                 provenanceIds: [],
-                batch: expect.objectContaining({
-                    schemaVersion: 1,
-                    steps: [
-                        {
-                            actionType: "sampleView/sortBy",
-                            payload: {
-                                attribute: {
-                                    type: "SAMPLE_ATTRIBUTE",
-                                    specifier: "age",
-                                },
-                            },
-                        },
-                        {
-                            actionType: "sampleView/groupByNominal",
-                            payload: {
-                                attribute: {
-                                    type: "SAMPLE_ATTRIBUTE",
-                                    specifier: "diagnosis",
-                                },
-                            },
-                        },
-                    ],
-                }),
                 sampleView: {
                     visibleSamplesBefore: 2,
                     visibleSamplesAfter: 2,

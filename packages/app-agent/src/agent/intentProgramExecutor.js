@@ -52,7 +52,6 @@ export async function submitIntentActions(agentApi, batch, options = {}) {
     /** @type {import("./types.js").IntentBatchExecutionContent} */
     const content = {
         kind: "intent_batch_result",
-        batch: validation.batch,
         provenanceIds,
     };
     if (hasSampleViewMutation) {

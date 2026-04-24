@@ -334,7 +334,6 @@ export interface IntentBatchExecutionSampleViewSummary {
  */
 export interface IntentBatchExecutionContent {
     kind: "intent_batch_result";
-    batch: import("./types.d.ts").IntentBatch;
     sampleView?: IntentBatchExecutionSampleViewSummary;
     provenanceIds?: string[];
 }

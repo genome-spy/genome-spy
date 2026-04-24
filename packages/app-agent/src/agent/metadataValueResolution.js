@@ -45,11 +45,11 @@ export function resolveMetadataValueMatches(options) {
     const fuzzyMatches = [];
 
     for (const attributeName of sampleHierarchy.sampleMetadata.attributeNames) {
-        /** @type {import("@genome-spy/app/agentShared").AttributeIdentifier} */
-        const attribute = {
-            type: "SAMPLE_ATTRIBUTE",
-            specifier: attributeName,
-        };
+        const attribute =
+            /** @type {import("@genome-spy/app/agentShared").AttributeIdentifier} */ ({
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: attributeName,
+            });
         const info = getAttributeInfo(attribute);
         if (!info || !isCategoricalAttributeType(info.type)) {
             continue;

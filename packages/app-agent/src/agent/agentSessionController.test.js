@@ -257,21 +257,6 @@ describe("createAgentSessionController", () => {
                     toolCallId: "call-1",
                     content: {
                         kind: "intent_batch_result",
-                        batch: {
-                            schemaVersion: 1,
-                            rationale: undefined,
-                            steps: [
-                                {
-                                    actionType: "sampleView/sortBy",
-                                    payload: {
-                                        attribute: {
-                                            type: "SAMPLE_ATTRIBUTE",
-                                            specifier: "age",
-                                        },
-                                    },
-                                },
-                            ],
-                        },
                         provenanceIds: ["provenance-1"],
                     },
                 },
@@ -442,29 +427,6 @@ describe("createAgentSessionController", () => {
             executedActions: 2,
             content: {
                 kind: "intent_batch_result",
-                batch: {
-                    schemaVersion: 1,
-                    steps: [
-                        {
-                            actionType: "sampleView/sortBy",
-                            payload: {
-                                attribute: {
-                                    type: "SAMPLE_ATTRIBUTE",
-                                    specifier: "age",
-                                },
-                            },
-                        },
-                        {
-                            actionType: "sampleView/groupByNominal",
-                            payload: {
-                                attribute: {
-                                    type: "SAMPLE_ATTRIBUTE",
-                                    specifier: "diagnosis",
-                                },
-                            },
-                        },
-                    ],
-                },
                 sampleView: {
                     visibleSamplesBefore: 2,
                     visibleSamplesAfter: 2,
