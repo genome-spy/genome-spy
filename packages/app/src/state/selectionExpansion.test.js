@@ -11,7 +11,7 @@ import {
 describe("selectionExpansion", () => {
     it("normalizes valueFromField predicates using the origin datum", () => {
         const origin = { clusterId: "C1", patientId: "P1" };
-        /** @type {import("./selectionExpansion.js").SelectionExpansionPredicate} */
+        /** @type {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate} */
         const predicate = {
             field: "clusterId",
             op: "eq",
@@ -32,7 +32,7 @@ describe("selectionExpansion", () => {
 
     it("evaluates normalized logical predicates", () => {
         const origin = { clusterId: "C1", patientId: "P1" };
-        /** @type {import("./selectionExpansion.js").SelectionExpansionPredicate} */
+        /** @type {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate} */
         const predicate = {
             field: "clusterId",
             op: "eq",
@@ -48,7 +48,7 @@ describe("selectionExpansion", () => {
     });
 
     it("converts sameFieldValue rules into valueFromField predicates", () => {
-        /** @type {import("./selectionExpansion.js").SelectionExpansionMatcher} */
+        /** @type {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher} */
         const matcher = {
             kind: "sameFieldValue",
             field: "clusterId",
@@ -63,7 +63,7 @@ describe("selectionExpansion", () => {
 
     it("normalizes rules using the origin datum", () => {
         const origin = { clusterId: "C1", patientId: "P1" };
-        /** @type {import("./selectionExpansion.js").SelectionExpansionMatcher} */
+        /** @type {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher} */
         const matcher = {
             kind: "sameFieldValue",
             field: "clusterId",
@@ -82,7 +82,7 @@ describe("selectionExpansion", () => {
         const origin = {
             "Gene.refGene": "GRM8",
         };
-        /** @type {import("./selectionExpansion.js").SelectionExpansionMatcher} */
+        /** @type {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher} */
         const matcher = {
             kind: "sameFieldValue",
             field: "Gene.refGene",

@@ -1272,7 +1272,7 @@ export default class ParamProvenanceBridge {
 
 /**
  * @param {ParamValuePointExpand} value
- * @returns {import("./selectionExpansion.js").SelectionExpansionMatcher}
+ * @returns {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher}
  */
 function getPointExpandMatcher(value) {
     if ("rule" in value && value.rule) {
