@@ -43,4 +43,21 @@ describe("generated core schema", () => {
             true
         );
     });
+
+    test("includes transform descriptions in the generated schema", () => {
+        const schema = createCoreSchema();
+        const aggregateParams =
+            /** @type {{ properties: Record<string, { description?: string }> }} */ (
+                schema.definitions.AggregateParams
+            );
+        const selectionFilterParams =
+            /** @type {{ properties: Record<string, { description?: string }> }} */ (
+                schema.definitions.SelectionFilterParams
+            );
+
+        // Non-obvious: the shared base interface should surface on concrete
+        // transform definitions so docs and agents can describe the step.
+        expect(aggregateParams.properties.description).toBeTruthy();
+        expect(selectionFilterParams.properties.description).toBeTruthy();
+    });
 });
