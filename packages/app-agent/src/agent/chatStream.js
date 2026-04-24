@@ -78,6 +78,11 @@ export default class ChatStreamElement extends LitElement {
             color: #222;
         }
 
+        .streaming-error {
+            color: #b55454;
+            font-style: italic;
+        }
+
         .streaming-reasoning {
             white-space: pre-wrap;
             color: #666;
@@ -99,7 +104,7 @@ export default class ChatStreamElement extends LitElement {
     }
 
     /**
-     * @returns {import("lit").TemplateResult}
+     * @returns {import("lit").TemplateResult | typeof nothing}
      */
     render() {
         if (
@@ -113,6 +118,25 @@ export default class ChatStreamElement extends LitElement {
         const draftText = this.streamDraftText.trimStart();
         const reasoningText = this.streamReasoningText.trimStart();
         const hasVisibleDraft = draftText.length > 0;
+        if (this.streamStatus === "final" && !hasVisibleDraft) {
+            return nothing;
+        }
+
+        if (this.streamStatus === "error" && !hasVisibleDraft) {
+            return html`
+                <article class="message assistant streaming">
+                    <div class="assistant-body">
+                        <div class="streaming-error">Response failed.</div>
+                        ${reasoningText
+                            ? html`<div class="streaming-reasoning">
+                                  ${reasoningText}
+                              </div>`
+                            : nothing}
+                    </div>
+                </article>
+            `;
+        }
+
         return html`
             <article class="message assistant streaming">
                 ${hasVisibleDraft

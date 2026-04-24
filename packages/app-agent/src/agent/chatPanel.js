@@ -1,5 +1,5 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faRobot } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faRobot } from "@fortawesome/free-solid-svg-icons";
 import { css, html, LitElement, nothing } from "lit";
 import { faStyles, formStyles } from "@genome-spy/app/agentShared";
 import { createAgentSessionController } from "./agentSessionController.js";
@@ -166,6 +166,13 @@ export default class AgentChatPanel extends LitElement {
                 padding: 4px 12px;
             }
 
+            .transcript-shell {
+                position: relative;
+                display: flex;
+                flex: 1 1 auto;
+                min-height: 0;
+            }
+
             .body {
                 display: flex;
                 flex-direction: column;
@@ -182,6 +189,56 @@ export default class AgentChatPanel extends LitElement {
                 overflow: auto;
                 padding: var(--gs-basic-spacing, 10px);
                 background: #fafafa;
+            }
+
+            .jump-to-latest {
+                position: absolute;
+                right: var(--gs-basic-spacing, 10px);
+                bottom: var(--gs-basic-spacing, 10px);
+                z-index: 1;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.4rem;
+                padding: 6px 14px;
+                border: 1px solid
+                    color-mix(
+                        in oklab,
+                        var(--gs-theme-primary, #6c82ab) 45%,
+                        white
+                    );
+                border-radius: var(--form-control-border-radius);
+                background: color-mix(
+                    in oklab,
+                    var(--gs-theme-primary, #6c82ab) 10%,
+                    white
+                );
+                color: color-mix(
+                    in oklab,
+                    var(--gs-theme-primary, #6c82ab) 80%,
+                    black
+                );
+                box-shadow: 0 8px 18px rgb(0 0 0 / 16%);
+                opacity: 1;
+                transition: opacity 140ms ease;
+            }
+
+            .jump-to-latest.is-hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .jump-to-latest:hover:not(:disabled) {
+                background: color-mix(
+                    in oklab,
+                    var(--gs-theme-primary, #6c82ab) 15%,
+                    white
+                );
+            }
+
+            .jump-to-latest svg {
+                width: 0.9em;
+                height: 0.9em;
+                flex: 0 0 auto;
             }
 
             .empty-state {
@@ -312,6 +369,9 @@ export default class AgentChatPanel extends LitElement {
     /** @type {(() => void) | null} */
     #unsubscribeActiveTurn = null;
 
+    /** @type {boolean} */
+    #isTranscriptPinnedToBottom = true;
+
     connectedCallback() {
         super.connectedCallback();
         this.#syncController();
@@ -334,7 +394,9 @@ export default class AgentChatPanel extends LitElement {
         }
 
         if (changedProperties.has("snapshot")) {
-            void this.#scrollTranscriptToEnd();
+            if (this.#isTranscriptPinnedToBottom) {
+                void this.#scrollTranscriptToEnd("auto");
+            }
         }
 
         if (
@@ -343,7 +405,9 @@ export default class AgentChatPanel extends LitElement {
             changedProperties.has("streamStatus") ||
             changedProperties.has("streamHeartbeatTick")
         ) {
-            void this.#scrollTranscriptToEnd();
+            if (this.#isTranscriptPinnedToBottom) {
+                void this.#scrollTranscriptToEnd("auto");
+            }
         }
     }
 
@@ -374,37 +438,59 @@ export default class AgentChatPanel extends LitElement {
                 </header>
 
                 <div class="body">
-                    <section class="transcript">
-                        ${snapshot.messages.length === 0
-                            ? this.#renderEmptyState()
-                            : repeat(
-                                  snapshot.messages,
-                                  (message) => message.id,
-                                  (message) => html`
-                                      <gs-chat-message
-                                          class=${message.kind === "tool_call"
-                                              ? "tool-call"
-                                              : message.kind === "tool_result"
-                                                ? "tool-result"
-                                                : message.kind}
-                                          .message=${message}
-                                          .devMode=${this.devMode}
-                                          .expandedToolResultKeys=${this
-                                              .expandedToolResultKeys}
-                                          .onSubmitMessage=${this
-                                              .#handleMessageSubmit}
-                                          .onToggleToolResultPayload=${this
-                                              .#handleToggleToolResultPayload}
-                                      ></gs-chat-message>
-                                  `
-                              )}
-                        <gs-chat-stream
-                            .streamStatus=${this.streamStatus}
-                            .pendingResponsePlaceholder=${snapshot.pendingResponsePlaceholder}
-                            .streamDraftText=${this.streamDraftText}
-                            .streamReasoningText=${this.streamReasoningText}
-                        ></gs-chat-stream>
-                    </section>
+                    <div class="transcript-shell">
+                        <section
+                            class="transcript"
+                            @scroll=${this.#handleTranscriptScroll}
+                        >
+                            ${snapshot.messages.length === 0
+                                ? this.#renderEmptyState()
+                                : repeat(
+                                      snapshot.messages,
+                                      (message) => message.id,
+                                      (message) => html`
+                                          <gs-chat-message
+                                              class=${message.kind ===
+                                              "tool_call"
+                                                  ? "tool-call"
+                                                  : message.kind ===
+                                                      "tool_result"
+                                                    ? "tool-result"
+                                                    : message.kind}
+                                              .message=${message}
+                                              .devMode=${this.devMode}
+                                              .expandedToolResultKeys=${this
+                                                  .expandedToolResultKeys}
+                                              .onSubmitMessage=${this
+                                                  .#handleMessageSubmit}
+                                              .onToggleToolResultPayload=${this
+                                                  .#handleToggleToolResultPayload}
+                                          ></gs-chat-message>
+                                      `
+                                  )}
+                            <gs-chat-stream
+                                .streamStatus=${this.streamStatus}
+                                .pendingResponsePlaceholder=${snapshot.pendingResponsePlaceholder}
+                                .streamDraftText=${this.streamDraftText}
+                                .streamReasoningText=${this.streamReasoningText}
+                            ></gs-chat-stream>
+                        </section>
+
+                        <button
+                            type="button"
+                            class="btn jump-to-latest ${this
+                                .#isTranscriptPinnedToBottom
+                                ? "is-hidden"
+                                : "is-visible"}"
+                            @click=${this.#jumpToLatest}
+                            aria-hidden=${this.#isTranscriptPinnedToBottom}
+                            tabindex=${this.#isTranscriptPinnedToBottom
+                                ? -1
+                                : 0}
+                        >
+                            ${icon(faChevronDown).node[0]} Jump to latest
+                        </button>
+                    </div>
 
                     <form class="composer" @submit=${this.#handleSubmit}>
                         <div class="composer-row">
@@ -518,24 +604,62 @@ export default class AgentChatPanel extends LitElement {
         void this.controller.sendMessage(trimmed);
     }
 
+    /**
+     * @param {string} value
+     */
     #handleMessageSubmit = (value) => {
         void this.#submitMessage(value);
     };
 
+    /**
+     * @param {string} key
+     */
     #handleToggleToolResultPayload = (key) => {
         this.#toggleToolResultPayload(key);
     };
 
     /**
-     * Scroll the transcript to the newest content.
+     * Track whether the transcript is pinned to the bottom.
+     *
+     * @param {Event} event
      */
-    async #scrollTranscriptToEnd() {
+    #handleTranscriptScroll = (event) => {
+        const transcript = /** @type {HTMLElement} */ (event.currentTarget);
+        const wasPinned = this.#isTranscriptPinnedToBottom;
+        this.#isTranscriptPinnedToBottom =
+            transcript.scrollHeight -
+                transcript.scrollTop -
+                transcript.clientHeight <=
+            24;
+        if (this.#isTranscriptPinnedToBottom !== wasPinned) {
+            this.requestUpdate();
+        }
+    };
+
+    #jumpToLatest = () => {
+        if (!this.#isTranscriptPinnedToBottom) {
+            this.#isTranscriptPinnedToBottom = true;
+            this.requestUpdate();
+        }
+        void this.#scrollTranscriptToEnd("smooth");
+    };
+
+    /**
+     * Scroll the transcript to the newest content.
+     *
+     * @param {"auto" | "smooth"} behavior
+     */
+    async #scrollTranscriptToEnd(behavior = "auto") {
         await this.updateComplete;
         const transcript = this.renderRoot.querySelector(".transcript");
         if (transcript) {
+            if (!this.#isTranscriptPinnedToBottom) {
+                this.#isTranscriptPinnedToBottom = true;
+                this.requestUpdate();
+            }
             transcript.scrollTo({
                 top: transcript.scrollHeight,
-                behavior: "smooth",
+                behavior,
             });
         }
     }
@@ -583,6 +707,7 @@ export default class AgentChatPanel extends LitElement {
         this.streamDraftText = "";
         this.streamReasoningText = "";
         this.streamHeartbeatTick = 0;
+        this.#isTranscriptPinnedToBottom = true;
 
         if (!this.controller) {
             this.snapshot = EMPTY_SNAPSHOT;

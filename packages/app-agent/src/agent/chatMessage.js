@@ -206,7 +206,6 @@ export default class ChatMessageElement extends LitElement {
                 font-size: 0.8rem;
                 line-height: 1.35;
                 overflow-x: auto;
-                white-space: pre-wrap;
             }
 
             .tool-result-toggle {
@@ -283,7 +282,7 @@ export default class ChatMessageElement extends LitElement {
     }
 
     /**
-     * @returns {import("lit").TemplateResult}
+     * @returns {import("lit").TemplateResult | typeof nothing}
      */
     render() {
         const message = this.message;
@@ -389,7 +388,7 @@ export default class ChatMessageElement extends LitElement {
 
     /**
      * @param {ChatMessage} message
-     * @returns {import("lit").TemplateResult}
+     * @returns {import("lit").TemplateResult | typeof nothing}
      */
     #renderToolResult(message) {
         if (!this.devMode) {
@@ -522,13 +521,13 @@ ${this.#formatToolArguments(toolCall.arguments)}</pre
 
     /**
      * @param {string | import("lit").TemplateResult} content
-     * @returns {import("lit").TemplateResult}
+     * @returns {import("lit").TemplateResult | HTMLElement}
      */
     #renderMarkdown(content) {
         if (typeof content === "string") {
-            return html`<div class="markdown">${safeMarkdown(content)}</div>`;
+            return safeMarkdown(content);
         } else {
-            return html`<div class="markdown">${content}</div>`;
+            return content;
         }
     }
 
