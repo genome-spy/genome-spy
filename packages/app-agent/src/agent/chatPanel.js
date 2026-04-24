@@ -12,6 +12,7 @@ import {
 } from "@genome-spy/app/agentShared";
 import { createAgentSessionController } from "./agentSessionController.js";
 import { getAgentState } from "./agentState.js";
+import { repeat } from "lit/directives/repeat.js";
 
 /**
  * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
@@ -702,8 +703,10 @@ export default class AgentChatPanel extends LitElement {
                     <section class="transcript">
                         ${snapshot.messages.length === 0
                             ? this.#renderEmptyState()
-                            : snapshot.messages.map((message) =>
-                                  this.#renderMessage(message)
+                            : repeat(
+                                  snapshot.messages,
+                                  (message) => message.id,
+                                  (message) => this.#renderMessage(message)
                               )}
                         ${this.#hasActiveStream()
                             ? this.#renderActiveTurnDraft(snapshot)

@@ -847,6 +847,46 @@ describe("createAgentSessionController", () => {
         );
     });
 
+    it("keeps message object identity stable across snapshot reads", async () => {
+        const runtime = createRuntimeMock();
+        runtime.requestAgentTurn.mockImplementation((message) => {
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 12,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "answer",
+                    message: "Done",
+                },
+                trace: {
+                    totalMs: 12,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("Show me the current view.");
+
+        const firstSnapshot = controller.getSnapshot();
+        const secondSnapshot = controller.getSnapshot();
+
+        expect(firstSnapshot.messages).toHaveLength(2);
+        expect(secondSnapshot.messages[0]).toBe(firstSnapshot.messages[0]);
+        expect(secondSnapshot.messages[1]).toBe(firstSnapshot.messages[1]);
+    });
+
     it("publishes active-turn stream updates before the final response", async () => {
         const runtime = createRuntimeMock();
         runtime.requestAgentTurn.mockImplementation(

@@ -278,16 +278,7 @@ export class AgentSessionController {
         return {
             ...this.#state,
             expandedViewNodeKeys: Array.from(this.#expandedViewNodeKeys),
-            messages: this.#state.messages.map((message) => ({
-                ...message,
-                lines: message.lines?.slice(),
-                options: message.options?.map((option) => ({
-                    ...option,
-                })),
-                toolCalls: message.toolCalls?.map((toolCall) => ({
-                    ...toolCall,
-                })),
-            })),
+            messages: this.#state.messages.slice(),
         };
     }
 
