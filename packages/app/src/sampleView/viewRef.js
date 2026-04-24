@@ -5,8 +5,8 @@ import {
 } from "@genome-spy/core/view/viewSelectors.js";
 
 /**
- * @typedef {import("./sampleViewTypes.js").ViewRef} ViewRef
- * @typedef {import("./sampleViewTypes.js").ViewSelector} ViewSelector
+ * @typedef {import("./sampleViewTypes.d.ts").ViewRef} ViewRef
+ * @typedef {import("@genome-spy/core/view/viewUtilTypes.d.ts").ViewSelector} ViewSelector
  */
 
 /**

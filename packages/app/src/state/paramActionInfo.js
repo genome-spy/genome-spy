@@ -32,7 +32,7 @@ import { tryResolvePointExpandOriginDatum } from "./selectionExpansionOrigin.js"
  * @typedef {import("./paramProvenanceTypes.d.ts").ParamValue} ParamValue
  * @typedef {import("./paramProvenanceTypes.d.ts").ParamOrigin} ParamOrigin
  * @typedef {import("./paramProvenanceTypes.d.ts").PointExpandOrigin} PointExpandOrigin
- * @typedef {import("./selectionExpansion.js").SelectionExpansionMatcher} SelectionExpansionMatcher
+ * @typedef {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher} SelectionExpansionMatcher
  */
 
 /** @type {WeakMap<import("@reduxjs/toolkit").Action, Map<string, unknown>>} */
@@ -354,7 +354,7 @@ function formatPointExpandMatcher(matcher, context) {
  * "clusterId = C42 (from clicked item)"). The preview is optional and never
  * affects execution semantics.
  *
- * @param {import("./selectionExpansion.js").SelectionExpansionPredicate} predicate
+ * @param {import("./selectionExpansionTypes.d.ts").SelectionExpansionPredicate} predicate
  * @param {{ action: import("@reduxjs/toolkit").Action, root: View | undefined, origin: PointExpandOrigin }} context
  * @returns {import("lit").TemplateResult}
  */
@@ -534,7 +534,7 @@ function formatPointExpandScope(partitionBy) {
 
 /**
  * @param {Extract<ParamValue, { type: "pointExpand" }>} value
- * @returns {SelectionExpansionMatcher}
+ * @returns {import("./selectionExpansionTypes.d.ts").SelectionExpansionMatcher}
  */
 function getPointExpandMatcher(value) {
     if ("rule" in value && value.rule) {
