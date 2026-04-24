@@ -1135,6 +1135,102 @@ describe("createAgentSessionController", () => {
         ).toBe(true);
     });
 
+    it("stops promptly when the same successful tool call repeats", async () => {
+        const runtime = createRuntimeMock();
+        let agentTurnCallCount = 0;
+        const observedHistories = [];
+        runtime.requestAgentTurn.mockImplementation(
+            function (message, history) {
+                agentTurnCallCount += 1;
+                if (message === PREFLIGHT_MESSAGE) {
+                    return Promise.resolve({
+                        response: {
+                            type: "answer",
+                            message: "I'm here",
+                        },
+                        trace: {
+                            totalMs: 9,
+                        },
+                    });
+                }
+
+                observedHistories.push(history);
+
+                if (agentTurnCallCount <= 3) {
+                    return Promise.resolve({
+                        response: {
+                            type: "tool_call",
+                            message: "I will update visibility.",
+                            toolCalls: [
+                                {
+                                    callId: `call-${agentTurnCallCount}`,
+                                    name: "setViewVisibility",
+                                    arguments: {
+                                        selector: {
+                                            scope: [],
+                                            view: "reference-sequence",
+                                        },
+                                        visibility: true,
+                                    },
+                                },
+                            ],
+                        },
+                        trace: {
+                            totalMs: 10,
+                        },
+                    });
+                }
+
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "That view is already visible.",
+                    },
+                    trace: {
+                        totalMs: 10,
+                    },
+                });
+            }
+        );
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("Make the reference sequence visible.");
+
+        const snapshot = controller.getSnapshot();
+        expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(4);
+        expect(runtime.setViewVisibility).toHaveBeenCalledTimes(1);
+        expect(snapshot.status).toBe("ready");
+        expect(snapshot.lastError).toBe("");
+        expect(
+            snapshot.messages.some((message) => message.kind === "error")
+        ).toBe(false);
+        expect(
+            snapshot.messages.some(
+                (message) =>
+                    message.kind === "tool_result" &&
+                    typeof message.text === "string" &&
+                    message.text.includes(
+                        "repeating it unchanged will not help"
+                    )
+            )
+        ).toBe(true);
+        expect(
+            observedHistories.some((history) =>
+                history.some(
+                    (message) =>
+                        message.kind === "tool_result" &&
+                        typeof message.text === "string" &&
+                        message.text.includes(
+                            "repeating it unchanged will not help"
+                        )
+                )
+            )
+        ).toBe(true);
+    });
+
     it("allows several varied rejected tool calls before stopping on budget", async () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;

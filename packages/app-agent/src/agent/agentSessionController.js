@@ -9,6 +9,7 @@ import {
 import {
     MAX_REJECTED_TOOL_CALL_RETRIES,
     MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
+    MAX_REPEATED_SUCCESS_TOOL_CALL_REPEATS,
     serializeToolCallSignature,
 } from "./toolCallLoop.js";
 import { parseClarificationMessage } from "./clarificationMessage.js";
@@ -591,8 +592,9 @@ export class AgentSessionController {
         try {
             let turnProvenanceStartIndex = null;
             let rejectedToolCallRounds = 0;
-            let lastRejectedToolCallSignature = "";
-            let repeatedRejectedToolCallRounds = 0;
+            let lastToolCallSignature = "";
+            let lastToolCallWasRejected = false;
+            let repeatedToolCallRounds = 0;
             let response;
             while (true) {
                 const history = this.#buildHistory();
@@ -635,6 +637,62 @@ export class AgentSessionController {
                     durationMs: elapsedMilliseconds(startedAt),
                 });
 
+                const toolCallSignature = serializeToolCallSignature(
+                    response.toolCalls
+                );
+                const isRepeatedToolCall =
+                    toolCallSignature === lastToolCallSignature;
+                if (isRepeatedToolCall) {
+                    repeatedToolCallRounds += 1;
+                } else {
+                    repeatedToolCallRounds = 0;
+                }
+
+                if (isRepeatedToolCall && lastToolCallWasRejected) {
+                    if (
+                        repeatedToolCallRounds >=
+                        MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS
+                    ) {
+                        const errorMessage =
+                            "The agent repeated the same rejected tool call after validation failure.";
+                        this.#markActiveTurnError(turnId);
+                        this.#appendMessage({
+                            kind: "error",
+                            text: errorMessage,
+                        });
+                        this.#state.status = "error";
+                        this.#state.lastError = errorMessage;
+                        this.#notify();
+                        return;
+                    }
+                } else if (isRepeatedToolCall) {
+                    if (
+                        repeatedToolCallRounds <
+                        MAX_REPEATED_SUCCESS_TOOL_CALL_REPEATS
+                    ) {
+                        this.#appendRepeatedToolCallResult(
+                            response.toolCalls,
+                            elapsedMilliseconds(startedAt)
+                        );
+                        this.#resetActiveTurnDraft(turnId);
+                        this.#state.status = "thinking";
+                        this.#notify();
+                        continue;
+                    } else {
+                        const errorMessage =
+                            "The agent repeated the same tool call without converging.";
+                        this.#markActiveTurnError(turnId);
+                        this.#appendMessage({
+                            kind: "error",
+                            text: errorMessage,
+                        });
+                        this.#state.status = "error";
+                        this.#state.lastError = errorMessage;
+                        this.#notify();
+                        return;
+                    }
+                }
+
                 turnProvenanceStartIndex =
                     this.#maybeCaptureTurnProvenanceStartIndex(
                         turnProvenanceStartIndex,
@@ -652,38 +710,14 @@ export class AgentSessionController {
                 if (this.#state.lastError) {
                     return;
                 }
-                if (executionResults.some((result) => result.rejected)) {
-                    const rejectedToolCallSignature =
-                        serializeToolCallSignature(response.toolCalls);
+                const hadRejectedToolCalls = executionResults.some(
+                    (result) => result.rejected
+                );
+                lastToolCallSignature = toolCallSignature;
+                lastToolCallWasRejected = hadRejectedToolCalls;
+                repeatedToolCallRounds = 0;
+                if (hadRejectedToolCalls) {
                     rejectedToolCallRounds += 1;
-                    if (
-                        rejectedToolCallSignature ===
-                        lastRejectedToolCallSignature
-                    ) {
-                        repeatedRejectedToolCallRounds += 1;
-                    } else {
-                        lastRejectedToolCallSignature =
-                            rejectedToolCallSignature;
-                        repeatedRejectedToolCallRounds = 0;
-                    }
-
-                    if (
-                        repeatedRejectedToolCallRounds >=
-                        MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS
-                    ) {
-                        const errorMessage =
-                            "The agent repeated the same rejected tool call after validation failure.";
-                        this.#markActiveTurnError(turnId);
-                        this.#appendMessage({
-                            kind: "error",
-                            text: errorMessage,
-                        });
-                        this.#state.status = "error";
-                        this.#state.lastError = errorMessage;
-                        this.#notify();
-                        return;
-                    }
-
                     if (
                         rejectedToolCallRounds > MAX_REJECTED_TOOL_CALL_RETRIES
                     ) {
@@ -1006,6 +1040,31 @@ export class AgentSessionController {
                     ? "Completed 1 action."
                     : "Completed " + actionSummaries.length + " actions.",
             lines: actionSummaries,
+        });
+        this.#notify();
+    }
+
+    /**
+     * Appends a synthetic tool result that tells the model the exact payload
+     * was already executed and should not be repeated unchanged.
+     *
+     * @param {AgentToolCall[]} toolCalls
+     * @param {number | null} durationMs
+     */
+    #appendRepeatedToolCallResult(toolCalls, durationMs) {
+        const toolNames = Array.from(
+            new Set(toolCalls.map((toolCall) => toolCall.name))
+        );
+        const text =
+            toolCalls.length === 1
+                ? `This exact tool call (\`${toolNames[0]}\`) was already executed in the previous round, so repeating it unchanged will not help. Change the arguments or choose a different next action.`
+                : `This exact tool-call batch (\`${toolNames.join(", ")}\`) was already executed in the previous round, so repeating it unchanged will not help. Change the arguments or choose a different next action.`;
+
+        this.#appendMessage({
+            kind: "tool_result",
+            text,
+            toolCallId: toolCalls[0].callId,
+            durationMs,
         });
         this.#notify();
     }
