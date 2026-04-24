@@ -45,6 +45,7 @@ export function resolveMetadataValueMatches(options) {
     const fuzzyMatches = [];
 
     for (const attributeName of sampleHierarchy.sampleMetadata.attributeNames) {
+        /** @type {import("@genome-spy/app/agentShared").AttributeIdentifier} */
         const attribute = {
             type: "SAMPLE_ATTRIBUTE",
             specifier: attributeName,
