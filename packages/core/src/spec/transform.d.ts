@@ -11,6 +11,12 @@ export type Field = string;
 export interface TransformParamsBase {
     /** The type of the transform to be applied */
     type: string;
+
+    /**
+     * A description of the transform step. Can be used for documentation
+     * and agent context.
+     */
+    description?: string;
 }
 
 export interface IdentifierParams extends TransformParamsBase {
