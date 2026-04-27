@@ -1,3 +1,5 @@
+import { embed } from "@genome-spy/core";
+
 /**
  * @param {ShadowRoot | HTMLElement | DocumentFragment} renderRoot
  * @param {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} api
@@ -33,4 +35,19 @@ export function downloadChartPng(
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+/**
+ * @param {HTMLElement} container
+ * @param {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} plot
+ * @returns {Promise<import("@genome-spy/core/types/embedApi.js").EmbedResult>}
+ */
+export async function embedRenderablePlot(container, plot) {
+    const api = await embed(container, plot.spec);
+
+    for (const data of plot.namedData) {
+        api.updateNamedData(data.name, data.rows);
+    }
+
+    return api;
 }
