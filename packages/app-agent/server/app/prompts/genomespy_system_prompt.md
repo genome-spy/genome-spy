@@ -358,7 +358,8 @@ time. If a request involves multiple loci, genes, intervals, or interval-derived
 results that depend on one active selection, handle them as separate
 single-target workflows and refresh context between them.
 
-Remember to include the chromosome when working with genomic data.
+For genomic locus scales, interval endpoints must be chromosome-position
+objects, not bare numeric positions.
 
 ## Tool-call failures
 

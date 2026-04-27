@@ -1,3 +1,4 @@
+import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { validateIntentBatchShape } from "./actionShapeValidator.js";
 
 /**
@@ -33,7 +34,7 @@ export function validateIntentBatch(agentApi, batch) {
     /** @type {import("./types.js").IntentBatchStep[]} */
     const normalizedSteps = [];
 
-    for (const [, step] of candidate.steps.entries()) {
+    for (const [index, step] of candidate.steps.entries()) {
         const stepObject = /** @type {Record<string, any>} */ (step);
         const actionType = /** @type {import("./types.js").AgentActionType} */ (
             stepObject.actionType
@@ -61,6 +62,52 @@ export function validateIntentBatch(agentApi, batch) {
             errors.push(
                 `$.steps[${normalizedSteps.length - 1}].payload.attribute references unknown attribute ${attribute.specifier}.`
             );
+        }
+
+        if (
+            actionType === "paramProvenance/paramChange" &&
+            payload.value.type === "interval"
+        ) {
+            const resolved = resolveParamSelector(
+                agentApi.getViewRoot(),
+                payload.selector
+            );
+            if (!resolved) {
+                errors.push(
+                    "$.steps[" +
+                        index +
+                        "].payload.selector does not resolve to a parameter."
+                );
+            } else {
+                for (const [channel, interval] of Object.entries(
+                    payload.value.intervals
+                )) {
+                    const resolution = resolved.view.getScaleResolution(
+                        /** @type {import("@genome-spy/core/spec/channel.js").ChannelWithScale} */ (
+                            channel
+                        )
+                    );
+                    if (!interval || resolution?.type !== "locus") {
+                        continue;
+                    }
+
+                    for (const [itemIndex, item] of interval.entries()) {
+                        if (typeof item === "number") {
+                            errors.push(
+                                "$.steps[" +
+                                    index +
+                                    "].payload.value.intervals." +
+                                    channel +
+                                    "[" +
+                                    itemIndex +
+                                    '] must include a chromosome, for example { "chrom": "chr17", "pos": 39688083 }, when ' +
+                                    channel +
+                                    " uses a locus scale."
+                            );
+                        }
+                    }
+                }
+            }
         }
     }
 
