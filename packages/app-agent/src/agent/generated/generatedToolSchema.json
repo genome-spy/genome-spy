@@ -1885,7 +1885,7 @@
       ],
       "properties": {
         "actions": {
-          "description": "Ordered actions to execute.",
+          "description": "Ordered actions to execute. Cannot be empty or missing.",
           "items": {
             "$ref": "#/definitions/AgentIntentBatchStep"
           },

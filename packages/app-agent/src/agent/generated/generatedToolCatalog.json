@@ -232,7 +232,7 @@
       {
         "name": "actions",
         "type": "AgentIntentActionRequest[\"actions\"]",
-        "description": "Ordered actions to execute.",
+        "description": "Ordered actions to execute. Cannot be empty or missing.",
         "required": true
       },
       {

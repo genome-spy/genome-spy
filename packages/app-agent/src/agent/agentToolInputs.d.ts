@@ -274,7 +274,7 @@ export interface GetActionDetailsToolInput {
  */
 export interface SubmitIntentActionsToolInput {
     /**
-     * Ordered actions to execute.
+     * Ordered actions to execute. Cannot be empty or missing.
      */
     actions: AgentIntentActionRequest["actions"];
 
