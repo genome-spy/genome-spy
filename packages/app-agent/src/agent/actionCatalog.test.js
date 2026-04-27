@@ -95,6 +95,18 @@ describe("actionCatalog", () => {
         ).toBe("paramProvenance/paramChange");
     });
 
+    it("includes a valid literal-value paramChange example", () => {
+        const entry = getActionCatalogEntry("paramProvenance/paramChange");
+
+        expect(entry.examples).toContainEqual({
+            selector: { scope: [], param: "semanticZoomSlider" },
+            value: {
+                type: "value",
+                value: 0,
+            },
+        });
+    });
+
     it("exposes payload field metadata for quantitative filters", () => {
         const entry = getActionCatalogEntry("sampleView/filterByQuantitative");
 

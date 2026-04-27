@@ -26,6 +26,7 @@ export const paramProvenanceSlice = createSlice({
          * @agent.payloadType ParamProvenanceEntry
          * @agent.category provenance
          * @example {"selector":{"scope":[],"param":"brush"},"value":{"type":"interval","intervals":{"x":[{"chrom":"chr17","pos":7685012},{"chrom":"chr17","pos":7690727}]}}}
+         * @example {"selector":{"scope":[],"param":"semanticZoomSlider"},"value":{"type":"value","value":0}}
          */
         paramChange: (
             state,

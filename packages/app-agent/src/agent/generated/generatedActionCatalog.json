@@ -602,6 +602,16 @@
             ]
           }
         }
+      },
+      {
+        "selector": {
+          "scope": [],
+          "param": "semanticZoomSlider"
+        },
+        "value": {
+          "type": "value",
+          "value": 0
+        }
       }
     ]
   }
