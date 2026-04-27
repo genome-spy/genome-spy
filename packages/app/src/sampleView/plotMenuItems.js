@@ -1,7 +1,10 @@
 import { DIVIDER } from "../utils/ui/contextMenu.js";
-import showHierarchyBoxplotDialog from "../charts/hierarchyBoxplotDialog.js";
-import showHierarchyBarplotDialog from "../charts/hierarchyBarplotDialog.js";
-import showHierarchyScatterplotDialog from "../charts/hierarchyScatterplotDialog.js";
+import { showPlotDialog } from "../charts/plotDialog.js";
+import {
+    buildHierarchyBarplot,
+    buildHierarchyBoxplot,
+    buildHierarchyScatterplot,
+} from "../charts/hierarchySampleAttributePlots.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -62,10 +65,13 @@ export function appendPlotMenuItems(
         items.push({
             label: "Show bar plot...",
             callback: () =>
-                showHierarchyBarplotDialog(
-                    attributeInfo,
-                    sampleView.sampleHierarchy,
-                    sampleView.compositeAttributeInfoSource
+                showPlotDialog(
+                    buildHierarchyBarplot({
+                        attributeInfo,
+                        sampleHierarchy: sampleView.sampleHierarchy,
+                        attributeInfoSource:
+                            sampleView.compositeAttributeInfoSource,
+                    })
                 ),
         });
         return;
@@ -89,10 +95,13 @@ export function appendPlotMenuItems(
     items.push({
         label: "Show boxplot...",
         callback: () =>
-            showHierarchyBoxplotDialog(
-                attributeInfo,
-                sampleView.sampleHierarchy,
-                sampleView.compositeAttributeInfoSource
+            showPlotDialog(
+                buildHierarchyBoxplot({
+                    attributeInfo,
+                    sampleHierarchy: sampleView.sampleHierarchy,
+                    attributeInfoSource:
+                        sampleView.compositeAttributeInfoSource,
+                })
             ),
     });
 
@@ -107,12 +116,15 @@ export function appendPlotMenuItems(
             ...metadataAttributeInfos.map((info) => ({
                 label: info.emphasizedName,
                 callback: () =>
-                    showHierarchyScatterplotDialog(
-                        attributeInfo,
-                        info,
-                        sampleView.sampleHierarchy,
-                        sampleView.compositeAttributeInfoSource,
-                        groupColorRange
+                    showPlotDialog(
+                        buildHierarchyScatterplot({
+                            xAttributeInfo: attributeInfo,
+                            yAttributeInfo: info,
+                            sampleHierarchy: sampleView.sampleHierarchy,
+                            attributeInfoSource:
+                                sampleView.compositeAttributeInfoSource,
+                            colorScaleRange: groupColorRange,
+                        })
                     ),
             })),
         ],
