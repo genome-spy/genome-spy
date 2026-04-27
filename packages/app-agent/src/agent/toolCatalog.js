@@ -105,10 +105,14 @@ export function formatToolCallRejection(toolName, errors) {
         .map((field) => `${field.name} (${field.type})`)
         .join(", ");
     const exampleInput = JSON.stringify(tool.exampleInput, null, 2);
+    const fieldSummary =
+        expectedFields.length > 0
+            ? `${tool.toolName} expects ${expectedFields}.`
+            : `${tool.toolName} expects structured arguments that match the tool schema.`;
 
     return [
         "Tool call was incorrect and rejected. Correct it before trying again.",
-        `${tool.toolName} expects ${expectedFields}.`,
+        fieldSummary,
         "Example input:",
         exampleInput,
         validationText,

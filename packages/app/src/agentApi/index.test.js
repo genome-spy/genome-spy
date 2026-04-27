@@ -1,4 +1,48 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("../charts/hierarchySampleAttributePlots.js", () => ({
+    buildHierarchyBarplot: vi.fn(() => ({
+        kind: "sample_attribute_plot",
+        plotType: "barplot",
+        title: "Bar plot",
+        spec: {},
+        namedData: [],
+        filename: "genomespy-barplot.png",
+        summary: {
+            groupCount: 1,
+            rowCount: 0,
+        },
+    })),
+    buildHierarchyBoxplot: vi.fn(() => ({
+        kind: "sample_attribute_plot",
+        plotType: "boxplot",
+        title: "Boxplot",
+        spec: {},
+        namedData: [],
+        filename: "genomespy-boxplot.png",
+        summary: {
+            groupCount: 1,
+            rowCount: 0,
+        },
+    })),
+    buildHierarchyScatterplot: vi.fn(() => ({
+        kind: "sample_attribute_plot",
+        plotType: "scatterplot",
+        title: "Scatterplot",
+        spec: {},
+        namedData: [],
+        filename: "genomespy-scatterplot.png",
+        summary: {
+            groupCount: 1,
+            rowCount: 0,
+        },
+    })),
+}));
+
+import {
+    buildHierarchyBarplot,
+    buildHierarchyBoxplot,
+    buildHierarchyScatterplot,
+} from "../charts/hierarchySampleAttributePlots.js";
 import { createAgentApi } from "./index.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
@@ -149,5 +193,115 @@ describe("createAgentApi", () => {
         expect(app.provenance.activateState).toHaveBeenCalledWith("p2");
         expect(agentApi.jumpToInitialProvenanceState()).toBe(false);
         expect(app.provenance.activateInitialState).toHaveBeenCalledTimes(1);
+    });
+
+    it("builds sample attribute plots through the current sample view", () => {
+        app.getSampleView.mockReturnValue({
+            sampleHierarchy: {
+                groupMetadata: [
+                    {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "diagnosis",
+                        },
+                    },
+                ],
+            },
+            compositeAttributeInfoSource: {
+                getAttributeInfo: vi.fn((attribute) => {
+                    if (attribute.specifier === "diagnosis") {
+                        return {
+                            attribute,
+                            title: "Diagnosis",
+                            emphasizedName: "Diagnosis",
+                            type: "nominal",
+                            scale: {
+                                range: () => ["#ff0000", "#00ff00"],
+                            },
+                        };
+                    }
+
+                    if (attribute.specifier === "age") {
+                        return {
+                            attribute,
+                            title: "Age",
+                            emphasizedName: "Age",
+                            type: "quantitative",
+                        };
+                    }
+
+                    if (attribute.specifier === "purity") {
+                        return {
+                            attribute,
+                            title: "Purity",
+                            emphasizedName: "Purity",
+                            type: "quantitative",
+                        };
+                    }
+
+                    return undefined;
+                }),
+            },
+        });
+
+        const agentApi = createAgentApi(app);
+
+        const barPlot = agentApi.buildSampleAttributePlot({
+            plotType: "bar",
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "diagnosis",
+            },
+        });
+        const boxplot = agentApi.buildSampleAttributePlot({
+            plotType: "boxplot",
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "age",
+            },
+        });
+        const scatterplot = agentApi.buildSampleAttributePlot({
+            plotType: "scatterplot",
+            xAttribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "age",
+            },
+            yAttribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "purity",
+            },
+        });
+
+        expect(barPlot).toMatchObject({
+            kind: "sample_attribute_plot",
+            plotType: "barplot",
+        });
+        expect(boxplot).toMatchObject({
+            kind: "sample_attribute_plot",
+            plotType: "boxplot",
+        });
+        expect(scatterplot).toMatchObject({
+            kind: "sample_attribute_plot",
+            plotType: "scatterplot",
+        });
+        expect(buildHierarchyBarplot).toHaveBeenCalledWith(
+            expect.objectContaining({
+                sampleHierarchy: expect.objectContaining({
+                    groupMetadata: expect.any(Array),
+                }),
+            })
+        );
+        expect(buildHierarchyBoxplot).toHaveBeenCalledWith(
+            expect.objectContaining({
+                sampleHierarchy: expect.objectContaining({
+                    groupMetadata: expect.any(Array),
+                }),
+            })
+        );
+        expect(buildHierarchyScatterplot).toHaveBeenCalledWith(
+            expect.objectContaining({
+                colorScaleRange: ["#ff0000", "#00ff00"],
+            })
+        );
     });
 });

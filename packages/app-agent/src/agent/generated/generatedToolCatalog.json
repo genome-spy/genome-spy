@@ -257,5 +257,23 @@
       "note": "Group the cohort by quartiles."
     },
     "strict": false
+  },
+  {
+    "toolName": "showSampleAttributePlot",
+    "description": "Show an exploratory sample-attribute plot in the chat transcript.",
+    "inputType": "ShowSampleAttributePlotToolInput",
+    "inputFields": [],
+    "exampleInput": {
+      "plotType": "scatterplot",
+      "xAttribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "age"
+      },
+      "yAttribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "purity"
+      }
+    },
+    "strict": true
   }
 ]

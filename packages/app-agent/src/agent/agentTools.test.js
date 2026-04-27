@@ -200,6 +200,28 @@ function createRuntimeStub() {
         getActionHistory: vi.fn(() => []),
         jumpToProvenanceState: vi.fn(() => true),
         jumpToInitialProvenanceState: vi.fn(() => true),
+        buildSampleAttributePlot: vi.fn((request) => ({
+            kind: "sample_attribute_plot",
+            plotType:
+                request.plotType === "bar"
+                    ? "barplot"
+                    : request.plotType === "boxplot"
+                      ? "boxplot"
+                      : "scatterplot",
+            title:
+                request.plotType === "scatterplot"
+                    ? "Scatterplot of age vs purity"
+                    : request.plotType === "boxplot"
+                      ? "Boxplot of age"
+                      : "Bar plot of diagnosis",
+            spec: {},
+            namedData: [],
+            filename: "genomespy-plot.png",
+            summary: {
+                groupCount: 2,
+                rowCount: 12,
+            },
+        })),
     };
 
     return {
@@ -341,6 +363,60 @@ describe("agentTools", () => {
             })
         );
         expect(runtime.getAgentVolatileContext).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows sample attribute plots through the host API", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.showSampleAttributePlot(runtime, {
+            plotType: "scatterplot",
+            xAttribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "age",
+            },
+            yAttribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "purity",
+            },
+        });
+
+        expect(runtime.agentApi.buildSampleAttributePlot).toHaveBeenCalledWith({
+            plotType: "scatterplot",
+            xAttribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "age",
+            },
+            yAttribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "purity",
+            },
+        });
+        expect(result).toEqual(
+            expect.objectContaining({
+                text: "Generated Scatterplot of age vs purity with 2 groups and 12 rows.",
+                content: expect.objectContaining({
+                    kind: "sample_attribute_plot",
+                    plotType: "scatterplot",
+                }),
+            })
+        );
+    });
+
+    it("rejects when the host cannot build a sample attribute plot", () => {
+        const runtime = createRuntimeStub();
+        runtime.agentApi.buildSampleAttributePlot.mockReturnValue(undefined);
+        const tools = agentTools;
+
+        expect(() =>
+            tools.showSampleAttributePlot(runtime, {
+                plotType: "bar",
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+            })
+        ).toThrow(ToolCallRejectionError);
     });
 
     it("summarizes categorical metadata attributes", () => {

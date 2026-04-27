@@ -290,6 +290,9 @@
         "setViewVisibility": {
           "$ref": "#/definitions/SetViewVisibilityToolInput"
         },
+        "showSampleAttributePlot": {
+          "$ref": "#/definitions/ShowSampleAttributePlotToolInput"
+        },
         "submitIntentActions": {
           "$ref": "#/definitions/SubmitIntentActionsToolInput"
         }
@@ -305,7 +308,8 @@
         "resolveMetadataAttributeValues",
         "searchViewDatums",
         "getActionDetails",
-        "submitIntentActions"
+        "submitIntentActions",
+        "showSampleAttributePlot"
       ],
       "type": "object"
     },
@@ -1322,6 +1326,55 @@
       "required": ["type", "specifier"],
       "type": "object"
     },
+    "SampleAttributePlotRequest": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "attribute": {
+              "$ref": "#/definitions/AttributeIdentifier"
+            },
+            "plotType": {
+              "const": "bar",
+              "type": "string"
+            }
+          },
+          "required": ["plotType", "attribute"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "attribute": {
+              "$ref": "#/definitions/AttributeIdentifier"
+            },
+            "plotType": {
+              "const": "boxplot",
+              "type": "string"
+            }
+          },
+          "required": ["plotType", "attribute"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "plotType": {
+              "const": "scatterplot",
+              "type": "string"
+            },
+            "xAttribute": {
+              "$ref": "#/definitions/AttributeIdentifier"
+            },
+            "yAttribute": {
+              "$ref": "#/definitions/AttributeIdentifier"
+            }
+          },
+          "required": ["plotType", "xAttribute", "yAttribute"],
+          "type": "object"
+        }
+      ]
+    },
     "SampleAttributeType": {
       "enum": ["nominal", "ordinal", "quantitative"],
       "type": "string"
@@ -1851,6 +1904,23 @@
       },
       "required": ["selector", "visibility"],
       "type": "object"
+    },
+    "ShowSampleAttributePlotToolInput": {
+      "$ref": "#/definitions/SampleAttributePlotRequest",
+      "description": "Show an exploratory sample-attribute plot in the chat transcript. Use a bar plot for categorical attributes, a boxplot for one quantitative attribute across the current groups, and a scatterplot for two quantitative attributes.",
+      "examples": [
+        {
+          "plotType": "scatterplot",
+          "xAttribute": {
+            "specifier": "age",
+            "type": "SAMPLE_ATTRIBUTE"
+          },
+          "yAttribute": {
+            "specifier": "purity",
+            "type": "SAMPLE_ATTRIBUTE"
+          }
+        }
+      ]
     },
     "SortBy": {
       "additionalProperties": false,

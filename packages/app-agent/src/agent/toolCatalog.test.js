@@ -14,6 +14,7 @@ describe("toolCatalog", () => {
         expect(new Set(toolNames).size).toBe(toolNames.length);
         expect(toolNames).toContain("jumpToInitialProvenanceState");
         expect(toolNames).toContain("resolveMetadataAttributeValues");
+        expect(toolNames).toContain("showSampleAttributePlot");
         expect(toolNames).toContain("submitIntentActions");
     });
 
@@ -27,6 +28,9 @@ describe("toolCatalog", () => {
         );
         const getActionDetails = toolDefinitions.find(
             (tool) => tool.name === "getActionDetails"
+        );
+        const showSampleAttributePlot = toolDefinitions.find(
+            (tool) => tool.name === "showSampleAttributePlot"
         );
 
         expect(jumpToInitialProvenanceState).toMatchObject({
@@ -47,6 +51,10 @@ describe("toolCatalog", () => {
             parameters: {
                 required: ["actionType", "includeSchema"],
             },
+        });
+        expect(showSampleAttributePlot).toMatchObject({
+            name: "showSampleAttributePlot",
+            strict: true,
         });
         expect(JSON.stringify(toolDefinitions)).not.toContain(
             "AgentIntentBatchStep"

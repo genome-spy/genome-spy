@@ -10,6 +10,7 @@ import {
     formStyles,
     safeMarkdown,
 } from "@genome-spy/app/agentShared";
+import { embedRenderablePlot } from "@genome-spy/app/agentApi";
 
 /**
  * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
@@ -30,6 +31,7 @@ import {
  *         | "result"
  *         | "tool_call"
  *         | "tool_result"
+ *         | "plot"
  *         | "error";
  *     text?: string | import("lit").TemplateResult;
  *     lines?: IntentBatchSummaryLine[];
@@ -88,6 +90,10 @@ export default class ChatMessageElement extends LitElement {
 
             :host(.tool-result) {
                 --accent-color: #4f8a4f;
+            }
+
+            :host(.plot) {
+                --accent-color: #8b6b2d;
             }
 
             .message {
@@ -159,6 +165,19 @@ export default class ChatMessageElement extends LitElement {
                 background-color: color-mix(
                     in oklab,
                     var(--accent-color) 7%,
+                    white
+                );
+            }
+
+            .message.plot {
+                border-color: color-mix(
+                    in oklab,
+                    var(--accent-color) 28%,
+                    white
+                );
+                background-color: color-mix(
+                    in oklab,
+                    var(--accent-color) 8%,
                     white
                 );
             }
@@ -247,6 +266,36 @@ export default class ChatMessageElement extends LitElement {
                 font-size: 0.78rem;
             }
 
+            .plot-body {
+                display: grid;
+                gap: 0.5rem;
+                min-width: 0;
+            }
+
+            .plot-title {
+                font-size: 0.95rem;
+                font-weight: 700;
+                color: #222;
+            }
+
+            .plot-summary {
+                color: #6d6d6d;
+                font-size: 0.82rem;
+            }
+
+            .plot-shell {
+                inline-size: 100%;
+                min-inline-size: 0;
+                aspect-ratio: 16 / 10;
+                display: flex;
+            }
+
+            .plot-shell .chart-container {
+                flex: 1;
+                min-width: 0;
+                min-height: 0;
+            }
+
             .message-lines {
                 display: grid;
                 gap: 0.4rem;
@@ -281,6 +330,12 @@ export default class ChatMessageElement extends LitElement {
         this.onToggleToolResultPayload = undefined;
     }
 
+    /** @type {number | null} */
+    #embeddedPlotMessageId = null;
+
+    /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} */
+    #embeddedPlotApi = null;
+
     /**
      * @returns {import("lit").TemplateResult | typeof nothing}
      */
@@ -299,6 +354,8 @@ export default class ChatMessageElement extends LitElement {
                 return this.#renderError(message);
             case "tool_result":
                 return this.#renderToolResult(message);
+            case "plot":
+                return this.#renderPlot(message);
             case "tool_call":
                 return this.#renderToolCall(message);
             case "assistant":
@@ -306,6 +363,22 @@ export default class ChatMessageElement extends LitElement {
             default:
                 return this.#renderUser(message);
         }
+    }
+
+    /**
+     * @param {Map<string, unknown>} changedProperties
+     */
+    updated(changedProperties) {
+        super.updated(changedProperties);
+
+        if (changedProperties.has("message")) {
+            void this.#syncPlotEmbedding();
+        }
+    }
+
+    disconnectedCallback() {
+        this.#clearPlotEmbedding();
+        super.disconnectedCallback();
     }
 
     /**
@@ -384,6 +457,89 @@ export default class ChatMessageElement extends LitElement {
                 <div class="message-text">${message.text ?? ""}</div>
             </article>
         `;
+    }
+
+    /**
+     * @param {ChatMessage} message
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderPlot(message) {
+        const plot =
+            /** @type {import("@genome-spy/app/agentApi").SampleAttributePlot} */ (
+                message.content
+            );
+
+        return html`
+            <article class="message plot">
+                <div class="message-title">
+                    ${icon(faInfoCircle).node[0]} Plot
+                </div>
+                <div class="plot-body">
+                    <div class="plot-title">${plot.title}</div>
+                    ${message.text
+                        ? html`<div class="message-text">
+                              ${this.#renderMarkdown(message.text)}
+                          </div>`
+                        : nothing}
+                    <div class="plot-summary">
+                        ${plot.summary.groupCount} groups ·
+                        ${plot.summary.rowCount} rows
+                    </div>
+                    <div class="plot-shell">
+                        <div class="chart-container"></div>
+                    </div>
+                </div>
+            </article>
+        `;
+    }
+
+    async #syncPlotEmbedding() {
+        try {
+            const message = this.message;
+            if (!message || message.kind !== "plot") {
+                this.#clearPlotEmbedding();
+                return;
+            }
+
+            const plot =
+                /** @type {import("@genome-spy/app/agentApi").SampleAttributePlot} */ (
+                    message.content
+                );
+            if (this.#embeddedPlotMessageId === message.id) {
+                return;
+            }
+
+            this.#clearPlotEmbedding();
+
+            const container = /** @type {HTMLElement | null} */ (
+                this.renderRoot.querySelector(".chart-container")
+            );
+            if (!container) {
+                return;
+            }
+
+            const plotMessageId = message.id;
+            const api = await embedRenderablePlot(container, plot);
+            if (
+                this.message?.kind !== "plot" ||
+                this.message.id !== plotMessageId
+            ) {
+                api.finalize();
+                return;
+            }
+
+            this.#embeddedPlotMessageId = plotMessageId;
+            this.#embeddedPlotApi = api;
+        } catch (error) {
+            this.#clearPlotEmbedding();
+            console.error("Failed to embed sample attribute plot:", error);
+        }
+    }
+
+    #clearPlotEmbedding() {
+        this.#embeddedPlotApi?.finalize();
+        this.#embeddedPlotApi = null;
+        this.#embeddedPlotMessageId = null;
     }
 
     /**

@@ -150,6 +150,32 @@ export const agentTools = {
         }
     },
 
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").ShowSampleAttributePlotToolInput} input
+     */
+    showSampleAttributePlot(runtime, input) {
+        try {
+            const plot = runtime.agentApi.buildSampleAttributePlot(input);
+            if (!plot) {
+                throw new Error(
+                    "The requested sample attribute plot could not be built."
+                );
+            }
+
+            return {
+                text:
+                    `Generated ${plot.title} with ${plot.summary.groupCount} groups ` +
+                    `and ${plot.summary.rowCount} rows.`,
+                content: plot,
+            };
+        } catch (error) {
+            throw new ToolCallRejectionError(
+                error instanceof Error ? error.message : String(error)
+            );
+        }
+    },
+
     getMetadataAttributeSummary: getMetadataAttributeSummaryTool,
     resolveMetadataAttributeValues: resolveMetadataAttributeValuesTool,
     searchViewDatums: searchViewDatumsTool,

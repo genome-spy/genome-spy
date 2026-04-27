@@ -1,5 +1,6 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
 import type { AggregationOp, ViewSelector } from "@genome-spy/app/agentShared";
+import type { SampleAttributePlotRequest } from "@genome-spy/app/agentApi";
 
 /*
  * Source of truth for agent-visible tool input shapes and their field
@@ -285,6 +286,27 @@ export interface SubmitIntentActionsToolInput {
 }
 
 /**
+ * Show an exploratory sample-attribute plot in the chat transcript. Use a bar
+ * plot for categorical attributes, a boxplot for one quantitative attribute
+ * across the current groups, and a scatterplot for two quantitative
+ * attributes.
+ *
+ * @example
+ * {
+ *   "plotType": "scatterplot",
+ *   "xAttribute": {
+ *     "type": "SAMPLE_ATTRIBUTE",
+ *     "specifier": "age"
+ *   },
+ *   "yAttribute": {
+ *     "type": "SAMPLE_ATTRIBUTE",
+ *     "specifier": "purity"
+ *   }
+ * }
+ */
+export type ShowSampleAttributePlotToolInput = SampleAttributePlotRequest;
+
+/**
  * Tool inputs exposed to the agent.
  */
 export interface AgentToolInputs {
@@ -299,4 +321,5 @@ export interface AgentToolInputs {
     searchViewDatums: SearchViewDatumsToolInput;
     getActionDetails: GetActionDetailsToolInput;
     submitIntentActions: SubmitIntentActionsToolInput;
+    showSampleAttributePlot: ShowSampleAttributePlotToolInput;
 }

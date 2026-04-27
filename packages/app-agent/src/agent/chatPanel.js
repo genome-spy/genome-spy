@@ -450,13 +450,9 @@ export default class AgentChatPanel extends LitElement {
                                       (message) => message.id,
                                       (message) => html`
                                           <gs-chat-message
-                                              class=${message.kind ===
-                                              "tool_call"
-                                                  ? "tool-call"
-                                                  : message.kind ===
-                                                      "tool_result"
-                                                    ? "tool-result"
-                                                    : message.kind}
+                                              class=${this.#messageClass(
+                                                  message.kind
+                                              )}
                                               .message=${message}
                                               .devMode=${this.devMode}
                                               .expandedToolResultKeys=${this
@@ -515,6 +511,22 @@ export default class AgentChatPanel extends LitElement {
                 </div>
             </section>
         `;
+    }
+
+    /**
+     * @param {import("./chatMessage.js").ChatMessage["kind"]} kind
+     * @returns {string}
+     */
+    #messageClass(kind) {
+        if (kind === "tool_call") {
+            return "tool-call";
+        }
+
+        if (kind === "tool_result") {
+            return "tool-result";
+        }
+
+        return kind;
     }
 
     /**

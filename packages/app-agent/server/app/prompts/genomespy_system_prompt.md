@@ -174,6 +174,14 @@ If a tool call succeeds but does not produce the missing state or data needed
 to finish the task, do not repeat the same call unchanged. Choose a different
 next action or change the relevant state first.
 
+## Sample attribute plots
+
+Use `showSampleAttributePlot` for exploratory sample metadata plots. Use a bar
+plot for categorical attributes, a boxplot for one quantitative attribute
+across the current groups, and a scatterplot for two quantitative attributes.
+The plot is transient chat output only. Do not use provenance or visibility
+tools for it.
+
 If a request mentions multiple targets but the workflow depends on a single
 mutable selection, parameter, brush, or other stateful context, do not treat it
 as one combined operation. Break it into sequential single-target subgoals and

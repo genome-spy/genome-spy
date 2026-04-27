@@ -1,12 +1,20 @@
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector as resolveCoreViewSelector } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    buildHierarchyBarplot,
+    buildHierarchyBoxplot,
+    buildHierarchyScatterplot,
+} from "../charts/hierarchySampleAttributePlots.js";
+import { getGroupColorRange } from "../charts/sampleAttributePlotUtils.js";
+export { embedRenderablePlot } from "../charts/chartDialogUtils.js";
 
 // `agentApi` exposes App internals to the agent and plugin surfaces only.
 // Do not add App code here that the rest of App should depend on.
 
 /**
  * @typedef {import("./index.js").AgentApi} AgentApi
+ * @typedef {import("../charts/sampleAttributePlotTypes.d.ts").SampleAttributePlotRequest} SampleAttributePlotRequest
  */
 
 /**
@@ -103,6 +111,99 @@ export function createAgentApi(app) {
 
         getPresentProvenanceState() {
             return app.provenance.getPresentState();
+        },
+
+        /**
+         * @param {SampleAttributePlotRequest} request
+         */
+        buildSampleAttributePlot(request) {
+            const sampleView = app.getSampleView();
+            if (!sampleView) {
+                throw new Error("No sample view is available.");
+            }
+
+            const attributeInfoSource = sampleView.compositeAttributeInfoSource;
+            const plotType = request.plotType;
+
+            if (plotType === "bar") {
+                const attributeInfo = attributeInfoSource.getAttributeInfo(
+                    request.attribute
+                );
+                if (!attributeInfo) {
+                    throw new Error(
+                        "Could not resolve the requested sample attribute."
+                    );
+                }
+
+                if (
+                    attributeInfo.type !== "nominal" &&
+                    attributeInfo.type !== "ordinal"
+                ) {
+                    throw new Error(
+                        "Bar plots require a categorical sample attribute."
+                    );
+                }
+
+                return buildHierarchyBarplot({
+                    attributeInfo,
+                    sampleHierarchy: sampleView.sampleHierarchy,
+                    attributeInfoSource,
+                });
+            } else if (plotType === "boxplot") {
+                const attributeInfo = attributeInfoSource.getAttributeInfo(
+                    request.attribute
+                );
+                if (!attributeInfo) {
+                    throw new Error(
+                        "Could not resolve the requested sample attribute."
+                    );
+                }
+
+                if (attributeInfo.type !== "quantitative") {
+                    throw new Error(
+                        "Box plots require a quantitative sample attribute."
+                    );
+                }
+
+                return buildHierarchyBoxplot({
+                    attributeInfo,
+                    sampleHierarchy: sampleView.sampleHierarchy,
+                    attributeInfoSource,
+                });
+            } else if (plotType === "scatterplot") {
+                const xAttributeInfo = attributeInfoSource.getAttributeInfo(
+                    request.xAttribute
+                );
+                const yAttributeInfo = attributeInfoSource.getAttributeInfo(
+                    request.yAttribute
+                );
+                if (!xAttributeInfo || !yAttributeInfo) {
+                    throw new Error(
+                        "Could not resolve one of the requested sample attributes."
+                    );
+                }
+
+                if (
+                    xAttributeInfo.type !== "quantitative" ||
+                    yAttributeInfo.type !== "quantitative"
+                ) {
+                    throw new Error(
+                        "Scatter plots require two quantitative sample attributes."
+                    );
+                }
+
+                return buildHierarchyScatterplot({
+                    xAttributeInfo,
+                    yAttributeInfo,
+                    sampleHierarchy: sampleView.sampleHierarchy,
+                    attributeInfoSource,
+                    colorScaleRange: getGroupColorRange(sampleView),
+                });
+            }
+
+            throw new Error(
+                "Unsupported sample attribute plot type: " + plotType
+            );
         },
 
         /**

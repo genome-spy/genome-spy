@@ -14,6 +14,7 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
  *         setViewVisibility: ReturnType<typeof vi.fn>;
  *         jumpToProvenanceState: ReturnType<typeof vi.fn>;
  *         jumpToInitialProvenanceState: ReturnType<typeof vi.fn>;
+ *         buildSampleAttributePlot: ReturnType<typeof vi.fn>;
  *     };
  *     resolveViewSelector: ReturnType<typeof vi.fn>;
  *     setViewVisibility: ReturnType<typeof vi.fn>;
@@ -36,6 +37,18 @@ function createRuntimeMock() {
         ]),
         jumpToProvenanceState: vi.fn(),
         jumpToInitialProvenanceState: vi.fn(),
+        buildSampleAttributePlot: vi.fn(() => ({
+            kind: "sample_attribute_plot",
+            plotType: "scatterplot",
+            title: "Scatterplot of age vs purity",
+            spec: {},
+            namedData: [],
+            filename: "genomespy-scatterplot.png",
+            summary: {
+                groupCount: 2,
+                rowCount: 12,
+            },
+        })),
     };
 
     return {
@@ -257,6 +270,21 @@ describe("createAgentSessionController", () => {
                     toolCallId: "call-1",
                     content: {
                         kind: "intent_batch_result",
+                        batch: {
+                            schemaVersion: 1,
+                            rationale: undefined,
+                            steps: [
+                                {
+                                    actionType: "sampleView/sortBy",
+                                    payload: {
+                                        attribute: {
+                                            type: "SAMPLE_ATTRIBUTE",
+                                            specifier: "age",
+                                        },
+                                    },
+                                },
+                            ],
+                        },
                         provenanceIds: ["provenance-1"],
                     },
                 },
@@ -418,6 +446,133 @@ describe("createAgentSessionController", () => {
             kind: "assistant",
             text: "The collapsed track is a heatmap of copy number changes.",
         });
+    });
+
+    it("renders sample attribute plots without adding them to model history", async () => {
+        const runtime = createRuntimeMock();
+        let agentTurnCallCount = 0;
+        const observedHistories = [];
+        runtime.requestAgentTurn.mockImplementation(
+            (message, history, stream, allowStreaming, contextOptions) => {
+                agentTurnCallCount += 1;
+                observedHistories.push(history);
+
+                if (message === PREFLIGHT_MESSAGE) {
+                    return Promise.resolve({
+                        response: {
+                            type: "answer",
+                            message: "I'm here",
+                        },
+                        trace: {
+                            totalMs: 10,
+                        },
+                    });
+                }
+
+                if (agentTurnCallCount === 2) {
+                    return Promise.resolve({
+                        response: {
+                            type: "tool_call",
+                            message: "I will show a scatterplot.",
+                            toolCalls: [
+                                {
+                                    callId: "call-plot",
+                                    name: "showSampleAttributePlot",
+                                    arguments: {
+                                        plotType: "scatterplot",
+                                        xAttribute: {
+                                            type: "SAMPLE_ATTRIBUTE",
+                                            specifier: "age",
+                                        },
+                                        yAttribute: {
+                                            type: "SAMPLE_ATTRIBUTE",
+                                            specifier: "purity",
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        trace: {
+                            totalMs: 11,
+                        },
+                    });
+                }
+
+                expect(contextOptions.expandedViewNodeKeys).toEqual([]);
+
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "Here is the scatterplot.",
+                    },
+                    trace: {
+                        totalMs: 12,
+                    },
+                });
+            }
+        );
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("Show me age versus purity.");
+
+        const snapshot = controller.getSnapshot();
+        expect(snapshot.messages).toHaveLength(5);
+        expect(snapshot.messages[1]).toMatchObject({
+            kind: "tool_call",
+            text: "I will show a scatterplot.",
+        });
+        expect(snapshot.messages[2]).toMatchObject({
+            kind: "tool_result",
+            text: "Generated Scatterplot of age vs purity with 2 groups and 12 rows.",
+        });
+        expect(snapshot.messages[3]).toMatchObject({
+            kind: "plot",
+            text: "Generated Scatterplot of age vs purity with 2 groups and 12 rows.",
+            content: expect.objectContaining({
+                kind: "sample_attribute_plot",
+                plotType: "scatterplot",
+                title: "Scatterplot of age vs purity",
+            }),
+        });
+        expect(snapshot.messages[4]).toMatchObject({
+            kind: "assistant",
+            text: "Here is the scatterplot.",
+        });
+        expect(observedHistories[2]).toEqual([
+            {
+                id: "2",
+                role: "assistant",
+                text: "I will show a scatterplot.",
+                kind: "tool_call",
+                toolCalls: [
+                    {
+                        callId: "call-plot",
+                        name: "showSampleAttributePlot",
+                        arguments: {
+                            plotType: "scatterplot",
+                            xAttribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                            yAttribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                        },
+                    },
+                ],
+            },
+            {
+                id: "3",
+                role: "tool",
+                text: "Generated Scatterplot of age vs purity with 2 groups and 12 rows.",
+                kind: "tool_result",
+                toolCallId: "call-plot",
+            },
+        ]);
     });
 
     it("summarizes intent batch tool results for sample-view actions", async () => {

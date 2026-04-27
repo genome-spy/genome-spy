@@ -75,6 +75,7 @@ import { agentTools } from "./agentTools.js";
  *         | "result"
  *         | "tool_call"
  *         | "tool_result"
+ *         | "plot"
  *         | "error";
  *     text?: string | import("lit").TemplateResult;
  *     lines?: IntentBatchSummaryLine[];
@@ -142,6 +143,19 @@ function now() {
  */
 function elapsedMilliseconds(startedAt) {
     return Math.round((now() - startedAt) * 10) / 10;
+}
+
+/**
+ * @param {unknown} content
+ * @returns {content is import("@genome-spy/app/agentApi").SampleAttributePlot}
+ */
+function isSampleAttributePlotContent(content) {
+    return (
+        typeof content === "object" &&
+        content !== null &&
+        /** @type {{ kind?: unknown }} */ (content).kind ===
+            "sample_attribute_plot"
+    );
 }
 
 /**
@@ -438,6 +452,7 @@ export class AgentSessionController {
         const results = [];
         for (const toolCall of toolCalls) {
             const result = await this.#executeToolCall(toolCall);
+            const isPlotContent = isSampleAttributePlotContent(result.content);
             results.push({
                 toolCallId: toolCall.callId,
                 text: result.text,
@@ -451,11 +466,20 @@ export class AgentSessionController {
                     kind: "tool_result",
                     text: result.text ?? "",
                     toolCallId: toolCall.callId,
-                    ...(result.content !== undefined
+                    ...(result.content !== undefined && !isPlotContent
                         ? { content: result.content }
                         : {}),
                     durationMs: null,
                 });
+                if (isPlotContent) {
+                    this.#appendMessage({
+                        kind: "plot",
+                        text: result.text ?? "",
+                        toolCallId: toolCall.callId,
+                        content: result.content,
+                        durationMs: null,
+                    });
+                }
                 this.#notify();
             }
         }

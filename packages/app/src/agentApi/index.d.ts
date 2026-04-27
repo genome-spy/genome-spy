@@ -16,6 +16,11 @@ import type {
     SampleHierarchy,
     ViewSelector,
 } from "../agentShared/index.d.ts";
+import type {
+    SampleAttributePlot,
+    SampleAttributePlotRequest,
+    SampleAttributePlotType,
+} from "../charts/sampleAttributePlotTypes.d.ts";
 import type UnitView from "@genome-spy/core/view/unitView.js";
 export interface AgentApi {
     /**
@@ -76,11 +81,26 @@ export interface AgentApi {
      */
     getPresentProvenanceState(): AppState["provenance"]["present"] | undefined;
 
+    buildSampleAttributePlot(
+        request: SampleAttributePlotRequest
+    ): SampleAttributePlot | undefined;
+
     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
 
     jumpToProvenanceState(provenanceId: string): boolean;
 
     jumpToInitialProvenanceState(): boolean;
 }
+
+export type {
+    SampleAttributePlot,
+    SampleAttributePlotRequest,
+    SampleAttributePlotType,
+};
+
+export declare function embedRenderablePlot(
+    container: HTMLElement,
+    plot: SampleAttributePlot
+): Promise<import("@genome-spy/core/types/embedApi.js").EmbedResult>;
 
 export declare function createAgentApi(app: any): AgentApi;
