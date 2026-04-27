@@ -107,15 +107,6 @@ function createMockAgentController(scenario, options = {}) {
                     persist: true,
                     clearable: true,
                     encodings: ["x"],
-                    value: {
-                        type: "interval",
-                        intervals: {
-                            x: [
-                                { chrom: "chr1", pos: 12 },
-                                { chrom: "chr1", pos: 34 },
-                            ],
-                        },
-                    },
                 },
                 {
                     parameterType: "variable",
@@ -125,7 +116,6 @@ function createMockAgentController(scenario, options = {}) {
                         param: "threshold",
                     },
                     persist: true,
-                    value: 0.6,
                     bind: {
                         input: "range",
                         label: "Threshold",
@@ -169,6 +159,30 @@ function createMockAgentController(scenario, options = {}) {
     const runtime = /** @type {any} */ ({
         getAgentContext: () => baseContext,
         getAgentVolatileContext: () => ({
+            parameterValues: [
+                {
+                    selector: {
+                        scope: /** @type {string[]} */ ([]),
+                        param: "brush",
+                    },
+                    value: {
+                        type: "interval",
+                        intervals: {
+                            x: [
+                                { chrom: "chr1", pos: 12 },
+                                { chrom: "chr1", pos: 34 },
+                            ],
+                        },
+                    },
+                },
+                {
+                    selector: {
+                        scope: /** @type {string[]} */ ([]),
+                        param: "threshold",
+                    },
+                    value: 0.6,
+                },
+            ],
             selectionAggregation: {
                 fields: /** @type {import("./types.d.ts").AgentSelectionAggregationContext["fields"]} */ ([]),
             },

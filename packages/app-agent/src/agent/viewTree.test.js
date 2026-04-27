@@ -415,15 +415,6 @@ describe("buildViewTree", () => {
                     },
                     description: "Brush the x-axis interval.",
                     encodings: ["x"],
-                    value: {
-                        type: "interval",
-                        intervals: {
-                            x: [
-                                { chrom: "chr1", pos: 0 },
-                                { chrom: "chr1", pos: 1 },
-                            ],
-                        },
-                    },
                 }),
                 expect.objectContaining({
                     parameterType: "variable",
@@ -433,7 +424,6 @@ describe("buildViewTree", () => {
                         param: "threshold",
                     },
                     description: "Threshold for the range control.",
-                    value: 0.6,
                     bind: expect.objectContaining({
                         input: "range",
                         label: "Threshold",

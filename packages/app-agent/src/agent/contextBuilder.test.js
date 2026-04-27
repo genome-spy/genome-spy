@@ -318,6 +318,9 @@ describe("getAgentContext", () => {
                 }),
             ])
         );
+        for (const declaration of context.viewRoot.parameterDeclarations) {
+            expect(declaration).not.toHaveProperty("value");
+        }
         expect(context.attributes).toHaveLength(2);
         expect(context.attributes[0].id).toEqual({
             type: "SAMPLE_ATTRIBUTE",
@@ -440,6 +443,30 @@ describe("getAgentVolatileContext", () => {
             })
         );
         expect(volatileContext.selectionAggregation.fields).toEqual([]);
+        expect(volatileContext.parameterValues).toEqual([
+            {
+                selector: { scope: [], param: "brush" },
+                value: {
+                    type: "interval",
+                    intervals: {
+                        x: [
+                            {
+                                chrom: "chr1",
+                                pos: 0,
+                            },
+                            {
+                                chrom: "chr1",
+                                pos: 1,
+                            },
+                        ],
+                    },
+                },
+            },
+            {
+                selector: { scope: [], param: "threshold" },
+                value: 0.6,
+            },
+        ]);
         expect(volatileContext.provenance[0]).toEqual(
             expect.objectContaining({
                 summary: "Brush brush (0-1) in Patient Cohort",

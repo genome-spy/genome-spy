@@ -2,7 +2,6 @@ import type {
     AttributeIdentifier,
     AggregationOp,
     ParamSelector,
-    ParamValue,
     ViewSelector,
 } from "@genome-spy/app/agentShared";
 import type { Scale } from "@genome-spy/core/spec/scale.js";
@@ -204,6 +203,15 @@ export interface AgentProvenanceAction {
 }
 
 /**
+ * Current value of a declared parameter. Values are kept in volatile context
+ * because they can change independently from the visualization structure.
+ */
+export interface AgentParameterValueSummary {
+    selector: ParamSelector;
+    value: unknown;
+}
+
+/**
  * Active interval selection summary used for selection-driven workflows.
  */
 export interface AgentSelectionSummary {
@@ -245,7 +253,6 @@ export interface AgentParameterBindSummary {
 export interface AgentParameterDeclarationBase {
     label: string;
     description?: string;
-    value?: ParamValue;
     selector: ParamSelector;
     persist: boolean;
 }

@@ -11,6 +11,7 @@ import type {
     AgentSampleSummary,
     AgentSearchableViewSummary,
     AgentSelectionAggregationContext,
+    AgentParameterValueSummary,
     AgentViewNode,
     IntentBatchExecutionContent,
     IntentBatchSummaryLine,
@@ -44,6 +45,7 @@ export type {
     AgentParameterBindSummary,
     AgentParameterDeclarationBase,
     AgentParameterDeclaration,
+    AgentParameterValueSummary,
     AgentSelectionParameterDeclaration,
     AgentVariableParameterDeclaration,
     IntentBatchExecutionContent,
@@ -227,6 +229,7 @@ export interface AgentContext {
 export interface AgentVolatileContext {
     sampleSummary: AgentSampleSummary;
     sampleGroupLevels: AgentSampleGroupLevel[];
+    parameterValues: AgentParameterValueSummary[];
     selectionAggregation: AgentSelectionAggregationContext;
     provenance: AgentProvenanceAction[];
 }

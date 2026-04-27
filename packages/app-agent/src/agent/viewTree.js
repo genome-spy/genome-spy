@@ -20,7 +20,6 @@ import { getParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import {
     formatScopedParamName,
     makeViewSelectorKey,
-    serializeBookmarkableParamValue,
 } from "@genome-spy/app/agentShared";
 
 /**
@@ -770,10 +769,6 @@ function summarizeParameterDeclarations(root, view) {
                         ? [...(select.encodings ?? [])]
                         : undefined,
                 clearable: select.clear !== false,
-                value: serializeBookmarkableParamValue(
-                    view,
-                    view.paramRuntime.getValue(paramName)
-                ),
             });
             continue;
         }
@@ -796,7 +791,6 @@ function summarizeParameterDeclarations(root, view) {
                 "",
             selector,
             persist: param.persist !== false,
-            value: view.paramRuntime.getValue(paramName),
             bind: summarizeInputBinding(bind),
         });
     }
