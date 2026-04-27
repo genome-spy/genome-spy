@@ -1,6 +1,20 @@
 // @ts-nocheck
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { VISIT_SKIP, VISIT_STOP } from "@genome-spy/core/view/view.js";
+
+const { getContextMenuFieldInfosMock } = vi.hoisted(() => ({
+    getContextMenuFieldInfosMock: vi.fn(() => []),
+}));
+
+vi.mock("@genome-spy/app/agentShared", async (importOriginal) => {
+    const actual = await importOriginal();
+
+    return {
+        ...actual,
+        getContextMenuFieldInfos: getContextMenuFieldInfosMock,
+    };
+});
+
 import { buildViewTree } from "./viewTree.js";
 
 function createMockView(options) {
@@ -563,6 +577,54 @@ describe("buildViewTree", () => {
         const tree = buildViewTree(createAgentApiStub(root));
 
         expect(tree.root.description).toBe("First line\nSecond line");
+    });
+
+    it("links aggregatable unit views to interval selection parameters", () => {
+        const variants = createMockView({
+            name: "variants",
+            title: "Variants",
+            spec: {
+                mark: "point",
+                encoding: {
+                    x: { field: "position", type: "locus" },
+                    color: { field: "impact", type: "nominal" },
+                },
+            },
+            encoding: {
+                x: { field: "position", type: "locus" },
+                color: { field: "impact", type: "nominal" },
+            },
+            paramRuntime: {
+                paramConfigs: new Map([
+                    [
+                        "brush",
+                        {
+                            name: "brush",
+                            select: {
+                                type: "interval",
+                                encodings: ["x"],
+                            },
+                        },
+                    ],
+                ]),
+                getValue: () => undefined,
+            },
+        });
+
+        getContextMenuFieldInfosMock.mockReturnValueOnce([
+            {
+                view: variants,
+            },
+        ]);
+
+        const tree = buildViewTree(createAgentApiStub(variants));
+
+        expect(tree.root.aggregatableBySelections).toEqual([
+            {
+                scope: [],
+                param: "brush",
+            },
+        ]);
     });
 
     it("keeps explicitly expanded branches open", () => {

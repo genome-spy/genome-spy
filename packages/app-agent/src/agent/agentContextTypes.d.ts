@@ -147,6 +147,7 @@ export interface AgentViewNode {
     data?: AgentViewDataSummary;
     encodings?: AgentViewEncodings;
     parameterDeclarations?: AgentParameterDeclaration[];
+    aggregatableBySelections?: ParamSelector[];
     children?: AgentViewNode[];
 }
 

@@ -10,15 +10,17 @@ import { VISIT_SKIP } from "@genome-spy/core/view/view.js";
 import { isMultiscaleSpec } from "@genome-spy/core/view/multiscale.js";
 import {
     isChromeView,
+    getParamSelector,
     getViewSelector,
+    makeParamSelectorKey,
     visitNonChromeViews,
     visitAddressableViews,
 } from "@genome-spy/core/view/viewSelectors.js";
 import { asSelectionConfig } from "@genome-spy/core/selection/selection.js";
 import { isVariableParameter } from "@genome-spy/core/paramRuntime/paramUtils.js";
-import { getParamSelector } from "@genome-spy/core/view/viewSelectors.js";
 import {
     formatScopedParamName,
+    getContextMenuFieldInfos,
     makeViewSelectorKey,
 } from "@genome-spy/app/agentShared";
 
@@ -53,6 +55,9 @@ export function buildViewTree(agentApi, options = {}) {
         };
     }
 
+    const aggregatableSelectionsByView =
+        buildAggregatableSelectionsByView(rootView);
+
     /** @type {Map<any, import("./types.d.ts").AgentViewNode>} */
     const nodes = new Map();
     /** @type {import("./types.d.ts").AgentViewNode | undefined} */
@@ -67,7 +72,12 @@ export function buildViewTree(agentApi, options = {}) {
             return VISIT_SKIP;
         }
 
-        const node = summarizeViewNode(rootView, view, hasStructuralRoot);
+        const node = summarizeViewNode(
+            rootView,
+            view,
+            hasStructuralRoot,
+            aggregatableSelectionsByView
+        );
         const canCollapse = node.selector !== undefined;
         if (
             canCollapse &&
@@ -97,7 +107,12 @@ export function buildViewTree(agentApi, options = {}) {
     });
 
     if (!rootNode) {
-        rootNode = summarizeViewNode(rootView, rootView, hasStructuralRoot);
+        rootNode = summarizeViewNode(
+            rootView,
+            rootView,
+            hasStructuralRoot,
+            aggregatableSelectionsByView
+        );
     }
 
     pruneEmptyContainers(rootNode);
@@ -226,6 +241,13 @@ function compactViewNode(node) {
     if (node.parameterDeclarations && node.parameterDeclarations.length === 0) {
         delete node.parameterDeclarations;
     }
+
+    if (
+        node.aggregatableBySelections &&
+        node.aggregatableBySelections.length === 0
+    ) {
+        delete node.aggregatableBySelections;
+    }
 }
 
 /**
@@ -285,9 +307,15 @@ function createUnknownRootNode() {
  * @param {any} root
  * @param {any} view
  * @param {boolean} hasStructuralRoot
+ * @param {WeakMap<any, import("@genome-spy/core/view/viewSelectors.js").ParamSelector[]>} aggregatableSelectionsByView
  * @returns {import("./types.d.ts").AgentViewNode}
  */
-function summarizeViewNode(root, view, hasStructuralRoot) {
+function summarizeViewNode(
+    root,
+    view,
+    hasStructuralRoot,
+    aggregatableSelectionsByView
+) {
     const spec = view.spec ?? {};
     const effectiveEncoding =
         typeof view.getEncoding === "function"
@@ -330,10 +358,68 @@ function summarizeViewNode(root, view, hasStructuralRoot) {
             /** @type {import("./types.d.ts").AgentParameterDeclaration[]} */ (
                 summarizeParameterDeclarations(root, view)
             ),
+        aggregatableBySelections: aggregatableSelectionsByView.get(view),
         children: /** @type {import("./types.d.ts").AgentViewNode[]} */ ([]),
     };
 
     return node;
+}
+
+/**
+ * @param {any} rootView
+ * @returns {WeakMap<any, import("@genome-spy/core/view/viewSelectors.js").ParamSelector[]>}
+ */
+function buildAggregatableSelectionsByView(rootView) {
+    /** @type {WeakMap<any, import("@genome-spy/core/view/viewSelectors.js").ParamSelector[]>} */
+    const selectionsByView = new WeakMap();
+    const layoutRoot =
+        typeof rootView.getLayoutAncestors === "function"
+            ? (rootView.getLayoutAncestors().at(-1) ?? rootView)
+            : rootView;
+
+    visitNonChromeViews(rootView, (view) => {
+        if (!view?.paramRuntime?.paramConfigs) {
+            return;
+        }
+
+        for (const [paramName, param] of view.paramRuntime.paramConfigs) {
+            if (!("select" in param)) {
+                continue;
+            }
+
+            const select = asSelectionConfig(param.select);
+            if (select.type !== "interval") {
+                continue;
+            }
+
+            let selector;
+            try {
+                selector = getParamSelector(view, paramName);
+            } catch {
+                continue;
+            }
+            const selectorKey = makeParamSelectorKey(selector);
+
+            for (const fieldInfo of getContextMenuFieldInfos(
+                view,
+                layoutRoot,
+                true
+            )) {
+                const selectors = selectionsByView.get(fieldInfo.view) ?? [];
+                if (
+                    selectors.every(
+                        (candidate) =>
+                            makeParamSelectorKey(candidate) !== selectorKey
+                    )
+                ) {
+                    selectors.push(selector);
+                    selectionsByView.set(fieldInfo.view, selectors);
+                }
+            }
+        }
+    });
+
+    return selectionsByView;
 }
 
 /**
