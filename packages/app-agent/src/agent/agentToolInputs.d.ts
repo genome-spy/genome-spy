@@ -304,7 +304,27 @@ export interface SubmitIntentActionsToolInput {
  *   }
  * }
  */
-export type ShowSampleAttributePlotToolInput = SampleAttributePlotRequest;
+export interface ShowSampleAttributePlotToolInput {
+    /**
+     * Plot family to generate.
+     */
+    plotType: SampleAttributePlotRequest["plotType"];
+
+    /**
+     * Attribute used for bar plots and boxplots.
+     */
+    attribute?: SampleAttributeIdentifier;
+
+    /**
+     * X-axis attribute for scatterplots.
+     */
+    xAttribute?: SampleAttributeIdentifier;
+
+    /**
+     * Y-axis attribute for scatterplots.
+     */
+    yAttribute?: SampleAttributeIdentifier;
+}
 
 /**
  * Tool inputs exposed to the agent.

@@ -262,7 +262,32 @@
     "toolName": "showSampleAttributePlot",
     "description": "Show an exploratory sample-attribute plot in the chat transcript.",
     "inputType": "ShowSampleAttributePlotToolInput",
-    "inputFields": [],
+    "inputFields": [
+      {
+        "name": "plotType",
+        "type": "SampleAttributePlotRequest[\"plotType\"]",
+        "description": "Plot family to generate.",
+        "required": true
+      },
+      {
+        "name": "attribute",
+        "type": "SampleAttributeIdentifier",
+        "description": "Attribute used for bar plots and boxplots.",
+        "required": false
+      },
+      {
+        "name": "xAttribute",
+        "type": "SampleAttributeIdentifier",
+        "description": "X-axis attribute for scatterplots.",
+        "required": false
+      },
+      {
+        "name": "yAttribute",
+        "type": "SampleAttributeIdentifier",
+        "description": "Y-axis attribute for scatterplots.",
+        "required": false
+      }
+    ],
     "exampleInput": {
       "plotType": "scatterplot",
       "xAttribute": {

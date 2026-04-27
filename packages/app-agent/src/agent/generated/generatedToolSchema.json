@@ -1326,55 +1326,6 @@
       "required": ["type", "specifier"],
       "type": "object"
     },
-    "SampleAttributePlotRequest": {
-      "anyOf": [
-        {
-          "additionalProperties": false,
-          "properties": {
-            "attribute": {
-              "$ref": "#/definitions/AttributeIdentifier"
-            },
-            "plotType": {
-              "const": "bar",
-              "type": "string"
-            }
-          },
-          "required": ["plotType", "attribute"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "attribute": {
-              "$ref": "#/definitions/AttributeIdentifier"
-            },
-            "plotType": {
-              "const": "boxplot",
-              "type": "string"
-            }
-          },
-          "required": ["plotType", "attribute"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "plotType": {
-              "const": "scatterplot",
-              "type": "string"
-            },
-            "xAttribute": {
-              "$ref": "#/definitions/AttributeIdentifier"
-            },
-            "yAttribute": {
-              "$ref": "#/definitions/AttributeIdentifier"
-            }
-          },
-          "required": ["plotType", "xAttribute", "yAttribute"],
-          "type": "object"
-        }
-      ]
-    },
     "SampleAttributeType": {
       "enum": ["nominal", "ordinal", "quantitative"],
       "type": "string"
@@ -1906,7 +1857,7 @@
       "type": "object"
     },
     "ShowSampleAttributePlotToolInput": {
-      "$ref": "#/definitions/SampleAttributePlotRequest",
+      "additionalProperties": false,
       "description": "Show an exploratory sample-attribute plot in the chat transcript. Use a bar plot for categorical attributes, a boxplot for one quantitative attribute across the current groups, and a scatterplot for two quantitative attributes.",
       "examples": [
         {
@@ -1920,7 +1871,28 @@
             "type": "SAMPLE_ATTRIBUTE"
           }
         }
-      ]
+      ],
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/SampleAttributeIdentifier",
+          "description": "Attribute used for bar plots and boxplots."
+        },
+        "plotType": {
+          "description": "Plot family to generate.",
+          "enum": ["bar", "boxplot", "scatterplot"],
+          "type": "string"
+        },
+        "xAttribute": {
+          "$ref": "#/definitions/SampleAttributeIdentifier",
+          "description": "X-axis attribute for scatterplots."
+        },
+        "yAttribute": {
+          "$ref": "#/definitions/SampleAttributeIdentifier",
+          "description": "Y-axis attribute for scatterplots."
+        }
+      },
+      "required": ["plotType"],
+      "type": "object"
     },
     "SortBy": {
       "additionalProperties": false,

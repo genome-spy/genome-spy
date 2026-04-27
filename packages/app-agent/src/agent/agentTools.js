@@ -156,7 +156,8 @@ export const agentTools = {
      */
     showSampleAttributePlot(runtime, input) {
         try {
-            const plot = runtime.agentApi.buildSampleAttributePlot(input);
+            const plotRequest = toSampleAttributePlotRequest(input);
+            const plot = runtime.agentApi.buildSampleAttributePlot(plotRequest);
             if (!plot) {
                 throw new Error(
                     "The requested sample attribute plot could not be built."
@@ -261,6 +262,39 @@ function getActionPayloadSchema(actionType) {
     }
 
     return stepSchema.properties.payload;
+}
+
+/**
+ * @param {import("./agentToolInputs.d.ts").ShowSampleAttributePlotToolInput} input
+ * @returns {import("@genome-spy/app/agentApi").SampleAttributePlotRequest}
+ */
+function toSampleAttributePlotRequest(input) {
+    if (input.plotType === "scatterplot") {
+        if (!input.xAttribute || !input.yAttribute) {
+            throw new Error(
+                "Scatterplot requests require xAttribute and yAttribute."
+            );
+        }
+
+        return {
+            plotType: "scatterplot",
+            xAttribute: input.xAttribute,
+            yAttribute: input.yAttribute,
+        };
+    }
+
+    if (!input.attribute) {
+        throw new Error(
+            input.plotType === "bar"
+                ? "Bar plot requests require attribute."
+                : "Boxplot requests require attribute."
+        );
+    }
+
+    return {
+        plotType: input.plotType,
+        attribute: input.attribute,
+    };
 }
 
 /**
