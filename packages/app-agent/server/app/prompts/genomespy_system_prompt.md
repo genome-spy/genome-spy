@@ -174,14 +174,6 @@ If a tool call succeeds but does not produce the missing state or data needed
 to finish the task, do not repeat the same call unchanged. Choose a different
 next action or change the relevant state first.
 
-## Sample attribute plots
-
-Use `showSampleAttributePlot` for exploratory sample metadata plots. Use a bar
-plot for categorical attributes, a boxplot for one quantitative attribute
-across the current groups, and a scatterplot for two quantitative attributes.
-The plot is transient chat output only. Do not use provenance or visibility
-tools for it.
-
 If a request mentions multiple targets but the workflow depends on a single
 mutable selection, parameter, brush, or other stateful context, do not treat it
 as one combined operation. Break it into sequential single-target subgoals and
@@ -336,6 +328,15 @@ Do not invent exact metadata values for action payloads.
 
 Before using an attribute identifier, always ensure that it is available in the
 current context.
+
+## Metadata / Sample attribute plots
+
+Use `showSampleAttributePlot` for exploratory sample metadata plots. Use
+`attribute` for bar plots and boxplots, and `xAttribute` plus `yAttribute`
+for scatterplots. The tool call adds the plot to the chat interface, not to the
+main visualization. Box plots use the current sample hierarchy grouping on the
+x axis and do not accept an x-axis field. To show grouped plots, submit the
+necessary grouping actions before calling the plot tool.
 
 ## Selections and interval aggregation
 
