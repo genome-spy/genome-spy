@@ -183,9 +183,9 @@ export const agentTools = {
 
     /**
      * @param {AgentToolRuntime} _runtime
-     * @param {import("./agentToolInputs.d.ts").GetActionDetailsToolInput} input
+     * @param {import("./agentToolInputs.d.ts").GetIntentActionDocsToolInput} input
      */
-    getActionDetails(_runtime, input) {
+    getIntentActionDocs(_runtime, input) {
         const entry = getActionCatalogEntry(input.actionType);
         if (!entry) {
             throw new ToolCallRejectionError(
@@ -205,7 +205,10 @@ export const agentTools = {
         };
 
         return {
-            text: "Fetched details for " + input.actionType + ".",
+            text:
+                "Read docs for " +
+                input.actionType +
+                ". No action was executed.",
             content,
         };
     },
@@ -269,32 +272,48 @@ function getActionPayloadSchema(actionType) {
  * @returns {import("@genome-spy/app/agentApi").SampleAttributePlotRequest}
  */
 function toSampleAttributePlotRequest(input) {
-    if (input.plotType === "scatterplot") {
-        if (!input.xAttribute || !input.yAttribute) {
+    const plot = input.plot;
+
+    if (plot.kind === "quantitativeRelationship") {
+        const [xAttribute, yAttribute] = plot.attributes;
+        if (isSameAttributeIdentifier(xAttribute, yAttribute)) {
             throw new Error(
-                "Scatterplot requests require xAttribute and yAttribute."
+                "Relationship plots require two different quantitative attributes. " +
+                    "For a distribution of one quantitative attribute by current groups, " +
+                    "use valueDistributionByCurrentGroups with that attribute."
             );
         }
 
         return {
             plotType: "scatterplot",
-            xAttribute: input.xAttribute,
-            yAttribute: input.yAttribute,
+            xAttribute,
+            yAttribute,
         };
     }
 
-    if (!input.attribute) {
-        throw new Error(
-            input.plotType === "bar"
-                ? "Bar plot requests require attribute."
-                : "Boxplot requests require attribute."
-        );
+    if (plot.kind === "categoryCounts") {
+        return {
+            plotType: "bar",
+            attribute: plot.attribute,
+        };
     }
 
     return {
-        plotType: input.plotType,
-        attribute: input.attribute,
+        plotType: "boxplot",
+        attribute: plot.attribute,
     };
+}
+
+/**
+ * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} a
+ * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} b
+ * @returns {boolean}
+ */
+function isSameAttributeIdentifier(a, b) {
+    return (
+        a.type === b.type &&
+        JSON.stringify(a.specifier) === JSON.stringify(b.specifier)
+    );
 }
 
 /**

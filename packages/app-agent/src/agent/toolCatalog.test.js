@@ -26,8 +26,8 @@ describe("toolCatalog", () => {
         const submitIntentActions = toolDefinitions.find(
             (tool) => tool.name === "submitIntentActions"
         );
-        const getActionDetails = toolDefinitions.find(
-            (tool) => tool.name === "getActionDetails"
+        const getIntentActionDocs = toolDefinitions.find(
+            (tool) => tool.name === "getIntentActionDocs"
         );
         const showSampleAttributePlot = toolDefinitions.find(
             (tool) => tool.name === "showSampleAttributePlot"
@@ -45,8 +45,8 @@ describe("toolCatalog", () => {
             name: "submitIntentActions",
             strict: false,
         });
-        expect(getActionDetails).toMatchObject({
-            name: "getActionDetails",
+        expect(getIntentActionDocs).toMatchObject({
+            name: "getIntentActionDocs",
             strict: true,
             parameters: {
                 required: ["actionType", "includeSchema"],
@@ -55,7 +55,20 @@ describe("toolCatalog", () => {
         expect(showSampleAttributePlot).toMatchObject({
             name: "showSampleAttributePlot",
             strict: true,
+            parameters: {
+                type: "object",
+                required: ["plot"],
+                properties: {
+                    plot: {
+                        anyOf: expect.any(Array),
+                    },
+                },
+            },
         });
+        expect(showSampleAttributePlot.parameters).not.toHaveProperty("anyOf");
+        expect(JSON.stringify(showSampleAttributePlot.parameters)).toContain(
+            "value by group"
+        );
         expect(JSON.stringify(toolDefinitions)).not.toContain(
             "AgentIntentBatchStep"
         );
@@ -72,6 +85,68 @@ describe("toolCatalog", () => {
             "$.selector must be of type object.",
             "$.visibility must be of type boolean.",
         ]);
+    });
+
+    it("validates sample attribute plot shapes by intent kind", () => {
+        expect(
+            validateToolArgumentsShape("showSampleAttributePlot", {
+                plot: {
+                    kind: "valueDistributionByCurrentGroups",
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "age",
+                    },
+                },
+            }).ok
+        ).toBe(true);
+
+        expect(
+            validateToolArgumentsShape("showSampleAttributePlot", {
+                plot: {
+                    kind: "valueDistributionByCurrentGroups",
+                    attributes: [
+                        {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "age",
+                        },
+                        {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "purity",
+                        },
+                    ],
+                },
+            }).ok
+        ).toBe(false);
+
+        expect(
+            validateToolArgumentsShape("showSampleAttributePlot", {
+                plot: {
+                    kind: "quantitativeRelationship",
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "age",
+                    },
+                },
+            }).ok
+        ).toBe(false);
+
+        expect(
+            validateToolArgumentsShape("showSampleAttributePlot", {
+                plot: {
+                    kind: "quantitativeRelationship",
+                    attributes: [
+                        {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "age",
+                        },
+                        {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "purity",
+                        },
+                    ],
+                },
+            }).ok
+        ).toBe(true);
     });
 
     it("explains when an actionType is mistakenly called as a tool", () => {

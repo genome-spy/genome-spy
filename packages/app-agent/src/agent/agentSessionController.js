@@ -130,6 +130,13 @@ import { agentTools } from "./agentTools.js";
  */
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
+const INFORMATION_TOOL_NAMES = new Set([
+    "buildSelectionAggregationAttribute",
+    "getIntentActionDocs",
+    "resolveMetadataAttributeValues",
+    "searchViewDatums",
+]);
+
 /**
  * @returns {number}
  */
@@ -450,8 +457,12 @@ export class AgentSessionController {
     async executeToolCalls(toolCalls) {
         /** @type {ToolExecutionResult[]} */
         const results = [];
+        const batchRejections =
+            this.#buildInformationBoundaryRejections(toolCalls);
         for (const toolCall of toolCalls) {
-            const result = await this.#executeToolCall(toolCall);
+            const result =
+                batchRejections.get(toolCall.callId) ??
+                (await this.#executeToolCall(toolCall));
             const isPlotContent = isSampleAttributePlotContent(result.content);
             results.push({
                 toolCallId: toolCall.callId,
@@ -485,6 +496,46 @@ export class AgentSessionController {
         }
 
         return results;
+    }
+
+    /**
+     * Information tools produce results that the model cannot inspect until
+     * the next loop iteration. Execute them first and reject dependent calls
+     * in the same batch rather than running stale or guessed arguments.
+     *
+     * @param {AgentToolCall[]} toolCalls
+     * @returns {Map<string, ToolExecutionResult>}
+     */
+    #buildInformationBoundaryRejections(toolCalls) {
+        const informationToolNames = toolCalls
+            .map((toolCall) => toolCall.name)
+            .filter((name) => INFORMATION_TOOL_NAMES.has(name));
+        if (informationToolNames.length === 0) {
+            return new Map();
+        }
+
+        const uniqueInformationToolNames = Array.from(
+            new Set(informationToolNames)
+        );
+
+        return new Map(
+            toolCalls
+                .filter(
+                    (toolCall) => !INFORMATION_TOOL_NAMES.has(toolCall.name)
+                )
+                .map((toolCall) => [
+                    toolCall.callId,
+                    {
+                        toolCallId: toolCall.callId,
+                        text: formatToolCallRejection(toolCall.name, [
+                            "This tool call was not executed because the same batch included information tools: " +
+                                uniqueInformationToolNames.join(", ") +
+                                ". Tool results are only available after the batch completes. Wait for those results, then call this tool in a later turn.",
+                        ]),
+                        rejected: true,
+                    },
+                ])
+        );
     }
 
     /**

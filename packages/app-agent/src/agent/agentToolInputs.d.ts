@@ -1,6 +1,5 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
 import type { AggregationOp, ViewSelector } from "@genome-spy/app/agentShared";
-import type { SampleAttributePlotRequest } from "@genome-spy/app/agentApi";
 
 /*
  * Source of truth for agent-visible tool input shapes and their field
@@ -224,8 +223,10 @@ export interface SearchViewDatumsToolInput {
 }
 
 /**
- * Return payload fields and examples for one intent action. Use this before
- * constructing an unfamiliar action payload for `submitIntentActions`.
+ * Read documentation, fields, and examples for one intent action. Use this
+ * before constructing an unfamiliar action payload for `submitIntentActions`.
+ * This tool doesn't execute the action or mutate any state. Do not repeat
+ * the call if documentation is already available in the conversation history.
  *
  * @example
  * {
@@ -233,9 +234,9 @@ export interface SearchViewDatumsToolInput {
  *   "includeSchema": false
  * }
  */
-export interface GetActionDetailsToolInput {
+export interface GetIntentActionDocsToolInput {
     /**
-     * Intent action type to inspect.
+     * Intent action type whose docs should be read.
      */
     actionType: IntentActionType;
 
@@ -285,45 +286,100 @@ export interface SubmitIntentActionsToolInput {
     note?: AgentIntentActionRequest["note"];
 }
 
+export interface ShowSampleAttributeCategoryCountsToolInput {
+    /**
+     * Count categories for a categorical attribute. Use this when the user
+     * asks for a bar plot, counts, or category distribution.
+     */
+    kind: "categoryCounts";
+
+    /**
+     * Categorical attribute to count.
+     */
+    attribute: SampleAttributeIdentifier;
+}
+
+export interface ShowSampleAttributeValueDistributionToolInput {
+    /**
+     * Show a quantitative value distribution using the current
+     * sample groups. Use this when the user asks for a boxplot or for
+     * a quantitative value by group.
+     */
+    kind: "valueDistributionByCurrentGroups";
+
+    /**
+     * Quantitative value attribute to summarize within each current group.
+     */
+    attribute: SampleAttributeIdentifier;
+}
+
+export interface ShowSampleAttributeRelationshipToolInput {
+    /**
+     * Compare two quantitative attributes. Use this when the user asks for a
+     * scatterplot, correlation, or relationship between two different
+     * quantitative variables. Do not use this for boxplots, distributions, or
+     * values by group.
+     */
+    kind: "quantitativeRelationship";
+
+    /**
+     * Two different quantitative attributes to compare. The first attribute is
+     * rendered on the scatterplot x axis and the second on the y axis.
+     */
+    attributes: [SampleAttributeIdentifier, SampleAttributeIdentifier];
+}
+
+export type SampleAttributePlotSpec =
+    | ShowSampleAttributeCategoryCountsToolInput
+    | ShowSampleAttributeValueDistributionToolInput
+    | ShowSampleAttributeRelationshipToolInput;
+
 /**
- * Show an exploratory sample-attribute plot in the chat transcript. Use a bar
- * plot for categorical attributes, a boxplot for one quantitative attribute
- * across the current groups, and a scatterplot for two quantitative
- * attributes.
+ * Show an exploratory sample-attribute plot in the chat transcript. Choose the
+ * plot by analytic intent: `categoryCounts` for bar plots of categorical
+ * attributes, `valueDistributionByCurrentGroups` for boxplots or quantitative
+ * values by the current sample groups, and `quantitativeRelationship` for
+ * scatterplots of two different quantitative attributes. All plot kinds use
+ * the current sample groups automatically when present. If grouping is needed,
+ * submit a grouping action before calling this tool.
  *
  * @example
  * {
- *   "plotType": "scatterplot",
- *   "xAttribute": {
- *     "type": "SAMPLE_ATTRIBUTE",
- *     "specifier": "age"
- *   },
- *   "yAttribute": {
- *     "type": "SAMPLE_ATTRIBUTE",
- *     "specifier": "purity"
+ *   "plot": {
+ *     "kind": "valueDistributionByCurrentGroups",
+ *     "attribute": {
+ *       "type": "SAMPLE_ATTRIBUTE",
+ *       "specifier": "age"
+ *     }
+ *   }
+ * }
+ *
+ * @example
+ * {
+ *   "plot": {
+ *     "kind": "quantitativeRelationship",
+ *     "attributes": [
+ *       {
+ *         "type": "SAMPLE_ATTRIBUTE",
+ *         "specifier": "age"
+ *       },
+ *       {
+ *         "type": "SAMPLE_ATTRIBUTE",
+ *         "specifier": "purity"
+ *       }
+ *     ]
  *   }
  * }
  */
 export interface ShowSampleAttributePlotToolInput {
     /**
-     * Plot family to generate.
+     * Plot request. Use `valueDistributionByCurrentGroups` when the user asks
+     * for a boxplot; put only the value attribute in `attribute`. The grouping
+     * comes from the current SampleHierarchy. Use `quantitativeRelationship` only for
+     * scatterplots comparing two different quantitative variables; the first
+     * listed attribute is rendered on x and the second on y.
      */
-    plotType: SampleAttributePlotRequest["plotType"];
-
-    /**
-     * Attribute used for bar plots and boxplots.
-     */
-    attribute?: SampleAttributeIdentifier;
-
-    /**
-     * X-axis attribute for scatterplots.
-     */
-    xAttribute?: SampleAttributeIdentifier;
-
-    /**
-     * Y-axis attribute for scatterplots.
-     */
-    yAttribute?: SampleAttributeIdentifier;
+    plot: SampleAttributePlotSpec;
 }
 
 /**
@@ -339,7 +395,7 @@ export interface AgentToolInputs {
     getMetadataAttributeSummary: GetMetadataAttributeSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
-    getActionDetails: GetActionDetailsToolInput;
+    getIntentActionDocs: GetIntentActionDocsToolInput;
     submitIntentActions: SubmitIntentActionsToolInput;
     showSampleAttributePlot: ShowSampleAttributePlotToolInput;
 }

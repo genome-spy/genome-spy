@@ -285,15 +285,17 @@ function createRuntimeStub() {
 }
 
 describe("agentTools", () => {
-    it("returns compact action details for an intent action", () => {
+    it("returns compact docs for an intent action", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.getActionDetails(runtime, {
+        const result = tools.getIntentActionDocs(runtime, {
             actionType: "sampleView/sortBy",
         });
 
-        expect(result.text).toBe("Fetched details for sampleView/sortBy.");
+        expect(result.text).toBe(
+            "Read docs for sampleView/sortBy. No action was executed."
+        );
         expect(result.content).toEqual(
             expect.objectContaining({
                 actionType: "sampleView/sortBy",
@@ -320,22 +322,22 @@ describe("agentTools", () => {
         expect(result.content).not.toHaveProperty("payloadType");
     });
 
-    it("rejects unknown action detail lookups", () => {
+    it("rejects unknown intent action doc lookups", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
         expect(() =>
-            tools.getActionDetails(runtime, {
+            tools.getIntentActionDocs(runtime, {
                 actionType: "sampleView/doesNotExist",
             })
         ).toThrow(ToolCallRejectionError);
     });
 
-    it("optionally includes action payload schema in action details", () => {
+    it("optionally includes action payload schema in action docs", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.getActionDetails(runtime, {
+        const result = tools.getIntentActionDocs(runtime, {
             actionType: "sampleView/sortBy",
             includeSchema: true,
         });
@@ -370,14 +372,18 @@ describe("agentTools", () => {
         const tools = agentTools;
 
         const result = tools.showSampleAttributePlot(runtime, {
-            plotType: "scatterplot",
-            xAttribute: {
-                type: "SAMPLE_ATTRIBUTE",
-                specifier: "age",
-            },
-            yAttribute: {
-                type: "SAMPLE_ATTRIBUTE",
-                specifier: "purity",
+            plot: {
+                kind: "quantitativeRelationship",
+                attributes: [
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "age",
+                    },
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "purity",
+                    },
+                ],
             },
         });
 
@@ -410,13 +416,40 @@ describe("agentTools", () => {
 
         expect(() =>
             tools.showSampleAttributePlot(runtime, {
-                plotType: "bar",
-                attribute: {
-                    type: "SAMPLE_ATTRIBUTE",
-                    specifier: "diagnosis",
+                plot: {
+                    kind: "categoryCounts",
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
                 },
             })
         ).toThrow(ToolCallRejectionError);
+    });
+
+    it("rejects relationship plots with identical axes", () => {
+        const runtime = createRuntimeStub();
+
+        expect(() =>
+            agentTools.showSampleAttributePlot(runtime, {
+                plot: {
+                    kind: "quantitativeRelationship",
+                    attributes: [
+                        {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "mutations",
+                        },
+                        {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "mutations",
+                        },
+                    ],
+                },
+            })
+        ).toThrow(ToolCallRejectionError);
+        expect(
+            runtime.agentApi.buildSampleAttributePlot
+        ).not.toHaveBeenCalled();
     });
 
     it("summarizes categorical metadata attributes", () => {

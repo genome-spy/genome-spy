@@ -201,14 +201,14 @@
     "strict": true
   },
   {
-    "toolName": "getActionDetails",
-    "description": "Return payload fields and examples for one intent action.",
-    "inputType": "GetActionDetailsToolInput",
+    "toolName": "getIntentActionDocs",
+    "description": "Read documentation, fields, and examples for one intent action.",
+    "inputType": "GetIntentActionDocsToolInput",
     "inputFields": [
       {
         "name": "actionType",
         "type": "IntentActionType",
-        "description": "Intent action type to inspect.",
+        "description": "Intent action type whose docs should be read.",
         "required": true
       },
       {
@@ -264,39 +264,19 @@
     "inputType": "ShowSampleAttributePlotToolInput",
     "inputFields": [
       {
-        "name": "plotType",
-        "type": "SampleAttributePlotRequest[\"plotType\"]",
-        "description": "Plot family to generate.",
+        "name": "plot",
+        "type": "SampleAttributePlotSpec",
+        "description": "Plot request. Use `valueDistributionByCurrentGroups` when the user asks for a boxplot; put only the value attribute in `attribute`. The grouping comes from the current SampleHierarchy. Use `quantitativeRelationship` only for scatterplots comparing two different quantitative variables; the first listed attribute is rendered on x and the second on y.",
         "required": true
-      },
-      {
-        "name": "attribute",
-        "type": "SampleAttributeIdentifier",
-        "description": "Attribute used for bar plots and boxplots.",
-        "required": false
-      },
-      {
-        "name": "xAttribute",
-        "type": "SampleAttributeIdentifier",
-        "description": "X-axis attribute for scatterplots.",
-        "required": false
-      },
-      {
-        "name": "yAttribute",
-        "type": "SampleAttributeIdentifier",
-        "description": "Y-axis attribute for scatterplots.",
-        "required": false
       }
     ],
     "exampleInput": {
-      "plotType": "scatterplot",
-      "xAttribute": {
-        "type": "SAMPLE_ATTRIBUTE",
-        "specifier": "age"
-      },
-      "yAttribute": {
-        "type": "SAMPLE_ATTRIBUTE",
-        "specifier": "purity"
+      "plot": {
+        "kind": "valueDistributionByCurrentGroups",
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "age"
+        }
       }
     },
     "strict": true

@@ -269,8 +269,8 @@
         "expandViewNode": {
           "$ref": "#/definitions/ExpandViewNodeToolInput"
         },
-        "getActionDetails": {
-          "$ref": "#/definitions/GetActionDetailsToolInput"
+        "getIntentActionDocs": {
+          "$ref": "#/definitions/GetIntentActionDocsToolInput"
         },
         "getMetadataAttributeSummary": {
           "$ref": "#/definitions/GetMetadataAttributeSummaryToolInput"
@@ -307,7 +307,7 @@
         "getMetadataAttributeSummary",
         "resolveMetadataAttributeValues",
         "searchViewDatums",
-        "getActionDetails",
+        "getIntentActionDocs",
         "submitIntentActions",
         "showSampleAttributePlot"
       ],
@@ -576,9 +576,9 @@
       ],
       "description": "Genome definition for contexts where the name is provided externally (for example, as a key in root `genomes`) or not needed (for example, inline `scale.assembly`)."
     },
-    "GetActionDetailsToolInput": {
+    "GetIntentActionDocsToolInput": {
       "additionalProperties": false,
-      "description": "Return payload fields and examples for one intent action. Use this before constructing an unfamiliar action payload for `submitIntentActions`.",
+      "description": "Read documentation, fields, and examples for one intent action. Use this before constructing an unfamiliar action payload for `submitIntentActions`. This tool doesn't execute the action or mutate any state. Do not repeat the call if documentation is already available in the conversation history.",
       "examples": [
         {
           "actionType": "sampleView/groupToQuartiles",
@@ -588,7 +588,7 @@
       "properties": {
         "actionType": {
           "$ref": "#/definitions/IntentActionType",
-          "description": "Intent action type to inspect."
+          "description": "Intent action type whose docs should be read."
         },
         "includeSchema": {
           "description": "Whether to include the raw payload schema. The default response is more compact and usually sufficient.",
@@ -1326,6 +1326,19 @@
       "required": ["type", "specifier"],
       "type": "object"
     },
+    "SampleAttributePlotSpec": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ShowSampleAttributeCategoryCountsToolInput"
+        },
+        {
+          "$ref": "#/definitions/ShowSampleAttributeValueDistributionToolInput"
+        },
+        {
+          "$ref": "#/definitions/ShowSampleAttributeRelationshipToolInput"
+        }
+      ]
+    },
     "SampleAttributeType": {
       "enum": ["nominal", "ordinal", "quantitative"],
       "type": "string"
@@ -1856,42 +1869,95 @@
       "required": ["selector", "visibility"],
       "type": "object"
     },
+    "ShowSampleAttributeCategoryCountsToolInput": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/SampleAttributeIdentifier",
+          "description": "Categorical attribute to count."
+        },
+        "kind": {
+          "const": "categoryCounts",
+          "description": "Count categories for a categorical attribute. Use this when the user asks for a bar plot, counts, or category distribution.",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "attribute"],
+      "type": "object"
+    },
     "ShowSampleAttributePlotToolInput": {
       "additionalProperties": false,
-      "description": "Show an exploratory sample-attribute plot in the chat transcript. Use a bar plot for categorical attributes, a boxplot for one quantitative attribute across the current groups, and a scatterplot for two quantitative attributes.",
+      "description": "Show an exploratory sample-attribute plot in the chat transcript. Choose the plot by analytic intent: `categoryCounts` for bar plots of categorical attributes, `valueDistributionByCurrentGroups` for boxplots or quantitative values by the current sample groups, and `quantitativeRelationship` for scatterplots of two different quantitative attributes. All plot kinds use the current sample groups automatically when present. If grouping is needed, submit a grouping action before calling this tool.",
       "examples": [
         {
-          "plotType": "scatterplot",
-          "xAttribute": {
-            "specifier": "age",
-            "type": "SAMPLE_ATTRIBUTE"
-          },
-          "yAttribute": {
-            "specifier": "purity",
-            "type": "SAMPLE_ATTRIBUTE"
+          "plot": {
+            "attribute": {
+              "specifier": "age",
+              "type": "SAMPLE_ATTRIBUTE"
+            },
+            "kind": "valueDistributionByCurrentGroups"
+          }
+        },
+        {
+          "plot": {
+            "attributes": [
+              {
+                "specifier": "age",
+                "type": "SAMPLE_ATTRIBUTE"
+              },
+              {
+                "specifier": "purity",
+                "type": "SAMPLE_ATTRIBUTE"
+              }
+            ],
+            "kind": "quantitativeRelationship"
           }
         }
       ],
       "properties": {
-        "attribute": {
-          "$ref": "#/definitions/SampleAttributeIdentifier",
-          "description": "Attribute used for bar plots and boxplots."
-        },
-        "plotType": {
-          "description": "Plot family to generate.",
-          "enum": ["bar", "boxplot", "scatterplot"],
-          "type": "string"
-        },
-        "xAttribute": {
-          "$ref": "#/definitions/SampleAttributeIdentifier",
-          "description": "X-axis attribute for scatterplots."
-        },
-        "yAttribute": {
-          "$ref": "#/definitions/SampleAttributeIdentifier",
-          "description": "Y-axis attribute for scatterplots."
+        "plot": {
+          "$ref": "#/definitions/SampleAttributePlotSpec",
+          "description": "Plot request. Use `valueDistributionByCurrentGroups` when the user asks for a boxplot; put only the value attribute in `attribute`. The grouping comes from the current SampleHierarchy. Use `quantitativeRelationship` only for scatterplots comparing two different quantitative variables; the first listed attribute is rendered on x and the second on y."
         }
       },
-      "required": ["plotType"],
+      "required": ["plot"],
+      "type": "object"
+    },
+    "ShowSampleAttributeRelationshipToolInput": {
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "description": "Two different quantitative attributes to compare. The first attribute is rendered on the scatterplot x axis and the second on the y axis.",
+          "items": {
+            "$ref": "#/definitions/SampleAttributeIdentifier"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "kind": {
+          "const": "quantitativeRelationship",
+          "description": "Compare two quantitative attributes. Use this when the user asks for a scatterplot, correlation, or relationship between two different quantitative variables. Do not use this for boxplots, distributions, or values by group.",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "attributes"],
+      "type": "object"
+    },
+    "ShowSampleAttributeValueDistributionToolInput": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/SampleAttributeIdentifier",
+          "description": "Quantitative value attribute to summarize within each current group."
+        },
+        "kind": {
+          "const": "valueDistributionByCurrentGroups",
+          "description": "Show a quantitative value distribution using the current sample groups. Use this when the user asks for a boxplot or for a quantitative value by group.",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "attribute"],
       "type": "object"
     },
     "SortBy": {

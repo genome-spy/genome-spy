@@ -331,6 +331,39 @@ If chat transcript memory becomes a problem later, replace direct `message.plot`
 storage with a controller-local `Map<plotId, plot>` and store only `plotId` on
 the message. That registry is not needed for v0.
 
+### Commit 2 Fix Items
+
+Use these short identifiers when discussing or reviewing the current
+`showSampleAttributePlot` implementation.
+
+- **PLOT-CONTENT-LEAK**: The tool result must not use the full
+  `SampleAttributePlot` as model-visible `content`. Return only a compact
+  summary in `content`, and pass the renderable plot through a separate UI-only
+  field.
+- **PLOT-UNION-SCHEMA**: `ShowSampleAttributePlotToolInput` must be a
+  discriminated union. Bar and boxplot calls require `attribute`; scatterplot
+  calls require `xAttribute` and `yAttribute`. The generated schema should
+  enforce this instead of requiring only `plotType`.
+- **PLOT-ATTRIBUTE-SCOPE**: The tool should accept the same
+  `AttributeIdentifier` scope as App plot building, not only
+  `SAMPLE_ATTRIBUTE`, unless a narrower scope is an explicit product decision.
+  Selection-aggregation attributes should remain possible if they are
+  sample-specific and quantitative/categorical as required by the plot type.
+- **PLOT-UI-FIELD**: Local plot chat messages should store the renderable plot
+  in a clearly UI-only field such as `message.plot`, not `message.content`.
+  `content` is reserved for model-visible tool-result data.
+- **PLOT-HISTORY-GUARD**: `agentSessionController.#buildHistory()` must never
+  serialize renderable plots, specs, named data, or plot rows. If the history
+  needs a record of the plot, serialize only a short textual note.
+- **PLOT-ERROR-HINTS**: Type and resolution errors should name the problematic
+  attribute when possible and give a corrective hint, for example: `Boxplot
+  requires a quantitative attribute, but tissue is nominal. Use a bar plot
+  instead.`
+- **PLOT-TYPE-NAMING**: Avoid unnecessary plot-type translation. The public tool
+  input currently uses `"bar"` while renderable plots use `"barplot"`. Keep
+  this only if there is a clear reason; otherwise prefer one vocabulary across
+  tool input, app request, and renderable plot summaries.
+
 ## Prompt Guidance
 
 Add a short tool section, not broad prompt text:

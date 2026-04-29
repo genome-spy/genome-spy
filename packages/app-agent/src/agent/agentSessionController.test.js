@@ -37,6 +37,9 @@ function createRuntimeMock() {
         ]),
         jumpToProvenanceState: vi.fn(),
         jumpToInitialProvenanceState: vi.fn(),
+        getSampleHierarchy: vi.fn(() => ({
+            groupMetadata: [],
+        })),
         buildSampleAttributePlot: vi.fn(() => ({
             kind: "sample_attribute_plot",
             plotType: "scatterplot",
@@ -479,14 +482,18 @@ describe("createAgentSessionController", () => {
                                     callId: "call-plot",
                                     name: "showSampleAttributePlot",
                                     arguments: {
-                                        plotType: "scatterplot",
-                                        xAttribute: {
-                                            type: "SAMPLE_ATTRIBUTE",
-                                            specifier: "age",
-                                        },
-                                        yAttribute: {
-                                            type: "SAMPLE_ATTRIBUTE",
-                                            specifier: "purity",
+                                        plot: {
+                                            kind: "quantitativeRelationship",
+                                            attributes: [
+                                                {
+                                                    type: "SAMPLE_ATTRIBUTE",
+                                                    specifier: "age",
+                                                },
+                                                {
+                                                    type: "SAMPLE_ATTRIBUTE",
+                                                    specifier: "purity",
+                                                },
+                                            ],
                                         },
                                     },
                                 },
@@ -552,14 +559,18 @@ describe("createAgentSessionController", () => {
                         callId: "call-plot",
                         name: "showSampleAttributePlot",
                         arguments: {
-                            plotType: "scatterplot",
-                            xAttribute: {
-                                type: "SAMPLE_ATTRIBUTE",
-                                specifier: "age",
-                            },
-                            yAttribute: {
-                                type: "SAMPLE_ATTRIBUTE",
-                                specifier: "purity",
+                            plot: {
+                                kind: "quantitativeRelationship",
+                                attributes: [
+                                    {
+                                        type: "SAMPLE_ATTRIBUTE",
+                                        specifier: "age",
+                                    },
+                                    {
+                                        type: "SAMPLE_ATTRIBUTE",
+                                        specifier: "purity",
+                                    },
+                                ],
                             },
                         },
                     },
@@ -573,6 +584,52 @@ describe("createAgentSessionController", () => {
                 toolCallId: "call-plot",
             },
         ]);
+    });
+
+    it("requires a new turn after information tools before dependent calls", async () => {
+        const runtime = createRuntimeMock();
+        const controller = createAgentSessionController(runtime);
+
+        const results = await controller.executeToolCalls([
+            {
+                callId: "call-details",
+                name: "getIntentActionDocs",
+                arguments: {
+                    actionType: "sampleView/groupByNominal",
+                    includeSchema: false,
+                },
+            },
+            {
+                callId: "call-plot",
+                name: "showSampleAttributePlot",
+                arguments: {
+                    plot: {
+                        kind: "valueDistributionByCurrentGroups",
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "mutations",
+                        },
+                    },
+                },
+            },
+        ]);
+
+        expect(results).toMatchObject([
+            {
+                toolCallId: "call-details",
+                rejected: false,
+            },
+            {
+                toolCallId: "call-plot",
+                rejected: true,
+                text: expect.stringContaining(
+                    "Tool results are only available after the batch completes."
+                ),
+            },
+        ]);
+        expect(
+            runtime.agentApi.buildSampleAttributePlot
+        ).not.toHaveBeenCalled();
     });
 
     it("summarizes intent batch tool results for sample-view actions", async () => {

@@ -1,3 +1,4 @@
+/* global console, process */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -146,10 +147,7 @@ function getToolInputsInterface(sourceFile) {
  * @returns {Promise<import("../src/agent/types.js").AgentToolCatalogEntry[]>}
  */
 export async function createGeneratedToolCatalog() {
-    const toolSource = await loadSourceFile(
-        toolInputsPath,
-        ts.ScriptKind.TS
-    );
+    const toolSource = await loadSourceFile(toolInputsPath, ts.ScriptKind.TS);
     const interfaces = getInterfaceNodes(toolSource);
     const toolInputsInterface = getToolInputsInterface(toolSource);
 
