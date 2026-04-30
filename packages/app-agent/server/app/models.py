@@ -14,6 +14,7 @@ class HistoryMessage(BaseModel):
     id: str
     role: Literal["user", "assistant", "tool"]
     text: str
+    phase: Literal["commentary", "final_answer"] | None = None
     kind: str | None = None
     tool_call_id: str | None = Field(default=None, alias="toolCallId")
     name: str | None = None

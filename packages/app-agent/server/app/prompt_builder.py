@@ -158,13 +158,17 @@ def _build_assistant_tool_messages(message: HistoryMessage) -> list[dict[str, An
 
 def _build_standard_message(message: HistoryMessage) -> dict[str, Any]:
     content_type = "output_text" if message.role == "assistant" else "input_text"
-    return {
+    response_message: dict[str, Any] = {
         "id": _normalize_message_id(message.id),
         "type": "message",
         "status": "completed",
         "role": message.role,
         "content": [{"type": content_type, "text": message.text}],
     }
+    if message.role == "assistant" and message.phase is not None:
+        response_message["phase"] = message.phase
+
+    return response_message
 
 
 def _stringify_content(content: Any, fallback: str) -> str:

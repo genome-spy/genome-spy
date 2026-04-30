@@ -271,6 +271,7 @@ export interface AgentConversationMessage {
     id: string;
     role: "user" | "assistant" | "tool";
     text: string;
+    phase?: "commentary" | "final_answer";
     kind?: "clarification" | "tool_call" | "tool_result";
     toolCalls?: AgentToolCall[];
     toolCallId?: string;

@@ -55,6 +55,7 @@ function normalizeConversationHistory(history) {
             id: String(entry.id),
             role: entry.role,
             text: entry.text,
+            ...(entry.phase ? { phase: entry.phase } : {}),
             ...(entry.kind ? { kind: entry.kind } : {}),
             ...(entry.toolCalls ? { toolCalls: entry.toolCalls } : {}),
             ...(entry.toolCallId ? { toolCallId: entry.toolCallId } : {}),

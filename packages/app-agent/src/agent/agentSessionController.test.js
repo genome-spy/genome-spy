@@ -244,6 +244,7 @@ describe("createAgentSessionController", () => {
                     id: "2",
                     role: "assistant",
                     text: "I will sort the samples by age.",
+                    phase: "commentary",
                     kind: "tool_call",
                     toolCalls: [
                         {
@@ -355,9 +356,11 @@ describe("createAgentSessionController", () => {
     it("executes agent tool calls and re-runs with the expanded view context", async () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
+        const observedHistories = [];
         runtime.requestAgentTurn.mockImplementation(
             (message, history, stream, allowStreaming, contextOptions) => {
                 agentTurnCallCount += 1;
+                observedHistories.push(history);
                 if (message === PREFLIGHT_MESSAGE) {
                     return Promise.resolve({
                         response: {
@@ -424,6 +427,14 @@ describe("createAgentSessionController", () => {
             'v:{"scope":[],"view":"collapsed-track"}',
         ]);
         expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(3);
+        expect(observedHistories[2]).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    kind: "tool_call",
+                    phase: "commentary",
+                }),
+            ])
+        );
         expect(controller.getSnapshot().messages).toHaveLength(4);
         expect(controller.getSnapshot().messages[1]).toMatchObject({
             kind: "tool_call",
@@ -553,6 +564,7 @@ describe("createAgentSessionController", () => {
                 id: "2",
                 role: "assistant",
                 text: "I will show a scatterplot.",
+                phase: "commentary",
                 kind: "tool_call",
                 toolCalls: [
                     {
@@ -582,6 +594,7 @@ describe("createAgentSessionController", () => {
                 text: "Generated Scatterplot of age vs purity with 2 groups and 12 rows.",
                 kind: "tool_result",
                 toolCallId: "call-plot",
+                content: undefined,
             },
         ]);
     });
@@ -964,6 +977,7 @@ describe("createAgentSessionController", () => {
                 },
             });
         });
+
         runtime.submitIntentActions.mockResolvedValue({
             ok: true,
             executedActions: 0,
@@ -1018,6 +1032,51 @@ describe("createAgentSessionController", () => {
         expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(2);
         expect(runtime.requestAgentTurn.mock.calls[1][0]).toBe(
             "Show me the current view."
+        );
+    });
+
+    it("marks completed assistant answers as final answer history", async () => {
+        const runtime = createRuntimeMock();
+        const observedHistories = [];
+        runtime.requestAgentTurn.mockImplementation((message, history) => {
+            observedHistories.push(history);
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 10,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "answer",
+                    message: "The x axis uses genomic coordinates.",
+                },
+                trace: {
+                    totalMs: 11,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("What is on the x axis?");
+        await controller.sendMessage("What about the y axis?");
+
+        expect(observedHistories[2]).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    role: "assistant",
+                    phase: "final_answer",
+                }),
+            ])
         );
     });
 

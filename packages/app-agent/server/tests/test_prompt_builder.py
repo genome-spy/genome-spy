@@ -152,6 +152,36 @@ def test_build_responses_input_serializes_tool_turns() -> None:
     }
 
 
+def test_build_responses_input_preserves_assistant_phase() -> None:
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={"schemaVersion": 1},
+        history=[
+            HistoryMessage(id="1", role="user", text="Question"),
+            HistoryMessage(
+                id="2",
+                role="assistant",
+                text="I will inspect the view.",
+                phase="commentary",
+            ),
+            HistoryMessage(
+                id="3",
+                role="assistant",
+                text="The view shows copy number.",
+                phase="final_answer",
+            ),
+        ],
+        message="Follow-up question",
+    )
+
+    prompt = build_prompt_ir(request)
+    messages = build_responses_input(prompt)
+
+    assert "phase" not in messages[1]
+    assert messages[2]["phase"] == "commentary"
+    assert messages[3]["phase"] == "final_answer"
+
+
 def test_build_prompt_ir_separates_instructions_and_context() -> None:
     request = ProviderRequest(
         system_prompt="system prompt",

@@ -78,6 +78,7 @@ import { agentTools } from "./agentTools.js";
  *         | "plot"
  *         | "error";
  *     text?: string | import("lit").TemplateResult;
+ *     phase?: "commentary" | "final_answer";
  *     lines?: IntentBatchSummaryLine[];
  *     options?: ChatClarificationOption[];
  *     toolCalls?: AgentToolCall[];
@@ -897,6 +898,7 @@ export class AgentSessionController {
                         id: String(message.id),
                         role: "assistant",
                         text,
+                        phase: message.phase ?? "commentary",
                         kind: "tool_call",
                         toolCalls: message.toolCalls ?? [],
                     });
@@ -919,6 +921,9 @@ export class AgentSessionController {
                         role: message.kind === "user" ? "user" : "assistant",
                         text,
                     });
+                if (historyMessage.role === "assistant") {
+                    historyMessage.phase = message.phase ?? "final_answer";
+                }
 
                 if (message.kind === "clarification") {
                     return /** @type {AgentConversationMessage} */ ({
