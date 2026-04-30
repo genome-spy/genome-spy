@@ -474,5 +474,10 @@ describe("getAgentVolatileContext", () => {
                 provenanceId: "provenance-1",
             })
         );
+        expect(volatileContext.activeProvenanceState).toEqual({
+            provenanceId: "provenance-2",
+            summary: "Sort by min(purity) in selection brush",
+            type: "sampleView/sortBy",
+        });
     });
 });

@@ -945,6 +945,35 @@ describe("agentTools", () => {
         );
     });
 
+    it("explains when the requested provenance state is already active", () => {
+        const runtime = createRuntimeStub();
+        runtime.agentApi.jumpToProvenanceState.mockReturnValueOnce(false);
+        runtime.agentApi.getActionHistory.mockReturnValueOnce([
+            {
+                provenanceId: "provenance-1",
+                summary: "Sort by purity",
+                type: "sampleView/sortBy",
+            },
+        ]);
+        const tools = agentTools;
+
+        expect(
+            tools.jumpToProvenanceState(runtime, {
+                provenanceId: "provenance-1",
+            })
+        ).toEqual(
+            expect.objectContaining({
+                text: expect.stringContaining(
+                    "This did not undo or change the analysis"
+                ),
+                content: expect.objectContaining({
+                    provenanceId: "provenance-1",
+                    changed: false,
+                }),
+            })
+        );
+    });
+
     it("summarizes intent action execution through the runtime", async () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;

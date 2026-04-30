@@ -231,6 +231,10 @@ export interface AgentVolatileContext {
     sampleGroupLevels: AgentSampleGroupLevel[];
     parameterValues: AgentParameterValueSummary[];
     selectionAggregation: AgentSelectionAggregationContext;
+    activeProvenanceState?: Pick<
+        AgentProvenanceAction,
+        "provenanceId" | "summary" | "type"
+    >;
     provenance: AgentProvenanceAction[];
 }
 

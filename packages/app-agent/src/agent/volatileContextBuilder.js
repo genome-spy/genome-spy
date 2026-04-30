@@ -27,6 +27,7 @@ export function getAgentVolatileContext(agentApi) {
             : [],
         parameterValues: buildParameterValues(agentApi),
         selectionAggregation: getSelectionAggregationContext(agentApi),
+        activeProvenanceState: buildActiveProvenanceState(agentApi, provenance),
         provenance: buildProvenanceActions(agentApi, provenance),
     };
 }
@@ -178,24 +179,49 @@ function buildProvenanceActions(agentApi, provenanceActions) {
     return provenanceActions
         .filter((action) => !isBaselineAction(action))
         .slice(-10)
-        .map((action) => {
-            const info = agentApi.getActionInfo(
-                /** @type {import("./agentContextTypes.d.ts").AgentProvenanceAction} */ (
-                    action
-                )
-            );
-            const title =
-                info?.provenanceTitle ??
-                info?.title ??
-                action.type.replace("sampleView/", "");
+        .map((action) => ({
+            ...buildProvenanceActionSummary(agentApi, action),
+            payload: /** @type {any} */ (action).payload,
+            meta: /** @type {any} */ (action).meta,
+            error: /** @type {any} */ (action).error,
+        }));
+}
 
-            return {
-                summary: templateResultToString(title),
-                provenanceId: /** @type {any} */ (action).provenanceId,
-                type: action.type,
-                payload: /** @type {any} */ (action).payload,
-                meta: /** @type {any} */ (action).meta,
-                error: /** @type {any} */ (action).error,
-            };
-        });
+/**
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
+ * @param {import("@reduxjs/toolkit").Action[]} provenanceActions
+ * @returns {Pick<import("./agentContextTypes.d.ts").AgentProvenanceAction, "provenanceId" | "summary" | "type"> | undefined}
+ */
+function buildActiveProvenanceState(agentApi, provenanceActions) {
+    const action = provenanceActions
+        .filter((entry) => !isBaselineAction(entry))
+        .at(-1);
+    if (!action) {
+        return;
+    }
+
+    return buildProvenanceActionSummary(agentApi, action);
+}
+
+/**
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
+ * @param {import("@reduxjs/toolkit").Action} action
+ * @returns {Pick<import("./agentContextTypes.d.ts").AgentProvenanceAction, "provenanceId" | "summary" | "type">}
+ */
+function buildProvenanceActionSummary(agentApi, action) {
+    const info = agentApi.getActionInfo(
+        /** @type {import("./agentContextTypes.d.ts").AgentProvenanceAction} */ (
+            action
+        )
+    );
+    const title =
+        info?.provenanceTitle ??
+        info?.title ??
+        action.type.replace("sampleView/", "");
+
+    return {
+        summary: templateResultToString(title),
+        provenanceId: /** @type {any} */ (action).provenanceId,
+        type: action.type,
+    };
 }

@@ -93,7 +93,8 @@ export const agentTools = {
                     ? "Jumped to provenance state: " +
                       (provenanceAction.summary ?? provenanceAction.type) +
                       "."
-                    : "The requested provenance state was already active.",
+                    : "The requested provenance state was already active. " +
+                      "This did not undo or change the analysis. If the user asked to undo, replace, change, swap, or exclude a prior step, choose an earlier provenance state instead of calling this same provenanceId again.",
             content: createProvenanceStateActivation(
                 input.provenanceId,
                 provenanceAction,
@@ -112,7 +113,7 @@ export const agentTools = {
         return {
             text: changed
                 ? "Jumped to the initial provenance state."
-                : "The initial provenance state was already active.",
+                : "The initial provenance state was already active. This did not undo or change the analysis. Continue from the active state or choose a different provenance state.",
             content: createProvenanceStateActivation(
                 undefined,
                 undefined,
