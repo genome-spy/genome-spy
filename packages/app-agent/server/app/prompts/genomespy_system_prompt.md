@@ -243,16 +243,6 @@ Example:
 }
 ```
 
-### Scale-navigation tool
-
-- `zoomToScale(scaleName, domain)`: animate a named zoomable scale to an exact
-  target domain.
-
-Use this for user-visible viewport or navigation requests, such as zooming to a
-genomic interval or changing the visible range of another zoomable scale. Scale
-names come from `scaleDomains`, not from selectors. Use the same domain value
-shape that appears for the scale in `scaleDomains`.
-
 ### Selection-aggregation tool
 
 - `buildSelectionAggregationAttribute(candidateId, aggregation)`: resolve a
