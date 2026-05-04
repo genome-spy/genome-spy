@@ -41,8 +41,14 @@ export default class WebGLHelper {
      *      A function that returns the content size. If a dimension is undefined,
      *      the canvas fills the container, otherwise the canvas is adjusted to the content size.
      * @param {WebGLContextAttributes} [webglContextAttributes]
+     * @param {() => void} [onCanvasResize]
      */
-    constructor(container, sizeSource, webglContextAttributes = {}) {
+    constructor(
+        container,
+        sizeSource,
+        webglContextAttributes = {},
+        onCanvasResize
+    ) {
         const resolvedSizeSource =
             sizeSource ??
             (() => ({
@@ -59,6 +65,9 @@ export default class WebGLHelper {
          * @type {{ logicalWidth: number, logicalHeight: number, physicalWidth: number, physicalHeight: number } | undefined}
          */
         this._appliedCanvasSize = undefined;
+
+        /** @type {() => void} */
+        this._onCanvasResize = onCanvasResize ?? (() => {});
 
         /** @type {Map<string, WebGLShader>} */
         this._shaderCache = new Map();
@@ -138,7 +147,13 @@ export default class WebGLHelper {
             container,
             canvas,
             resolvedSizeSource,
-            () => this.adjustGl()
+            () => {
+                // Assigning canvas.width/height clears the WebGL drawing buffer.
+                // The observer may fire after layout/render, so repaint immediately.
+                if (this.adjustGl()) {
+                    this._onCanvasResize();
+                }
+            }
         );
 
         this.adjustGl();
@@ -193,7 +208,7 @@ export default class WebGLHelper {
             this._appliedCanvasSize.physicalWidth == physicalSize.width &&
             this._appliedCanvasSize.physicalHeight == physicalSize.height
         ) {
-            return;
+            return false;
         }
 
         this.canvas.style.width = `${logicalSize.width}px`;
@@ -214,6 +229,8 @@ export default class WebGLHelper {
             physicalWidth: physicalSize.width,
             physicalHeight: physicalSize.height,
         };
+
+        return true;
     }
 
     finalize() {

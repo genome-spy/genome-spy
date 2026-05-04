@@ -256,7 +256,10 @@ export default class GenomeSpy {
                 this.viewRoot
                     ? calculateCanvasSize(this.viewRoot)
                     : { width: undefined, height: undefined },
-            { powerPreference: this.options.powerPreference ?? "default" }
+            { powerPreference: this.options.powerPreference ?? "default" },
+            // Physical backing-store changes do not affect layout, but they
+            // clear the canvas and require repainting the existing render batch.
+            () => this.#renderCoordinator?.renderAll()
         );
 
         canvasWrapper.appendChild(loadingIndicatorsElement);
