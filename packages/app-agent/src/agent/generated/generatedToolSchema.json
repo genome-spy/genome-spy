@@ -1974,7 +1974,7 @@
     },
     "SubmitIntentActionsToolInput": {
       "additionalProperties": false,
-      "description": "Execute one or more provenance-changing actions. Actions are additive. Before submitting new actions, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the action list, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results. If not, submit actions one by one and consult the updated context after each action, instead of submitting them all at once.",
+      "description": "Execute one or more provenance-changing actions. Actions are additive. Before submitting new actions, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the action list, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results. If not, submit actions one by one and consult the updated context after each action, instead of submitting them all at once. The `actions` array must be present and non-empty.",
       "examples": [
         {
           "actions": [

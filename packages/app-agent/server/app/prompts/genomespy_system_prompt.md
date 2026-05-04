@@ -141,15 +141,17 @@ requires multiple steps, include a brief reasoning message and a plan as bullet
 points together with the first tool call so that the overall workflow remains
 visible in the conversation history.
 
-For analysis operations, map the request to one or more action types from
-`intentActionSummaries` early. If you may need an action, call
-`getIntentActionDocs(actionType, includeSchema)` proactively before constructing
-payloads. Use `includeSchema: false` first; request schemas only after examples
-and field docs are insufficient or validation fails. Remember that this tool
-does not mutate any state; it only returns information about the action type.
-Tool results are not visible to other tool calls in the same batch, so do not
-batch `getIntentActionDocs` with dependent calls such as `submitIntentActions` or
-`showSampleAttributePlot`.
+For analysis operations, first plan which action types from
+`intentActionSummaries` are needed. Then call
+`getIntentActionDocs(actionType, includeSchema)` for those action types before
+constructing payloads. Independent docs lookups may be batched together. Use
+`includeSchema: false` first; request schemas only after examples and field
+docs are insufficient or validation fails. Call `getIntentActionDocs` at most
+once per action type unless the first response was insufficient or schema
+details are still needed. This tool does not mutate state. Do not batch docs
+lookups with dependent calls such as `submitIntentActions` or
+`showSampleAttributePlot`, because tool results are not visible to other tool
+calls in the same batch.
 
 Before metadata-based filter, group, or sort actions, use
 `getMetadataAttributeSummary(attribute, scope)` when the action depends on exact

@@ -256,7 +256,8 @@ export interface GetIntentActionDocsToolInput {
  * action list, ensure that every `attribute` (AttributeIdentifier) is
  * presented to you in the context or tool results. If not, submit actions
  * one by one and consult the updated context after each action, instead
- * of submitting them all at once.
+ * of submitting them all at once. The `actions` array must be present and
+ * non-empty.
  *
  * @example
  * {
