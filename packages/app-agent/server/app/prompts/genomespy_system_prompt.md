@@ -372,6 +372,9 @@ Generally, if a plot depends on the current grouping, filtering, selection, or
 other mutable state, do not call the plot tool until the required state-changing
 actions have completed and the refreshed context has been observed.
 
+You can proactively show plots but do not try to explain what it shows unless
+you have data to support the explanation.
+
 ## Selections and interval aggregation
 
 Selections are based on parameters declared in `viewTree.parameterDeclarations`.

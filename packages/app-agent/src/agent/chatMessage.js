@@ -481,10 +481,6 @@ export default class ChatMessageElement extends LitElement {
                               ${this.#renderMarkdown(message.text)}
                           </div>`
                         : nothing}
-                    <div class="plot-summary">
-                        ${plot.summary.groupCount} groups ·
-                        ${plot.summary.rowCount} rows
-                    </div>
                     <div class="plot-shell">
                         <div class="chart-container"></div>
                     </div>
