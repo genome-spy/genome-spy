@@ -294,10 +294,14 @@ export default class MetadataHierarchyConfigurator extends LitElement {
 
         if (result.ok) {
             const scale =
-                /** @type {import("@genome-spy/core/spec/scale.js").Scale} */ (
+                /** @type {import("@genome-spy/core/spec/scale.js").Scale | undefined} */ (
                     result.data
                 );
-            this._scales.set(node.path, scale);
+            if (scale && Object.keys(scale).length > 0) {
+                this._scales.set(node.path, scale);
+            } else {
+                this._scales.delete(node.path);
+            }
 
             this.requestUpdate();
             this.#emitConfig();

@@ -15,7 +15,7 @@ import {
  * @prop {"nominal" | "ordinal" | "quantitative"} dataType
  * @prop {"scheme" | "manual"} colorMode
  * @prop {"observed" | "explicit"} domainMode
- * @prop {"linear" | "log" | "pow" | "sqrt" | "symlog" | "threshold"} scaleType
+ * @prop {"" | "linear" | "log" | "pow" | "sqrt" | "symlog" | "threshold"} scaleType
  * @prop {string} scheme
  * @prop {number[]} quantDomain
  * @prop {string[]} quantRange
@@ -31,8 +31,8 @@ const BASE_STATE = {
     dataType: "quantitative",
     colorMode: "scheme",
     domainMode: "observed",
-    scaleType: "linear",
-    scheme: "viridis",
+    scaleType: "",
+    scheme: "",
     quantDomain: [0, 1],
     quantRange: ["#000000", "#ffffff"],
     domainMid: null,
@@ -52,6 +52,12 @@ const makeState = (overrides) => ({
 });
 
 describe("buildQuantitativeScaleSpec", () => {
+    it("omits inferred quantitative scale defaults", () => {
+        const scale = buildQuantitativeScaleSpec(makeState({}));
+
+        expect(scale).toBeUndefined();
+    });
+
     it("allows manual range with observed domain and midpoint", () => {
         const scale = buildQuantitativeScaleSpec(
             makeState({
@@ -63,7 +69,6 @@ describe("buildQuantitativeScaleSpec", () => {
         );
 
         expect(scale).toEqual({
-            type: "linear",
             domainMid: 0,
             range: ["#0000ff", "#cccccc", "#ff0000"],
         });
@@ -93,7 +98,6 @@ describe("buildQuantitativeScaleSpec", () => {
         );
 
         expect(scale).toEqual({
-            type: "linear",
             domain: [2, 8],
             range: ["#123456", "#654321"],
         });
@@ -147,6 +151,16 @@ describe("buildQuantitativeScaleSpec", () => {
 });
 
 describe("buildDiscreteScaleSpec", () => {
+    it("omits inferred discrete scale defaults", () => {
+        const scale = buildDiscreteScaleSpec(
+            makeState({
+                dataType: "nominal",
+            })
+        );
+
+        expect(scale).toBeUndefined();
+    });
+
     it("rejects manual colors without explicit domain", () => {
         const scale = buildDiscreteScaleSpec(
             makeState({
@@ -228,6 +242,16 @@ describe("validateScaleState", () => {
 });
 
 describe("parseScaleSpec", () => {
+    it("leaves scale type and scheme unset without explicit scale", () => {
+        const parsed = parseScaleSpec(null, "quantitative", [0, 1], {
+            scheme: "",
+            scaleType: "",
+        });
+
+        expect(parsed.scaleType).toBe("");
+        expect(parsed.scheme).toBe("");
+    });
+
     it("parses manual observed quantitative scale with midpoint", () => {
         const parsed = parseScaleSpec(
             {
@@ -237,7 +261,7 @@ describe("parseScaleSpec", () => {
             },
             "quantitative",
             [-5, 5],
-            { scheme: "viridis", scaleType: "linear" }
+            { scheme: "", scaleType: "" }
         );
 
         expect(parsed.colorMode).toBe("manual");
@@ -256,7 +280,7 @@ describe("parseScaleSpec", () => {
             },
             "nominal",
             [],
-            { scheme: "viridis", scaleType: "linear" }
+            { scheme: "", scaleType: "" }
         );
 
         expect(parsed.colorMode).toBe("scheme");
@@ -277,7 +301,7 @@ describe("parseScaleSpec", () => {
             },
             "quantitative",
             [],
-            { scheme: "viridis", scaleType: "linear" }
+            { scheme: "", scaleType: "" }
         );
 
         expect(parsed.scaleType).toBe("threshold");
@@ -300,7 +324,7 @@ describe("parseScaleSpec", () => {
             },
             "quantitative",
             [],
-            { scheme: "viridis", scaleType: "linear" }
+            { scheme: "", scaleType: "" }
         );
 
         expect(parsed.domainMid).toBe(0);
@@ -319,7 +343,7 @@ describe("parseScaleSpec", () => {
             },
             "quantitative",
             [],
-            { scheme: "viridis", scaleType: "linear" }
+            { scheme: "", scaleType: "" }
         );
 
         expect(parsed.unsupportedPiecewise).toBe(true);

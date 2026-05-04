@@ -1,6 +1,7 @@
 import { ViewAttributeSpecifier } from "./sampleViewTypes.js";
 import { SampleHierarchy } from "./state/sampleState.js";
 import { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
+import { Scale } from "@genome-spy/core/spec/scale.js";
 
 /**
  * An identifier for an abstract attribute. Allows for retrieving an accessor and information.
@@ -82,4 +83,10 @@ export interface AttributeInfo {
     awaitProcessed?: (context: AttributeEnsureContext) => Promise<void>;
 
     scale?: any;
+
+    /**
+     * Authored scale definition for the source encoding, when available.
+     * Unlike `scale`, this does not include runtime-inferred defaults.
+     */
+    scaleSpec?: Scale;
 }
