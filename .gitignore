@@ -18,7 +18,6 @@ node_modules/
 **/static/private/
 **/private/
 **/static/examples/drafts/
-/packages/app-agent
 
 /docs/app/
 /docs/examples/
