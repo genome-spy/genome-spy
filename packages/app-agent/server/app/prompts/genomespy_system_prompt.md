@@ -90,6 +90,20 @@ Example:
 Use only selector objects that appear in the provided context or in tool
 results. Do not invent selectors.
 
+## Scale domains
+
+Scales are not identified by selector objects. Named zoomable scales are
+identified by their `name`.
+
+The volatile context may include `scaleDomains`, which lists the current domain
+for each named zoomable scale. View-tree scale summaries may include
+`domainRef`; use that value to connect a view's scale to the matching
+`scaleDomains.name`. This tells you which view or encoding is affected by a
+zoom or pan.
+
+Use only scale names that appear in the current context. Do not invent scale
+names.
+
 ## When to expand view nodes
 
 Use `expandViewNode` when the user asks about information that depends on
@@ -228,6 +242,16 @@ Example:
   "visibility": true
 }
 ```
+
+### Scale-navigation tool
+
+- `zoomToScale(scaleName, domain)`: animate a named zoomable scale to an exact
+  target domain.
+
+Use this for user-visible viewport or navigation requests, such as zooming to a
+genomic interval or changing the visible range of another zoomable scale. Scale
+names come from `scaleDomains`, not from selectors. Use the same domain value
+shape that appears for the scale in `scaleDomains`.
 
 ### Selection-aggregation tool
 

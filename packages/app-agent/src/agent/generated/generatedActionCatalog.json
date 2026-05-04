@@ -65,8 +65,8 @@
       },
       {
         "name": "scale",
-        "type": "SampleAttributeDef[\"scale\"]",
-        "description": "Optional scale definition attached to the derived metadata column.",
+        "type": "SampleAttributeDef[\"scale\"] | null",
+        "description": "If omitted, derived metadata may inherit an authored source scale when the aggregation preserves the source value domain. Use `null` to force automatic scale inference without inheritance.",
         "required": false
       }
     ],

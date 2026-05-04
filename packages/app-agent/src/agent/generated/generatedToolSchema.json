@@ -295,6 +295,9 @@
         },
         "submitIntentActions": {
           "$ref": "#/definitions/SubmitIntentActionsToolInput"
+        },
+        "zoomToScale": {
+          "$ref": "#/definitions/ZoomToScaleToolInput"
         }
       },
       "required": [
@@ -308,6 +311,7 @@
         "resolveMetadataAttributeValues",
         "searchViewDatums",
         "getIntentActionDocs",
+        "zoomToScale",
         "submitIntentActions",
         "showSampleAttributePlot"
       ],
@@ -487,8 +491,16 @@
           "type": "string"
         },
         "scale": {
-          "$ref": "#/definitions/Scale",
-          "description": "Optional scale definition attached to the derived metadata column."
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale",
+              "description": "Scale definition for the (default) color channel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "If omitted, derived metadata may inherit an authored source scale when the aggregation preserves the source value domain. Use `null` to force automatic scale inference without inheritance."
         }
       },
       "required": ["attribute", "name"],
@@ -2093,6 +2105,65 @@
           "description": "The boundaries that limit the zoom and pan interactions."
         }
       },
+      "type": "object"
+    },
+    "ZoomToScaleDomain": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/NumericDomain"
+        },
+        {
+          "items": {
+            "$ref": "#/definitions/ZoomToScaleLocus"
+          },
+          "type": "array"
+        }
+      ]
+    },
+    "ZoomToScaleLocus": {
+      "additionalProperties": false,
+      "properties": {
+        "chrom": {
+          "description": "The name of the chromosome. For example: `\"chr1\"`, `\"CHR1\"`, or `\"1\"`.",
+          "type": "string"
+        },
+        "pos": {
+          "description": "Zero-based position inside the chromosome or contig.",
+          "type": "number"
+        }
+      },
+      "required": ["chrom", "pos"],
+      "type": "object"
+    },
+    "ZoomToScaleToolInput": {
+      "additionalProperties": false,
+      "description": "Animate one named zoomable scale to an exact domain. Scale names come from `scaleDomains` in the volatile context and from `domainRef` fields in the view tree. Scales are not addressed with view selectors.",
+      "examples": [
+        {
+          "domain": [
+            {
+              "chrom": "chr1",
+              "pos": 1000
+            },
+            {
+              "chrom": "chr1",
+              "pos": 3000
+            }
+          ],
+          "scaleName": "x"
+        }
+      ],
+      "properties": {
+        "domain": {
+          "$ref": "#/definitions/ZoomToScaleDomain",
+          "description": "Target domain for the scale. Use the same domain value shape that appears for this scale in `scaleDomains`."
+        },
+        "scaleName": {
+          "description": "Name of a zoomable scale from the current volatile context.",
+          "type": "string"
+        }
+      },
+      "required": ["scaleName", "domain"],
       "type": "object"
     }
   }

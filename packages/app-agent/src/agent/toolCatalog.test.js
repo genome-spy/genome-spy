@@ -32,6 +32,9 @@ describe("toolCatalog", () => {
         const showSampleAttributePlot = toolDefinitions.find(
             (tool) => tool.name === "showSampleAttributePlot"
         );
+        const zoomToScale = toolDefinitions.find(
+            (tool) => tool.name === "zoomToScale"
+        );
 
         expect(jumpToInitialProvenanceState).toMatchObject({
             name: "jumpToInitialProvenanceState",
@@ -66,6 +69,41 @@ describe("toolCatalog", () => {
             },
         });
         expect(showSampleAttributePlot.parameters).not.toHaveProperty("anyOf");
+        expect(zoomToScale).toMatchObject({
+            name: "zoomToScale",
+            strict: true,
+            parameters: {
+                type: "object",
+                properties: {
+                    domain: {
+                        anyOf: [
+                            {
+                                type: "array",
+                                items: {
+                                    type: "number",
+                                },
+                            },
+                            {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        chrom: {
+                                            type: "string",
+                                        },
+                                        pos: {
+                                            type: "number",
+                                        },
+                                    },
+                                    required: ["chrom", "pos"],
+                                    additionalProperties: false,
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+        });
         expect(JSON.stringify(showSampleAttributePlot.parameters)).toContain(
             "value by group"
         );

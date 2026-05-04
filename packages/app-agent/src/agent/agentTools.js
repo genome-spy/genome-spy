@@ -216,6 +216,43 @@ export const agentTools = {
 
     /**
      * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").ZoomToScaleToolInput} input
+     */
+    async zoomToScale(runtime, input) {
+        const resolution = runtime.agentApi
+            .getNamedScaleResolutions()
+            .get(input.scaleName);
+
+        if (!resolution) {
+            throw new ToolCallRejectionError(
+                'Unknown scale name "' + input.scaleName + '".'
+            );
+        } else if (!resolution.isZoomable()) {
+            throw new ToolCallRejectionError(
+                'Scale "' + input.scaleName + '" is not zoomable.'
+            );
+        }
+
+        try {
+            await resolution.zoomTo(input.domain, true);
+        } catch (error) {
+            throw new ToolCallRejectionError(
+                error instanceof Error ? error.message : String(error)
+            );
+        }
+
+        return {
+            text: 'Zoomed scale "' + input.scaleName + '".',
+            content: {
+                kind: "scale_zoom",
+                scaleName: input.scaleName,
+                domain: input.domain,
+            },
+        };
+    },
+
+    /**
+     * @param {AgentToolRuntime} runtime
      * @param {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} input
      */
     async submitIntentActions(runtime, input) {

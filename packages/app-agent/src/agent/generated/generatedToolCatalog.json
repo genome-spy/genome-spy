@@ -225,6 +225,39 @@
     "strict": true
   },
   {
+    "toolName": "zoomToScale",
+    "description": "Animate one named zoomable scale to an exact domain.",
+    "inputType": "ZoomToScaleToolInput",
+    "inputFields": [
+      {
+        "name": "scaleName",
+        "type": "string",
+        "description": "Name of a zoomable scale from the current volatile context.",
+        "required": true
+      },
+      {
+        "name": "domain",
+        "type": "ZoomToScaleDomain",
+        "description": "Target domain for the scale. Use the same domain value shape that appears for this scale in `scaleDomains`.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "scaleName": "x",
+      "domain": [
+        {
+          "chrom": "chr1",
+          "pos": 1000
+        },
+        {
+          "chrom": "chr1",
+          "pos": 3000
+        }
+      ]
+    },
+    "strict": true
+  },
+  {
     "toolName": "submitIntentActions",
     "description": "Execute one or more provenance-changing actions.",
     "inputType": "SubmitIntentActionsToolInput",

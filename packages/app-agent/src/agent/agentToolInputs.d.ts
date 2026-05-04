@@ -1,5 +1,7 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
 import type { AggregationOp, ViewSelector } from "@genome-spy/app/agentShared";
+import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
+import type { NumericDomain } from "@genome-spy/core/spec/scale.js";
 
 /*
  * Source of truth for agent-visible tool input shapes and their field
@@ -15,6 +17,15 @@ type SampleAttributeIdentifier = {
 type IntentActionType =
     AgentIntentActionRequest["actions"][number]["actionType"];
 type MetadataSummaryScope = "visible_samples" | "visible_groups";
+
+interface ZoomToScaleLocus extends ChromosomalLocus {
+    /**
+     * Zero-based position inside the chromosome or contig.
+     */
+    pos: number;
+}
+
+type ZoomToScaleDomain = NumericDomain | ZoomToScaleLocus[];
 
 /**
  * Expand a collapsed view branch in the agent context. The result is only
@@ -248,6 +259,33 @@ export interface GetIntentActionDocsToolInput {
 }
 
 /**
+ * Animate one named zoomable scale to an exact domain. Scale names come from
+ * `scaleDomains` in the volatile context and from `domainRef` fields in the
+ * view tree. Scales are not addressed with view selectors.
+ *
+ * @example
+ * {
+ *   "scaleName": "x",
+ *   "domain": [
+ *     { "chrom": "chr1", "pos": 1000 },
+ *     { "chrom": "chr1", "pos": 3000 }
+ *   ]
+ * }
+ */
+export interface ZoomToScaleToolInput {
+    /**
+     * Name of a zoomable scale from the current volatile context.
+     */
+    scaleName: string;
+
+    /**
+     * Target domain for the scale. Use the same domain value shape that appears
+     * for this scale in `scaleDomains`.
+     */
+    domain: ZoomToScaleDomain;
+}
+
+/**
  * Execute one or more provenance-changing actions. Actions are additive.
  * Before submitting new actions, always
  * consult the current provenance state that defines the state of the
@@ -397,6 +435,7 @@ export interface AgentToolInputs {
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     getIntentActionDocs: GetIntentActionDocsToolInput;
+    zoomToScale: ZoomToScaleToolInput;
     submitIntentActions: SubmitIntentActionsToolInput;
     showSampleAttributePlot: ShowSampleAttributePlotToolInput;
 }

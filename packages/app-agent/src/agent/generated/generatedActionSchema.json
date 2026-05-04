@@ -409,8 +409,16 @@
           "type": "string"
         },
         "scale": {
-          "$ref": "#/definitions/Scale",
-          "description": "Optional scale definition attached to the derived metadata column."
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale",
+              "description": "Scale definition for the (default) color channel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "If omitted, derived metadata may inherit an authored source scale when the aggregation preserves the source value domain. Use `null` to force automatic scale inference without inheritance."
         }
       },
       "required": ["attribute", "name"],

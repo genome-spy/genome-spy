@@ -110,6 +110,14 @@ function createRuntimeStub() {
             gene_name: "breast cancer 1",
         },
     ];
+    const xScaleResolution = {
+        isZoomable: vi.fn(() => true),
+        zoomTo: vi.fn(),
+    };
+    const colorScaleResolution = {
+        isZoomable: vi.fn(() => false),
+        zoomTo: vi.fn(),
+    };
     const view = {
         explicitName: "gene-track",
         name: "gene-track",
@@ -200,6 +208,13 @@ function createRuntimeStub() {
         getActionHistory: vi.fn(() => []),
         jumpToProvenanceState: vi.fn(() => true),
         jumpToInitialProvenanceState: vi.fn(() => true),
+        getNamedScaleResolutions: vi.fn(
+            () =>
+                new Map([
+                    ["x", xScaleResolution],
+                    ["color", colorScaleResolution],
+                ])
+        ),
         buildSampleAttributePlot: vi.fn((request) => ({
             kind: "sample_attribute_plot",
             plotType:
@@ -281,6 +296,10 @@ function createRuntimeStub() {
             ],
         })),
         summarizeExecutionResult: vi.fn(() => "Executed 1 action."),
+        scaleResolutions: {
+            x: xScaleResolution,
+            color: colorScaleResolution,
+        },
     };
 }
 
@@ -450,6 +469,107 @@ describe("agentTools", () => {
         expect(
             runtime.agentApi.buildSampleAttributePlot
         ).not.toHaveBeenCalled();
+    });
+
+    it("zooms a named zoomable scale with animation", async () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = await tools.zoomToScale(runtime, {
+            scaleName: "x",
+            domain: [
+                { chrom: "chr1", pos: 1000 },
+                { chrom: "chr1", pos: 3000 },
+            ],
+        });
+
+        expect(runtime.scaleResolutions.x.zoomTo).toHaveBeenCalledWith(
+            [
+                { chrom: "chr1", pos: 1000 },
+                { chrom: "chr1", pos: 3000 },
+            ],
+            true
+        );
+        expect(result).toEqual({
+            text: 'Zoomed scale "x".',
+            content: {
+                kind: "scale_zoom",
+                scaleName: "x",
+                domain: [
+                    { chrom: "chr1", pos: 1000 },
+                    { chrom: "chr1", pos: 3000 },
+                ],
+            },
+        });
+    });
+
+    it("waits for animated scale zooming before resolving", async () => {
+        const runtime = createRuntimeStub();
+        let resolveZoom;
+        const zoomPromise = new Promise((resolve) => {
+            resolveZoom = resolve;
+        });
+        runtime.scaleResolutions.x.zoomTo.mockReturnValueOnce(zoomPromise);
+
+        const resultPromise = agentTools.zoomToScale(runtime, {
+            scaleName: "x",
+            domain: [0, 1],
+        });
+        let settled = false;
+        resultPromise.then(() => {
+            settled = true;
+        });
+
+        await Promise.resolve();
+
+        expect(settled).toBe(false);
+
+        resolveZoom();
+
+        await expect(resultPromise).resolves.toEqual(
+            expect.objectContaining({
+                text: 'Zoomed scale "x".',
+            })
+        );
+    });
+
+    it("rejects asynchronous zoom failures as tool errors", async () => {
+        const runtime = createRuntimeStub();
+        runtime.scaleResolutions.x.zoomTo.mockRejectedValueOnce(
+            new Error("Invalid zoom domain")
+        );
+
+        await expect(
+            agentTools.zoomToScale(runtime, {
+                scaleName: "x",
+                domain: [0, 1],
+            })
+        ).rejects.toThrow(ToolCallRejectionError);
+    });
+
+    it("rejects zoom requests for unknown scale names", async () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        await expect(
+            tools.zoomToScale(runtime, {
+                scaleName: "missing",
+                domain: [0, 1],
+            })
+        ).rejects.toThrow(ToolCallRejectionError);
+    });
+
+    it("rejects zoom requests for non-zoomable scales", async () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        await expect(
+            tools.zoomToScale(runtime, {
+                scaleName: "color",
+                domain: ["A", "B"],
+            })
+        ).rejects.toThrow(ToolCallRejectionError);
+        expect(runtime.scaleResolutions.color.zoomTo).not.toHaveBeenCalled();
     });
 
     it("summarizes categorical metadata attributes", () => {
