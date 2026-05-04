@@ -26,10 +26,26 @@ export function getAgentVolatileContext(agentApi) {
             ? buildSampleGroupLevels(agentApi, sampleHierarchy)
             : [],
         parameterValues: buildParameterValues(agentApi),
+        scaleDomains: buildScaleDomains(agentApi),
         selectionAggregation: getSelectionAggregationContext(agentApi),
         activeProvenanceState: buildActiveProvenanceState(agentApi, provenance),
         provenance: buildProvenanceActions(agentApi, provenance),
     };
+}
+
+/**
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
+ * @returns {import("./types.d.ts").AgentScaleDomainSummary[]}
+ */
+function buildScaleDomains(agentApi) {
+    return Array.from(agentApi.getNamedScaleResolutions())
+        .filter(([, resolution]) => resolution.isZoomable())
+        .map(([name, resolution]) => ({
+            name,
+            domain: resolution.getComplexDomain(),
+            zoomed: resolution.isZoomed(),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

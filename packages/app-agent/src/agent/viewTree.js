@@ -760,6 +760,19 @@ function summarizeScale(channel, scaleResolution) {
         return summary;
     }
 
+    const scaleName = scaleResolution.name ?? props.name;
+    if (scaleName) {
+        summary.name = String(scaleName);
+        summary.domainRef = String(scaleName);
+    }
+
+    if (
+        typeof scaleResolution.isZoomable === "function" &&
+        scaleResolution.isZoomable()
+    ) {
+        summary.zoomable = true;
+    }
+
     if (props.scheme !== undefined) {
         summary.scheme = props.scheme;
     }

@@ -215,6 +215,28 @@ function createAppStub(options = {}) {
         getSampleView: () => sampleView,
         genomeSpy: {
             getSearchableViews: () => [searchView],
+            getNamedScaleResolutions: () =>
+                new Map([
+                    [
+                        "x_at_root",
+                        {
+                            getComplexDomain: vi.fn(() => [
+                                { chrom: "chr1", pos: 10 },
+                                { chrom: "chr1", pos: 20 },
+                            ]),
+                            isZoomable: vi.fn(() => true),
+                            isZoomed: vi.fn(() => true),
+                        },
+                    ],
+                    [
+                        "color_scale",
+                        {
+                            getComplexDomain: vi.fn(() => [0, 100]),
+                            isZoomable: vi.fn(() => false),
+                            isZoomed: vi.fn(() => false),
+                        },
+                    ],
+                ]),
         },
         searchView,
         searchCollector,
@@ -276,6 +298,8 @@ function createAgentApiStub(app) {
         getSampleViewScopedParamConfig: (paramName) =>
             app.getSampleView().paramRuntime.paramConfigs.get(paramName),
         getSearchableViews: () => app.genomeSpy.getSearchableViews(),
+        getNamedScaleResolutions: () =>
+            app.genomeSpy.getNamedScaleResolutions(),
         getViewRoot: () => app.getSampleView(),
         getFocusedView: () => app.getSampleView(),
         getRootSpec: () => app.rootSpec,
@@ -465,6 +489,16 @@ describe("getAgentVolatileContext", () => {
             {
                 selector: { scope: [], param: "threshold" },
                 value: 0.6,
+            },
+        ]);
+        expect(volatileContext.scaleDomains).toEqual([
+            {
+                name: "x_at_root",
+                domain: [
+                    { chrom: "chr1", pos: 10 },
+                    { chrom: "chr1", pos: 20 },
+                ],
+                zoomed: true,
             },
         ]);
         expect(volatileContext.provenance[0]).toEqual(

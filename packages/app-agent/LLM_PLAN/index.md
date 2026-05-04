@@ -14,6 +14,7 @@
 - Agent host API and package extraction: [`agent-host-api.md`](./agent-host-api.md)
 - App agent package and plugin plan: [`app-agent-package-plugin-plan.md`](./app-agent-package-plugin-plan.md)
 - Agent tool surface cleanup and contract consolidation: [`agent-tool-surface-cleanup.md`](./agent-tool-surface-cleanup.md)
+- Scale domain volatile context and navigation tool: [`scale-domain-navigation.md`](./scale-domain-navigation.md)
 - Agent benchmarking plan: [`../benchmarks/plan/benchmarking.md`](../benchmarks/plan/benchmarking.md)
 
 ## Goals

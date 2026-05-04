@@ -21,6 +21,7 @@ import type {
     SampleAttributePlotRequest,
     SampleAttributePlotType,
 } from "../charts/sampleAttributePlotTypes.d.ts";
+import type { ScaleResolutionApi } from "@genome-spy/core/types/scaleResolutionApi.js";
 import type UnitView from "@genome-spy/core/view/unitView.js";
 export interface AgentApi {
     /**
@@ -56,6 +57,8 @@ export interface AgentApi {
      * Returns the root spec used to summarize the top-level visualization.
      */
     getRootSpec(): AppRootSpec;
+
+    getNamedScaleResolutions(): Map<string, ScaleResolutionApi>;
 
     resolveViewSelector(
         selector: ViewSelector

@@ -79,6 +79,8 @@ function createMockView(options) {
 /**
  * @param {{
  *     type: string;
+ *     name?: string;
+ *     zoomable?: boolean;
  *     domain?: unknown[];
  *     range?: unknown;
  *     scheme?: unknown;
@@ -91,6 +93,7 @@ function createMockScaleResolution(options) {
     const scale = {
         props: {
             type: options.type,
+            name: options.name,
             scheme: options.scheme,
             assembly: options.assembly,
             reverse: options.reverse ?? false,
@@ -100,6 +103,8 @@ function createMockScaleResolution(options) {
     };
 
     return {
+        name: options.name,
+        isZoomable: () => options.zoomable ?? false,
         getResolvedScaleType: () => options.type,
         getScale: () => scale,
     };
@@ -809,5 +814,47 @@ describe("buildViewTree", () => {
         );
         expect(tree.root.encodings.y.scale).not.toHaveProperty("range");
         expect(tree.root.encodings.y.scale).not.toHaveProperty("reverse");
+    });
+
+    it("summarizes named zoomable positional scale identity without volatile domains", () => {
+        const positionalLeaf = createMockView({
+            name: "named-locus-track",
+            title: "Named locus track",
+            spec: {
+                mark: "rect",
+                encoding: {
+                    x: {
+                        field: "position",
+                        type: "locus",
+                        scale: {
+                            type: "locus",
+                            name: "x_at_root",
+                        },
+                    },
+                },
+            },
+            getScaleResolution: (channel) =>
+                channel === "x"
+                    ? createMockScaleResolution({
+                          name: "x_at_root",
+                          type: "locus",
+                          zoomable: true,
+                          domain: [
+                              { chrom: "chr1", pos: 10 },
+                              { chrom: "chr1", pos: 20 },
+                          ],
+                          range: [0, 400],
+                      })
+                    : undefined,
+        });
+
+        const tree = buildViewTree(createAgentApiStub(positionalLeaf));
+
+        expect(tree.root.encodings.x.scale).toEqual({
+            name: "x_at_root",
+            type: "locus",
+            domainRef: "x_at_root",
+            zoomable: true,
+        });
     });
 });

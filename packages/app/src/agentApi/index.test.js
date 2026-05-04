@@ -60,6 +60,20 @@ describe("createAgentApi", () => {
             description: "Age in years",
             type: "quantitative",
         };
+        const namedScaleResolutions = new Map([
+            [
+                "x_at_root",
+                {
+                    getComplexDomain: vi.fn(() => [
+                        { chrom: "chr1", pos: 10 },
+                        { chrom: "chr1", pos: 20 },
+                    ]),
+                    isZoomable: vi.fn(() => true),
+                    isZoomed: vi.fn(() => true),
+                    zoomTo: vi.fn(async () => undefined),
+                },
+            ],
+        ]);
 
         app = {
             rootSpec: {
@@ -71,6 +85,7 @@ describe("createAgentApi", () => {
             genomeSpy: {
                 viewRoot: { id: "root-view" },
                 getSearchableViews: vi.fn(() => ["searchable-view"]),
+                getNamedScaleResolutions: vi.fn(() => namedScaleResolutions),
             },
             getSampleView: vi.fn(() => ({
                 sampleHierarchy: { id: "sample-hierarchy" },
@@ -125,6 +140,9 @@ describe("createAgentApi", () => {
             description: "Selection",
         });
         expect(agentApi.getSearchableViews()).toEqual(["searchable-view"]);
+        expect(agentApi.getNamedScaleResolutions()).toBe(
+            app.genomeSpy.getNamedScaleResolutions()
+        );
         expect(agentApi.getViewRoot()).toEqual({ id: "root-view" });
         expect(agentApi.getFocusedView()).toEqual(
             expect.objectContaining({

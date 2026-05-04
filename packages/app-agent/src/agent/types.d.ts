@@ -9,6 +9,7 @@ import type {
     AgentProvenanceAction,
     AgentSampleGroupLevel,
     AgentSampleSummary,
+    AgentScaleDomainSummary,
     AgentSearchableViewSummary,
     AgentSelectionAggregationContext,
     AgentParameterValueSummary,
@@ -28,6 +29,7 @@ export type {
     AgentRootConfigSummary,
     AgentSampleGroupLevel,
     AgentSampleSummary,
+    AgentScaleDomainSummary,
     AgentSearchableFieldSummary,
     AgentSearchableViewDatumLookupResult,
     AgentSearchableViewSummary,
@@ -230,6 +232,7 @@ export interface AgentVolatileContext {
     sampleSummary: AgentSampleSummary;
     sampleGroupLevels: AgentSampleGroupLevel[];
     parameterValues: AgentParameterValueSummary[];
+    scaleDomains: AgentScaleDomainSummary[];
     selectionAggregation: AgentSelectionAggregationContext;
     activeProvenanceState?: Pick<
         AgentProvenanceAction,

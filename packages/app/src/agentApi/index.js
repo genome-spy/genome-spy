@@ -75,6 +75,10 @@ export function createAgentApi(app) {
             return app.rootSpec;
         },
 
+        getNamedScaleResolutions() {
+            return app.genomeSpy.getNamedScaleResolutions();
+        },
+
         /**
          * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
          * @returns {import("@genome-spy/core/view/view.js").default | undefined}

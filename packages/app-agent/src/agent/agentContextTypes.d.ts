@@ -118,12 +118,24 @@ export interface AgentViewEncodingSummary {
  * Effective scale configuration for a view encoding channel.
  */
 export interface AgentViewScaleSummary {
+    name?: string;
     type: string;
+    domainRef?: string;
+    zoomable?: boolean;
     domain?: unknown;
     range?: unknown;
     scheme?: unknown;
     assembly?: Scale["assembly"];
     reverse?: boolean;
+}
+
+/**
+ * Current domain of a named zoomable scale.
+ */
+export interface AgentScaleDomainSummary {
+    name: string;
+    domain: unknown[];
+    zoomed: boolean;
 }
 
 /**
