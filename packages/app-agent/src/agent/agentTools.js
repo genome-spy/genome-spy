@@ -166,9 +166,7 @@ export const agentTools = {
             }
 
             return {
-                text:
-                    `Generated ${plot.title} with ${plot.summary.groupCount} groups ` +
-                    `and ${plot.summary.rowCount} rows.`,
+                text: `Generated ${plot.title} with ${plot.summary.groupCount} groups.`,
                 content: plot,
             };
         } catch (error) {

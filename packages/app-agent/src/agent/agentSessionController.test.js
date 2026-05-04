@@ -544,17 +544,17 @@ describe("createAgentSessionController", () => {
         });
         expect(snapshot.messages[2]).toMatchObject({
             kind: "tool_result",
-            text: "Generated Scatterplot of age vs purity with 2 groups and 12 rows.",
+            text: "Generated Scatterplot of age vs purity with 2 groups.",
         });
         expect(snapshot.messages[3]).toMatchObject({
             kind: "plot",
-            text: "Generated Scatterplot of age vs purity with 2 groups and 12 rows.",
             content: expect.objectContaining({
                 kind: "sample_attribute_plot",
                 plotType: "scatterplot",
                 title: "Scatterplot of age vs purity",
             }),
         });
+        expect(snapshot.messages[3]).not.toHaveProperty("text");
         expect(snapshot.messages[4]).toMatchObject({
             kind: "assistant",
             text: "Here is the scatterplot.",
@@ -591,7 +591,7 @@ describe("createAgentSessionController", () => {
             {
                 id: "3",
                 role: "tool",
-                text: "Generated Scatterplot of age vs purity with 2 groups and 12 rows.",
+                text: "Generated Scatterplot of age vs purity with 2 groups.",
                 kind: "tool_result",
                 toolCallId: "call-plot",
                 content: undefined,

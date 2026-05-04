@@ -486,7 +486,6 @@ export class AgentSessionController {
                 if (isPlotContent) {
                     this.#appendMessage({
                         kind: "plot",
-                        text: result.text ?? "",
                         toolCallId: toolCall.callId,
                         content: result.content,
                         durationMs: null,
