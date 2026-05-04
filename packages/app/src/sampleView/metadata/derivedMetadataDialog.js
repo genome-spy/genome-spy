@@ -117,7 +117,7 @@ export class DerivedMetadataDialog extends BaseDialog {
         const scaleSummary =
             this._scaleConfigured && this._scale
                 ? describeScale(this._scale)
-                : "Default";
+                : "Auto";
 
         return html`
             <div class="gs-alert info">
@@ -208,11 +208,12 @@ export class DerivedMetadataDialog extends BaseDialog {
         );
 
         if (result.ok) {
-            this._scale =
-                /** @type {import("@genome-spy/core/spec/scale.js").Scale} */ (
+            const scale =
+                /** @type {import("@genome-spy/core/spec/scale.js").Scale | undefined} */ (
                     result.data
                 );
-            this._scaleConfigured = true;
+            this._scale = scale ?? null;
+            this._scaleConfigured = Boolean(scale && hasScaleProperties(scale));
         }
     }
 
@@ -233,7 +234,9 @@ export class DerivedMetadataDialog extends BaseDialog {
         const payload = {
             name: attributeName,
             groupPath,
-            ...(this._scaleConfigured && this._scale
+            ...(this._scaleConfigured &&
+            this._scale &&
+            hasScaleProperties(this._scale)
                 ? { scale: this._scale }
                 : {}),
         };
@@ -301,15 +304,22 @@ export function showDerivedMetadataDialog({
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
             dialog._form.reset();
-            // Scale props are embedded in the d3 scale function
+            // Prefer authored scale specs when available so inferred runtime
+            // defaults are not materialized into derived metadata.
+            const scaleSpec =
+                "scaleSpec" in attributeInfo
+                    ? attributeInfo.scaleSpec
+                    : attributeInfo.scale?.props;
             const initialScale = preservesScaleDomainForAttribute(
                 attributeInfo.attribute
             )
-                ? sanitizeScaleForDerivedMetadata(attributeInfo.scale?.props)
+                ? sanitizeScaleForDerivedMetadata(scaleSpec)
                 : null;
             dialog._scale = initialScale;
             // Treat extracted scale as configured so it is applied on submit.
-            dialog._scaleConfigured = Boolean(initialScale);
+            dialog._scaleConfigured = Boolean(
+                initialScale && hasScaleProperties(initialScale)
+            );
         }
     );
 }
@@ -319,7 +329,7 @@ export function showDerivedMetadataDialog({
  */
 function describeScale(scale) {
     if (!scale) {
-        return html`Default`;
+        return html`Auto`;
     }
 
     /** @type {import("lit").TemplateResult<1>[]} */
@@ -342,7 +352,7 @@ function describeScale(scale) {
     }
 
     if (parts.length === 0) {
-        parts.push(html`Default`);
+        parts.push(html`Auto`);
     }
 
     return html`<div class="scale-summary">${parts}</div>`;
@@ -368,6 +378,14 @@ function sanitizeScaleForDerivedMetadata(scale) {
     }
 
     return clone;
+}
+
+/**
+ * @param {import("@genome-spy/core/spec/scale.js").Scale} scale
+ * @returns {boolean}
+ */
+function hasScaleProperties(scale) {
+    return Object.keys(scale).length > 0;
 }
 
 /**

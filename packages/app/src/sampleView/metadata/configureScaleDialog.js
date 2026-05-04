@@ -13,7 +13,7 @@ export const DEFAULT_COLOR = "#808080";
 
 /**
  * @typedef {"nominal" | "ordinal" | "quantitative"} DataType
- * @typedef {"linear" | "log" | "pow" | "sqrt" | "symlog" | "threshold"} QuantScaleType
+ * @typedef {"" | "linear" | "log" | "pow" | "sqrt" | "symlog" | "threshold"} QuantScaleType
  * @typedef {"scheme" | "manual"} ColorMode
  *
  * @typedef {object} DomainRangePair
@@ -309,19 +309,18 @@ export function validateScaleState(state) {
 
 /**
  * @param {ScaleDialogState} state
- * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined | null}
  */
 export function buildQuantitativeScaleSpec(state) {
     /** @type {import("@genome-spy/core/spec/scale.js").Scale} */
-    const scale = {
-        type: state.scaleType,
-    };
+    const scale = {};
 
     if (state.unsupportedPiecewise) {
         return null;
     }
 
     if (state.scaleType === "threshold") {
+        scale.type = "threshold";
         if (state.colorMode !== "manual" || state.domainMode !== "explicit") {
             return null;
         }
@@ -336,16 +335,22 @@ export function buildQuantitativeScaleSpec(state) {
         return scale;
     }
 
+    if (state.scaleType) {
+        scale.type = state.scaleType;
+    }
+
     if (state.domainMid != null) {
         scale.domainMid = state.domainMid;
     }
 
     if (state.colorMode === "scheme") {
-        scale.scheme = state.scheme;
+        if (state.scheme) {
+            scale.scheme = state.scheme;
+        }
         if (state.domainMode === "explicit") {
             scale.domain = state.quantDomain;
         }
-        return scale;
+        return emptyScaleToUndefined(scale);
     }
 
     const expectedRangeLength = getExpectedQuantRangeLength(state.domainMid);
@@ -359,25 +364,25 @@ export function buildQuantitativeScaleSpec(state) {
         scale.domain = state.quantDomain;
     }
     scale.range = state.quantRange;
-    return scale;
+    return emptyScaleToUndefined(scale);
 }
 
 /**
  * @param {ScaleDialogState} state
- * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined | null}
  */
 export function buildDiscreteScaleSpec(state) {
     /** @type {import("@genome-spy/core/spec/scale.js").Scale} */
-    const scale = {
-        type: "ordinal",
-    };
+    const scale = {};
 
     if (state.colorMode === "scheme") {
-        scale.scheme = state.scheme;
+        if (state.scheme) {
+            scale.scheme = state.scheme;
+        }
         if (state.domainMode === "explicit") {
             scale.domain = state.domainPairs.map((pair) => pair.domain);
         }
-        return scale;
+        return emptyScaleToUndefined(scale);
     }
 
     if (state.domainMode !== "explicit") {
@@ -385,7 +390,15 @@ export function buildDiscreteScaleSpec(state) {
     }
     scale.domain = state.domainPairs.map((pair) => pair.domain);
     scale.range = state.domainPairs.map((pair) => pair.range);
-    return scale;
+    return emptyScaleToUndefined(scale);
+}
+
+/**
+ * @param {import("@genome-spy/core/spec/scale.js").Scale} scale
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined}
+ */
+function emptyScaleToUndefined(scale) {
+    return Object.keys(scale).length > 0 ? scale : undefined;
 }
 
 /**
@@ -443,9 +456,9 @@ export default class ConfigureScaleDialog extends BaseDialog {
         this.colorMode = "scheme";
         /** @type {"observed" | "explicit"} */
         this.domainMode = "observed";
-        this.scheme = "viridis";
+        this.scheme = "";
         /** @type {QuantScaleType} */
-        this.scaleType = "linear";
+        this.scaleType = "";
         /** @type {DomainRangePair[]} */
         this.domainPairs = [];
         /** @type {number[]} */
@@ -737,7 +750,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
         }
 
         const scale = this.#buildScale();
-        if (scale) {
+        if (scale !== null) {
             this.finish({ ok: true, data: scale });
             this.triggerClose();
         } else {
@@ -749,7 +762,7 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     /**
-     * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
+     * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined | null}
      */
     #buildScale() {
         if (this.dataType === "quantitative") {
@@ -779,14 +792,14 @@ export default class ConfigureScaleDialog extends BaseDialog {
     }
 
     /**
-     * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
+     * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined | null}
      */
     #buildQuantitativeScale() {
         return buildQuantitativeScaleSpec(this.#buildState());
     }
 
     /**
-     * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
+     * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined | null}
      */
     #buildDiscreteScale() {
         return buildDiscreteScaleSpec(this.#buildState());
@@ -844,11 +857,14 @@ export default class ConfigureScaleDialog extends BaseDialog {
                 <label>Color Scheme</label>
                 <gs-custom-select
                     class="form-input"
-                    .options=${SCHEME_NAMES}
+                    .options=${["", ...SCHEME_NAMES]}
                     .value=${this.scheme}
-                    .getLabel=${(/** @type {string} */ name) =>
-                        html`<img src=${schemeToDataUrl(name)} />
-                            <span>${name}</span>`}
+                    .getLabel=${(/** @type {string} */ name) => name || "Auto"}
+                    .renderOption=${(/** @type {string} */ name) =>
+                        name
+                            ? html`<img src=${schemeToDataUrl(name)} />
+                                  <span>${name}</span>`
+                            : html`<span>Auto</span>`}
                     @change=${(/** @type {CustomEvent} */ e) => {
                         this.scheme = /** @type {any} */ (e.target).value;
                     }}
@@ -1092,17 +1108,22 @@ export default class ConfigureScaleDialog extends BaseDialog {
                     }}
                 >
                     ${[
+                        ["", "Auto"],
                         "linear",
                         "log",
                         "sqrt",
                         "pow",
                         "symlog",
                         "threshold",
-                    ].map(
-                        (option) => html`
-                            <option value=${option}>${option}</option>
-                        `
-                    )}
+                    ].map((option) => {
+                        const value = Array.isArray(option)
+                            ? option[0]
+                            : option;
+                        const label = Array.isArray(option)
+                            ? option[1]
+                            : option;
+                        return html` <option value=${value}>${label}</option> `;
+                    })}
                 </select>
             </div>
         `;

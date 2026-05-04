@@ -92,6 +92,44 @@ function createRootStub(children) {
 }
 
 describe("getViewAttributeInfo", () => {
+    it("keeps authored scale separate from runtime-inferred scale", () => {
+        const view = createViewStub();
+        view.getEncoding = () =>
+            /** @type {any} */ ({
+                x: { field: "x", type: "quantitative" },
+                color: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: { domainMid: 0 },
+                },
+            });
+        view.getScaleResolution = () =>
+            /** @type {any} */ ({
+                getScale: () => ({
+                    props: { type: "linear", scheme: "viridis", domainMid: 0 },
+                }),
+            });
+        resolveViewRefMock.mockReturnValue(view);
+
+        const info = getViewAttributeInfo(/** @type {any} */ ({}), {
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: "track",
+                field: "value",
+                aggregation: { op: "weightedMean" },
+                interval: [1, 2],
+            },
+        });
+
+        // Derived metadata should prefill only the authored scale properties.
+        expect(info.scaleSpec).toEqual({ domainMid: 0 });
+        expect(info.scale.props).toEqual({
+            type: "linear",
+            scheme: "viridis",
+            domainMid: 0,
+        });
+    });
+
     it("shows selection source labels using the param name", () => {
         const view = createViewStub();
         resolveViewRefMock.mockReturnValue(view);

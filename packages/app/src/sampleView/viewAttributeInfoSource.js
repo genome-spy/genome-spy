@@ -114,6 +114,13 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         channel && isChannelWithScale(channel)
             ? view.getScaleResolution(channel).getScale()
             : undefined;
+    const scaleSpec =
+        channelDef &&
+        "scale" in channelDef &&
+        channelDef.scale &&
+        typeof channelDef.scale === "object"
+            ? channelDef.scale
+            : undefined;
 
     const baseType =
         channelDef && "type" in channelDef ? channelDef.type : undefined;
@@ -178,6 +185,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         ensureAvailability,
         awaitProcessed,
         scale,
+        scaleSpec,
         emphasizedName,
         description: /** @type {{ description?: string } | undefined} */ (
             channelDef
