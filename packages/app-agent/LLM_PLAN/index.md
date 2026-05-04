@@ -10,6 +10,7 @@
 - Python relay server design: [`python_agent_server.md`](./python_agent_server.md)
 - Tool-call validation and rejection guide: [`validation.md`](./validation.md)
 - Embedded sample metadata plots in chat: [`sample-attribute-plot-tool.md`](./sample-attribute-plot-tool.md)
+- Per-turn workflow state for multi-round tool use: [`turn-workflow-state.md`](./turn-workflow-state.md)
 - Agent host API and package extraction: [`agent-host-api.md`](./agent-host-api.md)
 - App agent package and plugin plan: [`app-agent-package-plugin-plan.md`](./app-agent-package-plugin-plan.md)
 - Agent tool surface cleanup and contract consolidation: [`agent-tool-surface-cleanup.md`](./agent-tool-surface-cleanup.md)
