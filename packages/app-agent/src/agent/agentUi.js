@@ -1,4 +1,4 @@
-import { faEye, faRobot, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faEye, faRobot, faTrash, faVial } from "@fortawesome/free-solid-svg-icons";
 import { getAgentState } from "./agentState.js";
 
 /**
@@ -33,6 +33,19 @@ export function registerAgentUi(app) {
           })
         : () => {};
 
+    const removeVolatileContextMenuItem = import.meta.env.DEV
+        ? app.ui.registerToolbarMenuItem({
+              label: "Show Volatile Context",
+              icon: faVial,
+              callback: async () => {
+                  const { showAgentVolatileContextDialog } = await import(
+                      "../components/dialogs/volatileContextDialog.js"
+                  );
+                  await showAgentVolatileContextDialog(app);
+              },
+          })
+        : () => {};
+
     const clearChatHistoryMenuItem = app.ui.registerToolbarMenuItem({
         label: "Clear chat history",
         icon: faTrash,
@@ -45,6 +58,7 @@ export function registerAgentUi(app) {
     return () => {
         removeButton();
         removeMenuItem();
+        removeVolatileContextMenuItem();
         clearChatHistoryMenuItem();
     };
 }

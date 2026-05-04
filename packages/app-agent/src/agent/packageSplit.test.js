@@ -105,7 +105,7 @@ describe("bundled package split", () => {
         const app = plugin.install.mock.calls[0][0];
         expect(app.getAgentApi).toBeTypeOf("function");
         expect(app.ui.registerToolbarButton).toHaveBeenCalledTimes(1);
-        expect(app.ui.registerToolbarMenuItem).toHaveBeenCalledTimes(2);
+        expect(app.ui.registerToolbarMenuItem).toHaveBeenCalledTimes(3);
 
         handle.finalize();
 
