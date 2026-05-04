@@ -2,6 +2,8 @@ import {
     applyGroupToAttributeDefs,
     METADATA_PATH_SEPARATOR,
 } from "./metadataUtils.js";
+import { preservesScaleDomainForAttribute } from "../attributeAggregation/aggregationOps.js";
+import { color as d3color } from "d3-color";
 import emptyToUndefined from "../../utils/emptyToUndefined.js";
 import { compressAttributeName } from "./derivedMetadataNameUtils.js";
 
@@ -94,16 +96,72 @@ export function deriveAttributeName(attributeName, groupPath, dataType) {
 
 /**
  * @param {import("../types.js").AttributeIdentifier} attribute
- * @param {{ name: string, groupPath: string, scale?: import("@genome-spy/core/spec/scale.js").Scale }} config
+ * @param {{ name: string, groupPath: string, scale?: import("@genome-spy/core/spec/scale.js").Scale | null }} config
  * @returns {import("../state/payloadTypes.js").DeriveMetadata}
  */
 export function buildDerivedMetadataIntent(attribute, config) {
+    const scale = sanitizeScaleForDerivedMetadata(config.scale);
     return {
         attribute,
         name: config.name,
         groupPath: emptyToUndefined(config.groupPath),
-        scale: emptyToUndefined(config.scale),
+        ...(scale ? { scale } : config.scale === null ? { scale: null } : {}),
     };
+}
+
+/**
+ * @param {import("../state/payloadTypes.js").DeriveMetadata} payload
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined}
+ */
+export function resolveDerivedMetadataScale(payload, attributeInfo) {
+    if (payload.scale !== undefined) {
+        return sanitizeScaleForDerivedMetadata(payload.scale);
+    }
+
+    return getDefaultDerivedMetadataScale(attributeInfo);
+}
+
+/**
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined}
+ */
+export function getDefaultDerivedMetadataScale(attributeInfo) {
+    if (!preservesScaleDomainForAttribute(attributeInfo.attribute)) {
+        return undefined;
+    }
+
+    const scaleSpec =
+        "scaleSpec" in attributeInfo
+            ? attributeInfo.scaleSpec
+            : attributeInfo.scale?.props;
+    return sanitizeScaleForDerivedMetadata(scaleSpec);
+}
+
+/**
+ * @param {import("@genome-spy/core/spec/scale.js").Scale | null | undefined} scale
+ * @returns {import("@genome-spy/core/spec/scale.js").Scale | undefined}
+ */
+export function sanitizeScaleForDerivedMetadata(scale) {
+    if (!scale) {
+        return undefined;
+    }
+
+    const clone = structuredClone(scale);
+    const range = clone.range;
+    if (range && (!Array.isArray(range) || !range.every(isCssColor))) {
+        delete clone.range;
+    }
+
+    return Object.keys(clone).length > 0 ? clone : undefined;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isCssColor(value) {
+    return typeof value === "string" && d3color(value) != null;
 }
 
 /**

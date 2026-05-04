@@ -36,6 +36,22 @@ function createSampleHierarchy() {
     };
 }
 
+/**
+ * @param {import("../types.js").AggregationOp} op
+ * @returns {AttributeIdentifier}
+ */
+function createIntervalAttribute(op) {
+    return {
+        type: "VALUE_AT_LOCUS",
+        specifier: {
+            view: "track",
+            field: "value",
+            interval: [1, 2],
+            aggregation: { op },
+        },
+    };
+}
+
 describe("augmentAttributeAction", () => {
     it("adds accessed values without mutating the original action", () => {
         const sampleHierarchy = createSampleHierarchy();
@@ -145,6 +161,183 @@ describe("augmentAttributeAction", () => {
                     scale: { scheme: "viridis" },
                 },
             },
+        });
+    });
+
+    it("inherits authored source scale for domain-preserving derived metadata", () => {
+        const sampleHierarchy = createSampleHierarchy();
+
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/deriveMetadata`,
+            payload: {
+                attribute: createIntervalAttribute("weightedMean"),
+                name: "derived",
+            },
+        };
+
+        const augmented = augmentAttributeAction(
+            action,
+            sampleHierarchy,
+            () =>
+                /** @type {any} */ ({
+                    attribute: action.payload.attribute,
+                    name: "weighted mean(value)",
+                    type: "quantitative",
+                    scaleSpec: { domainMid: 0 },
+                    scale: {
+                        props: {
+                            type: "linear",
+                            scheme: "viridis",
+                            domainMid: 0,
+                        },
+                    },
+                    valuesProvider: ({ sampleIds }) =>
+                        sampleIds.map((id) => (id === "s1" ? -1 : 2)),
+                })
+        );
+
+        const augmentedAttribute = /** @type {any} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.metadata.attributeDefs.derived).toEqual({
+            type: "quantitative",
+            scale: { domainMid: 0 },
+        });
+    });
+
+    it("omits inherited scale for non-preserving derived metadata", () => {
+        const sampleHierarchy = createSampleHierarchy();
+
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/deriveMetadata`,
+            payload: {
+                attribute: createIntervalAttribute("count"),
+                name: "derived",
+            },
+        };
+
+        const augmented = augmentAttributeAction(
+            action,
+            sampleHierarchy,
+            () =>
+                /** @type {any} */ ({
+                    attribute: action.payload.attribute,
+                    name: "item count",
+                    type: "quantitative",
+                    scaleSpec: { domainMid: 0 },
+                    valuesProvider: ({ sampleIds }) =>
+                        sampleIds.map((id) => (id === "s1" ? 1 : 2)),
+                })
+        );
+
+        const augmentedAttribute = /** @type {any} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.metadata.attributeDefs.derived).toEqual({
+            type: "quantitative",
+        });
+    });
+
+    it("uses explicit derived metadata scale overrides", () => {
+        const sampleHierarchy = createSampleHierarchy();
+
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/deriveMetadata`,
+            payload: {
+                attribute: createIntervalAttribute("weightedMean"),
+                name: "derived",
+                scale: { scheme: "magma" },
+            },
+        };
+
+        const augmented = augmentAttributeAction(
+            action,
+            sampleHierarchy,
+            () =>
+                /** @type {any} */ ({
+                    attribute: action.payload.attribute,
+                    name: "weighted mean(value)",
+                    type: "quantitative",
+                    scaleSpec: { domainMid: 0 },
+                    valuesProvider: ({ sampleIds }) =>
+                        sampleIds.map((id) => (id === "s1" ? 1 : 2)),
+                })
+        );
+
+        const augmentedAttribute = /** @type {any} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.metadata.attributeDefs.derived).toEqual({
+            type: "quantitative",
+            scale: { scheme: "magma" },
+        });
+    });
+
+    it("allows derived metadata actions to force automatic scale inference", () => {
+        const sampleHierarchy = createSampleHierarchy();
+
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/deriveMetadata`,
+            payload: {
+                attribute: createIntervalAttribute("weightedMean"),
+                name: "derived",
+                scale: null,
+            },
+        };
+
+        const augmented = augmentAttributeAction(
+            action,
+            sampleHierarchy,
+            () =>
+                /** @type {any} */ ({
+                    attribute: action.payload.attribute,
+                    name: "weighted mean(value)",
+                    type: "quantitative",
+                    scaleSpec: { domainMid: 0 },
+                    valuesProvider: ({ sampleIds }) =>
+                        sampleIds.map((id) => (id === "s1" ? 1 : 2)),
+                })
+        );
+
+        const augmentedAttribute = /** @type {any} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.metadata.attributeDefs.derived).toEqual({
+            type: "quantitative",
+        });
+    });
+
+    it("omits empty derived metadata scale overrides", () => {
+        const sampleHierarchy = createSampleHierarchy();
+
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/deriveMetadata`,
+            payload: {
+                attribute: createIntervalAttribute("weightedMean"),
+                name: "derived",
+                scale: {},
+            },
+        };
+
+        const augmented = augmentAttributeAction(
+            action,
+            sampleHierarchy,
+            () =>
+                /** @type {any} */ ({
+                    attribute: action.payload.attribute,
+                    name: "weighted mean(value)",
+                    type: "quantitative",
+                    scaleSpec: { domainMid: 0 },
+                    valuesProvider: ({ sampleIds }) =>
+                        sampleIds.map((id) => (id === "s1" ? 1 : 2)),
+                })
+        );
+
+        const augmentedAttribute = /** @type {any} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.metadata.attributeDefs.derived).toEqual({
+            type: "quantitative",
         });
     });
 });

@@ -9,11 +9,11 @@ import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { FormController } from "../../components/forms/formController.js";
 import { formField } from "../../components/forms/formField.js";
 import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
-import { preservesScaleDomainForAttribute } from "../attributeAggregation/aggregationOps.js";
 import { computeObservedDomain } from "./scaleUtils.js";
-import { color as d3color } from "d3-color";
 import {
+    getDefaultDerivedMetadataScale,
     resolveDataType,
+    sanitizeScaleForDerivedMetadata,
     validateDerivedMetadataName,
 } from "./deriveMetadataUtils.js";
 import { METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
@@ -26,7 +26,7 @@ import "./configureScaleDialog.js";
  * @typedef {object} DerivedMetadataConfig
  * @property {string} name
  * @property {string} groupPath
- * @property {import("@genome-spy/core/spec/scale.js").Scale} [scale]
+ * @property {import("@genome-spy/core/spec/scale.js").Scale | null} [scale]
  */
 
 export class DerivedMetadataDialog extends BaseDialog {
@@ -208,12 +208,13 @@ export class DerivedMetadataDialog extends BaseDialog {
         );
 
         if (result.ok) {
-            const scale =
+            const scale = sanitizeScaleForDerivedMetadata(
                 /** @type {import("@genome-spy/core/spec/scale.js").Scale | undefined} */ (
                     result.data
-                );
+                )
+            );
             this._scale = scale ?? null;
-            this._scaleConfigured = Boolean(scale && hasScaleProperties(scale));
+            this._scaleConfigured = true;
         }
     }
 
@@ -234,10 +235,10 @@ export class DerivedMetadataDialog extends BaseDialog {
         const payload = {
             name: attributeName,
             groupPath,
-            ...(this._scaleConfigured &&
-            this._scale &&
-            hasScaleProperties(this._scale)
-                ? { scale: this._scale }
+            ...(this._scaleConfigured
+                ? this._scale && hasScaleProperties(this._scale)
+                    ? { scale: this._scale }
+                    : { scale: null }
                 : {}),
         };
 
@@ -304,22 +305,9 @@ export function showDerivedMetadataDialog({
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
             dialog._form.reset();
-            // Prefer authored scale specs when available so inferred runtime
-            // defaults are not materialized into derived metadata.
-            const scaleSpec =
-                "scaleSpec" in attributeInfo
-                    ? attributeInfo.scaleSpec
-                    : attributeInfo.scale?.props;
-            const initialScale = preservesScaleDomainForAttribute(
-                attributeInfo.attribute
-            )
-                ? sanitizeScaleForDerivedMetadata(scaleSpec)
-                : null;
-            dialog._scale = initialScale;
-            // Treat extracted scale as configured so it is applied on submit.
-            dialog._scaleConfigured = Boolean(
-                initialScale && hasScaleProperties(initialScale)
-            );
+            dialog._scale =
+                getDefaultDerivedMetadataScale(attributeInfo) ?? null;
+            dialog._scaleConfigured = false;
         }
     );
 }
@@ -359,43 +347,9 @@ function describeScale(scale) {
 }
 
 /**
- * @param {import("@genome-spy/core/spec/scale.js").Scale | null | undefined} scale
- * @returns {import("@genome-spy/core/spec/scale.js").Scale | null}
- */
-function sanitizeScaleForDerivedMetadata(scale) {
-    if (!scale) {
-        return null;
-    }
-
-    const clone = structuredClone(scale);
-    const range = clone.range;
-    if (!range) {
-        return clone;
-    }
-
-    if (!Array.isArray(range) || !range.every((value) => isCssColor(value))) {
-        delete clone.range;
-    }
-
-    return clone;
-}
-
-/**
  * @param {import("@genome-spy/core/spec/scale.js").Scale} scale
  * @returns {boolean}
  */
 function hasScaleProperties(scale) {
     return Object.keys(scale).length > 0;
-}
-
-/**
- * @param {unknown} value
- * @returns {boolean}
- */
-function isCssColor(value) {
-    if (typeof value !== "string") {
-        return false;
-    }
-
-    return d3color(value) != null;
 }
