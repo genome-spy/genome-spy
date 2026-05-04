@@ -105,9 +105,11 @@ export interface DeriveMetadata extends PayloadWithAttribute {
     groupPath?: string;
 
     /**
-     * Optional scale definition attached to the derived metadata column.
+     * If omitted, derived metadata may inherit an authored source scale when
+     * the aggregation preserves the source value domain. Use `null` to force
+     * automatic scale inference without inheritance.
      */
-    scale?: SampleAttributeDef["scale"];
+    scale?: SampleAttributeDef["scale"] | null;
 }
 
 export interface AddMetadataFromSource {
