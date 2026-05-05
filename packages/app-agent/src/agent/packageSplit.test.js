@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
+import { readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -33,6 +34,14 @@ beforeAll(() => {
         cwd: resolve(repoRoot, "packages/app"),
         stdio: "inherit",
     });
+    execFileSync(
+        process.execPath,
+        [viteBin, "build", "--config", "vite.agent-subpaths.config.js"],
+        {
+            cwd: resolve(repoRoot, "packages/app"),
+            stdio: "inherit",
+        }
+    );
     execFileSync(process.execPath, [viteBin, "build"], {
         cwd: resolve(repoRoot, "packages/app-agent"),
         stdio: "inherit",
@@ -44,6 +53,32 @@ afterAll(() => {
 });
 
 describe("bundled package split", () => {
+    it("keeps app agent production imports on app subpath bundles", () => {
+        const appDistFiles = readdirSync(
+            resolve(repoRoot, "packages/app/dist")
+        );
+        const appAgentDistFiles = readdirSync(
+            resolve(repoRoot, "packages/app-agent/dist")
+        );
+
+        expect(appDistFiles).toEqual(
+            expect.arrayContaining([
+                "agentApi.es.js",
+                "agentShared.es.js",
+                "dialog.es.js",
+            ])
+        );
+        expect(appAgentDistFiles.some((file) => file.startsWith("blosc-"))).toBe(
+            false
+        );
+        expect(appAgentDistFiles.some((file) => file.startsWith("zstd-"))).toBe(
+            false
+        );
+        expect(
+            appAgentDistFiles.some((file) => file.startsWith("parquetRead-"))
+        ).toBe(false);
+    });
+
     it("loads the packaged app and agent bundles together", async () => {
         const appModule = await import(
             pathToFileURL(resolve(repoRoot, "packages/app/dist/index.es.js"))

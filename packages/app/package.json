@@ -23,14 +23,14 @@
     "./agentApi": {
       "types": "./src/agentApi/index.d.ts",
       "development": "./src/agentApi/index.js",
-      "import": "./dist/index.es.js",
-      "default": "./dist/index.js"
+      "import": "./dist/agentApi.es.js",
+      "default": "./dist/agentApi.es.js"
     },
     "./agentShared": {
       "types": "./src/agentShared/index.d.ts",
       "development": "./src/agentShared/index.js",
-      "import": "./dist/index.es.js",
-      "default": "./dist/index.js"
+      "import": "./dist/agentShared.es.js",
+      "default": "./dist/agentShared.es.js"
     },
     "./browser": {
       "import": "./dist/index.es.js",
@@ -39,8 +39,8 @@
     "./dialog": {
       "types": "./src/dialog/index.d.ts",
       "development": "./src/dialog/index.js",
-      "import": "./dist/index.es.js",
-      "default": "./dist/index.js"
+      "import": "./dist/dialog.es.js",
+      "default": "./dist/dialog.es.js"
     },
     "./schema.json": "./dist/schema.json",
     "./style.css": "./dist/style.css"
@@ -56,7 +56,7 @@
   },
   "scripts": {
     "dev": "node dev-server.mjs",
-    "build": "rm -rf dist && mkdir -p dist && vite build && npm run build:schema",
+    "build": "rm -rf dist && mkdir -p dist && vite build && vite build --config vite.agent-subpaths.config.js && npm run build:schema",
     "build:schema": "mkdir -p dist && ts-json-schema-generator --path 'src/spec/*.d.ts' --type AppRootSpec > dist/schema.json",
     "test:tsc": "npm run test:tsc:src && npm run test:tsc:tests",
     "test:tsc:src": "tsc -p tsconfig.json --noEmit",

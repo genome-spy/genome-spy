@@ -31,10 +31,12 @@ export default defineConfig(({ command }) => ({
         outDir: "../dist",
         emptyOutDir: true,
         lib: {
-            formats: ["umd", "es"],
+            formats: ["es"],
             entry: "index.js",
-            name: "genomeSpyAppAgent",
             fileName: (format) => `index.${format === "es" ? "es." : ""}js`,
+        },
+        rollupOptions: {
+            external: [/^@genome-spy\/app(\/.*)?$/],
         },
     },
 }));

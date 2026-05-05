@@ -10,7 +10,7 @@
   "license": "MIT",
   "homepage": "https://genomespy.app/",
   "version": "0.75.0",
-  "main": "dist/index.js",
+  "main": "dist/index.es.js",
   "module": "dist/index.es.js",
   "type": "module",
   "types": "src/index.d.ts",
@@ -19,7 +19,7 @@
       "types": "./src/index.d.ts",
       "development": "./src/index.js",
       "import": "./dist/index.es.js",
-      "default": "./dist/index.js"
+      "default": "./dist/index.es.js"
     }
   },
   "files": [
