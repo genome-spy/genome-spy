@@ -86,7 +86,7 @@ export interface AgentApi {
 
     buildSampleAttributePlot(
         request: SampleAttributePlotRequest
-    ): SampleAttributePlot | undefined;
+    ): Promise<SampleAttributePlot | undefined>;
 
     setViewVisibility(selector: ViewSelector, visibility: boolean): void;
 

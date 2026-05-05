@@ -120,7 +120,7 @@ export function createAgentApi(app) {
         /**
          * @param {SampleAttributePlotRequest} request
          */
-        buildSampleAttributePlot(request) {
+        async buildSampleAttributePlot(request) {
             const sampleView = app.getSampleView();
             if (!sampleView) {
                 throw new Error("No sample view is available.");
@@ -130,8 +130,10 @@ export function createAgentApi(app) {
             const plotType = request.plotType;
 
             if (plotType === "bar") {
-                const attributeInfo = attributeInfoSource.getAttributeInfo(
-                    request.attribute
+                const attributeInfo = await resolvePlotAttributeInfo(
+                    attributeInfoSource,
+                    request.attribute,
+                    request.attributeLabel
                 );
                 if (!attributeInfo) {
                     throw new Error(
@@ -154,8 +156,10 @@ export function createAgentApi(app) {
                     attributeInfoSource,
                 });
             } else if (plotType === "boxplot") {
-                const attributeInfo = attributeInfoSource.getAttributeInfo(
-                    request.attribute
+                const attributeInfo = await resolvePlotAttributeInfo(
+                    attributeInfoSource,
+                    request.attribute,
+                    request.attributeLabel
                 );
                 if (!attributeInfo) {
                     throw new Error(
@@ -175,11 +179,15 @@ export function createAgentApi(app) {
                     attributeInfoSource,
                 });
             } else if (plotType === "scatterplot") {
-                const xAttributeInfo = attributeInfoSource.getAttributeInfo(
-                    request.xAttribute
+                const xAttributeInfo = await resolvePlotAttributeInfo(
+                    attributeInfoSource,
+                    request.xAttribute,
+                    request.xAttributeLabel
                 );
-                const yAttributeInfo = attributeInfoSource.getAttributeInfo(
-                    request.yAttribute
+                const yAttributeInfo = await resolvePlotAttributeInfo(
+                    attributeInfoSource,
+                    request.yAttribute,
+                    request.yAttributeLabel
                 );
                 if (!xAttributeInfo || !yAttributeInfo) {
                     throw new Error(
@@ -241,5 +249,35 @@ export function createAgentApi(app) {
             app.provenance.activateInitialState();
             return app.provenance.getCurrentIndex() !== currentIndex;
         },
+    };
+}
+
+/**
+ * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
+ * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+ * @param {string} [label]
+ * @returns {Promise<import("../sampleView/types.d.ts").AttributeInfo | undefined>}
+ */
+async function resolvePlotAttributeInfo(attributeInfoSource, attribute, label) {
+    const attributeInfo = attributeInfoSource.getAttributeInfo(attribute);
+    if (!attributeInfo) {
+        return undefined;
+    }
+
+    if (attributeInfo.ensureAvailability) {
+        await attributeInfo.ensureAvailability({});
+    }
+
+    if (!label) {
+        return attributeInfo;
+    }
+
+    // Plot labels are aliases for the transient chart artifact only. Preserve
+    // the original attribute object so values and readiness still resolve via
+    // the canonical identifier.
+    return {
+        ...attributeInfo,
+        title: label,
+        emphasizedName: label,
     };
 }

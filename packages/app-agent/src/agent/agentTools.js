@@ -139,9 +139,10 @@ export const agentTools = {
                 text:
                     `Built an AttributeIdentifier for ${resolution.title} from ` +
                     `${input.candidateId}. No aggregated value was computed. ` +
-                    "Use content.attribute as payload.attribute in the next " +
-                    "`submitIntentActions` call. If you need a different locus " +
-                    "or interval, update the selection first.",
+                    "Use content.attribute directly as a plotted attribute in " +
+                    "`showSampleAttributePlot` or as payload.attribute in " +
+                    "`submitIntentActions`. If you need a different locus or " +
+                    "interval, update the selection first.",
                 content: resolution,
             };
         } catch (error) {
@@ -155,10 +156,11 @@ export const agentTools = {
      * @param {AgentToolRuntime} runtime
      * @param {import("./agentToolInputs.d.ts").ShowSampleAttributePlotToolInput} input
      */
-    showSampleAttributePlot(runtime, input) {
+    async showSampleAttributePlot(runtime, input) {
         try {
             const plotRequest = toSampleAttributePlotRequest(input);
-            const plot = runtime.agentApi.buildSampleAttributePlot(plotRequest);
+            const plot =
+                await runtime.agentApi.buildSampleAttributePlot(plotRequest);
             if (!plot) {
                 throw new Error(
                     "The requested sample attribute plot could not be built."
@@ -311,7 +313,9 @@ function toSampleAttributePlotRequest(input) {
     const plot = input.plot;
 
     if (plot.kind === "quantitativeRelationship") {
-        const [xAttribute, yAttribute] = plot.attributes;
+        const [xPlotAttribute, yPlotAttribute] = plot.attributes;
+        const xAttribute = toCanonicalAttributeIdentifier(xPlotAttribute);
+        const yAttribute = toCanonicalAttributeIdentifier(yPlotAttribute);
         if (isSameAttributeIdentifier(xAttribute, yAttribute)) {
             throw new Error(
                 "Relationship plots require two different quantitative attributes. " +
@@ -324,20 +328,47 @@ function toSampleAttributePlotRequest(input) {
             plotType: "scatterplot",
             xAttribute,
             yAttribute,
+            ...(xPlotAttribute.label
+                ? { xAttributeLabel: xPlotAttribute.label }
+                : {}),
+            ...(yPlotAttribute.label
+                ? { yAttributeLabel: yPlotAttribute.label }
+                : {}),
         };
     }
 
     if (plot.kind === "categoryCounts") {
+        const attribute = toCanonicalAttributeIdentifier(plot.attribute);
         return {
             plotType: "bar",
-            attribute: plot.attribute,
+            attribute,
+            ...(plot.attribute.label
+                ? { attributeLabel: plot.attribute.label }
+                : {}),
         };
     }
 
+    const attribute = toCanonicalAttributeIdentifier(plot.attribute);
     return {
         plotType: "boxplot",
-        attribute: plot.attribute,
+        attribute,
+        ...(plot.attribute.label
+            ? { attributeLabel: plot.attribute.label }
+            : {}),
     };
+}
+
+/**
+ * @param {import("./agentToolInputs.d.ts").PlotAttributeIdentifier} plotAttribute
+ * @returns {import("@genome-spy/app/agentShared").AttributeIdentifier}
+ */
+function toCanonicalAttributeIdentifier(plotAttribute) {
+    // `label` is plot-local presentation metadata. Strip it before comparing
+    // or forwarding the identifier so app-side lookup, provenance, and
+    // availability hooks see the canonical AttributeIdentifier shape.
+    const attribute = { ...plotAttribute };
+    delete attribute.label;
+    return attribute;
 }
 
 /**

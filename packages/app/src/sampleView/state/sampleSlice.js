@@ -238,6 +238,22 @@ export const sampleSlice = createSlice({
          *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
          *   "name": "purity_copy"
          * }
+         * @example
+         * {
+         *   "attribute": {
+         *     "type": "VALUE_AT_LOCUS",
+         *     "specifier": {
+         *       "view": { "scope": [], "view": "track" },
+         *       "field": "beta",
+         *       "interval": {
+         *         "type": "selection",
+         *         "selector": { "scope": [], "param": "brush" }
+         *       },
+         *       "aggregation": { "op": "max" }
+         *     }
+         *   },
+         *   "name": "tp53_region_beta"
+         * }
          */
         deriveMetadata: (
             state,
@@ -284,7 +300,9 @@ export const sampleSlice = createSlice({
          * Sort samples in descending order by a selected attribute.
          *
          * Use this when samples should be ranked by one quantitative or
-         * ordinal attribute before further filtering or grouping.
+         * ordinal attribute before further filtering or grouping. The
+         * attribute may be metadata or a selection-derived aggregation returned
+         * by `buildSelectionAggregationAttribute`.
          *
          * @agent.payloadType SortBy
          * @agent.category sorting
@@ -365,7 +383,9 @@ export const sampleSlice = createSlice({
          * Retain samples whose selected quantitative value satisfies a threshold comparison.
          *
          * Use this for numeric filters such as values greater than, less than,
-         * or equal to a chosen threshold.
+         * or equal to a chosen threshold. The attribute may be metadata or a
+         * selection-derived aggregation returned by
+         * `buildSelectionAggregationAttribute`.
          *
          * @agent.payloadType FilterByQuantitative
          * @agent.category filtering
@@ -429,7 +449,9 @@ export const sampleSlice = createSlice({
          * Remove samples whose selected attribute value is missing.
          *
          * Use this before later analysis steps when samples with `undefined`
-         * or `null` values should be excluded.
+         * or `null` values should be excluded. The attribute may be metadata or
+         * a selection-derived aggregation returned by
+         * `buildSelectionAggregationAttribute`.
          *
          * @agent.payloadType RemoveUndefined
          * @agent.category filtering
@@ -529,7 +551,9 @@ export const sampleSlice = createSlice({
          *
          * Use this for a quick quantitative stratification. Quartiles are
          * computed from the current samples in each group using the R-7
-         * method, and tied values may collapse adjacent quartiles.
+         * method, and tied values may collapse adjacent quartiles. The
+         * attribute may be metadata or a selection-derived aggregation returned
+         * by `buildSelectionAggregationAttribute`.
          *
          * @agent.payloadType GroupToQuartiles
          * @agent.category grouping
@@ -561,7 +585,9 @@ export const sampleSlice = createSlice({
          *
          * Use this when quantitative bins should follow explicit thresholds
          * instead of quartiles. The resulting groups are ordered from the
-         * highest interval to the lowest.
+         * highest interval to the lowest. The attribute may be metadata or a
+         * selection-derived aggregation returned by
+         * `buildSelectionAggregationAttribute`.
          *
          * @agent.payloadType GroupByThresholds
          * @agent.category grouping

@@ -320,7 +320,7 @@ describe("agentTools", () => {
                 actionType: "sampleView/sortBy",
                 description:
                     "Sort samples in descending order by a selected attribute.",
-                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping.",
+                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
                 payloadFields: [
                     expect.objectContaining({
                         name: "attribute",
@@ -386,11 +386,11 @@ describe("agentTools", () => {
         expect(runtime.getAgentVolatileContext).toHaveBeenCalledTimes(1);
     });
 
-    it("shows sample attribute plots through the host API", () => {
+    it("shows sample attribute plots through the host API", async () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.showSampleAttributePlot(runtime, {
+        const result = await tools.showSampleAttributePlot(runtime, {
             plot: {
                 kind: "quantitativeRelationship",
                 attributes: [
@@ -428,12 +428,54 @@ describe("agentTools", () => {
         );
     });
 
-    it("rejects when the host cannot build a sample attribute plot", () => {
+    it("passes aggregated plot attributes and plot-local labels through the host API", async () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+        const aggregatedAttribute = {
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: {
+                    scope: [],
+                    view: "track",
+                },
+                field: "beta",
+                interval: {
+                    type: "selection",
+                    selector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                },
+                aggregation: {
+                    op: "max",
+                },
+            },
+            label: "TP53 region beta",
+        };
+
+        await tools.showSampleAttributePlot(runtime, {
+            plot: {
+                kind: "valueDistributionByCurrentGroups",
+                attribute: aggregatedAttribute,
+            },
+        });
+
+        expect(runtime.agentApi.buildSampleAttributePlot).toHaveBeenCalledWith({
+            plotType: "boxplot",
+            attribute: {
+                type: "VALUE_AT_LOCUS",
+                specifier: aggregatedAttribute.specifier,
+            },
+            attributeLabel: "TP53 region beta",
+        });
+    });
+
+    it("rejects when the host cannot build a sample attribute plot", async () => {
         const runtime = createRuntimeStub();
         runtime.agentApi.buildSampleAttributePlot.mockReturnValue(undefined);
         const tools = agentTools;
 
-        expect(() =>
+        await expect(
             tools.showSampleAttributePlot(runtime, {
                 plot: {
                     kind: "categoryCounts",
@@ -443,13 +485,13 @@ describe("agentTools", () => {
                     },
                 },
             })
-        ).toThrow(ToolCallRejectionError);
+        ).rejects.toThrow(ToolCallRejectionError);
     });
 
-    it("rejects relationship plots with identical axes", () => {
+    it("rejects relationship plots with identical axes", async () => {
         const runtime = createRuntimeStub();
 
-        expect(() =>
+        await expect(
             agentTools.showSampleAttributePlot(runtime, {
                 plot: {
                     kind: "quantitativeRelationship",
@@ -465,7 +507,7 @@ describe("agentTools", () => {
                     ],
                 },
             })
-        ).toThrow(ToolCallRejectionError);
+        ).rejects.toThrow(ToolCallRejectionError);
         expect(
             runtime.agentApi.buildSampleAttributePlot
         ).not.toHaveBeenCalled();

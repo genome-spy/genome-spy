@@ -100,6 +100,43 @@ describe("validateIntentBatch", () => {
         expect(result.ok).toBe(true);
     });
 
+    it("accepts sample actions with selection-derived aggregation attributes", () => {
+        const result = validateIntentBatch(createAgentApiStub(), {
+            schemaVersion: 1,
+            steps: [
+                {
+                    actionType: "sampleView/filterByQuantitative",
+                    payload: {
+                        attribute: {
+                            type: "VALUE_AT_LOCUS",
+                            specifier: {
+                                view: {
+                                    scope: [],
+                                    view: "track",
+                                },
+                                field: "beta",
+                                interval: {
+                                    type: "selection",
+                                    selector: {
+                                        scope: [],
+                                        param: "brush",
+                                    },
+                                },
+                                aggregation: {
+                                    op: "max",
+                                },
+                            },
+                        },
+                        operator: "gte",
+                        operand: 0.6,
+                    },
+                },
+            ],
+        });
+
+        expect(result.ok).toBe(true);
+    });
+
     it("rejects unknown action types", () => {
         const result = validateIntentBatch(createAgentApiStub(), {
             schemaVersion: 1,

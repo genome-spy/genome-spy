@@ -922,7 +922,7 @@ describe("createAgentSessionController", () => {
         expect(results).toEqual([
             expect.objectContaining({
                 rejected: false,
-                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use content.attribute as payload.attribute in the next `submitIntentActions` call. If you need a different locus or interval, update the selection first.",
+                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use content.attribute directly as a plotted attribute in `showSampleAttributePlot` or as payload.attribute in `submitIntentActions`. If you need a different locus or interval, update the selection first.",
                 content: expect.objectContaining({
                     kind: "selection_aggregation_resolution",
                     candidateId: "brush@track:beta",

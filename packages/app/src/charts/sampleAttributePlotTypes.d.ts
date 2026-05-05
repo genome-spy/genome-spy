@@ -50,13 +50,17 @@ export type SampleAttributePlotRequest =
     | {
           plotType: "bar";
           attribute: AttributeIdentifier;
+          attributeLabel?: string;
       }
     | {
           plotType: "boxplot";
           attribute: AttributeIdentifier;
+          attributeLabel?: string;
       }
     | {
           plotType: "scatterplot";
           xAttribute: AttributeIdentifier;
           yAttribute: AttributeIdentifier;
+          xAttributeLabel?: string;
+          yAttributeLabel?: string;
       };

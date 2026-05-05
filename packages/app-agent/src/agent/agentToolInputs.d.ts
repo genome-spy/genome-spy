@@ -1,5 +1,9 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
-import type { AggregationOp, ViewSelector } from "@genome-spy/app/agentShared";
+import type {
+    AggregationOp,
+    ParamSelector,
+    ViewSelector,
+} from "@genome-spy/app/agentShared";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import type { NumericDomain } from "@genome-spy/core/spec/scale.js";
 
@@ -12,6 +16,56 @@ import type { NumericDomain } from "@genome-spy/core/spec/scale.js";
 type SampleAttributeIdentifier = {
     type: "SAMPLE_ATTRIBUTE";
     specifier: string;
+};
+
+// Keep the provider-facing plot schema narrower than the app's full
+// AttributeIdentifier union. The full union includes literal intervals and
+// internal runtime fields whose generated JSON Schema is too broad for strict
+// tool providers. Direct agent plots only need metadata attributes and the
+// selection-backed aggregation identifiers returned by
+// buildSelectionAggregationAttribute.
+interface SelectionAggregationSpecifier {
+    /**
+     * View that provides the aggregated field.
+     */
+    view: ViewSelector;
+
+    /**
+     * Field to aggregate over the selected interval.
+     */
+    field: string;
+
+    /**
+     * Selection-backed interval reference.
+     */
+    interval: {
+        type: "selection";
+        selector: ParamSelector;
+    };
+
+    /**
+     * Aggregation operation to apply over the selected interval.
+     */
+    aggregation: {
+        op: AggregationOp;
+    };
+}
+
+type SelectionAggregationAttributeIdentifier = {
+    type: "VALUE_AT_LOCUS";
+    specifier: SelectionAggregationSpecifier;
+};
+
+export type PlotAttributeIdentifier = (
+    | SampleAttributeIdentifier
+    | SelectionAggregationAttributeIdentifier
+) & {
+    /**
+     * Optional plot-only label for this attribute. Use this for concise axis
+     * and plot titles when the canonical generated attribute title is too long.
+     * The label is not part of the canonical AttributeIdentifier.
+     */
+    label?: string;
 };
 
 type IntentActionType =
@@ -113,11 +167,13 @@ export type JumpToInitialProvenanceStateToolInput = Record<string, never>;
 
 /**
  * Build an `AttributeIdentifier` for a selection-derived aggregation so it can
- * be used in a later intent action. Before using this tool, you must make an
- * interval selection using a parameter or ensure that one already exists. This
- * tool does not compute or return an aggregated value. Use the
- * `submitIntentActions` tool after using this tool. If the requested locus or
- * interval is not the current selection, update the selection first.
+ * be used directly in `showSampleAttributePlot` or in a later intent action.
+ * Before using this tool, you must make an interval selection using a
+ * parameter or ensure that one already exists. This tool does not compute or
+ * return an aggregated value. Use the returned `content.attribute` as the
+ * plotted attribute or as `payload.attribute` in `submitIntentActions`. If the
+ * requested locus or interval is not the current selection, update the
+ * selection first.
  *
  * @example
  * {
@@ -335,7 +391,7 @@ export interface ShowSampleAttributeCategoryCountsToolInput {
     /**
      * Categorical attribute to count.
      */
-    attribute: SampleAttributeIdentifier;
+    attribute: PlotAttributeIdentifier;
 }
 
 export interface ShowSampleAttributeValueDistributionToolInput {
@@ -349,7 +405,7 @@ export interface ShowSampleAttributeValueDistributionToolInput {
     /**
      * Quantitative value attribute to summarize within each current group.
      */
-    attribute: SampleAttributeIdentifier;
+    attribute: PlotAttributeIdentifier;
 }
 
 export interface ShowSampleAttributeRelationshipToolInput {
@@ -365,7 +421,7 @@ export interface ShowSampleAttributeRelationshipToolInput {
      * Two different quantitative attributes to compare. The first attribute is
      * rendered on the scatterplot x axis and the second on the y axis.
      */
-    attributes: [SampleAttributeIdentifier, SampleAttributeIdentifier];
+    attributes: [PlotAttributeIdentifier, PlotAttributeIdentifier];
 }
 
 export type SampleAttributePlotSpec =
@@ -396,6 +452,34 @@ export type SampleAttributePlotSpec =
  * @example
  * {
  *   "plot": {
+ *     "kind": "valueDistributionByCurrentGroups",
+ *     "attribute": {
+ *       "type": "VALUE_AT_LOCUS",
+ *       "specifier": {
+ *         "view": {
+ *           "scope": [],
+ *           "view": "track"
+ *         },
+ *         "field": "beta",
+ *         "interval": {
+ *           "type": "selection",
+ *           "selector": {
+ *             "scope": [],
+ *             "param": "brush"
+ *           }
+ *         },
+ *         "aggregation": {
+ *           "op": "max"
+ *         }
+ *       },
+ *       "label": "TP53 region beta"
+ *     }
+ *   }
+ * }
+ *
+ * @example
+ * {
+ *   "plot": {
  *     "kind": "quantitativeRelationship",
  *     "attributes": [
  *       {
@@ -413,10 +497,12 @@ export type SampleAttributePlotSpec =
 export interface ShowSampleAttributePlotToolInput {
     /**
      * Plot request. Use `valueDistributionByCurrentGroups` when the user asks
-     * for a boxplot; put only the value attribute in `attribute`. The grouping
-     * comes from the current SampleHierarchy. Use `quantitativeRelationship` only for
-     * scatterplots comparing two different quantitative variables; the first
-     * listed attribute is rendered on x and the second on y.
+     * for a boxplot; put only the value attribute in `attribute`. You may use
+     * the AttributeIdentifier returned by `buildSelectionAggregationAttribute`
+     * directly. The grouping comes from the current SampleHierarchy. Use
+     * `quantitativeRelationship` only for scatterplots comparing two different
+     * quantitative variables; the first listed attribute is rendered on x and
+     * the second on y.
      */
     plot: SampleAttributePlotSpec;
 }

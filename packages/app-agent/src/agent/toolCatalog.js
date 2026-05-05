@@ -369,8 +369,6 @@ function normalizeOpenAiToolSchema(schema) {
         }
 
         if (
-            key === "properties" ||
-            key === "items" ||
             key === "not" ||
             key === "if" ||
             key === "then" ||
@@ -378,6 +376,29 @@ function normalizeOpenAiToolSchema(schema) {
             key === "additionalProperties"
         ) {
             normalized[key] = normalizeOpenAiToolSchema(value);
+            continue;
+        }
+
+        if (
+            key === "properties" &&
+            value &&
+            typeof value === "object" &&
+            !Array.isArray(value)
+        ) {
+            // Strict tool schemas require each nested object schema to list
+            // every property in `required`. Normalize each property schema
+            // itself instead of treating the properties map as a schema object.
+            normalized.properties = Object.fromEntries(
+                Object.entries(value).map(([propertyName, propertySchema]) => [
+                    propertyName,
+                    normalizeOpenAiToolSchema(propertySchema),
+                ])
+            );
+            continue;
+        }
+
+        if (key === "items") {
+            normalized.items = normalizeOpenAiToolSchema(value);
             continue;
         }
 

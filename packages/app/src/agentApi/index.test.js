@@ -213,7 +213,7 @@ describe("createAgentApi", () => {
         expect(app.provenance.activateInitialState).toHaveBeenCalledTimes(1);
     });
 
-    it("builds sample attribute plots through the current sample view", () => {
+    it("builds sample attribute plots through the current sample view", async () => {
         app.getSampleView.mockReturnValue({
             sampleHierarchy: {
                 groupMetadata: [
@@ -264,21 +264,21 @@ describe("createAgentApi", () => {
 
         const agentApi = createAgentApi(app);
 
-        const barPlot = agentApi.buildSampleAttributePlot({
+        const barPlot = await agentApi.buildSampleAttributePlot({
             plotType: "bar",
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "diagnosis",
             },
         });
-        const boxplot = agentApi.buildSampleAttributePlot({
+        const boxplot = await agentApi.buildSampleAttributePlot({
             plotType: "boxplot",
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "age",
             },
         });
-        const scatterplot = agentApi.buildSampleAttributePlot({
+        const scatterplot = await agentApi.buildSampleAttributePlot({
             plotType: "scatterplot",
             xAttribute: {
                 type: "SAMPLE_ATTRIBUTE",
@@ -319,6 +319,67 @@ describe("createAgentApi", () => {
         expect(buildHierarchyScatterplot).toHaveBeenCalledWith(
             expect.objectContaining({
                 colorScaleRange: ["#ff0000", "#00ff00"],
+            })
+        );
+    });
+
+    it("awaits plot attribute availability and applies plot-local labels", async () => {
+        const ensureAvailability = vi.fn(async () => undefined);
+        const aggregatedAttribute = {
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: {
+                    scope: [],
+                    view: "track",
+                },
+                field: "beta",
+                interval: {
+                    type: "selection",
+                    selector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                },
+                aggregation: {
+                    op: "max",
+                },
+            },
+        };
+        const aggregatedInfo = {
+            attribute: aggregatedAttribute,
+            title: "max(beta) in selection brush",
+            emphasizedName: "max(beta) in selection brush",
+            type: "quantitative",
+            ensureAvailability,
+        };
+        app.getSampleView.mockReturnValue({
+            sampleHierarchy: {
+                groupMetadata: [],
+            },
+            compositeAttributeInfoSource: {
+                getAttributeInfo: vi.fn((attribute) =>
+                    attribute.type === "VALUE_AT_LOCUS"
+                        ? aggregatedInfo
+                        : undefined
+                ),
+            },
+        });
+
+        const agentApi = createAgentApi(app);
+        await agentApi.buildSampleAttributePlot({
+            plotType: "boxplot",
+            attribute: aggregatedAttribute,
+            attributeLabel: "TP53 region beta",
+        });
+
+        expect(ensureAvailability).toHaveBeenCalledTimes(1);
+        expect(buildHierarchyBoxplot).toHaveBeenCalledWith(
+            expect.objectContaining({
+                attributeInfo: expect.objectContaining({
+                    attribute: aggregatedAttribute,
+                    title: "TP53 region beta",
+                    emphasizedName: "TP53 region beta",
+                }),
             })
         );
     });

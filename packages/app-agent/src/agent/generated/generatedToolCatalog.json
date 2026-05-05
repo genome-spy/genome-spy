@@ -93,7 +93,7 @@
   },
   {
     "toolName": "buildSelectionAggregationAttribute",
-    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action.",
+    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used directly in `showSampleAttributePlot` or in a later intent action.",
     "inputType": "BuildSelectionAggregationAttributeToolInput",
     "inputFields": [
       {
@@ -299,7 +299,7 @@
       {
         "name": "plot",
         "type": "SampleAttributePlotSpec",
-        "description": "Plot request. Use `valueDistributionByCurrentGroups` when the user asks for a boxplot; put only the value attribute in `attribute`. The grouping comes from the current SampleHierarchy. Use `quantitativeRelationship` only for scatterplots comparing two different quantitative variables; the first listed attribute is rendered on x and the second on y.",
+        "description": "Plot request. Use `valueDistributionByCurrentGroups` when the user asks for a boxplot; put only the value attribute in `attribute`. You may use the AttributeIdentifier returned by `buildSelectionAggregationAttribute` directly. The grouping comes from the current SampleHierarchy. Use `quantitativeRelationship` only for scatterplots comparing two different quantitative variables; the first listed attribute is rendered on x and the second on y.",
         "required": true
       }
     ],

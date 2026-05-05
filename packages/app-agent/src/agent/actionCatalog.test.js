@@ -111,8 +111,11 @@ describe("actionCatalog", () => {
         const entry = getActionCatalogEntry("sampleView/filterByQuantitative");
 
         expect(entry.description).toContain("quantitative value");
-        expect(entry.usage).toBe(
+        expect(entry.usage).toContain(
             "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold."
+        );
+        expect(entry.usage).toContain(
+            "selection-derived aggregation returned by `buildSelectionAggregationAttribute`"
         );
         expect(entry.payloadFields).toEqual([
             expect.objectContaining({
@@ -138,6 +141,20 @@ describe("actionCatalog", () => {
                 operator: "gte",
                 operand: 0.6,
             },
+        ]);
+    });
+
+    it("keeps the full selection aggregation example in one action only", () => {
+        const actionsWithSelectionAggregationExamples = generatedActionCatalog
+            .filter((entry) =>
+                entry.examples.some(
+                    (example) => example.attribute?.type === "VALUE_AT_LOCUS"
+                )
+            )
+            .map((entry) => entry.actionType);
+
+        expect(actionsWithSelectionAggregationExamples).toEqual([
+            "sampleView/deriveMetadata",
         ]);
     });
 

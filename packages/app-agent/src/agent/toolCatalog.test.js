@@ -142,6 +142,35 @@ describe("toolCatalog", () => {
             validateToolArgumentsShape("showSampleAttributePlot", {
                 plot: {
                     kind: "valueDistributionByCurrentGroups",
+                    attribute: {
+                        type: "VALUE_AT_LOCUS",
+                        specifier: {
+                            view: {
+                                scope: [],
+                                view: "track",
+                            },
+                            field: "beta",
+                            interval: {
+                                type: "selection",
+                                selector: {
+                                    scope: [],
+                                    param: "brush",
+                                },
+                            },
+                            aggregation: {
+                                op: "max",
+                            },
+                        },
+                        label: "TP53 region beta",
+                    },
+                },
+            }).ok
+        ).toBe(true);
+
+        expect(
+            validateToolArgumentsShape("showSampleAttributePlot", {
+                plot: {
+                    kind: "valueDistributionByCurrentGroups",
                     attributes: [
                         {
                             type: "SAMPLE_ATTRIBUTE",
@@ -187,6 +216,21 @@ describe("toolCatalog", () => {
         ).toBe(true);
     });
 
+    it("normalizes nested tool object schemas for OpenAI strict mode", () => {
+        const showSampleAttributePlot = buildResponsesToolDefinitions().find(
+            (tool) => tool.name === "showSampleAttributePlot"
+        );
+
+        expect(
+            findObjectSchemasWithMissingRequiredProperties(
+                showSampleAttributePlot.parameters
+            )
+        ).toEqual([]);
+        expect(
+            JSON.stringify(showSampleAttributePlot.parameters)
+        ).not.toContain("domainAtActionTime");
+    });
+
     it("explains when an actionType is mistakenly called as a tool", () => {
         const message = formatToolCallRejection("paramProvenance/paramChange", [
             "Unsupported agent tool paramProvenance/paramChange.",
@@ -202,3 +246,53 @@ describe("toolCatalog", () => {
         expect(message).toContain("Validation errors:");
     });
 });
+
+/**
+ * @param {unknown} schema
+ * @param {string} [path]
+ * @returns {string[]}
+ */
+function findObjectSchemasWithMissingRequiredProperties(schema, path = "$") {
+    if (!schema || typeof schema !== "object") {
+        return [];
+    }
+
+    if (Array.isArray(schema)) {
+        return schema.flatMap((item, index) =>
+            findObjectSchemasWithMissingRequiredProperties(
+                item,
+                path + "[" + index + "]"
+            )
+        );
+    }
+
+    const objectSchema = /** @type {Record<string, any>} */ (schema);
+    const errors = [];
+    if (
+        objectSchema.type === "object" &&
+        objectSchema.properties &&
+        typeof objectSchema.properties === "object" &&
+        !Array.isArray(objectSchema.properties)
+    ) {
+        const required = Array.isArray(objectSchema.required)
+            ? objectSchema.required
+            : [];
+        const missing = Object.keys(objectSchema.properties).filter(
+            (key) => !required.includes(key)
+        );
+        if (missing.length) {
+            errors.push(path + " missing required keys: " + missing.join(","));
+        }
+    }
+
+    for (const [key, value] of Object.entries(objectSchema)) {
+        errors.push(
+            ...findObjectSchemasWithMissingRequiredProperties(
+                value,
+                path + "." + key
+            )
+        );
+    }
+
+    return errors;
+}

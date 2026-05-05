@@ -103,7 +103,6 @@
   for the interval-selection summaries used by the agent.
 - See [`selection-aggregation-workflow.md`](./selection-aggregation-workflow.md)
   for the draft selection-aggregation flow.
-
 ## Data Access Policy
 
 - See [`infrastructure.md`](./infrastructure.md) for the public-data vs controlled-access policy and the LLM transport safeguards.

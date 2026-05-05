@@ -84,6 +84,29 @@
           "specifier": "purity"
         },
         "name": "purity_copy"
+      },
+      {
+        "attribute": {
+          "type": "VALUE_AT_LOCUS",
+          "specifier": {
+            "view": {
+              "scope": [],
+              "view": "track"
+            },
+            "field": "beta",
+            "interval": {
+              "type": "selection",
+              "selector": {
+                "scope": [],
+                "param": "brush"
+              }
+            },
+            "aggregation": {
+              "op": "max"
+            }
+          }
+        },
+        "name": "tp53_region_beta"
       }
     ]
   },
@@ -130,7 +153,7 @@
   {
     "actionType": "sampleView/sortBy",
     "description": "Sort samples in descending order by a selected attribute.",
-    "usage": "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping.",
+    "usage": "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
     "payloadType": "SortBy",
     "payloadFields": [
       {
@@ -222,7 +245,7 @@
   {
     "actionType": "sampleView/filterByQuantitative",
     "description": "Retain samples whose selected quantitative value satisfies a threshold comparison.",
-    "usage": "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold.",
+    "usage": "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
     "payloadType": "FilterByQuantitative",
     "payloadFields": [
       {
@@ -308,7 +331,7 @@
   {
     "actionType": "sampleView/removeUndefined",
     "description": "Remove samples whose selected attribute value is missing.",
-    "usage": "Use this before later analysis steps when samples with `undefined` or `null` values should be excluded.",
+    "usage": "Use this before later analysis steps when samples with `undefined` or `null` values should be excluded. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
     "payloadType": "RemoveUndefined",
     "payloadFields": [
       {
@@ -406,7 +429,7 @@
   {
     "actionType": "sampleView/groupToQuartiles",
     "description": "Group samples into quartile-based bins of a selected quantitative attribute.",
-    "usage": "Use this for a quick quantitative stratification. Quartiles are computed from the current samples in each group using the R-7 method, and tied values may collapse adjacent quartiles.",
+    "usage": "Use this for a quick quantitative stratification. Quartiles are computed from the current samples in each group using the R-7 method, and tied values may collapse adjacent quartiles. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
     "payloadType": "GroupToQuartiles",
     "payloadFields": [
       {
@@ -434,7 +457,7 @@
   {
     "actionType": "sampleView/groupByThresholds",
     "description": "Group samples into threshold-defined numeric intervals of a selected quantitative attribute.",
-    "usage": "Use this when quantitative bins should follow explicit thresholds instead of quartiles. The resulting groups are ordered from the highest interval to the lowest.",
+    "usage": "Use this when quantitative bins should follow explicit thresholds instead of quartiles. The resulting groups are ordered from the highest interval to the lowest. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
     "payloadType": "GroupByThresholds",
     "payloadFields": [
       {
