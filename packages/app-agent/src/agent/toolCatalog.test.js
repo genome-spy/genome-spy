@@ -117,7 +117,7 @@ describe("toolCatalog", () => {
 
     it("validates tool arguments against the generated schema", () => {
         const validation = validateToolArgumentsShape("setViewVisibility", {
-            selector: '{"scope":[],"view":"reference-sequence"}',
+            selector: "reference-sequence",
             visibility: "True",
         });
 
@@ -191,6 +191,40 @@ describe("toolCatalog", () => {
                 ],
             }).ok
         ).toBe(true);
+    });
+
+    it("parses escaped JSON strings when an object is expected by a tool schema", () => {
+        const toolArguments = {
+            kind: "boxplot",
+            attribute: '{"type":"SAMPLE_ATTRIBUTE","specifier":"mutations"}',
+        };
+
+        const validation = validateToolArgumentsShape(
+            "showAttributeDistributionPlot",
+            toolArguments
+        );
+
+        expect(validation.ok).toBe(true);
+        expect(toolArguments.attribute).toEqual({
+            type: "SAMPLE_ATTRIBUTE",
+            specifier: "mutations",
+        });
+    });
+
+    it("keeps string values as strings when a tool schema expects a string", () => {
+        const toolArguments = {
+            query: '{"type":"SAMPLE_ATTRIBUTE","specifier":"mutations"}',
+        };
+
+        const validation = validateToolArgumentsShape(
+            "resolveMetadataAttributeValues",
+            toolArguments
+        );
+
+        expect(validation.ok).toBe(true);
+        expect(toolArguments.query).toBe(
+            '{"type":"SAMPLE_ATTRIBUTE","specifier":"mutations"}'
+        );
     });
 
     it("normalizes nested tool object schemas for OpenAI strict mode", () => {

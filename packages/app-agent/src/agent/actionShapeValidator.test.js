@@ -68,6 +68,20 @@ describe("actionShapeValidator", () => {
         );
     });
 
+    it("parses escaped JSON strings when an object is expected by an action schema", () => {
+        const payload = {
+            attribute: '{"type":"SAMPLE_ATTRIBUTE","specifier":"mutations"}',
+        };
+
+        const result = validateActionPayloadShape("sampleView/sortBy", payload);
+
+        expect(result.ok).toBe(true);
+        expect(payload.attribute).toEqual({
+            type: "SAMPLE_ATTRIBUTE",
+            specifier: "mutations",
+        });
+    });
+
     it("rejects malformed intent batches", () => {
         const result = validateIntentBatchShape({
             schemaVersion: 1,

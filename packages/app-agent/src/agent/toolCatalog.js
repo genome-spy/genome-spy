@@ -5,6 +5,7 @@ import generatedToolSchema from "./generated/generatedToolSchema.json" with { ty
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
 import { validateSubmitIntentActionsToolShape } from "./submitIntentActionsValidator.js";
 import { formatAjvErrors } from "./validationErrorFormatter.js";
+import { repairJsonEncodedObjects } from "./schemaJsonRepair.js";
 
 // These generated artifacts are derived from agentToolInputs.d.ts and are the
 // runtime source for tool descriptions, validation, and Responses API shapes.
@@ -129,12 +130,22 @@ export function validateToolArgumentsShape(toolName, toolArguments) {
         return validateSubmitIntentActionsToolShape(toolArguments);
     }
 
-    const validator = getToolArgumentsValidator(toolName);
-    if (!validator) {
+    const schema = getToolArgumentsSchema(toolName);
+    if (!schema) {
         return {
             ok: false,
             errors: ["Unsupported agent tool " + toolName + "."],
         };
+    }
+
+    const schemaDefinitions = /** @type {Record<string, any>} */ (
+        generatedToolSchema.definitions ?? {}
+    );
+    repairJsonEncodedObjects(toolArguments, schema, schemaDefinitions);
+
+    const validator = getToolArgumentsValidator(toolName);
+    if (!validator) {
+        throw new Error("Missing validator for agent tool " + toolName + ".");
     }
 
     if (validator(toolArguments)) {
@@ -188,6 +199,21 @@ function getToolArgumentsValidator(toolName) {
         return cachedValidator;
     }
 
+    const schema = getToolArgumentsSchema(toolName);
+    if (!schema) {
+        return undefined;
+    }
+
+    const validator = ajv.compile(getSchemaWrapper(schema));
+    validatorsByToolName.set(toolName, validator);
+    return validator;
+}
+
+/**
+ * @param {string} toolName
+ * @returns {Record<string, any> | undefined}
+ */
+function getToolArgumentsSchema(toolName) {
     const tool = generatedToolCatalog.find(
         (entry) => entry.toolName === toolName
     );
@@ -205,9 +231,7 @@ function getToolArgumentsValidator(toolName) {
         );
     }
 
-    const validator = ajv.compile(getSchemaWrapper(schema));
-    validatorsByToolName.set(toolName, validator);
-    return validator;
+    return schema;
 }
 
 /**

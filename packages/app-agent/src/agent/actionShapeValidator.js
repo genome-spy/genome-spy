@@ -2,6 +2,7 @@
 import Ajv from "ajv";
 import generatedActionSchema from "./generated/generatedActionSchema.json" with { type: "json" };
 import { formatAjvErrors } from "./validationErrorFormatter.js";
+import { repairJsonEncodedObjects } from "./schemaJsonRepair.js";
 
 const AjvClass = /** @type {any} */ (Ajv);
 
@@ -168,6 +169,17 @@ export function validateActionPayloadShape(actionType, payload, prefix = "$") {
         return validateParamProvenanceEntryShape(payload, prefix);
     }
 
+    const payloadSchema = getActionPayloadSchema(actionType);
+    if (payloadSchema) {
+        repairJsonEncodedObjects(
+            payload,
+            payloadSchema,
+            /** @type {Record<string, any>} */ (
+                generatedActionSchema.definitions ?? {}
+            )
+        );
+    }
+
     const validator = payloadValidatorsByActionType.get(actionType);
     if (!validator) {
         return {
@@ -187,6 +199,17 @@ export function validateActionPayloadShape(actionType, payload, prefix = "$") {
         ok: false,
         errors: formatAjvErrors(prefix, validator.errors),
     };
+}
+
+/**
+ * @param {import("./types.js").AgentActionType} actionType
+ * @returns {Record<string, any> | undefined}
+ */
+function getActionPayloadSchema(actionType) {
+    const variant = stepVariants.find(
+        (entry) => entry.properties.actionType.const === actionType
+    );
+    return variant?.properties.payload;
 }
 
 /**
