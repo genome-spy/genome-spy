@@ -1,4 +1,0 @@
-interface:
-  display_name: "Python Simplicity Review"
-  short_description: "Review agent_server code for local simplicity rules"
-  default_prompt: "Review the targeted utils/agent_server Python files for over-engineering or scope creep against AGENTS.md and EXAMPLES.md, then simplify only high-confidence cases."
