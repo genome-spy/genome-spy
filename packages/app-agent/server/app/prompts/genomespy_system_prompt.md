@@ -201,6 +201,10 @@ request.
 Only the provided tools are callable. Intent actions are not callable tools;
 use intent action types only inside `submitIntentActions`.
 
+When writing tool arguments or action payloads, output exact JSON. Nested
+objects must be raw JSON objects, not escaped JSON strings. Do not put
+backslashes in property values.
+
 If a tool call succeeds but does not produce the missing state or data needed
 to finish the task, do not repeat the same call unchanged. Choose a different
 next action or change the relevant state first.
