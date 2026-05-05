@@ -5,6 +5,7 @@ import { resolveMetadataAttributeValuesTool } from "./resolveMetadataAttributeVa
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
 import generatedActionSchema from "./generated/generatedActionSchema.json" with { type: "json" };
+import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
 
 /*
  * Tool behavior lives here. The input shapes and user-facing descriptions are
@@ -139,8 +140,8 @@ export const agentTools = {
                 text:
                     `Built an AttributeIdentifier for ${resolution.title} from ` +
                     `${input.candidateId}. No aggregated value was computed. ` +
-                    "Use content.attribute directly as a plotted attribute in " +
-                    "`showSampleAttributePlot` or as payload.attribute in " +
+                    "Use a SELECTION_AGGREGATION candidate in plotting tools " +
+                    "or content.attribute as payload.attribute in " +
                     "`submitIntentActions`. If you need a different locus or " +
                     "interval, update the selection first.",
                 content: resolution,
@@ -154,28 +155,53 @@ export const agentTools = {
 
     /**
      * @param {AgentToolRuntime} runtime
-     * @param {import("./agentToolInputs.d.ts").ShowSampleAttributePlotToolInput} input
+     * @param {import("./agentToolInputs.d.ts").ShowCategoryCountsPlotToolInput} input
      */
-    async showSampleAttributePlot(runtime, input) {
-        try {
-            const plotRequest = toSampleAttributePlotRequest(input);
-            const plot =
-                await runtime.agentApi.buildSampleAttributePlot(plotRequest);
-            if (!plot) {
-                throw new Error(
-                    "The requested sample attribute plot could not be built."
-                );
-            }
+    async showCategoryCountsPlot(runtime, input) {
+        return executeSampleAttributePlot(runtime, {
+            plotType: "bar",
+            attribute: resolveAgentAttributeCandidate(runtime, input.attribute),
+        });
+    },
 
-            return {
-                text: `Generated ${plot.title} with ${plot.summary.groupCount} groups.`,
-                content: plot,
-            };
-        } catch (error) {
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").ShowAttributeDistributionPlotToolInput} input
+     */
+    async showAttributeDistributionPlot(runtime, input) {
+        return executeSampleAttributePlot(runtime, {
+            plotType: "boxplot",
+            attribute: resolveAgentAttributeCandidate(runtime, input.attribute),
+        });
+    },
+
+    /**
+     * @param {AgentToolRuntime} runtime
+     * @param {import("./agentToolInputs.d.ts").ShowAttributeRelationshipPlotToolInput} input
+     */
+    async showAttributeRelationshipPlot(runtime, input) {
+        const [xPlotAttribute, yPlotAttribute] = input.attributes;
+        const xAttribute = resolveAgentAttributeCandidate(
+            runtime,
+            xPlotAttribute
+        );
+        const yAttribute = resolveAgentAttributeCandidate(
+            runtime,
+            yPlotAttribute
+        );
+        if (isSameAttributeIdentifier(xAttribute, yAttribute)) {
             throw new ToolCallRejectionError(
-                error instanceof Error ? error.message : String(error)
+                "Relationship plots require two different quantitative attributes. " +
+                    "For a distribution of one quantitative attribute by current groups, " +
+                    "use showAttributeDistributionPlot with that attribute."
             );
         }
+
+        return executeSampleAttributePlot(runtime, {
+            plotType: "scatterplot",
+            xAttribute,
+            yAttribute,
+        });
     },
 
     getMetadataAttributeSummary: getMetadataAttributeSummaryTool,
@@ -306,69 +332,30 @@ function getActionPayloadSchema(actionType) {
 }
 
 /**
- * @param {import("./agentToolInputs.d.ts").ShowSampleAttributePlotToolInput} input
- * @returns {import("@genome-spy/app/agentApi").SampleAttributePlotRequest}
+ * @param {AgentToolRuntime} runtime
+ * @param {import("@genome-spy/app/agentApi").SampleAttributePlotRequest} plotRequest
+ * @returns {Promise<AgentToolExecutionResult>}
  */
-function toSampleAttributePlotRequest(input) {
-    const plot = input.plot;
-
-    if (plot.kind === "quantitativeRelationship") {
-        const [xPlotAttribute, yPlotAttribute] = plot.attributes;
-        const xAttribute = toCanonicalAttributeIdentifier(xPlotAttribute);
-        const yAttribute = toCanonicalAttributeIdentifier(yPlotAttribute);
-        if (isSameAttributeIdentifier(xAttribute, yAttribute)) {
+async function executeSampleAttributePlot(runtime, plotRequest) {
+    try {
+        const plot = await runtime.agentApi.buildSampleAttributePlot(
+            removeUndefinedProperties(plotRequest)
+        );
+        if (!plot) {
             throw new Error(
-                "Relationship plots require two different quantitative attributes. " +
-                    "For a distribution of one quantitative attribute by current groups, " +
-                    "use valueDistributionByCurrentGroups with that attribute."
+                "The requested sample attribute plot could not be built."
             );
         }
 
         return {
-            plotType: "scatterplot",
-            xAttribute,
-            yAttribute,
-            ...(xPlotAttribute.label
-                ? { xAttributeLabel: xPlotAttribute.label }
-                : {}),
-            ...(yPlotAttribute.label
-                ? { yAttributeLabel: yPlotAttribute.label }
-                : {}),
+            text: `Generated ${plot.title} with ${plot.summary.groupCount} groups.`,
+            content: plot,
         };
+    } catch (error) {
+        throw new ToolCallRejectionError(
+            error instanceof Error ? error.message : String(error)
+        );
     }
-
-    if (plot.kind === "categoryCounts") {
-        const attribute = toCanonicalAttributeIdentifier(plot.attribute);
-        return {
-            plotType: "bar",
-            attribute,
-            ...(plot.attribute.label
-                ? { attributeLabel: plot.attribute.label }
-                : {}),
-        };
-    }
-
-    const attribute = toCanonicalAttributeIdentifier(plot.attribute);
-    return {
-        plotType: "boxplot",
-        attribute,
-        ...(plot.attribute.label
-            ? { attributeLabel: plot.attribute.label }
-            : {}),
-    };
-}
-
-/**
- * @param {import("./agentToolInputs.d.ts").PlotAttributeIdentifier} plotAttribute
- * @returns {import("@genome-spy/app/agentShared").AttributeIdentifier}
- */
-function toCanonicalAttributeIdentifier(plotAttribute) {
-    // `label` is plot-local presentation metadata. Strip it before comparing
-    // or forwarding the identifier so app-side lookup, provenance, and
-    // availability hooks see the canonical AttributeIdentifier shape.
-    const attribute = { ...plotAttribute };
-    delete attribute.label;
-    return attribute;
 }
 
 /**
@@ -380,6 +367,19 @@ function isSameAttributeIdentifier(a, b) {
     return (
         a.type === b.type &&
         JSON.stringify(a.specifier) === JSON.stringify(b.specifier)
+    );
+}
+
+/**
+ * @template {Record<string, any>} T
+ * @param {T} object
+ * @returns {T}
+ */
+function removeUndefinedProperties(object) {
+    return /** @type {T} */ (
+        Object.fromEntries(
+            Object.entries(object).filter((entry) => entry[1] !== undefined)
+        )
     );
 }
 

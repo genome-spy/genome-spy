@@ -3,6 +3,7 @@ import {
     buildCategoricalFieldSummary,
     buildQuantitativeFieldSummary,
 } from "./metadataSummaryReducers.js";
+import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
 
 const DEFAULT_MAX_GROUPS = 20;
 
@@ -20,6 +21,7 @@ const DEFAULT_MAX_GROUPS = 20;
  *     getGroupedMetadataAttributeSummarySource(
  *         attribute: AttributeIdentifier
  *     ): AgentGroupedMetadataAttributeSummarySource | undefined;
+ *     getAgentVolatileContext(): import("./types.js").AgentVolatileContext;
  * }} MetadataAttributeSummaryToolRuntime
  * @typedef {{
  *     text: string;
@@ -36,14 +38,15 @@ const DEFAULT_MAX_GROUPS = 20;
  * @returns {AgentToolExecutionResult}
  */
 export function getMetadataAttributeSummaryTool(runtime, input) {
-    validateAttribute(input.attribute);
+    validateAttributeCandidate(input.attribute);
     validateScope(input.scope);
+    const attribute = resolveAgentAttributeCandidate(runtime, input.attribute);
 
     if (input.scope === "visible_groups") {
-        return buildGroupedMetadataSummary(runtime, input.attribute);
+        return buildGroupedMetadataSummary(runtime, attribute);
     }
 
-    const source = runtime.getMetadataAttributeSummarySource(input.attribute);
+    const source = runtime.getMetadataAttributeSummarySource(attribute);
     if (!source) {
         throw new ToolCallRejectionError(
             "The requested metadata attribute was not found in the current sample view."
@@ -172,24 +175,40 @@ function buildSummaryText(content) {
 }
 
 /**
- * @param {AttributeIdentifier} attribute
+ * @param {import("./agentToolInputs.d.ts").AgentAttributeCandidate} attribute
  */
-function validateAttribute(attribute) {
+function validateAttributeCandidate(attribute) {
     if (!attribute || typeof attribute !== "object") {
         throw new ToolCallRejectionError(
-            "Attribute must be a metadata AttributeIdentifier object."
+            "Attribute must be an attribute candidate object."
         );
     }
 
-    if (attribute.type !== "SAMPLE_ATTRIBUTE") {
+    if (
+        attribute.type !== "SAMPLE_ATTRIBUTE" &&
+        attribute.type !== "SELECTION_AGGREGATION"
+    ) {
         throw new ToolCallRejectionError(
-            "Only SAMPLE_ATTRIBUTE identifiers are supported by this tool."
+            "Only SAMPLE_ATTRIBUTE and SELECTION_AGGREGATION candidates are supported by this tool."
         );
     }
 
-    if (typeof attribute.specifier !== "string") {
+    if (
+        attribute.type === "SAMPLE_ATTRIBUTE" &&
+        typeof attribute.specifier !== "string"
+    ) {
         throw new ToolCallRejectionError(
             "Metadata attribute specifier must be a string."
+        );
+    }
+
+    if (
+        attribute.type === "SELECTION_AGGREGATION" &&
+        (typeof attribute.candidateId !== "string" ||
+            typeof attribute.aggregation !== "string")
+    ) {
+        throw new ToolCallRejectionError(
+            "Selection aggregation attributes require candidateId and aggregation."
         );
     }
 }

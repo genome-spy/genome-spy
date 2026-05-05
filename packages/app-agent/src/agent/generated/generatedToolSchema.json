@@ -28,6 +28,16 @@
       "required": ["columnIds"],
       "type": "object"
     },
+    "AgentAttributeCandidate": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SampleAttributeIdentifier"
+        },
+        {
+          "$ref": "#/definitions/SelectionAggregationCandidate"
+        }
+      ]
+    },
     "AgentIntentBatchStep": {
       "anyOf": [
         {
@@ -290,8 +300,14 @@
         "setViewVisibility": {
           "$ref": "#/definitions/SetViewVisibilityToolInput"
         },
-        "showSampleAttributePlot": {
-          "$ref": "#/definitions/ShowSampleAttributePlotToolInput"
+        "showAttributeDistributionPlot": {
+          "$ref": "#/definitions/ShowAttributeDistributionPlotToolInput"
+        },
+        "showAttributeRelationshipPlot": {
+          "$ref": "#/definitions/ShowAttributeRelationshipPlotToolInput"
+        },
+        "showCategoryCountsPlot": {
+          "$ref": "#/definitions/ShowCategoryCountsPlotToolInput"
         },
         "submitIntentActions": {
           "$ref": "#/definitions/SubmitIntentActionsToolInput"
@@ -313,7 +329,9 @@
         "getIntentActionDocs",
         "zoomToScale",
         "submitIntentActions",
-        "showSampleAttributePlot"
+        "showCategoryCountsPlot",
+        "showAttributeDistributionPlot",
+        "showAttributeRelationshipPlot"
       ],
       "type": "object"
     },
@@ -365,7 +383,7 @@
     },
     "BuildSelectionAggregationAttributeToolInput": {
       "additionalProperties": false,
-      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used directly in `showSampleAttributePlot` or in a later intent action. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the returned `content.attribute` as the plotted attribute or as `payload.attribute` in `submitIntentActions`. If the requested locus or interval is not the current selection, update the selection first.",
+      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action or inspected for diagnostics. Plotting and summary tools can usually use `SELECTION_AGGREGATION` candidates directly. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the returned `content.attribute` as the plotted attribute or as `payload.attribute` in `submitIntentActions`. If the requested locus or interval is not the current selection, update the selection first.",
       "examples": [
         {
           "aggregation": "max",
@@ -624,8 +642,8 @@
       ],
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/SampleAttributeIdentifier",
-          "description": "Stable attributeIdentifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context."
+          "$ref": "#/definitions/AgentAttributeCandidate",
+          "description": "Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for sample metadata attributes from context. Use `SELECTION_AGGREGATION` for selection-derived candidates from `selectionAggregation.fields`."
         },
         "scope": {
           "$ref": "#/definitions/MetadataSummaryScope",
@@ -1178,44 +1196,7 @@
       "description": "Expanded point selection value stored in provenance."
     },
     "PlotAttributeIdentifier": {
-      "anyOf": [
-        {
-          "additionalProperties": false,
-          "properties": {
-            "label": {
-              "description": "Optional plot-only label for this attribute. Use this for concise axis and plot titles when the canonical generated attribute title is too long. The label is not part of the canonical AttributeIdentifier.",
-              "type": "string"
-            },
-            "specifier": {
-              "type": "string"
-            },
-            "type": {
-              "const": "SAMPLE_ATTRIBUTE",
-              "type": "string"
-            }
-          },
-          "required": ["specifier", "type"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "label": {
-              "description": "Optional plot-only label for this attribute. Use this for concise axis and plot titles when the canonical generated attribute title is too long. The label is not part of the canonical AttributeIdentifier.",
-              "type": "string"
-            },
-            "specifier": {
-              "$ref": "#/definitions/SelectionAggregationSpecifier"
-            },
-            "type": {
-              "const": "VALUE_AT_LOCUS",
-              "type": "string"
-            }
-          },
-          "required": ["specifier", "type"],
-          "type": "object"
-        }
-      ]
+      "$ref": "#/definitions/AgentAttributeCandidate"
     },
     "PointExpandOrigin": {
       "additionalProperties": false,
@@ -1377,19 +1358,6 @@
       },
       "required": ["type", "specifier"],
       "type": "object"
-    },
-    "SampleAttributePlotSpec": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/ShowSampleAttributeCategoryCountsToolInput"
-        },
-        {
-          "$ref": "#/definitions/ShowSampleAttributeValueDistributionToolInput"
-        },
-        {
-          "$ref": "#/definitions/ShowSampleAttributeRelationshipToolInput"
-        }
-      ]
     },
     "SampleAttributeType": {
       "enum": ["nominal", "ordinal", "quantitative"],
@@ -1731,45 +1699,21 @@
       "required": ["selector", "query", "field", "mode"],
       "type": "object"
     },
-    "SelectionAggregationSpecifier": {
+    "SelectionAggregationCandidate": {
       "additionalProperties": false,
       "properties": {
         "aggregation": {
-          "additionalProperties": false,
-          "description": "Aggregation operation to apply over the selected interval.",
-          "properties": {
-            "op": {
-              "$ref": "#/definitions/AggregationOp"
-            }
-          },
-          "required": ["op"],
-          "type": "object"
+          "$ref": "#/definitions/AggregationOp"
         },
-        "field": {
-          "description": "Field to aggregate over the selected interval.",
+        "candidateId": {
           "type": "string"
         },
-        "interval": {
-          "additionalProperties": false,
-          "description": "Selection-backed interval reference.",
-          "properties": {
-            "selector": {
-              "$ref": "#/definitions/ParamSelector"
-            },
-            "type": {
-              "const": "selection",
-              "type": "string"
-            }
-          },
-          "required": ["type", "selector"],
-          "type": "object"
-        },
-        "view": {
-          "$ref": "#/definitions/ViewSelector",
-          "description": "View that provides the aggregated field."
+        "type": {
+          "const": "SELECTION_AGGREGATION",
+          "type": "string"
         }
       },
-      "required": ["view", "field", "interval", "aggregation"],
+      "required": ["type", "candidateId", "aggregation"],
       "type": "object"
     },
     "SelectionDomainRef": {
@@ -1962,91 +1906,61 @@
       "required": ["selector", "visibility"],
       "type": "object"
     },
-    "ShowSampleAttributeCategoryCountsToolInput": {
+    "ShowAttributeDistributionPlotToolInput": {
       "additionalProperties": false,
+      "description": "Show a quantitative distribution plot in the chat transcript.",
+      "examples": [
+        {
+          "attribute": {
+            "specifier": "age",
+            "type": "SAMPLE_ATTRIBUTE"
+          },
+          "kind": "boxplot"
+        },
+        {
+          "attribute": {
+            "aggregation": "max",
+            "candidateId": "brush@track:beta",
+            "type": "SELECTION_AGGREGATION"
+          },
+          "kind": "boxplot"
+        }
+      ],
       "properties": {
         "attribute": {
           "$ref": "#/definitions/PlotAttributeIdentifier",
-          "description": "Categorical attribute to count."
+          "description": "Quantitative value attribute to summarize. Current sample groups are used automatically when present."
         },
         "kind": {
-          "const": "categoryCounts",
-          "description": "Count categories for a categorical attribute. Use this when the user asks for a bar plot, counts, or category distribution.",
+          "const": "boxplot",
+          "description": "Distribution plot kind.",
           "type": "string"
         }
       },
       "required": ["kind", "attribute"],
       "type": "object"
     },
-    "ShowSampleAttributePlotToolInput": {
+    "ShowAttributeRelationshipPlotToolInput": {
       "additionalProperties": false,
-      "description": "Show an exploratory sample-attribute plot in the chat transcript. Choose the plot by analytic intent: `categoryCounts` for bar plots of categorical attributes, `valueDistributionByCurrentGroups` for boxplots or quantitative values by the current sample groups, and `quantitativeRelationship` for scatterplots of two different quantitative attributes. All plot kinds use the current sample groups automatically when present. If grouping is needed, submit a grouping action before calling this tool.",
+      "description": "Show a two-attribute relationship plot in the chat transcript.",
       "examples": [
         {
-          "plot": {
-            "attribute": {
+          "attributes": [
+            {
               "specifier": "age",
               "type": "SAMPLE_ATTRIBUTE"
             },
-            "kind": "valueDistributionByCurrentGroups"
-          }
-        },
-        {
-          "plot": {
-            "attribute": {
-              "label": "TP53 region beta",
-              "specifier": {
-                "aggregation": {
-                  "op": "max"
-                },
-                "field": "beta",
-                "interval": {
-                  "selector": {
-                    "param": "brush",
-                    "scope": []
-                  },
-                  "type": "selection"
-                },
-                "view": {
-                  "scope": [],
-                  "view": "track"
-                }
-              },
-              "type": "VALUE_AT_LOCUS"
-            },
-            "kind": "valueDistributionByCurrentGroups"
-          }
-        },
-        {
-          "plot": {
-            "attributes": [
-              {
-                "specifier": "age",
-                "type": "SAMPLE_ATTRIBUTE"
-              },
-              {
-                "specifier": "purity",
-                "type": "SAMPLE_ATTRIBUTE"
-              }
-            ],
-            "kind": "quantitativeRelationship"
-          }
+            {
+              "specifier": "purity",
+              "type": "SAMPLE_ATTRIBUTE"
+            }
+          ],
+          "kind": "scatterplot"
         }
       ],
       "properties": {
-        "plot": {
-          "$ref": "#/definitions/SampleAttributePlotSpec",
-          "description": "Plot request. Use `valueDistributionByCurrentGroups` when the user asks for a boxplot; put only the value attribute in `attribute`. You may use the AttributeIdentifier returned by `buildSelectionAggregationAttribute` directly. The grouping comes from the current SampleHierarchy. Use `quantitativeRelationship` only for scatterplots comparing two different quantitative variables; the first listed attribute is rendered on x and the second on y."
-        }
-      },
-      "required": ["plot"],
-      "type": "object"
-    },
-    "ShowSampleAttributeRelationshipToolInput": {
-      "additionalProperties": false,
-      "properties": {
         "attributes": {
-          "description": "Two different quantitative attributes to compare. The first attribute is rendered on the scatterplot x axis and the second on the y axis.",
+          "description": "Two different quantitative attributes to compare. Keep both attributes in one ordered array: the first is rendered on x and the second on y. Do not treat either attribute as a grouping variable.",
           "items": {
             "$ref": "#/definitions/PlotAttributeIdentifier"
           },
@@ -2055,28 +1969,32 @@
           "type": "array"
         },
         "kind": {
-          "const": "quantitativeRelationship",
-          "description": "Compare two quantitative attributes. Use this when the user asks for a scatterplot, correlation, or relationship between two different quantitative variables. Do not use this for boxplots, distributions, or values by group.",
+          "const": "scatterplot",
+          "description": "Relationship plot kind.",
           "type": "string"
         }
       },
       "required": ["kind", "attributes"],
       "type": "object"
     },
-    "ShowSampleAttributeValueDistributionToolInput": {
+    "ShowCategoryCountsPlotToolInput": {
       "additionalProperties": false,
+      "description": "Show a category-count plot in the chat transcript.",
+      "examples": [
+        {
+          "attribute": {
+            "specifier": "diagnosis",
+            "type": "SAMPLE_ATTRIBUTE"
+          }
+        }
+      ],
       "properties": {
         "attribute": {
           "$ref": "#/definitions/PlotAttributeIdentifier",
-          "description": "Quantitative value attribute to summarize within each current group."
-        },
-        "kind": {
-          "const": "valueDistributionByCurrentGroups",
-          "description": "Show a quantitative value distribution using the current sample groups. Use this when the user asks for a boxplot or for a quantitative value by group.",
-          "type": "string"
+          "description": "Categorical attribute to count. Use this tool when the user asks for a bar plot, counts, or category distribution."
         }
       },
-      "required": ["kind", "attribute"],
+      "required": ["attribute"],
       "type": "object"
     },
     "SortBy": {

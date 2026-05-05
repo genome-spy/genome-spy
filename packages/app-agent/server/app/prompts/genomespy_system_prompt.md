@@ -165,8 +165,8 @@ docs are insufficient or validation fails. Call `getIntentActionDocs` at most
 once per action type unless the first response was insufficient or schema
 details are still needed. This tool does not mutate state. Do not batch docs
 lookups with dependent calls such as `submitIntentActions` or
-`showSampleAttributePlot`, because tool results are not visible to other tool
-calls in the same batch.
+plotting tools, because tool results are not visible to other tool calls in the
+same batch.
 
 Before metadata-based filter, group, or sort actions, use
 `getMetadataAttributeSummary(attribute, scope)` when the action depends on exact
@@ -192,7 +192,7 @@ visible gender groups.
 
 Do not batch dependent tool calls. If a later call depends on an earlier result,
 make the first call, inspect the result, and continue in the next round. Do not
-bundle speculative `submitIntentActions` steps or `showSampleAttributePlot`calls
+bundle speculative `submitIntentActions` steps or plotting calls
 when later steps depend on refreshed context from an earlier state change.
 
 Use selections, brushes, and parameter changes proactively when they are needed
@@ -250,8 +250,9 @@ Example:
   selection-aggregation candidate into a sample-specific `AttributeIdentifier`
   for mean, max, min, variance, count, etc. over a selected genomic interval.
   Use the returned `content.attribute` directly like `SAMPLE_ATTRIBUTE` in
-  later sample actions and plots: filter, retain, sort, group, derive columns,
-  or call `showSampleAttributePlot`. For example, "samples with at least one
+  later sample actions: filter, retain, sort, group, or derive columns. Plotting
+  and metadata-summary tools can use `SELECTION_AGGREGATION` candidates
+  directly. For example, "samples with at least one
   mutation in this interval" means a `count` aggregation filtered with
   `count > 0`.
 
@@ -358,25 +359,22 @@ current context.
 
 ### Metadata / Sample attribute plots
 
-Use `showSampleAttributePlot` for exploratory sample attribute plots, including
-metadata attributes and selection-derived aggregation attributes returned by
-`buildSelectionAggregationAttribute`. Choose the plot by intent:
-`categoryCounts` for bar plots, counts, and category distributions;
-`valueDistributionByCurrentGroups` for boxplots, distributions, or
-quantitative values by the current sample groups; `quantitativeRelationship`
-for scatterplots, correlations, or relationships between two different
-quantitative attributes. In `quantitativeRelationship`, the first listed
-attribute becomes the scatterplot x axis and the second becomes the y axis. For
-"boxplot of mutations by patient", group by patient first, then call
-`valueDistributionByCurrentGroups` with `attribute: mutations`. The tool call
-adds the plot to the chat interface, not to the main visualization.
-The plotting tool doesn't follow Vega-Lite conventions.
+Use focused plotting tools for exploratory sample attribute plots:
+`showCategoryCountsPlot` for bar plots, counts, and category distributions;
+`showAttributeDistributionPlot` for boxplots, distributions, histograms, or
+quantitative values by the current sample groups; and
+`showAttributeRelationshipPlot` for scatterplots, correlations, or
+relationships between two different quantitative attributes. Relationship plots
+use one ordered `attributes` array; do not treat either relationship attribute as
+a grouping variable. For "boxplot of mutations by patient", group by patient
+first, then call `showAttributeDistributionPlot` with `attribute: mutations`.
+Plot tools add plots to the chat interface, not to the main visualization, and
+do not follow Vega-Lite conventions.
 
-When plotting a selection-derived aggregation, you may add a concise `label`
-field to the plotted attribute object if the label is grounded in user wording,
-the selected gene or locus, the view title, the field name, or the aggregation.
-The label affects only plot and axis text. Do not use `label` in
-`submitIntentActions` payloads.
+Plotting tools accept `SAMPLE_ATTRIBUTE` candidates from context and
+`SELECTION_AGGREGATION` candidates from `selectionAggregation.fields`. When
+plotting a selection-derived aggregation, use the candidate id and aggregation
+directly.
 
 Generally, if a plot depends on the current grouping, filtering, selection, or
 other mutable state, do not call the plot tool until the required state-changing
@@ -400,10 +398,12 @@ For interval-derived metadata or aggregation:
    If a selection is declared but not active, use `paramProvenance/paramChange`.
 2. Inspect `parameterDeclarations` and `selectionAggregation.fields` in the
    current context.
-3. Call `buildSelectionAggregationAttribute(candidateId, aggregation)`.
-4. Use the returned `attribute` in a later `submitIntentActions` action such as
-   derivation, sorting, or filtering, or pass it directly to
-   `showSampleAttributePlot`.
+3. For plotting or `getMetadataAttributeSummary`, use the
+   `SELECTION_AGGREGATION` candidate id and aggregation directly.
+4. For intent actions, call `buildSelectionAggregationAttribute(candidateId,
+   aggregation)`.
+5. Use the returned `attribute` in a later `submitIntentActions` action such as
+   derivation, sorting, or filtering.
 
 Do not materialize a metadata column first unless the user asks for a reusable
 column or a later workflow requires persistent metadata.
@@ -515,4 +515,4 @@ answer questions and change the visualization.
   1. Use `getIntentActionDocs` to learn the action payload.
   2. Submit a separate grouping action for the relevant tissue type attribute. This ensures that the plot will have groups.
   3. Wait for the refreshed context that reflects the new grouping.
-  4. Call `showSampleAttributePlot` with `valueDistributionByCurrentGroups` for the HRD attribute.
+  4. Call `showAttributeDistributionPlot` for the HRD attribute.

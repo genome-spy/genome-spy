@@ -491,21 +491,19 @@ describe("createAgentSessionController", () => {
                             toolCalls: [
                                 {
                                     callId: "call-plot",
-                                    name: "showSampleAttributePlot",
+                                    name: "showAttributeRelationshipPlot",
                                     arguments: {
-                                        plot: {
-                                            kind: "quantitativeRelationship",
-                                            attributes: [
-                                                {
-                                                    type: "SAMPLE_ATTRIBUTE",
-                                                    specifier: "age",
-                                                },
-                                                {
-                                                    type: "SAMPLE_ATTRIBUTE",
-                                                    specifier: "purity",
-                                                },
-                                            ],
-                                        },
+                                        kind: "scatterplot",
+                                        attributes: [
+                                            {
+                                                type: "SAMPLE_ATTRIBUTE",
+                                                specifier: "age",
+                                            },
+                                            {
+                                                type: "SAMPLE_ATTRIBUTE",
+                                                specifier: "purity",
+                                            },
+                                        ],
                                     },
                                 },
                             ],
@@ -569,21 +567,19 @@ describe("createAgentSessionController", () => {
                 toolCalls: [
                     {
                         callId: "call-plot",
-                        name: "showSampleAttributePlot",
+                        name: "showAttributeRelationshipPlot",
                         arguments: {
-                            plot: {
-                                kind: "quantitativeRelationship",
-                                attributes: [
-                                    {
-                                        type: "SAMPLE_ATTRIBUTE",
-                                        specifier: "age",
-                                    },
-                                    {
-                                        type: "SAMPLE_ATTRIBUTE",
-                                        specifier: "purity",
-                                    },
-                                ],
-                            },
+                            kind: "scatterplot",
+                            attributes: [
+                                {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "age",
+                                },
+                                {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "purity",
+                                },
+                            ],
                         },
                     },
                 ],
@@ -614,14 +610,12 @@ describe("createAgentSessionController", () => {
             },
             {
                 callId: "call-plot",
-                name: "showSampleAttributePlot",
+                name: "showAttributeDistributionPlot",
                 arguments: {
-                    plot: {
-                        kind: "valueDistributionByCurrentGroups",
-                        attribute: {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "mutations",
-                        },
+                    kind: "boxplot",
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "mutations",
                     },
                 },
             },
@@ -922,7 +916,7 @@ describe("createAgentSessionController", () => {
         expect(results).toEqual([
             expect.objectContaining({
                 rejected: false,
-                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use content.attribute directly as a plotted attribute in `showSampleAttributePlot` or as payload.attribute in `submitIntentActions`. If you need a different locus or interval, update the selection first.",
+                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use a SELECTION_AGGREGATION candidate in plotting tools or content.attribute as payload.attribute in `submitIntentActions`. If you need a different locus or interval, update the selection first.",
                 content: expect.objectContaining({
                     kind: "selection_aggregation_resolution",
                     candidateId: "brush@track:beta",

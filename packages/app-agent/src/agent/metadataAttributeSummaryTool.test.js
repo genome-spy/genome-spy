@@ -2,9 +2,42 @@ import { describe, expect, it, vi } from "vitest";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 import { getMetadataAttributeSummaryTool } from "./metadataAttributeSummaryTool.js";
 
+vi.mock("@genome-spy/app/agentShared", () => ({
+    buildSelectionAggregationAttributeIdentifier: ({
+        viewSelector,
+        field,
+        selectionSelector,
+        aggregation,
+    }) => ({
+        type: "VALUE_AT_LOCUS",
+        specifier: {
+            view: viewSelector,
+            field,
+            interval: {
+                type: "selection",
+                selector: selectionSelector,
+            },
+            aggregation: { op: aggregation },
+        },
+    }),
+    formatAggregationExpression: (aggregation, field) =>
+        `${aggregation}(${field})`,
+}));
+
 function createRuntimeStub() {
     return {
         getMetadataAttributeSummarySource: vi.fn((attribute) => {
+            if (attribute.type === "VALUE_AT_LOCUS") {
+                return {
+                    attribute,
+                    title: "max(beta)",
+                    dataType: "quantitative",
+                    scope: "visible_samples",
+                    sampleIds: ["sampleA", "sampleB"],
+                    values: [0.2, 0.8],
+                };
+            }
+
             if (attribute.specifier === "age") {
                 return {
                     attribute,
@@ -70,6 +103,25 @@ function createRuntimeStub() {
                 },
             };
         }),
+        getAgentVolatileContext: vi.fn(() => ({
+            selectionAggregation: {
+                fields: [
+                    {
+                        candidateId: "brush@track:beta",
+                        viewSelector: {
+                            scope: [],
+                            view: "track",
+                        },
+                        selectionSelector: {
+                            scope: [],
+                            param: "brush",
+                        },
+                        field: "beta",
+                        supportedAggregations: ["max"],
+                    },
+                ],
+            },
+        })),
     };
 }
 
@@ -134,6 +186,48 @@ describe("metadataAttributeSummaryTool", () => {
                 { value: "M", count: 1, share: 1 / 3 },
             ],
             truncated: false,
+        });
+    });
+
+    it("summarizes selection aggregation candidates", () => {
+        const runtime = createRuntimeStub();
+        const result = getMetadataAttributeSummaryTool(runtime, {
+            attribute: {
+                type: "SELECTION_AGGREGATION",
+                candidateId: "brush@track:beta",
+                aggregation: "max",
+            },
+            scope: "visible_samples",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "metadata_attribute_summary",
+                title: "max(beta)",
+                dataType: "quantitative",
+                sampleCount: 2,
+                nonMissingCount: 2,
+                min: 0.2,
+                max: 0.8,
+            })
+        );
+        expect(runtime.getMetadataAttributeSummarySource).toHaveBeenCalledWith({
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: {
+                    scope: [],
+                    view: "track",
+                },
+                field: "beta",
+                interval: {
+                    type: "selection",
+                    selector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                },
+                aggregation: { op: "max" },
+            },
         });
     });
 

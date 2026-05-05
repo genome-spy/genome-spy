@@ -56,17 +56,17 @@ type SelectionAggregationAttributeIdentifier = {
     specifier: SelectionAggregationSpecifier;
 };
 
-export type PlotAttributeIdentifier = (
-    | SampleAttributeIdentifier
-    | SelectionAggregationAttributeIdentifier
-) & {
-    /**
-     * Optional plot-only label for this attribute. Use this for concise axis
-     * and plot titles when the canonical generated attribute title is too long.
-     * The label is not part of the canonical AttributeIdentifier.
-     */
-    label?: string;
+type SelectionAggregationCandidate = {
+    type: "SELECTION_AGGREGATION";
+    candidateId: string;
+    aggregation: AggregationOp;
 };
+
+export type AgentAttributeCandidate =
+    | SampleAttributeIdentifier
+    | SelectionAggregationCandidate;
+
+export type PlotAttributeIdentifier = AgentAttributeCandidate;
 
 type IntentActionType =
     AgentIntentActionRequest["actions"][number]["actionType"];
@@ -167,7 +167,8 @@ export type JumpToInitialProvenanceStateToolInput = Record<string, never>;
 
 /**
  * Build an `AttributeIdentifier` for a selection-derived aggregation so it can
- * be used directly in `showSampleAttributePlot` or in a later intent action.
+ * be used in a later intent action or inspected for diagnostics. Plotting and
+ * summary tools can usually use `SELECTION_AGGREGATION` candidates directly.
  * Before using this tool, you must make an interval selection using a
  * parameter or ensure that one already exists. This tool does not compute or
  * return an aggregated value. Use the returned `content.attribute` as the
@@ -217,10 +218,11 @@ export interface BuildSelectionAggregationAttributeToolInput {
  */
 export interface GetMetadataAttributeSummaryToolInput {
     /**
-     * Stable attributeIdentifier for the metadata attribute to summarize. In v0,
-     * this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.
+     * Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for sample
+     * metadata attributes from context. Use `SELECTION_AGGREGATION` for
+     * selection-derived candidates from `selectionAggregation.fields`.
      */
-    attribute: SampleAttributeIdentifier;
+    attribute: AgentAttributeCandidate;
 
     /**
      * Summary scope. Use `visible_samples` for a pooled summary across the
@@ -381,130 +383,90 @@ export interface SubmitIntentActionsToolInput {
     note?: AgentIntentActionRequest["note"];
 }
 
-export interface ShowSampleAttributeCategoryCountsToolInput {
-    /**
-     * Count categories for a categorical attribute. Use this when the user
-     * asks for a bar plot, counts, or category distribution.
-     */
-    kind: "categoryCounts";
-
-    /**
-     * Categorical attribute to count.
-     */
-    attribute: PlotAttributeIdentifier;
-}
-
-export interface ShowSampleAttributeValueDistributionToolInput {
-    /**
-     * Show a quantitative value distribution using the current
-     * sample groups. Use this when the user asks for a boxplot or for
-     * a quantitative value by group.
-     */
-    kind: "valueDistributionByCurrentGroups";
-
-    /**
-     * Quantitative value attribute to summarize within each current group.
-     */
-    attribute: PlotAttributeIdentifier;
-}
-
-export interface ShowSampleAttributeRelationshipToolInput {
-    /**
-     * Compare two quantitative attributes. Use this when the user asks for a
-     * scatterplot, correlation, or relationship between two different
-     * quantitative variables. Do not use this for boxplots, distributions, or
-     * values by group.
-     */
-    kind: "quantitativeRelationship";
-
-    /**
-     * Two different quantitative attributes to compare. The first attribute is
-     * rendered on the scatterplot x axis and the second on the y axis.
-     */
-    attributes: [PlotAttributeIdentifier, PlotAttributeIdentifier];
-}
-
-export type SampleAttributePlotSpec =
-    | ShowSampleAttributeCategoryCountsToolInput
-    | ShowSampleAttributeValueDistributionToolInput
-    | ShowSampleAttributeRelationshipToolInput;
-
 /**
- * Show an exploratory sample-attribute plot in the chat transcript. Choose the
- * plot by analytic intent: `categoryCounts` for bar plots of categorical
- * attributes, `valueDistributionByCurrentGroups` for boxplots or quantitative
- * values by the current sample groups, and `quantitativeRelationship` for
- * scatterplots of two different quantitative attributes. All plot kinds use
- * the current sample groups automatically when present. If grouping is needed,
- * submit a grouping action before calling this tool.
+ * Show a category-count plot in the chat transcript.
  *
  * @example
  * {
- *   "plot": {
- *     "kind": "valueDistributionByCurrentGroups",
- *     "attribute": {
- *       "type": "SAMPLE_ATTRIBUTE",
- *       "specifier": "age"
- *     }
- *   }
- * }
- *
- * @example
- * {
- *   "plot": {
- *     "kind": "valueDistributionByCurrentGroups",
- *     "attribute": {
- *       "type": "VALUE_AT_LOCUS",
- *       "specifier": {
- *         "view": {
- *           "scope": [],
- *           "view": "track"
- *         },
- *         "field": "beta",
- *         "interval": {
- *           "type": "selection",
- *           "selector": {
- *             "scope": [],
- *             "param": "brush"
- *           }
- *         },
- *         "aggregation": {
- *           "op": "max"
- *         }
- *       },
- *       "label": "TP53 region beta"
- *     }
- *   }
- * }
- *
- * @example
- * {
- *   "plot": {
- *     "kind": "quantitativeRelationship",
- *     "attributes": [
- *       {
- *         "type": "SAMPLE_ATTRIBUTE",
- *         "specifier": "age"
- *       },
- *       {
- *         "type": "SAMPLE_ATTRIBUTE",
- *         "specifier": "purity"
- *       }
- *     ]
+ *   "attribute": {
+ *     "type": "SAMPLE_ATTRIBUTE",
+ *     "specifier": "diagnosis"
  *   }
  * }
  */
-export interface ShowSampleAttributePlotToolInput {
+export interface ShowCategoryCountsPlotToolInput {
     /**
-     * Plot request. Use `valueDistributionByCurrentGroups` when the user asks
-     * for a boxplot; put only the value attribute in `attribute`. You may use
-     * the AttributeIdentifier returned by `buildSelectionAggregationAttribute`
-     * directly. The grouping comes from the current SampleHierarchy. Use
-     * `quantitativeRelationship` only for scatterplots comparing two different
-     * quantitative variables; the first listed attribute is rendered on x and
-     * the second on y.
+     * Categorical attribute to count. Use this tool when the user asks for a
+     * bar plot, counts, or category distribution.
      */
-    plot: SampleAttributePlotSpec;
+    attribute: PlotAttributeIdentifier;
+}
+
+/**
+ * Show a quantitative distribution plot in the chat transcript.
+ *
+ * @example
+ * {
+ *   "kind": "boxplot",
+ *   "attribute": {
+ *     "type": "SAMPLE_ATTRIBUTE",
+ *     "specifier": "age"
+ *   }
+ * }
+ *
+ * @example
+ * {
+ *   "kind": "boxplot",
+ *   "attribute": {
+ *     "type": "SELECTION_AGGREGATION",
+ *     "candidateId": "brush@track:beta",
+ *     "aggregation": "max"
+ *   }
+ * }
+ */
+export interface ShowAttributeDistributionPlotToolInput {
+    /**
+     * Distribution plot kind.
+     */
+    kind: "boxplot";
+
+    /**
+     * Quantitative value attribute to summarize. Current sample groups are used
+     * automatically when present.
+     */
+    attribute: PlotAttributeIdentifier;
+}
+
+/**
+ * Show a two-attribute relationship plot in the chat transcript.
+ *
+ * @example
+ * {
+ *   "kind": "scatterplot",
+ *   "attributes": [
+ *     {
+ *       "type": "SAMPLE_ATTRIBUTE",
+ *       "specifier": "age"
+ *     },
+ *     {
+ *       "type": "SAMPLE_ATTRIBUTE",
+ *       "specifier": "purity"
+ *     }
+ *   ]
+ * }
+ */
+export interface ShowAttributeRelationshipPlotToolInput {
+    /**
+     * Relationship plot kind.
+     */
+    kind: "scatterplot";
+
+    /**
+     * Two different quantitative attributes to compare. Keep both attributes in
+     * one ordered array: the first is rendered on x and the second on y. Do not
+     * treat either attribute as a grouping variable.
+     */
+    attributes: [PlotAttributeIdentifier, PlotAttributeIdentifier];
 }
 
 /**
@@ -523,5 +485,7 @@ export interface AgentToolInputs {
     getIntentActionDocs: GetIntentActionDocsToolInput;
     zoomToScale: ZoomToScaleToolInput;
     submitIntentActions: SubmitIntentActionsToolInput;
-    showSampleAttributePlot: ShowSampleAttributePlotToolInput;
+    showCategoryCountsPlot: ShowCategoryCountsPlotToolInput;
+    showAttributeDistributionPlot: ShowAttributeDistributionPlotToolInput;
+    showAttributeRelationshipPlot: ShowAttributeRelationshipPlotToolInput;
 }

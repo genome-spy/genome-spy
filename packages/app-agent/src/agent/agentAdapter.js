@@ -76,23 +76,17 @@ export function createAgentAdapter(app, agentApi) {
      * @returns {import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined}
      */
     function getMetadataAttributeSummarySource(attribute) {
-        if (
-            attribute?.type !== "SAMPLE_ATTRIBUTE" ||
-            typeof attribute.specifier !== "string"
-        ) {
-            return undefined;
-        }
-
         const sampleHierarchy = agentApi.getSampleHierarchy();
         if (!sampleHierarchy) {
             return undefined;
         }
 
         const info = agentApi.getAttributeInfo(attribute);
+        if (!info) {
+            return undefined;
+        }
 
         const sampleIds = collectVisibleSampleIds(sampleHierarchy.rootGroup);
-        const metadata = sampleHierarchy.sampleMetadata.entities;
-        const attributeName = attribute.specifier;
 
         return {
             attribute,
@@ -101,8 +95,8 @@ export function createAgentAdapter(app, agentApi) {
             dataType: info.type,
             scope: "visible_samples",
             sampleIds,
-            values: sampleIds.map(
-                (sampleId) => metadata[sampleId]?.[attributeName]
+            values: sampleIds.map((sampleId) =>
+                info.accessor(sampleId, sampleHierarchy)
             ),
         };
     }
@@ -112,22 +106,15 @@ export function createAgentAdapter(app, agentApi) {
      * @returns {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined}
      */
     function getGroupedMetadataAttributeSummarySource(attribute) {
-        if (
-            attribute?.type !== "SAMPLE_ATTRIBUTE" ||
-            typeof attribute.specifier !== "string"
-        ) {
-            return undefined;
-        }
-
         const sampleHierarchy = agentApi.getSampleHierarchy();
         if (!sampleHierarchy) {
             return undefined;
         }
 
         const info = agentApi.getAttributeInfo(attribute);
-
-        const attributeName = attribute.specifier;
-        const metadata = sampleHierarchy.sampleMetadata.entities;
+        if (!info) {
+            return undefined;
+        }
 
         return {
             attribute,
@@ -146,10 +133,12 @@ export function createAgentAdapter(app, agentApi) {
             }),
             groups: collectVisibleSampleGroups(sampleHierarchy.rootGroup),
             valuesBySampleId: Object.fromEntries(
-                Object.entries(metadata).map(([sampleId, values]) => [
-                    sampleId,
-                    values?.[attributeName],
-                ])
+                collectVisibleSampleIds(sampleHierarchy.rootGroup).map(
+                    (sampleId) => [
+                        sampleId,
+                        info.accessor(sampleId, sampleHierarchy),
+                    ]
+                )
             ),
         };
     }

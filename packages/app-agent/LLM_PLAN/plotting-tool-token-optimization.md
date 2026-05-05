@@ -62,10 +62,10 @@ Prefer compact attribute candidates in plotting tool inputs and in
 `GetMetadataAttributeSummaryToolInput`:
 
 - Simple sample metadata can still use a compact candidate such as
-  `{ "kind": "sampleMetadata", "attribute": "age" }`.
+  `{ "type": "SAMPLE_ATTRIBUTE", "specifier": "age" }`.
 - Selection-derived or view-backed values should use candidates produced by
   context or by a resolver/build tool, for example
-  `{ "kind": "selectionAggregation", "candidateId": "..." }`.
+  `{ "type": "SELECTION_AGGREGATION", "candidateId": "..." }`.
 - Plotting tools and `getMetadataAttributeSummary` should translate candidates
   to the internal canonical `AttributeIdentifier` before calling app APIs.
 - Tool results may return a canonical `AttributeIdentifier` for diagnostics or
@@ -166,6 +166,25 @@ type, changing reference/inlining behavior, or adding a new plot family.
 - Local model prompts expose simple tool names and shallow argument shapes.
 - Existing plot behavior remains available through the focused tools.
 - Invalid plot requests are rejected with clear browser-side validation errors.
+
+## Phase 1 Measurement
+
+Baseline before splitting:
+
+- `showSampleAttributePlot` provider definition: 8,785 serialized characters
+- full provider tool-definition array: 20,051 serialized characters
+- tool count: 13
+- system prompt: 21,764 characters
+
+After splitting into focused tools and candidate-based plot inputs:
+
+- focused plot provider definitions combined: 3,547 serialized characters
+  - `showCategoryCountsPlot`: 948
+  - `showAttributeDistributionPlot`: 1,195
+  - `showAttributeRelationshipPlot`: 1,404
+- full provider tool-definition array: 15,261 serialized characters
+- tool count: 15
+- system prompt: 21,590 characters
 
 ## Relevant Files
 
