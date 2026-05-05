@@ -99,6 +99,50 @@ def test_build_responses_input_omits_empty_volatile_context() -> None:
     }
 
 
+def test_build_responses_input_can_end_with_tool_output() -> None:
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={"schemaVersion": 1},
+        volatile_context={"activeProvenanceState": {"summary": "Grouped"}},
+        history=[
+            HistoryMessage(id="1", role="user", text="Show a plot."),
+            HistoryMessage(
+                id="2",
+                role="assistant",
+                text="I will show a plot.",
+                tool_calls=[
+                    ToolCall(
+                        call_id="call_plot",
+                        name="showAttributeDistributionPlot",
+                        arguments={"kind": "boxplot"},
+                    )
+                ],
+            ),
+            HistoryMessage(
+                id="3",
+                role="tool",
+                text="Shown Boxplot. The requested plot is complete.",
+                tool_call_id="call_plot",
+            ),
+        ],
+        message="",
+    )
+
+    prompt = build_prompt_ir(request)
+    messages = build_responses_input(prompt)
+
+    assert messages[1]["role"] == "developer"
+    assert messages[1]["content"][0]["text"].startswith(
+        "Current volatile GenomeSpy state:\n"
+    )
+    assert messages[2]["role"] == "user"
+    assert messages[-1] == {
+        "type": "function_call_output",
+        "call_id": "call_plot",
+        "output": "Shown Boxplot. The requested plot is complete.",
+    }
+
+
 def test_build_responses_input_serializes_tool_turns() -> None:
     request = ProviderRequest(
         system_prompt="system prompt",
@@ -149,6 +193,47 @@ def test_build_responses_input_serializes_tool_turns() -> None:
         "type": "function_call_output",
         "call_id": "call_1",
         "output": "Expanded the requested view branch.",
+    }
+
+
+def test_build_responses_input_includes_tool_text_with_structured_content() -> None:
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={"schemaVersion": 1},
+        history=[
+            HistoryMessage(
+                id="1",
+                role="tool",
+                text="Shown Boxplot. The requested plot is complete.",
+                tool_call_id="call_plot",
+                content={
+                    "kind": "sample_attribute_plot_record",
+                    "status": "shown",
+                    "title": "Boxplot",
+                },
+            ),
+        ],
+        message="continue",
+    )
+
+    prompt = build_prompt_ir(request)
+    messages = build_responses_input(prompt)
+
+    assert messages[1] == {
+        "type": "function_call_output",
+        "call_id": "call_plot",
+        "output": json.dumps(
+            {
+                "message": "Shown Boxplot. The requested plot is complete.",
+                "content": {
+                    "kind": "sample_attribute_plot_record",
+                    "status": "shown",
+                    "title": "Boxplot",
+                },
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
     }
 
 

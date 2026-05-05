@@ -32,6 +32,14 @@ export interface AgentApi {
     getAttributeInfo(attribute: AttributeIdentifier): AttributeInfo | undefined;
 
     /**
+     * Resolves live selection-backed intervals inside an attribute identifier to
+     * literal intervals for formatting and durable records.
+     */
+    materializeAttributeIdentifier(
+        attribute: AttributeIdentifier
+    ): AttributeIdentifier;
+
+    /**
      * Returns the current SampleView-scoped param config.
      *
      * TODO(app): Make this unscoped and accept a `ParamSelector` once the

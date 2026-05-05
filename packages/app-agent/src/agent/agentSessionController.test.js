@@ -52,6 +52,7 @@ function createRuntimeMock() {
                 rowCount: 12,
             },
         })),
+        materializeAttributeIdentifier: vi.fn((attribute) => attribute),
     };
 
     return {
@@ -241,6 +242,11 @@ describe("createAgentSessionController", () => {
             [],
             [
                 {
+                    id: "1",
+                    role: "user",
+                    text: "Sort the samples by age.",
+                },
+                {
                     id: "2",
                     role: "assistant",
                     text: "I will sort the samples by age.",
@@ -357,9 +363,11 @@ describe("createAgentSessionController", () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
         const observedHistories = [];
+        const observedMessages = [];
         runtime.requestAgentTurn.mockImplementation(
             (message, history, stream, allowStreaming, contextOptions) => {
                 agentTurnCallCount += 1;
+                observedMessages.push(message);
                 observedHistories.push(history);
                 if (message === PREFLIGHT_MESSAGE) {
                     return Promise.resolve({
@@ -466,9 +474,11 @@ describe("createAgentSessionController", () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
         const observedHistories = [];
+        const observedMessages = [];
         runtime.requestAgentTurn.mockImplementation(
             (message, history, stream, allowStreaming, contextOptions) => {
                 agentTurnCallCount += 1;
+                observedMessages.push(message);
                 observedHistories.push(history);
 
                 if (message === PREFLIGHT_MESSAGE) {
@@ -491,21 +501,19 @@ describe("createAgentSessionController", () => {
                             toolCalls: [
                                 {
                                     callId: "call-plot",
-                                    name: "showSampleAttributePlot",
+                                    name: "showAttributeRelationshipPlot",
                                     arguments: {
-                                        plot: {
-                                            kind: "quantitativeRelationship",
-                                            attributes: [
-                                                {
-                                                    type: "SAMPLE_ATTRIBUTE",
-                                                    specifier: "age",
-                                                },
-                                                {
-                                                    type: "SAMPLE_ATTRIBUTE",
-                                                    specifier: "purity",
-                                                },
-                                            ],
-                                        },
+                                        kind: "scatterplot",
+                                        attributes: [
+                                            {
+                                                type: "SAMPLE_ATTRIBUTE",
+                                                specifier: "age",
+                                            },
+                                            {
+                                                type: "SAMPLE_ATTRIBUTE",
+                                                specifier: "purity",
+                                            },
+                                        ],
                                     },
                                 },
                             ],
@@ -544,7 +552,7 @@ describe("createAgentSessionController", () => {
         });
         expect(snapshot.messages[2]).toMatchObject({
             kind: "tool_result",
-            text: "Generated Scatterplot of age vs purity with 2 groups.",
+            text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
         });
         expect(snapshot.messages[3]).toMatchObject({
             kind: "plot",
@@ -559,7 +567,13 @@ describe("createAgentSessionController", () => {
             kind: "assistant",
             text: "Here is the scatterplot.",
         });
+        expect(observedMessages[2]).toBe("");
         expect(observedHistories[2]).toEqual([
+            {
+                id: "1",
+                role: "user",
+                text: "Show me age versus purity.",
+            },
             {
                 id: "2",
                 role: "assistant",
@@ -569,21 +583,19 @@ describe("createAgentSessionController", () => {
                 toolCalls: [
                     {
                         callId: "call-plot",
-                        name: "showSampleAttributePlot",
+                        name: "showAttributeRelationshipPlot",
                         arguments: {
-                            plot: {
-                                kind: "quantitativeRelationship",
-                                attributes: [
-                                    {
-                                        type: "SAMPLE_ATTRIBUTE",
-                                        specifier: "age",
-                                    },
-                                    {
-                                        type: "SAMPLE_ATTRIBUTE",
-                                        specifier: "purity",
-                                    },
-                                ],
-                            },
+                            kind: "scatterplot",
+                            attributes: [
+                                {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "age",
+                                },
+                                {
+                                    type: "SAMPLE_ATTRIBUTE",
+                                    specifier: "purity",
+                                },
+                            ],
                         },
                     },
                 ],
@@ -591,10 +603,41 @@ describe("createAgentSessionController", () => {
             {
                 id: "3",
                 role: "tool",
-                text: "Generated Scatterplot of age vs purity with 2 groups.",
+                text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
                 kind: "tool_result",
                 toolCallId: "call-plot",
-                content: undefined,
+                content: {
+                    kind: "sample_attribute_plot_record",
+                    status: "shown",
+                    plotType: "scatterplot",
+                    title: "Scatterplot of age vs purity",
+                    summary: {
+                        groupCount: 2,
+                        rowCount: 12,
+                    },
+                    attributes: [
+                        {
+                            input: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                            normalized: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                        },
+                        {
+                            input: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                            normalized: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                        },
+                    ],
+                },
             },
         ]);
     });
@@ -614,14 +657,12 @@ describe("createAgentSessionController", () => {
             },
             {
                 callId: "call-plot",
-                name: "showSampleAttributePlot",
+                name: "showAttributeDistributionPlot",
                 arguments: {
-                    plot: {
-                        kind: "valueDistributionByCurrentGroups",
-                        attribute: {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "mutations",
-                        },
+                    kind: "boxplot",
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "mutations",
                     },
                 },
             },
@@ -922,7 +963,7 @@ describe("createAgentSessionController", () => {
         expect(results).toEqual([
             expect.objectContaining({
                 rejected: false,
-                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use content.attribute directly as a plotted attribute in `showSampleAttributePlot` or as payload.attribute in `submitIntentActions`. If you need a different locus or interval, update the selection first.",
+                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use a SELECTION_AGGREGATION candidate in plotting tools or content.attribute as payload.attribute in `submitIntentActions`. If you need a different locus or interval, update the selection first.",
                 content: expect.objectContaining({
                     kind: "selection_aggregation_resolution",
                     candidateId: "brush@track:beta",

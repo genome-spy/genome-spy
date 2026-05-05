@@ -1,6 +1,8 @@
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector as resolveCoreViewSelector } from "@genome-spy/core/view/viewSelectors.js";
+import { resolveIntervalReference } from "../sampleView/intervalReferenceResolver.js";
+import { isIntervalSource } from "../sampleView/sampleViewTypes.js";
 import {
     buildHierarchyBarplot,
     buildHierarchyBoxplot,
@@ -45,6 +47,32 @@ export function createAgentApi(app) {
             return sampleView.compositeAttributeInfoSource.getAttributeInfo(
                 attribute
             );
+        },
+
+        /**
+         * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+         * @returns {import("../sampleView/types.d.ts").AttributeIdentifier}
+         */
+        materializeAttributeIdentifier(attribute) {
+            const sampleView = app.getSampleView();
+            if (!sampleView || !isSelectionIntervalAttribute(attribute)) {
+                return attribute;
+            }
+
+            const specifier =
+                /** @type {import("../sampleView/sampleViewTypes.d.ts").IntervalSpecifier} */ (
+                    attribute.specifier
+                );
+            return {
+                ...attribute,
+                specifier: {
+                    ...specifier,
+                    interval: resolveIntervalReference(
+                        sampleView,
+                        specifier.interval
+                    ),
+                },
+            };
         },
 
         /**
@@ -280,4 +308,21 @@ async function resolvePlotAttributeInfo(attributeInfoSource, attribute, label) {
         title: label,
         emphasizedName: label,
     };
+}
+
+/**
+ * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+ * @returns {attribute is import("../sampleView/types.d.ts").AttributeIdentifier & {
+ *     specifier: import("../sampleView/sampleViewTypes.d.ts").IntervalSpecifier;
+ * }}
+ */
+function isSelectionIntervalAttribute(attribute) {
+    const specifier = attribute.specifier;
+    return (
+        attribute.type === "VALUE_AT_LOCUS" &&
+        typeof specifier === "object" &&
+        specifier !== null &&
+        "interval" in specifier &&
+        isIntervalSource(specifier.interval)
+    );
 }

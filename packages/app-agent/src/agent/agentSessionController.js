@@ -167,6 +167,27 @@ function isSampleAttributePlotContent(content) {
 }
 
 /**
+ * @param {unknown} content
+ * @returns {unknown}
+ */
+function createSampleAttributePlotHistoryContent(content) {
+    if (!isSampleAttributePlotContent(content)) {
+        return content;
+    }
+
+    const plot = /** @type {any} */ (content);
+    return {
+        kind: "sample_attribute_plot_record",
+        status: "shown",
+        plotType: plot.plotType,
+        title: plot.title,
+        summary: plot.summary,
+        ...(plot.attribute ? { attribute: plot.attribute } : {}),
+        ...(plot.attributes ? { attributes: plot.attributes } : {}),
+    };
+}
+
+/**
  * @param {AgentSessionRuntime} runtime
  * @returns {AgentSessionController}
  */
@@ -474,12 +495,15 @@ export class AgentSessionController {
                     : {}),
             });
             if (result.text || result.content !== undefined) {
+                const historyContent = createSampleAttributePlotHistoryContent(
+                    result.content
+                );
                 this.#appendMessage({
                     kind: "tool_result",
                     text: result.text ?? "",
                     toolCallId: toolCall.callId,
-                    ...(result.content !== undefined && !isPlotContent
-                        ? { content: result.content }
+                    ...(historyContent !== undefined
+                        ? { content: historyContent }
                         : {}),
                     durationMs: null,
                 });
@@ -661,11 +685,14 @@ export class AgentSessionController {
             let lastToolCallSignature = "";
             let lastToolCallWasRejected = false;
             let repeatedToolCallRounds = 0;
+            let hasExecutedToolCalls = false;
             let response;
             while (true) {
-                const history = this.#buildHistory();
+                const history = this.#buildHistory({
+                    includePendingRequest: hasExecutedToolCalls,
+                });
                 const requestResult = await this.#runtime.requestAgentTurn(
-                    message,
+                    hasExecutedToolCalls ? "" : message,
                     history,
                     {
                         onDelta: (delta) => {
@@ -770,6 +797,7 @@ export class AgentSessionController {
                 const executionResults = await this.executeToolCalls(
                     response.toolCalls
                 );
+                hasExecutedToolCalls = true;
                 if (this.#isTurnCancelled(turnId)) {
                     return;
                 }
@@ -872,11 +900,12 @@ export class AgentSessionController {
     /**
      * @returns {AgentConversationMessage[]}
      */
-    #buildHistory() {
+    #buildHistory({ includePendingRequest = false } = {}) {
         return this.#state.messages
             .filter(
                 (message) =>
-                    message.id !== this.#state.pendingRequest?.messageId &&
+                    (includePendingRequest ||
+                        message.id !== this.#state.pendingRequest?.messageId) &&
                     (message.kind === "user" ||
                         message.kind === "assistant" ||
                         message.kind === "clarification" ||

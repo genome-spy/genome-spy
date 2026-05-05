@@ -14,7 +14,9 @@ describe("toolCatalog", () => {
         expect(new Set(toolNames).size).toBe(toolNames.length);
         expect(toolNames).toContain("jumpToInitialProvenanceState");
         expect(toolNames).toContain("resolveMetadataAttributeValues");
-        expect(toolNames).toContain("showSampleAttributePlot");
+        expect(toolNames).toContain("showCategoryCountsPlot");
+        expect(toolNames).toContain("showAttributeDistributionPlot");
+        expect(toolNames).toContain("showAttributeRelationshipPlot");
         expect(toolNames).toContain("submitIntentActions");
     });
 
@@ -29,8 +31,8 @@ describe("toolCatalog", () => {
         const getIntentActionDocs = toolDefinitions.find(
             (tool) => tool.name === "getIntentActionDocs"
         );
-        const showSampleAttributePlot = toolDefinitions.find(
-            (tool) => tool.name === "showSampleAttributePlot"
+        const showAttributeRelationshipPlot = toolDefinitions.find(
+            (tool) => tool.name === "showAttributeRelationshipPlot"
         );
         const zoomToScale = toolDefinitions.find(
             (tool) => tool.name === "zoomToScale"
@@ -55,20 +57,21 @@ describe("toolCatalog", () => {
                 required: ["actionType", "includeSchema"],
             },
         });
-        expect(showSampleAttributePlot).toMatchObject({
-            name: "showSampleAttributePlot",
+        expect(showAttributeRelationshipPlot).toMatchObject({
+            name: "showAttributeRelationshipPlot",
             strict: true,
             parameters: {
                 type: "object",
-                required: ["plot"],
+                required: ["attributes", "kind"],
                 properties: {
-                    plot: {
-                        anyOf: expect.any(Array),
+                    attributes: {
+                        type: "array",
+                        minItems: 2,
+                        maxItems: 2,
                     },
                 },
             },
         });
-        expect(showSampleAttributePlot.parameters).not.toHaveProperty("anyOf");
         expect(zoomToScale).toMatchObject({
             name: "zoomToScale",
             strict: true,
@@ -104,9 +107,9 @@ describe("toolCatalog", () => {
                 },
             },
         });
-        expect(JSON.stringify(showSampleAttributePlot.parameters)).toContain(
-            "value by group"
-        );
+        expect(
+            JSON.stringify(showAttributeRelationshipPlot.parameters)
+        ).toContain("Do not treat either attribute as a grouping variable.");
         expect(JSON.stringify(toolDefinitions)).not.toContain(
             "AgentIntentBatchStep"
         );
@@ -125,109 +128,84 @@ describe("toolCatalog", () => {
         ]);
     });
 
-    it("validates sample attribute plot shapes by intent kind", () => {
+    it("validates focused sample attribute plot shapes", () => {
         expect(
-            validateToolArgumentsShape("showSampleAttributePlot", {
-                plot: {
-                    kind: "valueDistributionByCurrentGroups",
-                    attribute: {
-                        type: "SAMPLE_ATTRIBUTE",
-                        specifier: "age",
-                    },
+            validateToolArgumentsShape("showAttributeDistributionPlot", {
+                kind: "boxplot",
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "age",
                 },
             }).ok
         ).toBe(true);
 
         expect(
-            validateToolArgumentsShape("showSampleAttributePlot", {
-                plot: {
-                    kind: "valueDistributionByCurrentGroups",
-                    attribute: {
-                        type: "VALUE_AT_LOCUS",
-                        specifier: {
-                            view: {
-                                scope: [],
-                                view: "track",
-                            },
-                            field: "beta",
-                            interval: {
-                                type: "selection",
-                                selector: {
-                                    scope: [],
-                                    param: "brush",
-                                },
-                            },
-                            aggregation: {
-                                op: "max",
-                            },
-                        },
-                        label: "TP53 region beta",
-                    },
+            validateToolArgumentsShape("showAttributeDistributionPlot", {
+                kind: "boxplot",
+                attribute: {
+                    type: "SELECTION_AGGREGATION",
+                    candidateId: "brush@track:beta",
+                    aggregation: "max",
                 },
             }).ok
         ).toBe(true);
 
         expect(
-            validateToolArgumentsShape("showSampleAttributePlot", {
-                plot: {
-                    kind: "valueDistributionByCurrentGroups",
-                    attributes: [
-                        {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "age",
-                        },
-                        {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "purity",
-                        },
-                    ],
-                },
-            }).ok
-        ).toBe(false);
-
-        expect(
-            validateToolArgumentsShape("showSampleAttributePlot", {
-                plot: {
-                    kind: "quantitativeRelationship",
-                    attribute: {
+            validateToolArgumentsShape("showAttributeDistributionPlot", {
+                kind: "boxplot",
+                attributes: [
+                    {
                         type: "SAMPLE_ATTRIBUTE",
                         specifier: "age",
                     },
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "purity",
+                    },
+                ],
+            }).ok
+        ).toBe(false);
+
+        expect(
+            validateToolArgumentsShape("showAttributeRelationshipPlot", {
+                kind: "scatterplot",
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "age",
                 },
             }).ok
         ).toBe(false);
 
         expect(
-            validateToolArgumentsShape("showSampleAttributePlot", {
-                plot: {
-                    kind: "quantitativeRelationship",
-                    attributes: [
-                        {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "age",
-                        },
-                        {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "purity",
-                        },
-                    ],
-                },
+            validateToolArgumentsShape("showAttributeRelationshipPlot", {
+                kind: "scatterplot",
+                attributes: [
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "age",
+                    },
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "purity",
+                    },
+                ],
             }).ok
         ).toBe(true);
     });
 
     it("normalizes nested tool object schemas for OpenAI strict mode", () => {
-        const showSampleAttributePlot = buildResponsesToolDefinitions().find(
-            (tool) => tool.name === "showSampleAttributePlot"
-        );
+        const showAttributeRelationshipPlot =
+            buildResponsesToolDefinitions().find(
+                (tool) => tool.name === "showAttributeRelationshipPlot"
+            );
 
         expect(
             findObjectSchemasWithMissingRequiredProperties(
-                showSampleAttributePlot.parameters
+                showAttributeRelationshipPlot.parameters
             )
         ).toEqual([]);
         expect(
-            JSON.stringify(showSampleAttributePlot.parameters)
+            JSON.stringify(showAttributeRelationshipPlot.parameters)
         ).not.toContain("domainAtActionTime");
     });
 

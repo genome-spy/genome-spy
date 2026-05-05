@@ -93,7 +93,7 @@
   },
   {
     "toolName": "buildSelectionAggregationAttribute",
-    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used directly in `showSampleAttributePlot` or in a later intent action.",
+    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action or inspected for diagnostics.",
     "inputType": "BuildSelectionAggregationAttributeToolInput",
     "inputFields": [
       {
@@ -122,8 +122,8 @@
     "inputFields": [
       {
         "name": "attribute",
-        "type": "SampleAttributeIdentifier",
-        "description": "Stable attributeIdentifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.",
+        "type": "AgentAttributeCandidate",
+        "description": "Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for sample metadata attributes from context. Use `SELECTION_AGGREGATION` for selection-derived candidates from `selectionAggregation.fields`.",
         "required": true
       },
       {
@@ -292,25 +292,82 @@
     "strict": false
   },
   {
-    "toolName": "showSampleAttributePlot",
-    "description": "Show an exploratory sample-attribute plot in the chat transcript.",
-    "inputType": "ShowSampleAttributePlotToolInput",
+    "toolName": "showCategoryCountsPlot",
+    "description": "Show a category-count plot in the chat transcript.",
+    "inputType": "ShowCategoryCountsPlotToolInput",
     "inputFields": [
       {
-        "name": "plot",
-        "type": "SampleAttributePlotSpec",
-        "description": "Plot request. Use `valueDistributionByCurrentGroups` when the user asks for a boxplot; put only the value attribute in `attribute`. You may use the AttributeIdentifier returned by `buildSelectionAggregationAttribute` directly. The grouping comes from the current SampleHierarchy. Use `quantitativeRelationship` only for scatterplots comparing two different quantitative variables; the first listed attribute is rendered on x and the second on y.",
+        "name": "attribute",
+        "type": "PlotAttributeIdentifier",
+        "description": "Categorical attribute to count. Use this tool when the user asks for a bar plot, counts, or category distribution.",
         "required": true
       }
     ],
     "exampleInput": {
-      "plot": {
-        "kind": "valueDistributionByCurrentGroups",
-        "attribute": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "diagnosis"
+      }
+    },
+    "strict": true
+  },
+  {
+    "toolName": "showAttributeDistributionPlot",
+    "description": "Show a quantitative distribution plot in the chat transcript.",
+    "inputType": "ShowAttributeDistributionPlotToolInput",
+    "inputFields": [
+      {
+        "name": "kind",
+        "type": "\"boxplot\"",
+        "description": "Distribution plot kind.",
+        "required": true
+      },
+      {
+        "name": "attribute",
+        "type": "PlotAttributeIdentifier",
+        "description": "Quantitative value attribute to summarize. Current sample groups are used automatically when present.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "kind": "boxplot",
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "age"
+      }
+    },
+    "strict": true
+  },
+  {
+    "toolName": "showAttributeRelationshipPlot",
+    "description": "Show a two-attribute relationship plot in the chat transcript.",
+    "inputType": "ShowAttributeRelationshipPlotToolInput",
+    "inputFields": [
+      {
+        "name": "kind",
+        "type": "\"scatterplot\"",
+        "description": "Relationship plot kind.",
+        "required": true
+      },
+      {
+        "name": "attributes",
+        "type": "[PlotAttributeIdentifier, PlotAttributeIdentifier]",
+        "description": "Two different quantitative attributes to compare. Keep both attributes in one ordered array: the first is rendered on x and the second on y. Do not treat either attribute as a grouping variable.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "kind": "scatterplot",
+      "attributes": [
+        {
           "type": "SAMPLE_ATTRIBUTE",
           "specifier": "age"
+        },
+        {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "purity"
         }
-      }
+      ]
     },
     "strict": true
   }

@@ -8,18 +8,15 @@ vi.mock("@genome-spy/app/agentShared", () => ({
         selectionSelector,
         aggregation,
     }) => ({
-        kind: "selection_aggregation_resolution",
-        attribute: {
-            type: "VALUE_AT_LOCUS",
-            specifier: {
-                view: viewSelector,
-                field,
-                interval: {
-                    type: "selection",
-                    selector: selectionSelector,
-                },
-                aggregation: { op: aggregation },
+        type: "VALUE_AT_LOCUS",
+        specifier: {
+            view: viewSelector,
+            field,
+            interval: {
+                type: "selection",
+                selector: selectionSelector,
             },
+            aggregation: { op: aggregation },
         },
     }),
     formatAggregationExpression: (aggregation, field) =>
@@ -208,6 +205,22 @@ function createRuntimeStub() {
         getActionHistory: vi.fn(() => []),
         jumpToProvenanceState: vi.fn(() => true),
         jumpToInitialProvenanceState: vi.fn(() => true),
+        materializeAttributeIdentifier: vi.fn((attribute) => {
+            if (attribute.type !== "VALUE_AT_LOCUS") {
+                return attribute;
+            }
+
+            return {
+                ...attribute,
+                specifier: {
+                    ...attribute.specifier,
+                    interval: [
+                        { chrom: "chr17", pos: 7565097 },
+                        { chrom: "chr17", pos: 7590856 },
+                    ],
+                },
+            };
+        }),
         getNamedScaleResolutions: vi.fn(
             () =>
                 new Map([
@@ -386,24 +399,22 @@ describe("agentTools", () => {
         expect(runtime.getAgentVolatileContext).toHaveBeenCalledTimes(1);
     });
 
-    it("shows sample attribute plots through the host API", async () => {
+    it("shows relationship plots through the host API", async () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = await tools.showSampleAttributePlot(runtime, {
-            plot: {
-                kind: "quantitativeRelationship",
-                attributes: [
-                    {
-                        type: "SAMPLE_ATTRIBUTE",
-                        specifier: "age",
-                    },
-                    {
-                        type: "SAMPLE_ATTRIBUTE",
-                        specifier: "purity",
-                    },
-                ],
-            },
+        const result = await tools.showAttributeRelationshipPlot(runtime, {
+            kind: "scatterplot",
+            attributes: [
+                {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "age",
+                },
+                {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "purity",
+                },
+            ],
         });
 
         expect(runtime.agentApi.buildSampleAttributePlot).toHaveBeenCalledWith({
@@ -419,16 +430,38 @@ describe("agentTools", () => {
         });
         expect(result).toEqual(
             expect.objectContaining({
-                text: "Generated Scatterplot of age vs purity with 2 groups.",
+                text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
                 content: expect.objectContaining({
                     kind: "sample_attribute_plot",
                     plotType: "scatterplot",
+                    attributes: [
+                        {
+                            input: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                            normalized: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                        },
+                        {
+                            input: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                            normalized: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                        },
+                    ],
                 }),
             })
         );
     });
 
-    it("passes aggregated plot attributes and plot-local labels through the host API", async () => {
+    it("passes selection aggregation plot candidates through the host API", async () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
         const aggregatedAttribute = {
@@ -453,10 +486,49 @@ describe("agentTools", () => {
             label: "TP53 region beta",
         };
 
-        await tools.showSampleAttributePlot(runtime, {
-            plot: {
-                kind: "valueDistributionByCurrentGroups",
-                attribute: aggregatedAttribute,
+        runtime.getAgentVolatileContext.mockReturnValueOnce({
+            parameterValues: [
+                {
+                    selector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                    value: {
+                        type: "interval",
+                        intervals: {
+                            x: [
+                                { chrom: "chr17", pos: 7565097 },
+                                { chrom: "chr17", pos: 7590856 },
+                            ],
+                        },
+                    },
+                },
+            ],
+            selectionAggregation: {
+                fields: [
+                    {
+                        candidateId: "brush@track:beta",
+                        viewSelector: {
+                            scope: [],
+                            view: "track",
+                        },
+                        field: "beta",
+                        selectionSelector: {
+                            scope: [],
+                            param: "brush",
+                        },
+                        supportedAggregations: ["max"],
+                    },
+                ],
+            },
+        });
+
+        const result = await tools.showAttributeDistributionPlot(runtime, {
+            kind: "boxplot",
+            attribute: {
+                type: "SELECTION_AGGREGATION",
+                candidateId: "brush@track:beta",
+                aggregation: "max",
             },
         });
 
@@ -464,10 +536,36 @@ describe("agentTools", () => {
             plotType: "boxplot",
             attribute: {
                 type: "VALUE_AT_LOCUS",
-                specifier: aggregatedAttribute.specifier,
+                specifier: {
+                    ...aggregatedAttribute.specifier,
+                    interval: [
+                        { chrom: "chr17", pos: 7565097 },
+                        { chrom: "chr17", pos: 7590856 },
+                    ],
+                },
             },
-            attributeLabel: "TP53 region beta",
         });
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                attribute: {
+                    input: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "brush@track:beta",
+                        aggregation: "max",
+                    },
+                    normalized: {
+                        type: "VALUE_AT_LOCUS",
+                        specifier: {
+                            ...aggregatedAttribute.specifier,
+                            interval: [
+                                { chrom: "chr17", pos: 7565097 },
+                                { chrom: "chr17", pos: 7590856 },
+                            ],
+                        },
+                    },
+                },
+            })
+        );
     });
 
     it("rejects when the host cannot build a sample attribute plot", async () => {
@@ -476,13 +574,10 @@ describe("agentTools", () => {
         const tools = agentTools;
 
         await expect(
-            tools.showSampleAttributePlot(runtime, {
-                plot: {
-                    kind: "categoryCounts",
-                    attribute: {
-                        type: "SAMPLE_ATTRIBUTE",
-                        specifier: "diagnosis",
-                    },
+            tools.showCategoryCountsPlot(runtime, {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
                 },
             })
         ).rejects.toThrow(ToolCallRejectionError);
@@ -492,20 +587,18 @@ describe("agentTools", () => {
         const runtime = createRuntimeStub();
 
         await expect(
-            agentTools.showSampleAttributePlot(runtime, {
-                plot: {
-                    kind: "quantitativeRelationship",
-                    attributes: [
-                        {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "mutations",
-                        },
-                        {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "mutations",
-                        },
-                    ],
-                },
+            agentTools.showAttributeRelationshipPlot(runtime, {
+                kind: "scatterplot",
+                attributes: [
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "mutations",
+                    },
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "mutations",
+                    },
+                ],
             })
         ).rejects.toThrow(ToolCallRejectionError);
         expect(

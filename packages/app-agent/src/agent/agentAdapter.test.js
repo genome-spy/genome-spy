@@ -162,7 +162,10 @@ function createAppStub(encoding = undefined) {
         },
         compositeAttributeInfoSource: {
             getAttributeInfo: (attribute) => ({
-                accessor: () => undefined,
+                accessor: (sampleId, sampleHierarchy) =>
+                    sampleHierarchy.sampleMetadata.entities[sampleId]?.[
+                        attribute.specifier
+                    ],
                 valuesProvider: () => [],
                 type:
                     attribute?.specifier === "sex" ||
@@ -410,7 +413,6 @@ describe("agentAdapter", () => {
             valuesBySampleId: {
                 sampleA: "F",
                 sampleB: "M",
-                sampleC: "F",
             },
         });
     });
