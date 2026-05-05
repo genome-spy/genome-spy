@@ -7,12 +7,13 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
  *
  * @param {{
  *     getAgentVolatileContext(): import("./types.d.ts").AgentVolatileContext;
+ *     agentApi?: Pick<import("@genome-spy/app/agentApi").AgentApi, "materializeAttributeIdentifier">;
  * }} runtime
  * @param {import("./agentToolInputs.d.ts").AgentAttributeCandidate} candidate
  * @returns {import("@genome-spy/app/agentShared").AttributeIdentifier}
  */
 export function resolveAgentAttributeCandidate(runtime, candidate) {
-    return resolveAgentAttributeCandidateRecord(runtime, candidate).resolved;
+    return resolveAgentAttributeCandidateRecord(runtime, candidate).normalized;
 }
 
 /**
@@ -21,12 +22,13 @@ export function resolveAgentAttributeCandidate(runtime, candidate) {
  *
  * @param {{
  *     getAgentVolatileContext(): import("./types.d.ts").AgentVolatileContext;
+ *     agentApi?: Pick<import("@genome-spy/app/agentApi").AgentApi, "materializeAttributeIdentifier">;
  * }} runtime
  * @param {import("./agentToolInputs.d.ts").AgentAttributeCandidate} candidate
  * @returns {{
  *     input: import("./agentToolInputs.d.ts").AgentAttributeCandidate;
- *     resolved: import("@genome-spy/app/agentShared").AttributeIdentifier;
- *     interval?: [AgentChromosomalLocus, AgentChromosomalLocus];
+ *     normalized: import("@genome-spy/app/agentShared").AttributeIdentifier;
+ *     plotAttribute: import("@genome-spy/app/agentShared").AttributeIdentifier;
  * }}
  */
 export function resolveAgentAttributeCandidateRecord(runtime, candidate) {
@@ -39,7 +41,8 @@ export function resolveAgentAttributeCandidateRecord(runtime, candidate) {
 
         return {
             input: candidate,
-            resolved,
+            normalized: resolved,
+            plotAttribute: resolved,
         };
     }
 
@@ -54,15 +57,59 @@ export function resolveAgentAttributeCandidateRecord(runtime, candidate) {
             volatileContext,
             resolution.selectionSelector
         );
+        const plotAttribute = materializeAttributeIdentifier(
+            runtime,
+            resolution.attribute
+        );
+        const normalized = interval
+            ? replaceAttributeInterval(plotAttribute, interval)
+            : plotAttribute;
 
         return {
             input: candidate,
-            resolved: resolution.attribute,
-            ...(interval ? { interval } : {}),
+            normalized,
+            plotAttribute,
         };
     }
 
     throw new ToolCallRejectionError("Unsupported attribute candidate type.");
+}
+
+/**
+ * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} attribute
+ * @param {[AgentChromosomalLocus, AgentChromosomalLocus]} interval
+ * @returns {import("@genome-spy/app/agentShared").AttributeIdentifier}
+ */
+function replaceAttributeInterval(attribute, interval) {
+    if (
+        attribute.type !== "VALUE_AT_LOCUS" ||
+        typeof attribute.specifier !== "object" ||
+        attribute.specifier === null ||
+        !("interval" in attribute.specifier)
+    ) {
+        return attribute;
+    }
+
+    return {
+        ...attribute,
+        specifier: {
+            ...attribute.specifier,
+            interval,
+        },
+    };
+}
+
+/**
+ * @param {{
+ *     agentApi?: Pick<import("@genome-spy/app/agentApi").AgentApi, "materializeAttributeIdentifier">;
+ * }} runtime
+ * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} attribute
+ * @returns {import("@genome-spy/app/agentShared").AttributeIdentifier}
+ */
+function materializeAttributeIdentifier(runtime, attribute) {
+    return runtime.agentApi?.materializeAttributeIdentifier
+        ? runtime.agentApi.materializeAttributeIdentifier(attribute)
+        : attribute;
 }
 
 /**

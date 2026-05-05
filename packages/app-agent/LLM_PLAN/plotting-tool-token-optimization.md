@@ -90,7 +90,7 @@ record of what was actually plotted. This is especially important for
 the current volatile context.
 
 Each plot result included in conversation history should include the original
-candidate and the resolved canonical attribute:
+candidate and a normalized app `AttributeIdentifier`:
 
 ```json
 {
@@ -99,7 +99,7 @@ candidate and the resolved canonical attribute:
       "type": "SAMPLE_ATTRIBUTE",
       "specifier": "age"
     },
-    "resolved": {
+    "normalized": {
       "type": "SAMPLE_ATTRIBUTE",
       "specifier": "age"
     }
@@ -107,8 +107,9 @@ candidate and the resolved canonical attribute:
 }
 ```
 
-For selection aggregation candidates, include the resolved canonical
-`VALUE_AT_LOCUS` identifier and the concrete interval used at execution time:
+For selection aggregation candidates, `normalized` should be the
+`VALUE_AT_LOCUS` identifier with a literal chrom/pos interval when the x scale is
+locus-based:
 
 ```json
 {
@@ -118,33 +119,35 @@ For selection aggregation candidates, include the resolved canonical
       "candidateId": "brush@track:beta",
       "aggregation": "max"
     },
-    "resolved": {
+    "normalized": {
       "type": "VALUE_AT_LOCUS",
       "specifier": {
         "view": { "scope": [], "view": "track" },
         "field": "beta",
-        "interval": {
-          "type": "selection",
-          "selector": { "scope": [], "param": "brush" }
-        },
+        "interval": [
+          { "chrom": "chr17", "pos": 7565097 },
+          { "chrom": "chr17", "pos": 7590856 }
+        ],
         "aggregation": { "op": "max" }
       }
-    },
-    "interval": [
-      { "chrom": "chr17", "pos": 7565097 },
-      { "chrom": "chr17", "pos": 7590856 }
-    ]
+    }
   }
 }
 ```
 
-Do not add a separate `selection` field; the selector already lives in the
-resolved attribute. Do not duplicate `field` outside the resolved attribute. The
-flattened `interval` should use a generic `AgentChromosomalLocus` type derived
-from `ChromosomalLocus` with mandatory `pos`. Rename the current
-`ZoomToScaleLocus` helper in `agentToolInputs.d.ts` when this result record is
-implemented. Do not use the core `ChromosomalLocus` type directly here because
-its `pos` property is optional.
+Do not include separate `resolved`, `selection`, `field`, or top-level
+`interval` fields in the history record; they duplicate information in
+`normalized`. The flattened locus interval should use a generic
+`AgentChromosomalLocus` type derived from `ChromosomalLocus` with mandatory
+`pos`. Do not use the core `ChromosomalLocus` type directly here because its
+`pos` property is optional.
+
+Plotting should still use an app-facing materialized identifier internally when
+available. This lets the existing App `AttributeInfo` title formatter produce
+concrete interval titles instead of generic `in selection brush` labels. The
+materialization API belongs on `agentApi`, not `agentShared`, because selection
+resolution depends on live view and parameter state. `agentShared` can continue
+to expose pure builders such as `buildSelectionAggregationAttributeIdentifier`.
 
 ## Schema Strategy
 

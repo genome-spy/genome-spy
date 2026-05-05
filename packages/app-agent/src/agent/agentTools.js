@@ -166,7 +166,7 @@ export const agentTools = {
         return executeSampleAttributePlot(runtime, {
             plotRequest: {
                 plotType: "bar",
-                attribute: attribute.resolved,
+                attribute: attribute.plotAttribute,
             },
             attributeRecord: attribute,
         });
@@ -185,7 +185,7 @@ export const agentTools = {
         return executeSampleAttributePlot(runtime, {
             plotRequest: {
                 plotType: "boxplot",
-                attribute: attribute.resolved,
+                attribute: attribute.plotAttribute,
             },
             attributeRecord: attribute,
         });
@@ -206,7 +206,10 @@ export const agentTools = {
             yPlotAttribute
         );
         if (
-            isSameAttributeIdentifier(xAttribute.resolved, yAttribute.resolved)
+            isSameAttributeIdentifier(
+                xAttribute.normalized,
+                yAttribute.normalized
+            )
         ) {
             throw new ToolCallRejectionError(
                 "Relationship plots require two different quantitative attributes. " +
@@ -218,8 +221,8 @@ export const agentTools = {
         return executeSampleAttributePlot(runtime, {
             plotRequest: {
                 plotType: "scatterplot",
-                xAttribute: xAttribute.resolved,
-                yAttribute: yAttribute.resolved,
+                xAttribute: xAttribute.plotAttribute,
+                yAttribute: yAttribute.plotAttribute,
             },
             attributeRecords: [xAttribute, yAttribute],
         });
@@ -377,10 +380,18 @@ async function executeSampleAttributePlot(runtime, options) {
             content: {
                 ...plot,
                 ...(options.attributeRecord
-                    ? { attribute: options.attributeRecord }
+                    ? {
+                          attribute: createPlotAttributeResultRecord(
+                              options.attributeRecord
+                          ),
+                      }
                     : {}),
                 ...(options.attributeRecords
-                    ? { attributes: options.attributeRecords }
+                    ? {
+                          attributes: options.attributeRecords.map(
+                              createPlotAttributeResultRecord
+                          ),
+                      }
                     : {}),
             },
         };
@@ -389,6 +400,22 @@ async function executeSampleAttributePlot(runtime, options) {
             error instanceof Error ? error.message : String(error)
         );
     }
+}
+
+/**
+ * @param {unknown} record
+ * @returns {unknown}
+ */
+function createPlotAttributeResultRecord(record) {
+    if (!record || typeof record !== "object") {
+        return record;
+    }
+
+    const resultRecord = {
+        .../** @type {Record<string, unknown>} */ (record),
+    };
+    delete resultRecord.plotAttribute;
+    return resultRecord;
 }
 
 /**

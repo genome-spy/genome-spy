@@ -52,6 +52,7 @@ function createRuntimeMock() {
                 rowCount: 12,
             },
         })),
+        materializeAttributeIdentifier: vi.fn((attribute) => attribute),
     };
 
     return {
@@ -604,7 +605,7 @@ describe("createAgentSessionController", () => {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "age",
                             },
-                            resolved: {
+                            normalized: {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "age",
                             },
@@ -614,7 +615,7 @@ describe("createAgentSessionController", () => {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "purity",
                             },
-                            resolved: {
+                            normalized: {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "purity",
                             },

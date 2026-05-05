@@ -46,6 +46,7 @@ import {
 import { createAgentApi } from "./index.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
+import { createIntervalSelection } from "@genome-spy/core/selection/selection.js";
 
 describe("createAgentApi", () => {
     let app;
@@ -382,5 +383,65 @@ describe("createAgentApi", () => {
                 }),
             })
         );
+    });
+
+    it("materializes selection-backed attribute intervals", () => {
+        const intervalSelection = createIntervalSelection(["x"]);
+        intervalSelection.intervals.x = [42, 84];
+        const sampleView = {
+            paramRuntime: {
+                paramConfigs: new Map([
+                    [
+                        "brush",
+                        {
+                            select: {
+                                type: "interval",
+                            },
+                        },
+                    ],
+                ]),
+                getValue: vi.fn(() => intervalSelection),
+            },
+            visit: (visitor) => visitor(sampleView),
+            getDataAncestors: () => [sampleView],
+        };
+        app.getSampleView.mockReturnValue(sampleView);
+        const agentApi = createAgentApi(app);
+
+        const materialized = agentApi.materializeAttributeIdentifier({
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: {
+                    scope: [],
+                    view: "track",
+                },
+                field: "beta",
+                interval: {
+                    type: "selection",
+                    selector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                },
+                aggregation: {
+                    op: "weightedMean",
+                },
+            },
+        });
+
+        expect(materialized).toEqual({
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: {
+                    scope: [],
+                    view: "track",
+                },
+                field: "beta",
+                interval: [42, 84],
+                aggregation: {
+                    op: "weightedMean",
+                },
+            },
+        });
     });
 });

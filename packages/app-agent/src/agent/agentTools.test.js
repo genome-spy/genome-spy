@@ -205,6 +205,22 @@ function createRuntimeStub() {
         getActionHistory: vi.fn(() => []),
         jumpToProvenanceState: vi.fn(() => true),
         jumpToInitialProvenanceState: vi.fn(() => true),
+        materializeAttributeIdentifier: vi.fn((attribute) => {
+            if (attribute.type !== "VALUE_AT_LOCUS") {
+                return attribute;
+            }
+
+            return {
+                ...attribute,
+                specifier: {
+                    ...attribute.specifier,
+                    interval: [
+                        { chrom: "chr17", pos: 7565097 },
+                        { chrom: "chr17", pos: 7590856 },
+                    ],
+                },
+            };
+        }),
         getNamedScaleResolutions: vi.fn(
             () =>
                 new Map([
@@ -424,7 +440,7 @@ describe("agentTools", () => {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "age",
                             },
-                            resolved: {
+                            normalized: {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "age",
                             },
@@ -434,7 +450,7 @@ describe("agentTools", () => {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "purity",
                             },
-                            resolved: {
+                            normalized: {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "purity",
                             },
@@ -520,7 +536,13 @@ describe("agentTools", () => {
             plotType: "boxplot",
             attribute: {
                 type: "VALUE_AT_LOCUS",
-                specifier: aggregatedAttribute.specifier,
+                specifier: {
+                    ...aggregatedAttribute.specifier,
+                    interval: [
+                        { chrom: "chr17", pos: 7565097 },
+                        { chrom: "chr17", pos: 7590856 },
+                    ],
+                },
             },
         });
         expect(result.content).toEqual(
@@ -531,14 +553,16 @@ describe("agentTools", () => {
                         candidateId: "brush@track:beta",
                         aggregation: "max",
                     },
-                    resolved: {
+                    normalized: {
                         type: "VALUE_AT_LOCUS",
-                        specifier: aggregatedAttribute.specifier,
+                        specifier: {
+                            ...aggregatedAttribute.specifier,
+                            interval: [
+                                { chrom: "chr17", pos: 7565097 },
+                                { chrom: "chr17", pos: 7590856 },
+                            ],
+                        },
                     },
-                    interval: [
-                        { chrom: "chr17", pos: 7565097 },
-                        { chrom: "chr17", pos: 7590856 },
-                    ],
                 },
             })
         );
