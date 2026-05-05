@@ -5,7 +5,7 @@ import { loadSpec } from "@genome-spy/core/index.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
-export { createAgentApi } from "./agentApi/index.js";
+export { createAgentApi, embedRenderablePlot } from "./agentApi/index.js";
 
 export { GenomeSpy, App as GenomeSpyApp, icon, html };
 export * from "./agentShared/index.js";

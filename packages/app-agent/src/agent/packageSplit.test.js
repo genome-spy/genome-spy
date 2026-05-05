@@ -109,7 +109,7 @@ describe("bundled package split", () => {
 
         handle.finalize();
 
-        expect(disposeUi).toHaveBeenCalledTimes(3);
+        expect(disposeUi).toHaveBeenCalledTimes(4);
         expect(launchSpy).toHaveBeenCalledTimes(1);
         expect(destroySpy).toHaveBeenCalledTimes(1);
     });

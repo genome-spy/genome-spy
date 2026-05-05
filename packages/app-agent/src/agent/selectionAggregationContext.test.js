@@ -1,6 +1,7 @@
 // @ts-nocheck
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
+import { createSampleViewForTest } from "../../../app/src/testUtils/appTestUtils.js";
 
 const { resolveParamSelectorMock } = vi.hoisted(() => ({
     resolveParamSelectorMock: vi.fn(),
