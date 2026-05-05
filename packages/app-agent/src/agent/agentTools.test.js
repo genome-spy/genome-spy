@@ -430,7 +430,7 @@ describe("agentTools", () => {
         });
         expect(result).toEqual(
             expect.objectContaining({
-                text: "Generated Scatterplot of age vs purity with 2 groups.",
+                text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
                 content: expect.objectContaining({
                     kind: "sample_attribute_plot",
                     plotType: "scatterplot",

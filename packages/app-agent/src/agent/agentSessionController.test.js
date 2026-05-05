@@ -242,6 +242,11 @@ describe("createAgentSessionController", () => {
             [],
             [
                 {
+                    id: "1",
+                    role: "user",
+                    text: "Sort the samples by age.",
+                },
+                {
                     id: "2",
                     role: "assistant",
                     text: "I will sort the samples by age.",
@@ -358,9 +363,11 @@ describe("createAgentSessionController", () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
         const observedHistories = [];
+        const observedMessages = [];
         runtime.requestAgentTurn.mockImplementation(
             (message, history, stream, allowStreaming, contextOptions) => {
                 agentTurnCallCount += 1;
+                observedMessages.push(message);
                 observedHistories.push(history);
                 if (message === PREFLIGHT_MESSAGE) {
                     return Promise.resolve({
@@ -467,9 +474,11 @@ describe("createAgentSessionController", () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
         const observedHistories = [];
+        const observedMessages = [];
         runtime.requestAgentTurn.mockImplementation(
             (message, history, stream, allowStreaming, contextOptions) => {
                 agentTurnCallCount += 1;
+                observedMessages.push(message);
                 observedHistories.push(history);
 
                 if (message === PREFLIGHT_MESSAGE) {
@@ -543,7 +552,7 @@ describe("createAgentSessionController", () => {
         });
         expect(snapshot.messages[2]).toMatchObject({
             kind: "tool_result",
-            text: "Generated Scatterplot of age vs purity with 2 groups.",
+            text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
         });
         expect(snapshot.messages[3]).toMatchObject({
             kind: "plot",
@@ -558,7 +567,13 @@ describe("createAgentSessionController", () => {
             kind: "assistant",
             text: "Here is the scatterplot.",
         });
+        expect(observedMessages[2]).toBe("");
         expect(observedHistories[2]).toEqual([
+            {
+                id: "1",
+                role: "user",
+                text: "Show me age versus purity.",
+            },
             {
                 id: "2",
                 role: "assistant",
@@ -588,11 +603,12 @@ describe("createAgentSessionController", () => {
             {
                 id: "3",
                 role: "tool",
-                text: "Generated Scatterplot of age vs purity with 2 groups.",
+                text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
                 kind: "tool_result",
                 toolCallId: "call-plot",
                 content: {
                     kind: "sample_attribute_plot_record",
+                    status: "shown",
                     plotType: "scatterplot",
                     title: "Scatterplot of age vs purity",
                     summary: {

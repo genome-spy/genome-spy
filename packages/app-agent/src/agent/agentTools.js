@@ -376,7 +376,9 @@ async function executeSampleAttributePlot(runtime, options) {
         }
 
         return {
-            text: `Generated ${plot.title} with ${plot.summary.groupCount} groups.`,
+            text:
+                `Shown ${plot.title} with ${plot.summary.groupCount} groups ` +
+                "in the chat transcript.",
             content: {
                 ...plot,
                 ...(options.attributeRecord

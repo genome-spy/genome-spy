@@ -62,20 +62,23 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
     """
     messages: list[dict[str, Any]] = []
     messages.append(_build_developer_text_item(prompt.context_text))
-    messages.extend(_build_response_messages(prompt.history))
-    if prompt.volatile_context_text:
+    if not prompt.message and prompt.volatile_context_text:
         messages.append(_build_developer_text_item(prompt.volatile_context_text))
-    messages.append(
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "input_text",
-                    "text": prompt.message,
-                }
-            ],
-        }
-    )
+    messages.extend(_build_response_messages(prompt.history))
+    if prompt.message and prompt.volatile_context_text:
+        messages.append(_build_developer_text_item(prompt.volatile_context_text))
+    if prompt.message:
+        messages.append(
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": prompt.message,
+                    }
+                ],
+            }
+        )
     return messages
 
 
@@ -135,7 +138,7 @@ def _build_tool_output_message(message: HistoryMessage) -> dict[str, Any]:
     return {
         "type": "function_call_output",
         "call_id": message.tool_call_id or message.id,
-        "output": _stringify_content(message.content, message.text),
+        "output": _stringify_tool_output(message),
     }
 
 
@@ -179,6 +182,23 @@ def _stringify_content(content: Any, fallback: str) -> str:
         return fallback
 
     return json.dumps(content, ensure_ascii=False, sort_keys=True)
+
+
+def _stringify_tool_output(message: HistoryMessage) -> str:
+    if message.content is None:
+        return message.text
+
+    if not message.text:
+        return _stringify_content(message.content, "")
+
+    return json.dumps(
+        {
+            "message": message.text,
+            "content": message.content,
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    )
 
 
 def _normalize_message_id(message_id: str) -> str:
