@@ -16,6 +16,8 @@
 - Agent tool surface cleanup and contract consolidation: [`agent-tool-surface-cleanup.md`](./agent-tool-surface-cleanup.md)
 - Prompt budget reduction and phased context compaction:
   [`prompt-budget-reduction-plan.md`](./prompt-budget-reduction-plan.md)
+- Checkpoint-based LLM history compression:
+  [`history-checkpoint-compression-plan.md`](./history-checkpoint-compression-plan.md)
 - Tool-result trimming and compact failure learning:
   [`tool-result-trimming-plan.md`](./tool-result-trimming-plan.md)
 - Scale domain volatile context and navigation tool: [`scale-domain-navigation.md`](./scale-domain-navigation.md)
