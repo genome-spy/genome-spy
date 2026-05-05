@@ -65,7 +65,7 @@ function createSampleHierarchy() {
 describe("buildHierarchyBoxplotData", () => {
     it("builds stats and outliers for nested groups", () => {
         const sampleHierarchy = createSampleHierarchy();
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "score",
             title: "score",
             emphasizedName: "score",
@@ -77,7 +77,7 @@ describe("buildHierarchyBoxplotData", () => {
                     hierarchy.sampleMetadata.entities[sampleId]?.score
             ),
             type: "quantitative",
-        };
+        });
 
         // Non-obvious setup: subgroup A has a clear high outlier.
         const { statsRows, outlierRows, groupDomain } =
@@ -102,7 +102,7 @@ describe("buildHierarchyBoxplotData", () => {
 
     it("fails on unknown attributes", () => {
         const sampleHierarchy = createSampleHierarchy();
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "missing",
             title: "missing",
             emphasizedName: "missing",
@@ -114,7 +114,7 @@ describe("buildHierarchyBoxplotData", () => {
                     hierarchy.sampleMetadata.entities[sampleId]?.missing
             ),
             type: "quantitative",
-        };
+        });
 
         expect(() =>
             buildHierarchyBoxplotData(sampleHierarchy, attributeInfo)
@@ -123,7 +123,7 @@ describe("buildHierarchyBoxplotData", () => {
 
     it("skips groups with no valid values", () => {
         const sampleHierarchy = createSampleHierarchy();
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "score",
             title: "score",
             emphasizedName: "score",
@@ -136,7 +136,7 @@ describe("buildHierarchyBoxplotData", () => {
                         : Number(sampleId.slice(1))
                 ),
             type: "quantitative",
-        };
+        });
 
         // Non-obvious setup: first group values are all invalid.
         const { statsRows, outlierRows, groupDomain } =
@@ -182,7 +182,7 @@ describe("buildHierarchyBoxplotData", () => {
 
     it("rejects non-quantitative attributes", () => {
         const sampleHierarchy = createSampleHierarchy();
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "status",
             title: "status",
             emphasizedName: "status",
@@ -190,7 +190,7 @@ describe("buildHierarchyBoxplotData", () => {
             accessor: () => undefined,
             valuesProvider: () => [],
             type: "nominal",
-        };
+        });
 
         expect(() =>
             buildHierarchyBoxplotData(sampleHierarchy, attributeInfo)

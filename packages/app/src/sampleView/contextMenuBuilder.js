@@ -1,30 +1,24 @@
 import { html } from "lit";
-import { isDiscrete } from "vega-scale";
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { selectionContainsPoint } from "@genome-spy/core/selection/selection.js";
-import UnitView from "@genome-spy/core/view/unitView.js";
-import { findEncodedFields } from "@genome-spy/core/view/viewUtils.js";
 import { DIVIDER } from "../utils/ui/contextMenu.js";
 import generateAttributeContextMenu from "./attributeContextMenu.js";
-import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
+import { getAggregationOpInfo } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 import { appendPlotMenuItems } from "./plotMenuItems.js";
 import { handleAddToMetadata } from "./metadata/deriveMetadataFlow.js";
 import {
-    createViewRef,
-    getUniqueViewRefKeys,
-    getViewRefKey,
-} from "./viewRef.js";
+    getContextMenuFieldInfos,
+    getUnavailablePointQueryViews,
+} from "./selectionAggregationCandidates.js";
+
+export { getContextMenuFieldInfos, getUnavailablePointQueryViews };
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
 /**
- * @typedef {Object} FieldInfo
- * @property {import("@genome-spy/core/view/unitView.js").default} view
- * @property {import("@genome-spy/core/spec/channel.js").Channel} channel
- * @property {import("@genome-spy/core/spec/channel.js").Field} field
- * @property {import("@genome-spy/core/spec/channel.js").Type} type
+ * @typedef {import("./selectionAggregationCandidates.js").SelectionAggregationFieldInfo} FieldInfo
  */
 
 /**
@@ -93,114 +87,6 @@ export function resolveIntervalSelection(selectionInfo, selectionPoint) {
  * @param {boolean} hasInterval
  * @returns {FieldInfo[]}
  */
-export function getContextMenuFieldInfos(view, layoutRoot, hasInterval) {
-    const uniqueViewKeys = getUniqueViewRefKeys(layoutRoot);
-    let fieldInfos = getVisibleNonPositionalFieldInfos(view).filter((info) =>
-        isAddressableView(info.view, uniqueViewKeys)
-    );
-
-    if (hasInterval) {
-        /** @type {import("@genome-spy/core/view/unitView.js").default[]} */
-        const unitViews = [];
-        view.visit((child) => {
-            if (
-                child instanceof UnitView &&
-                child.isVisible() &&
-                isAddressableView(child, uniqueViewKeys)
-            ) {
-                unitViews.push(child);
-            }
-        });
-
-        for (const unitView of unitViews) {
-            const encoding = unitView.getEncoding();
-            const hasXField = encoding?.x && "field" in encoding.x;
-            const hasNonPositionalField = Object.entries(encoding).some(
-                ([channel, def]) =>
-                    !["sample", "x", "x2"].includes(channel) &&
-                    def &&
-                    "field" in def
-            );
-
-            if (hasXField && !hasNonPositionalField) {
-                fieldInfos.push({
-                    view: unitView,
-                    channel: "x",
-                    field: "Items",
-                    type: "nominal",
-                });
-            }
-        }
-    }
-
-    if (!hasInterval) {
-        fieldInfos = fieldInfos.filter(isPointQueryable);
-    }
-
-    // The same field may be used on multiple channels.
-    return Array.from(
-        new Map(
-            fieldInfos.map((info) => {
-                const viewKey = getViewRefKey(info.view);
-                return [
-                    JSON.stringify([viewKey ?? info.view.name, info.field]),
-                    info,
-                ];
-            })
-        ).values()
-    );
-}
-
-/**
- * @param {import("@genome-spy/core/view/view.js").default} view
- * @param {import("@genome-spy/core/view/view.js").default} layoutRoot
- * @returns {import("@genome-spy/core/view/unitView.js").default[]}
- */
-export function getUnavailablePointQueryViews(view, layoutRoot) {
-    const uniqueViewKeys = getUniqueViewRefKeys(layoutRoot);
-    return Array.from(
-        new Set(
-            getVisibleNonPositionalFieldInfos(view)
-                .filter((info) => !isAddressableView(info.view, uniqueViewKeys))
-                .filter(isPointQueryable)
-                .map((info) => info.view)
-        )
-    );
-}
-
-/**
- * @param {FieldInfo} info
- * @returns {boolean}
- */
-function isPointQueryable(info) {
-    if (info.view.getEncoding()?.x2) {
-        return true;
-    }
-
-    const scaleType = info.view.getScaleResolution("x")?.getScale()?.type;
-    return scaleType ? isDiscrete(scaleType) : false;
-}
-
-/**
- * @param {import("@genome-spy/core/view/view.js").default} view
- * @returns {FieldInfo[]}
- */
-function getVisibleNonPositionalFieldInfos(view) {
-    return findEncodedFields(view)
-        .filter((info) => !["sample", "x", "x2"].includes(info.channel))
-        .filter((info) => info.view.isVisible());
-}
-
-/**
- * @param {import("@genome-spy/core/view/unitView.js").default} view
- * @param {Set<string>} uniqueViewKeys
- * @returns {boolean}
- */
-function isAddressableView(view, uniqueViewKeys) {
-    const viewKey = getViewRefKey(view);
-    return !!viewKey && uniqueViewKeys.has(viewKey);
-}
-
 /**
  * @param {Object} params
  * @param {FieldInfo} params.fieldInfo
@@ -209,7 +95,7 @@ function isAddressableView(view, uniqueViewKeys) {
  * @param {import("./state/sampleState.js").Sample} params.sample
  * @param {import("./state/sampleState.js").SampleHierarchy} params.sampleHierarchy
  * @param {import("./compositeAttributeInfoSource.js").default} params.attributeInfoSource
- * @param {string} params.attributeType
+ * @param {import("./types.js").AttributeIdentifierType} params.attributeType
  * @param {import("./sampleView.js").default} params.sampleView
  * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
  */
@@ -223,36 +109,32 @@ export function buildIntervalAggregationMenu({
     attributeType,
     sampleView,
 }) {
-    const viewRef = createViewRef(fieldInfo.view);
-    const availableOps =
-        fieldInfo.type === "quantitative"
-            ? aggregationOps
-            : aggregationOps.filter((op) => op.op === "count");
-
     return [
         { label: "Interval aggregation", type: "header" },
-        ...availableOps.map((op) => {
-            const opLabel = op.op === "count" ? "Item count" : op.label;
+        ...fieldInfo.supportedAggregations.map((op) => {
+            const opInfo = getAggregationOpInfo(op);
+            const opLabel = op === "count" ? "Item count" : opInfo.label;
             const menuTitle =
-                op.op === "count"
+                op === "count"
                     ? "Using item count over interval..."
-                    : html`Using ${op.label.toLowerCase()}(<em class="attribute"
+                    : html`Using ${opInfo.label.toLowerCase()}(<em
+                              class="attribute"
                               >${fieldInfo.field}</em
                           >) over interval...`;
 
             /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
             const specifier = selectionIntervalSource
                 ? {
-                      view: viewRef,
+                      view: fieldInfo.viewSelector,
                       field: fieldInfo.field,
                       interval: selectionIntervalSource,
-                      aggregation: { op: op.op },
+                      aggregation: { op },
                   }
                 : {
-                      view: viewRef,
+                      view: fieldInfo.viewSelector,
                       field: fieldInfo.field,
                       interval: selectionIntervalComplex,
-                      aggregation: { op: op.op },
+                      aggregation: { op },
                   };
 
             const attributeInfo = attributeInfoSource.getAttributeInfo({
@@ -291,7 +173,7 @@ export function buildIntervalAggregationMenu({
  * @param {import("./state/sampleState.js").Sample} params.sample
  * @param {import("./state/sampleState.js").SampleHierarchy} params.sampleHierarchy
  * @param {import("./compositeAttributeInfoSource.js").default} params.attributeInfoSource
- * @param {string} params.attributeType
+ * @param {import("./types.js").AttributeIdentifierType} params.attributeType
  * @param {import("./sampleView.js").default} params.sampleView
  * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
  */
@@ -304,10 +186,9 @@ export function buildPointQueryMenu({
     attributeType,
     sampleView,
 }) {
-    const viewRef = createViewRef(fieldInfo.view);
     /** @type {import("./sampleViewTypes.js").LocusSpecifier} */
     const specifier = {
-        view: viewRef,
+        view: fieldInfo.viewSelector,
         field: fieldInfo.field,
         locus: complexX,
     };

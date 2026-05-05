@@ -7,7 +7,7 @@ import {
 
 describe("extractAttributeValues", () => {
     it("uses the default provider for accessors", () => {
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "value",
             title: "value",
             emphasizedName: "value",
@@ -17,7 +17,7 @@ describe("extractAttributeValues", () => {
                 id === "a" ? 3 : 4
             ),
             type: "quantitative",
-        };
+        });
         const values = extractAttributeValues(
             attributeInfo,
             ["a", "b"],
@@ -31,7 +31,7 @@ describe("extractAttributeValues", () => {
     });
 
     it("prefers valuesProvider when present", () => {
-        const attributeInfo = {
+        const attributeInfo = /** @type {any} */ ({
             name: "value",
             title: "value",
             emphasizedName: "value",
@@ -39,7 +39,7 @@ describe("extractAttributeValues", () => {
             accessor: () => "unused",
             valuesProvider: () => [1, 2],
             type: "quantitative",
-        };
+        });
 
         const values = extractAttributeValues(
             attributeInfo,

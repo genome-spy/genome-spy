@@ -5,16 +5,19 @@ import { loadSpec } from "@genome-spy/core/index.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
+export { createAgentApi, embedRenderablePlot } from "./agentApi/index.js";
 
 export { GenomeSpy, App as GenomeSpyApp, icon, html };
+export * from "./agentShared/index.js";
+export { BaseDialog, showDialog, showMessageDialog } from "./dialog/index.js";
 
 /**
- * Embeds GenomeSpyApp into the DOM
+ * Embeds GenomeSpy App into the DOM.
  *
  * This is largely copy-paste from `genome-spy/src/index.js`
  * TODO: Consolidate
  *
- * @type {import("@genome-spy/core/types/embedApi.js").EmbedFunction}
+ * @type {import("./embedTypes.js").AppEmbedFunction}
  */
 export async function embed(el, spec, options = {}) {
     /** @type {HTMLElement} */
@@ -31,8 +34,10 @@ export async function embed(el, spec, options = {}) {
         throw new Error(`Invalid element: ${el}`);
     }
 
-    /** @type {GenomeSpy} */
+    /** @type {import("@genome-spy/core/genomeSpy.js").default} */
     let genomeSpy;
+    /** @type {(() => void)[]} */
+    let pluginDisposers = [];
 
     try {
         const specObject = isObject(spec) ? spec : await loadSpec(spec);
@@ -41,14 +46,21 @@ export async function embed(el, spec, options = {}) {
         specObject.width ??= "container";
         specObject.padding ??= 10;
 
-        options = {
-            powerPreference: "high-performance",
-            ...options,
-        };
+        const embedOptions =
+            /** @type {import("./embedTypes.js").AppEmbedOptions} */ ({
+                powerPreference: "high-performance",
+                ...options,
+            });
 
-        const app = new App(element, specObject, options);
+        const { plugins = [], ...appEmbedOptions } =
+            /** @type {import("./embedTypes.js").AppEmbedOptions} */ (
+                embedOptions
+            );
+
+        const app = new App(element, specObject, appEmbedOptions);
         genomeSpy = app.genomeSpy;
-        applyOptions(genomeSpy, options);
+        pluginDisposers = await installAppPlugins(app, plugins);
+        applyOptions(genomeSpy, appEmbedOptions);
         await app.launch();
     } catch (e) {
         element.innerText = e.toString();
@@ -57,7 +69,14 @@ export async function embed(el, spec, options = {}) {
 
     return {
         finalize() {
-            genomeSpy.destroy();
+            const disposers = pluginDisposers;
+            pluginDisposers = [];
+
+            for (let index = disposers.length - 1; index >= 0; index -= 1) {
+                disposers[index]();
+            }
+            genomeSpy?.destroy();
+            genomeSpy = undefined;
             while (element.firstChild) {
                 element.firstChild.remove();
             }
@@ -92,4 +111,30 @@ function applyOptions(genomeSpy, opt) {
     if (opt.namedDataProvider) {
         genomeSpy.registerNamedDataProvider(opt.namedDataProvider);
     }
+}
+
+/**
+ * @param {import("./app.js").default} app
+ * @param {import("./appTypes.js").AppPlugin[]} plugins
+ * @returns {Promise<(() => void)[]>}
+ */
+async function installAppPlugins(app, plugins) {
+    /** @type {(() => void)[]} */
+    const disposers = [];
+
+    try {
+        for (const plugin of plugins) {
+            const disposer = await plugin.install(app);
+            if (typeof disposer === "function") {
+                disposers.push(disposer);
+            }
+        }
+    } catch (error) {
+        for (let index = disposers.length - 1; index >= 0; index -= 1) {
+            disposers[index]();
+        }
+        throw error;
+    }
+
+    return disposers;
 }

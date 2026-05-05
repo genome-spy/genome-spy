@@ -36,6 +36,7 @@ const ENABLE_INTENT_ERROR_SIMULATION = false;
  * @typedef {object} SubmitOptions
  * @prop {AbortSignal} [signal]
  * @prop {import("../sampleView/compositeAttributeInfoSource.js").AttributeInfoSource} [getAttributeInfo]
+ * @prop {"user" | "agent" | "bookmark"} [submissionKind]
  */
 
 /**
@@ -209,6 +210,7 @@ export default class IntentPipeline {
                     intentStatusSlice.actions.setRunning({
                         startIndex,
                         totalActions: entry.actions.length,
+                        submissionKind: entry.options?.submissionKind,
                     })
                 );
 
@@ -235,14 +237,21 @@ export default class IntentPipeline {
                         error instanceof Error
                             ? error
                             : new Error(String(error));
+                    const submissionKind = entry.options?.submissionKind;
                     this.#store.dispatch(
                         intentStatusSlice.actions.setError({
                             startIndex,
                             lastSuccessfulIndex,
                             failedAction: currentAction,
+                            submissionKind,
                             error: failure.message,
                         })
                     );
+                    if (submissionKind === "agent") {
+                        this.#store.dispatch(
+                            intentStatusSlice.actions.clearStatus()
+                        );
+                    }
                     entry.reject(failure);
                     const remaining = this.#queue;
                     this.#queue = [];

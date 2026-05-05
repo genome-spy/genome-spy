@@ -48,6 +48,7 @@ import {
     createDefaultAppKeyboardShortcuts,
     setupAppKeyboardShortcuts,
 } from "./appKeyboardShortcuts.js";
+import AppUiRegistry from "./appUiRegistry.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -56,9 +57,15 @@ transforms.mergeFacets = MergeSampleFacets;
  */
 export default class App {
     /**
+     * Lazily created agent boundary.
+     * @type {Promise<import("./agentApi/index.js").AgentApi> | undefined}
+     */
+    #agentApiPromise;
+
+    /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
-     * @param {import("@genome-spy/core/types/embedApi.js").EmbedOptions & Partial<{showInspectorButton: boolean}>} options
+     * @param {import("./appTypes.js").AppEmbedOptions} options
      */
     constructor(appContainerElement, rootSpec, options = {}) {
         this.rootSpec = rootSpec;
@@ -69,6 +76,9 @@ export default class App {
             // App has a specialized handler for input bindings
             inputBindingContainer: /** @type {"none"} */ ("none"),
         };
+
+        /** @type {import("./appTypes.js").AppUiRegistry} */
+        this.ui = new AppUiRegistry();
 
         this.#setupStoreAndProvenance();
 
@@ -82,6 +92,12 @@ export default class App {
                 <div class="genome-spy-container"></div>
             </div>`,
             this.appContainer
+        );
+
+        this.ui.attachAppShell(
+            /** @type {HTMLElement} */ (
+                this.appContainer.querySelector(".genome-spy-app")
+            )
         );
 
         // Dependency injection
@@ -134,6 +150,29 @@ export default class App {
             )
         );
         this.#setupViewVisibilityHandling();
+    }
+
+    /**
+     * Returns the app-owned agent boundary.
+     *
+     * The module is loaded lazily so the boundary stays out of the default app
+     * path when the agent feature is unused.
+     *
+     * @returns {Promise<import("./agentApi/index.js").AgentApi>}
+     */
+    getAgentApi() {
+        if (!this.#agentApiPromise) {
+            this.#agentApiPromise = import("./agentApi/index.js").then(
+                (module) =>
+                    /** @type {{
+                     *     createAgentApi(app: import("./app.js").default): import("./agentApi/index.js").AgentApi;
+                     * }} */ (/** @type {unknown} */ (module)).createAgentApi(
+                        this
+                    )
+            );
+        }
+
+        return this.#agentApiPromise;
     }
 
     #setupStoreAndProvenance() {

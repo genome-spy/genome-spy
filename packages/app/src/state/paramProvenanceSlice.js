@@ -16,6 +16,18 @@ export const paramProvenanceSlice = createSlice({
     name: "paramProvenance",
     initialState,
     reducers: {
+        /**
+         * Create or update a reactive selection or parameter value, including
+         * point selections, interval selections, and genomic-region selections.
+         *
+         * Use this for point selections, interval selections, genomic-region
+         * selections, and other replayable parameter changes.
+         *
+         * @agent.payloadType ParamProvenanceEntry
+         * @agent.category provenance
+         * @example {"selector":{"scope":[],"param":"brush"},"value":{"type":"interval","intervals":{"x":[{"chrom":"chr17","pos":7685012},{"chrom":"chr17","pos":7690727}]}}}
+         * @example {"selector":{"scope":[],"param":"semanticZoomSlider"},"value":{"type":"value","value":0}}
+         */
         paramChange: (
             state,
             /** @type {import("@reduxjs/toolkit").PayloadAction<ParamProvenanceEntry>} */ action
@@ -24,6 +36,12 @@ export const paramProvenanceSlice = createSlice({
             state.entries[key] = action.payload;
         },
 
+        /**
+         * Expand a point selection into provenance state.
+         *
+         * @agent.payloadType ExpandPointSelectionActionPayload
+         * @agent.ignore true
+         */
         // Keep expansion as a dedicated intent action (instead of folding it
         // into paramChange) so IntentPipeline hooks can target it explicitly.
         expandPointSelection: (

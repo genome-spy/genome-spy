@@ -1,0 +1,317 @@
+[
+  {
+    "toolName": "expandViewNode",
+    "description": "Expand a collapsed view branch in the agent context.",
+    "inputType": "ExpandViewNodeToolInput",
+    "inputFields": [
+      {
+        "name": "selector",
+        "type": "ViewSelector",
+        "description": "Stable selector for the collapsed view node to expand.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "selector": {
+        "scope": [],
+        "view": "track"
+      }
+    },
+    "strict": true
+  },
+  {
+    "toolName": "collapseViewNode",
+    "description": "Collapse a previously expanded view branch in the agent context.",
+    "inputType": "CollapseViewNodeToolInput",
+    "inputFields": [
+      {
+        "name": "selector",
+        "type": "ViewSelector",
+        "description": "Stable selector for the view node to collapse.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "selector": {
+        "scope": [],
+        "view": "track"
+      }
+    },
+    "strict": true
+  },
+  {
+    "toolName": "setViewVisibility",
+    "description": "Set the visibility of a view.",
+    "inputType": "SetViewVisibilityToolInput",
+    "inputFields": [
+      {
+        "name": "selector",
+        "type": "ViewSelector",
+        "description": "Stable selector for the view whose visibility should change.",
+        "required": true
+      },
+      {
+        "name": "visibility",
+        "type": "boolean",
+        "description": "Whether the view should be visible.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "selector": {
+        "scope": [],
+        "view": "reference-sequence"
+      },
+      "visibility": false
+    },
+    "strict": true
+  },
+  {
+    "toolName": "jumpToProvenanceState",
+    "description": "Jump to a prior provenance state identified by the given provenance id.",
+    "inputType": "JumpToProvenanceStateToolInput",
+    "inputFields": [
+      {
+        "name": "provenanceId",
+        "type": "string",
+        "description": "Provenance id to jump to.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "provenanceId": "provenance-12"
+    },
+    "strict": true
+  },
+  {
+    "toolName": "jumpToInitialProvenanceState",
+    "description": "Jump to the initial provenance state before any actions were dispatched.",
+    "inputType": "JumpToInitialProvenanceStateToolInput",
+    "inputFields": [],
+    "exampleInput": {},
+    "strict": true
+  },
+  {
+    "toolName": "buildSelectionAggregationAttribute",
+    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used directly in `showSampleAttributePlot` or in a later intent action.",
+    "inputType": "BuildSelectionAggregationAttributeToolInput",
+    "inputFields": [
+      {
+        "name": "candidateId",
+        "type": "string",
+        "description": "Stable identifier for the selected candidate row. The identifiers are available in `selectionAggregation.fields` in the volatile context. They become available after a selection is made with a successful `paramChange` action.",
+        "required": true
+      },
+      {
+        "name": "aggregation",
+        "type": "AggregationOp",
+        "description": "Aggregation op to apply to the candidate field.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "candidateId": "brush@foo:bar",
+      "aggregation": "max"
+    },
+    "strict": true
+  },
+  {
+    "toolName": "getMetadataAttributeSummary",
+    "description": "Return a compact summary of one metadata attribute across visible samples or within each current visible group.",
+    "inputType": "GetMetadataAttributeSummaryToolInput",
+    "inputFields": [
+      {
+        "name": "attribute",
+        "type": "SampleAttributeIdentifier",
+        "description": "Stable attributeIdentifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context.",
+        "required": true
+      },
+      {
+        "name": "scope",
+        "type": "MetadataSummaryScope",
+        "description": "Summary scope. Use `visible_samples` for a pooled summary across the current visible samples. Use `visible_groups` for summaries within each current visible group after grouping has already been applied.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "tissue"
+      },
+      "scope": "visible_groups"
+    },
+    "strict": true
+  },
+  {
+    "toolName": "resolveMetadataAttributeValues",
+    "description": "Resolve a free-text metadata value against current visible categorical sample metadata values.",
+    "inputType": "ResolveMetadataAttributeValuesToolInput",
+    "inputFields": [
+      {
+        "name": "query",
+        "type": "string",
+        "description": "Free-text metadata value to resolve against current visible categorical metadata values.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "query": "relapse"
+    },
+    "strict": true
+  },
+  {
+    "toolName": "searchViewDatums",
+    "description": "Search datum objects in one specific searchable view.",
+    "inputType": "SearchViewDatumsToolInput",
+    "inputFields": [
+      {
+        "name": "selector",
+        "type": "ViewSelector",
+        "description": "Stable selector for the searchable view to inspect.",
+        "required": true
+      },
+      {
+        "name": "query",
+        "type": "string",
+        "description": "Search term to match against the view's configured search fields.",
+        "required": true
+      },
+      {
+        "name": "field",
+        "type": "string",
+        "description": "Search field name. Use an empty string to search all configured fields.",
+        "required": true
+      },
+      {
+        "name": "mode",
+        "type": "\"exact\" | \"prefix\"",
+        "description": "Search mode. `exact` matches the whole field value. `prefix` matches the beginning of the field value.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "selector": {
+        "scope": [],
+        "view": "gene-track"
+      },
+      "query": "TP53",
+      "field": "",
+      "mode": "exact"
+    },
+    "strict": true
+  },
+  {
+    "toolName": "getIntentActionDocs",
+    "description": "Read documentation, fields, and examples for one intent action.",
+    "inputType": "GetIntentActionDocsToolInput",
+    "inputFields": [
+      {
+        "name": "actionType",
+        "type": "IntentActionType",
+        "description": "Intent action type whose docs should be read.",
+        "required": true
+      },
+      {
+        "name": "includeSchema",
+        "type": "boolean",
+        "description": "Whether to include the raw payload schema. The default response is more compact and usually sufficient.",
+        "required": false
+      }
+    ],
+    "exampleInput": {
+      "actionType": "sampleView/groupToQuartiles",
+      "includeSchema": false
+    },
+    "strict": true
+  },
+  {
+    "toolName": "zoomToScale",
+    "description": "Animate one named zoomable scale to an exact domain.",
+    "inputType": "ZoomToScaleToolInput",
+    "inputFields": [
+      {
+        "name": "scaleName",
+        "type": "string",
+        "description": "Name of a zoomable scale from the current volatile context.",
+        "required": true
+      },
+      {
+        "name": "domain",
+        "type": "ZoomToScaleDomain",
+        "description": "Target domain for the scale. Use the same domain value shape that appears for this scale in `scaleDomains`.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "scaleName": "x",
+      "domain": [
+        {
+          "chrom": "chr1",
+          "pos": 1000
+        },
+        {
+          "chrom": "chr1",
+          "pos": 3000
+        }
+      ]
+    },
+    "strict": true
+  },
+  {
+    "toolName": "submitIntentActions",
+    "description": "Execute one or more provenance-changing actions.",
+    "inputType": "SubmitIntentActionsToolInput",
+    "inputFields": [
+      {
+        "name": "actions",
+        "type": "AgentIntentActionRequest[\"actions\"]",
+        "description": "Ordered actions to execute. Cannot be empty or missing.",
+        "required": true
+      },
+      {
+        "name": "note",
+        "type": "AgentIntentActionRequest[\"note\"]",
+        "description": "Optional short note about the intended change.",
+        "required": false
+      }
+    ],
+    "exampleInput": {
+      "actions": [
+        {
+          "actionType": "sampleView/groupToQuartiles",
+          "payload": {
+            "attribute": {
+              "type": "SAMPLE_ATTRIBUTE",
+              "specifier": "age"
+            }
+          }
+        }
+      ],
+      "note": "Group the cohort by quartiles."
+    },
+    "strict": false
+  },
+  {
+    "toolName": "showSampleAttributePlot",
+    "description": "Show an exploratory sample-attribute plot in the chat transcript.",
+    "inputType": "ShowSampleAttributePlotToolInput",
+    "inputFields": [
+      {
+        "name": "plot",
+        "type": "SampleAttributePlotSpec",
+        "description": "Plot request. Use `valueDistributionByCurrentGroups` when the user asks for a boxplot; put only the value attribute in `attribute`. You may use the AttributeIdentifier returned by `buildSelectionAggregationAttribute` directly. The grouping comes from the current SampleHierarchy. Use `quantitativeRelationship` only for scatterplots comparing two different quantitative variables; the first listed attribute is rendered on x and the second on y.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "plot": {
+        "kind": "valueDistributionByCurrentGroups",
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "age"
+        }
+      }
+    },
+    "strict": true
+  }
+]

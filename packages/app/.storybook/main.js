@@ -2,6 +2,8 @@
 const config = {
     stories: [
         "../src/components/generic/**/*.stories.js",
+        "../src/components/dialogs/**/*.stories.js",
+        "../src/agent/**/*.stories.js",
         "../src/sampleView/**/*.stories.js",
     ],
     addons: [

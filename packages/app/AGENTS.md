@@ -15,3 +15,10 @@
 - Prefer `FormController` + `formField` (from `src/components/forms/`) for new forms.
 - Keep validators small (return error string or `null`), use `affects` for dependencies.
 - Disable submit via `form.hasErrors()`; validate on submit with `form.validateAll()`.
+
+## Agent Surfaces
+
+- `agentApi` and `agentShared` expose App internals to the agent and other
+  plugins.
+- Do not add App code there that the rest of App would depend on.
+- Keep those modules as exposure points only.

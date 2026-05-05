@@ -6,7 +6,6 @@
  */
 
 import { Scalar } from "@genome-spy/core/spec/channel.js";
-import { ComparisonOperatorType } from "./sampleOperations.js";
 import { Sample } from "./sampleState.js";
 import { AggregationSpec, AttributeIdentifier, Interval } from "../types.js";
 import { SampleAttributeDef } from "@genome-spy/app/spec/sampleView.js";
@@ -44,35 +43,67 @@ export type AttributeName = string;
  */
 export interface ColumnarMetadata {
     /**
-     * Required sample identifier
+     * Sample ids for the rows in this payload.
+     *
+     * Every other column must follow this same order.
      */
     sample: string[];
 
     /**
-     * Attributes
+     * Metadata columns keyed by attribute name.
      */
     [key: AttributeName]: Scalar[];
 }
 
 export interface SetSamples {
+    /**
+     * Samples to install as the current collection.
+     *
+     * Each sample must have a unique `id`.
+     */
     samples: Sample[];
 }
 
 export interface SetMetadata {
+    /**
+     * Metadata encoded in columnar form, aligned to the sample order.
+     */
     columnarMetadata: ColumnarMetadata;
 
+    /**
+     * Optional attribute definitions for the incoming metadata columns.
+     *
+     * Use this to preserve attribute types, titles, scales, or other metadata
+     * settings instead of relying on inference.
+     */
     attributeDefs?: Record<AttributeName, SampleAttributeDef>;
 
     /**
-     * If true, the provided metadata will replace existing metadata
-     * instead of being added to them.
+     * Whether to replace the current metadata set.
+     *
+     * If `true`, only the provided columns remain. If omitted or `false`, the
+     * provided columns are merged into the existing metadata.
      */
     replace?: boolean;
 }
 
 export interface DeriveMetadata extends PayloadWithAttribute {
+    /**
+     * Name of the derived metadata column.
+     *
+     * This becomes the leaf attribute name written into metadata. Prefer a
+     * short user-facing name.
+     */
     name: string;
+
+    /**
+     * Optional metadata group path for the derived column.
+     *
+     * When provided, the resulting attribute is written under
+     * `groupPath/name`.
+     */
     groupPath?: string;
+
     /**
      * If omitted, derived metadata may inherit an authored source scale when
      * the aggregation preserves the source value domain. Use `null` to force
@@ -83,28 +114,32 @@ export interface DeriveMetadata extends PayloadWithAttribute {
 
 export interface AddMetadataFromSource {
     /**
-     * Optional source identifier.
-     * If omitted, source resolution is allowed only when exactly one source exists.
+     * Configured metadata source to read from.
+     *
+     * Omit this only when exactly one source is available.
      */
     sourceId?: string;
 
     /**
-     * Columns requested from the source.
+     * Column ids to import from the selected source.
      */
     columnIds: string[];
 
     /**
-     * Optional metadata group path override.
+     * Optional metadata group path override for the imported columns.
      */
     groupPath?: string;
 
     /**
-     * If true, replace existing metadata instead of merging.
+     * Whether to replace the current metadata set.
+     *
+     * If `true`, only the imported columns remain. If omitted or `false`, the
+     * imported columns are merged into the existing metadata.
      */
     replace?: boolean;
 
     /**
-     * @internal
+     * @hidden
      */
     _augmented?: {
         metadata: SetMetadata;
@@ -113,8 +148,22 @@ export interface AddMetadataFromSource {
 
 export type ThresholdOperator = "lt" | "lte";
 
+export type ComparisonOperatorType = "lt" | "lte" | "eq" | "gte" | "gt";
+
+/**
+ * Numeric threshold used when partitioning or filtering quantitative values.
+ */
 export interface Threshold {
+    /**
+     * Upper-bound comparison used for this threshold.
+     *
+     * `lt` creates an open upper bound and `lte` creates a closed upper bound.
+     */
     operator: ThresholdOperator;
+
+    /**
+     * Numeric threshold value.
+     */
     operand: number;
 }
 
@@ -124,7 +173,7 @@ export interface IntervalAggregation {
 }
 
 /**
- * @internal
+ * @hidden
  */
 export interface AugmentedAttribute {
     /** Values accessed just prior to dispatching the action to reducers */
@@ -142,65 +191,121 @@ export interface AugmentedAttribute {
  * stored in `_augmented` here for later use.
  */
 export interface PayloadWithAttribute {
+    /**
+     * Attribute operated on by the action.
+     *
+     * Its current values are resolved before the reducer runs and then used by
+     * sorting, filtering, grouping, or metadata derivation.
+     */
     attribute: AttributeIdentifier;
 
     /**
-     * @internal
+     * @hidden
      */
     _augmented?: AugmentedAttribute;
 }
 
+/**
+ * Payload for sorting samples in descending order by an attribute.
+ */
 export interface SortBy extends PayloadWithAttribute {}
 
+/**
+ * Payload for retaining the first sample of each distinct category.
+ */
 export interface RetainFirstOfEach extends PayloadWithAttribute {}
 
 export interface RetainFirstNCategories extends PayloadWithAttribute {
-    /** Number of categories to retain */
+    /**
+     * Maximum number of distinct categories to retain.
+     *
+     * Categories are taken in first-seen order within each current group.
+     *
+     * @minimum 1
+     */
     n: number;
 }
 
+/**
+ * Payload for removing samples whose attribute value is `undefined` or `null`.
+ */
 export interface RemoveUndefined extends PayloadWithAttribute {}
 
+/**
+ * Payload for grouping by a categorical or ordinal attribute.
+ */
 export interface GroupByNominal extends PayloadWithAttribute {}
 
+/**
+ * Payload for grouping a quantitative attribute into quartiles.
+ */
 export interface GroupToQuartiles extends PayloadWithAttribute {}
 
 export interface GroupByThresholds extends PayloadWithAttribute {
-    thresholds: Threshold[];
+    /**
+     * Thresholds used to stratify the samples.
+     *
+     * Supply these in ascending operand order. Adjacent thresholds define the
+     * output intervals.
+     */
+    thresholds: [Threshold, ...Threshold[]];
 }
 
 export interface RemoveGroup {
     /**
-     * An array of group names that represent the path to the group.
-     * The implicit ROOT group is excluded. */
+     * Group names from outermost to innermost, excluding the implicit ROOT.
+     */
     path: string[];
 }
 
+/**
+ * Payload for filtering samples by comparing a quantitative attribute
+ * against a numeric operand.
+ */
 export interface FilterByQuantitative extends PayloadWithAttribute {
-    /** The comparison operator */
+    /**
+     * Comparison applied as `attributeValue operator operand`.
+     */
     operator: ComparisonOperatorType;
 
+    /**
+     * Numeric value on the right-hand side of the comparison.
+     */
     operand: number;
 }
 
 export interface FilterByNominal extends PayloadWithAttribute {
+    /**
+     * Attribute values matched by exact equality.
+     */
     values: any[];
 
-    /** Should the matching samples be removed instead of retained (default) */
+    /**
+     * Whether to remove matching samples instead of retaining them.
+     *
+     * If omitted or `false`, only matching samples are kept.
+     */
     remove?: boolean;
 }
 
 export interface RetainMatched extends PayloadWithAttribute {
+    /**
+     * Attribute whose values must be present in every current non-empty group.
+     */
     attribute: AttributeIdentifier;
 }
 
-/** Which categories belong to which group */
+/**
+ * Which categories belong to which group.
+ */
 export type CustomGroups = Record<string, Scalar[]>;
 
 export interface GroupCustom extends PayloadWithAttribute {
     /**
-     * A record where the keys are group names and the values are arrays of
-     * categories or sample ids.
+     * Mapping from output group name to attribute values assigned to that group.
+     *
+     * Samples whose value is not listed in any group are omitted from the
+     * grouped result.
      */
     groups: CustomGroups;
 }

@@ -57,7 +57,7 @@ describe("IntentPipeline", () => {
         /** @type {import("../sampleView/types.js").AttributeInfo} */
         const attributeInfo = {
             name: "Test",
-            attribute: { type: "test" },
+            attribute: /** @type {any} */ ({ type: "test" }),
             title: "Test",
             emphasizedName: "Test",
             accessor: () => undefined,
@@ -70,7 +70,10 @@ describe("IntentPipeline", () => {
         const getAttributeInfo = () => attributeInfo;
 
         const submitPromise = pipeline.submit(
-            { type: "sample/action", payload: { attribute: { type: "test" } } },
+            {
+                type: "sample/action",
+                payload: { attribute: /** @type {any} */ ({ type: "test" }) },
+            },
             { getAttributeInfo }
         );
 
@@ -93,7 +96,7 @@ describe("IntentPipeline", () => {
         /** @type {import("../sampleView/types.js").AttributeInfo} */
         const attributeInfo = {
             name: "Test",
-            attribute: { type: "test" },
+            attribute: /** @type {any} */ ({ type: "test" }),
             title: "Test",
             emphasizedName: "Test",
             accessor: () => undefined,
@@ -105,11 +108,17 @@ describe("IntentPipeline", () => {
         const getAttributeInfo = () => attributeInfo;
 
         const first = pipeline.submit(
-            { type: "sample/one", payload: { attribute: { type: "test" } } },
+            {
+                type: "sample/one",
+                payload: { attribute: /** @type {any} */ ({ type: "test" }) },
+            },
             { getAttributeInfo }
         );
         const second = pipeline.submit(
-            { type: "sample/two", payload: { attribute: { type: "test" } } },
+            {
+                type: "sample/two",
+                payload: { attribute: /** @type {any} */ ({ type: "test" }) },
+            },
             { getAttributeInfo }
         );
 
@@ -134,7 +143,7 @@ describe("IntentPipeline", () => {
         /** @type {import("../sampleView/types.js").AttributeInfo} */
         const attributeInfo = {
             name: "Test",
-            attribute: { type: "test" },
+            attribute: /** @type {any} */ ({ type: "test" }),
             title: "Test",
             emphasizedName: "Test",
             accessor: () => undefined,
@@ -148,11 +157,15 @@ describe("IntentPipeline", () => {
             [
                 {
                     type: "sample/one",
-                    payload: { attribute: { type: "test" } },
+                    payload: {
+                        attribute: /** @type {any} */ ({ type: "test" }),
+                    },
                 },
                 {
                     type: "sample/two",
-                    payload: { attribute: { type: "test" } },
+                    payload: {
+                        attribute: /** @type {any} */ ({ type: "test" }),
+                    },
                 },
             ],
             { getAttributeInfo }
@@ -174,7 +187,7 @@ describe("IntentPipeline", () => {
         /** @type {import("../sampleView/types.js").AttributeInfo} */
         const attributeInfo = {
             name: "Test",
-            attribute: { type: "test" },
+            attribute: /** @type {any} */ ({ type: "test" }),
             title: "Test",
             emphasizedName: "Test",
             accessor: () => undefined,
@@ -185,11 +198,17 @@ describe("IntentPipeline", () => {
         const getAttributeInfo = () => attributeInfo;
 
         const first = pipeline.submit(
-            { type: "sample/one", payload: { attribute: { type: "test" } } },
+            {
+                type: "sample/one",
+                payload: { attribute: /** @type {any} */ ({ type: "test" }) },
+            },
             { getAttributeInfo }
         );
         const second = pipeline.submit(
-            { type: "sample/two", payload: { attribute: { type: "test" } } },
+            {
+                type: "sample/two",
+                payload: { attribute: /** @type {any} */ ({ type: "test" }) },
+            },
             { getAttributeInfo }
         );
 
@@ -206,7 +225,7 @@ describe("IntentPipeline", () => {
         /** @type {import("../sampleView/types.js").AttributeInfo} */
         const attributeInfo = {
             name: "Test",
-            attribute: { type: "test" },
+            attribute: /** @type {any} */ ({ type: "test" }),
             title: "Test",
             emphasizedName: "Test",
             accessor: () => undefined,
@@ -225,7 +244,9 @@ describe("IntentPipeline", () => {
             pipeline.submit(
                 {
                     type: "sample/sortBy",
-                    payload: { attribute: { type: "test" } },
+                    payload: {
+                        attribute: /** @type {any} */ ({ type: "test" }),
+                    },
                 },
                 { getAttributeInfo }
             )
@@ -256,7 +277,7 @@ describe("IntentPipeline", () => {
         /** @type {import("../sampleView/types.js").AttributeInfo} */
         const attributeInfo = {
             name: "Test",
-            attribute: { type: "test" },
+            attribute: /** @type {any} */ ({ type: "test" }),
             title: "Test",
             emphasizedName: "Test",
             accessor: () => undefined,
@@ -276,11 +297,15 @@ describe("IntentPipeline", () => {
             [
                 {
                     type: "sample/one",
-                    payload: { attribute: { type: "test" } },
+                    payload: {
+                        attribute: /** @type {any} */ ({ type: "test" }),
+                    },
                 },
                 {
                     type: "sample/two",
-                    payload: { attribute: { type: "test" } },
+                    payload: {
+                        attribute: /** @type {any} */ ({ type: "test" }),
+                    },
                 },
             ],
             { getAttributeInfo }
@@ -448,7 +473,7 @@ describe("IntentPipeline", () => {
         /** @type {import("../sampleView/types.js").AttributeInfo} */
         const attributeInfo = {
             name: "Test",
-            attribute: { type: "test" },
+            attribute: /** @type {any} */ ({ type: "test" }),
             title: "Test",
             emphasizedName: "Test",
             accessor: () => undefined,
@@ -472,7 +497,10 @@ describe("IntentPipeline", () => {
         const getAttributeInfo = () => attributeInfo;
 
         const submitPromise = pipeline.submit(
-            { type: "sample/one", payload: { attribute: { type: "test" } } },
+            {
+                type: "sample/one",
+                payload: { attribute: /** @type {any} */ ({ type: "test" }) },
+            },
             { getAttributeInfo }
         );
 

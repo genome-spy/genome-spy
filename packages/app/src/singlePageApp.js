@@ -4,7 +4,15 @@ import { embed } from "./index.js";
 
 const specUrl = new URLSearchParams(window.location.search).get("spec");
 if (specUrl) {
-    embed(document.body, specUrl);
+    const plugins = [];
+    const agentBaseUrl = import.meta.env.VITE_AGENT_BASE_URL;
+
+    if (agentBaseUrl) {
+        const { appAgent } = await import("@genome-spy/app-agent");
+        plugins.push(appAgent({ baseUrl: agentBaseUrl }));
+    }
+
+    embed(document.body, specUrl, { plugins });
 } else {
     document.body.innerHTML = `
         <p style="color: firebrick">No 'spec' url parameter defined!</p>

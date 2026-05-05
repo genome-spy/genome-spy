@@ -44,12 +44,26 @@ export default class Toolbar extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        subscribeTo(
+        this.#unsubscribeAppInitialized = subscribeTo(
             this.app.store,
             (state) => state.lifecycle.appInitialized,
             () => this.requestUpdate()
         );
+        this.app.ui.addEventListener("change", this.#handleUiChange);
     }
+
+    disconnectedCallback() {
+        this.#unsubscribeAppInitialized?.();
+        this.app.ui.removeEventListener("change", this.#handleUiChange);
+        super.disconnectedCallback();
+    }
+
+    /** @type {(() => void) | undefined} */
+    #unsubscribeAppInitialized = undefined;
+
+    #handleUiChange = () => {
+        this.requestUpdate();
+    };
 
     _getToolButtons() {
         const provenance = this.app.provenance;
@@ -114,6 +128,12 @@ export default class Toolbar extends LitElement {
                 >${renderVersionLink(packageJson.version)}</span
             >
 
+            ${this.app.ui.toolbarButtons.size
+                ? Array.from(this.app.ui.toolbarButtons).map((button) =>
+                      this.#createToolbarButton(button)
+                  )
+                : nothing}
+
             <div class="dropdown bookmark-dropdown">
                 <button
                     class="tool-btn"
@@ -132,10 +152,28 @@ export default class Toolbar extends LitElement {
         return elements;
     }
 
+    /**
+     * @param {import("../../appTypes.js").ToolbarButtonSpec} button
+     * @returns {import("lit").TemplateResult}
+     */
+    #createToolbarButton(button) {
+        return html`
+            <button
+                class="tool-btn"
+                title=${button.title}
+                aria-label=${button.title}
+                @click=${() => {
+                    void button.onClick();
+                }}
+            >
+                ${icon(button.icon).node[0]}
+            </button>
+        `;
+    }
+
     #makeEllipsisTemplate() {
         /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
         const items = [];
-
         items.push({
             label: "Save PNG",
             icon: faFileImage,
@@ -163,6 +201,8 @@ export default class Toolbar extends LitElement {
                     ),
             });
         }
+
+        items.push(...this.app.ui.toolbarMenuItems);
 
         if (this.app.appContainer.requestFullscreen) {
             items.push({

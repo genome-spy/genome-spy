@@ -6,9 +6,11 @@ import { createSlice } from "@reduxjs/toolkit";
 
 /**
  * @typedef {"idle" | "running" | "error" | "canceled"} IntentStatusType
+ * @typedef {"user" | "agent" | "bookmark"} IntentSubmissionKind
  *
  * @typedef {object} IntentStatus
  * @prop {IntentStatusType} status
+ * @prop {IntentSubmissionKind} [submissionKind]
  * @prop {number} [startIndex]
  * @prop {number} [lastSuccessfulIndex]
  * @prop {number} [totalActions]
@@ -29,11 +31,12 @@ export const intentStatusSlice = createSlice({
     reducers: {
         setRunning: (
             state,
-            /** @type {import("@reduxjs/toolkit").PayloadAction<{startIndex?: number, totalActions?: number}>} */
+            /** @type {import("@reduxjs/toolkit").PayloadAction<{startIndex?: number, totalActions?: number, submissionKind?: IntentSubmissionKind}>} */
             action
         ) => ({
             ...state,
             status: "running",
+            submissionKind: action.payload.submissionKind ?? "user",
             startIndex: action.payload.startIndex,
             lastSuccessfulIndex: action.payload.startIndex,
             totalActions: action.payload.totalActions,
@@ -57,7 +60,7 @@ export const intentStatusSlice = createSlice({
 
         setError: (
             state,
-            /** @type {import("@reduxjs/toolkit").PayloadAction<{startIndex?: number, lastSuccessfulIndex?: number, failedAction?: import("@reduxjs/toolkit").Action, error: string}>} */
+            /** @type {import("@reduxjs/toolkit").PayloadAction<{startIndex?: number, lastSuccessfulIndex?: number, failedAction?: import("@reduxjs/toolkit").Action, submissionKind?: IntentSubmissionKind, error: string}>} */
             action
         ) => ({
             ...state,
@@ -66,6 +69,8 @@ export const intentStatusSlice = createSlice({
             lastSuccessfulIndex:
                 action.payload.lastSuccessfulIndex ?? state.lastSuccessfulIndex,
             failedAction: action.payload.failedAction ?? state.failedAction,
+            submissionKind:
+                action.payload.submissionKind ?? state.submissionKind,
             error: action.payload.error,
         }),
 

@@ -5,36 +5,9 @@ import {
     buildHierarchyBoxplot,
     buildHierarchyScatterplot,
 } from "../charts/hierarchySampleAttributePlots.js";
+import { getGroupColorRange } from "../charts/sampleAttributePlotUtils.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
-
-/**
- * @param {import("./sampleView.js").default} sampleView
- * @returns {string[] | undefined}
- */
-function getGroupColorRange(sampleView) {
-    if (sampleView.sampleHierarchy.groupMetadata.length !== 1) {
-        return;
-    }
-
-    const attribute = sampleView.sampleHierarchy.groupMetadata[0].attribute;
-    if (attribute.type !== SAMPLE_ATTRIBUTE) {
-        return;
-    }
-
-    const attributeInfo =
-        sampleView.compositeAttributeInfoSource.getAttributeInfo(attribute);
-    if (attributeInfo.type === "quantitative") {
-        return;
-    }
-
-    const scale = attributeInfo.scale;
-    if (!scale || typeof scale.range !== "function") {
-        return;
-    }
-
-    return scale.range();
-}
 
 /**
  * @param {import("../utils/ui/contextMenu.js").MenuItem[]} items

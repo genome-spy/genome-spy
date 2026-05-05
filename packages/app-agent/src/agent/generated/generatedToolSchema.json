@@ -1,0 +1,2277 @@
+{
+  "$ref": "#/definitions/AgentToolInputs",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "AddMetadataFromSource": {
+      "additionalProperties": false,
+      "properties": {
+        "columnIds": {
+          "description": "Column ids to import from the selected source.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "groupPath": {
+          "description": "Optional metadata group path override for the imported columns.",
+          "type": "string"
+        },
+        "replace": {
+          "description": "Whether to replace the current metadata set.\n\nIf `true`, only the imported columns remain. If omitted or `false`, the imported columns are merged into the existing metadata.",
+          "type": "boolean"
+        },
+        "sourceId": {
+          "description": "Configured metadata source to read from.\n\nOmit this only when exactly one source is available.",
+          "type": "string"
+        }
+      },
+      "required": ["columnIds"],
+      "type": "object"
+    },
+    "AgentIntentBatchStep": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/addMetadata",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/SetMetadata"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/deriveMetadata",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/DeriveMetadata"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/addMetadataFromSource",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/AddMetadataFromSource"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/sortBy",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/SortBy"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/retainFirstOfEach",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/RetainFirstOfEach"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/retainFirstNCategories",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/RetainFirstNCategories"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/filterByQuantitative",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/FilterByQuantitative"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/filterByNominal",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/FilterByNominal"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/removeUndefined",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/RemoveUndefined"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupCustomCategories",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/GroupCustom"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupByNominal",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/GroupByNominal"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupToQuartiles",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/GroupToQuartiles"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/groupByThresholds",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/GroupByThresholds"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/removeGroup",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/RemoveGroup"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/retainMatched",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/RetainMatched"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "paramProvenance/paramChange",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/ParamProvenanceEntry"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        }
+      ]
+    },
+    "AgentToolInputs": {
+      "additionalProperties": false,
+      "description": "Tool inputs exposed to the agent.",
+      "properties": {
+        "buildSelectionAggregationAttribute": {
+          "$ref": "#/definitions/BuildSelectionAggregationAttributeToolInput"
+        },
+        "collapseViewNode": {
+          "$ref": "#/definitions/CollapseViewNodeToolInput"
+        },
+        "expandViewNode": {
+          "$ref": "#/definitions/ExpandViewNodeToolInput"
+        },
+        "getIntentActionDocs": {
+          "$ref": "#/definitions/GetIntentActionDocsToolInput"
+        },
+        "getMetadataAttributeSummary": {
+          "$ref": "#/definitions/GetMetadataAttributeSummaryToolInput"
+        },
+        "jumpToInitialProvenanceState": {
+          "$ref": "#/definitions/JumpToInitialProvenanceStateToolInput"
+        },
+        "jumpToProvenanceState": {
+          "$ref": "#/definitions/JumpToProvenanceStateToolInput"
+        },
+        "resolveMetadataAttributeValues": {
+          "$ref": "#/definitions/ResolveMetadataAttributeValuesToolInput"
+        },
+        "searchViewDatums": {
+          "$ref": "#/definitions/SearchViewDatumsToolInput"
+        },
+        "setViewVisibility": {
+          "$ref": "#/definitions/SetViewVisibilityToolInput"
+        },
+        "showSampleAttributePlot": {
+          "$ref": "#/definitions/ShowSampleAttributePlotToolInput"
+        },
+        "submitIntentActions": {
+          "$ref": "#/definitions/SubmitIntentActionsToolInput"
+        },
+        "zoomToScale": {
+          "$ref": "#/definitions/ZoomToScaleToolInput"
+        }
+      },
+      "required": [
+        "expandViewNode",
+        "collapseViewNode",
+        "setViewVisibility",
+        "jumpToProvenanceState",
+        "jumpToInitialProvenanceState",
+        "buildSelectionAggregationAttribute",
+        "getMetadataAttributeSummary",
+        "resolveMetadataAttributeValues",
+        "searchViewDatums",
+        "getIntentActionDocs",
+        "zoomToScale",
+        "submitIntentActions",
+        "showSampleAttributePlot"
+      ],
+      "type": "object"
+    },
+    "AggregationOp": {
+      "description": "Aggregation operators supported by interval-based attribute access.",
+      "enum": ["min", "max", "weightedMean", "variance", "count"],
+      "type": "string"
+    },
+    "AggregationSpec": {
+      "additionalProperties": false,
+      "description": "Aggregation configuration for interval-derived attribute access.",
+      "properties": {
+        "op": {
+          "$ref": "#/definitions/AggregationOp"
+        }
+      },
+      "required": ["op"],
+      "type": "object"
+    },
+    "AttributeIdentifier": {
+      "additionalProperties": false,
+      "properties": {
+        "specifier": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/ViewAttributeSpecifier"
+            }
+          ]
+        },
+        "type": {
+          "$ref": "#/definitions/AttributeIdentifierType"
+        }
+      },
+      "required": ["type"],
+      "type": "object"
+    },
+    "AttributeIdentifierType": {
+      "description": "Stable identifier for an abstract attribute used by actions and agent context.\n\n`type` identifies the attribute source kind, and `specifier` contains the concrete lookup information for that source.\n\nExamples:\n- `{ type: \"SAMPLE_ATTRIBUTE\", specifier: \"age\" }`\n- `{ type: \"VALUE_AT_LOCUS\", specifier: { ... } }`",
+      "enum": [
+        "SAMPLE_ATTRIBUTE",
+        "VALUE_AT_LOCUS",
+        "SAMPLE_NAME",
+        "VIEW_ATTRIBUTE"
+      ],
+      "type": "string"
+    },
+    "BuildSelectionAggregationAttributeToolInput": {
+      "additionalProperties": false,
+      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used directly in `showSampleAttributePlot` or in a later intent action. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the returned `content.attribute` as the plotted attribute or as `payload.attribute` in `submitIntentActions`. If the requested locus or interval is not the current selection, update the selection first.",
+      "examples": [
+        {
+          "aggregation": "max",
+          "candidateId": "brush@foo:bar"
+        }
+      ],
+      "properties": {
+        "aggregation": {
+          "$ref": "#/definitions/AggregationOp",
+          "description": "Aggregation op to apply to the candidate field."
+        },
+        "candidateId": {
+          "description": "Stable identifier for the selected candidate row. The identifiers are available in `selectionAggregation.fields` in the volatile context. They become available after a selection is made with a successful `paramChange` action.",
+          "type": "string"
+        }
+      },
+      "required": ["candidateId", "aggregation"],
+      "type": "object"
+    },
+    "ChromosomalLocus": {
+      "additionalProperties": false,
+      "properties": {
+        "chrom": {
+          "description": "The name of the chromosome. For example: `\"chr1\"`, `\"CHR1\"`, or `\"1\"`.",
+          "type": "string"
+        },
+        "pos": {
+          "description": "The zero-based position inside the chromosome or contig.",
+          "type": "number"
+        }
+      },
+      "required": ["chrom"],
+      "type": "object"
+    },
+    "CollapseViewNodeToolInput": {
+      "additionalProperties": false,
+      "description": "Collapse a previously expanded view branch in the agent context.",
+      "examples": [
+        {
+          "selector": {
+            "scope": [],
+            "view": "track"
+          }
+        }
+      ],
+      "properties": {
+        "selector": {
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the view node to collapse."
+        }
+      },
+      "required": ["selector"],
+      "type": "object"
+    },
+    "ColumnarMetadata": {
+      "additionalProperties": {
+        "description": "Metadata columns keyed by attribute name.",
+        "items": {
+          "$ref": "#/definitions/Scalar"
+        },
+        "type": "array"
+      },
+      "description": "Columnar metadata representation Keys are attribute names, values are arrays of attribute values for each sample, in the same order as the samples array.\n\nColumnar format is more efficient for storage in bookmarked actions.",
+      "properties": {
+        "sample": {
+          "description": "Sample ids for the rows in this payload.\n\nEvery other column must follow this same order.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["sample"],
+      "type": "object"
+    },
+    "ComparisonOperatorType": {
+      "enum": ["lt", "lte", "eq", "gte", "gt"],
+      "type": "string"
+    },
+    "ComplexDomain": {
+      "description": "A complex domain that needs to be converted into a scalar domain before it is assigned to a scale.",
+      "items": {
+        "$ref": "#/definitions/ChromosomalLocus"
+      },
+      "type": "array"
+    },
+    "Contig": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "size": {
+          "type": "number"
+        }
+      },
+      "required": ["name", "size"],
+      "type": "object"
+    },
+    "CustomGroups": {
+      "additionalProperties": {
+        "items": {
+          "$ref": "#/definitions/Scalar"
+        },
+        "type": "array"
+      },
+      "description": "Which categories belong to which group.",
+      "type": "object"
+    },
+    "DeriveMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        },
+        "groupPath": {
+          "description": "Optional metadata group path for the derived column.\n\nWhen provided, the resulting attribute is written under `groupPath/name`.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the derived metadata column.\n\nThis becomes the leaf attribute name written into metadata. Prefer a short user-facing name.",
+          "type": "string"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scale",
+              "description": "Scale definition for the (default) color channel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "If omitted, derived metadata may inherit an authored source scale when the aggregation preserves the source value domain. Use `null` to force automatic scale inference without inheritance."
+        }
+      },
+      "required": ["attribute", "name"],
+      "type": "object"
+    },
+    "ExpandViewNodeToolInput": {
+      "additionalProperties": false,
+      "description": "Expand a collapsed view branch in the agent context. The result is only visible in the context and not observable by the user.",
+      "examples": [
+        {
+          "selector": {
+            "scope": [],
+            "view": "track"
+          }
+        }
+      ],
+      "properties": {
+        "selector": {
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the collapsed view node to expand."
+        }
+      },
+      "required": ["selector"],
+      "type": "object"
+    },
+    "ExprRef": {
+      "additionalProperties": false,
+      "properties": {
+        "expr": {
+          "description": "The expression string.",
+          "type": "string"
+        }
+      },
+      "required": ["expr"],
+      "type": "object"
+    },
+    "FilterByNominal": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        },
+        "remove": {
+          "description": "Whether to remove matching samples instead of retaining them.\n\nIf omitted or `false`, only matching samples are kept.",
+          "type": "boolean"
+        },
+        "values": {
+          "description": "Attribute values matched by exact equality.",
+          "items": {},
+          "type": "array"
+        }
+      },
+      "required": ["attribute", "values"],
+      "type": "object"
+    },
+    "FilterByQuantitative": {
+      "additionalProperties": false,
+      "description": "Payload for filtering samples by comparing a quantitative attribute against a numeric operand.",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        },
+        "operand": {
+          "description": "Numeric value on the right-hand side of the comparison.",
+          "type": "number"
+        },
+        "operator": {
+          "$ref": "#/definitions/ComparisonOperatorType",
+          "description": "Comparison applied as `attributeValue operator operand`."
+        }
+      },
+      "required": ["attribute", "operand", "operator"],
+      "type": "object"
+    },
+    "GenomeDefinition": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/UrlGenomeDefinition"
+        },
+        {
+          "$ref": "#/definitions/InlineGenomeDefinition"
+        }
+      ],
+      "description": "Genome definition for contexts where the name is provided externally (for example, as a key in root `genomes`) or not needed (for example, inline `scale.assembly`)."
+    },
+    "GetIntentActionDocsToolInput": {
+      "additionalProperties": false,
+      "description": "Read documentation, fields, and examples for one intent action. Use this before constructing an unfamiliar action payload for `submitIntentActions`. This tool doesn't execute the action or mutate any state. Do not repeat the call if documentation is already available in the conversation history.",
+      "examples": [
+        {
+          "actionType": "sampleView/groupToQuartiles",
+          "includeSchema": false
+        }
+      ],
+      "properties": {
+        "actionType": {
+          "$ref": "#/definitions/IntentActionType",
+          "description": "Intent action type whose docs should be read."
+        },
+        "includeSchema": {
+          "description": "Whether to include the raw payload schema. The default response is more compact and usually sufficient.",
+          "type": "boolean"
+        }
+      },
+      "required": ["actionType"],
+      "type": "object"
+    },
+    "GetMetadataAttributeSummaryToolInput": {
+      "additionalProperties": false,
+      "description": "Return a compact summary of one metadata attribute across visible samples or within each current visible group. Use `visible_samples` for pooled metadata facts such as available category values or numeric ranges. Use `visible_groups` only after the sample view is already grouped and the user needs per-group facts. If the user asks to group by one attribute and then compare or report another attribute by group, first submit the grouping action, wait for the refreshed context, and then call this tool with `scope: \"visible_groups\"` for the attribute to report.",
+      "examples": [
+        {
+          "attribute": {
+            "specifier": "tissue",
+            "type": "SAMPLE_ATTRIBUTE"
+          },
+          "scope": "visible_groups"
+        }
+      ],
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/SampleAttributeIdentifier",
+          "description": "Stable attributeIdentifier for the metadata attribute to summarize. In v0, this must be a `SAMPLE_ATTRIBUTE` identifier from the current context."
+        },
+        "scope": {
+          "$ref": "#/definitions/MetadataSummaryScope",
+          "description": "Summary scope. Use `visible_samples` for a pooled summary across the current visible samples. Use `visible_groups` for summaries within each current visible group after grouping has already been applied."
+        }
+      },
+      "required": ["attribute", "scope"],
+      "type": "object"
+    },
+    "GroupByNominal": {
+      "additionalProperties": false,
+      "description": "Payload for grouping by a categorical or ordinal attribute.",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        }
+      },
+      "required": ["attribute"],
+      "type": "object"
+    },
+    "GroupByThresholds": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        },
+        "thresholds": {
+          "description": "Thresholds used to stratify the samples.\n\nSupply these in ascending operand order. Adjacent thresholds define the output intervals.",
+          "items": {
+            "$ref": "#/definitions/Threshold"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": ["attribute", "thresholds"],
+      "type": "object"
+    },
+    "GroupCustom": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        },
+        "groups": {
+          "$ref": "#/definitions/CustomGroups",
+          "description": "Mapping from output group name to attribute values assigned to that group.\n\nSamples whose value is not listed in any group are omitted from the grouped result."
+        }
+      },
+      "required": ["attribute", "groups"],
+      "type": "object"
+    },
+    "GroupToQuartiles": {
+      "additionalProperties": false,
+      "description": "Payload for grouping a quantitative attribute into quartiles.",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        }
+      },
+      "required": ["attribute"],
+      "type": "object"
+    },
+    "InlineGenomeDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "contigs": {
+          "description": "An array of contigs/sequences in the genome assembly.",
+          "items": {
+            "$ref": "#/definitions/Contig"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["contigs"],
+      "type": "object"
+    },
+    "InlineLocusAssembly": {
+      "$ref": "#/definitions/GenomeDefinition"
+    },
+    "IntentActionType": {
+      "enum": [
+        "sampleView/addMetadata",
+        "sampleView/deriveMetadata",
+        "sampleView/addMetadataFromSource",
+        "sampleView/sortBy",
+        "sampleView/retainFirstOfEach",
+        "sampleView/retainFirstNCategories",
+        "sampleView/filterByQuantitative",
+        "sampleView/filterByNominal",
+        "sampleView/removeUndefined",
+        "sampleView/groupCustomCategories",
+        "sampleView/groupByNominal",
+        "sampleView/groupToQuartiles",
+        "sampleView/groupByThresholds",
+        "sampleView/removeGroup",
+        "sampleView/retainMatched",
+        "paramProvenance/paramChange"
+      ],
+      "type": "string"
+    },
+    "Interval": {
+      "description": "Interval expressed as two scalar or locus points.",
+      "items": {
+        "$ref": "#/definitions/IntervalPoint"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "type": "array"
+    },
+    "IntervalPoint": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "$ref": "#/definitions/ChromosomalLocus"
+        }
+      ],
+      "description": "One endpoint of an interval."
+    },
+    "IntervalReference": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Interval"
+        },
+        {
+          "$ref": "#/definitions/SelectionIntervalSource"
+        }
+      ],
+      "description": "Literal interval or selection-backed interval reference."
+    },
+    "IntervalSpecifier": {
+      "additionalProperties": false,
+      "description": "Specifier that summarizes a field over an interval.",
+      "properties": {
+        "aggregation": {
+          "$ref": "#/definitions/AggregationSpec",
+          "description": "Aggregation operation to apply over the interval"
+        },
+        "domainAtActionTime": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NumericDomain"
+            },
+            {
+              "$ref": "#/definitions/ComplexDomain"
+            }
+          ],
+          "description": "The x-scale domain that was visible when the action was triggered."
+        },
+        "field": {
+          "description": "Attribute or field name used by the specifier.",
+          "type": "string"
+        },
+        "interval": {
+          "$ref": "#/definitions/IntervalReference",
+          "description": "Literal interval or a selection source resolved at action execution time"
+        },
+        "view": {
+          "$ref": "#/definitions/ViewRef",
+          "description": "A unique view reference. Legacy values may be a view name string."
+        }
+      },
+      "required": ["aggregation", "field", "interval", "view"],
+      "type": "object"
+    },
+    "JumpToInitialProvenanceStateToolInput": {
+      "additionalProperties": {
+        "not": {}
+      },
+      "description": "Jump to the initial provenance state before any actions were dispatched.",
+      "type": "object"
+    },
+    "JumpToProvenanceStateToolInput": {
+      "additionalProperties": false,
+      "description": "Jump to a prior provenance state identified by the given provenance id. Consult provenance history first when a request should continue from an earlier analysis state, even if the user did not explicitly ask to jump back.",
+      "examples": [
+        {
+          "provenanceId": "provenance-12"
+        }
+      ],
+      "properties": {
+        "provenanceId": {
+          "description": "Provenance id to jump to.",
+          "type": "string"
+        }
+      },
+      "required": ["provenanceId"],
+      "type": "object"
+    },
+    "LocusSpecifier": {
+      "additionalProperties": false,
+      "description": "Specifier that points to a single locus or scalar coordinate.",
+      "properties": {
+        "domainAtActionTime": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/NumericDomain"
+            },
+            {
+              "$ref": "#/definitions/ComplexDomain"
+            }
+          ],
+          "description": "The x-scale domain that was visible when the action was triggered."
+        },
+        "field": {
+          "description": "Attribute or field name used by the specifier.",
+          "type": "string"
+        },
+        "locus": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scalar"
+            },
+            {
+              "$ref": "#/definitions/ChromosomalLocus"
+            }
+          ],
+          "description": "Coordinate on the `x` axis. May be a number of locus on a chromosome. Alternatively, a scalar if a categorical scale is used."
+        },
+        "view": {
+          "$ref": "#/definitions/ViewRef",
+          "description": "A unique view reference. Legacy values may be a view name string."
+        }
+      },
+      "required": ["field", "locus", "view"],
+      "type": "object"
+    },
+    "LogicalAnd": {
+      "additionalProperties": false,
+      "properties": {
+        "and": {
+          "items": {
+            "$ref": "#/definitions/SelectionExpansionPredicate"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["and"],
+      "type": "object"
+    },
+    "LogicalNot": {
+      "additionalProperties": false,
+      "properties": {
+        "not": {
+          "$ref": "#/definitions/SelectionExpansionPredicate"
+        }
+      },
+      "required": ["not"],
+      "type": "object"
+    },
+    "LogicalOr": {
+      "additionalProperties": false,
+      "properties": {
+        "or": {
+          "items": {
+            "$ref": "#/definitions/SelectionExpansionPredicate"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["or"],
+      "type": "object"
+    },
+    "MetadataSummaryScope": {
+      "enum": ["visible_samples", "visible_groups"],
+      "type": "string"
+    },
+    "NumericDomain": {
+      "items": {
+        "type": "number"
+      },
+      "type": "array"
+    },
+    "ParamOrigin": {
+      "additionalProperties": false,
+      "description": "Origin of a param value derived from a datum or interval lookup.",
+      "properties": {
+        "intervalSources": {
+          "additionalProperties": {
+            "additionalProperties": false,
+            "properties": {
+              "end": {
+                "type": "string"
+              },
+              "start": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "description": "Optional interval sources used for replay and diagnostics.",
+          "type": "object"
+        },
+        "key": {
+          "$ref": "#/definitions/Scalar",
+          "description": "Scalar value captured from the source datum."
+        },
+        "keyField": {
+          "description": "Field that supplied the value.",
+          "type": "string"
+        },
+        "type": {
+          "const": "datum",
+          "description": "Origin type.",
+          "type": "string"
+        },
+        "view": {
+          "$ref": "#/definitions/ViewSelector",
+          "description": "View that contributed the value."
+        }
+      },
+      "required": ["type", "view", "keyField", "key"],
+      "type": "object"
+    },
+    "ParamProvenanceEntry": {
+      "additionalProperties": false,
+      "description": "Payload for creating or updating a reactive selection or parameter value, including point selections, interval selections, and genomic-region selections.",
+      "properties": {
+        "origin": {
+          "$ref": "#/definitions/ParamOrigin",
+          "description": "Optional datum origin for replayable values."
+        },
+        "selector": {
+          "$ref": "#/definitions/ParamSelector",
+          "description": "Structured selector for the parameter."
+        },
+        "value": {
+          "$ref": "#/definitions/ParamValue",
+          "description": "Serialized parameter value."
+        }
+      },
+      "required": ["selector", "value"],
+      "type": "object"
+    },
+    "ParamSelector": {
+      "additionalProperties": false,
+      "description": "Structured parameter address used by selectors.",
+      "properties": {
+        "param": {
+          "type": "string"
+        },
+        "scope": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["scope", "param"],
+      "type": "object"
+    },
+    "ParamValue": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ParamValueLiteral"
+        },
+        {
+          "$ref": "#/definitions/ParamValueInterval"
+        },
+        {
+          "$ref": "#/definitions/ParamValuePoint"
+        },
+        {
+          "$ref": "#/definitions/ParamValuePointExpand"
+        }
+      ],
+      "description": "Bookmarkable param value stored in provenance."
+    },
+    "ParamValueInterval": {
+      "additionalProperties": false,
+      "properties": {
+        "intervals": {
+          "additionalProperties": false,
+          "description": "Interval endpoints keyed by encoding channel.",
+          "properties": {
+            "x": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "items": {
+                    "$ref": "#/definitions/ChromosomalLocus"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "y": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "items": {
+                    "$ref": "#/definitions/ChromosomalLocus"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "type": {
+          "const": "interval",
+          "description": "Interval selection value.",
+          "type": "string"
+        }
+      },
+      "required": ["type", "intervals"],
+      "type": "object"
+    },
+    "ParamValueLiteral": {
+      "additionalProperties": false,
+      "description": "Shared type aliases for param provenance payloads.\n\nThese types describe the bookmarkable selection state that can be replayed and surfaced to the agent.",
+      "properties": {
+        "type": {
+          "const": "value",
+          "description": "Literal param value.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Stored literal value."
+        }
+      },
+      "required": ["type", "value"],
+      "type": "object"
+    },
+    "ParamValuePoint": {
+      "additionalProperties": false,
+      "properties": {
+        "keyFields": {
+          "description": "Fields used to identify selected points.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "keys": {
+          "description": "Selected key tuples.",
+          "items": {
+            "items": {
+              "$ref": "#/definitions/Scalar"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "point",
+          "description": "Point selection value.",
+          "type": "string"
+        }
+      },
+      "required": ["type", "keyFields", "keys"],
+      "type": "object"
+    },
+    "ParamValuePointExpand": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "description": "Operation applied to the current selection.",
+              "enum": ["replace", "add", "remove", "toggle"],
+              "type": "string"
+            },
+            "origin": {
+              "$ref": "#/definitions/PointExpandOrigin",
+              "description": "Original point selection that was expanded."
+            },
+            "partitionBy": {
+              "description": "Optional partitioning fields used during expansion.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "rule": {
+              "$ref": "#/definitions/SelectionExpansionRule"
+            },
+            "type": {
+              "const": "pointExpand",
+              "description": "Expanded point-selection value.",
+              "type": "string"
+            }
+          },
+          "required": ["operation", "origin", "rule", "type"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "operation": {
+              "description": "Operation applied to the current selection.",
+              "enum": ["replace", "add", "remove", "toggle"],
+              "type": "string"
+            },
+            "origin": {
+              "$ref": "#/definitions/PointExpandOrigin",
+              "description": "Original point selection that was expanded."
+            },
+            "partitionBy": {
+              "description": "Optional partitioning fields used during expansion.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "predicate": {
+              "$ref": "#/definitions/SelectionExpansionPredicate"
+            },
+            "type": {
+              "const": "pointExpand",
+              "description": "Expanded point-selection value.",
+              "type": "string"
+            }
+          },
+          "required": ["operation", "origin", "predicate", "type"],
+          "type": "object"
+        }
+      ],
+      "description": "Expanded point selection value stored in provenance."
+    },
+    "PlotAttributeIdentifier": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "description": "Optional plot-only label for this attribute. Use this for concise axis and plot titles when the canonical generated attribute title is too long. The label is not part of the canonical AttributeIdentifier.",
+              "type": "string"
+            },
+            "specifier": {
+              "type": "string"
+            },
+            "type": {
+              "const": "SAMPLE_ATTRIBUTE",
+              "type": "string"
+            }
+          },
+          "required": ["specifier", "type"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "description": "Optional plot-only label for this attribute. Use this for concise axis and plot titles when the canonical generated attribute title is too long. The label is not part of the canonical AttributeIdentifier.",
+              "type": "string"
+            },
+            "specifier": {
+              "$ref": "#/definitions/SelectionAggregationSpecifier"
+            },
+            "type": {
+              "const": "VALUE_AT_LOCUS",
+              "type": "string"
+            }
+          },
+          "required": ["specifier", "type"],
+          "type": "object"
+        }
+      ]
+    },
+    "PointExpandOrigin": {
+      "additionalProperties": false,
+      "description": "Back-reference for point selection expansion.",
+      "properties": {
+        "keyFields": {
+          "description": "Legacy support: older bookmarks may include these. New payloads should omit them.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "keyTuple": {
+          "description": "Selected tuple captured at expansion time.",
+          "items": {
+            "$ref": "#/definitions/Scalar"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "datum",
+          "description": "Legacy datum marker retained for old bookmarks.",
+          "type": "string"
+        },
+        "view": {
+          "$ref": "#/definitions/ViewSelector",
+          "description": "View that produced the point selection."
+        }
+      },
+      "required": ["view", "keyTuple"],
+      "type": "object"
+    },
+    "RemoveGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "description": "Group names from outermost to innermost, excluding the implicit ROOT.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["path"],
+      "type": "object"
+    },
+    "RemoveUndefined": {
+      "additionalProperties": false,
+      "description": "Payload for removing samples whose attribute value is `undefined` or `null`.",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        }
+      },
+      "required": ["attribute"],
+      "type": "object"
+    },
+    "ResolveMetadataAttributeValuesToolInput": {
+      "additionalProperties": false,
+      "description": "Resolve a free-text metadata value against current visible categorical sample metadata values. Use this when the user names a category value such as `relapse`, `AML`, or `female` but does not name the metadata attribute that contains it. Prefer this tool over guessing the attribute from title similarity alone. Exact case-insensitive matches are preferred. A bounded Levenshtein fallback may return typo-tolerant matches when exact matching finds nothing.",
+      "examples": [
+        {
+          "query": "relapse"
+        }
+      ],
+      "properties": {
+        "query": {
+          "description": "Free-text metadata value to resolve against current visible categorical metadata values.",
+          "type": "string"
+        }
+      },
+      "required": ["query"],
+      "type": "object"
+    },
+    "RetainFirstNCategories": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        },
+        "n": {
+          "description": "Maximum number of distinct categories to retain.\n\nCategories are taken in first-seen order within each current group.",
+          "minimum": 1,
+          "type": "number"
+        }
+      },
+      "required": ["attribute", "n"],
+      "type": "object"
+    },
+    "RetainFirstOfEach": {
+      "additionalProperties": false,
+      "description": "Payload for retaining the first sample of each distinct category.",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        }
+      },
+      "required": ["attribute"],
+      "type": "object"
+    },
+    "RetainMatched": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute whose values must be present in every current non-empty group."
+        }
+      },
+      "required": ["attribute"],
+      "type": "object"
+    },
+    "SampleAttributeDef": {
+      "additionalProperties": false,
+      "properties": {
+        "barScale": {
+          "$ref": "#/definitions/Scale",
+          "description": "An optional scale definition for mapping the attribute to the width of a metadata rectangle."
+        },
+        "description": {
+          "description": "A description of the metadata attribute. Can be used for documentation and to explain the meaning of the column.",
+          "type": "string"
+        },
+        "scale": {
+          "$ref": "#/definitions/Scale",
+          "description": "Scale definition for the (default) color channel"
+        },
+        "title": {
+          "description": "The title of the attribute. Defaults to attribute name.",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/SampleAttributeType",
+          "description": "The attribute type. One of `\"nominal\"`, `\"ordinal\"`, or `\"quantitative\"`."
+        },
+        "visible": {
+          "description": "Whether the attribute is visible by default.",
+          "type": "boolean"
+        },
+        "width": {
+          "description": "Width of the column in pixels.",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SampleAttributeIdentifier": {
+      "additionalProperties": false,
+      "properties": {
+        "specifier": {
+          "type": "string"
+        },
+        "type": {
+          "const": "SAMPLE_ATTRIBUTE",
+          "type": "string"
+        }
+      },
+      "required": ["type", "specifier"],
+      "type": "object"
+    },
+    "SampleAttributePlotSpec": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ShowSampleAttributeCategoryCountsToolInput"
+        },
+        {
+          "$ref": "#/definitions/ShowSampleAttributeValueDistributionToolInput"
+        },
+        {
+          "$ref": "#/definitions/ShowSampleAttributeRelationshipToolInput"
+        }
+      ]
+    },
+    "SampleAttributeType": {
+      "enum": ["nominal", "ordinal", "quantitative"],
+      "type": "string"
+    },
+    "Scalar": {
+      "type": ["string", "number", "boolean"]
+    },
+    "ScalarDomain": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/NumericDomain"
+        },
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "items": {
+            "type": "boolean"
+          },
+          "type": "array"
+        }
+      ]
+    },
+    "Scale": {
+      "additionalProperties": false,
+      "properties": {
+        "align": {
+          "description": "The alignment of the steps within the scale range.\n\nThis value must lie in the range `[0,1]`. A value of `0.5` indicates that the steps should be centered within the range. A value of `0` or `1` may be used to shift the bands to one side, say to position them adjacent to an axis.\n\n__Default value:__ `0.5`",
+          "type": "number"
+        },
+        "assembly": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/InlineLocusAssembly"
+            }
+          ],
+          "description": "Genome assembly definition for locus scales.\n\nThis can be:\n\n- A string reference to a named assembly (built-in or root-configured).\n- An inline anonymous assembly that defines either `contigs` or `url`.\n\nIf undefined, the default genome from the genome store is used."
+        },
+        "base": {
+          "description": "The logarithm base of the `log` scale (default `10`).",
+          "type": "number"
+        },
+        "bins": {
+          "description": "An array of bin boundaries over the scale domain. If provided, axes and legends will use the bin boundaries to inform the choice of tick marks and text labels.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "clamp": {
+          "description": "If `true`, values that exceed the data domain are clamped to either the minimum or maximum range value\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/config.html#scale-config)'s `clamp` (`true` by default).",
+          "type": "boolean"
+        },
+        "constant": {
+          "description": "A constant determining the slope of the symlog function around zero. Only used for `symlog` scales.\n\n__Default value:__ `1`",
+          "type": "number"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScalarDomain"
+            },
+            {
+              "$ref": "#/definitions/ComplexDomain"
+            },
+            {
+              "$ref": "#/definitions/SelectionDomainRef"
+            },
+            {
+              "$ref": "#/definitions/ExprRef"
+            }
+          ],
+          "description": "Customized domain values.\n\nFor _quantitative_ fields, `domain` can take the form of a two-element array with minimum and maximum values.  [Piecewise scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise) can be created by providing a `domain` with more than two entries.\n\nFor _temporal_ fields, `domain` can be a two-element array minimum and maximum values, in the form of either timestamps or the [DateTime definition objects](https://vega.github.io/vega-lite/docs/types.html#datetime).\n\nFor _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values."
+        },
+        "domainMax": {
+          "description": "Sets the maximum value in the scale domain, overriding the `domain` property. This property is only intended for use with scales having continuous domains.",
+          "type": "number"
+        },
+        "domainMid": {
+          "description": "Inserts a single mid-point value into a two-element domain. The mid-point value must lie between the domain minimum and maximum values. This property can be useful for setting a midpoint for [diverging color scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise). The domainMid property is only intended for use with scales supporting continuous, piecewise domains.",
+          "type": "number"
+        },
+        "domainMin": {
+          "description": "Sets the minimum value in the scale domain, overriding the domain property. This property is only intended for use with scales having continuous domains.",
+          "type": "number"
+        },
+        "domainTransition": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "additionalProperties": {},
+              "type": "object"
+            }
+          ],
+          "description": "Controls whether domain updates are applied immediately or with a smooth transition.\n\nSet this to `false` to apply domain updates immediately. The default is `true`, except for domains defined by an `ExprRef`, which default to `false` unless overridden.\n\n__Default value:__ `true`, except `false` for ExprRef-driven domains."
+        },
+        "exponent": {
+          "description": "The exponent of the `pow` scale.",
+          "type": "number"
+        },
+        "interpolate": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScaleInterpolate"
+            },
+            {
+              "$ref": "#/definitions/ScaleInterpolateParams"
+            }
+          ],
+          "description": "The interpolation method for range values. By default, a general interpolator for numbers, dates, strings and colors (in HCL space) is used. For color ranges, this property allows interpolation in alternative color spaces. Legal values include `rgb`, `hsl`, `hsl-long`, `lab`, `hcl`, `hcl-long`, `cubehelix` and `cubehelix-long` ('-long' variants use longer paths in polar coordinate spaces). If object-valued, this property accepts an object with a string-valued _type_ property and an optional numeric _gamma_ property applicable to rgb and cubehelix interpolators. For more, see the [d3-interpolate documentation](https://github.com/d3/d3-interpolate).\n\n__Default value:__ `hcl`"
+        },
+        "name": {
+          "description": "The name of the scale. Names are optional but allow the scales to be referenced and found with the API.",
+          "type": "string"
+        },
+        "nice": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "interval": {
+                  "type": "string"
+                },
+                "step": {
+                  "type": "number"
+                }
+              },
+              "required": ["interval", "step"],
+              "type": "object"
+            }
+          ],
+          "description": "Extending the domain so that it starts and ends on nice round values. This method typically modifies the scale’s domain, and may only extend the bounds to the nearest round value. Nicing is useful if the domain is computed from data and may be irregular. For example, for a domain of _[0.201479…, 0.996679…]_, a nice domain might be _[0.2, 1.0]_.\n\nFor quantitative scales such as linear, `nice` can be either a boolean flag or a number. If `nice` is a number, it will represent a desired tick count. This allows greater control over the step size used to extend the bounds, guaranteeing that the returned ticks will exactly cover the domain.\n\n__Default value:__ `true` for unbinned _quantitative_ fields; `false` otherwise."
+        },
+        "numberingOffset": {
+          "description": "The numbering offset used when formatting tick labels on index and locus scales.\n\n__Default value:__ `0`",
+          "type": "number"
+        },
+        "padding": {
+          "description": "For _[continuous](https://vega.github.io/vega-lite/docs/scale.html#continuous)_ scales, expands the scale domain to accommodate the specified number of pixels on each of the scale range. The scale range must represent pixels for this parameter to function as intended. Padding adjustment is performed prior to all other adjustments, including the effects of the `zero`, `nice`, `domainMin`, and `domainMax` properties.\n\nFor _[band](https://vega.github.io/vega-lite/docs/scale.html#band)_ scales, shortcut for setting `paddingInner` and `paddingOuter` to the same value.\n\nFor _[point](https://vega.github.io/vega-lite/docs/scale.html#point)_ scales, alias for `paddingOuter`.\n\n__Default value:__ For _continuous_ scales, derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `continuousPadding`. For _band and point_ scales, see `paddingInner` and `paddingOuter`.  By default, Vega-Lite sets padding such that _width/height = number of unique values * step_.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "paddingInner": {
+          "description": "The inner padding (spacing) within each band step of band scales, as a fraction of the step size. This value must lie in the range [0,1].\n\nFor point scale, this property is invalid as point scales do not have internal band widths (only step sizes between bands).\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `bandPaddingInner`.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "paddingOuter": {
+          "description": "The outer padding (spacing) at the ends of the range of band and point scales, as a fraction of the step size. This value must lie in the range [0,1].\n\n__Default value:__ derived from the [scale config](https://vega.github.io/vega-lite/docs/scale.html#config)'s `bandPaddingOuter` for band scales and `pointPadding` for point scales. By default, Vega-Lite sets outer padding such that _width/height = number of unique values * step_.",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "$ref": "#/definitions/ExprRef"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "The range of the scale. One of:\n\n- A string indicating a [pre-defined named scale range](https://vega.github.io/vega-lite/docs/scale.html#range-config) (e.g., example, `\"symbol\"`, or `\"diverging\"`).\n\n- For [continuous scales](https://vega.github.io/vega-lite/docs/scale.html#continuous), two-element array indicating  minimum and maximum values, or an array with more than two entries for specifying a [piecewise scale](https://vega.github.io/vega-lite/docs/scale.html#piecewise).\n\n- For [discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values.\n\n__Notes:__\n\n1) For color scales you can also specify a color [`scheme`](https://vega.github.io/vega-lite/docs/scale.html#scheme) instead of `range`.\n\n2) Any directly specified `range` for `x` and `y` channels will be ignored. Range can be customized via the view's corresponding [size](https://vega.github.io/vega-lite/docs/size.html) (`width` and `height`)."
+        },
+        "reverse": {
+          "description": "If true, reverses the order of the scale range.\n\n__Default value:__ `false`.",
+          "type": "boolean"
+        },
+        "round": {
+          "description": "If `true`, rounds numeric output values to integers. This can be helpful for snapping to the pixel grid.\n\n__Default value:__ `false`.",
+          "type": "boolean"
+        },
+        "scheme": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/SchemeParams"
+            }
+          ],
+          "description": "A string indicating a color [scheme](https://vega.github.io/vega-lite/docs/scale.html#scheme) name (e.g., `\"category10\"` or `\"blues\"`) or a [scheme parameter object](https://vega.github.io/vega-lite/docs/scale.html#scheme-params).\n\nDiscrete color schemes may be used with [discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) or [discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales. Continuous color schemes are intended for use with color scales.\n\nFor the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference."
+        },
+        "type": {
+          "$ref": "#/definitions/ScaleType",
+          "description": "The type of scale.  Vega-Lite supports the following categories of scale types:\n\n1) [**Continuous Scales**](https://vega.github.io/vega-lite/docs/scale.html#continuous) -- mapping continuous domains to continuous output ranges ([`\"linear\"`](https://vega.github.io/vega-lite/docs/scale.html#linear), [`\"pow\"`](https://vega.github.io/vega-lite/docs/scale.html#pow), [`\"sqrt\"`](https://vega.github.io/vega-lite/docs/scale.html#sqrt), [`\"symlog\"`](https://vega.github.io/vega-lite/docs/scale.html#symlog), [`\"log\"`](https://vega.github.io/vega-lite/docs/scale.html#log), [`\"time\"`](https://vega.github.io/vega-lite/docs/scale.html#time), [`\"utc\"`](https://vega.github.io/vega-lite/docs/scale.html#utc).\n\n2) [**Discrete Scales**](https://vega.github.io/vega-lite/docs/scale.html#discrete) -- mapping discrete domains to discrete ([`\"ordinal\"`](https://vega.github.io/vega-lite/docs/scale.html#ordinal)) or continuous ([`\"band\"`](https://vega.github.io/vega-lite/docs/scale.html#band) and [`\"point\"`](https://vega.github.io/vega-lite/docs/scale.html#point)) output ranges.\n\n3) [**Discretizing Scales**](https://vega.github.io/vega-lite/docs/scale.html#discretizing) -- mapping continuous domains to discrete output ranges [`\"bin-ordinal\"`](https://vega.github.io/vega-lite/docs/scale.html#bin-ordinal), [`\"quantile\"`](https://vega.github.io/vega-lite/docs/scale.html#quantile), [`\"quantize\"`](https://vega.github.io/vega-lite/docs/scale.html#quantize) and [`\"threshold\"`](https://vega.github.io/vega-lite/docs/scale.html#threshold).\n\n__Default value:__ please see the [scale type table](https://vega.github.io/vega-lite/docs/scale.html#type)."
+        },
+        "zero": {
+          "description": "If `true`, ensures that a zero baseline value is included in the scale domain.\n\n__Default value:__ `true` for x and y channels if the quantitative field is not binned and no custom `domain` is provided; `false` otherwise.\n\n__Note:__ Log, time, and utc scales do not support `zero`.",
+          "type": "boolean"
+        },
+        "zoom": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/definitions/ZoomParams"
+            }
+          ],
+          "description": "If `true` and the scale is used on a positional channel, it can bee zoomed and translated interactively."
+        }
+      },
+      "type": "object"
+    },
+    "ScaleInterpolate": {
+      "enum": [
+        "rgb",
+        "lab",
+        "hcl",
+        "hsl",
+        "hsl-long",
+        "hcl-long",
+        "cubehelix",
+        "cubehelix-long"
+      ],
+      "type": "string"
+    },
+    "ScaleInterpolateParams": {
+      "additionalProperties": false,
+      "properties": {
+        "gamma": {
+          "type": "number"
+        },
+        "type": {
+          "enum": ["rgb", "cubehelix", "cubehelix-long"],
+          "type": "string"
+        }
+      },
+      "required": ["type"],
+      "type": "object"
+    },
+    "ScaleType": {
+      "enum": [
+        "null",
+        "linear",
+        "log",
+        "pow",
+        "sqrt",
+        "symlog",
+        "identity",
+        "sequential",
+        "quantize",
+        "threshold",
+        "ordinal",
+        "point",
+        "band",
+        "index",
+        "locus"
+      ],
+      "type": "string"
+    },
+    "SchemeParams": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "description": "The number of colors to use in the scheme. This can be useful for scale types such as `\"quantize\"`, which use the length of the scale range to determine the number of discrete bins for the scale domain.",
+          "type": "number"
+        },
+        "extent": {
+          "description": "The extent of the color range to use. For example `[0.2, 1]` will rescale the color scheme such that color values in the range _[0, 0.2)_ are excluded from the scheme.",
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "name": {
+          "description": "A color scheme name for ordinal scales (e.g., `\"category10\"` or `\"blues\"`).\n\nFor the full list of supported schemes, please refer to the [Vega Scheme](https://vega.github.io/vega/docs/schemes/#reference) reference.",
+          "type": "string"
+        }
+      },
+      "required": ["name"],
+      "type": "object"
+    },
+    "SearchViewDatumsToolInput": {
+      "additionalProperties": false,
+      "description": "Search datum objects in one specific searchable view.",
+      "examples": [
+        {
+          "field": "",
+          "mode": "exact",
+          "query": "TP53",
+          "selector": {
+            "scope": [],
+            "view": "gene-track"
+          }
+        }
+      ],
+      "properties": {
+        "field": {
+          "description": "Search field name. Use an empty string to search all configured fields.",
+          "type": "string"
+        },
+        "mode": {
+          "description": "Search mode. `exact` matches the whole field value. `prefix` matches the beginning of the field value.",
+          "enum": ["exact", "prefix"],
+          "type": "string"
+        },
+        "query": {
+          "description": "Search term to match against the view's configured search fields.",
+          "type": "string"
+        },
+        "selector": {
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the searchable view to inspect."
+        }
+      },
+      "required": ["selector", "query", "field", "mode"],
+      "type": "object"
+    },
+    "SelectionAggregationSpecifier": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "additionalProperties": false,
+          "description": "Aggregation operation to apply over the selected interval.",
+          "properties": {
+            "op": {
+              "$ref": "#/definitions/AggregationOp"
+            }
+          },
+          "required": ["op"],
+          "type": "object"
+        },
+        "field": {
+          "description": "Field to aggregate over the selected interval.",
+          "type": "string"
+        },
+        "interval": {
+          "additionalProperties": false,
+          "description": "Selection-backed interval reference.",
+          "properties": {
+            "selector": {
+              "$ref": "#/definitions/ParamSelector"
+            },
+            "type": {
+              "const": "selection",
+              "type": "string"
+            }
+          },
+          "required": ["type", "selector"],
+          "type": "object"
+        },
+        "view": {
+          "$ref": "#/definitions/ViewSelector",
+          "description": "View that provides the aggregated field."
+        }
+      },
+      "required": ["view", "field", "interval", "aggregation"],
+      "type": "object"
+    },
+    "SelectionDomainRef": {
+      "additionalProperties": false,
+      "properties": {
+        "encoding": {
+          "description": "Selection interval channel to use.\n\nIf omitted, GenomeSpy infers the channel from the scale channel when possible (e.g., `x` -> `x`, `x2` -> `x`, `y` -> `y`, `y2` -> `y`).",
+          "enum": ["x", "y"],
+          "type": "string"
+        },
+        "initial": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScalarDomain"
+            },
+            {
+              "$ref": "#/definitions/ComplexDomain"
+            }
+          ],
+          "description": "Initial configured domain for the linked scale when the linked interval selection is empty.\n\nOnly supported when the linked scale is zoomable.\n\nClearing the linked interval selection resets the domain to the normal default/data-derived domain instead of restoring `initial`."
+        },
+        "param": {
+          "description": "Name of an interval selection parameter that provides the domain.",
+          "type": "string"
+        }
+      },
+      "required": ["param"],
+      "type": "object"
+    },
+    "SelectionExpansionLeafPredicate": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "op": {
+              "const": "eq",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/definitions/SelectionLeafValue"
+            }
+          },
+          "required": ["field", "op", "value"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "op": {
+              "const": "eq",
+              "type": "string"
+            },
+            "valueFromField": {
+              "type": "string"
+            }
+          },
+          "required": ["field", "op", "valueFromField"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "op": {
+              "const": "in",
+              "type": "string"
+            },
+            "values": {
+              "items": {
+                "$ref": "#/definitions/SelectionLeafValue"
+              },
+              "type": "array"
+            }
+          },
+          "required": ["field", "op", "values"],
+          "type": "object"
+        }
+      ]
+    },
+    "SelectionExpansionPredicate": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SelectionExpansionLeafPredicate"
+        },
+        {
+          "$ref": "#/definitions/LogicalAnd"
+        },
+        {
+          "$ref": "#/definitions/LogicalOr"
+        },
+        {
+          "$ref": "#/definitions/LogicalNot"
+        }
+      ]
+    },
+    "SelectionExpansionRule": {
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "sameFieldValue",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "field"],
+      "type": "object"
+    },
+    "SelectionIntervalSource": {
+      "additionalProperties": false,
+      "description": "Interval that will be resolved from a selection parameter.",
+      "properties": {
+        "selector": {
+          "$ref": "#/definitions/ParamSelector"
+        },
+        "type": {
+          "const": "selection",
+          "type": "string"
+        }
+      },
+      "required": ["type", "selector"],
+      "type": "object"
+    },
+    "SelectionLeafValue": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Scalar"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "SetMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "attributeDefs": {
+          "additionalProperties": {
+            "$ref": "#/definitions/SampleAttributeDef"
+          },
+          "description": "Optional attribute definitions for the incoming metadata columns.\n\nUse this to preserve attribute types, titles, scales, or other metadata settings instead of relying on inference.",
+          "propertyNames": {
+            "description": "An identifier or name for a sample attribute.\n\nAs the identifiers may represent paths in a hierarchy, they are strings where path segments are separated by a forward slash ('/'). Separators in path segments are always escaped to avoid ambiguity."
+          },
+          "type": "object"
+        },
+        "columnarMetadata": {
+          "$ref": "#/definitions/ColumnarMetadata",
+          "description": "Metadata encoded in columnar form, aligned to the sample order."
+        },
+        "replace": {
+          "description": "Whether to replace the current metadata set.\n\nIf `true`, only the provided columns remain. If omitted or `false`, the provided columns are merged into the existing metadata.",
+          "type": "boolean"
+        }
+      },
+      "required": ["columnarMetadata"],
+      "type": "object"
+    },
+    "SetViewVisibilityToolInput": {
+      "additionalProperties": false,
+      "description": "Set the visibility of a view. This is a user-facing change that will be reflected in the UI.",
+      "examples": [
+        {
+          "selector": {
+            "scope": [],
+            "view": "reference-sequence"
+          },
+          "visibility": false
+        }
+      ],
+      "properties": {
+        "selector": {
+          "$ref": "#/definitions/ViewSelector",
+          "description": "Stable selector for the view whose visibility should change."
+        },
+        "visibility": {
+          "description": "Whether the view should be visible.",
+          "type": "boolean"
+        }
+      },
+      "required": ["selector", "visibility"],
+      "type": "object"
+    },
+    "ShowSampleAttributeCategoryCountsToolInput": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/PlotAttributeIdentifier",
+          "description": "Categorical attribute to count."
+        },
+        "kind": {
+          "const": "categoryCounts",
+          "description": "Count categories for a categorical attribute. Use this when the user asks for a bar plot, counts, or category distribution.",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "attribute"],
+      "type": "object"
+    },
+    "ShowSampleAttributePlotToolInput": {
+      "additionalProperties": false,
+      "description": "Show an exploratory sample-attribute plot in the chat transcript. Choose the plot by analytic intent: `categoryCounts` for bar plots of categorical attributes, `valueDistributionByCurrentGroups` for boxplots or quantitative values by the current sample groups, and `quantitativeRelationship` for scatterplots of two different quantitative attributes. All plot kinds use the current sample groups automatically when present. If grouping is needed, submit a grouping action before calling this tool.",
+      "examples": [
+        {
+          "plot": {
+            "attribute": {
+              "specifier": "age",
+              "type": "SAMPLE_ATTRIBUTE"
+            },
+            "kind": "valueDistributionByCurrentGroups"
+          }
+        },
+        {
+          "plot": {
+            "attribute": {
+              "label": "TP53 region beta",
+              "specifier": {
+                "aggregation": {
+                  "op": "max"
+                },
+                "field": "beta",
+                "interval": {
+                  "selector": {
+                    "param": "brush",
+                    "scope": []
+                  },
+                  "type": "selection"
+                },
+                "view": {
+                  "scope": [],
+                  "view": "track"
+                }
+              },
+              "type": "VALUE_AT_LOCUS"
+            },
+            "kind": "valueDistributionByCurrentGroups"
+          }
+        },
+        {
+          "plot": {
+            "attributes": [
+              {
+                "specifier": "age",
+                "type": "SAMPLE_ATTRIBUTE"
+              },
+              {
+                "specifier": "purity",
+                "type": "SAMPLE_ATTRIBUTE"
+              }
+            ],
+            "kind": "quantitativeRelationship"
+          }
+        }
+      ],
+      "properties": {
+        "plot": {
+          "$ref": "#/definitions/SampleAttributePlotSpec",
+          "description": "Plot request. Use `valueDistributionByCurrentGroups` when the user asks for a boxplot; put only the value attribute in `attribute`. You may use the AttributeIdentifier returned by `buildSelectionAggregationAttribute` directly. The grouping comes from the current SampleHierarchy. Use `quantitativeRelationship` only for scatterplots comparing two different quantitative variables; the first listed attribute is rendered on x and the second on y."
+        }
+      },
+      "required": ["plot"],
+      "type": "object"
+    },
+    "ShowSampleAttributeRelationshipToolInput": {
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "description": "Two different quantitative attributes to compare. The first attribute is rendered on the scatterplot x axis and the second on the y axis.",
+          "items": {
+            "$ref": "#/definitions/PlotAttributeIdentifier"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "kind": {
+          "const": "quantitativeRelationship",
+          "description": "Compare two quantitative attributes. Use this when the user asks for a scatterplot, correlation, or relationship between two different quantitative variables. Do not use this for boxplots, distributions, or values by group.",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "attributes"],
+      "type": "object"
+    },
+    "ShowSampleAttributeValueDistributionToolInput": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/PlotAttributeIdentifier",
+          "description": "Quantitative value attribute to summarize within each current group."
+        },
+        "kind": {
+          "const": "valueDistributionByCurrentGroups",
+          "description": "Show a quantitative value distribution using the current sample groups. Use this when the user asks for a boxplot or for a quantitative value by group.",
+          "type": "string"
+        }
+      },
+      "required": ["kind", "attribute"],
+      "type": "object"
+    },
+    "SortBy": {
+      "additionalProperties": false,
+      "description": "Payload for sorting samples in descending order by an attribute.",
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        }
+      },
+      "required": ["attribute"],
+      "type": "object"
+    },
+    "SubmitIntentActionsToolInput": {
+      "additionalProperties": false,
+      "description": "Execute one or more provenance-changing actions. Actions are additive. Before submitting new actions, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the action list, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results. If not, submit actions one by one and consult the updated context after each action, instead of submitting them all at once. The `actions` array must be present and non-empty.",
+      "examples": [
+        {
+          "actions": [
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "payload": {
+                "attribute": {
+                  "specifier": "age",
+                  "type": "SAMPLE_ATTRIBUTE"
+                }
+              }
+            }
+          ],
+          "note": "Group the cohort by quartiles."
+        }
+      ],
+      "properties": {
+        "actions": {
+          "description": "Ordered actions to execute. Cannot be empty or missing.",
+          "items": {
+            "$ref": "#/definitions/AgentIntentBatchStep"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "note": {
+          "description": "Optional short note about the intended change.",
+          "type": "string"
+        }
+      },
+      "required": ["actions"],
+      "type": "object"
+    },
+    "Threshold": {
+      "additionalProperties": false,
+      "description": "Numeric threshold used when partitioning or filtering quantitative values.",
+      "properties": {
+        "operand": {
+          "description": "Numeric threshold value.",
+          "type": "number"
+        },
+        "operator": {
+          "$ref": "#/definitions/ThresholdOperator",
+          "description": "Upper-bound comparison used for this threshold.\n\n`lt` creates an open upper bound and `lte` creates a closed upper bound."
+        }
+      },
+      "required": ["operator", "operand"],
+      "type": "object"
+    },
+    "ThresholdOperator": {
+      "enum": ["lt", "lte"],
+      "type": "string"
+    },
+    "UrlGenomeDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "description": "A URL to a `chrom.sizes` file, which is a tab-separated file with two columns: the sequence name and its size.\n\nYou may want to strip alternative loci, haplotypes, and other non-canonical contigs from the file.\n\nExample: `\"https://genomespy.app/data/genomes/hg19/chrom.sizes\"`",
+          "type": "string"
+        }
+      },
+      "required": ["url"],
+      "type": "object"
+    },
+    "ViewAttributeSpecifier": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/LocusSpecifier"
+        },
+        {
+          "$ref": "#/definitions/IntervalSpecifier"
+        }
+      ],
+      "description": "Supported view-backed attribute specifiers used by the sample collection actions."
+    },
+    "ViewRef": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/definitions/ViewSelector"
+        }
+      ],
+      "description": "View reference used in SampleView actions. Legacy values may be a view name string, but selectors are the unambiguous, bookmark-friendly form."
+    },
+    "ViewSelector": {
+      "additionalProperties": false,
+      "description": "Structured view address used by selectors.",
+      "properties": {
+        "scope": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "view": {
+          "type": "string"
+        }
+      },
+      "required": ["scope", "view"],
+      "type": "object"
+    },
+    "ZoomParams": {
+      "additionalProperties": false,
+      "properties": {
+        "extent": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ScalarDomain"
+            },
+            {
+              "$ref": "#/definitions/ComplexDomain"
+            }
+          ],
+          "description": "The boundaries that limit the zoom and pan interactions."
+        }
+      },
+      "type": "object"
+    },
+    "ZoomToScaleDomain": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/NumericDomain"
+        },
+        {
+          "items": {
+            "$ref": "#/definitions/ZoomToScaleLocus"
+          },
+          "type": "array"
+        }
+      ]
+    },
+    "ZoomToScaleLocus": {
+      "additionalProperties": false,
+      "properties": {
+        "chrom": {
+          "description": "The name of the chromosome. For example: `\"chr1\"`, `\"CHR1\"`, or `\"1\"`.",
+          "type": "string"
+        },
+        "pos": {
+          "description": "Zero-based position inside the chromosome or contig.",
+          "type": "number"
+        }
+      },
+      "required": ["chrom", "pos"],
+      "type": "object"
+    },
+    "ZoomToScaleToolInput": {
+      "additionalProperties": false,
+      "description": "Animate one named zoomable scale to an exact domain. Scale names come from `scaleDomains` in the volatile context and from `domainRef` fields in the view tree. Scales are not addressed with view selectors.",
+      "examples": [
+        {
+          "domain": [
+            {
+              "chrom": "chr1",
+              "pos": 1000
+            },
+            {
+              "chrom": "chr1",
+              "pos": 3000
+            }
+          ],
+          "scaleName": "x"
+        }
+      ],
+      "properties": {
+        "domain": {
+          "$ref": "#/definitions/ZoomToScaleDomain",
+          "description": "Target domain for the scale. Use the same domain value shape that appears for this scale in `scaleDomains`."
+        },
+        "scaleName": {
+          "description": "Name of a zoomable scale from the current volatile context.",
+          "type": "string"
+        }
+      },
+      "required": ["scaleName", "domain"],
+      "type": "object"
+    }
+  }
+}

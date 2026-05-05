@@ -1,4 +1,5 @@
 import type { RootSpec } from "@genome-spy/core/spec/root.js";
+import type { AttributeIdentifier } from "../sampleView/types.d.ts";
 import type { AttributeInfo } from "../sampleView/types.js";
 import type { SampleHierarchy } from "../sampleView/state/sampleState.js";
 import type CompositeAttributeInfoSource from "../sampleView/compositeAttributeInfoSource.js";
@@ -44,3 +45,22 @@ export interface HierarchyScatterplotRequest {
     attributeInfoSource: CompositeAttributeInfoSource;
     colorScaleRange?: string[];
 }
+
+export type SampleAttributePlotRequest =
+    | {
+          plotType: "bar";
+          attribute: AttributeIdentifier;
+          attributeLabel?: string;
+      }
+    | {
+          plotType: "boxplot";
+          attribute: AttributeIdentifier;
+          attributeLabel?: string;
+      }
+    | {
+          plotType: "scatterplot";
+          xAttribute: AttributeIdentifier;
+          yAttribute: AttributeIdentifier;
+          xAttributeLabel?: string;
+          yAttributeLabel?: string;
+      };

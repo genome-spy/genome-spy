@@ -14,6 +14,7 @@ node_modules/
 .venv/
 .env.local
 
+**/*.local
 **/static/private/
 **/private/
 **/static/examples/drafts/

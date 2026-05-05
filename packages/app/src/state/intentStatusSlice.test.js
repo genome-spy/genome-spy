@@ -14,6 +14,7 @@ describe("intentStatusSlice", () => {
 
         expect(next).toEqual({
             status: "running",
+            submissionKind: "user",
             startIndex: 3,
             lastSuccessfulIndex: 3,
             totalActions: 5,
@@ -41,6 +42,7 @@ describe("intentStatusSlice", () => {
 
         expect(errored).toEqual({
             status: "error",
+            submissionKind: "user",
             startIndex: 2,
             lastSuccessfulIndex: 2,
             totalActions: 2,
@@ -70,6 +72,7 @@ describe("intentStatusSlice", () => {
 
         expect(progress).toEqual({
             status: "running",
+            submissionKind: "user",
             startIndex: 1,
             lastSuccessfulIndex: 1,
             totalActions: 3,

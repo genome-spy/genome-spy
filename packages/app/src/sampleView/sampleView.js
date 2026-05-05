@@ -85,6 +85,7 @@ import {
 } from "../state/selectionExpansionContext.js";
 import { createSelectionExpansionMenuItem } from "../state/selectionExpansionMenu.js";
 
+/** @type {import("./types.js").AttributeIdentifierType} */
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
 /**
  * Implements faceting of multiple samples. The samples are displayed
@@ -199,7 +200,7 @@ export default class SampleView extends ContainerView {
         );
 
         const getAttributeInfo = (
-            /** @type {import("./types.js").AttributeInfo} */ attribute
+            /** @type {import("./types.js").AttributeIdentifier} */ attribute
         ) => this.compositeAttributeInfoSource.getAttributeInfo(attribute);
 
         // Register an action-info source so provenance UI can show readable titles
@@ -1281,11 +1282,14 @@ export default class SampleView extends ContainerView {
             selectionExpansionContext = selectionExpansionResolution.context;
         }
 
+        /** @type {import("./types.js").AttributeIdentifierType} */
+        const attributeType = VALUE_AT_LOCUS;
+
         const attributeMenuBase = {
             sample,
             sampleHierarchy: this.sampleHierarchy,
             attributeInfoSource: this.compositeAttributeInfoSource,
-            attributeType: VALUE_AT_LOCUS,
+            attributeType,
             sampleView: this,
         };
         let previousContextTitle = "";

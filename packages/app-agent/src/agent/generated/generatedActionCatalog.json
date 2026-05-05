@@ -1,0 +1,641 @@
+[
+  {
+    "actionType": "sampleView/addMetadata",
+    "description": "Add sample metadata columns from a columnar payload.",
+    "usage": "Use this to attach new metadata columns to the current samples or replace the current metadata set with uploaded values.",
+    "payloadType": "SetMetadata",
+    "payloadFields": [
+      {
+        "name": "columnarMetadata",
+        "type": "ColumnarMetadata",
+        "description": "Metadata encoded in columnar form, aligned to the sample order.",
+        "required": true
+      },
+      {
+        "name": "attributeDefs",
+        "type": "Record<AttributeName, SampleAttributeDef>",
+        "description": "Optional attribute definitions for the incoming metadata columns. Use this to preserve attribute types, titles, scales, or other metadata settings instead of relying on inference.",
+        "required": false
+      },
+      {
+        "name": "replace",
+        "type": "boolean",
+        "description": "Whether to replace the current metadata set. If `true`, only the provided columns remain. If omitted or `false`, the provided columns are merged into the existing metadata.",
+        "required": false
+      }
+    ],
+    "examplePayload": {
+      "columnarMetadata": {
+        "sample": ["s1", "s2"],
+        "diagnosis": ["AML", "ALL"]
+      }
+    },
+    "examples": [
+      {
+        "columnarMetadata": {
+          "sample": ["s1", "s2"],
+          "diagnosis": ["AML", "ALL"]
+        }
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/deriveMetadata",
+    "description": "Add a derived metadata column from a selected or aggregated attribute.",
+    "usage": "Use this when an existing attribute should be materialized as sample metadata under a new column name.",
+    "payloadType": "DeriveMetadata",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "description": "Name of the derived metadata column. This becomes the leaf attribute name written into metadata. Prefer a short user-facing name.",
+        "required": true
+      },
+      {
+        "name": "groupPath",
+        "type": "string",
+        "description": "Optional metadata group path for the derived column. When provided, the resulting attribute is written under `groupPath/name`.",
+        "required": false
+      },
+      {
+        "name": "scale",
+        "type": "SampleAttributeDef[\"scale\"] | null",
+        "description": "If omitted, derived metadata may inherit an authored source scale when the aggregation preserves the source value domain. Use `null` to force automatic scale inference without inheritance.",
+        "required": false
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "purity"
+      },
+      "name": "purity_copy"
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "purity"
+        },
+        "name": "purity_copy"
+      },
+      {
+        "attribute": {
+          "type": "VALUE_AT_LOCUS",
+          "specifier": {
+            "view": {
+              "scope": [],
+              "view": "track"
+            },
+            "field": "beta",
+            "interval": {
+              "type": "selection",
+              "selector": {
+                "scope": [],
+                "param": "brush"
+              }
+            },
+            "aggregation": {
+              "op": "max"
+            }
+          }
+        },
+        "name": "tp53_region_beta"
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/addMetadataFromSource",
+    "description": "Import metadata columns from a configured source.",
+    "usage": "Use this when one or more source-backed metadata columns should be added to the current sample collection.",
+    "payloadType": "AddMetadataFromSource",
+    "payloadFields": [
+      {
+        "name": "sourceId",
+        "type": "string",
+        "description": "Configured metadata source to read from. Omit this only when exactly one source is available.",
+        "required": false
+      },
+      {
+        "name": "columnIds",
+        "type": "string[]",
+        "description": "Column ids to import from the selected source.",
+        "required": true
+      },
+      {
+        "name": "groupPath",
+        "type": "string",
+        "description": "Optional metadata group path override for the imported columns.",
+        "required": false
+      },
+      {
+        "name": "replace",
+        "type": "boolean",
+        "description": "Whether to replace the current metadata set. If `true`, only the imported columns remain. If omitted or `false`, the imported columns are merged into the existing metadata.",
+        "required": false
+      }
+    ],
+    "examplePayload": {
+      "columnIds": ["diagnosis", "stage"]
+    },
+    "examples": [
+      {
+        "columnIds": ["diagnosis", "stage"]
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/sortBy",
+    "description": "Sort samples in descending order by a selected attribute.",
+    "usage": "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
+    "payloadType": "SortBy",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "age"
+      }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "age"
+        }
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/retainFirstOfEach",
+    "description": "Retain the first sample for each distinct value of a selected attribute.",
+    "usage": "Use this when the current sample order already encodes the desired representative sample within each category and within each current group.",
+    "payloadType": "RetainFirstOfEach",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "patient_id"
+      }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "patient_id"
+        }
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/retainFirstNCategories",
+    "description": "Retain samples whose value falls in the first n distinct categories in the current ordering.",
+    "usage": "Use this when samples are already ordered by a ranking attribute and all samples belonging to the first n encountered categories should be kept within each current group.",
+    "payloadType": "RetainFirstNCategories",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      },
+      {
+        "name": "n",
+        "type": "number",
+        "description": "Maximum number of distinct categories to retain. Categories are taken in first-seen order within each current group.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "patient_id"
+      },
+      "n": 5
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "patient_id"
+        },
+        "n": 5
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/filterByQuantitative",
+    "description": "Retain samples whose selected quantitative value satisfies a threshold comparison.",
+    "usage": "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
+    "payloadType": "FilterByQuantitative",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      },
+      {
+        "name": "operator",
+        "type": "ComparisonOperatorType",
+        "description": "Comparison applied as `attributeValue operator operand`.",
+        "required": true
+      },
+      {
+        "name": "operand",
+        "type": "number",
+        "description": "Numeric value on the right-hand side of the comparison.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "purity"
+      },
+      "operator": "gte",
+      "operand": 0.6
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "purity"
+        },
+        "operator": "gte",
+        "operand": 0.6
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/filterByNominal",
+    "description": "Retain or remove samples whose selected attribute matches any of the provided values.",
+    "usage": "Use this for exact-match filtering on categorical or ordinal attributes. Set `remove` to `true` to exclude matching samples instead of keeping them.",
+    "payloadType": "FilterByNominal",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      },
+      {
+        "name": "values",
+        "type": "any[]",
+        "description": "Attribute values matched by exact equality.",
+        "required": true
+      },
+      {
+        "name": "remove",
+        "type": "boolean",
+        "description": "Whether to remove matching samples instead of retaining them. If omitted or `false`, only matching samples are kept.",
+        "required": false
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "diagnosis"
+      },
+      "values": ["AML"]
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "diagnosis"
+        },
+        "values": ["AML"]
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/removeUndefined",
+    "description": "Remove samples whose selected attribute value is missing.",
+    "usage": "Use this before later analysis steps when samples with `undefined` or `null` values should be excluded. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
+    "payloadType": "RemoveUndefined",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "purity"
+      }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "purity"
+        }
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/groupCustomCategories",
+    "description": "Group samples into named groups using an explicit mapping of attribute values.",
+    "usage": "Use this when specific attribute values should be merged into custom named groups. Samples whose value is not listed in `groups` are not kept in the grouped result.",
+    "payloadType": "GroupCustom",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      },
+      {
+        "name": "groups",
+        "type": "CustomGroups",
+        "description": "Mapping from output group name to attribute values assigned to that group. Samples whose value is not listed in any group are omitted from the grouped result.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "diagnosis"
+      },
+      "groups": {
+        "Myeloid": ["AML", "MDS"],
+        "Lymphoid": ["ALL", "CLL"]
+      }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "diagnosis"
+        },
+        "groups": {
+          "Myeloid": ["AML", "MDS"],
+          "Lymphoid": ["ALL", "CLL"]
+        }
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/groupByNominal",
+    "description": "Group samples by the distinct values of a selected categorical attribute.",
+    "usage": "Use this to stratify the current sample collection into one group per visible category. Group order follows the resolved attribute domain, and categories with no samples are omitted.",
+    "payloadType": "GroupByNominal",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "diagnosis"
+      }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "diagnosis"
+        }
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/groupToQuartiles",
+    "description": "Group samples into quartile-based bins of a selected quantitative attribute.",
+    "usage": "Use this for a quick quantitative stratification. Quartiles are computed from the current samples in each group using the R-7 method, and tied values may collapse adjacent quartiles. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
+    "payloadType": "GroupToQuartiles",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "purity"
+      }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "purity"
+        }
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/groupByThresholds",
+    "description": "Group samples into threshold-defined numeric intervals of a selected quantitative attribute.",
+    "usage": "Use this when quantitative bins should follow explicit thresholds instead of quartiles. The resulting groups are ordered from the highest interval to the lowest. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
+    "payloadType": "GroupByThresholds",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
+        "required": true
+      },
+      {
+        "name": "thresholds",
+        "type": "[Threshold, ...Threshold[]]",
+        "description": "Thresholds used to stratify the samples. Supply these in ascending operand order. Adjacent thresholds define the output intervals.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "purity"
+      },
+      "thresholds": [
+        {
+          "operator": "lte",
+          "operand": 0.2
+        },
+        {
+          "operator": "lt",
+          "operand": 0.8
+        }
+      ]
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "purity"
+        },
+        "thresholds": [
+          {
+            "operator": "lte",
+            "operand": 0.2
+          },
+          {
+            "operator": "lt",
+            "operand": 0.8
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/removeGroup",
+    "description": "Remove a previously created sample group by path.",
+    "usage": "Use this to delete one visible group from the current grouping hierarchy. The path is relative to the implicit root group.",
+    "payloadType": "RemoveGroup",
+    "payloadFields": [
+      {
+        "name": "path",
+        "type": "string[]",
+        "description": "Group names from outermost to innermost, excluding the implicit ROOT.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "path": ["Group 1"]
+    },
+    "examples": [
+      {
+        "path": ["Group 1"]
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/retainMatched",
+    "description": "Retain samples whose selected value appears in every current non-empty group.",
+    "usage": "Use this for intersection-style cohort refinement after samples have already been split into groups. A value is kept only if it appears in every current non-empty group.",
+    "payloadType": "RetainMatched",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Attribute whose values must be present in every current non-empty group.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "patient_id"
+      }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "patient_id"
+        }
+      }
+    ]
+  },
+  {
+    "actionType": "paramProvenance/paramChange",
+    "description": "Create or update a reactive selection or parameter value, including point selections, interval selections, and genomic-region selections.",
+    "usage": "Use this for point selections, interval selections, genomic-region selections, and other replayable parameter changes.",
+    "payloadType": "ParamProvenanceEntry",
+    "payloadFields": [
+      {
+        "name": "selector",
+        "type": "ParamSelector",
+        "description": "Structured selector for the parameter.",
+        "required": true
+      },
+      {
+        "name": "value",
+        "type": "ParamValue",
+        "description": "Serialized parameter value.",
+        "required": true
+      },
+      {
+        "name": "origin",
+        "type": "ParamOrigin",
+        "description": "Optional datum origin for replayable values.",
+        "required": false
+      }
+    ],
+    "examplePayload": {
+      "selector": {
+        "scope": [],
+        "param": "brush"
+      },
+      "value": {
+        "type": "interval",
+        "intervals": {
+          "x": [
+            {
+              "chrom": "chr17",
+              "pos": 7685012
+            },
+            {
+              "chrom": "chr17",
+              "pos": 7690727
+            }
+          ]
+        }
+      }
+    },
+    "examples": [
+      {
+        "selector": {
+          "scope": [],
+          "param": "brush"
+        },
+        "value": {
+          "type": "interval",
+          "intervals": {
+            "x": [
+              {
+                "chrom": "chr17",
+                "pos": 7685012
+              },
+              {
+                "chrom": "chr17",
+                "pos": 7690727
+              }
+            ]
+          }
+        }
+      },
+      {
+        "selector": {
+          "scope": [],
+          "param": "semanticZoomSlider"
+        },
+        "value": {
+          "type": "value",
+          "value": 0
+        }
+      }
+    ]
+  }
+]

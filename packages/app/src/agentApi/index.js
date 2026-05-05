@@ -1,0 +1,283 @@
+import { viewSettingsSlice } from "../viewSettingsSlice.js";
+import { makeViewSelectorKey } from "../viewSettingsUtils.js";
+import { resolveViewSelector as resolveCoreViewSelector } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    buildHierarchyBarplot,
+    buildHierarchyBoxplot,
+    buildHierarchyScatterplot,
+} from "../charts/hierarchySampleAttributePlots.js";
+import { getGroupColorRange } from "../charts/sampleAttributePlotUtils.js";
+export { embedRenderablePlot } from "../charts/chartDialogUtils.js";
+
+// `agentApi` exposes App internals to the agent and plugin surfaces only.
+// Do not add App code here that the rest of App should depend on.
+
+/**
+ * @typedef {import("./index.js").AgentApi} AgentApi
+ * @typedef {import("../charts/sampleAttributePlotTypes.d.ts").SampleAttributePlotRequest} SampleAttributePlotRequest
+ */
+
+/**
+ * Creates the app-bound handle surface used by the extracted agent package.
+ *
+ * The returned object keeps `App` out of the agent call sites while still
+ * exposing the concrete host capabilities the agent currently needs.
+ *
+ * @param {import("../app.js").default} app
+ * @returns {AgentApi}
+ */
+export function createAgentApi(app) {
+    return {
+        getSampleHierarchy() {
+            return app.getSampleView()?.sampleHierarchy;
+        },
+
+        /**
+         * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+         * @returns {import("../sampleView/types.d.ts").AttributeInfo | undefined}
+         */
+        getAttributeInfo(attribute) {
+            const sampleView = app.getSampleView();
+            if (!sampleView) {
+                return;
+            }
+
+            return sampleView.compositeAttributeInfoSource.getAttributeInfo(
+                attribute
+            );
+        },
+
+        /**
+         * @param {string} paramName
+         */
+        getSampleViewScopedParamConfig(paramName) {
+            const sampleView = app.getSampleView();
+            if (!sampleView?.paramRuntime?.paramConfigs) {
+                return;
+            }
+
+            return sampleView.paramRuntime.paramConfigs.get(paramName);
+        },
+
+        getSearchableViews() {
+            return app.genomeSpy.getSearchableViews();
+        },
+
+        getViewRoot() {
+            return app.genomeSpy.viewRoot;
+        },
+
+        getFocusedView() {
+            return app.getSampleView();
+        },
+
+        getRootSpec() {
+            return app.rootSpec;
+        },
+
+        getNamedScaleResolutions() {
+            return app.genomeSpy.getNamedScaleResolutions();
+        },
+
+        /**
+         * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+         * @returns {import("@genome-spy/core/view/view.js").default | undefined}
+         */
+        resolveViewSelector(selector) {
+            const viewRoot = app.genomeSpy.viewRoot;
+            if (!viewRoot) {
+                return;
+            }
+
+            return resolveCoreViewSelector(viewRoot, selector);
+        },
+
+        getActionHistory() {
+            return app.provenance.getActionHistory();
+        },
+
+        /**
+         * @param {import("@reduxjs/toolkit").Action} action
+         * @returns {import("../state/provenance.js").ActionInfo | undefined}
+         */
+        getActionInfo(action) {
+            return app.provenance.getActionInfo(action);
+        },
+
+        /**
+         * @param {import("@reduxjs/toolkit").Action[]} actions
+         * @param {{ submissionKind?: "agent" | "bookmark" | "user" }} [options]
+         * @returns {Promise<void>}
+         */
+        submitIntentActions(actions, options) {
+            return app.intentPipeline.submit(actions, options);
+        },
+
+        getPresentProvenanceState() {
+            return app.provenance.getPresentState();
+        },
+
+        /**
+         * @param {SampleAttributePlotRequest} request
+         */
+        async buildSampleAttributePlot(request) {
+            const sampleView = app.getSampleView();
+            if (!sampleView) {
+                throw new Error("No sample view is available.");
+            }
+
+            const attributeInfoSource = sampleView.compositeAttributeInfoSource;
+            const plotType = request.plotType;
+
+            if (plotType === "bar") {
+                const attributeInfo = await resolvePlotAttributeInfo(
+                    attributeInfoSource,
+                    request.attribute,
+                    request.attributeLabel
+                );
+                if (!attributeInfo) {
+                    throw new Error(
+                        "Could not resolve the requested sample attribute."
+                    );
+                }
+
+                if (
+                    attributeInfo.type !== "nominal" &&
+                    attributeInfo.type !== "ordinal"
+                ) {
+                    throw new Error(
+                        "Bar plots require a categorical sample attribute."
+                    );
+                }
+
+                return buildHierarchyBarplot({
+                    attributeInfo,
+                    sampleHierarchy: sampleView.sampleHierarchy,
+                    attributeInfoSource,
+                });
+            } else if (plotType === "boxplot") {
+                const attributeInfo = await resolvePlotAttributeInfo(
+                    attributeInfoSource,
+                    request.attribute,
+                    request.attributeLabel
+                );
+                if (!attributeInfo) {
+                    throw new Error(
+                        "Could not resolve the requested sample attribute."
+                    );
+                }
+
+                if (attributeInfo.type !== "quantitative") {
+                    throw new Error(
+                        "Box plots require a quantitative sample attribute."
+                    );
+                }
+
+                return buildHierarchyBoxplot({
+                    attributeInfo,
+                    sampleHierarchy: sampleView.sampleHierarchy,
+                    attributeInfoSource,
+                });
+            } else if (plotType === "scatterplot") {
+                const xAttributeInfo = await resolvePlotAttributeInfo(
+                    attributeInfoSource,
+                    request.xAttribute,
+                    request.xAttributeLabel
+                );
+                const yAttributeInfo = await resolvePlotAttributeInfo(
+                    attributeInfoSource,
+                    request.yAttribute,
+                    request.yAttributeLabel
+                );
+                if (!xAttributeInfo || !yAttributeInfo) {
+                    throw new Error(
+                        "Could not resolve one of the requested sample attributes."
+                    );
+                }
+
+                if (
+                    xAttributeInfo.type !== "quantitative" ||
+                    yAttributeInfo.type !== "quantitative"
+                ) {
+                    throw new Error(
+                        "Scatter plots require two quantitative sample attributes."
+                    );
+                }
+
+                return buildHierarchyScatterplot({
+                    xAttributeInfo,
+                    yAttributeInfo,
+                    sampleHierarchy: sampleView.sampleHierarchy,
+                    attributeInfoSource,
+                    colorScaleRange: getGroupColorRange(sampleView),
+                });
+            }
+
+            throw new Error(
+                "Unsupported sample attribute plot type: " + plotType
+            );
+        },
+
+        /**
+         * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} selector
+         * @param {boolean} visibility
+         */
+        setViewVisibility(selector, visibility) {
+            app.store.dispatch(
+                viewSettingsSlice.actions.setVisibility({
+                    key: makeViewSelectorKey(selector),
+                    visibility,
+                })
+            );
+        },
+
+        /**
+         * @param {string} provenanceId
+         * @returns {boolean}
+         */
+        jumpToProvenanceState(provenanceId) {
+            const currentIndex = app.provenance.getCurrentIndex();
+            app.provenance.activateState(provenanceId);
+            return app.provenance.getCurrentIndex() !== currentIndex;
+        },
+
+        /**
+         * @returns {boolean}
+         */
+        jumpToInitialProvenanceState() {
+            const currentIndex = app.provenance.getCurrentIndex();
+            app.provenance.activateInitialState();
+            return app.provenance.getCurrentIndex() !== currentIndex;
+        },
+    };
+}
+
+/**
+ * @param {import("../sampleView/compositeAttributeInfoSource.js").default} attributeInfoSource
+ * @param {import("../sampleView/types.d.ts").AttributeIdentifier} attribute
+ * @param {string} [label]
+ * @returns {Promise<import("../sampleView/types.d.ts").AttributeInfo | undefined>}
+ */
+async function resolvePlotAttributeInfo(attributeInfoSource, attribute, label) {
+    const attributeInfo = attributeInfoSource.getAttributeInfo(attribute);
+    if (!attributeInfo) {
+        return undefined;
+    }
+
+    if (attributeInfo.ensureAvailability) {
+        await attributeInfo.ensureAvailability({});
+    }
+
+    if (!label) {
+        return attributeInfo;
+    }
+
+    // Plot labels are aliases for the transient chart artifact only. Preserve
+    // the original attribute object so values and readiness still resolve via
+    // the canonical identifier.
+    return {
+        ...attributeInfo,
+        title: label,
+        emphasizedName: label,
+    };
+}

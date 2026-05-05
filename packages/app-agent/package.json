@@ -1,0 +1,60 @@
+{
+  "name": "@genome-spy/app-agent",
+  "private": true,
+  "description": "GenomeSpy browser-side agent plugin.",
+  "author": {
+    "name": "Kari Lavikka",
+    "email": "kari.lavikka@helsinki.fi"
+  },
+  "contributors": [],
+  "license": "MIT",
+  "homepage": "https://genomespy.app/",
+  "version": "0.75.0",
+  "main": "dist/index.js",
+  "module": "dist/index.es.js",
+  "type": "module",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "development": "./src/index.js",
+      "import": "./dist/index.es.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "github:genome-spy/genome-spy",
+    "directory": "packages/app-agent"
+  },
+  "scripts": {
+    "generate:agent": "node scripts/generateAgentActionCatalog.mjs && node scripts/generateAgentActionTypes.mjs && node scripts/generateAgentActionSchema.mjs && node scripts/generateAgentActionSummaries.mjs && node scripts/generateAgentToolCatalog.mjs && node scripts/generateAgentToolSchema.mjs",
+    "check:agent": "node scripts/checkGeneratedAgentActionCatalog.mjs && node scripts/checkGeneratedAgentActionTypes.mjs && node scripts/checkGeneratedAgentActionSchema.mjs && node scripts/checkGeneratedAgentActionSummaries.mjs && node scripts/checkGeneratedAgentToolCatalog.mjs && node scripts/checkGeneratedAgentToolSchema.mjs",
+    "prebuild": "npm run generate:agent",
+    "build": "rm -rf dist && mkdir -p dist && vite build",
+    "test:tsc": "npm run test:tsc:src && npm run test:tsc:tests",
+    "test:tsc:src": "tsc -p tsconfig.json --noEmit",
+    "test:tsc:tests": "tsc -p tsconfig.tests.json --noEmit",
+    "test": "vitest run",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.4.2",
+    "@fortawesome/fontawesome-svg-core": "^6.4.2",
+    "@fortawesome/free-solid-svg-icons": "^6.4.2",
+    "@genome-spy/core": "^0.75.0",
+    "ajv": "^8.18.0",
+    "lit": "^3.3.0"
+  },
+  "devDependencies": {
+    "@reduxjs/toolkit": "^2.11.0"
+  },
+  "peerDependencies": {
+    "@genome-spy/app": "^0.75.0"
+  }
+}

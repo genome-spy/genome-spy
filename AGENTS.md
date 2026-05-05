@@ -53,6 +53,10 @@ aware interactions.
 - Iconography with FontAwesome
 - No external CSS frameworks or component libraries
 
+### App AI Agent
+
+- An LLM agent/chatbot is in early development, implemented in `packages/app-agent/` and the Python relay in `packages/app-agent/server/`.
+
 ### Testing
 
 - Unit tests with Vitest
@@ -83,6 +87,14 @@ aware interactions.
   a random question and hasn't explicitly asked for editing work to start.
 - When planning, consider documentation in `docs/` for user-visible changes. New
   features in Core or App may need docs, while refactors typically do not.
+- For refactors and simplification work, measure the relevant code size before
+  and after the change, for example with `wc -l`, `git diff --stat`, or focused
+  line counts. Treat added lines in a simplification task as a signal to re-check
+  whether the result is actually simpler. More lines are acceptable only when
+  they clearly improve correctness, readability, or maintainability.
+- In refactors, prefer deleting code, merging duplicate paths, and simplifying
+  control flow over introducing new abstractions. Avoid replacing straightforward
+  code with a larger structure unless the tradeoff is explicit and worthwhile.
 - When editing shared example specs under `examples/`, follow the formatting and
   layout guidance in `examples/README.md`.
 
@@ -136,6 +148,11 @@ aware interactions.
 - The repo follows Conventional Commits; prefix commit messages with the relevant type (e.g., `feat:`, `fix:`).
 - Use the monorepo package name as the scope (e.g., `core`, `app`) when the change touches a specific workspace.
 - An example message: `feat(app): cool new feature`.
+- Before writing a commit message, inspect the full relevant diff with
+  `git diff` and, when committing staged changes, `git diff --cached`. Base the
+  commit message on everything being committed, not only the latest edits.
+- Commit messages should mention all meaningful areas changed by the diff. Use
+  the body for brief details when the change spans multiple behaviors or files.
 - When working in a feature branch (i.e., not master or main), it's okay to use more casual commit messages; scope can be omitted.
 - When in master or main, add (brief) details to commit message body.
 

@@ -143,6 +143,16 @@ export const sampleSlice = createSlice({
     name: SAMPLE_SLICE_NAME,
     initialState: createInitialState(),
     reducers: {
+        /**
+         * Install the initial sample collection for this view.
+         *
+         * Use this when samples are first loaded or the entire collection is
+         * replaced.
+         *
+         * @agent.payloadType SetSamples
+         * @agent.category initialization
+         * @agent.ignore true
+         */
         setSamples: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetSamples>} */ action
@@ -191,6 +201,22 @@ export const sampleSlice = createSlice({
             };
         },
 
+        /**
+         * Add sample metadata columns from a columnar payload.
+         *
+         * Use this to attach new metadata columns to the current samples or
+         * replace the current metadata set with uploaded values.
+         *
+         * @agent.payloadType SetMetadata
+         * @agent.category metadata
+         * @example
+         * {
+         *   "columnarMetadata": {
+         *     "sample": ["s1", "s2"],
+         *     "diagnosis": ["AML", "ALL"]
+         *   }
+         * }
+         */
         addMetadata: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SetMetadata>} */ action
@@ -198,6 +224,37 @@ export const sampleSlice = createSlice({
             applyMetadataPayload(state, action.payload);
         },
 
+        /**
+         * Add a derived metadata column from a selected or aggregated attribute.
+         *
+         * Use this when an existing attribute should be materialized as sample
+         * metadata under a new column name.
+         *
+         * @agent.payloadType DeriveMetadata
+         * @agent.category metadata
+         * @agent.requiresAttribute true
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
+         *   "name": "purity_copy"
+         * }
+         * @example
+         * {
+         *   "attribute": {
+         *     "type": "VALUE_AT_LOCUS",
+         *     "specifier": {
+         *       "view": { "scope": [], "view": "track" },
+         *       "field": "beta",
+         *       "interval": {
+         *         "type": "selection",
+         *         "selector": { "scope": [], "param": "brush" }
+         *       },
+         *       "aggregation": { "op": "max" }
+         *     }
+         *   },
+         *   "name": "tp53_region_beta"
+         * }
+         */
         deriveMetadata: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").DeriveMetadata>} */ action
@@ -212,6 +269,19 @@ export const sampleSlice = createSlice({
             applyMetadataPayload(state, metadata);
         },
 
+        /**
+         * Import metadata columns from a configured source.
+         *
+         * Use this when one or more source-backed metadata columns should be
+         * added to the current sample collection.
+         *
+         * @agent.payloadType AddMetadataFromSource
+         * @agent.category metadata
+         * @example
+         * {
+         *   "columnIds": ["diagnosis", "stage"]
+         * }
+         */
         addMetadataFromSource: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").AddMetadataFromSource>} */ action
@@ -226,6 +296,23 @@ export const sampleSlice = createSlice({
             applyMetadataPayload(state, metadata);
         },
 
+        /**
+         * Sort samples in descending order by a selected attribute.
+         *
+         * Use this when samples should be ranked by one quantitative or
+         * ordinal attribute before further filtering or grouping. The
+         * attribute may be metadata or a selection-derived aggregation returned
+         * by `buildSelectionAggregationAttribute`.
+         *
+         * @agent.payloadType SortBy
+         * @agent.category sorting
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds quantitative,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "age" }
+         * }
+         */
         sortBy: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
@@ -235,6 +322,22 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Retain the first sample for each distinct value of a selected attribute.
+         *
+         * Use this when the current sample order already encodes the desired
+         * representative sample within each category and within each current
+         * group.
+         *
+         * @agent.payloadType RetainFirstOfEach
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "patient_id" }
+         * }
+         */
         retainFirstOfEach: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstOfEach>} */
@@ -245,6 +348,23 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Retain samples whose value falls in the first n distinct categories in the current ordering.
+         *
+         * Use this when samples are already ordered by a ranking attribute and
+         * all samples belonging to the first n encountered categories should
+         * be kept within each current group.
+         *
+         * @agent.payloadType RetainFirstNCategories
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "patient_id" },
+         *   "n": 5
+         * }
+         */
         retainFirstNCategories: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainFirstNCategories>} */
@@ -259,6 +379,25 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Retain samples whose selected quantitative value satisfies a threshold comparison.
+         *
+         * Use this for numeric filters such as values greater than, less than,
+         * or equal to a chosen threshold. The attribute may be metadata or a
+         * selection-derived aggregation returned by
+         * `buildSelectionAggregationAttribute`.
+         *
+         * @agent.payloadType FilterByQuantitative
+         * @agent.category filtering
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds quantitative
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
+         *   "operator": "gte",
+         *   "operand": 0.6
+         * }
+         */
         filterByQuantitative: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").FilterByQuantitative>} */
@@ -274,6 +413,23 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Retain or remove samples whose selected attribute matches any of the provided values.
+         *
+         * Use this for exact-match filtering on categorical or ordinal
+         * attributes. Set `remove` to `true` to exclude matching samples
+         * instead of keeping them.
+         *
+         * @agent.payloadType FilterByNominal
+         * @agent.category filtering
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "diagnosis" },
+         *   "values": ["AML"]
+         * }
+         */
         filterByNominal: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").FilterByNominal>} */
@@ -289,6 +445,22 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Remove samples whose selected attribute value is missing.
+         *
+         * Use this before later analysis steps when samples with `undefined`
+         * or `null` values should be excluded. The attribute may be metadata or
+         * a selection-derived aggregation returned by
+         * `buildSelectionAggregationAttribute`.
+         *
+         * @agent.payloadType RemoveUndefined
+         * @agent.category filtering
+         * @agent.requiresAttribute true
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" }
+         * }
+         */
         removeUndefined: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RemoveUndefined>} */
@@ -299,6 +471,26 @@ export const sampleSlice = createSlice({
             );
         },
 
+        /**
+         * Group samples into named groups using an explicit mapping of attribute values.
+         *
+         * Use this when specific attribute values should be merged into custom
+         * named groups. Samples whose value is not listed in `groups` are not
+         * kept in the grouped result.
+         *
+         * @agent.payloadType GroupCustom
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "diagnosis" },
+         *   "groups": {
+         *     "Myeloid": ["AML", "MDS"],
+         *     "Lymphoid": ["ALL", "CLL"]
+         *   }
+         * }
+         */
         groupCustomCategories: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupCustom>} */
@@ -321,6 +513,22 @@ export const sampleSlice = createSlice({
             });
         },
 
+        /**
+         * Group samples by the distinct values of a selected categorical attribute.
+         *
+         * Use this to stratify the current sample collection into one group
+         * per visible category. Group order follows the resolved attribute
+         * domain, and categories with no samples are omitted.
+         *
+         * @agent.payloadType GroupByNominal
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "diagnosis" }
+         * }
+         */
         groupByNominal: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupByNominal>} */
@@ -338,6 +546,24 @@ export const sampleSlice = createSlice({
             });
         },
 
+        /**
+         * Group samples into quartile-based bins of a selected quantitative attribute.
+         *
+         * Use this for a quick quantitative stratification. Quartiles are
+         * computed from the current samples in each group using the R-7
+         * method, and tied values may collapse adjacent quartiles. The
+         * attribute may be metadata or a selection-derived aggregation returned
+         * by `buildSelectionAggregationAttribute`.
+         *
+         * @agent.payloadType GroupToQuartiles
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds quantitative
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" }
+         * }
+         */
         groupToQuartiles: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupToQuartiles>} */
@@ -354,6 +580,28 @@ export const sampleSlice = createSlice({
             });
         },
 
+        /**
+         * Group samples into threshold-defined numeric intervals of a selected quantitative attribute.
+         *
+         * Use this when quantitative bins should follow explicit thresholds
+         * instead of quartiles. The resulting groups are ordered from the
+         * highest interval to the lowest. The attribute may be metadata or a
+         * selection-derived aggregation returned by
+         * `buildSelectionAggregationAttribute`.
+         *
+         * @agent.payloadType GroupByThresholds
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds quantitative
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
+         *   "thresholds": [
+         *     { "operator": "lte", "operand": 0.2 },
+         *     { "operator": "lt", "operand": 0.8 }
+         *   ]
+         * }
+         */
         groupByThresholds: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").GroupByThresholds>} */
@@ -371,6 +619,19 @@ export const sampleSlice = createSlice({
             });
         },
 
+        /**
+         * Remove a previously created sample group by path.
+         *
+         * Use this to delete one visible group from the current grouping
+         * hierarchy. The path is relative to the implicit root group.
+         *
+         * @agent.payloadType RemoveGroup
+         * @agent.category grouping
+         * @example
+         * {
+         *   "path": ["Group 1"]
+         * }
+         */
         removeGroup: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RemoveGroup>} */
@@ -382,6 +643,22 @@ export const sampleSlice = createSlice({
             }
         },
 
+        /**
+         * Retain samples whose selected value appears in every current non-empty group.
+         *
+         * Use this for intersection-style cohort refinement after samples have
+         * already been split into groups. A value is kept only if it appears
+         * in every current non-empty group.
+         *
+         * @agent.payloadType RetainMatched
+         * @agent.category grouping
+         * @agent.requiresAttribute true
+         * @agent.attributeKinds nominal,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "patient_id" }
+         * }
+         */
         retainMatched: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").RetainMatched>} */

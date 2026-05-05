@@ -52,7 +52,9 @@ export async function restoreBookmark(entry, app) {
                     "Intent pipeline is required to restore bookmarks."
                 );
             }
-            await app.intentPipeline.submit(entry.actions);
+            await app.intentPipeline.submit(entry.actions, {
+                submissionKind: "bookmark",
+            });
             await app.paramProvenanceBridge?.whenApplied();
         }
 

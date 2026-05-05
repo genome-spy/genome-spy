@@ -46,7 +46,9 @@ describe("bookmark restore", () => {
         await restoreBookmark(entry, app);
 
         expect(app.provenance.activateInitialState).toHaveBeenCalledTimes(1);
-        expect(intentPipeline.submit).toHaveBeenCalledWith(entry.actions);
+        expect(intentPipeline.submit).toHaveBeenCalledWith(entry.actions, {
+            submissionKind: "bookmark",
+        });
         expect(paramProvenanceBridge.whenApplied).toHaveBeenCalled();
     });
 });
