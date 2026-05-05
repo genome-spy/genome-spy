@@ -1,9 +1,5 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
-import type {
-    AggregationOp,
-    ParamSelector,
-    ViewSelector,
-} from "@genome-spy/app/agentShared";
+import type { AggregationOp, ViewSelector } from "@genome-spy/app/agentShared";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import type { NumericDomain } from "@genome-spy/core/spec/scale.js";
 
@@ -16,44 +12,6 @@ import type { NumericDomain } from "@genome-spy/core/spec/scale.js";
 type SampleAttributeIdentifier = {
     type: "SAMPLE_ATTRIBUTE";
     specifier: string;
-};
-
-// Keep the provider-facing plot schema narrower than the app's full
-// AttributeIdentifier union. The full union includes literal intervals and
-// internal runtime fields whose generated JSON Schema is too broad for strict
-// tool providers. Direct agent plots only need metadata attributes and the
-// selection-backed aggregation identifiers returned by
-// buildSelectionAggregationAttribute.
-interface SelectionAggregationSpecifier {
-    /**
-     * View that provides the aggregated field.
-     */
-    view: ViewSelector;
-
-    /**
-     * Field to aggregate over the selected interval.
-     */
-    field: string;
-
-    /**
-     * Selection-backed interval reference.
-     */
-    interval: {
-        type: "selection";
-        selector: ParamSelector;
-    };
-
-    /**
-     * Aggregation operation to apply over the selected interval.
-     */
-    aggregation: {
-        op: AggregationOp;
-    };
-}
-
-type SelectionAggregationAttributeIdentifier = {
-    type: "VALUE_AT_LOCUS";
-    specifier: SelectionAggregationSpecifier;
 };
 
 type SelectionAggregationCandidate = {
