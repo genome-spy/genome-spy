@@ -5,7 +5,7 @@ import { resolveMetadataAttributeValuesTool } from "./resolveMetadataAttributeVa
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
 import generatedActionSchema from "./generated/generatedActionSchema.json" with { type: "json" };
-import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
+import { resolveAgentAttributeCandidateRecord } from "./attributeCandidate.js";
 
 /*
  * Tool behavior lives here. The input shapes and user-facing descriptions are
@@ -158,9 +158,17 @@ export const agentTools = {
      * @param {import("./agentToolInputs.d.ts").ShowCategoryCountsPlotToolInput} input
      */
     async showCategoryCountsPlot(runtime, input) {
+        const attribute = resolveAgentAttributeCandidateRecord(
+            runtime,
+            input.attribute
+        );
+
         return executeSampleAttributePlot(runtime, {
-            plotType: "bar",
-            attribute: resolveAgentAttributeCandidate(runtime, input.attribute),
+            plotRequest: {
+                plotType: "bar",
+                attribute: attribute.resolved,
+            },
+            attributeRecord: attribute,
         });
     },
 
@@ -169,9 +177,17 @@ export const agentTools = {
      * @param {import("./agentToolInputs.d.ts").ShowAttributeDistributionPlotToolInput} input
      */
     async showAttributeDistributionPlot(runtime, input) {
+        const attribute = resolveAgentAttributeCandidateRecord(
+            runtime,
+            input.attribute
+        );
+
         return executeSampleAttributePlot(runtime, {
-            plotType: "boxplot",
-            attribute: resolveAgentAttributeCandidate(runtime, input.attribute),
+            plotRequest: {
+                plotType: "boxplot",
+                attribute: attribute.resolved,
+            },
+            attributeRecord: attribute,
         });
     },
 
@@ -181,15 +197,17 @@ export const agentTools = {
      */
     async showAttributeRelationshipPlot(runtime, input) {
         const [xPlotAttribute, yPlotAttribute] = input.attributes;
-        const xAttribute = resolveAgentAttributeCandidate(
+        const xAttribute = resolveAgentAttributeCandidateRecord(
             runtime,
             xPlotAttribute
         );
-        const yAttribute = resolveAgentAttributeCandidate(
+        const yAttribute = resolveAgentAttributeCandidateRecord(
             runtime,
             yPlotAttribute
         );
-        if (isSameAttributeIdentifier(xAttribute, yAttribute)) {
+        if (
+            isSameAttributeIdentifier(xAttribute.resolved, yAttribute.resolved)
+        ) {
             throw new ToolCallRejectionError(
                 "Relationship plots require two different quantitative attributes. " +
                     "For a distribution of one quantitative attribute by current groups, " +
@@ -198,9 +216,12 @@ export const agentTools = {
         }
 
         return executeSampleAttributePlot(runtime, {
-            plotType: "scatterplot",
-            xAttribute,
-            yAttribute,
+            plotRequest: {
+                plotType: "scatterplot",
+                xAttribute: xAttribute.resolved,
+                yAttribute: yAttribute.resolved,
+            },
+            attributeRecords: [xAttribute, yAttribute],
         });
     },
 
@@ -333,13 +354,17 @@ function getActionPayloadSchema(actionType) {
 
 /**
  * @param {AgentToolRuntime} runtime
- * @param {import("@genome-spy/app/agentApi").SampleAttributePlotRequest} plotRequest
+ * @param {{
+ *     plotRequest: import("@genome-spy/app/agentApi").SampleAttributePlotRequest;
+ *     attributeRecord?: unknown;
+ *     attributeRecords?: unknown[];
+ * }} options
  * @returns {Promise<AgentToolExecutionResult>}
  */
-async function executeSampleAttributePlot(runtime, plotRequest) {
+async function executeSampleAttributePlot(runtime, options) {
     try {
         const plot = await runtime.agentApi.buildSampleAttributePlot(
-            removeUndefinedProperties(plotRequest)
+            removeUndefinedProperties(options.plotRequest)
         );
         if (!plot) {
             throw new Error(
@@ -349,7 +374,15 @@ async function executeSampleAttributePlot(runtime, plotRequest) {
 
         return {
             text: `Generated ${plot.title} with ${plot.summary.groupCount} groups.`,
-            content: plot,
+            content: {
+                ...plot,
+                ...(options.attributeRecord
+                    ? { attribute: options.attributeRecord }
+                    : {}),
+                ...(options.attributeRecords
+                    ? { attributes: options.attributeRecords }
+                    : {}),
+            },
         };
     } catch (error) {
         throw new ToolCallRejectionError(

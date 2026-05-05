@@ -82,6 +82,70 @@ accept canonical action payloads for now because those payloads are real app
 state and provenance contracts. Candidate-to-action compilation can be a later
 agent macro layer, not part of the first plotting cleanup.
 
+## Plot Result Records
+
+Plotting inputs can be compact, but tool results should preserve a durable
+record of what was actually plotted. This is especially important for
+`SELECTION_AGGREGATION` inputs because candidate ids are ephemeral and depend on
+the current volatile context.
+
+Each plot result included in conversation history should include the original
+candidate and the resolved canonical attribute:
+
+```json
+{
+  "attribute": {
+    "input": {
+      "type": "SAMPLE_ATTRIBUTE",
+      "specifier": "age"
+    },
+    "resolved": {
+      "type": "SAMPLE_ATTRIBUTE",
+      "specifier": "age"
+    }
+  }
+}
+```
+
+For selection aggregation candidates, include the resolved canonical
+`VALUE_AT_LOCUS` identifier and the concrete interval used at execution time:
+
+```json
+{
+  "attribute": {
+    "input": {
+      "type": "SELECTION_AGGREGATION",
+      "candidateId": "brush@track:beta",
+      "aggregation": "max"
+    },
+    "resolved": {
+      "type": "VALUE_AT_LOCUS",
+      "specifier": {
+        "view": { "scope": [], "view": "track" },
+        "field": "beta",
+        "interval": {
+          "type": "selection",
+          "selector": { "scope": [], "param": "brush" }
+        },
+        "aggregation": { "op": "max" }
+      }
+    },
+    "interval": [
+      { "chrom": "chr17", "pos": 7565097 },
+      { "chrom": "chr17", "pos": 7590856 }
+    ]
+  }
+}
+```
+
+Do not add a separate `selection` field; the selector already lives in the
+resolved attribute. Do not duplicate `field` outside the resolved attribute. The
+flattened `interval` should use a generic `AgentChromosomalLocus` type derived
+from `ChromosomalLocus` with mandatory `pos`. Rename the current
+`ZoomToScaleLocus` helper in `agentToolInputs.d.ts` when this result record is
+implemented. Do not use the core `ChromosomalLocus` type directly here because
+its `pos` property is optional.
+
 ## Schema Strategy
 
 - Keep provider-facing plot schemas shallow.

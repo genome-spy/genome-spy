@@ -167,6 +167,26 @@ function isSampleAttributePlotContent(content) {
 }
 
 /**
+ * @param {unknown} content
+ * @returns {unknown}
+ */
+function createSampleAttributePlotHistoryContent(content) {
+    if (!isSampleAttributePlotContent(content)) {
+        return content;
+    }
+
+    const plot = /** @type {any} */ (content);
+    return {
+        kind: "sample_attribute_plot_record",
+        plotType: plot.plotType,
+        title: plot.title,
+        summary: plot.summary,
+        ...(plot.attribute ? { attribute: plot.attribute } : {}),
+        ...(plot.attributes ? { attributes: plot.attributes } : {}),
+    };
+}
+
+/**
  * @param {AgentSessionRuntime} runtime
  * @returns {AgentSessionController}
  */
@@ -474,12 +494,15 @@ export class AgentSessionController {
                     : {}),
             });
             if (result.text || result.content !== undefined) {
+                const historyContent = createSampleAttributePlotHistoryContent(
+                    result.content
+                );
                 this.#appendMessage({
                     kind: "tool_result",
                     text: result.text ?? "",
                     toolCallId: toolCall.callId,
-                    ...(result.content !== undefined && !isPlotContent
-                        ? { content: result.content }
+                    ...(historyContent !== undefined
+                        ? { content: historyContent }
                         : {}),
                     durationMs: null,
                 });

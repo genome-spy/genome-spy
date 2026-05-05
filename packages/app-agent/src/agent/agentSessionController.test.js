@@ -590,7 +590,37 @@ describe("createAgentSessionController", () => {
                 text: "Generated Scatterplot of age vs purity with 2 groups.",
                 kind: "tool_result",
                 toolCallId: "call-plot",
-                content: undefined,
+                content: {
+                    kind: "sample_attribute_plot_record",
+                    plotType: "scatterplot",
+                    title: "Scatterplot of age vs purity",
+                    summary: {
+                        groupCount: 2,
+                        rowCount: 12,
+                    },
+                    attributes: [
+                        {
+                            input: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                            resolved: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                        },
+                        {
+                            input: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                            resolved: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                        },
+                    ],
+                },
             },
         ]);
     });

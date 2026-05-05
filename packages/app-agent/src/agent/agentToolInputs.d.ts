@@ -72,14 +72,14 @@ type IntentActionType =
     AgentIntentActionRequest["actions"][number]["actionType"];
 type MetadataSummaryScope = "visible_samples" | "visible_groups";
 
-interface ZoomToScaleLocus extends ChromosomalLocus {
+interface AgentChromosomalLocus extends ChromosomalLocus {
     /**
      * Zero-based position inside the chromosome or contig.
      */
     pos: number;
 }
 
-type ZoomToScaleDomain = NumericDomain | ZoomToScaleLocus[];
+type ZoomToScaleDomain = NumericDomain | AgentChromosomalLocus[];
 
 /**
  * Expand a collapsed view branch in the agent context. The result is only

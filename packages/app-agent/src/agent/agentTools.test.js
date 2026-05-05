@@ -418,6 +418,28 @@ describe("agentTools", () => {
                 content: expect.objectContaining({
                     kind: "sample_attribute_plot",
                     plotType: "scatterplot",
+                    attributes: [
+                        {
+                            input: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                            resolved: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
+                            },
+                        },
+                        {
+                            input: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                            resolved: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "purity",
+                            },
+                        },
+                    ],
                 }),
             })
         );
@@ -448,7 +470,44 @@ describe("agentTools", () => {
             label: "TP53 region beta",
         };
 
-        await tools.showAttributeDistributionPlot(runtime, {
+        runtime.getAgentVolatileContext.mockReturnValueOnce({
+            parameterValues: [
+                {
+                    selector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                    value: {
+                        type: "interval",
+                        intervals: {
+                            x: [
+                                { chrom: "chr17", pos: 7565097 },
+                                { chrom: "chr17", pos: 7590856 },
+                            ],
+                        },
+                    },
+                },
+            ],
+            selectionAggregation: {
+                fields: [
+                    {
+                        candidateId: "brush@track:beta",
+                        viewSelector: {
+                            scope: [],
+                            view: "track",
+                        },
+                        field: "beta",
+                        selectionSelector: {
+                            scope: [],
+                            param: "brush",
+                        },
+                        supportedAggregations: ["max"],
+                    },
+                ],
+            },
+        });
+
+        const result = await tools.showAttributeDistributionPlot(runtime, {
             kind: "boxplot",
             attribute: {
                 type: "SELECTION_AGGREGATION",
@@ -464,6 +523,25 @@ describe("agentTools", () => {
                 specifier: aggregatedAttribute.specifier,
             },
         });
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                attribute: {
+                    input: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "brush@track:beta",
+                        aggregation: "max",
+                    },
+                    resolved: {
+                        type: "VALUE_AT_LOCUS",
+                        specifier: aggregatedAttribute.specifier,
+                    },
+                    interval: [
+                        { chrom: "chr17", pos: 7565097 },
+                        { chrom: "chr17", pos: 7590856 },
+                    ],
+                },
+            })
+        );
     });
 
     it("rejects when the host cannot build a sample attribute plot", async () => {

@@ -38,6 +38,21 @@
         }
       ]
     },
+    "AgentChromosomalLocus": {
+      "additionalProperties": false,
+      "properties": {
+        "chrom": {
+          "description": "The name of the chromosome. For example: `\"chr1\"`, `\"CHR1\"`, or `\"1\"`.",
+          "type": "string"
+        },
+        "pos": {
+          "description": "Zero-based position inside the chromosome or contig.",
+          "type": "number"
+        }
+      },
+      "required": ["chrom", "pos"],
+      "type": "object"
+    },
     "AgentIntentBatchStep": {
       "anyOf": [
         {
@@ -2139,26 +2154,11 @@
         },
         {
           "items": {
-            "$ref": "#/definitions/ZoomToScaleLocus"
+            "$ref": "#/definitions/AgentChromosomalLocus"
           },
           "type": "array"
         }
       ]
-    },
-    "ZoomToScaleLocus": {
-      "additionalProperties": false,
-      "properties": {
-        "chrom": {
-          "description": "The name of the chromosome. For example: `\"chr1\"`, `\"CHR1\"`, or `\"1\"`.",
-          "type": "string"
-        },
-        "pos": {
-          "description": "Zero-based position inside the chromosome or contig.",
-          "type": "number"
-        }
-      },
-      "required": ["chrom", "pos"],
-      "type": "object"
     },
     "ZoomToScaleToolInput": {
       "additionalProperties": false,
