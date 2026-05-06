@@ -413,14 +413,6 @@ function buildAttributeDistributionCharacterization(groupSummaries) {
         .sort((a, b) => a.median - b.median);
     const lowestMedianGroup = orderedByMedian[0];
     const highestMedianGroup = orderedByMedian[orderedByMedian.length - 1];
-    const cautions = [];
-
-    if (groups.some((group) => group.nonMissingCount < 3)) {
-        cautions.push("Some groups have fewer than 3 non-missing values.");
-    }
-    if (groups.some((group) => group.missingCount > 0)) {
-        cautions.push("Some visible samples have missing plotted values.");
-    }
 
     return {
         kind: "quantitative_distribution",
@@ -437,7 +429,6 @@ function buildAttributeDistributionCharacterization(groupSummaries) {
                       highestMedianGroup.median - lowestMedianGroup.median,
               }
             : {}),
-        ...(cautions.length > 0 ? { cautions } : {}),
     };
 }
 
@@ -456,14 +447,6 @@ function buildAttributeRelationshipCharacterization(params) {
     const xValues = params.rows.map((row) => Number(row[params.xFieldName]));
     const yValues = params.rows.map((row) => Number(row[params.yFieldName]));
     const correlation = pearsonCorrelation(xValues, yValues);
-    const cautions = [];
-
-    if (params.rows.length < 3) {
-        cautions.push("Fewer than 3 plotted points.");
-    }
-    if (params.missingPairCount > 0) {
-        cautions.push("Some visible samples have missing plotted pairs.");
-    }
 
     return {
         kind: "quantitative_relationship",
@@ -480,7 +463,6 @@ function buildAttributeRelationshipCharacterization(params) {
         ...(params.groupSummaries.length > 1
             ? { groups: params.groupSummaries }
             : {}),
-        ...(cautions.length > 0 ? { cautions } : {}),
     };
 }
 

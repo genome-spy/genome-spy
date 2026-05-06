@@ -64,7 +64,6 @@ export interface AttributeDistributionPlotCharacterization {
     highestMedianGroup?: string;
     lowestMedianGroup?: string;
     largestMedianDifference?: number;
-    cautions?: string[];
 }
 
 export interface AttributeRelationshipPlotCharacterization {
@@ -82,7 +81,6 @@ export interface AttributeRelationshipPlotCharacterization {
         r: number;
     };
     groups?: Array<{ title: string; plottedPointCount: number }>;
-    cautions?: string[];
 }
 
 export type SampleAttributePlotCharacterization =

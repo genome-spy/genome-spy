@@ -118,10 +118,6 @@ distribution:
     non-missing values
   - group with highest median
   - group with lowest median
-- cautions:
-  - very small group sizes
-  - empty groups
-  - high missingness
 
 This should reuse existing boxplot statistics where possible, but the exposed
 counts must refer to contributing samples, not rendered stats rows.
@@ -137,7 +133,6 @@ For `showAttributeRelationshipPlot`, characterize the rendered points:
 - x and y ranges
 - Pearson correlation value when enough points are present
 - group point counts when grouped
-- cautions for very small point counts
 
 Correlation is descriptive. The result should not present it as statistical
 significance. Keep the correlation result numeric; the sign of `r` already

@@ -240,7 +240,6 @@ describe("sample attribute plot builders", () => {
             highestMedianGroup: "Group 2",
             lowestMedianGroup: "Group 1",
             largestMedianDifference: 2,
-            cautions: ["Some groups have fewer than 3 non-missing values."],
         });
         expect(plot.spec.width).toBeUndefined();
         expect(plot.spec.height).toBeUndefined();
