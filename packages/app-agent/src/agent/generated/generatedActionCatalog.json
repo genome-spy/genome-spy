@@ -358,7 +358,7 @@
   },
   {
     "actionType": "sampleView/groupCustomCategories",
-    "description": "Group samples into named groups using an explicit mapping of attribute values.",
+    "description": "Add a grouping level to the sample hierarchy using named groups and explicit mapping of attribute values.",
     "usage": "Use this when specific attribute values should be merged into custom named groups. Samples whose value is not listed in `groups` are not kept in the grouped result.",
     "payloadType": "GroupCustom",
     "payloadFields": [
@@ -400,8 +400,8 @@
   },
   {
     "actionType": "sampleView/groupByNominal",
-    "description": "Group samples by the distinct values of a selected categorical attribute.",
-    "usage": "Use this to stratify the current sample collection into one group per visible category. Group order follows the resolved attribute domain, and categories with no samples are omitted.",
+    "description": "Add a grouping level to the sample hierarchy using a categorical attribute.",
+    "usage": "Creates one group per visible category. Group order follows the resolved attribute domain, and categories with no samples are omitted.",
     "payloadType": "GroupByNominal",
     "payloadFields": [
       {
@@ -428,7 +428,7 @@
   },
   {
     "actionType": "sampleView/groupToQuartiles",
-    "description": "Group samples into quartile-based bins of a selected quantitative attribute.",
+    "description": "Add a grouping level to the sample hierarchy using quartile-based bins of a quantitative attribute.",
     "usage": "Use this for a quick quantitative stratification. Quartiles are computed from the current samples in each group using the R-7 method, and tied values may collapse adjacent quartiles. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
     "payloadType": "GroupToQuartiles",
     "payloadFields": [
@@ -456,7 +456,7 @@
   },
   {
     "actionType": "sampleView/groupByThresholds",
-    "description": "Group samples into threshold-defined numeric intervals of a selected quantitative attribute.",
+    "description": "Add a grouping level to the sample hierarchy using threshold-defined numeric intervals of a quantitative attribute.",
     "usage": "Use this when quantitative bins should follow explicit thresholds instead of quartiles. The resulting groups are ordered from the highest interval to the lowest. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
     "payloadType": "GroupByThresholds",
     "payloadFields": [
@@ -511,7 +511,7 @@
   {
     "actionType": "sampleView/removeGroup",
     "description": "Remove a previously created sample group by path.",
-    "usage": "Use this to delete one visible group from the current grouping hierarchy. The path is relative to the implicit root group.",
+    "usage": "Use this to delete one visible group from the current grouping hierarchy. The path is relative to the implicit root group. This action cannot remove grouping levels; jump back in provenance instead.",
     "payloadType": "RemoveGroup",
     "payloadFields": [
       {

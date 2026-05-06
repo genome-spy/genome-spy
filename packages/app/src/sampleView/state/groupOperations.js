@@ -124,15 +124,13 @@ export function groupSamplesByQuartiles(sampleGroup, accessor) {
  */
 export function removeGroup(rootGroup, path) {
     if (path.length == 0) {
-        // Error!
-        return;
+        throw new Error("Cannot remove the root sample group.");
     }
 
     const index = rootGroup.groups.findIndex((group) => group.name == path[0]);
 
     if (index < 0) {
-        // Error!
-        return;
+        throw new Error("Sample group path not found: " + path.join(" / "));
     }
 
     if (path.length == 1) {
@@ -140,9 +138,12 @@ export function removeGroup(rootGroup, path) {
     } else if (path.length > 1) {
         const child = rootGroup.groups[index];
         if (isGroupGroup(child)) {
-            removeGroup(child, [...path].splice(1));
+            removeGroup(child, path.slice(1));
         } else {
-            // Error!
+            throw new Error(
+                "Sample group path does not refer to a nested group: " +
+                    path.join(" / ")
+            );
         }
     }
 }

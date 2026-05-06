@@ -47,22 +47,22 @@
   {
     "actionType": "sampleView/groupCustomCategories",
     "title": "Group arbitrarily...",
-    "description": "Group samples into named groups using an explicit mapping of attribute values."
+    "description": "Add a grouping level to the sample hierarchy using named groups and explicit mapping of attribute values."
   },
   {
     "actionType": "sampleView/groupByNominal",
     "title": "Group by",
-    "description": "Group samples by the distinct values of a selected categorical attribute."
+    "description": "Add a grouping level to the sample hierarchy using a categorical attribute."
   },
   {
     "actionType": "sampleView/groupToQuartiles",
     "title": "Group by quartiles",
-    "description": "Group samples into quartile-based bins of a selected quantitative attribute."
+    "description": "Add a grouping level to the sample hierarchy using quartile-based bins of a quantitative attribute."
   },
   {
     "actionType": "sampleView/groupByThresholds",
     "title": "Group by thresholds",
-    "description": "Group samples into threshold-defined numeric intervals of a selected quantitative attribute."
+    "description": "Add a grouping level to the sample hierarchy using threshold-defined numeric intervals of a quantitative attribute."
   },
   {
     "actionType": "sampleView/removeGroup",

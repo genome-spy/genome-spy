@@ -135,4 +135,40 @@ describe("groupOperations", () => {
             "B2",
         ]);
     });
+
+    it("fails when removing a missing group", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [{ name: "A", title: "A", samples: ["s1"] }],
+        };
+
+        expect(() => removeGroup(root, ["B"])).toThrow(
+            "Sample group path not found: B"
+        );
+    });
+
+    it("fails when removing the root group", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [{ name: "A", title: "A", samples: ["s1"] }],
+        };
+
+        expect(() => removeGroup(root, [])).toThrow(
+            "Cannot remove the root sample group."
+        );
+    });
+
+    it("fails when a group path continues through a sample group", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [{ name: "A", title: "A", samples: ["s1"] }],
+        };
+
+        expect(() => removeGroup(root, ["A", "B"])).toThrow(
+            "Sample group path does not refer to a nested group: A / B"
+        );
+    });
 });

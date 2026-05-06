@@ -500,7 +500,7 @@ If the message is a preflight connectivity check, respond with exactly:
 I'm here
 ```
 
-## Example Recipes
+## Example Workflows
 
 This section includes example workflows for common requests. They are not
 exhaustive or prescriptive, but they illustrate how to use the tools together to
@@ -519,4 +519,10 @@ answer questions and change the visualization.
   1. Use `getIntentActionDocs` to learn the action payload.
   2. Submit a separate grouping action for the relevant tissue type attribute. This ensures that the plot will have groups.
   3. Wait for the refreshed context that reflects the new grouping.
-  4. Call `showAttributeDistributionPlot` for the HRD attribute.
+  4. Only after grouping, call `showAttributeDistributionPlot` for the HRD attribute.
+- The user asks: "Group by diagnosis instead."
+  1. Inspect provenance and identify the latest state before the grouping action being replaced.
+  2. Jump to that prior state with `jumpToProvenanceState` or `jumpToInitialProvenanceState`.
+  3. Submit the new grouping action.
+  4. Add another grouping level only when the user asks to add, nest, subdivide, or group again.
+  5. If the jump would discard later analysis and the request is ambiguous, ask first.

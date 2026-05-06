@@ -343,6 +343,17 @@ describe("augmentAttributeAction", () => {
 });
 
 describe("sampleSlice reducers", () => {
+    it("fails when removing a group before samples have been grouped", () => {
+        const state = createSampleHierarchy();
+
+        expect(() =>
+            sampleSlice.reducer(
+                state,
+                sampleSlice.actions.removeGroup({ path: ["A"] })
+            )
+        ).toThrow("Cannot remove sample groups before grouping.");
+    });
+
     it("adds metadata payload for addMetadataFromSource actions", () => {
         let state = sampleSlice.reducer(
             undefined,

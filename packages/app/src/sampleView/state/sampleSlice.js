@@ -472,7 +472,8 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Group samples into named groups using an explicit mapping of attribute values.
+         * Add a grouping level to the sample hierarchy using named groups and explicit
+         * mapping of attribute values.
          *
          * Use this when specific attribute values should be merged into custom
          * named groups. Samples whose value is not listed in `groups` are not
@@ -514,11 +515,11 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Group samples by the distinct values of a selected categorical attribute.
+         * Add a grouping level to the sample hierarchy using a categorical attribute.
          *
-         * Use this to stratify the current sample collection into one group
-         * per visible category. Group order follows the resolved attribute
-         * domain, and categories with no samples are omitted.
+         * Creates one group per visible category. Group order follows the
+         * resolved attribute domain, and categories with no samples are
+         * omitted.
          *
          * @agent.payloadType GroupByNominal
          * @agent.category grouping
@@ -547,7 +548,8 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Group samples into quartile-based bins of a selected quantitative attribute.
+         * Add a grouping level to the sample hierarchy using quartile-based bins of a
+         * quantitative attribute.
          *
          * Use this for a quick quantitative stratification. Quartiles are
          * computed from the current samples in each group using the R-7
@@ -581,7 +583,8 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Group samples into threshold-defined numeric intervals of a selected quantitative attribute.
+         * Add a grouping level to the sample hierarchy using threshold-defined numeric
+         * intervals of a quantitative attribute.
          *
          * Use this when quantitative bins should follow explicit thresholds
          * instead of quartiles. The resulting groups are ordered from the
@@ -623,7 +626,8 @@ export const sampleSlice = createSlice({
          * Remove a previously created sample group by path.
          *
          * Use this to delete one visible group from the current grouping
-         * hierarchy. The path is relative to the implicit root group.
+         * hierarchy. The path is relative to the implicit root group. This
+         * action cannot remove grouping levels; jump back in provenance instead.
          *
          * @agent.payloadType RemoveGroup
          * @agent.category grouping
@@ -640,6 +644,8 @@ export const sampleSlice = createSlice({
             const root = state.rootGroup;
             if (isGroupGroup(root)) {
                 removeGroup(root, action.payload.path);
+            } else {
+                throw new Error("Cannot remove sample groups before grouping.");
             }
         },
 
