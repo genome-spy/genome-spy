@@ -624,7 +624,8 @@ export default class SampleView extends ContainerView {
                         facetIndex: null,
                     },
                     hconcat: [],
-                    spacing: 0,
+                    spacing: 8,
+                    padding: { right: 8 },
                 },
                 this,
                 this,
@@ -703,14 +704,22 @@ export default class SampleView extends ContainerView {
      * @override
      */
     getOverhang() {
-        let peripherySize = this.#sidebarView.isConfiguredVisible()
-            ? this.#sidebarView.getSize().width.px +
-              this.#sidebarView.getPadding().horizontalTotal
-            : 0;
+        let peripherySize = this.#getSidebarWidth().px ?? 0;
 
         return new Padding(0, 0, 0, peripherySize).add(
             this.#gridChild.getOverhang()
         );
+    }
+
+    /**
+     * @returns {import("@genome-spy/core/view/layout/flexLayout.js").SizeDef}
+     */
+    #getSidebarWidth() {
+        return this.#sidebarView.isConfiguredVisible()
+            ? this.#sidebarView
+                  .getSize()
+                  .addPadding(this.#sidebarView.getPadding()).width
+            : { px: 0 };
     }
 
     /**
@@ -991,12 +1000,7 @@ export default class SampleView extends ContainerView {
         context.pushView(this, coords);
 
         const cols = mapToPixelCoords(
-            [
-                this.#sidebarView.isConfiguredVisible()
-                    ? this.#sidebarView.getSize().width
-                    : { px: 0 },
-                { grow: 1 },
-            ],
+            [this.#getSidebarWidth(), { grow: 1 }],
             coords.width
             //{ spacing: SPACING }
         );

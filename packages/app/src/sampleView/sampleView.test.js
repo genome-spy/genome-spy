@@ -320,6 +320,129 @@ describe("SampleView", () => {
         expect(width).toBe(222);
     });
 
+    test("collapses the sample group column when no groups are shown", async () => {
+        // updateGroups resolves Lit titles through a DOM element in browser builds.
+        vi.stubGlobal("document", {
+            createElement: () => ({ innerHTML: "", textContent: "" }),
+        });
+
+        try {
+            const { view } = await createSampleViewForTest({
+                spec: {
+                    data: {
+                        values: [{ sample: "A", x: 1 }],
+                    },
+                    samples: {},
+                    spec: {
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                        },
+                    },
+                },
+                disableGroupUpdates: false,
+            });
+
+            /** @type {any} */ (view.locationManager).getLocations = () => ({
+                groups: [
+                    {
+                        key: {
+                            index: 0,
+                            depth: 0,
+                            n: 1,
+                            group: {
+                                name: "ROOT",
+                                title: "Root",
+                                samples: ["A"],
+                            },
+                        },
+                        locSize: { location: 0, size: 20 },
+                    },
+                ],
+            });
+
+            view.sampleGroupView.updateGroups();
+            expect(view.sampleGroupView.isVisibleInSpec()).toBe(true);
+            expect(view.sampleGroupView.isConfiguredVisible()).toBe(false);
+
+            /** @type {any} */ (view.locationManager).getLocations = () => ({
+                groups: [
+                    {
+                        key: {
+                            index: 0,
+                            depth: 1,
+                            n: 1,
+                            group: {
+                                name: "group",
+                                title: "Group",
+                                samples: ["A"],
+                            },
+                        },
+                        locSize: { location: 0, size: 20 },
+                    },
+                ],
+            });
+
+            view.sampleGroupView.updateGroups();
+            expect(view.sampleGroupView.isVisibleInSpec()).toBe(true);
+            expect(view.sampleGroupView.isConfiguredVisible()).toBe(true);
+            expect(view.sampleGroupView.getSize().width.px).toBeGreaterThan(0);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
+    test("reserves sidebar padding when computing main pane coordinates", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(view.childCoords.x).toBe(view.sidebarCoords.x2);
+        expect(view.sidebarCoords.width).toBe(view.getOverhang().left);
+    });
+
+    test("sample group column separates levels without outer padding", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        const scale = /** @type {any} */ (view.sampleGroupView.spec).encoding.x
+            .scale;
+
+        expect(scale.paddingInner).toBeGreaterThan(0);
+        expect(scale.paddingOuter).toBe(0);
+    });
+
     test("handles provenance rewind while sample labels are subscribed", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {

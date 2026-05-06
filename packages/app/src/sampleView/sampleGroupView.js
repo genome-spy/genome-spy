@@ -5,10 +5,14 @@ import { iterateGroupHierarchy } from "./state/sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
 
+const GROUP_COLUMN_WIDTH = { step: 24 };
+
 /**
  * @extends {LayerView<import("../spec/view.js").AppLayerSpec>}
  */
 export default class SampleGroupView extends LayerView {
+    #hasVisibleGroups = true;
+
     /**
      * @param {import("./sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
@@ -23,9 +27,7 @@ export default class SampleGroupView extends LayerView {
             },
             configurableVisibility: true,
 
-            padding: { right: 0 },
-
-            width: { step: 22 },
+            width: GROUP_COLUMN_WIDTH,
             // TODO: Make step size, colors, font size, etc. configurable.
 
             data: { name: null },
@@ -63,7 +65,8 @@ export default class SampleGroupView extends LayerView {
                     type: "ordinal",
                     scale: {
                         align: 0,
-                        padding: 0.2272727,
+                        paddingInner: 0.2272727,
+                        paddingOuter: 0,
                     },
                     /*
                     axis: {
@@ -188,6 +191,13 @@ export default class SampleGroupView extends LayerView {
         this.registerStepSizeInvalidation();
     }
 
+    /**
+     * @override
+     */
+    isConfiguredVisible() {
+        return this.#hasVisibleGroups && super.isConfiguredVisible();
+    }
+
     updateRange() {
         const groupLocations =
             this.sampleView.locationManager.getLocations()?.groups;
@@ -214,6 +224,9 @@ export default class SampleGroupView extends LayerView {
     updateGroups() {
         const groupLocations =
             this.sampleView.locationManager.getLocations()?.groups ?? [];
+        const hasVisibleGroups = groupLocations.some((g) => g.key.depth > 0);
+
+        this.#setGroupColumnVisibility(hasVisibleGroups);
 
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
@@ -245,6 +258,18 @@ export default class SampleGroupView extends LayerView {
         if (groupLocations.length) {
             this.updateRange();
         }
+    }
+
+    /**
+     * @param {boolean} visible
+     */
+    #setGroupColumnVisibility(visible) {
+        if (this.#hasVisibleGroups === visible) {
+            return;
+        }
+
+        this.#hasVisibleGroups = visible;
+        this.invalidateSizeCache();
     }
 
     #getAttributeTitles() {

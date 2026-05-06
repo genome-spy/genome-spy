@@ -81,7 +81,6 @@ export class MetadataView extends ConcatView {
             data: { name: null },
             hconcat: [], // Contents are added dynamically
             spacing: sampleView.spec.samples.attributeSpacing ?? 1,
-            padding: { right: 10 }, // TODO: Configurable
             resolve: {
                 scale: { default: "independent" },
                 axis: { default: "independent" },
