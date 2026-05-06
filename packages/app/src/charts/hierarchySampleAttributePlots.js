@@ -4,15 +4,15 @@ import { buildHierarchyBoxplotData } from "./hierarchyBoxplotData.js";
 import { buildHierarchyScatterplotData } from "./hierarchyScatterplotData.js";
 import { escapeFieldName, resolveGroupTitle } from "./chartDataUtils.js";
 import templateResultToString from "../utils/templateResultToString.js";
+import {
+    buildCategoricalCountsSummary,
+    buildTopCategorySummary,
+} from "../utils/statistics/fieldSummary.js";
 
 const BARPLOT_DATA_NAME = "hierarchy_barplot";
 const BOXPLOT_STATS_NAME = "hierarchy_boxplot_stats";
 const BOXPLOT_OUTLIERS_NAME = "hierarchy_boxplot_outliers";
 const SCATTERPLOT_DATA_NAME = "hierarchy_scatterplot_points";
-const categoryCollator = new Intl.Collator("en", {
-    numeric: true,
-    sensitivity: "base",
-});
 
 /**
  * @param {import("./sampleAttributePlotTypes.d.ts").HierarchyBarplotRequest} request
@@ -344,6 +344,12 @@ function buildCategoryCountsCharacterization(params) {
         );
     }
 
+    const summary = buildCategoricalCountsSummary(
+        categoryCounts,
+        params.nonMissingCount,
+        params.missingCount
+    );
+
     return {
         kind: "category_counts",
         encoding: {
@@ -366,19 +372,7 @@ function buildCategoryCountsCharacterization(params) {
                   }
                 : {}),
         },
-        nonMissingCount: params.nonMissingCount,
-        missingCount: params.missingCount,
-        distinctCount: params.categoryDomain.length,
-        categories: Array.from(categoryCounts.entries())
-            .map(([value, count]) => ({
-                value,
-                count,
-                share:
-                    params.nonMissingCount > 0
-                        ? count / params.nonMissingCount
-                        : 0,
-            }))
-            .sort(compareCategoryRows),
+        ...summary,
         ...(params.grouped
             ? {
                   groups: params.groupSummaries.map((group) => ({
@@ -491,43 +485,14 @@ function buildAttributeRelationshipCharacterization(params) {
 }
 
 /**
- * @param {{ value: unknown, count: number }} a
- * @param {{ value: unknown, count: number }} b
- * @returns {number}
- */
-function compareCategoryRows(a, b) {
-    if (b.count !== a.count) {
-        return b.count - a.count;
-    }
-
-    return categoryCollator.compare(String(a.value), String(b.value));
-}
-
-/**
  * @param {Map<unknown, number>} counts
  * @param {number} nonMissingCount
  * @returns {{ topCategory?: { value: unknown, count: number, share: number } }}
  */
 function buildTopCategory(counts, nonMissingCount) {
-    const topEntry = Array.from(counts.entries())
-        .map(([value, count]) => ({
-            value,
-            count,
-        }))
-        .sort(compareCategoryRows)[0];
+    const topCategory = buildTopCategorySummary(counts, nonMissingCount);
 
-    return topEntry
-        ? {
-              topCategory: {
-                  value: topEntry.value,
-                  count: topEntry.count,
-                  share:
-                      nonMissingCount > 0
-                          ? topEntry.count / nonMissingCount
-                          : 0,
-              },
-          }
-        : {};
+    return topCategory ? { topCategory } : {};
 }
 
 /**

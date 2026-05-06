@@ -98,20 +98,44 @@ export function buildCategoricalFieldSummary(values) {
         counts.set(value, (counts.get(value) ?? 0) + 1);
     }
 
+    return buildCategoricalCountsSummary(counts, nonMissingCount, missingCount);
+}
+
+/**
+ * @param {Map<unknown, number>} counts
+ * @param {number} nonMissingCount
+ * @param {number} missingCount
+ * @param {number} [maxCategories]
+ * @returns {{
+ *     nonMissingCount: number;
+ *     missingCount: number;
+ *     distinctCount: number;
+ *     categories: Array<{ value: unknown; count: number; share: number }>;
+ *     truncated: boolean;
+ *     otherCount?: number;
+ *     otherShare?: number;
+ * }}
+ */
+export function buildCategoricalCountsSummary(
+    counts,
+    nonMissingCount,
+    missingCount,
+    maxCategories = DEFAULT_MAX_CATEGORIES
+) {
     const sortedCategories = Array.from(counts.entries()).sort(
         compareCategoryEntries
     );
     const categories = sortedCategories
-        .slice(0, DEFAULT_MAX_CATEGORIES)
+        .slice(0, maxCategories)
         .map(([value, count]) => ({
             value,
             count,
-            share: count / nonMissingCount,
+            share: nonMissingCount > 0 ? count / nonMissingCount : 0,
         }));
     const otherCount = sortedCategories
-        .slice(DEFAULT_MAX_CATEGORIES)
+        .slice(maxCategories)
         .reduce((sum, [, count]) => sum + count, 0);
-    const truncated = counts.size > DEFAULT_MAX_CATEGORIES;
+    const truncated = counts.size > maxCategories;
 
     return {
         nonMissingCount,
@@ -122,10 +146,30 @@ export function buildCategoricalFieldSummary(values) {
         ...(truncated
             ? {
                   otherCount,
-                  otherShare: otherCount / nonMissingCount,
+                  otherShare:
+                      nonMissingCount > 0 ? otherCount / nonMissingCount : 0,
               }
             : {}),
     };
+}
+
+/**
+ * @param {Map<unknown, number>} counts
+ * @param {number} nonMissingCount
+ * @returns {{ value: unknown, count: number, share: number } | undefined}
+ */
+export function buildTopCategorySummary(counts, nonMissingCount) {
+    const topEntry = Array.from(counts.entries()).sort(
+        compareCategoryEntries
+    )[0];
+
+    return topEntry
+        ? {
+              value: topEntry[0],
+              count: topEntry[1],
+              share: nonMissingCount > 0 ? topEntry[1] / nonMissingCount : 0,
+          }
+        : undefined;
 }
 
 /**

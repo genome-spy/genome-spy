@@ -2,7 +2,7 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
 import {
     buildCategoricalFieldSummary,
     buildQuantitativeFieldSummary,
-} from "./metadataSummaryReducers.js";
+} from "@genome-spy/app/agentShared";
 import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
 
 const DEFAULT_MAX_GROUPS = 20;

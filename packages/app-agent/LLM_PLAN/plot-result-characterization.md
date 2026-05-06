@@ -212,8 +212,10 @@ The first implementation slice is complete:
      App plot characterization and the app-agent metadata summary reducers.
    - Move generic quantitative and categorical reducers to an App-owned module
      so they can support App UI, plot characterization, and agent tools.
-   - Candidate location: `packages/app/src/agentShared/attributeSummary.js` or
-     a similarly neutral App module.
+   - Implemented location:
+     `packages/app/src/utils/statistics/fieldSummary.js`.
+   - App-agent imports the helpers through the existing `agentShared` surface;
+     do not add another package subpath for this helper yet.
    - Keep the helpers independent from agent wording and tool contracts.
    - Include:
      - numeric coercion and missing-value handling

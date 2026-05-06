@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
     buildCategoricalFieldSummary,
     buildQuantitativeFieldSummary,
-} from "./metadataSummaryReducers.js";
+} from "./fieldSummary.js";
 
-describe("metadataSummaryReducers", () => {
+describe("fieldSummary", () => {
     it("computes quartiles and IQR for quantitative summaries", () => {
         const summary = buildQuantitativeFieldSummary([1, 2, 3, 4, 100]);
 
