@@ -128,7 +128,52 @@ describe("sample attribute plot builders", () => {
         expect(plot.plotType).toBe("barplot");
         expect(plot.title).toBe("Bar plot of status");
         expect(plot.filename).toBe("genomespy-barplot.png");
-        expect(plot.summary).toEqual({ groupCount: 2, rowCount: 4 });
+        expect(plot.summary).toEqual({
+            groupCount: 2,
+            sampleCount: 4,
+            plottedCount: 4,
+        });
+        expect(plot.characterization).toMatchObject({
+            kind: "category_counts",
+            encoding: {
+                x: {
+                    role: "current_sample_groups",
+                    title: "Group",
+                },
+                y: {
+                    role: "count",
+                    title: "count",
+                },
+                color: {
+                    role: "plotted_attribute",
+                    title: "status",
+                },
+            },
+            nonMissingCount: 4,
+            missingCount: 0,
+            distinctCount: 3,
+            categories: [
+                { value: "A", count: 2, share: 0.5 },
+                { value: "B", count: 1, share: 0.25 },
+                { value: "C", count: 1, share: 0.25 },
+            ],
+            groups: [
+                {
+                    title: "Group 1",
+                    sampleCount: 2,
+                    nonMissingCount: 2,
+                    missingCount: 0,
+                    topCategory: { value: "A", count: 1, share: 0.5 },
+                },
+                {
+                    title: "Group 2",
+                    sampleCount: 2,
+                    nonMissingCount: 2,
+                    missingCount: 0,
+                    topCategory: { value: "A", count: 1, share: 0.5 },
+                },
+            ],
+        });
         expect(plot.spec.width).toBeUndefined();
         expect(plot.spec.height).toBeUndefined();
         expect(plot.namedData).toEqual([
@@ -157,7 +202,46 @@ describe("sample attribute plot builders", () => {
         expect(plot.plotType).toBe("boxplot");
         expect(plot.title).toBe("Boxplot of score");
         expect(plot.namedData).toHaveLength(2);
-        expect(plot.summary).toEqual({ groupCount: 2, rowCount: 2 });
+        expect(plot.summary).toEqual({
+            groupCount: 2,
+            sampleCount: 4,
+            plottedCount: 4,
+        });
+        expect(plot.characterization).toEqual({
+            kind: "quantitative_distribution",
+            groups: [
+                {
+                    title: "Group 1",
+                    sampleCount: 2,
+                    nonMissingCount: 2,
+                    missingCount: 0,
+                    min: 1,
+                    q1: 1.25,
+                    median: 1.5,
+                    q3: 1.75,
+                    max: 2,
+                    iqr: 0.5,
+                    outlierCount: 0,
+                },
+                {
+                    title: "Group 2",
+                    sampleCount: 2,
+                    nonMissingCount: 2,
+                    missingCount: 0,
+                    min: 3,
+                    q1: 3.25,
+                    median: 3.5,
+                    q3: 3.75,
+                    max: 4,
+                    iqr: 0.5,
+                    outlierCount: 0,
+                },
+            ],
+            highestMedianGroup: "Group 2",
+            lowestMedianGroup: "Group 1",
+            largestMedianDifference: 2,
+            cautions: ["Some groups have fewer than 3 non-missing values."],
+        });
         expect(plot.spec.width).toBeUndefined();
         expect(plot.spec.height).toBeUndefined();
     });
@@ -175,7 +259,29 @@ describe("sample attribute plot builders", () => {
 
         expect(plot.plotType).toBe("scatterplot");
         expect(plot.title).toBe("Scatterplot of score vs size");
-        expect(plot.summary).toEqual({ groupCount: 2, rowCount: 4 });
+        expect(plot.summary).toEqual({
+            groupCount: 2,
+            sampleCount: 4,
+            plottedCount: 4,
+        });
+        expect(plot.characterization).toEqual({
+            kind: "quantitative_relationship",
+            axisMapping: [
+                { axis: "x", attributeIndex: 0, title: "score" },
+                { axis: "y", attributeIndex: 1, title: "size" },
+            ],
+            missingPairCount: 0,
+            x: { min: 1, max: 4 },
+            y: { min: 10, max: 13 },
+            correlation: {
+                method: "pearson",
+                r: 1,
+            },
+            groups: [
+                { title: "Group 1", plottedPointCount: 2 },
+                { title: "Group 2", plottedPointCount: 2 },
+            ],
+        });
         expect(plot.spec.width).toBeUndefined();
         expect(plot.spec.height).toBeUndefined();
         expect(plot.namedData).toEqual([

@@ -182,6 +182,7 @@ function createSampleAttributePlotHistoryContent(content) {
         plotType: plot.plotType,
         title: plot.title,
         summary: plot.summary,
+        characterization: plot.characterization,
         ...(plot.attribute ? { attribute: plot.attribute } : {}),
         ...(plot.attributes ? { attributes: plot.attributes } : {}),
     };

@@ -41,7 +41,17 @@ const DEFAULT_OPTIONS = Object.freeze({
  *   rows: Record<string, import("@genome-spy/core/spec/channel.js").Scalar | number>[],
  *   categoryDomain: import("@genome-spy/core/spec/channel.js").Scalar[],
  *   groupDomain: string[],
- *   grouped: boolean
+ *   grouped: boolean,
+ *   sampleCount: number,
+ *   nonMissingCount: number,
+ *   missingCount: number,
+ *   groupSummaries: Array<{
+ *       title: string,
+ *       sampleCount: number,
+ *       nonMissingCount: number,
+ *       missingCount: number,
+ *       counts: Map<import("@genome-spy/core/spec/channel.js").Scalar, number>
+ *   }>
  * }}
  */
 export function buildHierarchyBarplotData(
@@ -70,11 +80,16 @@ export function buildHierarchyBarplotData(
     const categoryDomain = [];
     const categorySeen = new Set();
     const groupDomain = [];
+    const groupSummaries = [];
     const attributeScope = getAttributeScope(attributeInfo);
+    let sampleCount = 0;
+    let nonMissingCount = 0;
+    let missingCount = 0;
 
     for (const path of getFlattenedGroupHierarchy(sampleHierarchy)) {
         const groupLabel = getGroupLabel(path, resolved.groupLabelSeparator);
         const sampleIds = getGroupSamples(path);
+        sampleCount += sampleIds.length;
         const values = extractAttributeValues(
             attributeInfo,
             sampleIds,
@@ -89,13 +104,19 @@ export function buildHierarchyBarplotData(
         }
 
         const counts = new Map();
+        let groupNonMissingCount = 0;
+        let groupMissingCount = 0;
 
         for (const rawValue of values) {
             if (rawValue === null || rawValue === undefined) {
+                missingCount++;
+                groupMissingCount++;
                 continue;
             }
 
             const category = rawValue;
+            nonMissingCount++;
+            groupNonMissingCount++;
             counts.set(category, (counts.get(category) ?? 0) + 1);
 
             if (!categorySeen.has(category)) {
@@ -107,6 +128,14 @@ export function buildHierarchyBarplotData(
         if (counts.size === 0) {
             continue;
         }
+
+        groupSummaries.push({
+            title: groupLabel,
+            sampleCount: sampleIds.length,
+            nonMissingCount: groupNonMissingCount,
+            missingCount: groupMissingCount,
+            counts,
+        });
 
         if (resolved.grouped) {
             groupDomain.push(groupLabel);
@@ -128,5 +157,9 @@ export function buildHierarchyBarplotData(
         categoryDomain,
         groupDomain,
         grouped: resolved.grouped,
+        sampleCount,
+        nonMissingCount,
+        missingCount,
+        groupSummaries,
     };
 }

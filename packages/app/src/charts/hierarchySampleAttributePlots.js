@@ -9,6 +9,11 @@ const BARPLOT_DATA_NAME = "hierarchy_barplot";
 const BOXPLOT_STATS_NAME = "hierarchy_boxplot_stats";
 const BOXPLOT_OUTLIERS_NAME = "hierarchy_boxplot_outliers";
 const SCATTERPLOT_DATA_NAME = "hierarchy_scatterplot_points";
+const categoryCollator = new Intl.Collator("en", {
+    numeric: true,
+    sensitivity: "base",
+});
+
 /**
  * @param {import("./sampleAttributePlotTypes.d.ts").HierarchyBarplotRequest} request
  * @returns {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot}
@@ -32,16 +37,24 @@ export function buildHierarchyBarplot(request) {
     const stackStartField = "y0";
     const stackEndField = "y1";
 
-    const { rows, categoryDomain, groupDomain, grouped } =
-        buildHierarchyBarplotData(
-            request.sampleHierarchy,
-            request.attributeInfo,
-            {
-                categoryField: categoryFieldName,
-                groupField: groupFieldName,
-                countField: countFieldName,
-            }
-        );
+    const {
+        rows,
+        categoryDomain,
+        groupDomain,
+        grouped,
+        sampleCount,
+        nonMissingCount,
+        missingCount,
+        groupSummaries,
+    } = buildHierarchyBarplotData(
+        request.sampleHierarchy,
+        request.attributeInfo,
+        {
+            categoryField: categoryFieldName,
+            groupField: groupFieldName,
+            countField: countFieldName,
+        }
+    );
 
     const colorScale = resolveCategoryScale(info, categoryDomain);
     const xField = grouped ? groupFieldName : categoryFieldName;
@@ -118,8 +131,21 @@ export function buildHierarchyBarplot(request) {
         filename: "genomespy-barplot.png",
         summary: {
             groupCount: groupDomain.length > 0 ? groupDomain.length : 1,
-            rowCount: rows.length,
+            sampleCount,
+            plottedCount: nonMissingCount,
         },
+        characterization: buildCategoryCountsCharacterization({
+            rows,
+            categoryFieldName,
+            xTitle,
+            colorTitle: grouped ? categoryTitle : undefined,
+            countFieldName,
+            categoryDomain,
+            nonMissingCount,
+            missingCount,
+            groupSummaries,
+            grouped,
+        }),
     };
 }
 
@@ -139,7 +165,14 @@ export function buildHierarchyBoxplot(request) {
     const groupFieldName = groupTitle ?? "Group";
     const valueFieldName = templateResultToString(info.title);
 
-    const { statsRows, outlierRows, groupDomain } = buildHierarchyBoxplotData(
+    const {
+        statsRows,
+        outlierRows,
+        groupDomain,
+        sampleCount,
+        nonMissingCount,
+        groupSummaries,
+    } = buildHierarchyBoxplotData(
         request.sampleHierarchy,
         request.attributeInfo,
         {
@@ -177,8 +210,11 @@ export function buildHierarchyBoxplot(request) {
         filename: "genomespy-boxplot.png",
         summary: {
             groupCount: groupDomain.length > 0 ? groupDomain.length : 1,
-            rowCount: statsRows.length + outlierRows.length,
+            sampleCount,
+            plottedCount: nonMissingCount,
         },
+        characterization:
+            buildAttributeDistributionCharacterization(groupSummaries),
     };
 }
 
@@ -204,17 +240,18 @@ export function buildHierarchyScatterplot(request) {
     );
     const groupFieldName = groupTitle ?? "Group";
 
-    const { rows, groupDomain } = buildHierarchyScatterplotData(
-        request.sampleHierarchy,
-        request.xAttributeInfo,
-        request.yAttributeInfo,
-        {
-            groupField: groupFieldName,
-            xField: xFieldName,
-            yField: yFieldName,
-            sampleField: "sample",
-        }
-    );
+    const { rows, groupDomain, sampleCount, missingPairCount, groupSummaries } =
+        buildHierarchyScatterplotData(
+            request.sampleHierarchy,
+            request.xAttributeInfo,
+            request.yAttributeInfo,
+            {
+                groupField: groupFieldName,
+                xField: xFieldName,
+                yField: yFieldName,
+                sampleField: "sample",
+            }
+        );
 
     /** @type {import("@genome-spy/core/spec/channel.js").Encoding} */
     const encoding = {
@@ -261,8 +298,295 @@ export function buildHierarchyScatterplot(request) {
         filename: "genomespy-scatterplot.png",
         summary: {
             groupCount: groupDomain.length > 0 ? groupDomain.length : 1,
-            rowCount: rows.length,
+            sampleCount,
+            plottedCount: rows.length,
         },
+        characterization: buildAttributeRelationshipCharacterization({
+            rows,
+            xFieldName,
+            yFieldName,
+            xAxisTitle,
+            yAxisTitle,
+            missingPairCount,
+            groupSummaries,
+        }),
+    };
+}
+
+/**
+ * @param {object} params
+ * @param {Record<string, import("@genome-spy/core/spec/channel.js").Scalar | number>[]} params.rows
+ * @param {string} params.categoryFieldName
+ * @param {string} params.xTitle
+ * @param {string | undefined} params.colorTitle
+ * @param {string} params.countFieldName
+ * @param {import("@genome-spy/core/spec/channel.js").Scalar[]} params.categoryDomain
+ * @param {number} params.nonMissingCount
+ * @param {number} params.missingCount
+ * @param {Array<{
+ *     title: string,
+ *     sampleCount: number,
+ *     nonMissingCount: number,
+ *     missingCount: number,
+ *     counts: Map<import("@genome-spy/core/spec/channel.js").Scalar, number>
+ * }>} params.groupSummaries
+ * @param {boolean} params.grouped
+ * @returns {import("./sampleAttributePlotTypes.d.ts").CategoryCountsPlotCharacterization}
+ */
+function buildCategoryCountsCharacterization(params) {
+    const categoryCounts = new Map();
+    for (const row of params.rows) {
+        const category = row[params.categoryFieldName];
+        const count = Number(row[params.countFieldName]);
+        categoryCounts.set(
+            category,
+            (categoryCounts.get(category) ?? 0) + count
+        );
+    }
+
+    return {
+        kind: "category_counts",
+        encoding: {
+            x: {
+                role: params.grouped
+                    ? "current_sample_groups"
+                    : "plotted_attribute",
+                title: params.xTitle,
+            },
+            y: {
+                role: "count",
+                title: "count",
+            },
+            ...(params.colorTitle
+                ? {
+                      color: {
+                          role: "plotted_attribute",
+                          title: params.colorTitle,
+                      },
+                  }
+                : {}),
+        },
+        nonMissingCount: params.nonMissingCount,
+        missingCount: params.missingCount,
+        distinctCount: params.categoryDomain.length,
+        categories: Array.from(categoryCounts.entries())
+            .map(([value, count]) => ({
+                value,
+                count,
+                share:
+                    params.nonMissingCount > 0
+                        ? count / params.nonMissingCount
+                        : 0,
+            }))
+            .sort(compareCategoryRows),
+        ...(params.grouped
+            ? {
+                  groups: params.groupSummaries.map((group) => ({
+                      title: group.title,
+                      sampleCount: group.sampleCount,
+                      nonMissingCount: group.nonMissingCount,
+                      missingCount: group.missingCount,
+                      ...buildTopCategory(group.counts, group.nonMissingCount),
+                  })),
+              }
+            : {}),
+    };
+}
+
+/**
+ * @param {Array<{
+ *     title: string,
+ *     sampleCount: number,
+ *     nonMissingCount: number,
+ *     missingCount: number,
+ *     min: number,
+ *     q1: number,
+ *     median: number,
+ *     q3: number,
+ *     max: number,
+ *     iqr: number,
+ *     outlierCount: number
+ * }>} groupSummaries
+ * @returns {import("./sampleAttributePlotTypes.d.ts").AttributeDistributionPlotCharacterization}
+ */
+function buildAttributeDistributionCharacterization(groupSummaries) {
+    const groups = groupSummaries.map((group) => ({ ...group }));
+    const groupsWithValues = groups.filter(
+        (group) => group.nonMissingCount > 0
+    );
+    const orderedByMedian = groupsWithValues
+        .slice()
+        .sort((a, b) => a.median - b.median);
+    const lowestMedianGroup = orderedByMedian[0];
+    const highestMedianGroup = orderedByMedian[orderedByMedian.length - 1];
+    const cautions = [];
+
+    if (groups.some((group) => group.nonMissingCount < 3)) {
+        cautions.push("Some groups have fewer than 3 non-missing values.");
+    }
+    if (groups.some((group) => group.missingCount > 0)) {
+        cautions.push("Some visible samples have missing plotted values.");
+    }
+
+    return {
+        kind: "quantitative_distribution",
+        groups,
+        ...(highestMedianGroup
+            ? { highestMedianGroup: highestMedianGroup.title }
+            : {}),
+        ...(lowestMedianGroup
+            ? { lowestMedianGroup: lowestMedianGroup.title }
+            : {}),
+        ...(highestMedianGroup && lowestMedianGroup
+            ? {
+                  largestMedianDifference:
+                      highestMedianGroup.median - lowestMedianGroup.median,
+              }
+            : {}),
+        ...(cautions.length > 0 ? { cautions } : {}),
+    };
+}
+
+/**
+ * @param {object} params
+ * @param {Record<string, import("@genome-spy/core/spec/channel.js").Scalar | number>[]} params.rows
+ * @param {string} params.xFieldName
+ * @param {string} params.yFieldName
+ * @param {string} params.xAxisTitle
+ * @param {string} params.yAxisTitle
+ * @param {number} params.missingPairCount
+ * @param {Array<{ title: string, plottedPointCount: number }>} params.groupSummaries
+ * @returns {import("./sampleAttributePlotTypes.d.ts").AttributeRelationshipPlotCharacterization}
+ */
+function buildAttributeRelationshipCharacterization(params) {
+    const xValues = params.rows.map((row) => Number(row[params.xFieldName]));
+    const yValues = params.rows.map((row) => Number(row[params.yFieldName]));
+    const correlation = pearsonCorrelation(xValues, yValues);
+    const cautions = [];
+
+    if (params.rows.length < 3) {
+        cautions.push("Fewer than 3 plotted points.");
+    }
+    if (params.missingPairCount > 0) {
+        cautions.push("Some visible samples have missing plotted pairs.");
+    }
+
+    return {
+        kind: "quantitative_relationship",
+        axisMapping: [
+            { axis: "x", attributeIndex: 0, title: params.xAxisTitle },
+            { axis: "y", attributeIndex: 1, title: params.yAxisTitle },
+        ],
+        missingPairCount: params.missingPairCount,
+        x: buildRange(xValues),
+        y: buildRange(yValues),
+        ...(correlation !== undefined
+            ? { correlation: buildCorrelationSummary(correlation) }
+            : {}),
+        ...(params.groupSummaries.length > 1
+            ? { groups: params.groupSummaries }
+            : {}),
+        ...(cautions.length > 0 ? { cautions } : {}),
+    };
+}
+
+/**
+ * @param {{ value: unknown, count: number }} a
+ * @param {{ value: unknown, count: number }} b
+ * @returns {number}
+ */
+function compareCategoryRows(a, b) {
+    if (b.count !== a.count) {
+        return b.count - a.count;
+    }
+
+    return categoryCollator.compare(String(a.value), String(b.value));
+}
+
+/**
+ * @param {Map<unknown, number>} counts
+ * @param {number} nonMissingCount
+ * @returns {{ topCategory?: { value: unknown, count: number, share: number } }}
+ */
+function buildTopCategory(counts, nonMissingCount) {
+    const topEntry = Array.from(counts.entries())
+        .map(([value, count]) => ({
+            value,
+            count,
+        }))
+        .sort(compareCategoryRows)[0];
+
+    return topEntry
+        ? {
+              topCategory: {
+                  value: topEntry.value,
+                  count: topEntry.count,
+                  share:
+                      nonMissingCount > 0
+                          ? topEntry.count / nonMissingCount
+                          : 0,
+              },
+          }
+        : {};
+}
+
+/**
+ * @param {number[]} values
+ * @returns {{ min?: number, max?: number }}
+ */
+function buildRange(values) {
+    const finiteValues = values.filter((value) => Number.isFinite(value));
+    if (finiteValues.length === 0) {
+        return {};
+    }
+
+    return {
+        min: Math.min(...finiteValues),
+        max: Math.max(...finiteValues),
+    };
+}
+
+/**
+ * @param {number[]} xValues
+ * @param {number[]} yValues
+ * @returns {number | undefined}
+ */
+function pearsonCorrelation(xValues, yValues) {
+    if (xValues.length !== yValues.length || xValues.length < 3) {
+        return undefined;
+    }
+
+    const xMean =
+        xValues.reduce((sum, value) => sum + value, 0) / xValues.length;
+    const yMean =
+        yValues.reduce((sum, value) => sum + value, 0) / yValues.length;
+    let sxx = 0;
+    let syy = 0;
+    let sxy = 0;
+
+    for (let i = 0; i < xValues.length; i += 1) {
+        const dx = xValues[i] - xMean;
+        const dy = yValues[i] - yMean;
+        sxx += dx * dx;
+        syy += dy * dy;
+        sxy += dx * dy;
+    }
+
+    if (sxx === 0 || syy === 0) {
+        return undefined;
+    }
+
+    return sxy / Math.sqrt(sxx * syy);
+}
+
+/**
+ * @param {number} r
+ * @returns {import("./sampleAttributePlotTypes.d.ts").AttributeRelationshipPlotCharacterization["correlation"]}
+ */
+function buildCorrelationSummary(r) {
+    return {
+        method: "pearson",
+        r,
     };
 }
 

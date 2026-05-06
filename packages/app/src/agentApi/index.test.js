@@ -9,7 +9,25 @@ vi.mock("../charts/hierarchySampleAttributePlots.js", () => ({
         filename: "genomespy-barplot.png",
         summary: {
             groupCount: 1,
-            rowCount: 0,
+            sampleCount: 0,
+            plottedCount: 0,
+        },
+        characterization: {
+            kind: "category_counts",
+            encoding: {
+                x: {
+                    role: "plotted_attribute",
+                    title: "category",
+                },
+                y: {
+                    role: "count",
+                    title: "count",
+                },
+            },
+            nonMissingCount: 0,
+            missingCount: 0,
+            distinctCount: 0,
+            categories: [],
         },
     })),
     buildHierarchyBoxplot: vi.fn(() => ({
@@ -21,7 +39,12 @@ vi.mock("../charts/hierarchySampleAttributePlots.js", () => ({
         filename: "genomespy-boxplot.png",
         summary: {
             groupCount: 1,
-            rowCount: 0,
+            sampleCount: 0,
+            plottedCount: 0,
+        },
+        characterization: {
+            kind: "quantitative_distribution",
+            groups: [],
         },
     })),
     buildHierarchyScatterplot: vi.fn(() => ({
@@ -33,7 +56,15 @@ vi.mock("../charts/hierarchySampleAttributePlots.js", () => ({
         filename: "genomespy-scatterplot.png",
         summary: {
             groupCount: 1,
-            rowCount: 0,
+            sampleCount: 0,
+            plottedCount: 0,
+        },
+        characterization: {
+            kind: "quantitative_relationship",
+            axisMapping: [],
+            missingPairCount: 0,
+            x: {},
+            y: {},
         },
     })),
 }));

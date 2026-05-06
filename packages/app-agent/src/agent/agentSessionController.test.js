@@ -49,7 +49,20 @@ function createRuntimeMock() {
             filename: "genomespy-scatterplot.png",
             summary: {
                 groupCount: 2,
-                rowCount: 12,
+                sampleCount: 12,
+                plottedCount: 12,
+            },
+            characterization: {
+                kind: "quantitative_relationship",
+                axisMapping: [
+                    { axis: "x", attributeIndex: 0, title: "age" },
+                    { axis: "y", attributeIndex: 1, title: "purity" },
+                ],
+                sampleCount: 12,
+                plottedPointCount: 12,
+                missingPairCount: 0,
+                x: { min: 1, max: 12 },
+                y: { min: 2, max: 24 },
             },
         })),
         materializeAttributeIdentifier: vi.fn((attribute) => attribute),
@@ -552,7 +565,7 @@ describe("createAgentSessionController", () => {
         });
         expect(snapshot.messages[2]).toMatchObject({
             kind: "tool_result",
-            text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
+            text: "Shown Scatterplot of age vs purity with 2 groups and 12 plotted samples or points in the chat transcript.",
         });
         expect(snapshot.messages[3]).toMatchObject({
             kind: "plot",
@@ -603,7 +616,7 @@ describe("createAgentSessionController", () => {
             {
                 id: "3",
                 role: "tool",
-                text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
+                text: "Shown Scatterplot of age vs purity with 2 groups and 12 plotted samples or points in the chat transcript.",
                 kind: "tool_result",
                 toolCallId: "call-plot",
                 content: {
@@ -613,7 +626,20 @@ describe("createAgentSessionController", () => {
                     title: "Scatterplot of age vs purity",
                     summary: {
                         groupCount: 2,
-                        rowCount: 12,
+                        sampleCount: 12,
+                        plottedCount: 12,
+                    },
+                    characterization: {
+                        kind: "quantitative_relationship",
+                        axisMapping: [
+                            { axis: "x", attributeIndex: 0, title: "age" },
+                            { axis: "y", attributeIndex: 1, title: "purity" },
+                        ],
+                        sampleCount: 12,
+                        plottedPointCount: 12,
+                        missingPairCount: 0,
+                        x: { min: 1, max: 12 },
+                        y: { min: 2, max: 24 },
                     },
                     attributes: [
                         {

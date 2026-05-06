@@ -40,7 +40,10 @@ const DEFAULT_OPTIONS = Object.freeze({
  * @param {HierarchyScatterplotOptions} [options]
  * @returns {{
  *   rows: Record<string, import("@genome-spy/core/spec/channel.js").Scalar | number>[],
- *   groupDomain: string[]
+ *   groupDomain: string[],
+ *   sampleCount: number,
+ *   missingPairCount: number,
+ *   groupSummaries: Array<{ title: string, plottedPointCount: number }>
  * }}
  */
 export function buildHierarchyScatterplotData(
@@ -66,12 +69,16 @@ export function buildHierarchyScatterplotData(
     const rows = [];
     /** @type {string[]} */
     const groupDomain = [];
+    const groupSummaries = [];
     const xScope = getAttributeScope(xAttributeInfo);
     const yScope = getAttributeScope(yAttributeInfo);
+    let sampleCount = 0;
+    let missingPairCount = 0;
 
     for (const path of getFlattenedGroupHierarchy(sampleHierarchy)) {
         const groupLabel = getGroupLabel(path, resolved.groupLabelSeparator);
         const sampleIds = getGroupSamples(path);
+        sampleCount += sampleIds.length;
         const xValues = extractAttributeValues(
             xAttributeInfo,
             sampleIds,
@@ -97,19 +104,23 @@ export function buildHierarchyScatterplotData(
         }
 
         let groupHasRows = false;
+        let groupPlottedPointCount = 0;
 
         for (let i = 0; i < sampleIds.length; i += 1) {
             const xRaw = xValues[i];
             const yRaw = yValues[i];
             if (xRaw === null || xRaw === undefined) {
+                missingPairCount++;
                 continue;
             }
             if (yRaw === null || yRaw === undefined) {
+                missingPairCount++;
                 continue;
             }
             const x = typeof xRaw === "number" ? xRaw : Number(xRaw);
             const y = typeof yRaw === "number" ? yRaw : Number(yRaw);
             if (!Number.isFinite(x) || !Number.isFinite(y)) {
+                missingPairCount++;
                 continue;
             }
 
@@ -120,12 +131,17 @@ export function buildHierarchyScatterplotData(
                 [resolved.groupField]: groupLabel,
             });
             groupHasRows = true;
+            groupPlottedPointCount++;
         }
 
         if (groupHasRows) {
             groupDomain.push(groupLabel);
+            groupSummaries.push({
+                title: groupLabel,
+                plottedPointCount: groupPlottedPointCount,
+            });
         }
     }
 
-    return { rows, groupDomain };
+    return { rows, groupDomain, sampleCount, missingPairCount, groupSummaries };
 }
