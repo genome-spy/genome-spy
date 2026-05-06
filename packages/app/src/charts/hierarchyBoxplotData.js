@@ -42,7 +42,23 @@ const DEFAULT_OPTIONS = Object.freeze({
  * @returns {{
  *   statsRows: import("./boxplotTypes.d.ts").BoxplotStatsRow[],
  *   outlierRows: import("./boxplotTypes.d.ts").BoxplotOutlierRow[],
- *   groupDomain: import("@genome-spy/core/spec/channel.js").Scalar[]
+ *   groupDomain: import("@genome-spy/core/spec/channel.js").Scalar[],
+ *   sampleCount: number,
+ *   nonMissingCount: number,
+ *   missingCount: number,
+ *   groupSummaries: Array<{
+ *       title: string,
+ *       sampleCount: number,
+ *       nonMissingCount: number,
+ *       missingCount: number,
+ *       min: number,
+ *       q1: number,
+ *       median: number,
+ *       q3: number,
+ *       max: number,
+ *       iqr: number,
+ *       outlierCount: number
+ *   }>
  * }}
  */
 export function buildHierarchyBoxplotData(
@@ -72,11 +88,16 @@ export function buildHierarchyBoxplotData(
     const statsRows = [];
     const outlierRows = [];
     const groupDomain = [];
+    const groupSummaries = [];
     const attributeScope = getAttributeScope(attributeInfo);
+    let sampleCount = 0;
+    let nonMissingCount = 0;
+    let missingCount = 0;
 
     for (const path of getFlattenedGroupHierarchy(sampleHierarchy)) {
         const groupLabel = getGroupLabel(path, resolved.groupLabelSeparator);
         const sampleIds = getGroupSamples(path);
+        sampleCount += sampleIds.length;
         const values = extractAttributeValues(
             attributeInfo,
             sampleIds,
@@ -108,11 +129,28 @@ export function buildHierarchyBoxplotData(
         );
 
         if (statistics) {
+            nonMissingCount += statistics.nValid;
+            missingCount += statistics.n - statistics.nValid;
             statsRows.push({
                 [resolved.groupField]: groupLabel,
                 ...statistics,
             });
             groupDomain.push(groupLabel);
+            groupSummaries.push({
+                title: groupLabel,
+                sampleCount: statistics.n,
+                nonMissingCount: statistics.nValid,
+                missingCount: statistics.n - statistics.nValid,
+                min: statistics.min,
+                q1: statistics.q1,
+                median: statistics.median,
+                q3: statistics.q3,
+                max: statistics.max,
+                iqr: statistics.iqr,
+                outlierCount: outliers.length,
+            });
+        } else {
+            missingCount += sampleRows.length;
         }
 
         for (const outlier of outliers) {
@@ -124,5 +162,13 @@ export function buildHierarchyBoxplotData(
         }
     }
 
-    return { statsRows, outlierRows, groupDomain };
+    return {
+        statsRows,
+        outlierRows,
+        groupDomain,
+        sampleCount,
+        nonMissingCount,
+        missingCount,
+        groupSummaries,
+    };
 }

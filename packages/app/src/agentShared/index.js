@@ -19,6 +19,12 @@ import { viewSettingsSlice } from "../viewSettingsSlice.js";
 export { faStyles, formStyles } from "../components/generic/componentStyles.js";
 import templateResultToString from "../utils/templateResultToString.js";
 export { default as safeMarkdown } from "../utils/safeMarkdown.js";
+export {
+    buildCategoricalCountsSummary,
+    buildCategoricalFieldSummary,
+    buildQuantitativeFieldSummary,
+    buildTopCategorySummary,
+} from "../utils/statistics/fieldSummary.js";
 
 export {
     makeViewSelectorKey,

@@ -1,32 +1,37 @@
 import { describe, expect, it, vi } from "vitest";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 
-vi.mock("@genome-spy/app/agentShared", () => ({
-    buildSelectionAggregationAttributeIdentifier: ({
-        viewSelector,
-        field,
-        selectionSelector,
-        aggregation,
-    }) => ({
-        type: "VALUE_AT_LOCUS",
-        specifier: {
-            view: viewSelector,
+vi.mock("@genome-spy/app/agentShared", async (importOriginal) => {
+    const actual = await importOriginal();
+
+    return {
+        ...actual,
+        buildSelectionAggregationAttributeIdentifier: ({
+            viewSelector,
             field,
-            interval: {
-                type: "selection",
-                selector: selectionSelector,
+            selectionSelector,
+            aggregation,
+        }) => ({
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: viewSelector,
+                field,
+                interval: {
+                    type: "selection",
+                    selector: selectionSelector,
+                },
+                aggregation: { op: aggregation },
             },
-            aggregation: { op: aggregation },
-        },
-    }),
-    formatAggregationExpression: (aggregation, field) =>
-        `${aggregation}(${field})`,
-    getActionCreator: (actionType) => (payload) => ({
-        type: actionType,
-        payload,
-    }),
-    templateResultToString: (value) => String(value),
-}));
+        }),
+        formatAggregationExpression: (aggregation, field) =>
+            `${aggregation}(${field})`,
+        getActionCreator: (actionType) => (payload) => ({
+            type: actionType,
+            payload,
+        }),
+        templateResultToString: (value) => String(value),
+    };
+});
 
 import { agentTools } from "./agentTools.js";
 
@@ -247,7 +252,20 @@ function createRuntimeStub() {
             filename: "genomespy-plot.png",
             summary: {
                 groupCount: 2,
-                rowCount: 12,
+                sampleCount: 12,
+                plottedCount: 12,
+            },
+            characterization: {
+                kind: "quantitative_relationship",
+                axisMapping: [
+                    { axis: "x", attributeIndex: 0, title: "age" },
+                    { axis: "y", attributeIndex: 1, title: "purity" },
+                ],
+                sampleCount: 12,
+                plottedPointCount: 12,
+                missingPairCount: 0,
+                x: { min: 1, max: 12 },
+                y: { min: 2, max: 24 },
             },
         })),
     };
@@ -430,7 +448,7 @@ describe("agentTools", () => {
         });
         expect(result).toEqual(
             expect.objectContaining({
-                text: "Shown Scatterplot of age vs purity with 2 groups in the chat transcript.",
+                text: "Shown Scatterplot of age vs purity with 2 groups and 12 plotted samples or points in the chat transcript.",
                 content: expect.objectContaining({
                     kind: "sample_attribute_plot",
                     plotType: "scatterplot",

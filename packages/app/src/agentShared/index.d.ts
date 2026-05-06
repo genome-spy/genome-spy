@@ -20,6 +20,12 @@ export { formatAggregationExpression } from "../sampleView/attributeAggregation/
 export { default as templateResultToString } from "../utils/templateResultToString.js";
 export { faStyles, formStyles } from "../components/generic/componentStyles.js";
 export { default as safeMarkdown } from "../utils/safeMarkdown.js";
+export {
+    buildCategoricalCountsSummary,
+    buildCategoricalFieldSummary,
+    buildQuantitativeFieldSummary,
+    buildTopCategorySummary,
+} from "../utils/statistics/fieldSummary.js";
 export type { ParamSelector, ViewSelector } from "./types.d.ts";
 export type {
     AggregationOp,

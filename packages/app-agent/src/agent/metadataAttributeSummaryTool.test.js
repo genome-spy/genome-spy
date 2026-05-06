@@ -2,27 +2,32 @@ import { describe, expect, it, vi } from "vitest";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 import { getMetadataAttributeSummaryTool } from "./metadataAttributeSummaryTool.js";
 
-vi.mock("@genome-spy/app/agentShared", () => ({
-    buildSelectionAggregationAttributeIdentifier: ({
-        viewSelector,
-        field,
-        selectionSelector,
-        aggregation,
-    }) => ({
-        type: "VALUE_AT_LOCUS",
-        specifier: {
-            view: viewSelector,
+vi.mock("@genome-spy/app/agentShared", async (importOriginal) => {
+    const actual = await importOriginal();
+
+    return {
+        ...actual,
+        buildSelectionAggregationAttributeIdentifier: ({
+            viewSelector,
             field,
-            interval: {
-                type: "selection",
-                selector: selectionSelector,
+            selectionSelector,
+            aggregation,
+        }) => ({
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: viewSelector,
+                field,
+                interval: {
+                    type: "selection",
+                    selector: selectionSelector,
+                },
+                aggregation: { op: aggregation },
             },
-            aggregation: { op: aggregation },
-        },
-    }),
-    formatAggregationExpression: (aggregation, field) =>
-        `${aggregation}(${field})`,
-}));
+        }),
+        formatAggregationExpression: (aggregation, field) =>
+            `${aggregation}(${field})`,
+    };
+});
 
 function createRuntimeStub() {
     return {

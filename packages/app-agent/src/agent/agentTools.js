@@ -378,6 +378,7 @@ async function executeSampleAttributePlot(runtime, options) {
         return {
             text:
                 `Shown ${plot.title} with ${plot.summary.groupCount} groups ` +
+                `and ${plot.summary.plottedCount} plotted samples or points ` +
                 "in the chat transcript.",
             content: {
                 ...plot,
