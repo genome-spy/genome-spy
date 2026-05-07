@@ -143,7 +143,9 @@ Do not construct `candidateId` values. Copy the exact candidate object or exact
 `candidateId` from `selectionAggregation.fields`. The `aggregation` property
 then chooses how each sample is represented within the selected interval; for
 example, `"min"` means each sample is represented by its minimum value within
-the interval.
+the interval. Every `SELECTION_AGGREGATION` payload must include both
+`candidateId` and `aggregation`; for "mean over the selected interval", use
+`weightedMean` when it is supported by the candidate.
 
 Samples form a multi-level hierarchy of arbitrary groups. If the user asks for
 group-level comparisons or summaries, first group the samples with intent
@@ -283,7 +285,8 @@ Selection aggregation derives one value per sample from data items that overlap
 the current genomic interval selection. Use it for sample-level properties of a
 selected region. Available fields depend on the visualization; use only
 candidates copied from `selectionAggregation.fields`. Never invent or assemble
-`candidateId` values from parameter, view, or field names.
+`candidateId` values from parameter, view, or field names. Always include the
+chosen `aggregation` in the payload.
 
 Every `SELECTION_AGGREGATION` first aggregates data within the selected
 interval for each sample; any later summary or plot uses those per-sample

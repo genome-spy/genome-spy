@@ -278,6 +278,15 @@ export function validateAgentActionPayloadShape(
         };
     }
 
+    const malformedSelectionAggregationErrors =
+        findMalformedSelectionAggregationCandidates(payload, prefix);
+    if (malformedSelectionAggregationErrors.length > 0) {
+        return {
+            ok: false,
+            errors: malformedSelectionAggregationErrors,
+        };
+    }
+
     return validateActionPayloadShapeWithSchemas(
         actionType,
         payload,
@@ -340,6 +349,63 @@ function validateActionPayloadShapeWithSchemas(
         ok: false,
         errors: formatAjvErrors(prefix, validator.errors),
     };
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} path
+ * @returns {string[]}
+ */
+function findMalformedSelectionAggregationCandidates(value, path) {
+    if (Array.isArray(value)) {
+        return value.flatMap((item, index) =>
+            findMalformedSelectionAggregationCandidates(
+                item,
+                path + "[" + index + "]"
+            )
+        );
+    }
+
+    if (!isObject(value)) {
+        return [];
+    }
+
+    const errors =
+        value.type === "SELECTION_AGGREGATION"
+            ? validateSelectionAggregationCandidate(value, path)
+            : [];
+
+    return errors.concat(
+        Object.entries(value).flatMap(([key, child]) =>
+            findMalformedSelectionAggregationCandidates(child, path + "." + key)
+        )
+    );
+}
+
+/**
+ * @param {Record<string, any>} value
+ * @param {string} path
+ * @returns {string[]}
+ */
+function validateSelectionAggregationCandidate(value, path) {
+    /** @type {string[]} */
+    const errors = [];
+
+    if (typeof value.candidateId !== "string") {
+        errors.push(
+            path +
+                ".candidateId must be copied exactly from selectionAggregation.fields."
+        );
+    }
+
+    if (typeof value.aggregation !== "string") {
+        errors.push(
+            path +
+                ".aggregation is required for SELECTION_AGGREGATION. Copy a supported aggregation from selectionAggregation.fields; use weightedMean for an interval mean when supported."
+        );
+    }
+
+    return errors;
 }
 
 /**

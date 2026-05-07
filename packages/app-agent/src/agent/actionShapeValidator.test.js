@@ -126,6 +126,25 @@ describe("actionShapeValidator", () => {
         );
     });
 
+    it("explains missing aggregation on selection aggregation candidates", () => {
+        const result = validateAgentActionPayloadShape(
+            "sampleView/deriveMetadata",
+            {
+                attribute: {
+                    type: "SELECTION_AGGREGATION",
+                    candidateId: "brush@CNV:purifiedLogR",
+                },
+                name: "ERBB2_mean_copy_number",
+                scale: null,
+            }
+        );
+
+        expect(result.ok).toBe(false);
+        expect(result.errors).toEqual([
+            "$.attribute.aggregation is required for SELECTION_AGGREGATION. Copy a supported aggregation from selectionAggregation.fields; use weightedMean for an interval mean when supported.",
+        ]);
+    });
+
     it("rejects malformed intent batches", () => {
         const result = validateIntentBatchShape({
             schemaVersion: 1,
