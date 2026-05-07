@@ -99,7 +99,7 @@ def test_build_responses_input_omits_empty_volatile_context() -> None:
     }
 
 
-def test_build_responses_input_can_end_with_tool_output() -> None:
+def test_build_responses_input_places_volatile_context_after_tool_output() -> None:
     request = ProviderRequest(
         system_prompt="system prompt",
         context={"schemaVersion": 1},
@@ -131,16 +131,16 @@ def test_build_responses_input_can_end_with_tool_output() -> None:
     prompt = build_prompt_ir(request)
     messages = build_responses_input(prompt)
 
-    assert messages[1]["role"] == "developer"
-    assert messages[1]["content"][0]["text"].startswith(
-        "Current volatile GenomeSpy state:\n"
-    )
-    assert messages[2]["role"] == "user"
-    assert messages[-1] == {
+    assert messages[1]["role"] == "user"
+    assert messages[4] == {
         "type": "function_call_output",
         "call_id": "call_plot",
         "output": "Shown Boxplot. The requested plot is complete.",
     }
+    assert messages[5]["role"] == "developer"
+    assert messages[5]["content"][0]["text"].startswith(
+        "Current volatile GenomeSpy state:\n"
+    )
 
 
 def test_build_responses_input_serializes_tool_turns() -> None:

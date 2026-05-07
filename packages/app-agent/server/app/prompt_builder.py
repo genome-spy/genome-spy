@@ -62,10 +62,13 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
     """
     messages: list[dict[str, Any]] = []
     messages.append(_build_developer_text_item(prompt.context_text))
-    if not prompt.message and prompt.volatile_context_text:
-        messages.append(_build_developer_text_item(prompt.volatile_context_text))
     messages.extend(_build_response_messages(prompt.history))
-    if prompt.message and prompt.volatile_context_text:
+
+    # Keep volatile browser state after the stable prompt prefix and prior
+    # conversation, immediately before the current user message when present.
+    # This preserves prompt-cache reuse for stable context and makes the state
+    # read as the current snapshot that follows the earlier conversation.
+    if prompt.volatile_context_text:
         messages.append(_build_developer_text_item(prompt.volatile_context_text))
     if prompt.message:
         messages.append(
