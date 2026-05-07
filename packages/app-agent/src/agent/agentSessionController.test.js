@@ -712,6 +712,39 @@ describe("createAgentSessionController", () => {
         ).not.toHaveBeenCalled();
     });
 
+    it("returns invalid selection aggregation candidates as rejected tool results", async () => {
+        const runtime = createRuntimeMock();
+        const controller = createAgentSessionController(runtime);
+
+        const results = await controller.executeToolCalls([
+            {
+                callId: "call-plot",
+                name: "showAttributeDistributionPlot",
+                arguments: {
+                    kind: "boxplot",
+                    attribute: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "invented-candidate",
+                        aggregation: "max",
+                    },
+                },
+            },
+        ]);
+
+        expect(results).toEqual([
+            expect.objectContaining({
+                toolCallId: "call-plot",
+                rejected: true,
+                text: expect.stringContaining(
+                    "Use an exact candidateId from selectionAggregation.fields."
+                ),
+            }),
+        ]);
+        expect(
+            runtime.agentApi.buildSampleAttributePlot
+        ).not.toHaveBeenCalled();
+    });
+
     it("summarizes intent batch tool results for sample-view actions", async () => {
         const runtime = createRuntimeMock();
         runtime.submitIntentActions.mockResolvedValue({
