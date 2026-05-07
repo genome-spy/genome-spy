@@ -1059,7 +1059,7 @@ export class AgentSessionController {
         if (
             currentStartIndex !== null ||
             !toolCalls.some(
-                (toolCall) => toolCall.name === "submitIntentActions"
+                (toolCall) => toolCall.name === "submitIntentAction"
             )
         ) {
             return currentStartIndex;

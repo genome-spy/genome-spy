@@ -294,11 +294,11 @@ function createMockAgentController(scenario, options = {}) {
             return {
                 response: {
                     type: "tool_call",
-                    message: "I should submit actions to sort the samples.",
+                    message: "I should submit an action to sort the samples.",
                     toolCalls: [
                         {
                             callId: "call_submit_intent_batch",
-                            name: "submitIntentActions",
+                            name: "submitIntentAction",
                             arguments: /** @type {any} */ ({
                                 ...buildMockIntentActionRequest(normalized),
                             }),
@@ -449,43 +449,24 @@ function buildMockIntentActionRequest(normalizedMessage) {
     if (normalizedMessage.includes("filter")) {
         return {
             note: "Filter the cohort by a discrete attribute.",
-            actions: [
-                {
-                    actionType: "sampleView/filterByNominal",
-                    payload: {
-                        attribute: {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "diagnosis",
-                        },
-                        values: ["AML"],
+            action: {
+                actionType: "sampleView/filterByNominal",
+                payload: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
                     },
+                    values: ["AML"],
                 },
-            ],
+            },
         };
     }
 
     if (normalizedMessage.includes("sort")) {
         return {
             note: "Sort the cohort by a quantitative attribute.",
-            actions: [
-                {
-                    actionType: "sampleView/sortBy",
-                    payload: {
-                        attribute: {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "age",
-                        },
-                    },
-                },
-            ],
-        };
-    }
-
-    return {
-        note: "Group the cohort by quartiles.",
-        actions: [
-            {
-                actionType: "sampleView/groupToQuartiles",
+            action: {
+                actionType: "sampleView/sortBy",
                 payload: {
                     attribute: {
                         type: "SAMPLE_ATTRIBUTE",
@@ -493,7 +474,20 @@ function buildMockIntentActionRequest(normalizedMessage) {
                     },
                 },
             },
-        ],
+        };
+    }
+
+    return {
+        note: "Group the cohort by quartiles.",
+        action: {
+            actionType: "sampleView/groupToQuartiles",
+            payload: {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "age",
+                },
+            },
+        },
     };
 }
 
@@ -597,7 +591,7 @@ export const Answer = {
     render: renderChatPanel,
 };
 
-export const SubmitIntentActions = {
+export const SubmitIntentAction = {
     args: {
         scenario: "tool_call",
     },

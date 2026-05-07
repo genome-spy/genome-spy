@@ -183,7 +183,7 @@ export async function createGeneratedToolCatalog() {
                 ? collectInterfaceFields(inputType, interfaces, toolSource)
                 : [],
             exampleInput,
-            strict: toolName !== "submitIntentActions",
+            strict: toolName !== "submitIntentAction",
         });
     }
 

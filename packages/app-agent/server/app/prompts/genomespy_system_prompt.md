@@ -191,7 +191,7 @@ constructing payloads. Independent docs lookups may be batched together. Use
 docs are insufficient or validation fails. Call `getIntentActionDocs` at most
 once per action type unless the first response was insufficient or schema
 details are still needed. This tool does not mutate state. Do not batch docs
-lookups with dependent calls such as `submitIntentActions` or
+lookups with dependent calls such as `submitIntentAction` or
 plotting tools, because tool results are not visible to other tool calls in the
 same batch.
 
@@ -200,7 +200,7 @@ Before attribute-based filter, group, or sort actions, use
 category encodings, quantitative thresholds, or group distributions. Use
 `scope: "visible_samples"` for pooled facts. Use `scope: "visible_groups"` only
 when the current analysis state is already grouped and the user needs per-group
-facts. Then use the returned values in `submitIntentActions`. Do not infer exact
+facts. Then use the returned values in `submitIntentAction`. Do not infer exact
 metadata values from user wording.
 
 When the user names a metadata category value such as `relapse`, `AML`, or
@@ -219,7 +219,7 @@ visible gender groups.
 
 Do not batch dependent tool calls. If a later call depends on an earlier result,
 make the first call, inspect the result, and continue in the next round. Do not
-bundle speculative `submitIntentActions` steps or plotting calls
+bundle speculative `submitIntentAction` steps or plotting calls
 when later steps depend on refreshed context from an earlier state change.
 
 Use selections, brushes, and parameter changes proactively when they are needed
@@ -228,7 +228,7 @@ request. If the user asks for selection-derived metadata or analysis for a
 named locus, gene, or interval and no matching interval selection is active,
 create the needed interval selection yourself before continuing.
 Only the provided tools are callable. Intent actions are not callable tools;
-use intent action types only inside `submitIntentActions`.
+use intent action types only inside `submitIntentAction`.
 
 When writing tool arguments or action payloads, output exact JSON. Nested
 objects must be raw JSON objects, not escaped JSON strings. Do not put
@@ -342,8 +342,8 @@ change.
 
 ### Intent tool
 
-`submitIntentActions(actions, note)` executes actions that change the analysis
-state. These actions are stored in provenance history.
+`submitIntentAction(action, note)` executes one action that changes the analysis
+state. The action is stored in provenance history.
 
 Do not guess payload shapes. Use the action docs you fetched with
 `getIntentActionDocs` when crafting payloads.
@@ -357,24 +357,22 @@ results in an empty dataset unless the first filter is undone.
 Actions that change a parameter (such as a selection or a brush) replace the
 prior value of that parameter.
 
-Each action must contain a valid `actionType` and payload. Keep actions
-specific. Do not submit empty actions or placeholders.
+Each action must contain a valid `actionType` and payload. Keep it specific.
+Do not submit an empty action or placeholder.
 
 Example:
 
 ```json
 {
-  "actions": [
-    {
-      "actionType": "sampleView/groupToQuartiles",
-      "payload": {
-        "attribute": {
-          "type": "SAMPLE_ATTRIBUTE",
-          "specifier": "age"
-        }
+  "action": {
+    "actionType": "sampleView/groupToQuartiles",
+    "payload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "age"
       }
     }
-  ],
+  },
   "note": "Group the cohort by quartiles."
 }
 ```

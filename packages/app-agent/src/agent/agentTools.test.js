@@ -1229,18 +1229,16 @@ describe("agentTools", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = await tools.submitIntentActions(runtime, {
-            actions: [
-                {
-                    actionType: "sampleView/sortBy",
-                    payload: {
-                        attribute: {
-                            type: "SAMPLE_ATTRIBUTE",
-                            specifier: "age",
-                        },
+        const result = await tools.submitIntentAction(runtime, {
+            action: {
+                actionType: "sampleView/sortBy",
+                payload: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "age",
                     },
                 },
-            ],
+            },
         });
 
         expect(result).toEqual(
@@ -1259,20 +1257,18 @@ describe("agentTools", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        await tools.submitIntentActions(runtime, {
-            actions: [
-                {
-                    actionType: "sampleView/deriveMetadata",
-                    payload: {
-                        attribute: {
-                            type: "SELECTION_AGGREGATION",
-                            candidateId: "brush@track:beta",
-                            aggregation: "max",
-                        },
-                        name: "max_beta",
+        await tools.submitIntentAction(runtime, {
+            action: {
+                actionType: "sampleView/deriveMetadata",
+                payload: {
+                    attribute: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "brush@track:beta",
+                        aggregation: "max",
                     },
+                    name: "max_beta",
                 },
-            ],
+            },
         });
 
         expect(runtime.submitIntentActions).toHaveBeenCalledWith(
@@ -1315,18 +1311,16 @@ describe("agentTools", () => {
         const tools = agentTools;
 
         await expect(
-            tools.submitIntentActions(runtime, {
-                actions: [
-                    {
-                        actionType: "sampleView/sortBy",
-                        payload: {
-                            attribute: {
-                                type: "SAMPLE_ATTRIBUTE",
-                                specifier: "age",
-                            },
+            tools.submitIntentAction(runtime, {
+                action: {
+                    actionType: "sampleView/sortBy",
+                    payload: {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "age",
                         },
                     },
-                ],
+                },
             })
         ).rejects.toThrow(ToolCallRejectionError);
         expect(runtime.submitIntentActions).toHaveBeenCalledWith(
@@ -1363,19 +1357,17 @@ describe("agentTools", () => {
         const tools = agentTools;
 
         await expect(
-            tools.submitIntentActions(runtime, {
-                actions: [
-                    {
-                        actionType: "sampleView/sortBy",
-                        payload: {
-                            attribute: {
-                                type: "SELECTION_AGGREGATION",
-                                candidateId: "missing-candidate",
-                                aggregation: "max",
-                            },
+            tools.submitIntentAction(runtime, {
+                action: {
+                    actionType: "sampleView/sortBy",
+                    payload: {
+                        attribute: {
+                            type: "SELECTION_AGGREGATION",
+                            candidateId: "missing-candidate",
+                            aggregation: "max",
                         },
                     },
-                ],
+                },
             })
         ).rejects.toThrow(
             "Use an exact candidateId from selectionAggregation.fields."

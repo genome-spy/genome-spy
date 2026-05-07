@@ -3,7 +3,7 @@ import Ajv from "ajv";
 import generatedToolCatalog from "./generated/generatedToolCatalog.json" with { type: "json" };
 import generatedToolSchema from "./generated/generatedToolSchema.json" with { type: "json" };
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
-import { validateSubmitIntentActionsToolShape } from "./submitIntentActionsValidator.js";
+import { validateSubmitIntentActionToolShape } from "./submitIntentActionValidator.js";
 import { formatAjvErrors } from "./validationErrorFormatter.js";
 import { repairJsonEncodedObjects } from "./schemaJsonRepair.js";
 
@@ -75,12 +75,10 @@ export function formatToolCallRejection(toolName, errors) {
         if (action) {
             const exampleProgram = JSON.stringify(
                 {
-                    actions: [
-                        {
-                            actionType: toolName,
-                            payload: action.examplePayload,
-                        },
-                    ],
+                    action: {
+                        actionType: toolName,
+                        payload: action.examplePayload,
+                    },
                 },
                 null,
                 2
@@ -89,7 +87,7 @@ export function formatToolCallRejection(toolName, errors) {
             return [
                 "Tool call was incorrect and rejected. Correct it before trying again.",
                 `${toolName} is an actionType, not a callable tool.`,
-                "Use `submitIntentActions` and put that actionType inside `actions`.",
+                "Use `submitIntentAction` and put that actionType inside `action`.",
                 "Example input:",
                 exampleProgram,
                 validationText,
@@ -126,8 +124,8 @@ export function formatToolCallRejection(toolName, errors) {
  * @returns {import("./types.d.ts").ShapeValidationResult}
  */
 export function validateToolArgumentsShape(toolName, toolArguments) {
-    if (toolName === "submitIntentActions") {
-        return validateSubmitIntentActionsToolShape(toolArguments);
+    if (toolName === "submitIntentAction") {
+        return validateSubmitIntentActionToolShape(toolArguments);
     }
 
     const schema = getToolArgumentsSchema(toolName);

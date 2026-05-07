@@ -17,7 +17,8 @@ describe("toolCatalog", () => {
         expect(toolNames).toContain("showCategoryCountsPlot");
         expect(toolNames).toContain("showAttributeDistributionPlot");
         expect(toolNames).toContain("showAttributeRelationshipPlot");
-        expect(toolNames).toContain("submitIntentActions");
+        expect(toolNames).toContain("submitIntentAction");
+        expect(toolNames).not.toContain("submitIntentActions");
         expect(toolNames).not.toContain("buildSelectionAggregationAttribute");
     });
 
@@ -26,8 +27,8 @@ describe("toolCatalog", () => {
         const jumpToInitialProvenanceState = toolDefinitions.find(
             (tool) => tool.name === "jumpToInitialProvenanceState"
         );
-        const submitIntentActions = toolDefinitions.find(
-            (tool) => tool.name === "submitIntentActions"
+        const submitIntentAction = toolDefinitions.find(
+            (tool) => tool.name === "submitIntentAction"
         );
         const getIntentActionDocs = toolDefinitions.find(
             (tool) => tool.name === "getIntentActionDocs"
@@ -47,8 +48,8 @@ describe("toolCatalog", () => {
                 additionalProperties: false,
             },
         });
-        expect(submitIntentActions).toMatchObject({
-            name: "submitIntentActions",
+        expect(submitIntentAction).toMatchObject({
+            name: "submitIntentAction",
             strict: false,
         });
         expect(getIntentActionDocs).toMatchObject({
@@ -212,23 +213,43 @@ describe("toolCatalog", () => {
         });
     });
 
-    it("accepts selection aggregation candidates in submitIntentActions payload attributes", () => {
-        const validation = validateToolArgumentsShape("submitIntentActions", {
+    it("accepts selection aggregation candidates in submitIntentAction payload attributes", () => {
+        const validation = validateToolArgumentsShape("submitIntentAction", {
+            action: {
+                actionType: "sampleView/sortBy",
+                payload: {
+                    attribute: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "brush@track:beta",
+                        aggregation: "max",
+                    },
+                },
+            },
+        });
+
+        expect(validation.ok).toBe(true);
+    });
+
+    it("rejects array-shaped submitIntentAction payloads", () => {
+        const validation = validateToolArgumentsShape("submitIntentAction", {
             actions: [
                 {
                     actionType: "sampleView/sortBy",
                     payload: {
                         attribute: {
-                            type: "SELECTION_AGGREGATION",
-                            candidateId: "brush@track:beta",
-                            aggregation: "max",
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "age",
                         },
                     },
                 },
             ],
         });
 
-        expect(validation.ok).toBe(true);
+        expect(validation.ok).toBe(false);
+        expect(validation.errors).toContain("$.action is required.");
+        expect(validation.errors).toContain(
+            "$ has unexpected property actions."
+        );
     });
 
     it("keeps string values as strings when a tool schema expects a string", () => {
@@ -271,7 +292,7 @@ describe("toolCatalog", () => {
         expect(message).toContain(
             "paramProvenance/paramChange is an actionType, not a callable tool."
         );
-        expect(message).toContain("Use `submitIntentActions`");
+        expect(message).toContain("Use `submitIntentAction`");
         expect(message).toContain(
             '"actionType": "paramProvenance/paramChange"'
         );

@@ -234,14 +234,14 @@
     "strict": true
   },
   {
-    "toolName": "submitIntentActions",
-    "description": "Execute one or more provenance-changing actions.",
-    "inputType": "SubmitIntentActionsToolInput",
+    "toolName": "submitIntentAction",
+    "description": "Execute one provenance-changing action.",
+    "inputType": "SubmitIntentActionToolInput",
     "inputFields": [
       {
-        "name": "actions",
-        "type": "AgentIntentActionRequest[\"actions\"]",
-        "description": "Ordered actions to execute. Cannot be empty or missing.",
+        "name": "action",
+        "type": "AgentIntentBatchStep",
+        "description": "Action to execute.",
         "required": true
       },
       {
@@ -252,17 +252,15 @@
       }
     ],
     "exampleInput": {
-      "actions": [
-        {
-          "actionType": "sampleView/groupToQuartiles",
-          "payload": {
-            "attribute": {
-              "type": "SAMPLE_ATTRIBUTE",
-              "specifier": "age"
-            }
+      "action": {
+        "actionType": "sampleView/groupToQuartiles",
+        "payload": {
+          "attribute": {
+            "type": "SAMPLE_ATTRIBUTE",
+            "specifier": "age"
           }
         }
-      ],
+      },
       "note": "Group the cohort by quartiles."
     },
     "strict": false

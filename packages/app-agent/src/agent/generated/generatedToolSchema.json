@@ -321,8 +321,8 @@
         "showCategoryCountsPlot": {
           "$ref": "#/definitions/ShowCategoryCountsPlotToolInput"
         },
-        "submitIntentActions": {
-          "$ref": "#/definitions/SubmitIntentActionsToolInput"
+        "submitIntentAction": {
+          "$ref": "#/definitions/SubmitIntentActionToolInput"
         },
         "zoomToScale": {
           "$ref": "#/definitions/ZoomToScaleToolInput"
@@ -339,7 +339,7 @@
         "searchViewDatums",
         "getIntentActionDocs",
         "zoomToScale",
-        "submitIntentActions",
+        "submitIntentAction",
         "showCategoryCountsPlot",
         "showAttributeDistributionPlot",
         "showAttributeRelationshipPlot"
@@ -606,7 +606,7 @@
     },
     "GetIntentActionDocsToolInput": {
       "additionalProperties": false,
-      "description": "Read documentation, fields, and examples for one intent action. Use this before constructing an unfamiliar action payload for `submitIntentActions`. This tool doesn't execute the action or mutate any state. Do not repeat the call if documentation is already available in the conversation history.",
+      "description": "Read documentation, fields, and examples for one intent action. Use this before constructing an unfamiliar action payload for `submitIntentAction`. This tool doesn't execute the action or mutate any state. Do not repeat the call if documentation is already available in the conversation history.",
       "examples": [
         {
           "actionType": "sampleView/groupToQuartiles",
@@ -1972,40 +1972,34 @@
       "required": ["attribute"],
       "type": "object"
     },
-    "SubmitIntentActionsToolInput": {
+    "SubmitIntentActionToolInput": {
       "additionalProperties": false,
-      "description": "Execute one or more provenance-changing actions. Actions are additive. Before submitting new actions, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the action list, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results. If not, submit actions one by one and consult the updated context after each action, instead of submitting them all at once. The `actions` array must be present and non-empty.",
+      "description": "Execute one provenance-changing action. Actions are additive. Before submitting a new action, always consult the current provenance state that defines the state of the analysis. Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the action, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results.",
       "examples": [
         {
-          "actions": [
-            {
-              "actionType": "sampleView/groupToQuartiles",
-              "payload": {
-                "attribute": {
-                  "specifier": "age",
-                  "type": "SAMPLE_ATTRIBUTE"
-                }
+          "action": {
+            "actionType": "sampleView/groupToQuartiles",
+            "payload": {
+              "attribute": {
+                "specifier": "age",
+                "type": "SAMPLE_ATTRIBUTE"
               }
             }
-          ],
+          },
           "note": "Group the cohort by quartiles."
         }
       ],
       "properties": {
-        "actions": {
-          "description": "Ordered actions to execute. Cannot be empty or missing.",
-          "items": {
-            "$ref": "#/definitions/AgentIntentBatchStep"
-          },
-          "minItems": 1,
-          "type": "array"
+        "action": {
+          "$ref": "#/definitions/AgentIntentBatchStep",
+          "description": "Action to execute."
         },
         "note": {
           "description": "Optional short note about the intended change.",
           "type": "string"
         }
       },
-      "required": ["actions"],
+      "required": ["action"],
       "type": "object"
     },
     "Threshold": {

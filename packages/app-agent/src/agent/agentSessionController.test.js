@@ -111,7 +111,7 @@ describe("createAgentSessionController", () => {
         expect(controller.getSnapshot().expandedViewNodeKeys).toEqual([]);
     });
 
-    it("summarizes provenance changes after submitIntentActions tool calls", async () => {
+    it("summarizes provenance changes after submitIntentAction tool calls", async () => {
         const runtime = createRuntimeMock();
         const provenanceHistory = [];
         let agentTurnCallCount = 0;
@@ -184,19 +184,17 @@ describe("createAgentSessionController", () => {
                             toolCalls: [
                                 {
                                     callId: "call-1",
-                                    name: "submitIntentActions",
+                                    name: "submitIntentAction",
                                     arguments: {
-                                        actions: [
-                                            {
-                                                actionType: "sampleView/sortBy",
-                                                payload: {
-                                                    attribute: {
-                                                        type: "SAMPLE_ATTRIBUTE",
-                                                        specifier: "age",
-                                                    },
+                                        action: {
+                                            actionType: "sampleView/sortBy",
+                                            payload: {
+                                                attribute: {
+                                                    type: "SAMPLE_ATTRIBUTE",
+                                                    specifier: "age",
                                                 },
                                             },
-                                        ],
+                                        },
                                     },
                                 },
                             ],
@@ -268,19 +266,17 @@ describe("createAgentSessionController", () => {
                     toolCalls: [
                         {
                             callId: "call-1",
-                            name: "submitIntentActions",
+                            name: "submitIntentAction",
                             arguments: {
-                                actions: [
-                                    {
-                                        actionType: "sampleView/sortBy",
-                                        payload: {
-                                            attribute: {
-                                                type: "SAMPLE_ATTRIBUTE",
-                                                specifier: "age",
-                                            },
+                                action: {
+                                    actionType: "sampleView/sortBy",
+                                    payload: {
+                                        attribute: {
+                                            type: "SAMPLE_ATTRIBUTE",
+                                            specifier: "age",
                                         },
                                     },
-                                ],
+                                },
                             },
                         },
                     ],
@@ -749,35 +745,24 @@ describe("createAgentSessionController", () => {
             },
         });
         runtime.summarizeExecutionResult.mockReturnValue(
-            "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2\n- Group levels before: 1\n- Group levels after: 1"
+            "Executed 1 action.\n- Sort by age\n- Visible samples before: 2\n- Visible samples after: 2\n- Group levels before: 1\n- Group levels after: 1"
         );
 
         const controller = createAgentSessionController(runtime);
         const results = await controller.executeToolCalls([
             {
                 callId: "call-intent",
-                name: "submitIntentActions",
+                name: "submitIntentAction",
                 arguments: {
-                    actions: [
-                        {
-                            actionType: "sampleView/sortBy",
-                            payload: {
-                                attribute: {
-                                    type: "SAMPLE_ATTRIBUTE",
-                                    specifier: "age",
-                                },
+                    action: {
+                        actionType: "sampleView/sortBy",
+                        payload: {
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "age",
                             },
                         },
-                        {
-                            actionType: "sampleView/groupByNominal",
-                            payload: {
-                                attribute: {
-                                    type: "SAMPLE_ATTRIBUTE",
-                                    specifier: "diagnosis",
-                                },
-                            },
-                        },
-                    ],
+                    },
                 },
             },
         ]);
@@ -786,7 +771,7 @@ describe("createAgentSessionController", () => {
         expect(results[0]).toEqual(
             expect.objectContaining({
                 rejected: false,
-                text: "Executed 2 actions.\n- Sort by age\n- Group by diagnosis\n- Visible samples before: 2\n- Visible samples after: 2\n- Group levels before: 1\n- Group levels after: 1",
+                text: "Executed 1 action.\n- Sort by age\n- Visible samples before: 2\n- Visible samples after: 2\n- Group levels before: 1\n- Group levels after: 1",
                 content: expect.objectContaining({
                     kind: "intent_batch_result",
                     sampleView: expect.objectContaining({
@@ -826,19 +811,17 @@ describe("createAgentSessionController", () => {
                             toolCalls: [
                                 {
                                     callId: "call-intent",
-                                    name: "submitIntentActions",
+                                    name: "submitIntentAction",
                                     arguments: {
-                                        actions: [
-                                            {
-                                                actionType: "sampleView/sortBy",
-                                                payload: {
-                                                    attribute: {
-                                                        type: "SAMPLE_ATTRIBUTE",
-                                                        specifier: "age",
-                                                    },
+                                        action: {
+                                            actionType: "sampleView/sortBy",
+                                            payload: {
+                                                attribute: {
+                                                    type: "SAMPLE_ATTRIBUTE",
+                                                    specifier: "age",
                                                 },
                                             },
-                                        ],
+                                        },
                                     },
                                 },
                             ],

@@ -179,7 +179,7 @@ def test_build_responses_input_keeps_rejected_tool_output_last() -> None:
                 tool_calls=[
                     ToolCall(
                         call_id="call_rejected",
-                        name="submitIntentActions",
+                        name="submitIntentAction",
                         arguments={"actions": []},
                     )
                 ],

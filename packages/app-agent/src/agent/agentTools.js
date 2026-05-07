@@ -274,13 +274,15 @@ export const agentTools = {
 
     /**
      * @param {AgentToolRuntime} runtime
-     * @param {import("./agentToolInputs.d.ts").SubmitIntentActionsToolInput} input
+     * @param {import("./agentToolInputs.d.ts").SubmitIntentActionToolInput} input
      */
-    async submitIntentActions(runtime, input) {
+    async submitIntentAction(runtime, input) {
         try {
             const steps =
                 /** @type {import("./types.d.ts").AgentIntentBatchStep[]} */ (
-                    normalizeAgentIntentActionAttributes(runtime, input.actions)
+                    normalizeAgentIntentActionAttributes(runtime, [
+                        input.action,
+                    ])
                 );
             const result = await runtime.submitIntentActions(
                 {

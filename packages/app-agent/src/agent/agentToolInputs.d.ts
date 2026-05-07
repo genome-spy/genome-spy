@@ -1,4 +1,5 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
+import type { AgentIntentBatchStep } from "./generated/generatedActionTypes.js";
 import type { AggregationOp, ViewSelector } from "@genome-spy/app/agentShared";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import type { NumericDomain } from "@genome-spy/core/spec/scale.js";
@@ -36,8 +37,7 @@ export type AgentAttributeCandidate =
 
 export type PlotAttributeIdentifier = AgentAttributeCandidate;
 
-type IntentActionType =
-    AgentIntentActionRequest["actions"][number]["actionType"];
+type IntentActionType = AgentIntentBatchStep["actionType"];
 type AttributeSummaryScope = "visible_samples" | "visible_groups";
 
 interface AgentChromosomalLocus extends ChromosomalLocus {
@@ -232,7 +232,7 @@ export interface SearchViewDatumsToolInput {
 
 /**
  * Read documentation, fields, and examples for one intent action. Use this
- * before constructing an unfamiliar action payload for `submitIntentActions`.
+ * before constructing an unfamiliar action payload for `submitIntentAction`.
  * This tool doesn't execute the action or mutate any state. Do not repeat
  * the call if documentation is already available in the conversation history.
  *
@@ -283,38 +283,32 @@ export interface ZoomToScaleToolInput {
 }
 
 /**
- * Execute one or more provenance-changing actions. Actions are additive.
- * Before submitting new actions, always
- * consult the current provenance state that defines the state of the
- * analysis. Jump to a prior provenance state if necessary to continue from
- * an earlier point in the analysis. In addition, before constructing the
- * action list, ensure that every `attribute` (AttributeIdentifier) is
- * presented to you in the context or tool results. If not, submit actions
- * one by one and consult the updated context after each action, instead
- * of submitting them all at once. The `actions` array must be present and
- * non-empty.
+ * Execute one provenance-changing action. Actions are additive. Before
+ * submitting a new action, always consult the current provenance state that
+ * defines the state of the analysis. Jump to a prior provenance state if
+ * necessary to continue from an earlier point in the analysis. In addition,
+ * before constructing the action, ensure that every `attribute`
+ * (AttributeIdentifier) is presented to you in the context or tool results.
  *
  * @example
  * {
- *   "actions": [
- *     {
- *       "actionType": "sampleView/groupToQuartiles",
- *       "payload": {
- *         "attribute": {
- *           "type": "SAMPLE_ATTRIBUTE",
- *           "specifier": "age"
- *         }
+ *   "action": {
+ *     "actionType": "sampleView/groupToQuartiles",
+ *     "payload": {
+ *       "attribute": {
+ *         "type": "SAMPLE_ATTRIBUTE",
+ *         "specifier": "age"
  *       }
  *     }
- *   ],
+ *   },
  *   "note": "Group the cohort by quartiles."
  * }
  */
-export interface SubmitIntentActionsToolInput {
+export interface SubmitIntentActionToolInput {
     /**
-     * Ordered actions to execute. Cannot be empty or missing.
+     * Action to execute.
      */
-    actions: AgentIntentActionRequest["actions"];
+    action: AgentIntentBatchStep;
 
     /**
      * Optional short note about the intended change.
@@ -412,7 +406,7 @@ export interface AgentToolInputs {
     searchViewDatums: SearchViewDatumsToolInput;
     getIntentActionDocs: GetIntentActionDocsToolInput;
     zoomToScale: ZoomToScaleToolInput;
-    submitIntentActions: SubmitIntentActionsToolInput;
+    submitIntentAction: SubmitIntentActionToolInput;
     showCategoryCountsPlot: ShowCategoryCountsPlotToolInput;
     showAttributeDistributionPlot: ShowAttributeDistributionPlotToolInput;
     showAttributeRelationshipPlot: ShowAttributeRelationshipPlotToolInput;
