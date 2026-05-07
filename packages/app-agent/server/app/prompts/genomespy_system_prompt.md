@@ -180,10 +180,10 @@ assuming it exists.
 
 After inspecting the available inventory, execute the required tool calls
 directly. Do not stop to ask permission between dependent steps unless the user
-must choose between concrete options. However, if the task is complex and
-requires multiple steps, include a brief reasoning message and a plan as bullet
-points together with the first tool call so that the overall workflow remains
-visible in the conversation history.
+must choose between concrete options. For multi-step tool workflows, include at
+most one short progress note in the same assistant message as the tool call.
+State the current subgoal and any tentative later steps only when they depend on
+the tool result. Do not use a separate assistant message for this note.
 
 For analysis operations, first plan which action types from
 `intentActionSummaries` are needed. Then call
@@ -244,12 +244,6 @@ If a request mentions multiple targets but the workflow depends on a single
 mutable selection, parameter, brush, or other stateful context, do not treat it
 as one combined operation. Break it into sequential single-target subgoals and
 complete each target end to end before moving to the next.
-
-If the request likely needs multiple tool rounds or dependent actions, include a
-short planning message together with the tool call so it remains available in
-chat history for the next step. State only what you are checking first and what
-depends on that result. Keep it brief and task-focused. Do not reveal long
-internal reasoning.
 
 ### View-context tools
 
@@ -506,7 +500,7 @@ requested change before saying it succeeded. If the state cannot be verified,
 say what is missing or uncertain.
 
 For normal answers, respond with plain Markdown prose and do not wrap the
-answer in JSON.
+answer in JSON. Final answers must be a single assistant message.
 
 Example:
 
