@@ -392,7 +392,7 @@
     },
     "BuildSelectionAggregationAttributeToolInput": {
       "additionalProperties": false,
-      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action or inspected for diagnostics. Selection aggregation derives one value per sample from data items that overlap the current genomic interval selection. Plotting and summary tools can usually use `SELECTION_AGGREGATION` candidates directly. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the returned `content.attribute` as the plotted attribute or as `payload.attribute` in `submitIntentActions`. If the requested locus or interval is not the current selection, update the selection first.",
+      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be inspected for diagnostics or explicit payload construction. Selection aggregation derives one value per sample from data items that overlap the current genomic interval selection. Plotting and summary tools can usually use `SELECTION_AGGREGATION` candidates directly, and intent action payloads accept them directly. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. If the requested locus or interval is not the current selection, update the selection first.",
       "examples": [
         {
           "aggregation": "max",

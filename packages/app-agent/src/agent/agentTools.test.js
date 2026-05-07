@@ -351,7 +351,7 @@ describe("agentTools", () => {
                 actionType: "sampleView/sortBy",
                 description:
                     "Sort samples in descending order by a selected attribute.",
-                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
+                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`.",
                 payloadFields: [
                     expect.objectContaining({
                         name: "attribute",
@@ -1282,13 +1282,14 @@ describe("agentTools", () => {
         await tools.submitIntentActions(runtime, {
             actions: [
                 {
-                    actionType: "sampleView/sortBy",
+                    actionType: "sampleView/deriveMetadata",
                     payload: {
                         attribute: {
                             type: "SELECTION_AGGREGATION",
                             candidateId: "brush@track:beta",
                             aggregation: "max",
                         },
+                        name: "max_beta",
                     },
                 },
             ],
@@ -1298,7 +1299,7 @@ describe("agentTools", () => {
             expect.objectContaining({
                 steps: [
                     {
-                        actionType: "sampleView/sortBy",
+                        actionType: "sampleView/deriveMetadata",
                         payload: {
                             attribute: {
                                 type: "VALUE_AT_LOCUS",
@@ -1315,6 +1316,7 @@ describe("agentTools", () => {
                                     aggregation: { op: "max" },
                                 },
                             },
+                            name: "max_beta",
                         },
                     },
                 ],
@@ -1386,5 +1388,33 @@ describe("agentTools", () => {
                 aggregation: "max",
             })
         ).toThrow(ToolCallRejectionError);
+    });
+
+    it("rejects unknown selection aggregation candidates in submitted actions", async () => {
+        const runtime = createRuntimeStub();
+        runtime.getAgentVolatileContext.mockReturnValueOnce({
+            selectionAggregation: {
+                fields: [],
+            },
+        });
+        const tools = agentTools;
+
+        await expect(
+            tools.submitIntentActions(runtime, {
+                actions: [
+                    {
+                        actionType: "sampleView/sortBy",
+                        payload: {
+                            attribute: {
+                                type: "SELECTION_AGGREGATION",
+                                candidateId: "missing-candidate",
+                                aggregation: "max",
+                            },
+                        },
+                    },
+                ],
+            })
+        ).rejects.toThrow(ToolCallRejectionError);
+        expect(runtime.submitIntentActions).not.toHaveBeenCalled();
     });
 });

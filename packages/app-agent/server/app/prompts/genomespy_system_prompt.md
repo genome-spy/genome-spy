@@ -165,8 +165,8 @@ authoritative inventory. In particular, check:
   grouping, and derived columns. Use metadata attributes from `attributes` as
   metadata-backed `SAMPLE_ATTRIBUTE` identifiers. Use selected-region
   attributes from `selectionAggregation.fields` as `SELECTION_AGGREGATION`
-  candidates; plotting and `getAttributeSummary` accept them directly, while
-  intent actions require `buildSelectionAggregationAttribute(...)` first.
+  candidates; plotting, `getAttributeSummary`, and intent action payloads
+  accept them directly.
 - `viewRoot.parameterDeclarations` for selections, brushes, and parameters.
 - provenance history for the current analysis state and possible rollback
   points.
@@ -295,8 +295,9 @@ over segmented data can indicate breakpoints: one segment means no breakpoint,
 two segments means one breakpoint, and so on.
 
 - `buildSelectionAggregationAttribute(candidateId, aggregation)`: resolve a
-  candidate into a sample-specific `AttributeIdentifier` for sample actions.
-  The tool does not compute values immediately.
+  candidate into a sample-specific `AttributeIdentifier` for diagnostics or
+  explicit inspection. Intent actions can use `SELECTION_AGGREGATION`
+  candidates directly. The tool does not compute values immediately.
 
 ### Attribute summary tool
 
@@ -432,15 +433,14 @@ For interval-derived metadata or aggregation:
    current context.
 3. For plotting or `getAttributeSummary`, use the
    `SELECTION_AGGREGATION` candidate id and aggregation directly.
-4. For intent actions, call `buildSelectionAggregationAttribute(candidateId,
-   aggregation)`.
-5. Use the returned `attribute` in a later `submitIntentActions` action such as
-   derivation, sorting, or filtering.
+4. For intent actions, use the same `SELECTION_AGGREGATION` candidate directly
+   in `payload.attribute` for derivation, sorting, filtering, or grouping.
 
 If computed values are needed but absent from context, call
 `getAttributeSummary` for the relevant attribute or `SELECTION_AGGREGATION`
 candidate. Do not stop just because only candidates are visible in context.
-`buildSelectionAggregationAttribute` only builds the identifier.
+`buildSelectionAggregationAttribute` only builds the identifier and is not
+required before intent actions.
 
 Do not materialize a metadata column first unless the user asks for a reusable
 column or a later workflow requires persistent metadata.

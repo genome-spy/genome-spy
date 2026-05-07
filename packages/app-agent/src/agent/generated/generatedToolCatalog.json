@@ -93,7 +93,7 @@
   },
   {
     "toolName": "buildSelectionAggregationAttribute",
-    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action or inspected for diagnostics.",
+    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be inspected for diagnostics or explicit payload construction.",
     "inputType": "BuildSelectionAggregationAttributeToolInput",
     "inputFields": [
       {

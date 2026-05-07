@@ -197,6 +197,26 @@ normalizer.
   - `npm --workspace packages/app-agent run test:tsc` passed.
   - `npm --workspace packages/app-agent run check:agent` passed.
 
+Step 5 updates prompt and tool/action docs so direct intent action use is no
+longer described as requiring `buildSelectionAggregationAttribute`.
+
+- Focused source lines:
+  - `genomespy_system_prompt.md`: 574 before, 574 after
+  - `agentToolInputs.d.ts`: 458 before, 457 after
+  - `sampleSlice.js`: 959 before, 959 after
+  - `agentTools.test.js`: 1,420 after expanded adapter cases
+- Generated schema/catalog sizes:
+  - `generatedToolSchema.json`: 80,738 bytes
+  - `generatedToolCatalog.json`: 11,186 bytes
+  - `generatedActionCatalog.json`: 21,232 bytes
+  - `generatedActionSummaries.json`: 3,347 bytes
+  - `SubmitIntentActionsToolInput` JSON slice: 1,149 bytes
+- Verification:
+  - `npx vitest run packages/app-agent/src/agent/actionCatalog.test.js packages/app-agent/src/agent/agentTools.test.js packages/app-agent/src/agent/toolCatalog.test.js packages/app-agent/src/agent/actionShapeValidator.test.js`
+    passed.
+  - `npm --workspace packages/app-agent run test:tsc` passed.
+  - `npm --workspace packages/app-agent run check:agent` passed.
+
 1. Add the agent-facing action input type.
    - Try the recursive `AgentizeAttributes<T>` approach in
      `agentToolInputs.d.ts`.

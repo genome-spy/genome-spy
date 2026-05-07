@@ -115,7 +115,7 @@ describe("actionCatalog", () => {
             "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold."
         );
         expect(entry.usage).toContain(
-            "selection-derived aggregation returned by `buildSelectionAggregationAttribute`"
+            "selection-derived aggregation candidate from `selectionAggregation.fields`"
         );
         expect(entry.payloadFields).toEqual([
             expect.objectContaining({
