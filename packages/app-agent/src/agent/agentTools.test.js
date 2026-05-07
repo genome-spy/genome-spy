@@ -397,26 +397,6 @@ describe("agentTools", () => {
         });
     });
 
-    it("resolves selection aggregation candidates through the current context", () => {
-        const runtime = createRuntimeStub();
-        const tools = agentTools;
-
-        const result = tools.buildSelectionAggregationAttribute(runtime, {
-            candidateId: "brush@track:beta",
-            aggregation: "max",
-        });
-
-        expect(result.text).toContain("Built an AttributeIdentifier");
-        expect(result.content).toEqual(
-            expect.objectContaining({
-                kind: "selection_aggregation_resolution",
-                candidateId: "brush@track:beta",
-                aggregation: "max",
-            })
-        );
-        expect(runtime.getAgentVolatileContext).toHaveBeenCalledTimes(1);
-    });
-
     it("shows relationship plots through the host API", async () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
@@ -1369,23 +1349,6 @@ describe("agentTools", () => {
                     view: "missing",
                 },
                 visibility: false,
-            })
-        ).toThrow(ToolCallRejectionError);
-    });
-
-    it("rejects unknown selection aggregation candidates as tool errors", () => {
-        const runtime = createRuntimeStub();
-        runtime.getAgentVolatileContext.mockReturnValueOnce({
-            selectionAggregation: {
-                fields: [],
-            },
-        });
-        const tools = agentTools;
-
-        expect(() =>
-            tools.buildSelectionAggregationAttribute(runtime, {
-                candidateId: "missing-candidate",
-                aggregation: "max",
             })
         ).toThrow(ToolCallRejectionError);
     });

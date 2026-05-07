@@ -217,6 +217,27 @@ longer described as requiring `buildSelectionAggregationAttribute`.
   - `npm --workspace packages/app-agent run test:tsc` passed.
   - `npm --workspace packages/app-agent run check:agent` passed.
 
+Step 6 removes `buildSelectionAggregationAttribute` from the exposed agent tool
+surface because the model kept selecting it despite the direct adapter path.
+The internal resolver remains because `SELECTION_AGGREGATION` normalization and
+attribute summaries still need the same conversion logic.
+
+- Focused source lines:
+  - `genomespy_system_prompt.md`: 574 before, 567 after
+  - `agentToolInputs.d.ts`: 457 before, 424 after
+  - `agentTools.js`: 570 before, 540 after
+  - `agentSessionController.js`: 1,378 before, 1,377 after
+  - `agentTools.test.js`: 1,420 before, 1,383 after
+  - `agentSessionController.test.js`: 1,721 before, 1,655 after
+  - `toolCatalog.test.js`: 329 before, 330 after
+- Generated schema/catalog sizes:
+  - `generatedToolSchema.json`: 80,738 before, 79,071 after
+  - `generatedToolCatalog.json`: 11,186 before, 10,226 after
+- Verification target:
+  - `rg "buildSelectionAggregationAttribute" packages/app-agent/src packages/app-agent/server/app/prompts`
+    should show only internal resolver/test references, not generated tool
+    catalog/schema or prompt instructions.
+
 ### LoC Assessment
 
 The line-count increase is acceptable for this refactor.
@@ -295,12 +316,11 @@ validation remain canonical while only the agent tool boundary accepts compact
      - Record line-count and schema-size deltas.
 
 6. Reconsider `buildSelectionAggregationAttribute`.
-   - Keep it initially for diagnostics and backwards compatibility.
-   - After the new path is stable, decide whether to remove it from the tool
-     surface.
+   - Removed from the exposed tool surface after the model kept selecting it.
+   - Keep the internal resolver used by candidate normalization and summaries.
    - Measure success:
-     - Either a follow-up issue/plan note records why the tool remains, or a
-       separate cleanup removes it with generated schema/tests updated.
+     - Generated tool catalog/schema no longer expose it.
+     - Prompt text no longer advertises it.
      - Record line-count and schema-size deltas.
 
 ## Risks

@@ -18,6 +18,7 @@ describe("toolCatalog", () => {
         expect(toolNames).toContain("showAttributeDistributionPlot");
         expect(toolNames).toContain("showAttributeRelationshipPlot");
         expect(toolNames).toContain("submitIntentActions");
+        expect(toolNames).not.toContain("buildSelectionAggregationAttribute");
     });
 
     it("builds Responses API function tool definitions", () => {

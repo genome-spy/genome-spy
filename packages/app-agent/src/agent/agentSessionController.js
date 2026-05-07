@@ -132,7 +132,6 @@ import { agentTools } from "./agentTools.js";
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 const INFORMATION_TOOL_NAMES = new Set([
-    "buildSelectionAggregationAttribute",
     "getIntentActionDocs",
     "resolveMetadataAttributeValues",
     "searchViewDatums",

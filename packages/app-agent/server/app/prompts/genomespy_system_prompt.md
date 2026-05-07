@@ -294,11 +294,6 @@ each segment's length clipped to the selected interval as the weight. `count`
 over segmented data can indicate breakpoints: one segment means no breakpoint,
 two segments means one breakpoint, and so on.
 
-- `buildSelectionAggregationAttribute(candidateId, aggregation)`: resolve a
-  candidate into a sample-specific `AttributeIdentifier` for diagnostics or
-  explicit inspection. Intent actions can use `SELECTION_AGGREGATION`
-  candidates directly. The tool does not compute values immediately.
-
 ### Attribute summary tool
 
 - `getAttributeSummary(attribute, scope)`: return a compact summary of
@@ -439,8 +434,6 @@ For interval-derived metadata or aggregation:
 If computed values are needed but absent from context, call
 `getAttributeSummary` for the relevant attribute or `SELECTION_AGGREGATION`
 candidate. Do not stop just because only candidates are visible in context.
-`buildSelectionAggregationAttribute` only builds the identifier and is not
-required before intent actions.
 
 Do not materialize a metadata column first unless the user asks for a reusable
 column or a later workflow requires persistent metadata.

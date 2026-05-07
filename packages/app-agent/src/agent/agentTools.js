@@ -1,4 +1,3 @@
-import { buildSelectionAggregationAttribute } from "./selectionAggregationTool.js";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 import { getAttributeSummaryTool } from "./attributeSummaryTool.js";
 import { resolveMetadataAttributeValuesTool } from "./resolveMetadataAttributeValuesTool.js";
@@ -123,35 +122,6 @@ export const agentTools = {
                 changed
             ),
         };
-    },
-
-    /**
-     * @param {AgentToolRuntime} runtime
-     * @param {import("./agentToolInputs.d.ts").BuildSelectionAggregationAttributeToolInput} input
-     */
-    buildSelectionAggregationAttribute(runtime, input) {
-        try {
-            const resolution = buildSelectionAggregationAttribute(
-                runtime.getAgentVolatileContext(),
-                input.candidateId,
-                input.aggregation
-            );
-
-            return {
-                text:
-                    `Built an AttributeIdentifier for ${resolution.title} from ` +
-                    `${input.candidateId}. No aggregated value was computed. ` +
-                    "Use a SELECTION_AGGREGATION candidate in plotting tools " +
-                    "or content.attribute as payload.attribute in " +
-                    "`submitIntentActions`. If you need a different locus or " +
-                    "interval, update the selection first.",
-                content: resolution,
-            };
-        } catch (error) {
-            throw new ToolCallRejectionError(
-                error instanceof Error ? error.message : String(error)
-            );
-        }
     },
 
     /**
