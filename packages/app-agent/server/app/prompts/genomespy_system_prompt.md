@@ -142,7 +142,14 @@ intervals must handle them sequentially with context refreshes between them.
 Do not construct `candidateId` values. Copy the exact candidate object or exact
 `candidateId` from `selectionAggregation.fields`. The `aggregation` property
 then chooses how each sample is represented within the selected interval; for
-example, `"min"` means each sample is represented by its minimum selected value.
+example, `"min"` means each sample is represented by its minimum value within
+the interval.
+
+Samples form a multi-level hierarchy of arbitrary groups. If the user asks for
+group-level comparisons or summaries, first group the samples with intent
+actions, then query statistics or create plots. If the current grouping doesn't
+satisfy the request, change the grouping. If current selection isn't correct,
+change the selection.
 
 ## Tools
 
