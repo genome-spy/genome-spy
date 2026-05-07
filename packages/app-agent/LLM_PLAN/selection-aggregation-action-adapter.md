@@ -151,6 +151,52 @@ commit notes or plan update:
     definition, also record a short qualitative note about whether the
     `submitIntentActions` schema remained readable.
 
+### Measurement Log
+
+Baseline before implementation:
+
+- Focused source lines:
+  - `agentToolInputs.d.ts`: 458
+  - `agentTools.js`: 565
+  - `attributeCandidate.js`: 191
+- Generated schema sizes:
+  - `generatedToolSchema.json`: 80,565 bytes
+  - `generatedActionSchema.json`: 61,188 bytes
+  - `SubmitIntentActionsToolInput` JSON slice: 1,149 bytes
+
+Step 1 attempted the recursive mapped type strategy. Result: rejected. It made
+`generatedToolSchema.json` smaller, but produced many noisy
+`AgentizeAttributes<...>` definitions and made the action schema hard to read.
+
+- Focused source lines:
+  - `agentToolInputs.d.ts`: 477
+  - `agentTools.js`: 565
+  - `attributeCandidate.js`: 191
+- Generated schema sizes:
+  - `generatedToolSchema.json`: 79,902 bytes
+  - `generatedActionSchema.json`: 61,188 bytes
+  - `SubmitIntentActionsToolInput` JSON slice: 1,151 bytes
+
+Step 2 uses the schema post-processing fallback and adds the runtime
+normalizer.
+
+- Focused source lines:
+  - `agentToolInputs.d.ts`: 458
+  - `agentTools.js`: 570
+  - `attributeCandidate.js`: 191
+  - `agentIntentActionAttributes.js`: 56
+  - `actionShapeValidator.js`: 583
+  - `submitIntentActionsValidator.js`: 89
+- Generated schema sizes:
+  - `generatedToolSchema.json`: 80,803 bytes
+  - `generatedActionSchema.json`: 61,188 bytes
+  - `SubmitIntentActionsToolInput` JSON slice: 1,149 bytes
+- Verification:
+  - `npx vitest run packages/app-agent/src/agent/toolCatalog.test.js packages/app-agent/src/agent/actionShapeValidator.test.js packages/app-agent/src/agent/agentTools.test.js`
+    passed.
+  - `npm --workspace packages/app-agent run test:tsc` passed.
+  - `npm --workspace packages/app-agent run check:agent` passed.
+
 1. Add the agent-facing action input type.
    - Try the recursive `AgentizeAttributes<T>` approach in
      `agentToolInputs.d.ts`.

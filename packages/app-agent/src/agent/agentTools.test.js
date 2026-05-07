@@ -1275,6 +1275,56 @@ describe("agentTools", () => {
         expect(runtime.summarizeExecutionResult).toHaveBeenCalledTimes(1);
     });
 
+    it("normalizes selection aggregation candidates before submitting actions", async () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        await tools.submitIntentActions(runtime, {
+            actions: [
+                {
+                    actionType: "sampleView/sortBy",
+                    payload: {
+                        attribute: {
+                            type: "SELECTION_AGGREGATION",
+                            candidateId: "brush@track:beta",
+                            aggregation: "max",
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(runtime.submitIntentActions).toHaveBeenCalledWith(
+            expect.objectContaining({
+                steps: [
+                    {
+                        actionType: "sampleView/sortBy",
+                        payload: {
+                            attribute: {
+                                type: "VALUE_AT_LOCUS",
+                                specifier: {
+                                    view: {
+                                        scope: [],
+                                        view: "track",
+                                    },
+                                    field: "beta",
+                                    interval: [
+                                        { chrom: "chr17", pos: 7565097 },
+                                        { chrom: "chr17", pos: 7590856 },
+                                    ],
+                                    aggregation: { op: "max" },
+                                },
+                            },
+                        },
+                    },
+                ],
+            }),
+            expect.objectContaining({
+                submissionKind: "agent",
+            })
+        );
+    });
+
     it("rethrows intent action failures as rejected tool calls", async () => {
         const runtime = createRuntimeStub();
         runtime.submitIntentActions.mockRejectedValue(

@@ -6,6 +6,7 @@ import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
 import generatedActionSchema from "./generated/generatedActionSchema.json" with { type: "json" };
 import { resolveAgentAttributeCandidateRecord } from "./attributeCandidate.js";
+import { normalizeAgentIntentActionAttributes } from "./agentIntentActionAttributes.js";
 
 /*
  * Tool behavior lives here. The input shapes and user-facing descriptions are
@@ -307,10 +308,14 @@ export const agentTools = {
      */
     async submitIntentActions(runtime, input) {
         try {
+            const steps =
+                /** @type {import("./types.d.ts").AgentIntentBatchStep[]} */ (
+                    normalizeAgentIntentActionAttributes(runtime, input.actions)
+                );
             const result = await runtime.submitIntentActions(
                 {
                     schemaVersion: 1,
-                    steps: input.actions,
+                    steps,
                     rationale: input.note,
                 },
                 {

@@ -24,6 +24,35 @@ function normalizeSchemaText(text) {
 }
 
 /**
+ * The intent executor accepts canonical app action payloads, but the agent tool
+ * contract also allows compact selection-aggregation candidates in action
+ * payload attributes. Keep the TypeScript source tied to the app payload types
+ * and relax only the generated agent-facing tool schema.
+ *
+ * @param {Record<string, any>} schema
+ * @returns {Record<string, any>}
+ */
+function relaxAgentAttributeIdentifiers(schema) {
+    const definitions = schema.definitions;
+    if (
+        !definitions?.AttributeIdentifier ||
+        !definitions?.SelectionAggregationCandidate
+    ) {
+        return schema;
+    }
+
+    definitions.CanonicalAttributeIdentifier = definitions.AttributeIdentifier;
+    definitions.AttributeIdentifier = {
+        anyOf: [
+            { $ref: "#/definitions/CanonicalAttributeIdentifier" },
+            { $ref: "#/definitions/SelectionAggregationCandidate" },
+        ],
+    };
+
+    return schema;
+}
+
+/**
  * @returns {Promise<string>}
  */
 export async function generateToolSchemaText() {
@@ -45,8 +74,10 @@ export async function generateToolSchemaText() {
         }
     );
 
+    const schema = relaxAgentAttributeIdentifiers(JSON.parse(stdout));
+
     return formatGeneratedSource(
-        normalizeSchemaText(stdout),
+        normalizeSchemaText(JSON.stringify(schema, null, 2)),
         fileURLToPath(schemaPath)
     );
 }

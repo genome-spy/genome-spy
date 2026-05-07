@@ -1,6 +1,7 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
 import {
+    validateAgentActionPayloadShape,
     validateActionPayloadShape,
     validateIntentBatchShape,
 } from "./actionShapeValidator.js";
@@ -80,6 +81,28 @@ describe("actionShapeValidator", () => {
             type: "SAMPLE_ATTRIBUTE",
             specifier: "mutations",
         });
+    });
+
+    it("accepts selection aggregation candidates only in agent-facing action payloads", () => {
+        const payload = {
+            attribute: {
+                type: "SELECTION_AGGREGATION",
+                candidateId: "brush@track:beta",
+                aggregation: "max",
+            },
+        };
+
+        const canonical = validateActionPayloadShape(
+            "sampleView/sortBy",
+            payload
+        );
+        const agentFacing = validateAgentActionPayloadShape(
+            "sampleView/sortBy",
+            payload
+        );
+
+        expect(canonical.ok).toBe(false);
+        expect(agentFacing.ok).toBe(true);
     });
 
     it("rejects malformed intent batches", () => {
