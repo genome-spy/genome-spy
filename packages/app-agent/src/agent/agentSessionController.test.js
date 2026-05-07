@@ -608,7 +608,7 @@ describe("createAgentSessionController", () => {
         ]);
     });
 
-    it("requires a new turn after information tools before dependent calls", async () => {
+    it("executes tool calls in the same batch as information tools", async () => {
         const runtime = createRuntimeMock();
         const controller = createAgentSessionController(runtime);
 
@@ -641,15 +641,10 @@ describe("createAgentSessionController", () => {
             },
             {
                 toolCallId: "call-plot",
-                rejected: true,
-                text: expect.stringContaining(
-                    "Tool results are only available after the batch completes."
-                ),
+                rejected: false,
             },
         ]);
-        expect(
-            runtime.agentApi.buildSampleAttributePlot
-        ).not.toHaveBeenCalled();
+        expect(runtime.agentApi.buildSampleAttributePlot).toHaveBeenCalled();
     });
 
     it("returns invalid selection aggregation candidates as rejected tool results", async () => {
