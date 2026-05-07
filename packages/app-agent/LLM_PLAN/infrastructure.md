@@ -55,9 +55,9 @@ Default posture: keep gateway thin; move logic server-side only when needed (e.g
 
 ## System Prompt Strategy
 - Include system prompt on every request (or prepend server-side per session).
-- Use strict output schema (e.g., `clarify`, `intent_batch`, `answer`).
+- Use strict output schema (e.g., `tool_call`, `answer`).
 - Require the model to avoid inventing attributes or view ids.
-- Ask for clarification when context is missing.
+- Say what is missing when context is insufficient.
 
 ## Data Transport
 - **Baseline:** HTTP request/response with streaming (SSE or chunked fetch).
@@ -70,7 +70,7 @@ Notes:
 ## Message Flow (High-Level)
 1. User message + context snapshot -> gateway.
 2. Gateway forwards to LLM with system prompt + tools.
-3. LLM returns JSON response (intent batch or clarification).
+3. LLM returns JSON response (intent batch or final answer).
 4. Client validates and executes intents.
 5. Client returns summary (provenance) to LLM (optional).
 
@@ -90,7 +90,7 @@ Notes:
 ## Local Model Capability Notes
 Small local models can be effective for action composition and exploration
 if you provide explicit context and constraints:
-- They handle intent mapping, summarization, and clarifying questions well.
+- They handle intent mapping and summarization well.
 - They struggle with deep biology/statistics unless the domain knowledge is
   supplied via metadata descriptions or docs.
 - Prefer suggestion-style outputs when statistical rigor is not available.

@@ -26,8 +26,8 @@ several dependent tool rounds, for example:
 Keep workflow state scoped to one user message.
 
 - Create or update it only inside the active `AgentSessionController` tool loop.
-- Clear it when the model returns a final `answer`, `clarify`, an error, or the
-  turn is cancelled.
+- Clear it when the model returns a final `answer`, an error, or the turn is
+  cancelled.
 - Do not carry it into the next user request by default.
 - Treat a later "continue" feature as a separate design problem.
 
@@ -68,7 +68,7 @@ type AgentTurnResponse =
           workflow?: AgentWorkflowState;
       }
     | {
-          type: "answer" | "clarify";
+          type: "answer";
           message: string;
           workflowStatus?: "complete" | "blocked" | "partial";
       };
@@ -103,8 +103,7 @@ During one user turn:
 3. Execute tools and append tool results as today.
 4. Re-run the model with refreshed context, history, and the latest workflow
    state.
-5. Clear workflow state on `answer`, `clarify`, cancellation, error, or loop
-   budget stop.
+5. Clear workflow state on `answer`, cancellation, error, or loop budget stop.
 
 The controller should not validate every workflow step at first. It should only
 preserve and replay the state. Validation can come later if needed.

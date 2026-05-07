@@ -12,7 +12,6 @@ import {
     MAX_REPEATED_SUCCESS_TOOL_CALL_REPEATS,
     serializeToolCallSignature,
 } from "./toolCallLoop.js";
-import { parseClarificationMessage } from "./clarificationMessage.js";
 import { looksLikeStructuredToolMessage } from "./messageDetection.js";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 import { agentTools } from "./agentTools.js";
@@ -27,10 +26,6 @@ import { agentTools } from "./agentTools.js";
 /** @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall */
 /** @typedef {keyof typeof agentTools} AgentToolName */
 /** @typedef {import("./types.d.ts").AgentTurnResponse | {
- *     type: "clarify";
- *     message: string | import("lit").TemplateResult;
- *     options?: ChatClarificationOption[];
- * } | {
  *     type: "tool_call";
  *     toolCalls: AgentToolCall[];
  *     message?: string;
@@ -54,12 +49,6 @@ import { agentTools } from "./agentTools.js";
 
 /**
  * @typedef {{
- *     value: string;
- *     label: string;
- *     description?: string;
- * }} ChatClarificationOption
- *
- * @typedef {{
  *     toolCallId: string;
  *     text: string | null;
  *     rejected: boolean;
@@ -71,7 +60,6 @@ import { agentTools } from "./agentTools.js";
  *     kind:
  *         | "user"
  *         | "assistant"
- *         | "clarification"
  *         | "result"
  *         | "tool_call"
  *         | "tool_result"
@@ -80,7 +68,6 @@ import { agentTools } from "./agentTools.js";
  *     text?: string | import("lit").TemplateResult;
  *     phase?: "commentary" | "final_answer";
  *     lines?: IntentBatchSummaryLine[];
- *     options?: ChatClarificationOption[];
  *     toolCalls?: AgentToolCall[];
  *     toolCallId?: string;
  *     rejected?: boolean;
@@ -89,7 +76,7 @@ import { agentTools } from "./agentTools.js";
  * }} AgentChatMessage
  *
  * @typedef {{
- *     status: "ready" | "preflighting" | "thinking" | "clarification" | "executing" | "unavailable" | "error";
+ *     status: "ready" | "preflighting" | "thinking" | "executing" | "unavailable" | "error";
  *     preflightState: "idle" | "running" | "ready" | "failed";
  *     messages: AgentChatMessage[];
  *     pendingRequest: { message: string, messageId: number } | null;
@@ -649,9 +636,7 @@ export class AgentSessionController {
             typeof response === "object" &&
             response !== null &&
             "type" in response &&
-            (response.type === "answer" ||
-                response.type === "clarify" ||
-                response.type === "tool_call")
+            (response.type === "answer" || response.type === "tool_call")
         );
     }
 
@@ -910,7 +895,6 @@ export class AgentSessionController {
                         message.id !== this.#state.pendingRequest?.messageId) &&
                     (message.kind === "user" ||
                         message.kind === "assistant" ||
-                        message.kind === "clarification" ||
                         message.kind === "result" ||
                         message.kind === "tool_call" ||
                         message.kind === "tool_result")
@@ -956,13 +940,6 @@ export class AgentSessionController {
                     historyMessage.phase = message.phase ?? "final_answer";
                 }
 
-                if (message.kind === "clarification") {
-                    return /** @type {AgentConversationMessage} */ ({
-                        ...historyMessage,
-                        kind: "clarification",
-                    });
-                }
-
                 return historyMessage;
             })
             .filter(
@@ -991,35 +968,6 @@ export class AgentSessionController {
                 durationMs: durationMs ?? null,
             });
             this.#state.status = "ready";
-            this.#state.lastError = "";
-            this.#notify();
-            return;
-        }
-
-        if (response.type === "clarify") {
-            const parsedClarification = parseClarificationMessage(
-                response.message
-            );
-            const options =
-                "options" in response && response.options?.length > 0
-                    ? /** @type {ChatClarificationOption[]} */ (
-                          response.options
-                      )
-                    : parsedClarification.options;
-            this.#appendMessage({
-                kind: "clarification",
-                text:
-                    options.length > 0
-                        ? parsedClarification.text
-                        : response.message,
-                options: options.map((option) => ({
-                    value: option.value,
-                    label: option.label,
-                    description: option.description,
-                })),
-                durationMs: durationMs ?? null,
-            });
-            this.#state.status = "clarification";
             this.#state.lastError = "";
             this.#notify();
             return;

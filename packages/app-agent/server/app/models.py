@@ -64,7 +64,7 @@ class AgentTurnResponse(BaseModel):
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    type: Literal["answer", "clarify", "tool_call"]
+    type: Literal["answer", "tool_call"]
     message: str | None = None
     tool_calls: list[ToolCall] = Field(default_factory=list, alias="toolCalls")
 
@@ -74,7 +74,7 @@ class ProviderResponse(BaseModel):
 
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    type: Literal["answer", "clarify", "tool_call"]
+    type: Literal["answer", "tool_call"]
     message: str | None = None
     tool_calls: list[ToolCall] = Field(default_factory=list, alias="toolCalls")
 

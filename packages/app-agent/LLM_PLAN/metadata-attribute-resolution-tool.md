@@ -88,7 +88,7 @@ matches and return bounded candidate rows such as:
 ```
 
 If several attributes match, the tool should return multiple candidates so the
-agent can either choose a clear winner or ask a clarification question.
+agent can either choose a clear winner or explain the ambiguity.
 
 ## Matching Scope
 
@@ -197,8 +197,7 @@ Add guidance like:
   first
 - do not infer the attribute only from title similarity when the value can be
   resolved from current metadata
-- if the tool returns multiple plausible attributes, ask a brief clarification
-  question or explain the ambiguity
+- if the tool returns multiple plausible attributes, explain the ambiguity
 
 Relevant prompt file:
 
@@ -236,7 +235,7 @@ Recommended behavior:
   - matched value
   - visible sample count
 - keep the tool read-only
-- let the agent ask a clarification question when ambiguity remains real
+- let the agent explain ambiguity when it remains real
 
 ## Suggested Ranking
 
@@ -299,7 +298,7 @@ The tool should remain conservative:
 - do not quietly auto-pick a fuzzy match when several candidates tie closely
 
 If the fuzzy pass returns several similarly plausible candidates, the agent
-should clarify instead of guessing.
+should explain the ambiguity instead of guessing.
 
 ## Tests
 

@@ -255,31 +255,13 @@ export interface AgentContextOptions {
     expandedViewNodeKeys?: string[];
 }
 
-/** One option presented during a clarification round. */
-export interface ClarificationOption {
-    value: string;
-    label: string;
-    description?: string;
-}
-
-/** Request for additional user input when a response cannot be resolved. */
-export interface ClarificationRequest {
-    workflowKind: string;
-    slot: string;
-    message: string;
-    options?: ClarificationOption[];
-    allowFreeText?: boolean;
-    initialValue?: string;
-    state: Record<string, any>;
-}
-
 /** Conversation turn sent to the agent service. */
 export interface AgentConversationMessage {
     id: string;
     role: "user" | "assistant" | "tool";
     text: string;
     phase?: "commentary" | "final_answer";
-    kind?: "clarification" | "tool_call" | "tool_result";
+    kind?: "tool_call" | "tool_result";
     toolCalls?: AgentToolCall[];
     toolCallId?: string;
     rejected?: boolean;
@@ -320,17 +302,16 @@ export interface IntentBatchExecutionResult {
     batch: IntentBatch;
 }
 
-/** Result shape used by resolvers that may need clarification. */
+/** Result shape used by resolvers. */
 export type ResolverResult<T> =
     | { status: "not_applicable" }
     | { status: "resolved"; value: T }
-    | { status: "needs_clarification"; request: ClarificationRequest }
     | { status: "error"; message: string };
 
 /** Top-level response returned by the agent-turn endpoint. */
 export type AgentTurnResponse =
     | {
-          type: "clarify" | "answer";
+          type: "answer";
           message: string;
       }
     | {

@@ -13,7 +13,6 @@ import "./chatStream.js";
  *         | "ready"
  *         | "preflighting"
  *         | "thinking"
- *         | "clarification"
  *         | "executing"
  *         | "unavailable"
  *         | "error";
@@ -690,8 +689,6 @@ export default class AgentChatPanel extends LitElement {
                 return "Thinking";
             case "executing":
                 return "Executing";
-            case "clarification":
-                return "Need clarification";
             case "unavailable":
                 return "Agent unavailable";
             case "error":

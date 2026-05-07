@@ -167,7 +167,7 @@ Preferred provider adapter shape:
 - Responses API first
 - The old fallback adapter as an explicit temporary adapter only
 - Shared GenomeSpy contract inputs: `message`, `history`, `context`
-- Shared output shape: `answer` or `clarify`
+- Shared output shape: `answer` or `tool_call`
 
 ## Coding Agent Prompt
 

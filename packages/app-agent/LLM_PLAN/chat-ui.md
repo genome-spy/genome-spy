@@ -33,7 +33,6 @@ streaming or tool execution, but the panel should stay on this boundary.
 ## UI Expectations
 
 - Show user and assistant messages in a compact transcript.
-- Show clarification prompts as selectable follow-ups.
 - Show intent-batch previews before execution.
 - Show execution summaries inline after the agent acts.
 - Treat preflight as a connectivity check, not as a user confirmation flow.
@@ -49,8 +48,7 @@ streaming or tool execution, but the panel should stay on this boundary.
 
 - Keep a dedicated story for the chat panel.
 - Use deterministic canned responses.
-- Cover answer, clarification, intent-batch, preflight success/failure, and
-  queued-input cases.
+- Cover answer, intent-batch, preflight success/failure, and queued-input cases.
 
 ## Split Rule
 

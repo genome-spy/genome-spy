@@ -12,7 +12,7 @@ This document outlines what the LLM needs to understand a GenomeSpy visualizatio
 - Keep the system data-agnostic; capture semantics in metadata.
 - Prefer stable identifiers (view names, attribute identifiers) over labels.
 - Provide compact summaries to keep prompts bounded.
-- Make everything optional and discoverable; fall back to clarification when missing.
+- Make everything optional and discoverable; say what is missing when needed.
 - Keep collapsed branches compact in the always-on context; expand them on
   demand through retrieval tools instead of inlining every hidden detail.
 - The product phases and data-access policy are summarized in

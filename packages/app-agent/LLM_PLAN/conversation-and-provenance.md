@@ -42,7 +42,7 @@ current context.
 
 ## Why This Matters
 
-- The chat UI needs to support follow-up questions and clarifications.
+- The chat UI needs to support multi-turn answers and tool calls.
 - The agent needs the current visualization state, not a full history dump.
 - Provenance already records the state-changing actions, so it can serve as the
   canonical mutation log.
@@ -60,8 +60,6 @@ Tracks:
 
 - user messages
 - assistant answers
-- clarification prompts
-- user replies to clarifications
 - assistant tool-call requests
 - tool results returned to the model
 
@@ -92,7 +90,6 @@ Build the agent prompt from:
 - the current collapsed visualization state
 - the active provenance branch
 - a short recent conversation summary
-- any unresolved clarification state
 
 ## Branching
 
@@ -129,7 +126,6 @@ Use it to explain:
 
 - why this branch was chosen
 - why an alternative was abandoned
-- why the action was kept after clarification
 - why the current path is preferred
 
 Keep it short and human-readable. It should explain the decision, not repeat the
@@ -138,10 +134,10 @@ full transcript or internal reasoning trace.
 ## Linking Rule
 
 Provenance should not know about the chat system. Instead, the agent add-on can
-record which chat message or clarification led to a given provenance branch by
-storing stable ids in its own layer. The provenance entries themselves only need
-generic ids and parent/branch metadata; the add-on can map those ids back to the
-conversation when it builds the agent context or renders the transcript.
+record which chat message led to a given provenance branch by storing stable ids
+in its own layer. The provenance entries themselves only need generic ids and
+parent/branch metadata; the add-on can map those ids back to the conversation
+when it builds the agent context or renders the transcript.
 
 ## Revision Notes For The Current Architecture
 
@@ -157,7 +153,7 @@ this model, the architecture should be revised as follows:
   The transcript can preserve which tool call produced which result, while the
   view tree only reflects the resulting revealed state.
 - Let the agent add-on maintain a separate correlation layer that links chat
-  messages and clarification replies to provenance ids.
+  messages to provenance ids.
 - Keep the visualization state compact and current by default; do not store
   multiple full snapshots in the normal agent context.
 - Treat progressive revealing as a context overlay. Tool results may expand or
@@ -267,24 +263,6 @@ Draft idea:
       "text": "Done. The brush is now set to the requested interval.",
       "basedOnMessages": ["msg_005"],
       "basedOnProvenance": ["prov_011", "prov_012"]
-    },
-    {
-      "id": "msg_007",
-      "role": "assistant",
-      "kind": "clarification",
-      "text": "The x-axis uses month-based values. Should I interpret March to May as month-date values?",
-      "options": [
-        {
-          "value": "yes",
-          "label": "Yes, use month-date values"
-        },
-        {
-          "value": "no",
-          "label": "No, let me adjust the request"
-        }
-      ],
-      "basedOnMessages": ["msg_003"],
-      "basedOnProvenance": ["prov_001"]
     }
   ]
 }
@@ -297,7 +275,7 @@ Notes:
   necessary later, add it explicitly.
 - There is no `createdAt` in the draft; ordering can be derived from array
   position unless a time field becomes necessary later.
-- `kind` is optional and only needed for special cases like clarifications.
+- `kind` is optional and only needed for special cases like tool calls.
 - `kind: "tool_call"` marks an assistant turn that requests one or more tool
   executions.
 - A message may carry both `text` and `toolCalls`. If `toolCalls` are present,

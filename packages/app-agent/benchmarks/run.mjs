@@ -636,7 +636,6 @@ function buildEvidence(snapshot) {
             .find(
                 (message) =>
                     message.kind === "assistant" ||
-                    message.kind === "clarification" ||
                     message.kind === "error"
             )?.text ?? "";
 
@@ -677,9 +676,7 @@ function buildMetrics(snapshot, oracle = {}) {
         );
     const triesToSuccess = messages.filter(
         (message) =>
-            message.kind === "tool_call" ||
-            message.kind === "assistant" ||
-            message.kind === "clarification"
+            message.kind === "tool_call" || message.kind === "assistant"
     ).length;
 
     return {

@@ -27,7 +27,7 @@
 - Accept GenomeSpy turn requests with `message`, `history`, and `context`.
 - Add the configured system prompt and prompt context on the relay side.
 - Forward requests through `responses` or `chat_completions`.
-- Normalize replies into GenomeSpy's `answer`, `clarify`, and `tool_call`
+- Normalize replies into GenomeSpy's `answer` and `tool_call`
   response types.
 - Provide a small amount of developer diagnostics through logs and focused
   utilities.

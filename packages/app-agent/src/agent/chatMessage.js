@@ -14,12 +14,6 @@ import { embedRenderablePlot } from "@genome-spy/app/agentApi";
 
 /**
  * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
- * @typedef {{
- *     value: string;
- *     label: string;
- *     description?: string;
- * }} ChatClarificationOption
- *
  * @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall
  *
  * @typedef {{
@@ -27,7 +21,6 @@ import { embedRenderablePlot } from "@genome-spy/app/agentApi";
  *     kind:
  *         | "user"
  *         | "assistant"
- *         | "clarification"
  *         | "result"
  *         | "tool_call"
  *         | "tool_result"
@@ -35,7 +28,6 @@ import { embedRenderablePlot } from "@genome-spy/app/agentApi";
  *         | "error";
  *     text?: string | import("lit").TemplateResult;
  *     lines?: IntentBatchSummaryLine[];
- *     options?: ChatClarificationOption[];
  *     toolCalls?: AgentToolCall[];
  *     toolCallId?: string;
  *     content?: unknown;
@@ -70,10 +62,6 @@ export default class ChatMessageElement extends LitElement {
             :host(.assistant) {
                 align-self: flex-start;
                 max-width: min(84%, 44rem);
-            }
-
-            :host(.clarification) {
-                --accent-color: #5f84b8;
             }
 
             :host(.result) {
@@ -302,17 +290,6 @@ export default class ChatMessageElement extends LitElement {
                 margin: 0;
                 padding-left: 1.15rem;
             }
-
-            .clarification-options {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-                padding-top: 0.15rem;
-            }
-
-            .clarification-options .btn {
-                padding: 0.35rem 0.75rem;
-            }
         `,
     ];
 
@@ -346,8 +323,6 @@ export default class ChatMessageElement extends LitElement {
         }
 
         switch (message.kind) {
-            case "clarification":
-                return this.#renderClarification(message);
             case "result":
                 return this.#renderResult(message);
             case "error":
@@ -379,40 +354,6 @@ export default class ChatMessageElement extends LitElement {
     disconnectedCallback() {
         this.#clearPlotEmbedding();
         super.disconnectedCallback();
-    }
-
-    /**
-     * @param {ChatMessage} message
-     * @returns {import("lit").TemplateResult}
-     */
-    #renderClarification(message) {
-        return html`
-            <article class="message clarification">
-                <div class="message-title">
-                    ${icon(faInfoCircle).node[0]} Clarification
-                </div>
-                <div class="message-text">
-                    ${this.#renderMarkdown(message.text ?? "")}
-                </div>
-                ${message.options?.length
-                    ? html`<div class="clarification-options">
-                          ${message.options.map(
-                              (option) => html`
-                                  <button
-                                      class="btn"
-                                      type="button"
-                                      @click=${() =>
-                                          this.onSubmitMessage?.(option.value)}
-                                  >
-                                      ${option.label}
-                                  </button>
-                              `
-                          )}
-                      </div>`
-                    : nothing}
-                ${this.#renderTimingNote(message.durationMs)}
-            </article>
-        `;
     }
 
     /**

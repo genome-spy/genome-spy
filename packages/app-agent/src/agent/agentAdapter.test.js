@@ -439,13 +439,6 @@ describe("agentAdapter", () => {
                 text: "It is a cohort view.",
                 phase: "final_answer",
             },
-            {
-                id: "msg_003",
-                role: "assistant",
-                text: "Do you want the structure or the encodings?",
-                phase: "final_answer",
-                kind: "clarification",
-            },
         ];
 
         await adapter.requestAgentTurn(
@@ -458,7 +451,7 @@ describe("agentAdapter", () => {
             '"message":"How are methylation levels encoded?"'
         );
         expect(globalThis.fetch.mock.calls[0][1].body).toContain(
-            '"history":[{"id":"msg_001","role":"user","text":"What is in this visualization?"},{"id":"msg_002","role":"assistant","text":"It is a cohort view.","phase":"final_answer"},{"id":"msg_003","role":"assistant","text":"Do you want the structure or the encodings?","phase":"final_answer","kind":"clarification"}]'
+            '"history":[{"id":"msg_001","role":"user","text":"What is in this visualization?"},{"id":"msg_002","role":"assistant","text":"It is a cohort view.","phase":"final_answer"}]'
         );
         const requestBody = JSON.parse(globalThis.fetch.mock.calls[0][1].body);
         expect(requestBody.context).not.toHaveProperty("sampleSummary");

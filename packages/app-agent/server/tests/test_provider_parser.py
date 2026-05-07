@@ -54,7 +54,7 @@ def test_parse_responses_response_falls_back_to_raw_text() -> None:
     assert response == ProviderResponse(type="answer", message="not json")
 
 
-def test_parse_responses_response_accepts_json_code_fence() -> None:
+def test_parse_responses_response_accepts_answer_json_code_fence() -> None:
     payload = {
         "output": [
             {
@@ -64,7 +64,7 @@ def test_parse_responses_response_accepts_json_code_fence() -> None:
                     {
                         "type": "output_text",
                         "text": "```json\n"
-                        '{"type":"clarify","message":"Which track do you mean?"}'
+                        '{"type":"answer","message":"The top track shows segments."}'
                         "\n```",
                     }
                 ],
@@ -75,7 +75,7 @@ def test_parse_responses_response_accepts_json_code_fence() -> None:
     response = _parse_responses_response(payload)
 
     assert response == ProviderResponse(
-        type="clarify", message="Which track do you mean?"
+        type="answer", message="The top track shows segments."
     )
 
 

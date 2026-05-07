@@ -3,7 +3,7 @@ import { createAgentSessionController } from "./agentSessionController.js";
 import "./chatPanel.js";
 
 /**
- * @typedef {"answer" | "clarify" | "tool_call" | "error"} MockScenario
+ * @typedef {"answer" | "tool_call" | "error"} MockScenario
  */
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
@@ -23,7 +23,7 @@ export default {
         scenario: {
             control: {
                 type: "select",
-                options: ["answer", "clarify", "tool_call", "error"],
+                options: ["answer", "tool_call", "error"],
             },
         },
         preflightDelayMs: {
@@ -222,33 +222,6 @@ function createMockAgentController(scenario, options = {}) {
                 throw new Error(
                     "Mock agent turn error: the request could not be parsed."
                 );
-            }
-
-            if (
-                scenario === "clarify" ||
-                normalized.includes("which") ||
-                normalized.includes("what attribute")
-            ) {
-                await streamText(
-                    streamCallbacks,
-                    "Which attribute should I use?",
-                    {
-                        streamDelayMs,
-                        heartbeatIntervalMs,
-                    }
-                );
-
-                return {
-                    response: {
-                        type: "clarify",
-                        message:
-                            "Which attribute should I use?\n\n1. Age\n2. Diagnosis",
-                    },
-                    trace: {
-                        message,
-                        totalMs: 12,
-                    },
-                };
             }
 
             if (
@@ -624,13 +597,6 @@ export const Answer = {
     render: renderChatPanel,
 };
 
-export const Clarify = {
-    args: {
-        scenario: "clarify",
-    },
-    render: renderChatPanel,
-};
-
 export const SubmitIntentActions = {
     args: {
         scenario: "tool_call",
@@ -671,15 +637,6 @@ export const PreflightPending = {
 export const StreamingAnswer = {
     args: {
         scenario: "answer",
-        streamDelayMs: 120,
-        heartbeatIntervalMs: 400,
-    },
-    render: renderChatPanel,
-};
-
-export const StreamingClarify = {
-    args: {
-        scenario: "clarify",
         streamDelayMs: 120,
         heartbeatIntervalMs: 400,
     },

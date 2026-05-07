@@ -11,8 +11,7 @@ LM Studio, and MLX-based servers. For remote providers, we have been using OpenA
 - GenomeSpy sends the relay a `message`, `history`, and `context`.
 - The relay adds the system prompt and prompt context.
 - The relay forwards the turn to the configured model server.
-- The relay normalizes the provider response to `answer`, `clarify`, or
-  `tool_call`.
+- The relay normalizes the provider response to `answer` or `tool_call`.
 - If streaming is enabled, the relay can also forward SSE events.
 
 **Diagram**
