@@ -17,6 +17,7 @@ class HistoryMessage(BaseModel):
     phase: Literal["commentary", "final_answer"] | None = None
     kind: str | None = None
     tool_call_id: str | None = Field(default=None, alias="toolCallId")
+    rejected: bool | None = None
     name: str | None = None
     content: Any | None = None
     tool_calls: list["ToolCall"] = Field(default_factory=list, alias="toolCalls")

@@ -83,6 +83,7 @@ import { agentTools } from "./agentTools.js";
  *     options?: ChatClarificationOption[];
  *     toolCalls?: AgentToolCall[];
  *     toolCallId?: string;
+ *     rejected?: boolean;
  *     content?: unknown;
  *     durationMs?: number | null;
  * }} AgentChatMessage
@@ -502,6 +503,7 @@ export class AgentSessionController {
                     kind: "tool_result",
                     text: result.text ?? "",
                     toolCallId: toolCall.callId,
+                    rejected: result.rejected,
                     ...(historyContent !== undefined
                         ? { content: historyContent }
                         : {}),
@@ -939,6 +941,7 @@ export class AgentSessionController {
                         text,
                         kind: "tool_result",
                         toolCallId: message.toolCallId,
+                        ...(message.rejected ? { rejected: true } : {}),
                         content: message.content,
                     });
                 }

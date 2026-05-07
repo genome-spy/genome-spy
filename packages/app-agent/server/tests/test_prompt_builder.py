@@ -143,6 +143,77 @@ def test_build_responses_input_places_volatile_context_after_tool_output() -> No
     )
 
 
+def test_build_responses_input_keeps_rejected_tool_output_last() -> None:
+    rejection_text = (
+        "Tool call was incorrect and rejected. Correct it before trying again."
+    )
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={"schemaVersion": 1},
+        volatile_context={"activeProvenanceState": {"summary": "Grouped"}},
+        history=[
+            HistoryMessage(id="1", role="user", text="Show a plot."),
+            HistoryMessage(
+                id="2",
+                role="assistant",
+                text="I will show a plot.",
+                tool_calls=[
+                    ToolCall(
+                        call_id="call_ok",
+                        name="getIntentActionDocs",
+                        arguments={"actionType": "sampleView/groupBy"},
+                    )
+                ],
+            ),
+            HistoryMessage(
+                id="3",
+                role="tool",
+                text="Read docs for sampleView/groupBy.",
+                tool_call_id="call_ok",
+                rejected=False,
+            ),
+            HistoryMessage(
+                id="4",
+                role="assistant",
+                text="I will apply the grouping.",
+                tool_calls=[
+                    ToolCall(
+                        call_id="call_rejected",
+                        name="submitIntentActions",
+                        arguments={"actions": []},
+                    )
+                ],
+            ),
+            HistoryMessage(
+                id="5",
+                role="tool",
+                text=rejection_text,
+                tool_call_id="call_rejected",
+                rejected=True,
+            ),
+        ],
+        message="",
+    )
+
+    prompt = build_prompt_ir(request)
+    messages = build_responses_input(prompt)
+
+    assert messages[4] == {
+        "type": "function_call_output",
+        "call_id": "call_ok",
+        "output": "Read docs for sampleView/groupBy.",
+    }
+    assert messages[5]["role"] == "developer"
+    assert messages[5]["content"][0]["text"].startswith(
+        "Current volatile GenomeSpy state:\n"
+    )
+    assert messages[8] == {
+        "type": "function_call_output",
+        "call_id": "call_rejected",
+        "output": rejection_text,
+    }
+
+
 def test_build_responses_input_serializes_tool_turns() -> None:
     request = ProviderRequest(
         system_prompt="system prompt",

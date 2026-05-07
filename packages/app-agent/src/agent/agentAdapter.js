@@ -59,6 +59,9 @@ function normalizeConversationHistory(history) {
             ...(entry.kind ? { kind: entry.kind } : {}),
             ...(entry.toolCalls ? { toolCalls: entry.toolCalls } : {}),
             ...(entry.toolCallId ? { toolCallId: entry.toolCallId } : {}),
+            ...(entry.rejected !== undefined
+                ? { rejected: entry.rejected }
+                : {}),
             ...(entry.content !== undefined ? { content: entry.content } : {}),
         };
     });

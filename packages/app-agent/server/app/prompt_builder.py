@@ -62,13 +62,23 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
     """
     messages: list[dict[str, Any]] = []
     messages.append(_build_developer_text_item(prompt.context_text))
-    messages.extend(_build_response_messages(prompt.history))
+
+    volatile_context_history_index = _get_volatile_context_history_insertion_index(
+        prompt
+    )
+    for index, history_message in enumerate(prompt.history):
+        if index == volatile_context_history_index and prompt.volatile_context_text:
+            messages.append(_build_developer_text_item(prompt.volatile_context_text))
+        messages.extend(_build_response_messages([history_message]))
 
     # Keep volatile browser state after the stable prompt prefix and prior
     # conversation, immediately before the current user message when present.
     # This preserves prompt-cache reuse for stable context and makes the state
     # read as the current snapshot that follows the earlier conversation.
-    if prompt.volatile_context_text:
+    if (
+        volatile_context_history_index == len(prompt.history)
+        and prompt.volatile_context_text
+    ):
         messages.append(_build_developer_text_item(prompt.volatile_context_text))
     if prompt.message:
         messages.append(
@@ -83,6 +93,37 @@ def build_responses_input(prompt: PromptIR) -> list[dict[str, Any]]:
             }
         )
     return messages
+
+
+def _get_volatile_context_history_insertion_index(prompt: PromptIR) -> int:
+    """Return the history index before which volatile context should be inserted.
+
+    Normal user turns keep volatile context after all previous conversation and
+    just before the current user message. Continuation turns after tool calls
+    keep rejected tool outputs after volatile context so the rejection remains
+    the most recent actionable item.
+    """
+    if prompt.message:
+        return len(prompt.history)
+
+    last_successful_tool_result_index = -1
+    last_rejected_tool_result_index = -1
+    for index, message in enumerate(prompt.history):
+        if message.role != "tool":
+            continue
+
+        if message.rejected is True:
+            last_rejected_tool_result_index = index
+        else:
+            last_successful_tool_result_index = index
+
+    if last_successful_tool_result_index >= 0:
+        return last_successful_tool_result_index + 1
+
+    if last_rejected_tool_result_index >= 0:
+        return last_rejected_tool_result_index
+
+    return len(prompt.history)
 
 
 def _build_context_text(context: dict[str, Any]) -> str:

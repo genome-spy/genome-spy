@@ -282,6 +282,7 @@ export interface AgentConversationMessage {
     kind?: "clarification" | "tool_call" | "tool_result";
     toolCalls?: AgentToolCall[];
     toolCallId?: string;
+    rejected?: boolean;
     content?: unknown;
 }
 

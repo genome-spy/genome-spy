@@ -1393,7 +1393,8 @@ describe("createAgentSessionController", () => {
     it("stops promptly when the same rejected tool call repeats", async () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
-        runtime.requestAgentTurn.mockImplementation((message) => {
+        const observedHistories = [];
+        runtime.requestAgentTurn.mockImplementation((message, history) => {
             agentTurnCallCount += 1;
             if (message === PREFLIGHT_MESSAGE) {
                 return Promise.resolve({
@@ -1407,6 +1408,7 @@ describe("createAgentSessionController", () => {
                 });
             }
 
+            observedHistories.push(history);
             return Promise.resolve({
                 response: {
                     type: "tool_call",
@@ -1439,6 +1441,16 @@ describe("createAgentSessionController", () => {
 
         const snapshot = controller.getSnapshot();
         expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(3);
+        expect(
+            observedHistories
+                .at(-1)
+                .some(
+                    (message) =>
+                        message.kind === "tool_result" &&
+                        message.toolCallId === "call-2" &&
+                        message.rejected === true
+                )
+        ).toBe(true);
         expect(snapshot.status).toBe("error");
         expect(snapshot.lastError).toBe(
             "The agent repeated the same rejected tool call after validation failure."
