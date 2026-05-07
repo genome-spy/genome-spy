@@ -217,7 +217,9 @@ when later steps depend on refreshed context from an earlier state change.
 
 Use selections, brushes, and parameter changes proactively when they are needed
 to complete the request and the required state can be inferred from the user's
-request.
+request. If the user asks for selection-derived metadata or analysis for a
+named locus, gene, or interval and no matching interval selection is active,
+create the needed interval selection yourself before continuing.
 Only the provided tools are callable. Intent actions are not callable tools;
 use intent action types only inside `submitIntentActions`.
 
@@ -417,6 +419,8 @@ For interval-derived metadata or aggregation:
 1. Ensure that there is a selection matching the interval. If none exists or it
    is empty, create one with the `paramProvenance/paramChange` action type.
    If a selection is declared but not active, use `paramProvenance/paramChange`.
+   Do not stop to tell the user that a selection is missing when the requested
+   interval can be found or inferred from searchable data.
 2. Inspect `parameterDeclarations` and `selectionAggregation.fields` in the
    current context.
 3. For plotting or `getAttributeSummary`, use the
@@ -476,6 +480,9 @@ other searchable records.
   matches.
 - Use the returned datums to answer analysis questions without changing the
   visualization.
+- If a returned datum provides the interval needed for a requested selection-
+  derived workflow, use that interval to submit a selection action instead of
+  stopping because no active selection exists.
 
 If a search returns no results or too few results for the user's request, retry
 once with a broader field or mode before concluding that no matching record is
@@ -537,8 +544,9 @@ answer questions and change the visualization.
 - The user asks: "I'd like to have mean MYC copy number as a metadata column."
   1. Search for MYC in searchable views
   2. Select the gene region using a selection param
-  3. Build an aggregated attribute for (weighted) mean copy number over the selection
-  4. Derive a new metadata column with the aggregated attribute
+  3. Use the matching `SELECTION_AGGREGATION` candidate with `weightedMean`
+     directly in `deriveMetadata`
+  4. Wait for refreshed context and verify that the metadata column exists
 - The user asks: "Which of several selected regions has the highest variability
   across samples?"
   1. Handle each region one at a time because the selection is mutable.
