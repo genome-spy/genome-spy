@@ -8,21 +8,21 @@ import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
 const DEFAULT_MAX_GROUPS = 20;
 
 /**
- * @typedef {import("./agentToolInputs.d.ts").GetMetadataAttributeSummaryToolInput} GetMetadataAttributeSummaryToolInput
+ * @typedef {import("./agentToolInputs.d.ts").GetAttributeSummaryToolInput} GetAttributeSummaryToolInput
  * @typedef {import("@genome-spy/app/agentShared").AttributeIdentifier} AttributeIdentifier
- * @typedef {import("./agentToolInputs.d.ts").GetMetadataAttributeSummaryToolInput["scope"]} MetadataSummaryScope
- * @typedef {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource} AgentGroupedMetadataAttributeSummarySource
- * @typedef {import("./types.d.ts").AgentMetadataAttributeSummarySource} AgentMetadataAttributeSummarySource
+ * @typedef {import("./agentToolInputs.d.ts").GetAttributeSummaryToolInput["scope"]} AttributeSummaryScope
+ * @typedef {import("./types.d.ts").AgentGroupedAttributeSummarySource} AgentGroupedAttributeSummarySource
+ * @typedef {import("./types.d.ts").AgentAttributeSummarySource} AgentAttributeSummarySource
  * @typedef {import("./types.d.ts").IntentBatchSummaryLine} IntentBatchSummaryLine
  * @typedef {{
- *     getMetadataAttributeSummarySource(
+ *     getAttributeSummarySource(
  *         attribute: AttributeIdentifier
- *     ): AgentMetadataAttributeSummarySource | undefined;
- *     getGroupedMetadataAttributeSummarySource(
+ *     ): AgentAttributeSummarySource | undefined;
+ *     getGroupedAttributeSummarySource(
  *         attribute: AttributeIdentifier
- *     ): AgentGroupedMetadataAttributeSummarySource | undefined;
+ *     ): AgentGroupedAttributeSummarySource | undefined;
  *     getAgentVolatileContext(): import("./types.js").AgentVolatileContext;
- * }} MetadataAttributeSummaryToolRuntime
+ * }} AttributeSummaryToolRuntime
  * @typedef {{
  *     text: string;
  *     content?: unknown;
@@ -31,25 +31,25 @@ const DEFAULT_MAX_GROUPS = 20;
  */
 
 /**
- * Returns a compact summary of one metadata attribute's current values.
+ * Returns a compact summary of one attribute's current values.
  *
- * @param {MetadataAttributeSummaryToolRuntime} runtime
- * @param {GetMetadataAttributeSummaryToolInput} input
+ * @param {AttributeSummaryToolRuntime} runtime
+ * @param {GetAttributeSummaryToolInput} input
  * @returns {AgentToolExecutionResult}
  */
-export function getMetadataAttributeSummaryTool(runtime, input) {
+export function getAttributeSummaryTool(runtime, input) {
     validateAttributeCandidate(input.attribute);
     validateScope(input.scope);
     const attribute = resolveAgentAttributeCandidate(runtime, input.attribute);
 
     if (input.scope === "visible_groups") {
-        return buildGroupedMetadataSummary(runtime, attribute);
+        return buildGroupedAttributeSummary(runtime, attribute);
     }
 
-    const source = runtime.getMetadataAttributeSummarySource(attribute);
+    const source = runtime.getAttributeSummarySource(attribute);
     if (!source) {
         throw new ToolCallRejectionError(
-            "The requested metadata attribute was not found in the current sample view."
+            "The requested attribute was not found in the current sample view."
         );
     }
 
@@ -65,15 +65,15 @@ export function getMetadataAttributeSummaryTool(runtime, input) {
 }
 
 /**
- * @param {MetadataAttributeSummaryToolRuntime} runtime
+ * @param {AttributeSummaryToolRuntime} runtime
  * @param {AttributeIdentifier} attribute
  * @returns {AgentToolExecutionResult}
  */
-function buildGroupedMetadataSummary(runtime, attribute) {
-    const source = runtime.getGroupedMetadataAttributeSummarySource(attribute);
+function buildGroupedAttributeSummary(runtime, attribute) {
+    const source = runtime.getGroupedAttributeSummarySource(attribute);
     if (!source) {
         throw new ToolCallRejectionError(
-            "The requested metadata attribute was not found in the current sample view."
+            "The requested attribute was not found in the current sample view."
         );
     }
 
@@ -108,7 +108,7 @@ function buildGroupedMetadataSummary(runtime, attribute) {
               }));
 
     const content = {
-        kind: "grouped_metadata_attribute_summary",
+        kind: "grouped_attribute_summary",
         attribute: source.attribute,
         title: source.title,
         ...(source.description ? { description: source.description } : {}),
@@ -121,17 +121,17 @@ function buildGroupedMetadataSummary(runtime, attribute) {
     };
 
     return {
-        text: `Summarized metadata attribute ${source.title} across ${source.groups.length} visible groups.`,
+        text: `Summarized attribute ${source.title} across ${source.groups.length} visible groups.`,
         content,
     };
 }
 
 /**
- * @param {AgentMetadataAttributeSummarySource} source
+ * @param {AgentAttributeSummarySource} source
  */
 function buildQuantitativeSummary(source) {
     return {
-        kind: "metadata_attribute_summary",
+        kind: "attribute_summary",
         attribute: source.attribute,
         title: source.title,
         ...(source.description ? { description: source.description } : {}),
@@ -143,11 +143,11 @@ function buildQuantitativeSummary(source) {
 }
 
 /**
- * @param {AgentMetadataAttributeSummarySource} source
+ * @param {AgentAttributeSummarySource} source
  */
 function buildCategoricalSummary(source) {
     return {
-        kind: "metadata_attribute_summary",
+        kind: "attribute_summary",
         attribute: source.attribute,
         title: source.title,
         ...(source.description ? { description: source.description } : {}),
@@ -164,14 +164,14 @@ function buildCategoricalSummary(source) {
  */
 function buildSummaryText(content) {
     if (content.dataType === "quantitative") {
-        return `Summarized metadata attribute ${content.title} across ${content.nonMissingCount} non-missing samples.`;
+        return `Summarized attribute ${content.title} across ${content.nonMissingCount} non-missing samples.`;
     }
 
     if ("distinctCount" in content) {
-        return `Summarized metadata attribute ${content.title} with ${content.distinctCount} observed categories.`;
+        return `Summarized attribute ${content.title} with ${content.distinctCount} observed categories.`;
     }
 
-    throw new Error("Categorical metadata summary is missing distinctCount.");
+    throw new Error("Categorical attribute summary is missing distinctCount.");
 }
 
 /**
@@ -198,7 +198,7 @@ function validateAttributeCandidate(attribute) {
         typeof attribute.specifier !== "string"
     ) {
         throw new ToolCallRejectionError(
-            "Metadata attribute specifier must be a string."
+            "Sample attribute specifier must be a string."
         );
     }
 
@@ -208,18 +208,18 @@ function validateAttributeCandidate(attribute) {
             typeof attribute.aggregation !== "string")
     ) {
         throw new ToolCallRejectionError(
-            "Selection aggregation attributes require candidateId and aggregation."
+            "Selection aggregation candidates require candidateId and aggregation."
         );
     }
 }
 
 /**
- * @param {MetadataSummaryScope} scope
+ * @param {AttributeSummaryScope} scope
  */
 function validateScope(scope) {
     if (scope !== "visible_samples" && scope !== "visible_groups") {
         throw new ToolCallRejectionError(
-            "Metadata summary scope must be `visible_samples` or `visible_groups`."
+            "Attribute summary scope must be `visible_samples` or `visible_groups`."
         );
     }
 }

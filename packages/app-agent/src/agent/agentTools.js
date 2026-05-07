@@ -1,6 +1,6 @@
 import { buildSelectionAggregationAttribute } from "./selectionAggregationTool.js";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
-import { getMetadataAttributeSummaryTool } from "./metadataAttributeSummaryTool.js";
+import { getAttributeSummaryTool } from "./attributeSummaryTool.js";
 import { resolveMetadataAttributeValuesTool } from "./resolveMetadataAttributeValuesTool.js";
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
@@ -228,7 +228,7 @@ export const agentTools = {
         });
     },
 
-    getMetadataAttributeSummary: getMetadataAttributeSummaryTool,
+    getAttributeSummary: getAttributeSummaryTool,
     resolveMetadataAttributeValues: resolveMetadataAttributeValuesTool,
     searchViewDatums: searchViewDatumsTool,
 

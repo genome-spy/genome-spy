@@ -62,7 +62,7 @@ function createRuntimeStub() {
             values: [42, undefined],
         },
     };
-    const groupedMetadataSummarySources = {
+    const groupedAttributeSummarySources = {
         tissue: {
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
@@ -286,11 +286,11 @@ function createRuntimeStub() {
         isViewNodeExpanded: vi.fn(() => expanded),
         isViewVisible: vi.fn(() => visible),
         setViewVisibility: agentApi.setViewVisibility,
-        getMetadataAttributeSummarySource: vi.fn(
+        getAttributeSummarySource: vi.fn(
             (attribute) => metadataSummarySources[attribute.specifier]
         ),
-        getGroupedMetadataAttributeSummarySource: vi.fn(
-            (attribute) => groupedMetadataSummarySources[attribute.specifier]
+        getGroupedAttributeSummarySource: vi.fn(
+            (attribute) => groupedAttributeSummarySources[attribute.specifier]
         ),
         jumpToProvenanceState: agentApi.jumpToProvenanceState,
         jumpToInitialProvenanceState: agentApi.jumpToInitialProvenanceState,
@@ -725,11 +725,11 @@ describe("agentTools", () => {
         expect(runtime.scaleResolutions.color.zoomTo).not.toHaveBeenCalled();
     });
 
-    it("summarizes categorical metadata attributes", () => {
+    it("summarizes categorical attributes", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.getMetadataAttributeSummary(runtime, {
+        const result = tools.getAttributeSummary(runtime, {
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "sex",
@@ -739,9 +739,9 @@ describe("agentTools", () => {
 
         expect(result).toEqual(
             expect.objectContaining({
-                text: "Summarized metadata attribute sex with 2 observed categories.",
+                text: "Summarized attribute sex with 2 observed categories.",
                 content: expect.objectContaining({
-                    kind: "metadata_attribute_summary",
+                    kind: "attribute_summary",
                     dataType: "nominal",
                     scope: "visible_samples",
                     sampleCount: 2,
@@ -756,17 +756,17 @@ describe("agentTools", () => {
                 }),
             })
         );
-        expect(runtime.getMetadataAttributeSummarySource).toHaveBeenCalledWith({
+        expect(runtime.getAttributeSummarySource).toHaveBeenCalledWith({
             type: "SAMPLE_ATTRIBUTE",
             specifier: "sex",
         });
     });
 
-    it("summarizes quantitative metadata attributes", () => {
+    it("summarizes quantitative attributes", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.getMetadataAttributeSummary(runtime, {
+        const result = tools.getAttributeSummary(runtime, {
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "age",
@@ -776,7 +776,7 @@ describe("agentTools", () => {
 
         expect(result.content).toEqual(
             expect.objectContaining({
-                kind: "metadata_attribute_summary",
+                kind: "attribute_summary",
                 dataType: "quantitative",
                 scope: "visible_samples",
                 sampleCount: 2,
@@ -793,11 +793,11 @@ describe("agentTools", () => {
         );
     });
 
-    it("summarizes metadata attributes across visible groups", () => {
+    it("summarizes attributes across visible groups", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.getMetadataAttributeSummary(runtime, {
+        const result = tools.getAttributeSummary(runtime, {
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "tissue",
@@ -807,9 +807,9 @@ describe("agentTools", () => {
 
         expect(result).toEqual(
             expect.objectContaining({
-                text: "Summarized metadata attribute tissue across 2 visible groups.",
+                text: "Summarized attribute tissue across 2 visible groups.",
                 content: expect.objectContaining({
-                    kind: "grouped_metadata_attribute_summary",
+                    kind: "grouped_attribute_summary",
                     dataType: "nominal",
                     scope: "visible_groups",
                     groupCount: 2,
@@ -854,9 +854,7 @@ describe("agentTools", () => {
                 }),
             })
         );
-        expect(
-            runtime.getGroupedMetadataAttributeSummarySource
-        ).toHaveBeenCalledWith({
+        expect(runtime.getGroupedAttributeSummarySource).toHaveBeenCalledWith({
             type: "SAMPLE_ATTRIBUTE",
             specifier: "tissue",
         });
@@ -1129,12 +1127,12 @@ describe("agentTools", () => {
         ).toThrow(ToolCallRejectionError);
     });
 
-    it("rejects metadata summary requests for unsupported attribute kinds", () => {
+    it("rejects attribute summary requests for unsupported attribute kinds", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
         expect(() =>
-            tools.getMetadataAttributeSummary(runtime, {
+            tools.getAttributeSummary(runtime, {
                 attribute: {
                     type: "VALUE_AT_LOCUS",
                     specifier: {
@@ -1153,7 +1151,7 @@ describe("agentTools", () => {
 
     it("rejects grouped metadata summaries when no visible groups exist", () => {
         const runtime = createRuntimeStub();
-        runtime.getGroupedMetadataAttributeSummarySource.mockReturnValueOnce({
+        runtime.getGroupedAttributeSummarySource.mockReturnValueOnce({
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "tissue",
@@ -1168,7 +1166,7 @@ describe("agentTools", () => {
         const tools = agentTools;
 
         expect(() =>
-            tools.getMetadataAttributeSummary(runtime, {
+            tools.getAttributeSummary(runtime, {
                 attribute: {
                     type: "SAMPLE_ATTRIBUTE",
                     specifier: "tissue",

@@ -17,6 +17,11 @@ type SampleAttributeIdentifier = {
 type SelectionAggregationCandidate = {
     type: "SELECTION_AGGREGATION";
     candidateId: string;
+
+    /**
+     * Aggregation applied within the selected interval separately for each
+     * sample, not across samples.
+     */
     aggregation: AggregationOp;
 };
 
@@ -28,7 +33,7 @@ export type PlotAttributeIdentifier = AgentAttributeCandidate;
 
 type IntentActionType =
     AgentIntentActionRequest["actions"][number]["actionType"];
-type MetadataSummaryScope = "visible_samples" | "visible_groups";
+type AttributeSummaryScope = "visible_samples" | "visible_groups";
 
 interface AgentChromosomalLocus extends ChromosomalLocus {
     /**
@@ -125,14 +130,15 @@ export type JumpToInitialProvenanceStateToolInput = Record<string, never>;
 
 /**
  * Build an `AttributeIdentifier` for a selection-derived aggregation so it can
- * be used in a later intent action or inspected for diagnostics. Plotting and
- * summary tools can usually use `SELECTION_AGGREGATION` candidates directly.
- * Before using this tool, you must make an interval selection using a
- * parameter or ensure that one already exists. This tool does not compute or
- * return an aggregated value. Use the returned `content.attribute` as the
- * plotted attribute or as `payload.attribute` in `submitIntentActions`. If the
- * requested locus or interval is not the current selection, update the
- * selection first.
+ * be used in a later intent action or inspected for diagnostics. Selection
+ * aggregation derives one value per sample from data items that overlap the
+ * current genomic interval selection. Plotting and summary tools can usually
+ * use `SELECTION_AGGREGATION` candidates directly. Before using this tool, you
+ * must make an interval selection using a parameter or ensure that one already
+ * exists. This tool does not compute or return an aggregated value. Use the
+ * returned `content.attribute` as the plotted attribute or as
+ * `payload.attribute` in `submitIntentActions`. If the requested locus or
+ * interval is not the current selection, update the selection first.
  *
  * @example
  * {
@@ -156,8 +162,11 @@ export interface BuildSelectionAggregationAttributeToolInput {
 }
 
 /**
- * Return a compact summary of one metadata attribute across visible samples or
- * within each current visible group.
+ * Return a compact summary of one attribute (metadata or selection-derived)
+ * across visible samples or within each current visible group.
+ * When summarizing a `SELECTION_AGGREGATION`, the candidate aggregation is
+ * resolved first per sample, and this tool summarizes those per-sample values
+ * across visible samples or groups.
  * Use `visible_samples` for pooled metadata facts such as available category
  * values or numeric ranges. Use `visible_groups` only after the sample view is
  * already grouped and the user needs per-group facts. If the user asks to group
@@ -174,7 +183,7 @@ export interface BuildSelectionAggregationAttributeToolInput {
  *   "scope": "visible_groups"
  * }
  */
-export interface GetMetadataAttributeSummaryToolInput {
+export interface GetAttributeSummaryToolInput {
     /**
      * Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for sample
      * metadata attributes from context. Use `SELECTION_AGGREGATION` for
@@ -187,7 +196,7 @@ export interface GetMetadataAttributeSummaryToolInput {
      * current visible samples. Use `visible_groups` for summaries within each
      * current visible group after grouping has already been applied.
      */
-    scope: MetadataSummaryScope;
+    scope: AttributeSummaryScope;
 }
 
 /**
@@ -437,7 +446,7 @@ export interface AgentToolInputs {
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;
-    getMetadataAttributeSummary: GetMetadataAttributeSummaryToolInput;
+    getAttributeSummary: GetAttributeSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     getIntentActionDocs: GetIntentActionDocsToolInput;

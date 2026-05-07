@@ -120,12 +120,12 @@ import { agentTools } from "./agentTools.js";
  *     ): IntentBatchSummaryLine[];
  *     expandViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
  *     collapseViewNode?(selector: import("@genome-spy/core/view/viewSelectors.js").ViewSelector): boolean;
- *     getMetadataAttributeSummarySource(
+ *     getAttributeSummarySource(
  *         attribute: import("@genome-spy/app/agentShared").AttributeIdentifier
- *     ): import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined;
- *     getGroupedMetadataAttributeSummarySource(
+ *     ): import("./types.d.ts").AgentAttributeSummarySource | undefined;
+ *     getGroupedAttributeSummarySource(
  *         attribute: import("@genome-spy/app/agentShared").AttributeIdentifier
- *     ): import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined;
+ *     ): import("./types.d.ts").AgentGroupedAttributeSummarySource | undefined;
  *     summarizeExecutionResult(result: IntentBatchExecutionResult): string;
  * }} AgentSessionRuntime
  */

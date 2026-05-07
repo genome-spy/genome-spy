@@ -116,9 +116,9 @@
     "strict": true
   },
   {
-    "toolName": "getMetadataAttributeSummary",
-    "description": "Return a compact summary of one metadata attribute across visible samples or within each current visible group.",
-    "inputType": "GetMetadataAttributeSummaryToolInput",
+    "toolName": "getAttributeSummary",
+    "description": "Return a compact summary of one attribute (metadata or selection-derived) across visible samples or within each current visible group.",
+    "inputType": "GetAttributeSummaryToolInput",
     "inputFields": [
       {
         "name": "attribute",
@@ -128,7 +128,7 @@
       },
       {
         "name": "scope",
-        "type": "MetadataSummaryScope",
+        "type": "AttributeSummaryScope",
         "description": "Summary scope. Use `visible_samples` for a pooled summary across the current visible samples. Use `visible_groups` for summaries within each current visible group after grouping has already been applied.",
         "required": true
       }

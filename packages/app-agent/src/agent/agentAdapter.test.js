@@ -324,7 +324,7 @@ describe("agentAdapter", () => {
         const app = createAppStub();
         const adapter = createAgentAdapter(app, createAgentApiStub(app));
 
-        const source = adapter.getMetadataAttributeSummarySource({
+        const source = adapter.getAttributeSummarySource({
             type: "SAMPLE_ATTRIBUTE",
             specifier: "sex",
         });
@@ -372,7 +372,7 @@ describe("agentAdapter", () => {
 
         const adapter = createAgentAdapter(app, createAgentApiStub(app));
 
-        const source = adapter.getGroupedMetadataAttributeSummarySource({
+        const source = adapter.getGroupedAttributeSummarySource({
             type: "SAMPLE_ATTRIBUTE",
             specifier: "sex",
         });

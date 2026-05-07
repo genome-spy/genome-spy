@@ -73,9 +73,9 @@ export function createAgentAdapter(app, agentApi) {
 
     /**
      * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} attribute
-     * @returns {import("./types.d.ts").AgentMetadataAttributeSummarySource | undefined}
+     * @returns {import("./types.d.ts").AgentAttributeSummarySource | undefined}
      */
-    function getMetadataAttributeSummarySource(attribute) {
+    function getAttributeSummarySource(attribute) {
         const sampleHierarchy = agentApi.getSampleHierarchy();
         if (!sampleHierarchy) {
             return undefined;
@@ -103,9 +103,9 @@ export function createAgentAdapter(app, agentApi) {
 
     /**
      * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} attribute
-     * @returns {import("./types.d.ts").AgentGroupedMetadataAttributeSummarySource | undefined}
+     * @returns {import("./types.d.ts").AgentGroupedAttributeSummarySource | undefined}
      */
-    function getGroupedMetadataAttributeSummarySource(attribute) {
+    function getGroupedAttributeSummarySource(attribute) {
         const sampleHierarchy = agentApi.getSampleHierarchy();
         if (!sampleHierarchy) {
             return undefined;
@@ -317,8 +317,8 @@ export function createAgentAdapter(app, agentApi) {
         getAgentContext,
         getAgentVolatileContext,
         submitIntentActions,
-        getMetadataAttributeSummarySource,
-        getGroupedMetadataAttributeSummarySource,
+        getAttributeSummarySource,
+        getGroupedAttributeSummarySource,
         summarizeProvenanceActionsSince,
         summarizeExecutionResult,
         requestAgentTurn,

@@ -7,9 +7,9 @@ import type {
 import type { Scale } from "@genome-spy/core/spec/scale.js";
 
 /**
- * Runtime source used by the metadata summary tool.
+ * Runtime source used by the attribute summary tool.
  */
-export interface AgentMetadataAttributeSummarySource {
+export interface AgentAttributeSummarySource {
     attribute: AttributeIdentifier;
     title: string;
     description?: string;
@@ -20,7 +20,7 @@ export interface AgentMetadataAttributeSummarySource {
 }
 
 /**
- * One visible leaf group used by the grouped metadata summary tool.
+ * One visible leaf group used by the grouped attribute summary tool.
  */
 export interface AgentVisibleSampleGroupSource {
     path: string[];
@@ -30,9 +30,9 @@ export interface AgentVisibleSampleGroupSource {
 }
 
 /**
- * Runtime source used by the grouped metadata summary tool.
+ * Runtime source used by the grouped attribute summary tool.
  */
-export interface AgentGroupedMetadataAttributeSummarySource {
+export interface AgentGroupedAttributeSummarySource {
     attribute: AttributeIdentifier;
     title: string;
     description?: string;

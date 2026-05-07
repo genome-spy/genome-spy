@@ -4,8 +4,8 @@ import type {
 } from "@genome-spy/app/agentShared";
 import type {
     AgentAttributeSummary,
-    AgentGroupedMetadataAttributeSummarySource,
-    AgentMetadataAttributeSummarySource,
+    AgentGroupedAttributeSummarySource,
+    AgentAttributeSummarySource,
     AgentProvenanceAction,
     AgentSampleGroupLevel,
     AgentSampleSummary,
@@ -24,8 +24,8 @@ import type {
 
 export type {
     AgentAttributeSummary,
-    AgentGroupedMetadataAttributeSummarySource,
-    AgentMetadataAttributeSummarySource,
+    AgentGroupedAttributeSummarySource,
+    AgentAttributeSummarySource,
     AgentRootConfigSummary,
     AgentSampleGroupLevel,
     AgentSampleSummary,
@@ -191,12 +191,12 @@ export interface AgentAdapter {
         batch: IntentBatch,
         options?: { submissionKind?: IntentSubmissionKind }
     ): Promise<IntentBatchExecutionResult>;
-    getMetadataAttributeSummarySource(
+    getAttributeSummarySource(
         attribute: AttributeIdentifier
-    ): AgentMetadataAttributeSummarySource | undefined;
-    getGroupedMetadataAttributeSummarySource(
+    ): AgentAttributeSummarySource | undefined;
+    getGroupedAttributeSummarySource(
         attribute: AttributeIdentifier
-    ): AgentGroupedMetadataAttributeSummarySource | undefined;
+    ): AgentGroupedAttributeSummarySource | undefined;
     summarizeExecutionResult(result: IntentBatchExecutionResult): string;
     summarizeProvenanceActionsSince(
         startIndex: number

@@ -294,11 +294,11 @@
         "expandViewNode": {
           "$ref": "#/definitions/ExpandViewNodeToolInput"
         },
+        "getAttributeSummary": {
+          "$ref": "#/definitions/GetAttributeSummaryToolInput"
+        },
         "getIntentActionDocs": {
           "$ref": "#/definitions/GetIntentActionDocsToolInput"
-        },
-        "getMetadataAttributeSummary": {
-          "$ref": "#/definitions/GetMetadataAttributeSummaryToolInput"
         },
         "jumpToInitialProvenanceState": {
           "$ref": "#/definitions/JumpToInitialProvenanceStateToolInput"
@@ -338,7 +338,7 @@
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
         "buildSelectionAggregationAttribute",
-        "getMetadataAttributeSummary",
+        "getAttributeSummary",
         "resolveMetadataAttributeValues",
         "searchViewDatums",
         "getIntentActionDocs",
@@ -396,9 +396,13 @@
       ],
       "type": "string"
     },
+    "AttributeSummaryScope": {
+      "enum": ["visible_samples", "visible_groups"],
+      "type": "string"
+    },
     "BuildSelectionAggregationAttributeToolInput": {
       "additionalProperties": false,
-      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action or inspected for diagnostics. Plotting and summary tools can usually use `SELECTION_AGGREGATION` candidates directly. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the returned `content.attribute` as the plotted attribute or as `payload.attribute` in `submitIntentActions`. If the requested locus or interval is not the current selection, update the selection first.",
+      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action or inspected for diagnostics. Selection aggregation derives one value per sample from data items that overlap the current genomic interval selection. Plotting and summary tools can usually use `SELECTION_AGGREGATION` candidates directly. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the returned `content.attribute` as the plotted attribute or as `payload.attribute` in `submitIntentActions`. If the requested locus or interval is not the current selection, update the selection first.",
       "examples": [
         {
           "aggregation": "max",
@@ -621,6 +625,31 @@
       ],
       "description": "Genome definition for contexts where the name is provided externally (for example, as a key in root `genomes`) or not needed (for example, inline `scale.assembly`)."
     },
+    "GetAttributeSummaryToolInput": {
+      "additionalProperties": false,
+      "description": "Return a compact summary of one attribute (metadata or selection-derived) across visible samples or within each current visible group. When summarizing a `SELECTION_AGGREGATION`, the candidate aggregation is resolved first per sample, and this tool summarizes those per-sample values across visible samples or groups. Use `visible_samples` for pooled metadata facts such as available category values or numeric ranges. Use `visible_groups` only after the sample view is already grouped and the user needs per-group facts. If the user asks to group by one attribute and then compare or report another attribute by group, first submit the grouping action, wait for the refreshed context, and then call this tool with `scope: \"visible_groups\"` for the attribute to report.",
+      "examples": [
+        {
+          "attribute": {
+            "specifier": "tissue",
+            "type": "SAMPLE_ATTRIBUTE"
+          },
+          "scope": "visible_groups"
+        }
+      ],
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AgentAttributeCandidate",
+          "description": "Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for sample metadata attributes from context. Use `SELECTION_AGGREGATION` for selection-derived candidates from `selectionAggregation.fields`."
+        },
+        "scope": {
+          "$ref": "#/definitions/AttributeSummaryScope",
+          "description": "Summary scope. Use `visible_samples` for a pooled summary across the current visible samples. Use `visible_groups` for summaries within each current visible group after grouping has already been applied."
+        }
+      },
+      "required": ["attribute", "scope"],
+      "type": "object"
+    },
     "GetIntentActionDocsToolInput": {
       "additionalProperties": false,
       "description": "Read documentation, fields, and examples for one intent action. Use this before constructing an unfamiliar action payload for `submitIntentActions`. This tool doesn't execute the action or mutate any state. Do not repeat the call if documentation is already available in the conversation history.",
@@ -641,31 +670,6 @@
         }
       },
       "required": ["actionType"],
-      "type": "object"
-    },
-    "GetMetadataAttributeSummaryToolInput": {
-      "additionalProperties": false,
-      "description": "Return a compact summary of one metadata attribute across visible samples or within each current visible group. Use `visible_samples` for pooled metadata facts such as available category values or numeric ranges. Use `visible_groups` only after the sample view is already grouped and the user needs per-group facts. If the user asks to group by one attribute and then compare or report another attribute by group, first submit the grouping action, wait for the refreshed context, and then call this tool with `scope: \"visible_groups\"` for the attribute to report.",
-      "examples": [
-        {
-          "attribute": {
-            "specifier": "tissue",
-            "type": "SAMPLE_ATTRIBUTE"
-          },
-          "scope": "visible_groups"
-        }
-      ],
-      "properties": {
-        "attribute": {
-          "$ref": "#/definitions/AgentAttributeCandidate",
-          "description": "Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for sample metadata attributes from context. Use `SELECTION_AGGREGATION` for selection-derived candidates from `selectionAggregation.fields`."
-        },
-        "scope": {
-          "$ref": "#/definitions/MetadataSummaryScope",
-          "description": "Summary scope. Use `visible_samples` for a pooled summary across the current visible samples. Use `visible_groups` for summaries within each current visible group after grouping has already been applied."
-        }
-      },
-      "required": ["attribute", "scope"],
       "type": "object"
     },
     "GroupByNominal": {
@@ -927,10 +931,6 @@
       },
       "required": ["or"],
       "type": "object"
-    },
-    "MetadataSummaryScope": {
-      "enum": ["visible_samples", "visible_groups"],
-      "type": "string"
     },
     "NumericDomain": {
       "items": {
@@ -1718,7 +1718,8 @@
       "additionalProperties": false,
       "properties": {
         "aggregation": {
-          "$ref": "#/definitions/AggregationOp"
+          "$ref": "#/definitions/AggregationOp",
+          "description": "Aggregation applied within the selected interval separately for each sample, not across samples."
         },
         "candidateId": {
           "type": "string"

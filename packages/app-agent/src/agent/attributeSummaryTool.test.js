@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
-import { getMetadataAttributeSummaryTool } from "./metadataAttributeSummaryTool.js";
+import { getAttributeSummaryTool } from "./attributeSummaryTool.js";
 
 vi.mock("@genome-spy/app/agentShared", async (importOriginal) => {
     const actual = await importOriginal();
@@ -31,7 +31,7 @@ vi.mock("@genome-spy/app/agentShared", async (importOriginal) => {
 
 function createRuntimeStub() {
     return {
-        getMetadataAttributeSummarySource: vi.fn((attribute) => {
+        getAttributeSummarySource: vi.fn((attribute) => {
             if (attribute.type === "VALUE_AT_LOCUS") {
                 return {
                     attribute,
@@ -67,7 +67,7 @@ function createRuntimeStub() {
 
             return undefined;
         }),
-        getGroupedMetadataAttributeSummarySource: vi.fn((attribute) => {
+        getGroupedAttributeSummarySource: vi.fn((attribute) => {
             if (attribute.specifier !== "tissue") {
                 return undefined;
             }
@@ -130,9 +130,9 @@ function createRuntimeStub() {
     };
 }
 
-describe("metadataAttributeSummaryTool", () => {
+describe("attributeSummaryTool", () => {
     it("returns richer quantitative summaries for visible samples", () => {
-        const result = getMetadataAttributeSummaryTool(createRuntimeStub(), {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "age",
@@ -141,7 +141,7 @@ describe("metadataAttributeSummaryTool", () => {
         });
 
         expect(result.content).toEqual({
-            kind: "metadata_attribute_summary",
+            kind: "attribute_summary",
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "age",
@@ -165,7 +165,7 @@ describe("metadataAttributeSummaryTool", () => {
     });
 
     it("returns categorical shares for visible samples", () => {
-        const result = getMetadataAttributeSummaryTool(createRuntimeStub(), {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "sex",
@@ -174,7 +174,7 @@ describe("metadataAttributeSummaryTool", () => {
         });
 
         expect(result.content).toEqual({
-            kind: "metadata_attribute_summary",
+            kind: "attribute_summary",
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "sex",
@@ -196,7 +196,7 @@ describe("metadataAttributeSummaryTool", () => {
 
     it("summarizes selection aggregation candidates", () => {
         const runtime = createRuntimeStub();
-        const result = getMetadataAttributeSummaryTool(runtime, {
+        const result = getAttributeSummaryTool(runtime, {
             attribute: {
                 type: "SELECTION_AGGREGATION",
                 candidateId: "brush@track:beta",
@@ -207,7 +207,7 @@ describe("metadataAttributeSummaryTool", () => {
 
         expect(result.content).toEqual(
             expect.objectContaining({
-                kind: "metadata_attribute_summary",
+                kind: "attribute_summary",
                 title: "max(beta)",
                 dataType: "quantitative",
                 sampleCount: 2,
@@ -216,7 +216,7 @@ describe("metadataAttributeSummaryTool", () => {
                 max: 0.8,
             })
         );
-        expect(runtime.getMetadataAttributeSummarySource).toHaveBeenCalledWith({
+        expect(runtime.getAttributeSummarySource).toHaveBeenCalledWith({
             type: "VALUE_AT_LOCUS",
             specifier: {
                 view: {
@@ -237,7 +237,7 @@ describe("metadataAttributeSummaryTool", () => {
     });
 
     it("returns categorical shares for visible groups", () => {
-        const result = getMetadataAttributeSummaryTool(createRuntimeStub(), {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "tissue",
@@ -246,7 +246,7 @@ describe("metadataAttributeSummaryTool", () => {
         });
 
         expect(result.content).toEqual({
-            kind: "grouped_metadata_attribute_summary",
+            kind: "grouped_attribute_summary",
             attribute: {
                 type: "SAMPLE_ATTRIBUTE",
                 specifier: "tissue",
@@ -293,10 +293,10 @@ describe("metadataAttributeSummaryTool", () => {
 
     it("rejects grouped summaries when no visible groups exist", () => {
         expect(() =>
-            getMetadataAttributeSummaryTool(
+            getAttributeSummaryTool(
                 {
-                    getMetadataAttributeSummarySource: vi.fn(),
-                    getGroupedMetadataAttributeSummarySource: vi.fn(() => ({
+                    getAttributeSummarySource: vi.fn(),
+                    getGroupedAttributeSummarySource: vi.fn(() => ({
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
                             specifier: "tissue",
