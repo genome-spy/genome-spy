@@ -139,12 +139,12 @@ candidates can derive one value per sample from data in the selected interval.
 Because a selection covers one interval at a time, workflows over multiple
 intervals must handle them sequentially with context refreshes between them.
 
-Example attribute candidate:
+An example of a schematic attribute candidate:
 
 ```json
 {
   "type": "SELECTION_AGGREGATION",
-  "candidateId": "brush@CNV:purifiedLogR",
+  "candidateId": "param_name@view_selector:field_name",
   "aggregation": "min"
 }
 ```

@@ -217,6 +217,28 @@ longer described as requiring `buildSelectionAggregationAttribute`.
   - `npm --workspace packages/app-agent run test:tsc` passed.
   - `npm --workspace packages/app-agent run check:agent` passed.
 
+### LoC Assessment
+
+The line-count increase is acceptable for this refactor.
+
+- Generated schema growth is minimal: `generatedToolSchema.json` grew by only
+  173 bytes from the implementation baseline, while
+  `SubmitIntentActionsToolInput` stayed at 1,149 bytes. This confirms that the
+  schema post-processing fallback avoided the recursive mapped-type schema
+  explosion.
+- Prompt and docs changes are effectively line-neutral:
+  `genomespy_system_prompt.md` stayed at 574 lines, `sampleSlice.js` stayed at
+  959 lines, and `agentToolInputs.d.ts` decreased by one line.
+- The main production-code increase is intentional boundary code:
+  `agentIntentActionAttributes.js` adds a 56-line normalizer, and
+  `actionShapeValidator.js` carries the cost of keeping canonical app payload
+  validation separate from relaxed agent-facing validation.
+
+If further simplification is needed, inspect `actionShapeValidator.js` first.
+However, the current explicit split is defensible because reducers and executor
+validation remain canonical while only the agent tool boundary accepts compact
+`SELECTION_AGGREGATION` candidates.
+
 1. Add the agent-facing action input type.
    - Try the recursive `AgentizeAttributes<T>` approach in
      `agentToolInputs.d.ts`.
