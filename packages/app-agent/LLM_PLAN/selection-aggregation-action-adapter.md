@@ -126,6 +126,31 @@ agent-only marker and should never be a legitimate non-attribute payload object.
 
 ## Implementation Steps
 
+Before each implementation step, record the baseline measurements listed below.
+After the step, record the same measurements again and include the delta in the
+commit notes or plan update:
+
+- Focused source line counts:
+  - `wc -l packages/app-agent/src/agent/agentToolInputs.d.ts`
+  - `wc -l packages/app-agent/src/agent/agentTools.js`
+  - `wc -l packages/app-agent/src/agent/attributeCandidate.js`
+  - any new adapter/normalizer files
+- Generated schema size:
+  - `wc -c packages/app-agent/src/agent/generated/generatedToolSchema.json`
+  - `wc -c packages/app-agent/src/agent/generated/generatedActionSchema.json`
+- Relevant generated schema slice size:
+  - byte count or line count for the `submitIntentActions` schema/definition
+    section in `generatedToolSchema.json`.
+  - One repeatable way to measure it:
+
+    ```sh
+    node -e 'const s=require("./packages/app-agent/src/agent/generated/generatedToolSchema.json"); console.log(JSON.stringify(s.definitions.SubmitIntentActionsToolInput).length)'
+    ```
+
+  - If schema generation moves the relevant action-step detail outside that
+    definition, also record a short qualitative note about whether the
+    `submitIntentActions` schema remained readable.
+
 1. Add the agent-facing action input type.
    - Try the recursive `AgentizeAttributes<T>` approach in
      `agentToolInputs.d.ts`.
@@ -136,6 +161,7 @@ agent-only marker and should never be a legitimate non-attribute payload object.
      - The generated `submitIntentActions` schema remains readable and does not
        duplicate full payload contracts by hand.
      - `npm --workspace packages/app-agent run check:agent` passes.
+     - Record line-count and schema-size deltas.
 
 2. Add normalization before submission.
    - Normalize `input.actions` in `agentTools.submitIntentActions(...)`.
@@ -145,6 +171,7 @@ agent-only marker and should never be a legitimate non-attribute payload object.
        are converted to canonical `VALUE_AT_LOCUS` attributes before runtime
        submission.
      - Existing canonical action payload tests still pass unchanged.
+     - Record line-count and schema-size deltas.
 
 3. Keep canonical executor behavior.
    - Do not change reducers or action creators.
@@ -152,6 +179,7 @@ agent-only marker and should never be a legitimate non-attribute payload object.
    - Measure success:
      - No files under `packages/app/src/sampleView/state/` change.
      - `intentProgramExecutor` tests still validate canonical payloads.
+     - Record line-count and schema-size deltas.
 
 4. Add focused tests.
    - `submitIntentActions` accepts a `SELECTION_AGGREGATION` attribute in
@@ -164,6 +192,7 @@ agent-only marker and should never be a legitimate non-attribute payload object.
      - `npx vitest run packages/app-agent/src/agent/agentTools.test.js`
        includes the adapter cases and passes.
      - Any new normalizer test file is run directly and passes.
+     - Record line-count and schema-size deltas.
 
 5. Update prompt/tool docs.
    - Say intent actions can use `SELECTION_AGGREGATION` candidates directly once
@@ -175,6 +204,7 @@ agent-only marker and should never be a legitimate non-attribute payload object.
        shows it is no longer described as mandatory for intent actions.
      - Tool docs and generated schema describe direct action use without
        claiming Redux reducers accept compact candidates.
+     - Record line-count and schema-size deltas.
 
 6. Reconsider `buildSelectionAggregationAttribute`.
    - Keep it initially for diagnostics and backwards compatibility.
@@ -183,6 +213,7 @@ agent-only marker and should never be a legitimate non-attribute payload object.
    - Measure success:
      - Either a follow-up issue/plan note records why the tool remains, or a
        separate cleanup removes it with generated schema/tests updated.
+     - Record line-count and schema-size deltas.
 
 ## Risks
 
