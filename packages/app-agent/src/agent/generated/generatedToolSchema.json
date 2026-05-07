@@ -365,22 +365,12 @@
     "AttributeIdentifier": {
       "anyOf": [
         {
-          "$ref": "#/definitions/CanonicalAttributeIdentifier"
+          "$ref": "#/definitions/SampleAttributeIdentifier"
         },
         {
           "$ref": "#/definitions/SelectionAggregationCandidate"
         }
       ]
-    },
-    "AttributeIdentifierType": {
-      "description": "Stable identifier for an abstract attribute used by actions and agent context.\n\n`type` identifies the attribute source kind, and `specifier` contains the concrete lookup information for that source.\n\nExamples:\n- `{ type: \"SAMPLE_ATTRIBUTE\", specifier: \"age\" }`\n- `{ type: \"VALUE_AT_LOCUS\", specifier: { ... } }`",
-      "enum": [
-        "SAMPLE_ATTRIBUTE",
-        "VALUE_AT_LOCUS",
-        "SAMPLE_NAME",
-        "VIEW_ATTRIBUTE"
-      ],
-      "type": "string"
     },
     "AttributeSummaryScope": {
       "enum": ["visible_samples", "visible_groups"],
@@ -2147,26 +2137,6 @@
         }
       },
       "required": ["scaleName", "domain"],
-      "type": "object"
-    },
-    "CanonicalAttributeIdentifier": {
-      "additionalProperties": false,
-      "properties": {
-        "specifier": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/ViewAttributeSpecifier"
-            }
-          ]
-        },
-        "type": {
-          "$ref": "#/definitions/AttributeIdentifierType"
-        }
-      },
-      "required": ["type"],
       "type": "object"
     }
   }

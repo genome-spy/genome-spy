@@ -228,7 +228,8 @@ export const sampleSlice = createSlice({
          * Add a derived metadata column from a selected or aggregated attribute.
          *
          * Use this when an existing attribute should be materialized as sample
-         * metadata under a new column name.
+         * metadata under a new column name. For selection-derived values, use
+         * a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`.
          *
          * @agent.payloadType DeriveMetadata
          * @agent.category metadata
@@ -237,22 +238,6 @@ export const sampleSlice = createSlice({
          * {
          *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
          *   "name": "purity_copy"
-         * }
-         * @example
-         * {
-         *   "attribute": {
-         *     "type": "VALUE_AT_LOCUS",
-         *     "specifier": {
-         *       "view": { "scope": [], "view": "track" },
-         *       "field": "beta",
-         *       "interval": {
-         *         "type": "selection",
-         *         "selector": { "scope": [], "param": "brush" }
-         *       },
-         *       "aggregation": { "op": "max" }
-         *     }
-         *   },
-         *   "name": "tp53_region_beta"
          * }
          */
         deriveMetadata: (

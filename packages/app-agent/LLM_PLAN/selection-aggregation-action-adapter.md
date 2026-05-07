@@ -261,6 +261,30 @@ from `selectionAggregation.fields`.
   - `npm --workspace packages/app-agent run test:tsc` passed.
   - `npm --workspace packages/app-agent run check:agent` passed.
 
+Step 8 removes `VALUE_AT_LOCUS` from agent-facing docs and rejects hand-written
+internal attributes at the agent boundary. `VALUE_AT_LOCUS` remains in the
+canonical app action schema because reducers and normalized payloads still use
+it internally.
+
+- Focused source lines:
+  - `generateAgentToolSchema.mjs`: 98
+  - `actionShapeValidator.js`: 642
+  - `actionShapeValidator.test.js`: 182
+  - `actionCatalog.test.js`: 202
+  - `sampleSlice.js`: 944
+  - `types.d.ts`: 124
+- Generated schema/catalog sizes:
+  - `generatedToolSchema.json`: 78,002 bytes
+  - `generatedActionCatalog.json`: 20,805 bytes
+  - `generatedActionSchema.json`: 61,134 bytes
+- Verification:
+  - `rg "VALUE_AT_LOCUS" packages/app-agent/src/agent/generated/generatedActionCatalog.json packages/app-agent/src/agent/generated/generatedToolSchema.json packages/app-agent/src/agent/generated/generatedToolCatalog.json packages/app-agent/server/app/prompts/genomespy_system_prompt.md`
+    returns no matches.
+  - `npx vitest run packages/app-agent/src/agent/actionShapeValidator.test.js packages/app-agent/src/agent/actionCatalog.test.js packages/app-agent/src/agent/toolCatalog.test.js packages/app-agent/src/agent/agentTools.test.js`
+    passed.
+  - `npm --workspace packages/app-agent run test:tsc` passed.
+  - `npm --workspace packages/app-agent run check:agent` passed.
+
 ### LoC Assessment
 
 The line-count increase is acceptable for this refactor.

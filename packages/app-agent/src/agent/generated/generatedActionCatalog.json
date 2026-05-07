@@ -42,7 +42,7 @@
   {
     "actionType": "sampleView/deriveMetadata",
     "description": "Add a derived metadata column from a selected or aggregated attribute.",
-    "usage": "Use this when an existing attribute should be materialized as sample metadata under a new column name.",
+    "usage": "Use this when an existing attribute should be materialized as sample metadata under a new column name. For selection-derived values, use a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`.",
     "payloadType": "DeriveMetadata",
     "payloadFields": [
       {
@@ -84,29 +84,6 @@
           "specifier": "purity"
         },
         "name": "purity_copy"
-      },
-      {
-        "attribute": {
-          "type": "VALUE_AT_LOCUS",
-          "specifier": {
-            "view": {
-              "scope": [],
-              "view": "track"
-            },
-            "field": "beta",
-            "interval": {
-              "type": "selection",
-              "selector": {
-                "scope": [],
-                "param": "brush"
-              }
-            },
-            "aggregation": {
-              "op": "max"
-            }
-          }
-        },
-        "name": "tp53_region_beta"
       }
     ]
   },

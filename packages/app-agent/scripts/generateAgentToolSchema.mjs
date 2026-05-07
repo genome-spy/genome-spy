@@ -25,9 +25,10 @@ function normalizeSchemaText(text) {
 
 /**
  * The intent executor accepts canonical app action payloads, but the agent tool
- * contract also allows compact selection-aggregation candidates in action
- * payload attributes. Keep the TypeScript source tied to the app payload types
- * and relax only the generated agent-facing tool schema.
+ * contract accepts only agent-facing attribute candidates in action payloads:
+ * sample metadata attributes and compact selection-aggregation candidates.
+ * Keep the TypeScript source tied to the app payload types and relax only the
+ * generated agent-facing tool schema.
  *
  * @param {Record<string, any>} schema
  * @returns {Record<string, any>}
@@ -41,13 +42,13 @@ function relaxAgentAttributeIdentifiers(schema) {
         return schema;
     }
 
-    definitions.CanonicalAttributeIdentifier = definitions.AttributeIdentifier;
     definitions.AttributeIdentifier = {
         anyOf: [
-            { $ref: "#/definitions/CanonicalAttributeIdentifier" },
+            { $ref: "#/definitions/SampleAttributeIdentifier" },
             { $ref: "#/definitions/SelectionAggregationCandidate" },
         ],
     };
+    delete definitions.AttributeIdentifierType;
 
     return schema;
 }

@@ -105,6 +105,27 @@ describe("actionShapeValidator", () => {
         expect(agentFacing.ok).toBe(true);
     });
 
+    it("rejects hand-written value-at-locus attributes in agent-facing action payloads", () => {
+        const result = validateAgentActionPayloadShape("sampleView/sortBy", {
+            attribute: {
+                type: "VALUE_AT_LOCUS",
+                selector: {
+                    scope: [],
+                    param: "brush",
+                },
+                aggregation: "count",
+            },
+        });
+
+        expect(result.ok).toBe(false);
+        expect(result.errors.join("\n")).toContain(
+            "uses internal VALUE_AT_LOCUS syntax"
+        );
+        expect(result.errors.join("\n")).toContain(
+            "SELECTION_AGGREGATION candidate copied from selectionAggregation.fields"
+        );
+    });
+
     it("rejects malformed intent batches", () => {
         const result = validateIntentBatchShape({
             schemaVersion: 1,

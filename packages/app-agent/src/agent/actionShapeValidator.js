@@ -35,12 +35,11 @@ function createAgentSchemaWrapper(schema) {
             ...generatedActionSchema.definitions,
             AttributeIdentifier: {
                 anyOf: [
-                    { $ref: "#/definitions/CanonicalAttributeIdentifier" },
+                    { $ref: "#/definitions/SampleAttributeIdentifier" },
                     { $ref: "#/definitions/SelectionAggregationCandidate" },
                 ],
             },
-            CanonicalAttributeIdentifier:
-                generatedActionSchema.definitions.AttributeIdentifier,
+            SampleAttributeIdentifier: sampleAttributeIdentifierSchema,
             SelectionAggregationCandidate: selectionAggregationCandidateSchema,
         },
         ...schema,
@@ -111,6 +110,22 @@ const selectionAggregationCandidateSchema = {
         },
     },
     required: ["type", "candidateId", "aggregation"],
+    type: "object",
+};
+
+/** @type {Record<string, any>} */
+const sampleAttributeIdentifierSchema = {
+    additionalProperties: false,
+    properties: {
+        specifier: {
+            type: "string",
+        },
+        type: {
+            const: "SAMPLE_ATTRIBUTE",
+            type: "string",
+        },
+    },
+    required: ["type", "specifier"],
     type: "object",
 };
 
@@ -248,6 +263,21 @@ export function validateAgentActionPayloadShape(
     payload,
     prefix = "$"
 ) {
+    const internalAttributePaths = findInternalValueAtLocusAttributes(
+        payload,
+        prefix
+    );
+    if (internalAttributePaths.length > 0) {
+        return {
+            ok: false,
+            errors: internalAttributePaths.map(
+                (path) =>
+                    path +
+                    " uses internal VALUE_AT_LOCUS syntax. Use a SAMPLE_ATTRIBUTE from context or a SELECTION_AGGREGATION candidate copied from selectionAggregation.fields."
+            ),
+        };
+    }
+
     return validateActionPayloadShapeWithSchemas(
         actionType,
         payload,
@@ -257,12 +287,11 @@ export function validateAgentActionPayloadShape(
             ...generatedActionSchema.definitions,
             AttributeIdentifier: {
                 anyOf: [
-                    { $ref: "#/definitions/CanonicalAttributeIdentifier" },
+                    { $ref: "#/definitions/SampleAttributeIdentifier" },
                     { $ref: "#/definitions/SelectionAggregationCandidate" },
                 ],
             },
-            CanonicalAttributeIdentifier:
-                generatedActionSchema.definitions.AttributeIdentifier,
+            SampleAttributeIdentifier: sampleAttributeIdentifierSchema,
             SelectionAggregationCandidate: selectionAggregationCandidateSchema,
         }
     );
@@ -311,6 +340,32 @@ function validateActionPayloadShapeWithSchemas(
         ok: false,
         errors: formatAjvErrors(prefix, validator.errors),
     };
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} path
+ * @returns {string[]}
+ */
+function findInternalValueAtLocusAttributes(value, path) {
+    if (Array.isArray(value)) {
+        return value.flatMap((item, index) =>
+            findInternalValueAtLocusAttributes(item, path + "[" + index + "]")
+        );
+    }
+
+    if (!isObject(value)) {
+        return [];
+    }
+
+    const errors =
+        value.type === "VALUE_AT_LOCUS" ? [path] : /** @type {string[]} */ ([]);
+
+    return errors.concat(
+        Object.entries(value).flatMap(([key, child]) =>
+            findInternalValueAtLocusAttributes(child, path + "." + key)
+        )
+    );
 }
 
 /**
