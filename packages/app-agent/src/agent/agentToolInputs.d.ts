@@ -26,7 +26,7 @@ type SelectionAggregationCandidate = {
 
     /**
      * Aggregation applied within the selected interval separately for each
-     * sample, not across samples.
+     * sample. This cannot be used to aggregate across samples or groups.
      */
     aggregation: AggregationOp;
 };
@@ -317,7 +317,10 @@ export interface SubmitIntentActionToolInput {
 }
 
 /**
- * Show a category-count plot in the chat transcript.
+ * Show a bar plot of counts for one categorical sample attribute.
+ * Use this tool when the user asks for a bar plot, counts, or category
+ * distribution. When current sample groups are present, the x-axis shows
+ * those groups and colors show the counted attribute categories.
  *
  * @example
  * {
@@ -329,14 +332,15 @@ export interface SubmitIntentActionToolInput {
  */
 export interface ShowCategoryCountsPlotToolInput {
     /**
-     * Categorical attribute to count. Use this tool when the user asks for a
-     * bar plot, counts, or category distribution.
+     * Categorical attribute to count.
      */
     attribute: PlotAttributeIdentifier;
 }
 
 /**
  * Show a quantitative distribution plot in the chat transcript.
+ * Current sample groups are shown on the x-axis and the quantitative
+ * attribute is shown on the y-axis.
  *
  * @example
  * {
@@ -354,14 +358,14 @@ export interface ShowAttributeDistributionPlotToolInput {
     kind: "boxplot";
 
     /**
-     * Quantitative value attribute to summarize. Current sample groups are used
-     * automatically when present.
+     * Quantitative value attribute to summarize.
      */
     attribute: PlotAttributeIdentifier;
 }
 
 /**
- * Show a two-attribute relationship plot in the chat transcript.
+ * Show a scatterplot comparing two quantitative sample attributes. When
+ * sample groups are present, point colors show those groups.
  *
  * @example
  * {

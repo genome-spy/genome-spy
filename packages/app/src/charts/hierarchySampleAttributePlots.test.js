@@ -277,8 +277,8 @@ describe("sample attribute plot builders", () => {
                 r: 1,
             },
             groups: [
-                { title: "Group 1", plottedPointCount: 2 },
-                { title: "Group 2", plottedPointCount: 2 },
+                { title: "Group 1", plottedPointCount: 2, color: "#f00" },
+                { title: "Group 2", plottedPointCount: 2, color: "#0f0" },
             ],
         });
         expect(plot.spec.width).toBeUndefined();

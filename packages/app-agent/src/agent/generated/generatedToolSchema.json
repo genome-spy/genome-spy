@@ -1673,7 +1673,7 @@
       "properties": {
         "aggregation": {
           "$ref": "#/definitions/AggregationOp",
-          "description": "Aggregation applied within the selected interval separately for each sample, not across samples."
+          "description": "Aggregation applied within the selected interval separately for each sample. This cannot be used to aggregate across samples or groups."
         },
         "candidateId": {
           "description": "Exact candidate id copied from `selectionAggregation.fields`. Do not construct this from parameter, view, or field names.",
@@ -1879,7 +1879,7 @@
     },
     "ShowAttributeDistributionPlotToolInput": {
       "additionalProperties": false,
-      "description": "Show a quantitative distribution plot in the chat transcript.",
+      "description": "Show a quantitative distribution plot in the chat transcript. Current sample groups are shown on the x-axis and the quantitative attribute is shown on the y-axis.",
       "examples": [
         {
           "attribute": {
@@ -1892,7 +1892,7 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/PlotAttributeIdentifier",
-          "description": "Quantitative value attribute to summarize. Current sample groups are used automatically when present."
+          "description": "Quantitative value attribute to summarize."
         },
         "kind": {
           "const": "boxplot",
@@ -1905,7 +1905,7 @@
     },
     "ShowAttributeRelationshipPlotToolInput": {
       "additionalProperties": false,
-      "description": "Show a two-attribute relationship plot in the chat transcript.",
+      "description": "Show a scatterplot comparing two quantitative sample attributes. When current sample groups are present, point colors show those groups.",
       "examples": [
         {
           "attributes": [
@@ -1942,7 +1942,7 @@
     },
     "ShowCategoryCountsPlotToolInput": {
       "additionalProperties": false,
-      "description": "Show a category-count plot in the chat transcript.",
+      "description": "Show a bar plot of counts for one categorical sample attribute. Use this tool when the user asks for a bar plot, counts, or category distribution. When current sample groups are present, the x-axis shows those groups and colors show the counted attribute categories.",
       "examples": [
         {
           "attribute": {
@@ -1954,7 +1954,7 @@
       "properties": {
         "attribute": {
           "$ref": "#/definitions/PlotAttributeIdentifier",
-          "description": "Categorical attribute to count. Use this tool when the user asks for a bar plot, counts, or category distribution."
+          "description": "Categorical attribute to count."
         }
       },
       "required": ["attribute"],

@@ -80,7 +80,11 @@ export interface AttributeRelationshipPlotCharacterization {
         method: "pearson";
         r: number;
     };
-    groups?: Array<{ title: string; plottedPointCount: number }>;
+    groups?: Array<{
+        title: string;
+        plottedPointCount: number;
+        color?: string;
+    }>;
 }
 
 export type SampleAttributePlotCharacterization =

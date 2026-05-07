@@ -267,13 +267,13 @@
   },
   {
     "toolName": "showCategoryCountsPlot",
-    "description": "Show a category-count plot in the chat transcript.",
+    "description": "Show a bar plot of counts for one categorical sample attribute.",
     "inputType": "ShowCategoryCountsPlotToolInput",
     "inputFields": [
       {
         "name": "attribute",
         "type": "PlotAttributeIdentifier",
-        "description": "Categorical attribute to count. Use this tool when the user asks for a bar plot, counts, or category distribution.",
+        "description": "Categorical attribute to count.",
         "required": true
       }
     ],
@@ -299,7 +299,7 @@
       {
         "name": "attribute",
         "type": "PlotAttributeIdentifier",
-        "description": "Quantitative value attribute to summarize. Current sample groups are used automatically when present.",
+        "description": "Quantitative value attribute to summarize.",
         "required": true
       }
     ],
@@ -314,7 +314,7 @@
   },
   {
     "toolName": "showAttributeRelationshipPlot",
-    "description": "Show a two-attribute relationship plot in the chat transcript.",
+    "description": "Show a scatterplot comparing two quantitative sample attributes.",
     "inputType": "ShowAttributeRelationshipPlotToolInput",
     "inputFields": [
       {

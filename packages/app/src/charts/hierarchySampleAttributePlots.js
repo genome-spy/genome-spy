@@ -309,6 +309,7 @@ export function buildHierarchyScatterplot(request) {
             yAxisTitle,
             missingPairCount,
             groupSummaries,
+            colorScaleRange: request.colorScaleRange,
         }),
     };
 }
@@ -441,6 +442,7 @@ function buildAttributeDistributionCharacterization(groupSummaries) {
  * @param {string} params.yAxisTitle
  * @param {number} params.missingPairCount
  * @param {Array<{ title: string, plottedPointCount: number }>} params.groupSummaries
+ * @param {string[] | undefined} params.colorScaleRange
  * @returns {import("./sampleAttributePlotTypes.d.ts").AttributeRelationshipPlotCharacterization}
  */
 function buildAttributeRelationshipCharacterization(params) {
@@ -461,7 +463,14 @@ function buildAttributeRelationshipCharacterization(params) {
             ? { correlation: buildCorrelationSummary(correlation) }
             : {}),
         ...(params.groupSummaries.length > 1
-            ? { groups: params.groupSummaries }
+            ? {
+                  groups: params.groupSummaries.map((group, index) => ({
+                      ...group,
+                      ...(params.colorScaleRange?.[index]
+                          ? { color: params.colorScaleRange[index] }
+                          : {}),
+                  })),
+              }
             : {}),
     };
 }
