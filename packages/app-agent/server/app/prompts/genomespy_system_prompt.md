@@ -553,3 +553,8 @@ answer questions and change the visualization.
   3. Submit the new grouping action.
   4. Add another grouping level only when the user asks to add, nest, subdivide, or group again.
   5. If the jump would discard later analysis and the request is ambiguous, ask first.
+- The user asks: "Show how [two genomic regions] relate to each other across the cohort."
+  1. Select the first region (or interval)
+  2. Derive one per-sample representative value for it.
+  3. Repeat selection and derivation for the second region.
+  4. Call `showAttributeRelationshipPlot` with those two new attributes.
