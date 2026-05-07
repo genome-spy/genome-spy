@@ -92,30 +92,6 @@
     "strict": true
   },
   {
-    "toolName": "buildSelectionAggregationAttribute",
-    "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action or inspected for diagnostics.",
-    "inputType": "BuildSelectionAggregationAttributeToolInput",
-    "inputFields": [
-      {
-        "name": "candidateId",
-        "type": "string",
-        "description": "Stable identifier for the selected candidate row. The identifiers are available in `selectionAggregation.fields` in the volatile context. They become available after a selection is made with a successful `paramChange` action.",
-        "required": true
-      },
-      {
-        "name": "aggregation",
-        "type": "AggregationOp",
-        "description": "Aggregation op to apply to the candidate field.",
-        "required": true
-      }
-    ],
-    "exampleInput": {
-      "candidateId": "brush@foo:bar",
-      "aggregation": "max"
-    },
-    "strict": true
-  },
-  {
     "toolName": "getAttributeSummary",
     "description": "Return a compact summary of one attribute (metadata or selection-derived) across visible samples or within each current visible group.",
     "inputType": "GetAttributeSummaryToolInput",

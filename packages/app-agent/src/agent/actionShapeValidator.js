@@ -24,6 +24,28 @@ function createSchemaWrapper(schema) {
     };
 }
 
+/**
+ * @param {Record<string, any>} schema
+ * @returns {Record<string, any>}
+ */
+function createAgentSchemaWrapper(schema) {
+    return {
+        $schema: generatedActionSchema.$schema,
+        definitions: {
+            ...generatedActionSchema.definitions,
+            AttributeIdentifier: {
+                anyOf: [
+                    { $ref: "#/definitions/SampleAttributeIdentifier" },
+                    { $ref: "#/definitions/SelectionAggregationCandidate" },
+                ],
+            },
+            SampleAttributeIdentifier: sampleAttributeIdentifierSchema,
+            SelectionAggregationCandidate: selectionAggregationCandidateSchema,
+        },
+        ...schema,
+    };
+}
+
 const intentBatchContainerSchema = createSchemaWrapper({
     ...generatedActionSchema.definitions.AgentIntentBatch,
     properties: {
@@ -65,6 +87,56 @@ const payloadValidatorsByActionType = new Map(
         const actionType = entry.properties.actionType.const;
         const payloadSchema = entry.properties.payload;
         return [actionType, ajv.compile(createSchemaWrapper(payloadSchema))];
+    })
+);
+
+/** @type {Record<string, any>} */
+const selectionAggregationCandidateSchema = {
+    additionalProperties: false,
+    properties: {
+        aggregation: {
+            $ref: "#/definitions/AggregationOp",
+            description:
+                "Aggregation op applied within the current interval selection for each sample.",
+        },
+        candidateId: {
+            description:
+                "Exact candidate id copied from selectionAggregation.fields. Do not construct this from parameter, view, or field names.",
+            type: "string",
+        },
+        type: {
+            const: "SELECTION_AGGREGATION",
+            type: "string",
+        },
+    },
+    required: ["type", "candidateId", "aggregation"],
+    type: "object",
+};
+
+/** @type {Record<string, any>} */
+const sampleAttributeIdentifierSchema = {
+    additionalProperties: false,
+    properties: {
+        specifier: {
+            type: "string",
+        },
+        type: {
+            const: "SAMPLE_ATTRIBUTE",
+            type: "string",
+        },
+    },
+    required: ["type", "specifier"],
+    type: "object",
+};
+
+/** @type {Map<string, import("ajv").ValidateFunction>} */
+const agentPayloadValidatorsByActionType = new Map(
+    stepVariants.map((entry) => {
+        const actionType = entry.properties.actionType.const;
+        return [
+            actionType,
+            ajv.compile(createAgentSchemaWrapper(entry.properties.payload)),
+        ];
     })
 );
 
@@ -165,22 +237,91 @@ export function validateIntentBatchShape(batch) {
  * @returns {import("./types.js").ShapeValidationResult}
  */
 export function validateActionPayloadShape(actionType, payload, prefix = "$") {
+    return validateActionPayloadShapeWithSchemas(
+        actionType,
+        payload,
+        prefix,
+        payloadValidatorsByActionType,
+        /** @type {Record<string, any>} */ (
+            generatedActionSchema.definitions ?? {}
+        )
+    );
+}
+
+/**
+ * Validates the agent-facing action payload shape. This accepts canonical
+ * AttributeIdentifiers and compact SELECTION_AGGREGATION candidates, which are
+ * normalized before the reducer-facing intent batch is submitted.
+ *
+ * @param {import("./types.js").AgentActionType} actionType
+ * @param {unknown} payload
+ * @param {string} [prefix]
+ * @returns {import("./types.js").ShapeValidationResult}
+ */
+export function validateAgentActionPayloadShape(
+    actionType,
+    payload,
+    prefix = "$"
+) {
+    const internalAttributePaths = findInternalValueAtLocusAttributes(
+        payload,
+        prefix
+    );
+    if (internalAttributePaths.length > 0) {
+        return {
+            ok: false,
+            errors: internalAttributePaths.map(
+                (path) =>
+                    path +
+                    " uses internal VALUE_AT_LOCUS syntax. Use a SAMPLE_ATTRIBUTE from context or a SELECTION_AGGREGATION candidate copied from selectionAggregation.fields."
+            ),
+        };
+    }
+
+    return validateActionPayloadShapeWithSchemas(
+        actionType,
+        payload,
+        prefix,
+        agentPayloadValidatorsByActionType,
+        {
+            ...generatedActionSchema.definitions,
+            AttributeIdentifier: {
+                anyOf: [
+                    { $ref: "#/definitions/SampleAttributeIdentifier" },
+                    { $ref: "#/definitions/SelectionAggregationCandidate" },
+                ],
+            },
+            SampleAttributeIdentifier: sampleAttributeIdentifierSchema,
+            SelectionAggregationCandidate: selectionAggregationCandidateSchema,
+        }
+    );
+}
+
+/**
+ * @param {import("./types.js").AgentActionType} actionType
+ * @param {unknown} payload
+ * @param {string} prefix
+ * @param {Map<string, import("ajv").ValidateFunction>} validatorsByActionType
+ * @param {Record<string, any>} definitions
+ * @returns {import("./types.js").ShapeValidationResult}
+ */
+function validateActionPayloadShapeWithSchemas(
+    actionType,
+    payload,
+    prefix,
+    validatorsByActionType,
+    definitions
+) {
     if (actionType === "paramProvenance/paramChange") {
         return validateParamProvenanceEntryShape(payload, prefix);
     }
 
     const payloadSchema = getActionPayloadSchema(actionType);
     if (payloadSchema) {
-        repairJsonEncodedObjects(
-            payload,
-            payloadSchema,
-            /** @type {Record<string, any>} */ (
-                generatedActionSchema.definitions ?? {}
-            )
-        );
+        repairJsonEncodedObjects(payload, payloadSchema, definitions);
     }
 
-    const validator = payloadValidatorsByActionType.get(actionType);
+    const validator = validatorsByActionType.get(actionType);
     if (!validator) {
         return {
             ok: false,
@@ -199,6 +340,32 @@ export function validateActionPayloadShape(actionType, payload, prefix = "$") {
         ok: false,
         errors: formatAjvErrors(prefix, validator.errors),
     };
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} path
+ * @returns {string[]}
+ */
+function findInternalValueAtLocusAttributes(value, path) {
+    if (Array.isArray(value)) {
+        return value.flatMap((item, index) =>
+            findInternalValueAtLocusAttributes(item, path + "[" + index + "]")
+        );
+    }
+
+    if (!isObject(value)) {
+        return [];
+    }
+
+    const errors =
+        value.type === "VALUE_AT_LOCUS" ? [path] : /** @type {string[]} */ ([]);
+
+    return errors.concat(
+        Object.entries(value).flatMap(([key, child]) =>
+            findInternalValueAtLocusAttributes(child, path + "." + key)
+        )
+    );
 }
 
 /**

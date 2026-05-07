@@ -1,6 +1,7 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
 import {
+    validateAgentActionPayloadShape,
     validateActionPayloadShape,
     validateIntentBatchShape,
 } from "./actionShapeValidator.js";
@@ -80,6 +81,49 @@ describe("actionShapeValidator", () => {
             type: "SAMPLE_ATTRIBUTE",
             specifier: "mutations",
         });
+    });
+
+    it("accepts selection aggregation candidates only in agent-facing action payloads", () => {
+        const payload = {
+            attribute: {
+                type: "SELECTION_AGGREGATION",
+                candidateId: "brush@track:beta",
+                aggregation: "max",
+            },
+        };
+
+        const canonical = validateActionPayloadShape(
+            "sampleView/sortBy",
+            payload
+        );
+        const agentFacing = validateAgentActionPayloadShape(
+            "sampleView/sortBy",
+            payload
+        );
+
+        expect(canonical.ok).toBe(false);
+        expect(agentFacing.ok).toBe(true);
+    });
+
+    it("rejects hand-written value-at-locus attributes in agent-facing action payloads", () => {
+        const result = validateAgentActionPayloadShape("sampleView/sortBy", {
+            attribute: {
+                type: "VALUE_AT_LOCUS",
+                selector: {
+                    scope: [],
+                    param: "brush",
+                },
+                aggregation: "count",
+            },
+        });
+
+        expect(result.ok).toBe(false);
+        expect(result.errors.join("\n")).toContain(
+            "uses internal VALUE_AT_LOCUS syntax"
+        );
+        expect(result.errors.join("\n")).toContain(
+            "SELECTION_AGGREGATION candidate copied from selectionAggregation.fields"
+        );
     });
 
     it("rejects malformed intent batches", () => {

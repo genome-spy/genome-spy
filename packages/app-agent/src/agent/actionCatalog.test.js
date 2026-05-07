@@ -115,7 +115,7 @@ describe("actionCatalog", () => {
             "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold."
         );
         expect(entry.usage).toContain(
-            "selection-derived aggregation returned by `buildSelectionAggregationAttribute`"
+            "selection-derived aggregation candidate from `selectionAggregation.fields`"
         );
         expect(entry.payloadFields).toEqual([
             expect.objectContaining({
@@ -144,7 +144,7 @@ describe("actionCatalog", () => {
         ]);
     });
 
-    it("keeps the full selection aggregation example in one action only", () => {
+    it("does not expose internal value-at-locus examples in action docs", () => {
         const actionsWithSelectionAggregationExamples = generatedActionCatalog
             .filter((entry) =>
                 entry.examples.some(
@@ -153,9 +153,7 @@ describe("actionCatalog", () => {
             )
             .map((entry) => entry.actionType);
 
-        expect(actionsWithSelectionAggregationExamples).toEqual([
-            "sampleView/deriveMetadata",
-        ]);
+        expect(actionsWithSelectionAggregationExamples).toEqual([]);
     });
 
     it("summarizes batches using action titles", () => {

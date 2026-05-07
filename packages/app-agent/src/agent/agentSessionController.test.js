@@ -712,6 +712,39 @@ describe("createAgentSessionController", () => {
         ).not.toHaveBeenCalled();
     });
 
+    it("returns invalid selection aggregation candidates as rejected tool results", async () => {
+        const runtime = createRuntimeMock();
+        const controller = createAgentSessionController(runtime);
+
+        const results = await controller.executeToolCalls([
+            {
+                callId: "call-plot",
+                name: "showAttributeDistributionPlot",
+                arguments: {
+                    kind: "boxplot",
+                    attribute: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "invented-candidate",
+                        aggregation: "max",
+                    },
+                },
+            },
+        ]);
+
+        expect(results).toEqual([
+            expect.objectContaining({
+                toolCallId: "call-plot",
+                rejected: true,
+                text: expect.stringContaining(
+                    "Use an exact candidateId from selectionAggregation.fields."
+                ),
+            }),
+        ]);
+        expect(
+            runtime.agentApi.buildSampleAttributePlot
+        ).not.toHaveBeenCalled();
+    });
+
     it("summarizes intent batch tool results for sample-view actions", async () => {
         const runtime = createRuntimeMock();
         runtime.submitIntentActions.mockResolvedValue({
@@ -943,36 +976,8 @@ describe("createAgentSessionController", () => {
         ]);
     });
 
-    it("resolves a selection aggregation candidate into the canonical attribute", async () => {
+    it("rejects removed selection aggregation resolution tool calls", async () => {
         const runtime = createRuntimeMock();
-        runtime.getAgentVolatileContext.mockReturnValue({
-            selectionAggregation: {
-                fields: [
-                    {
-                        candidateId: "brush@track:beta",
-                        view: "track",
-                        viewSelector: {
-                            scope: [],
-                            view: "track",
-                        },
-                        field: "beta",
-                        dataType: "quantitative",
-                        selectionSelector: {
-                            scope: [],
-                            param: "brush",
-                        },
-                        supportedAggregations: [
-                            "count",
-                            "min",
-                            "max",
-                            "weightedMean",
-                            "variance",
-                        ],
-                    },
-                ],
-            },
-        });
-
         const controller = createAgentSessionController(runtime);
         const results = await controller.executeToolCalls([
             {
@@ -985,40 +990,13 @@ describe("createAgentSessionController", () => {
             },
         ]);
 
-        expect(runtime.getAgentVolatileContext).toHaveBeenCalledTimes(1);
+        expect(runtime.getAgentVolatileContext).not.toHaveBeenCalled();
         expect(results).toEqual([
             expect.objectContaining({
-                rejected: false,
-                text: "Built an AttributeIdentifier for max(beta) from brush@track:beta. No aggregated value was computed. Use a SELECTION_AGGREGATION candidate in plotting tools or content.attribute as payload.attribute in `submitIntentActions`. If you need a different locus or interval, update the selection first.",
-                content: expect.objectContaining({
-                    kind: "selection_aggregation_resolution",
-                    candidateId: "brush@track:beta",
-                    aggregation: "max",
-                    field: "beta",
-                    title: "max(beta)",
-                    description:
-                        "Aggregated beta values over the brush selection",
-                    attribute: expect.objectContaining({
-                        type: "VALUE_AT_LOCUS",
-                        specifier: expect.objectContaining({
-                            view: {
-                                scope: [],
-                                view: "track",
-                            },
-                            field: "beta",
-                            interval: {
-                                type: "selection",
-                                selector: {
-                                    scope: [],
-                                    param: "brush",
-                                },
-                            },
-                            aggregation: {
-                                op: "max",
-                            },
-                        }),
-                    }),
-                }),
+                rejected: true,
+                text: expect.stringContaining(
+                    "Unsupported agent tool buildSelectionAggregationAttribute."
+                ),
             }),
         ]);
     });

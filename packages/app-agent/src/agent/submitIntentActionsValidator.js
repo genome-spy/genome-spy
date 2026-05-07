@@ -1,5 +1,5 @@
 // @ts-check
-import { validateActionPayloadShape } from "./actionShapeValidator.js";
+import { validateAgentActionPayloadShape } from "./actionShapeValidator.js";
 
 /**
  * Validates submitIntentActions without surfacing the raw union-branch noise
@@ -60,7 +60,7 @@ export function validateSubmitIntentActionsToolShape(toolArguments) {
                 continue;
             }
 
-            const payloadValidation = validateActionPayloadShape(
+            const payloadValidation = validateAgentActionPayloadShape(
                 /** @type {import("./types.js").AgentActionType} */ (
                     action.actionType
                 ),

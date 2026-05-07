@@ -18,6 +18,7 @@ describe("toolCatalog", () => {
         expect(toolNames).toContain("showAttributeDistributionPlot");
         expect(toolNames).toContain("showAttributeRelationshipPlot");
         expect(toolNames).toContain("submitIntentActions");
+        expect(toolNames).not.toContain("buildSelectionAggregationAttribute");
     });
 
     it("builds Responses API function tool definitions", () => {
@@ -209,6 +210,25 @@ describe("toolCatalog", () => {
             type: "SAMPLE_ATTRIBUTE",
             specifier: "mutations",
         });
+    });
+
+    it("accepts selection aggregation candidates in submitIntentActions payload attributes", () => {
+        const validation = validateToolArgumentsShape("submitIntentActions", {
+            actions: [
+                {
+                    actionType: "sampleView/sortBy",
+                    payload: {
+                        attribute: {
+                            type: "SELECTION_AGGREGATION",
+                            candidateId: "brush@track:beta",
+                            aggregation: "max",
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(validation.ok).toBe(true);
     });
 
     it("keeps string values as strings when a tool schema expects a string", () => {

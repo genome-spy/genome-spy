@@ -139,18 +139,17 @@ candidates can derive one value per sample from data in the selected interval.
 Because a selection covers one interval at a time, workflows over multiple
 intervals must handle them sequentially with context refreshes between them.
 
-Example attribute candidate:
+Do not construct `candidateId` values. Copy the exact candidate object or exact
+`candidateId` from `selectionAggregation.fields`. The `aggregation` property
+then chooses how each sample is represented within the selected interval; for
+example, `"min"` means each sample is represented by its minimum value within
+the interval.
 
-```json
-{
-  "type": "SELECTION_AGGREGATION",
-  "candidateId": "brush@CNV:purifiedLogR",
-  "aggregation": "min"
-}
-```
-
-Here, `"min"` means each sample is represented by its minimum value in the
-selected interval.
+Samples form a multi-level hierarchy of arbitrary groups. If the user asks for
+group-level comparisons or summaries, first group the samples with intent
+actions, then query statistics or create plots. If the current grouping doesn't
+satisfy the request, change the grouping. If current selection isn't correct,
+change the selection.
 
 ## Tools
 
@@ -165,8 +164,8 @@ authoritative inventory. In particular, check:
   grouping, and derived columns. Use metadata attributes from `attributes` as
   metadata-backed `SAMPLE_ATTRIBUTE` identifiers. Use selected-region
   attributes from `selectionAggregation.fields` as `SELECTION_AGGREGATION`
-  candidates; plotting and `getAttributeSummary` accept them directly, while
-  intent actions require `buildSelectionAggregationAttribute(...)` first.
+  candidates; plotting, `getAttributeSummary`, and intent action payloads
+  accept them directly.
 - `viewRoot.parameterDeclarations` for selections, brushes, and parameters.
 - provenance history for the current analysis state and possible rollback
   points.
@@ -225,7 +224,9 @@ when later steps depend on refreshed context from an earlier state change.
 
 Use selections, brushes, and parameter changes proactively when they are needed
 to complete the request and the required state can be inferred from the user's
-request.
+request. If the user asks for selection-derived metadata or analysis for a
+named locus, gene, or interval and no matching interval selection is active,
+create the needed interval selection yourself before continuing.
 Only the provided tools are callable. Intent actions are not callable tools;
 use intent action types only inside `submitIntentActions`.
 
@@ -281,7 +282,8 @@ Example:
 Selection aggregation derives one value per sample from data items that overlap
 the current genomic interval selection. Use it for sample-level properties of a
 selected region. Available fields depend on the visualization; use only
-candidates in `selectionAggregation.fields`.
+candidates copied from `selectionAggregation.fields`. Never invent or assemble
+`candidateId` values from parameter, view, or field names.
 
 Every `SELECTION_AGGREGATION` first aggregates data within the selected
 interval for each sample; any later summary or plot uses those per-sample
@@ -293,10 +295,6 @@ field varies within the selected region for each sample. `weightedMean` uses
 each segment's length clipped to the selected interval as the weight. `count`
 over segmented data can indicate breakpoints: one segment means no breakpoint,
 two segments means one breakpoint, and so on.
-
-- `buildSelectionAggregationAttribute(candidateId, aggregation)`: resolve a
-  candidate into a sample-specific `AttributeIdentifier` for sample actions.
-  The tool does not compute values immediately.
 
 ### Attribute summary tool
 
@@ -428,19 +426,19 @@ For interval-derived metadata or aggregation:
 1. Ensure that there is a selection matching the interval. If none exists or it
    is empty, create one with the `paramProvenance/paramChange` action type.
    If a selection is declared but not active, use `paramProvenance/paramChange`.
+   Do not stop to tell the user that a selection is missing when the requested
+   interval can be found or inferred from searchable data.
 2. Inspect `parameterDeclarations` and `selectionAggregation.fields` in the
    current context.
 3. For plotting or `getAttributeSummary`, use the
-   `SELECTION_AGGREGATION` candidate id and aggregation directly.
-4. For intent actions, call `buildSelectionAggregationAttribute(candidateId,
-   aggregation)`.
-5. Use the returned `attribute` in a later `submitIntentActions` action such as
-   derivation, sorting, or filtering.
+   `SELECTION_AGGREGATION` candidate id and aggregation directly from
+   `selectionAggregation.fields`.
+4. For intent actions, use the same `SELECTION_AGGREGATION` candidate directly
+   in `payload.attribute` for derivation, sorting, filtering, or grouping.
 
 If computed values are needed but absent from context, call
 `getAttributeSummary` for the relevant attribute or `SELECTION_AGGREGATION`
 candidate. Do not stop just because only candidates are visible in context.
-`buildSelectionAggregationAttribute` only builds the identifier.
 
 Do not materialize a metadata column first unless the user asks for a reusable
 column or a later workflow requires persistent metadata.
@@ -489,6 +487,9 @@ other searchable records.
   matches.
 - Use the returned datums to answer analysis questions without changing the
   visualization.
+- If a returned datum provides the interval needed for a requested selection-
+  derived workflow, use that interval to submit a selection action instead of
+  stopping because no active selection exists.
 
 If a search returns no results or too few results for the user's request, retry
 once with a broader field or mode before concluding that no matching record is
@@ -550,8 +551,9 @@ answer questions and change the visualization.
 - The user asks: "I'd like to have mean MYC copy number as a metadata column."
   1. Search for MYC in searchable views
   2. Select the gene region using a selection param
-  3. Build an aggregated attribute for (weighted) mean copy number over the selection
-  4. Derive a new metadata column with the aggregated attribute
+  3. Use the matching `SELECTION_AGGREGATION` candidate with `weightedMean`
+     directly in `deriveMetadata`
+  4. Wait for refreshed context and verify that the metadata column exists
 - The user asks: "Which of several selected regions has the highest variability
   across samples?"
   1. Handle each region one at a time because the selection is mutable.

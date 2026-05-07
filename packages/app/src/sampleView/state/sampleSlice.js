@@ -228,7 +228,8 @@ export const sampleSlice = createSlice({
          * Add a derived metadata column from a selected or aggregated attribute.
          *
          * Use this when an existing attribute should be materialized as sample
-         * metadata under a new column name.
+         * metadata under a new column name. For selection-derived values, use
+         * a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`.
          *
          * @agent.payloadType DeriveMetadata
          * @agent.category metadata
@@ -237,22 +238,6 @@ export const sampleSlice = createSlice({
          * {
          *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
          *   "name": "purity_copy"
-         * }
-         * @example
-         * {
-         *   "attribute": {
-         *     "type": "VALUE_AT_LOCUS",
-         *     "specifier": {
-         *       "view": { "scope": [], "view": "track" },
-         *       "field": "beta",
-         *       "interval": {
-         *         "type": "selection",
-         *         "selector": { "scope": [], "param": "brush" }
-         *       },
-         *       "aggregation": { "op": "max" }
-         *     }
-         *   },
-         *   "name": "tp53_region_beta"
          * }
          */
         deriveMetadata: (
@@ -301,8 +286,8 @@ export const sampleSlice = createSlice({
          *
          * Use this when samples should be ranked by one quantitative or
          * ordinal attribute before further filtering or grouping. The
-         * attribute may be metadata or a selection-derived aggregation returned
-         * by `buildSelectionAggregationAttribute`.
+         * attribute may be metadata or a selection-derived aggregation
+         * candidate from `selectionAggregation.fields`.
          *
          * @agent.payloadType SortBy
          * @agent.category sorting
@@ -384,8 +369,8 @@ export const sampleSlice = createSlice({
          *
          * Use this for numeric filters such as values greater than, less than,
          * or equal to a chosen threshold. The attribute may be metadata or a
-         * selection-derived aggregation returned by
-         * `buildSelectionAggregationAttribute`.
+         * selection-derived aggregation candidate from
+         * `selectionAggregation.fields`.
          *
          * @agent.payloadType FilterByQuantitative
          * @agent.category filtering
@@ -450,8 +435,8 @@ export const sampleSlice = createSlice({
          *
          * Use this before later analysis steps when samples with `undefined`
          * or `null` values should be excluded. The attribute may be metadata or
-         * a selection-derived aggregation returned by
-         * `buildSelectionAggregationAttribute`.
+         * a selection-derived aggregation candidate from
+         * `selectionAggregation.fields`.
          *
          * @agent.payloadType RemoveUndefined
          * @agent.category filtering
@@ -554,8 +539,8 @@ export const sampleSlice = createSlice({
          * Use this for a quick quantitative stratification. Quartiles are
          * computed from the current samples in each group using the R-7
          * method, and tied values may collapse adjacent quartiles. The
-         * attribute may be metadata or a selection-derived aggregation returned
-         * by `buildSelectionAggregationAttribute`.
+         * attribute may be metadata or a selection-derived aggregation
+         * candidate from `selectionAggregation.fields`.
          *
          * @agent.payloadType GroupToQuartiles
          * @agent.category grouping
@@ -589,8 +574,8 @@ export const sampleSlice = createSlice({
          * Use this when quantitative bins should follow explicit thresholds
          * instead of quartiles. The resulting groups are ordered from the
          * highest interval to the lowest. The attribute may be metadata or a
-         * selection-derived aggregation returned by
-         * `buildSelectionAggregationAttribute`.
+         * selection-derived aggregation candidate from
+         * `selectionAggregation.fields`.
          *
          * @agent.payloadType GroupByThresholds
          * @agent.category grouping

@@ -351,7 +351,7 @@ describe("agentTools", () => {
                 actionType: "sampleView/sortBy",
                 description:
                     "Sort samples in descending order by a selected attribute.",
-                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation returned by `buildSelectionAggregationAttribute`.",
+                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`.",
                 payloadFields: [
                     expect.objectContaining({
                         name: "attribute",
@@ -395,26 +395,6 @@ describe("agentTools", () => {
         expect(result.content.schema).toEqual({
             $ref: "#/definitions/SortBy",
         });
-    });
-
-    it("resolves selection aggregation candidates through the current context", () => {
-        const runtime = createRuntimeStub();
-        const tools = agentTools;
-
-        const result = tools.buildSelectionAggregationAttribute(runtime, {
-            candidateId: "brush@track:beta",
-            aggregation: "max",
-        });
-
-        expect(result.text).toContain("Built an AttributeIdentifier");
-        expect(result.content).toEqual(
-            expect.objectContaining({
-                kind: "selection_aggregation_resolution",
-                candidateId: "brush@track:beta",
-                aggregation: "max",
-            })
-        );
-        expect(runtime.getAgentVolatileContext).toHaveBeenCalledTimes(1);
     });
 
     it("shows relationship plots through the host API", async () => {
@@ -1275,6 +1255,58 @@ describe("agentTools", () => {
         expect(runtime.summarizeExecutionResult).toHaveBeenCalledTimes(1);
     });
 
+    it("normalizes selection aggregation candidates before submitting actions", async () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        await tools.submitIntentActions(runtime, {
+            actions: [
+                {
+                    actionType: "sampleView/deriveMetadata",
+                    payload: {
+                        attribute: {
+                            type: "SELECTION_AGGREGATION",
+                            candidateId: "brush@track:beta",
+                            aggregation: "max",
+                        },
+                        name: "max_beta",
+                    },
+                },
+            ],
+        });
+
+        expect(runtime.submitIntentActions).toHaveBeenCalledWith(
+            expect.objectContaining({
+                steps: [
+                    {
+                        actionType: "sampleView/deriveMetadata",
+                        payload: {
+                            attribute: {
+                                type: "VALUE_AT_LOCUS",
+                                specifier: {
+                                    view: {
+                                        scope: [],
+                                        view: "track",
+                                    },
+                                    field: "beta",
+                                    interval: [
+                                        { chrom: "chr17", pos: 7565097 },
+                                        { chrom: "chr17", pos: 7590856 },
+                                    ],
+                                    aggregation: { op: "max" },
+                                },
+                            },
+                            name: "max_beta",
+                        },
+                    },
+                ],
+            }),
+            expect.objectContaining({
+                submissionKind: "agent",
+            })
+        );
+    });
+
     it("rethrows intent action failures as rejected tool calls", async () => {
         const runtime = createRuntimeStub();
         runtime.submitIntentActions.mockRejectedValue(
@@ -1321,7 +1353,7 @@ describe("agentTools", () => {
         ).toThrow(ToolCallRejectionError);
     });
 
-    it("rejects unknown selection aggregation candidates as tool errors", () => {
+    it("rejects unknown selection aggregation candidates in submitted actions", async () => {
         const runtime = createRuntimeStub();
         runtime.getAgentVolatileContext.mockReturnValueOnce({
             selectionAggregation: {
@@ -1330,11 +1362,24 @@ describe("agentTools", () => {
         });
         const tools = agentTools;
 
-        expect(() =>
-            tools.buildSelectionAggregationAttribute(runtime, {
-                candidateId: "missing-candidate",
-                aggregation: "max",
+        await expect(
+            tools.submitIntentActions(runtime, {
+                actions: [
+                    {
+                        actionType: "sampleView/sortBy",
+                        payload: {
+                            attribute: {
+                                type: "SELECTION_AGGREGATION",
+                                candidateId: "missing-candidate",
+                                aggregation: "max",
+                            },
+                        },
+                    },
+                ],
             })
-        ).toThrow(ToolCallRejectionError);
+        ).rejects.toThrow(
+            "Use an exact candidateId from selectionAggregation.fields."
+        );
+        expect(runtime.submitIntentActions).not.toHaveBeenCalled();
     });
 });

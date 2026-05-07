@@ -285,9 +285,6 @@
       "additionalProperties": false,
       "description": "Tool inputs exposed to the agent.",
       "properties": {
-        "buildSelectionAggregationAttribute": {
-          "$ref": "#/definitions/BuildSelectionAggregationAttributeToolInput"
-        },
         "collapseViewNode": {
           "$ref": "#/definitions/CollapseViewNodeToolInput"
         },
@@ -337,7 +334,6 @@
         "setViewVisibility",
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
-        "buildSelectionAggregationAttribute",
         "getAttributeSummary",
         "resolveMetadataAttributeValues",
         "searchViewDatums",
@@ -367,60 +363,18 @@
       "type": "object"
     },
     "AttributeIdentifier": {
-      "additionalProperties": false,
-      "properties": {
-        "specifier": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "$ref": "#/definitions/ViewAttributeSpecifier"
-            }
-          ]
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SampleAttributeIdentifier"
         },
-        "type": {
-          "$ref": "#/definitions/AttributeIdentifierType"
+        {
+          "$ref": "#/definitions/SelectionAggregationCandidate"
         }
-      },
-      "required": ["type"],
-      "type": "object"
-    },
-    "AttributeIdentifierType": {
-      "description": "Stable identifier for an abstract attribute used by actions and agent context.\n\n`type` identifies the attribute source kind, and `specifier` contains the concrete lookup information for that source.\n\nExamples:\n- `{ type: \"SAMPLE_ATTRIBUTE\", specifier: \"age\" }`\n- `{ type: \"VALUE_AT_LOCUS\", specifier: { ... } }`",
-      "enum": [
-        "SAMPLE_ATTRIBUTE",
-        "VALUE_AT_LOCUS",
-        "SAMPLE_NAME",
-        "VIEW_ATTRIBUTE"
-      ],
-      "type": "string"
+      ]
     },
     "AttributeSummaryScope": {
       "enum": ["visible_samples", "visible_groups"],
       "type": "string"
-    },
-    "BuildSelectionAggregationAttributeToolInput": {
-      "additionalProperties": false,
-      "description": "Build an `AttributeIdentifier` for a selection-derived aggregation so it can be used in a later intent action or inspected for diagnostics. Selection aggregation derives one value per sample from data items that overlap the current genomic interval selection. Plotting and summary tools can usually use `SELECTION_AGGREGATION` candidates directly. Before using this tool, you must make an interval selection using a parameter or ensure that one already exists. This tool does not compute or return an aggregated value. Use the returned `content.attribute` as the plotted attribute or as `payload.attribute` in `submitIntentActions`. If the requested locus or interval is not the current selection, update the selection first.",
-      "examples": [
-        {
-          "aggregation": "max",
-          "candidateId": "brush@foo:bar"
-        }
-      ],
-      "properties": {
-        "aggregation": {
-          "$ref": "#/definitions/AggregationOp",
-          "description": "Aggregation op to apply to the candidate field."
-        },
-        "candidateId": {
-          "description": "Stable identifier for the selected candidate row. The identifiers are available in `selectionAggregation.fields` in the volatile context. They become available after a selection is made with a successful `paramChange` action.",
-          "type": "string"
-        }
-      },
-      "required": ["candidateId", "aggregation"],
-      "type": "object"
     },
     "ChromosomalLocus": {
       "additionalProperties": false,
@@ -1722,6 +1676,7 @@
           "description": "Aggregation applied within the selected interval separately for each sample, not across samples."
         },
         "candidateId": {
+          "description": "Exact candidate id copied from `selectionAggregation.fields`. Do not construct this from parameter, view, or field names.",
           "type": "string"
         },
         "type": {
@@ -1930,14 +1885,6 @@
           "attribute": {
             "specifier": "age",
             "type": "SAMPLE_ATTRIBUTE"
-          },
-          "kind": "boxplot"
-        },
-        {
-          "attribute": {
-            "aggregation": "max",
-            "candidateId": "brush@track:beta",
-            "type": "SELECTION_AGGREGATION"
           },
           "kind": "boxplot"
         }

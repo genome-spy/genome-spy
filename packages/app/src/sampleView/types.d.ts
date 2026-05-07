@@ -12,7 +12,6 @@ import { Scale } from "@genome-spy/core/spec/scale.js";
  *
  * Examples:
  * - `{ type: "SAMPLE_ATTRIBUTE", specifier: "age" }`
- * - `{ type: "VALUE_AT_LOCUS", specifier: { ... } }`
  */
 export type AttributeIdentifierType =
     | "SAMPLE_ATTRIBUTE"

@@ -2,6 +2,7 @@ import {
     buildSelectionAggregationAttributeIdentifier,
     formatAggregationExpression,
 } from "@genome-spy/app/agentShared";
+import { ToolCallRejectionError } from "./agentToolErrors.js";
 
 /**
  * Resolves a selection-aggregation candidate into an `AttributeIdentifier`
@@ -21,25 +22,27 @@ export function buildSelectionAggregationAttribute(
         (field) => field.candidateId === candidateId
     );
     if (!candidate) {
-        throw new Error(
-            "Unknown selection aggregation candidate: " + candidateId + "."
+        throw new ToolCallRejectionError(
+            "Unknown selection aggregation candidate: " +
+                candidateId +
+                ". Use an exact candidateId from selectionAggregation.fields."
         );
     }
 
     if (!candidate.viewSelector) {
-        throw new Error(
+        throw new ToolCallRejectionError(
             "Selection aggregation candidate is missing a view selector."
         );
     }
 
     if (!candidate.selectionSelector) {
-        throw new Error(
+        throw new ToolCallRejectionError(
             "Selection aggregation candidate is missing a selection selector."
         );
     }
 
     if (!candidate.supportedAggregations.includes(aggregation)) {
-        throw new Error(
+        throw new ToolCallRejectionError(
             "Aggregation " +
                 aggregation +
                 " is not supported for candidate " +

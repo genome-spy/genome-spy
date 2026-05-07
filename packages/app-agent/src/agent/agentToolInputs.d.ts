@@ -16,6 +16,11 @@ type SampleAttributeIdentifier = {
 
 type SelectionAggregationCandidate = {
     type: "SELECTION_AGGREGATION";
+
+    /**
+     * Exact candidate id copied from `selectionAggregation.fields`. Do not
+     * construct this from parameter, view, or field names.
+     */
     candidateId: string;
 
     /**
@@ -127,39 +132,6 @@ export interface JumpToProvenanceStateToolInput {
  * Jump to the initial provenance state before any actions were dispatched.
  */
 export type JumpToInitialProvenanceStateToolInput = Record<string, never>;
-
-/**
- * Build an `AttributeIdentifier` for a selection-derived aggregation so it can
- * be used in a later intent action or inspected for diagnostics. Selection
- * aggregation derives one value per sample from data items that overlap the
- * current genomic interval selection. Plotting and summary tools can usually
- * use `SELECTION_AGGREGATION` candidates directly. Before using this tool, you
- * must make an interval selection using a parameter or ensure that one already
- * exists. This tool does not compute or return an aggregated value. Use the
- * returned `content.attribute` as the plotted attribute or as
- * `payload.attribute` in `submitIntentActions`. If the requested locus or
- * interval is not the current selection, update the selection first.
- *
- * @example
- * {
- *   "candidateId": "brush@foo:bar",
- *   "aggregation": "max"
- * }
- */
-export interface BuildSelectionAggregationAttributeToolInput {
-    /**
-     * Stable identifier for the selected candidate row. The identifiers are
-     * available in `selectionAggregation.fields` in the volatile context.
-     * They become available after a selection is made with a successful
-     * `paramChange` action.
-     */
-    candidateId: string;
-
-    /**
-     * Aggregation op to apply to the candidate field.
-     */
-    aggregation: AggregationOp;
-}
 
 /**
  * Return a compact summary of one attribute (metadata or selection-derived)
@@ -380,16 +352,6 @@ export interface ShowCategoryCountsPlotToolInput {
  *     "specifier": "age"
  *   }
  * }
- *
- * @example
- * {
- *   "kind": "boxplot",
- *   "attribute": {
- *     "type": "SELECTION_AGGREGATION",
- *     "candidateId": "brush@track:beta",
- *     "aggregation": "max"
- *   }
- * }
  */
 export interface ShowAttributeDistributionPlotToolInput {
     /**
@@ -445,7 +407,6 @@ export interface AgentToolInputs {
     setViewVisibility: SetViewVisibilityToolInput;
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
-    buildSelectionAggregationAttribute: BuildSelectionAggregationAttributeToolInput;
     getAttributeSummary: GetAttributeSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
