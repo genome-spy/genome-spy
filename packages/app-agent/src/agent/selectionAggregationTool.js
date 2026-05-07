@@ -22,7 +22,9 @@ export function buildSelectionAggregationAttribute(
     );
     if (!candidate) {
         throw new Error(
-            "Unknown selection aggregation candidate: " + candidateId + "."
+            "Unknown selection aggregation candidate: " +
+                candidateId +
+                ". Use an exact candidateId from selectionAggregation.fields."
         );
     }
 

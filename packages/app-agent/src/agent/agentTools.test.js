@@ -1377,7 +1377,9 @@ describe("agentTools", () => {
                     },
                 ],
             })
-        ).rejects.toThrow(ToolCallRejectionError);
+        ).rejects.toThrow(
+            "Use an exact candidateId from selectionAggregation.fields."
+        );
         expect(runtime.submitIntentActions).not.toHaveBeenCalled();
     });
 });

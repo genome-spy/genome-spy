@@ -139,18 +139,10 @@ candidates can derive one value per sample from data in the selected interval.
 Because a selection covers one interval at a time, workflows over multiple
 intervals must handle them sequentially with context refreshes between them.
 
-An example of a schematic attribute candidate:
-
-```json
-{
-  "type": "SELECTION_AGGREGATION",
-  "candidateId": "param_name@view_selector:field_name",
-  "aggregation": "min"
-}
-```
-
-Here, `"min"` means each sample is represented by its minimum value in the
-selected interval.
+Do not construct `candidateId` values. Copy the exact candidate object or exact
+`candidateId` from `selectionAggregation.fields`. The `aggregation` property
+then chooses how each sample is represented within the selected interval; for
+example, `"min"` means each sample is represented by its minimum selected value.
 
 ## Tools
 
@@ -281,7 +273,8 @@ Example:
 Selection aggregation derives one value per sample from data items that overlap
 the current genomic interval selection. Use it for sample-level properties of a
 selected region. Available fields depend on the visualization; use only
-candidates in `selectionAggregation.fields`.
+candidates copied from `selectionAggregation.fields`. Never invent or assemble
+`candidateId` values from parameter, view, or field names.
 
 Every `SELECTION_AGGREGATION` first aggregates data within the selected
 interval for each sample; any later summary or plot uses those per-sample
@@ -427,7 +420,8 @@ For interval-derived metadata or aggregation:
 2. Inspect `parameterDeclarations` and `selectionAggregation.fields` in the
    current context.
 3. For plotting or `getAttributeSummary`, use the
-   `SELECTION_AGGREGATION` candidate id and aggregation directly.
+   `SELECTION_AGGREGATION` candidate id and aggregation directly from
+   `selectionAggregation.fields`.
 4. For intent actions, use the same `SELECTION_AGGREGATION` candidate directly
    in `payload.attribute` for derivation, sorting, filtering, or grouping.
 

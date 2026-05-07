@@ -16,6 +16,11 @@ type SampleAttributeIdentifier = {
 
 type SelectionAggregationCandidate = {
     type: "SELECTION_AGGREGATION";
+
+    /**
+     * Exact candidate id copied from `selectionAggregation.fields`. Do not
+     * construct this from parameter, view, or field names.
+     */
     candidateId: string;
 
     /**
@@ -345,16 +350,6 @@ export interface ShowCategoryCountsPlotToolInput {
  *   "attribute": {
  *     "type": "SAMPLE_ATTRIBUTE",
  *     "specifier": "age"
- *   }
- * }
- *
- * @example
- * {
- *   "kind": "boxplot",
- *   "attribute": {
- *     "type": "SELECTION_AGGREGATION",
- *     "candidateId": "brush@track:beta",
- *     "aggregation": "max"
  *   }
  * }
  */

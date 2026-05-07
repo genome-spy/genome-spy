@@ -238,6 +238,29 @@ attribute summaries still need the same conversion logic.
     should show only internal resolver/test references, not generated tool
     catalog/schema or prompt instructions.
 
+Step 7 tightens `candidateId` guidance after the model tried to invent ids.
+The prompt no longer includes schematic candidate ids, and the generated
+`SelectionAggregationCandidate.candidateId` schema says to copy the exact id
+from `selectionAggregation.fields`.
+
+- Focused source lines:
+  - `genomespy_system_prompt.md`: 567 before, 561 after
+  - `agentToolInputs.d.ts`: 424 before, 419 after
+  - `actionShapeValidator.js`: 583 before, 585 after
+  - `selectionAggregationTool.js`: 84 before, 86 after
+- Generated schema/catalog sizes:
+  - `generatedToolSchema.json`: 79,071 before, 79,009 after
+  - `generatedToolCatalog.json`: unchanged at 10,226 bytes
+- Verification target:
+  - Generated tool schema should contain the `candidateId` warning.
+  - Generated tool schema and system prompt should not contain schematic
+    examples such as `param_name@view_selector:field_name`.
+- Verification:
+  - `npx vitest run packages/app-agent/src/agent/agentTools.test.js packages/app-agent/src/agent/toolCatalog.test.js packages/app-agent/src/agent/actionShapeValidator.test.js packages/app-agent/src/agent/attributeSummaryTool.test.js`
+    passed.
+  - `npm --workspace packages/app-agent run test:tsc` passed.
+  - `npm --workspace packages/app-agent run check:agent` passed.
+
 ### LoC Assessment
 
 The line-count increase is acceptable for this refactor.

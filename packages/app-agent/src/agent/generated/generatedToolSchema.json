@@ -1686,6 +1686,7 @@
           "description": "Aggregation applied within the selected interval separately for each sample, not across samples."
         },
         "candidateId": {
+          "description": "Exact candidate id copied from `selectionAggregation.fields`. Do not construct this from parameter, view, or field names.",
           "type": "string"
         },
         "type": {
@@ -1894,14 +1895,6 @@
           "attribute": {
             "specifier": "age",
             "type": "SAMPLE_ATTRIBUTE"
-          },
-          "kind": "boxplot"
-        },
-        {
-          "attribute": {
-            "aggregation": "max",
-            "candidateId": "brush@track:beta",
-            "type": "SELECTION_AGGREGATION"
           },
           "kind": "boxplot"
         }

@@ -101,6 +101,8 @@ const selectionAggregationCandidateSchema = {
                 "Aggregation op applied within the current interval selection for each sample.",
         },
         candidateId: {
+            description:
+                "Exact candidate id copied from selectionAggregation.fields. Do not construct this from parameter, view, or field names.",
             type: "string",
         },
         type: {
