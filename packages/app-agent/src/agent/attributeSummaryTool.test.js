@@ -54,6 +54,23 @@ function createRuntimeStub() {
                 };
             }
 
+            if (attribute.specifier === "eventCount") {
+                return {
+                    attribute,
+                    title: "event count",
+                    dataType: "quantitative",
+                    scope: "visible_samples",
+                    sampleIds: [
+                        "sampleA",
+                        "sampleB",
+                        "sampleC",
+                        "sampleD",
+                        "sampleE",
+                    ],
+                    values: [0, 0, 1, 2, undefined],
+                };
+            }
+
             if (attribute.specifier === "sex") {
                 return {
                     attribute,
@@ -161,7 +178,38 @@ describe("attributeSummaryTool", () => {
             q1: 15,
             q3: 30,
             iqr: 15,
+            negativeCount: 0,
+            zeroCount: 0,
+            positiveCount: 3,
+            nonZeroCount: 3,
+            negativeShare: 0,
+            zeroShare: 0,
+            positiveShare: 1,
+            nonZeroShare: 1,
         });
+    });
+
+    it("returns sign and zero-count helpers for sparse quantitative values", () => {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "eventCount",
+            },
+            scope: "visible_samples",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                nonMissingCount: 4,
+                missingCount: 1,
+                zeroCount: 2,
+                positiveCount: 2,
+                nonZeroCount: 2,
+                zeroShare: 0.5,
+                positiveShare: 0.5,
+                nonZeroShare: 0.5,
+            })
+        );
     });
 
     it("returns categorical shares for visible samples", () => {

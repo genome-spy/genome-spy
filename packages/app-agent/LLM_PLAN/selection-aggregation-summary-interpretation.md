@@ -173,6 +173,13 @@ Before and after each step, record focused line counts and payload/schema sizes:
 - `wc -l packages/app-agent/server/app/prompts/genomespy_system_prompt.md`
 - `wc -c packages/app-agent/src/agent/generated/generatedToolSchema.json`
 
+Baseline:
+
+- `attributeSummaryTool.js`: 225 lines
+- `attributeSummaryTool.test.js`: 322 lines
+- `genomespy_system_prompt.md`: 560 lines
+- `generatedToolSchema.json`: 77,927 bytes
+
 1. Add quantitative sign/count helpers.
    - Extend `buildQuantitativeSummary(...)` with zero/nonzero/positive/negative
      counts and shares.
@@ -182,6 +189,13 @@ Before and after each step, record focused line counts and payload/schema sizes:
      - Tests show `nonZeroCount` and `positiveCount` are present for sparse
        count vectors.
      - Existing quantitative summary fields are unchanged.
+   - Result:
+     - `attributeSummaryTool.js`: 298 lines
+     - `attributeSummaryTool.test.js`: 370 lines
+     - `genomespy_system_prompt.md`: 560 lines
+     - `generatedToolSchema.json`: 77,927 bytes
+     - `npx vitest run packages/app-agent/src/agent/attributeSummaryTool.test.js`
+       passed.
 
 2. Add selection-aggregation interpretation metadata.
    - Detect selection aggregation summaries from the resolved attribute:

@@ -90,7 +90,7 @@ function buildGroupedAttributeSummary(runtime, attribute) {
                   path: group.path,
                   titles: group.titles,
                   title: group.title,
-                  ...buildQuantitativeFieldSummary(
+                  ...buildQuantitativeAgentSummary(
                       group.sampleIds.map(
                           (sampleId) => source.valuesBySampleId[sampleId]
                       )
@@ -138,7 +138,7 @@ function buildQuantitativeSummary(source) {
         dataType: source.dataType,
         scope: source.scope,
         sampleCount: source.sampleIds.length,
-        ...buildQuantitativeFieldSummary(source.values),
+        ...buildQuantitativeAgentSummary(source.values),
     };
 }
 
@@ -156,6 +156,79 @@ function buildCategoricalSummary(source) {
         sampleCount: source.sampleIds.length,
         ...buildCategoricalFieldSummary(source.values),
     };
+}
+
+/**
+ * @param {unknown[]} values
+ */
+function buildQuantitativeAgentSummary(values) {
+    return {
+        ...buildQuantitativeFieldSummary(values),
+        ...buildQuantitativeSignSummary(values),
+    };
+}
+
+/**
+ * @param {unknown[]} values
+ */
+function buildQuantitativeSignSummary(values) {
+    let negativeCount = 0;
+    let zeroCount = 0;
+    let positiveCount = 0;
+
+    for (const value of values) {
+        const numericValue = coerceNumericValue(value);
+        if (numericValue === undefined) {
+            continue;
+        }
+
+        if (numericValue < 0) {
+            negativeCount++;
+        } else if (numericValue === 0) {
+            zeroCount++;
+        } else {
+            positiveCount++;
+        }
+    }
+
+    const nonZeroCount = negativeCount + positiveCount;
+    const nonMissingCount = negativeCount + zeroCount + positiveCount;
+
+    return {
+        negativeCount,
+        zeroCount,
+        positiveCount,
+        nonZeroCount,
+        negativeShare: getShare(negativeCount, nonMissingCount),
+        zeroShare: getShare(zeroCount, nonMissingCount),
+        positiveShare: getShare(positiveCount, nonMissingCount),
+        nonZeroShare: getShare(nonZeroCount, nonMissingCount),
+    };
+}
+
+/**
+ * @param {number} value
+ * @param {number} total
+ */
+function getShare(value, total) {
+    return total > 0 ? value / total : 0;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {number | undefined}
+ */
+function coerceNumericValue(value) {
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : undefined;
+    }
+
+    if (typeof value === "string" && value.trim() !== "") {
+        const numericValue = Number(value);
+        return Number.isFinite(numericValue) ? numericValue : undefined;
+    }
+
+    return undefined;
 }
 
 /**
