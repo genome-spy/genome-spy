@@ -3,6 +3,7 @@
  */
 
 import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
+import { html } from "lit";
 import { advancedAttributeFilterDialog } from "./attributeDialogs/advancedAttributeFilterDialog.js";
 import { showGroupByThresholdsDialog } from "./attributeDialogs/groupByThresholdsDialog.js";
 import retainFirstNCategoriesDialog from "./attributeDialogs/retainFirstNCategoriesDialog.js";
@@ -114,7 +115,10 @@ export default function generateAttributeContextMenu(
             if (retainCategoriesSubmenu.length) {
                 items.push({
                     icon: faFilter,
-                    label: "Retain categories based on...",
+                    label:
+                        "Retain " +
+                        attributeInfo.name +
+                        " categories based on another attribute",
                     submenu: retainCategoriesSubmenu,
                 });
             }
@@ -221,7 +225,14 @@ function buildRetainCategoriesSubmenu(categoryAttributeInfo, sampleView) {
 
             return [
                 {
-                    label: conditionAttributeInfo.title,
+                    customContent: html`<span
+                        ><span class="attribute-type-icon"
+                            >${getAttributeTypeIcon(
+                                conditionAttributeInfo
+                            )}</span
+                        >
+                        ${conditionAttributeInfo.name}</span
+                    >`,
                     submenu: () =>
                         buildRetainCategoriesConditionSubmenu(
                             categoryAttributeInfo,
@@ -261,6 +272,14 @@ function buildRetainCategoriesConditionSubmenu(
 
     return [
         {
+            label:
+                "Retain " +
+                categoryAttributeInfo.name +
+                " categories where " +
+                conditionAttributeInfo.name,
+            type: "header",
+        },
+        {
             icon: faFilter,
             label: "> 0",
             callback: () => dispatchAction("gt", 0),
@@ -269,6 +288,11 @@ function buildRetainCategoriesConditionSubmenu(
             icon: faFilter,
             label: ">= 1",
             callback: () => dispatchAction("gte", 1),
+        },
+        {
+            icon: faFilter,
+            label: "= 0",
+            callback: () => dispatchAction("eq", 0),
         },
         {
             icon: faFilter,
@@ -281,6 +305,14 @@ function buildRetainCategoriesConditionSubmenu(
                 ),
         },
     ];
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @returns {string}
+ */
+function getAttributeTypeIcon(attributeInfo) {
+    return attributeInfo.type === "quantitative" ? "#" : "A";
 }
 
 /**

@@ -95,11 +95,32 @@ be added later after the state action exists.
 
    When the active attribute is nominal or ordinal, add a submenu such as:
 
-   - `Retain categories based on...`
+   - `Retain patient categories based on another attribute`
    - one entry per eligible metadata attribute except the active category
      attribute
-   - quantitative quick actions such as `> 0`, `>= 1`, or
+   - quantitative quick actions such as `> 0`, `>= 1`, `= 0`, or
      `Choose custom threshold...`
+
+   Menu labels must follow the existing convention that `...` is reserved for
+   items that open a dialog. Submenu-opening items should not use an ellipsis.
+   The top-level label should include the selected attribute name when possible,
+   for example `Retain patient categories based on another attribute`.
+
+   Attribute candidates in the next submenu should indicate their type. The
+   mockup uses `#` for quantitative attributes and `A` for categorical
+   attributes, which makes the list easier to scan. Match the existing menu
+   icon style where possible. Candidate labels should use normal text, not
+   full italic emphasis, even though they refer to attributes.
+
+   The condition submenu should include a short header that makes the action
+   semantics explicit before listing concrete predicates. For example, after
+   choosing `TP53_mutation_count`, show:
+
+   `Retain patient categories where TP53_mutation_count...`
+
+   Then list predicates such as `> 0`, `>= 1`, `= 0`, and
+   `Choose custom threshold...`. The custom-threshold item keeps the ellipsis
+   because it opens a dialog.
 
    For the first implementation, list only quantitative metadata attributes as
    condition candidates.
@@ -114,7 +135,27 @@ be added later after the state action exists.
    The dialog should choose an operator and numeric operand, then dispatch the
    new sample action.
 
-8. Add focused tests.
+8. Investigate whether predicate result counts are useful and feasible.
+
+   The mockup shows counts such as `(3 patients, 9 samples)` next to each
+   predicate. This is useful only if the wording is easy to understand. Counting
+   retained samples is straightforward after the action helper exists, but
+   counting retained category values may need careful labeling because the
+   category name is dynamic.
+
+   A possible implementation path:
+
+   - For each quick predicate, compute retained attribute values from current
+     samples using the same helper as the reducer.
+   - Count retained samples by applying those retained values to the current
+     sample groups.
+   - Format the result with the selected attribute name, for example
+     `(3 patient categories, 9 samples)`.
+
+   Treat this as a UI refinement unless user testing shows that the count
+   preview materially improves confidence.
+
+9. Add focused tests.
 
    Add tests to:
 
@@ -132,7 +173,7 @@ be added later after the state action exists.
      `applyToSamples(...)`.
    - Both attributes are augmented before the reducer runs.
 
-9. Document the action in
+10. Document the action in
    `docs/sample-collections/analyzing.md`.
 
    Add a short user-facing section under "The actions", near the existing
