@@ -54,6 +54,37 @@ function createRuntimeStub() {
                 };
             }
 
+            if (attribute.specifier === "eventCount") {
+                return {
+                    attribute,
+                    title: "event count",
+                    dataType: "quantitative",
+                    scope: "visible_samples",
+                    sampleIds: [
+                        "sampleA",
+                        "sampleB",
+                        "sampleC",
+                        "sampleD",
+                        "sampleE",
+                    ],
+                    values: [0, 0, 1, 2, undefined],
+                };
+            }
+
+            if (attribute.specifier === "continuous") {
+                return {
+                    attribute,
+                    title: "continuous",
+                    dataType: "quantitative",
+                    scope: "visible_samples",
+                    sampleIds: Array.from(
+                        { length: 25 },
+                        (_, index) => `sample${index}`
+                    ),
+                    values: Array.from({ length: 25 }, (_, index) => index),
+                };
+            }
+
             if (attribute.specifier === "sex") {
                 return {
                     attribute,
@@ -68,6 +99,37 @@ function createRuntimeStub() {
             return undefined;
         }),
         getGroupedAttributeSummarySource: vi.fn((attribute) => {
+            if (attribute.type === "VALUE_AT_LOCUS") {
+                return {
+                    attribute,
+                    title: "max(beta)",
+                    dataType: "quantitative",
+                    scope: "visible_groups",
+                    groupLevels: [
+                        {
+                            level: 0,
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "diagnosis",
+                            },
+                            title: "diagnosis",
+                        },
+                    ],
+                    groups: [
+                        {
+                            path: ["A"],
+                            titles: ["A"],
+                            title: "A",
+                            sampleIds: ["sampleA", "sampleB"],
+                        },
+                    ],
+                    valuesBySampleId: {
+                        sampleA: 0.2,
+                        sampleB: 0.8,
+                    },
+                };
+            }
+
             if (attribute.specifier !== "tissue") {
                 return undefined;
             }
@@ -161,7 +223,87 @@ describe("attributeSummaryTool", () => {
             q1: 15,
             q3: 30,
             iqr: 15,
+            negativeCount: 0,
+            zeroCount: 0,
+            positiveCount: 3,
+            nonZeroCount: 3,
+            negativeShare: 0,
+            zeroShare: 0,
+            positiveShare: 1,
+            nonZeroShare: 1,
+            valueDistribution: {
+                kind: "value_counts",
+                distinctCount: 3,
+                counts: [
+                    { value: 10, count: 1, share: 0.333333 },
+                    { value: 20, count: 1, share: 0.333333 },
+                    { value: 40, count: 1, share: 0.333333 },
+                ],
+            },
         });
+    });
+
+    it("returns sign and zero-count helpers for sparse quantitative values", () => {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "eventCount",
+            },
+            scope: "visible_samples",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                nonMissingCount: 4,
+                missingCount: 1,
+                zeroCount: 2,
+                positiveCount: 2,
+                nonZeroCount: 2,
+                zeroShare: 0.5,
+                positiveShare: 0.5,
+                nonZeroShare: 0.5,
+                valueDistribution: {
+                    kind: "value_counts",
+                    distinctCount: 3,
+                    counts: [
+                        { value: 0, count: 2, share: 0.5 },
+                        { value: 1, count: 1, share: 0.25 },
+                        { value: 2, count: 1, share: 0.25 },
+                    ],
+                },
+            })
+        );
+    });
+
+    it("returns bounded histogram bins for high-cardinality quantitative values", () => {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "continuous",
+            },
+            scope: "visible_samples",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                valueDistribution: {
+                    kind: "histogram",
+                    distinctCount: 25,
+                    binning: {
+                        start: 0,
+                        stop: 25,
+                        step: 5,
+                    },
+                    bins: [
+                        { bin: [0, 5], count: 5, share: 5 / 25 },
+                        { bin: [5, 10], count: 5, share: 5 / 25 },
+                        { bin: [10, 15], count: 5, share: 5 / 25 },
+                        { bin: [15, 20], count: 5, share: 5 / 25 },
+                        { bin: [20, 25], count: 5, share: 5 / 25 },
+                    ],
+                },
+            })
+        );
     });
 
     it("returns categorical shares for visible samples", () => {
@@ -214,6 +356,15 @@ describe("attributeSummaryTool", () => {
                 nonMissingCount: 2,
                 min: 0.2,
                 max: 0.8,
+                selectionAggregation: {
+                    op: "max",
+                    valueLevel: "sample",
+                    summaryLevel: "visible_samples",
+                    interpretation:
+                        "Each value was first aggregated over the selected interval for one sample; these summary statistics describe the distribution of those per-sample values across visible samples.",
+                    nextStepHint:
+                        'For deeper comparison, first group samples with an intent action, then call getAttributeSummary again with scope: "visible_groups".',
+                },
             })
         );
         expect(runtime.getAttributeSummarySource).toHaveBeenCalledWith({
@@ -234,6 +385,35 @@ describe("attributeSummaryTool", () => {
                 aggregation: { op: "max" },
             },
         });
+    });
+
+    it("summarizes grouped selection aggregation candidates", () => {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
+            attribute: {
+                type: "SELECTION_AGGREGATION",
+                candidateId: "brush@track:beta",
+                aggregation: "max",
+            },
+            scope: "visible_groups",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "grouped_attribute_summary",
+                title: "max(beta)",
+                dataType: "quantitative",
+                scope: "visible_groups",
+                selectionAggregation: {
+                    op: "max",
+                    valueLevel: "sample",
+                    summaryLevel: "visible_groups",
+                    interpretation:
+                        "Each value was first aggregated over the selected interval for one sample; each group summary describes the distribution of those per-sample values within that visible group.",
+                    nextStepHint:
+                        "Compare group-level distributions; do not interpret a pooled mean as a sample count.",
+                },
+            })
+        );
     });
 
     it("returns categorical shares for visible groups", () => {

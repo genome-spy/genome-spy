@@ -139,6 +139,9 @@ export type JumpToInitialProvenanceStateToolInput = Record<string, never>;
  * When summarizing a `SELECTION_AGGREGATION`, the candidate aggregation is
  * resolved first per sample, and this tool summarizes those per-sample values
  * across visible samples or groups.
+ * For quantitative summaries, use `nonZeroCount`/`positiveCount` for selected
+ * item presence when the selection aggregation is `count`. Use
+ * `valueDistribution` for exact value frequencies or bounded histogram bins.
  * Use `visible_samples` for pooled metadata facts such as available category
  * values or numeric ranges. Use `visible_groups` only after the sample view is
  * already grouped and the user needs per-group facts. If the user asks to group

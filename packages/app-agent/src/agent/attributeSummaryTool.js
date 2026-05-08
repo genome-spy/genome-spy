@@ -6,6 +6,9 @@ import {
 import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
 
 const DEFAULT_MAX_GROUPS = 20;
+const DEFAULT_MAX_EXACT_VALUE_COUNTS = 20;
+const DEFAULT_MAX_HISTOGRAM_BINS = 12;
+const VALUE_DISTRIBUTION_SIGNIFICANT_DIGITS = 6;
 
 /**
  * @typedef {import("./agentToolInputs.d.ts").GetAttributeSummaryToolInput} GetAttributeSummaryToolInput
@@ -90,7 +93,7 @@ function buildGroupedAttributeSummary(runtime, attribute) {
                   path: group.path,
                   titles: group.titles,
                   title: group.title,
-                  ...buildQuantitativeFieldSummary(
+                  ...buildQuantitativeAgentSummary(
                       group.sampleIds.map(
                           (sampleId) => source.valuesBySampleId[sampleId]
                       )
@@ -114,6 +117,7 @@ function buildGroupedAttributeSummary(runtime, attribute) {
         ...(source.description ? { description: source.description } : {}),
         dataType: source.dataType,
         scope: source.scope,
+        ...buildSelectionAggregationMetadata(source.attribute, source.scope),
         groupLevels: source.groupLevels,
         groupCount: source.groups.length,
         groups,
@@ -137,8 +141,9 @@ function buildQuantitativeSummary(source) {
         ...(source.description ? { description: source.description } : {}),
         dataType: source.dataType,
         scope: source.scope,
+        ...buildSelectionAggregationMetadata(source.attribute, source.scope),
         sampleCount: source.sampleIds.length,
-        ...buildQuantitativeFieldSummary(source.values),
+        ...buildQuantitativeAgentSummary(source.values),
     };
 }
 
@@ -156,6 +161,223 @@ function buildCategoricalSummary(source) {
         sampleCount: source.sampleIds.length,
         ...buildCategoricalFieldSummary(source.values),
     };
+}
+
+/**
+ * @param {AttributeIdentifier} attribute
+ * @param {AttributeSummaryScope} scope
+ */
+function buildSelectionAggregationMetadata(attribute, scope) {
+    if (
+        attribute.type !== "VALUE_AT_LOCUS" ||
+        typeof attribute.specifier !== "object" ||
+        attribute.specifier === null ||
+        !("aggregation" in attribute.specifier)
+    ) {
+        return {};
+    }
+
+    const op = attribute.specifier.aggregation.op;
+
+    return {
+        selectionAggregation: {
+            op,
+            valueLevel: "sample",
+            summaryLevel: scope,
+            interpretation:
+                scope === "visible_groups"
+                    ? "Each value was first aggregated over the selected interval for one sample; each group summary describes the distribution of those per-sample values within that visible group."
+                    : "Each value was first aggregated over the selected interval for one sample; these summary statistics describe the distribution of those per-sample values across visible samples.",
+            nextStepHint:
+                scope === "visible_groups"
+                    ? "Compare group-level distributions; do not interpret a pooled mean as a sample count."
+                    : 'For deeper comparison, first group samples with an intent action, then call getAttributeSummary again with scope: "visible_groups".',
+        },
+    };
+}
+
+/**
+ * @param {unknown[]} values
+ */
+function buildQuantitativeAgentSummary(values) {
+    return {
+        ...buildQuantitativeFieldSummary(values),
+        ...buildQuantitativeSignSummary(values),
+        valueDistribution: buildValueDistribution(values),
+    };
+}
+
+/**
+ * @param {unknown[]} values
+ */
+function buildValueDistribution(values) {
+    const numericValues = values
+        .map(coerceNumericValue)
+        .filter((value) => value !== undefined);
+    /** @type {Map<number, number>} */
+    const counts = new Map();
+
+    for (const value of numericValues) {
+        counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+
+    if (counts.size <= DEFAULT_MAX_EXACT_VALUE_COUNTS) {
+        return {
+            kind: "value_counts",
+            distinctCount: counts.size,
+            counts: Array.from(counts.entries())
+                .sort(([a], [b]) => a - b)
+                .map(([value, count]) => ({
+                    value,
+                    count,
+                    share: cleanDistributionNumber(
+                        getShare(count, numericValues.length)
+                    ),
+                })),
+        };
+    }
+
+    return buildHistogramDistribution(numericValues, counts.size);
+}
+
+/**
+ * @param {number[]} values
+ * @param {number} distinctCount
+ */
+function buildHistogramDistribution(values, distinctCount) {
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const step = niceStep((max - min) / DEFAULT_MAX_HISTOGRAM_BINS);
+    const start = cleanNumber(Math.floor(min / step) * step);
+    const stop = cleanNumber(Math.ceil(max / step) * step);
+    const binCount = Math.max(1, Math.ceil((stop - start) / step));
+    const bins = Array.from({ length: binCount }, (_, index) => ({
+        bin: [
+            cleanNumber(start + index * step),
+            cleanNumber(start + (index + 1) * step),
+        ],
+        count: 0,
+        share: 0,
+    }));
+
+    for (const value of values) {
+        const index = Math.min(
+            Math.floor((value - start) / step),
+            bins.length - 1
+        );
+        bins[index].count++;
+    }
+
+    for (const bin of bins) {
+        bin.share = cleanDistributionNumber(getShare(bin.count, values.length));
+    }
+
+    return {
+        kind: "histogram",
+        distinctCount,
+        binning: {
+            start,
+            stop: bins[bins.length - 1].bin[1],
+            step,
+        },
+        bins,
+    };
+}
+
+/**
+ * @param {number} step
+ */
+function niceStep(step) {
+    const power = Math.floor(Math.log10(step));
+    const base = 10 ** power;
+    const error = step / base;
+
+    if (error >= 5) {
+        return 10 * base;
+    } else if (error >= 2) {
+        return 5 * base;
+    } else if (error >= 1) {
+        return 2 * base;
+    } else {
+        return base;
+    }
+}
+
+/**
+ * @param {number} value
+ */
+function cleanNumber(value) {
+    return Number(value.toPrecision(12));
+}
+
+/**
+ * @param {number} value
+ */
+function cleanDistributionNumber(value) {
+    return Number(value.toPrecision(VALUE_DISTRIBUTION_SIGNIFICANT_DIGITS));
+}
+
+/**
+ * @param {unknown[]} values
+ */
+function buildQuantitativeSignSummary(values) {
+    let negativeCount = 0;
+    let zeroCount = 0;
+    let positiveCount = 0;
+
+    for (const value of values) {
+        const numericValue = coerceNumericValue(value);
+        if (numericValue === undefined) {
+            continue;
+        }
+
+        if (numericValue < 0) {
+            negativeCount++;
+        } else if (numericValue === 0) {
+            zeroCount++;
+        } else {
+            positiveCount++;
+        }
+    }
+
+    const nonZeroCount = negativeCount + positiveCount;
+    const nonMissingCount = negativeCount + zeroCount + positiveCount;
+
+    return {
+        negativeCount,
+        zeroCount,
+        positiveCount,
+        nonZeroCount,
+        negativeShare: getShare(negativeCount, nonMissingCount),
+        zeroShare: getShare(zeroCount, nonMissingCount),
+        positiveShare: getShare(positiveCount, nonMissingCount),
+        nonZeroShare: getShare(nonZeroCount, nonMissingCount),
+    };
+}
+
+/**
+ * @param {number} value
+ * @param {number} total
+ */
+function getShare(value, total) {
+    return total > 0 ? value / total : 0;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {number | undefined}
+ */
+function coerceNumericValue(value) {
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : undefined;
+    }
+
+    if (typeof value === "string" && value.trim() !== "") {
+        const numericValue = Number(value);
+        return Number.isFinite(numericValue) ? numericValue : undefined;
+    }
+
+    return undefined;
 }
 
 /**
