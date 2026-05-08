@@ -581,7 +581,7 @@
     },
     "GetAttributeSummaryToolInput": {
       "additionalProperties": false,
-      "description": "Return a compact summary of one attribute (metadata or selection-derived) across visible samples or within each current visible group. When summarizing a `SELECTION_AGGREGATION`, the candidate aggregation is resolved first per sample, and this tool summarizes those per-sample values across visible samples or groups. Use `visible_samples` for pooled metadata facts such as available category values or numeric ranges. Use `visible_groups` only after the sample view is already grouped and the user needs per-group facts. If the user asks to group by one attribute and then compare or report another attribute by group, first submit the grouping action, wait for the refreshed context, and then call this tool with `scope: \"visible_groups\"` for the attribute to report.",
+      "description": "Return a compact summary of one attribute (metadata or selection-derived) across visible samples or within each current visible group. When summarizing a `SELECTION_AGGREGATION`, the candidate aggregation is resolved first per sample, and this tool summarizes those per-sample values across visible samples or groups. For quantitative summaries, use `nonZeroCount`/`positiveCount` for selected item presence when the selection aggregation is `count`. Use `valueDistribution` for exact value frequencies or bounded histogram bins. Use `visible_samples` for pooled metadata facts such as available category values or numeric ranges. Use `visible_groups` only after the sample view is already grouped and the user needs per-group facts. If the user asks to group by one attribute and then compare or report another attribute by group, first submit the grouping action, wait for the refreshed context, and then call this tool with `scope: \"visible_groups\"` for the attribute to report.",
       "examples": [
         {
           "attribute": {
@@ -1905,7 +1905,7 @@
     },
     "ShowAttributeRelationshipPlotToolInput": {
       "additionalProperties": false,
-      "description": "Show a scatterplot comparing two quantitative sample attributes. When current sample groups are present, point colors show those groups.",
+      "description": "Show a scatterplot comparing two quantitative sample attributes. When sample groups are present, point colors show those groups.",
       "examples": [
         {
           "attributes": [

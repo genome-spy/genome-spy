@@ -248,6 +248,14 @@ Baseline:
      frequencies.
    - Tell the agent to group first and then call `getAttributeSummary` with
      `scope: "visible_groups"` for deeper comparisons.
+   - Result:
+     - `attributeSummaryTool.js`: 437 lines
+     - `attributeSummaryTool.test.js`: 502 lines
+     - `genomespy_system_prompt.md`: 566 lines
+     - `generatedToolSchema.json`: 78,131 bytes
+     - `npx vitest run packages/app-agent/src/agent/attributeSummaryTool.test.js`
+       passed.
+     - `npm -w @genome-spy/app-agent run check:agent` passed.
 
 ## Tests
 
