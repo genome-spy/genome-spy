@@ -591,6 +591,15 @@ export class MetadataView extends ConcatView {
     }
 
     /**
+     * @returns {string[]}
+     */
+    getVisibleAttributeNames() {
+        return Array.from(this.#attributeViews.entries())
+            .filter(([, view]) => view.isVisible())
+            .map(([attributeName]) => attributeName);
+    }
+
+    /**
      * @param {View} view
      */
     #getAttributeInfoForView(view) {

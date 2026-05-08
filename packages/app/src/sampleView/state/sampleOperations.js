@@ -87,8 +87,7 @@ export function retainFirstNCategories(samples, accessor, n) {
  * @param {T[]} samples
  * @param {function(T):any} categoryAccessor
  * @param {function(T):any} conditionAccessor
- * @param {ComparisonOperatorType} operator
- * @param {any} operand
+ * @param {import("./payloadTypes.js").AttributeCondition} condition
  * @returns {T[]}
  * @template T
  */
@@ -96,15 +95,13 @@ export function retainCategoriesByCondition(
     samples,
     categoryAccessor,
     conditionAccessor,
-    operator,
-    operand
+    condition
 ) {
     const retainedCategories = getCategoriesWithMatchingSamples(
         samples,
         categoryAccessor,
         conditionAccessor,
-        operator,
-        operand
+        condition
     );
 
     return samples.filter((sample) =>
@@ -116,8 +113,7 @@ export function retainCategoriesByCondition(
  * @param {Iterable<T>} samples
  * @param {function(T):any} categoryAccessor
  * @param {function(T):any} conditionAccessor
- * @param {ComparisonOperatorType} operator
- * @param {any} operand
+ * @param {import("./payloadTypes.js").AttributeCondition} condition
  * @returns {Set<any>}
  * @template T
  */
@@ -125,19 +121,32 @@ export function getCategoriesWithMatchingSamples(
     samples,
     categoryAccessor,
     conditionAccessor,
-    operator,
-    operand
+    condition
 ) {
-    const op = COMPARISON_OPERATORS[operator];
+    const predicate = createConditionPredicate(condition);
     const retainedCategories = new Set();
 
     for (const sample of samples) {
-        if (op(conditionAccessor(sample), operand)) {
+        if (predicate(conditionAccessor(sample))) {
             retainedCategories.add(categoryAccessor(sample));
         }
     }
 
     return retainedCategories;
+}
+
+/**
+ * @param {import("./payloadTypes.js").AttributeCondition} condition
+ * @returns {function(any):boolean}
+ */
+function createConditionPredicate(condition) {
+    if (condition.operator === "in") {
+        const values = new Set(condition.values);
+        return (value) => values.has(value);
+    } else {
+        const op = COMPARISON_OPERATORS[condition.operator];
+        return (value) => op(value, condition.operand);
+    }
 }
 
 /**
@@ -167,8 +176,7 @@ export function sort(samples, accessor, descending = false) {
 }
 
 /**
- * @type {Record<ComparisonOperatorType, (a: T, b: T) => boolean>}
- * @template T
+ * @type {Record<ComparisonOperatorType, (a: any, b: any) => boolean>}
  */
 const COMPARISON_OPERATORS = {
     lt: (a, b) => a < b,

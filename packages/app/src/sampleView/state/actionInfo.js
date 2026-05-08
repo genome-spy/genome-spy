@@ -200,15 +200,15 @@ const actionHandlers = {
         attributeTitle,
         conditionAttributeTitle,
     }) => {
-        /** @param {string | import("lit").TemplateResult} categoryAttr */
-        const makeTitle = (categoryAttr) => html`
-            Retain ${categoryAttr} categories where ${conditionAttributeTitle}
-            <span class="operator"
-                >${verboseOps[
-                    /** @type {any} */ (payload).condition.operator
-                ]}</span
-            >
-            <strong>${attributeNumberFormat(payload.condition.operand)}</strong>
+        const condition =
+            /** @type {import("./payloadTypes.js").AttributeCondition} */ (
+                payload.condition
+            );
+
+        /** @param {string | import("lit").TemplateResult} attr */
+        const makeTitle = (attr) => html`
+            Retain ${attr} values where any sample has
+            ${conditionAttributeTitle} ${formatConditionPredicate(condition)}
         `;
 
         return {
@@ -300,6 +300,21 @@ const actionHandlers = {
         icon: faFilter,
     }),
 };
+
+/**
+ * @param {import("./payloadTypes.js").AttributeCondition} condition
+ * @returns {import("lit").TemplateResult}
+ */
+function formatConditionPredicate(condition) {
+    if (condition.operator === "in") {
+        return html`in ${formatSet(condition.values)}`;
+    } else {
+        return html`
+            <span class="operator">${verboseOps[condition.operator]}</span>
+            <strong>${attributeNumberFormat(condition.operand)}</strong>
+        `;
+    }
+}
 
 /**
  * Describes an action for displaying it in menus or provenance tracking.

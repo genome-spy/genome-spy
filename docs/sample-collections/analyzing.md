@@ -174,12 +174,12 @@ patient (the category) has multiple samples, this action allows you to retain
 all samples from the top-5 patients based on the highest number of mutations
 (the another attribute) in any of their samples.
 
-#### Retain categories based on another attribute
+#### Retain values based on another attribute
 
-This action retains all samples from categories where at least one sample
-satisfies a condition on another attribute. For example, after deriving a
-`TP53_mutation_count` metadata column, you can keep all samples from patients
-with at least one sample where `TP53_mutation_count > 0`.
+This action retains all samples whose value in the selected attribute has at
+least one matching sample. For example, after deriving a
+`TP53_mutation_count` metadata column, you can keep all samples whose patient
+has at least one sample where `TP53_mutation_count > 0`.
 
 #### Create custom groups
 

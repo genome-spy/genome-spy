@@ -472,8 +472,7 @@ export const sampleSlice = createSlice({
                 getSampleGroups(state).flatMap((group) => group.samples),
                 categoryAccessor,
                 conditionAccessor,
-                action.payload.condition.operator,
-                action.payload.condition.operand
+                action.payload.condition
             );
             applyToSamples(state, (samples) =>
                 samples.filter((sample) =>

@@ -2,14 +2,23 @@
  * @typedef {import("../utils/ui/contextMenu.js").MenuItem} MenuItem
  */
 
-import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
-import { html } from "lit";
+import {
+    faFilter,
+    faFont,
+    faHashtag,
+    faObjectGroup,
+} from "@fortawesome/free-solid-svg-icons";
 import { advancedAttributeFilterDialog } from "./attributeDialogs/advancedAttributeFilterDialog.js";
 import { showGroupByThresholdsDialog } from "./attributeDialogs/groupByThresholdsDialog.js";
 import retainFirstNCategoriesDialog from "./attributeDialogs/retainFirstNCategoriesDialog.js";
 import { showRetainCategoriesByAttributeDialog } from "./attributeDialogs/retainCategoriesByAttributeDialog.js";
 import { showCreateCustomGroupsDialog } from "./attributeDialogs/createCustomGroupsDialog.js";
 import { sampleSlice } from "./state/sampleSlice.js";
+import { extractAttributeValues } from "./attributeValues.js";
+import {
+    buildPathTree,
+    METADATA_PATH_SEPARATOR,
+} from "./metadata/metadataUtils.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -118,7 +127,7 @@ export default function generateAttributeContextMenu(
                     label:
                         "Retain " +
                         attributeInfo.name +
-                        " categories based on another attribute",
+                        " values based on another attribute",
                     submenu: retainCategoriesSubmenu,
                 });
             }
@@ -209,39 +218,108 @@ function buildRetainCategoriesSubmenu(categoryAttributeInfo, sampleView) {
         return [];
     }
 
-    return sampleView.sampleHierarchy.sampleMetadata.attributeNames
+    const attributeNames =
+        sampleView.metadataView?.getVisibleAttributeNames() ??
+        sampleView.sampleHierarchy.sampleMetadata.attributeNames;
+    const candidateAttributes = attributeNames
         .filter(
             (attributeName) => attributeName !== categoryAttribute.specifier
         )
-        .flatMap((attributeName) => {
+        .map((attributeName) => {
             const conditionAttributeInfo =
                 sampleView.compositeAttributeInfoSource.getAttributeInfo({
                     type: SAMPLE_ATTRIBUTE,
                     specifier: attributeName,
                 });
-            if (conditionAttributeInfo.type !== "quantitative") {
-                return [];
+            if (!isRetainCategoriesConditionAttribute(conditionAttributeInfo)) {
+                return;
             }
 
-            return [
-                {
-                    customContent: html`<span
-                        ><span class="attribute-type-icon"
-                            >${getAttributeTypeIcon(
-                                conditionAttributeInfo
-                            )}</span
-                        >
-                        ${conditionAttributeInfo.name}</span
-                    >`,
-                    submenu: () =>
-                        buildRetainCategoriesConditionSubmenu(
-                            categoryAttributeInfo,
-                            conditionAttributeInfo,
-                            sampleView
-                        ),
-                },
-            ];
-        });
+            return conditionAttributeInfo;
+        })
+        .filter((info) => info);
+
+    return buildConditionAttributeMenuTree(
+        categoryAttributeInfo,
+        /** @type {import("./types.js").AttributeInfo[]} */ (
+            candidateAttributes
+        ),
+        sampleView
+    );
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} categoryAttributeInfo
+ * @param {import("./types.js").AttributeInfo[]} conditionAttributeInfos
+ * @param {import("./sampleView.js").default} sampleView
+ * @returns {MenuItem[]}
+ */
+function buildConditionAttributeMenuTree(
+    categoryAttributeInfo,
+    conditionAttributeInfos,
+    sampleView
+) {
+    const attributeInfoByName = new Map(
+        conditionAttributeInfos.map((info) => [info.name, info])
+    );
+    const root = buildPathTree(
+        conditionAttributeInfos.map((info) => info.name),
+        METADATA_PATH_SEPARATOR
+    );
+
+    return Array.from(root.children.values()).map((node) =>
+        conditionAttributeNodeToMenuItem(
+            categoryAttributeInfo,
+            attributeInfoByName,
+            node,
+            sampleView
+        )
+    );
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} categoryAttributeInfo
+ * @param {Map<string, import("./types.js").AttributeInfo>} attributeInfoByName
+ * @param {import("./metadata/metadataUtils.js").PathTreeNode} node
+ * @param {import("./sampleView.js").default} sampleView
+ * @returns {MenuItem}
+ */
+function conditionAttributeNodeToMenuItem(
+    categoryAttributeInfo,
+    attributeInfoByName,
+    node,
+    sampleView
+) {
+    if (node.children.size > 0) {
+        return {
+            label: node.part,
+            submenu: () =>
+                Array.from(node.children.values()).map((child) =>
+                    conditionAttributeNodeToMenuItem(
+                        categoryAttributeInfo,
+                        attributeInfoByName,
+                        child,
+                        sampleView
+                    )
+                ),
+        };
+    }
+
+    const conditionAttributeInfo = attributeInfoByName.get(node.path);
+    if (!conditionAttributeInfo) {
+        throw new Error("No attribute info for menu leaf: " + node.path);
+    }
+
+    return {
+        icon: getAttributeTypeIcon(conditionAttributeInfo),
+        label: node.part,
+        submenu: () =>
+            buildRetainCategoriesConditionSubmenu(
+                categoryAttributeInfo,
+                conditionAttributeInfo,
+                sampleView
+            ),
+    };
 }
 
 /**
@@ -255,46 +333,48 @@ function buildRetainCategoriesConditionSubmenu(
     conditionAttributeInfo,
     sampleView
 ) {
-    const dispatchAction = (
-        /** @type {import("./state/payloadTypes.js").ComparisonOperatorType} */ operator,
-        /** @type {number} */ operand
-    ) =>
-        sampleView.dispatchAttributeAction(
-            sampleView.actions.retainCategoriesByAttribute({
-                attribute: categoryAttributeInfo.attribute,
-                condition: {
-                    attribute: conditionAttributeInfo.attribute,
-                    operator,
-                    operand,
-                },
-            })
-        );
-
     return [
         {
             label:
                 "Retain " +
                 categoryAttributeInfo.name +
-                " categories where " +
+                " values where any sample has " +
                 conditionAttributeInfo.name,
             type: "header",
         },
-        {
-            icon: faFilter,
-            label: "> 0",
-            callback: () => dispatchAction("gt", 0),
-        },
-        {
-            icon: faFilter,
-            label: ">= 1",
-            callback: () => dispatchAction("gte", 1),
-        },
-        {
-            icon: faFilter,
-            label: "= 0",
-            callback: () => dispatchAction("eq", 0),
-        },
-        {
+        ...buildRetainCategoriesConditionItems(
+            categoryAttributeInfo,
+            conditionAttributeInfo,
+            sampleView
+        ),
+    ];
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} categoryAttributeInfo
+ * @param {import("./types.js").AttributeInfo} conditionAttributeInfo
+ * @param {import("./sampleView.js").default} sampleView
+ * @returns {MenuItem[]}
+ */
+function buildRetainCategoriesConditionItems(
+    categoryAttributeInfo,
+    conditionAttributeInfo,
+    sampleView
+) {
+    const items = getRetainCategoriesConditionSpecs(
+        conditionAttributeInfo,
+        sampleView
+    ).map(({ label, condition }) =>
+        createRetainCategoriesConditionItem(
+            categoryAttributeInfo,
+            sampleView,
+            label,
+            condition
+        )
+    );
+
+    if (conditionAttributeInfo.type === "quantitative") {
+        items.push({
             icon: faFilter,
             label: "Choose custom threshold...",
             callback: () =>
@@ -303,16 +383,124 @@ function buildRetainCategoriesConditionSubmenu(
                     conditionAttributeInfo,
                     sampleView
                 ),
-        },
-    ];
+        });
+    }
+
+    return items;
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} conditionAttributeInfo
+ * @param {import("./sampleView.js").default} sampleView
+ * @returns {{ label: string, condition: import("./state/payloadTypes.js").AttributeCondition }[]}
+ */
+function getRetainCategoriesConditionSpecs(conditionAttributeInfo, sampleView) {
+    if (conditionAttributeInfo.type === "quantitative") {
+        return [
+            {
+                label: "> 0",
+                condition: {
+                    attribute: conditionAttributeInfo.attribute,
+                    operator: "gt",
+                    operand: 0,
+                },
+            },
+            {
+                label: ">= 1",
+                condition: {
+                    attribute: conditionAttributeInfo.attribute,
+                    operator: "gte",
+                    operand: 1,
+                },
+            },
+            {
+                label: "= 0",
+                condition: {
+                    attribute: conditionAttributeInfo.attribute,
+                    operator: "eq",
+                    operand: 0,
+                },
+            },
+        ];
+    }
+
+    return getAttributeCategories(conditionAttributeInfo, sampleView).map(
+        (value) => ({
+            label: "= " + String(value),
+            condition: {
+                attribute: conditionAttributeInfo.attribute,
+                operator: "in",
+                values: [value],
+            },
+        })
+    );
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} categoryAttributeInfo
+ * @param {import("./sampleView.js").default} sampleView
+ * @param {string} label
+ * @param {import("./state/payloadTypes.js").AttributeCondition} condition
+ * @returns {MenuItem}
+ */
+function createRetainCategoriesConditionItem(
+    categoryAttributeInfo,
+    sampleView,
+    label,
+    condition
+) {
+    return {
+        label,
+        callback: () =>
+            sampleView.dispatchAttributeAction(
+                sampleView.actions.retainCategoriesByAttribute({
+                    attribute: categoryAttributeInfo.attribute,
+                    condition,
+                })
+            ),
+    };
 }
 
 /**
  * @param {import("./types.js").AttributeInfo} attributeInfo
- * @returns {string}
+ * @returns {import("@fortawesome/free-solid-svg-icons").IconDefinition}
  */
 function getAttributeTypeIcon(attributeInfo) {
-    return attributeInfo.type === "quantitative" ? "#" : "A";
+    return attributeInfo.type === "quantitative" ? faHashtag : faFont;
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @returns {boolean}
+ */
+function isRetainCategoriesConditionAttribute(attributeInfo) {
+    return (
+        attributeInfo.type === "quantitative" ||
+        attributeInfo.type === "nominal" ||
+        attributeInfo.type === "ordinal"
+    );
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} attributeInfo
+ * @param {import("./sampleView.js").default} sampleView
+ * @returns {any[]}
+ */
+function getAttributeCategories(attributeInfo, sampleView) {
+    const domain = attributeInfo.scale?.domain?.();
+    if (Array.isArray(domain)) {
+        return domain;
+    }
+
+    return Array.from(
+        new Set(
+            extractAttributeValues(
+                attributeInfo,
+                sampleView.leafSamples,
+                sampleView.sampleHierarchy
+            )
+        )
+    );
 }
 
 /**

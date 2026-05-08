@@ -129,8 +129,11 @@ describe("sampleOperations", () => {
             samples,
             (sample) => patient[sample],
             (sample) => mutationCount[sample],
-            "gt",
-            0
+            {
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "mutations" },
+                operator: "gt",
+                operand: 0,
+            }
         );
 
         expect(retained).toEqual(["s1", "s2", "s5"]);
@@ -145,11 +148,36 @@ describe("sampleOperations", () => {
             samples.values(),
             (sample) => category[sample],
             (sample) => count[sample],
-            "gte",
-            1
+            {
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "count" },
+                operator: "gte",
+                operand: 1,
+            }
         );
 
         expect(Array.from(retainedCategories)).toEqual(["p1"]);
+    });
+
+    it("collects categories with categorical condition matches", () => {
+        const samples = ["s1", "s2", "s3", "s4"];
+        const patient = { s1: "p1", s2: "p1", s3: "p2", s4: "p3" };
+        const diagnosis = { s1: "AML", s2: "MDS", s3: "ALL", s4: "AML" };
+
+        const retainedCategories = getCategoriesWithMatchingSamples(
+            samples,
+            (sample) => patient[sample],
+            (sample) => diagnosis[sample],
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+                operator: "in",
+                values: ["AML"],
+            }
+        );
+
+        expect(Array.from(retainedCategories)).toEqual(["p1", "p3"]);
     });
 
     it("sorts samples in ascending and descending order", () => {

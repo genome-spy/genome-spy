@@ -28,13 +28,15 @@ least one sample where `TP53_mutation_count > 0`.
 Implement the first slice for metadata attributes in the App:
 
 - Category attribute: nominal or ordinal metadata, for example `patient`.
-- Condition attribute: quantitative metadata, for example
-  `TP53_mutation_count`.
-- Condition: threshold comparison using the existing operators
+- Condition attribute: quantitative, nominal, or ordinal metadata, for example
+  `TP53_mutation_count` or `diagnosis`.
+- Quantitative condition: threshold comparison using the existing operators
   `lt`, `lte`, `eq`, `gte`, and `gt`.
+- Categorical condition: membership using the `in` operator and a `values`
+  array.
 
-Categorical condition attributes and conditions on non-metadata attributes can
-be added later after the state action exists.
+Conditions on non-metadata attributes can be added later after the state action
+exists.
 
 ## Implementation Steps
 
@@ -86,7 +88,7 @@ be added later after the state action exists.
 
    The label should mention both attributes and the threshold, for example:
 
-   `Retain patient categories where TP53 mutation count >= 1`
+   `Retain patient values where any sample has TP53 mutation count >= 1`
 
    Reuse the existing operator formatting used by `filterByQuantitative`.
 
@@ -95,16 +97,17 @@ be added later after the state action exists.
 
    When the active attribute is nominal or ordinal, add a submenu such as:
 
-   - `Retain patient categories based on another attribute`
+   - `Retain patient values based on another attribute`
    - one entry per eligible metadata attribute except the active category
      attribute
    - quantitative quick actions such as `> 0`, `>= 1`, `= 0`, or
      `Choose custom threshold...`
+   - categorical quick actions such as `= AML` or `= primary`
 
    Menu labels must follow the existing convention that `...` is reserved for
    items that open a dialog. Submenu-opening items should not use an ellipsis.
    The top-level label should include the selected attribute name when possible,
-   for example `Retain patient categories based on another attribute`.
+   for example `Retain patient values based on another attribute`.
 
    Attribute candidates in the next submenu should indicate their type. The
    mockup uses `#` for quantitative attributes and `A` for categorical
@@ -116,14 +119,15 @@ be added later after the state action exists.
    semantics explicit before listing concrete predicates. For example, after
    choosing `TP53_mutation_count`, show:
 
-   `Retain patient categories where TP53_mutation_count...`
+   `Retain patient values where any sample has TP53_mutation_count...`
 
    Then list predicates such as `> 0`, `>= 1`, `= 0`, and
    `Choose custom threshold...`. The custom-threshold item keeps the ellipsis
    because it opens a dialog.
 
-   For the first implementation, list only quantitative metadata attributes as
-   condition candidates.
+   For categorical condition attributes, list one `= <value>` item per
+   category value for the first implementation. Multi-value categorical
+   predicates can be added later with a chooser dialog if needed.
 
 7. Add a small threshold dialog only if quick actions are not enough.
 
@@ -150,7 +154,7 @@ be added later after the state action exists.
    - Count retained samples by applying those retained values to the current
      sample groups.
    - Format the result with the selected attribute name, for example
-     `(3 patient categories, 9 samples)`.
+     `(3 patient values, 9 samples)`.
 
    Treat this as a UI refinement unless user testing shows that the count
    preview materially improves confidence.
@@ -165,10 +169,10 @@ be added later after the state action exists.
 
    Required cases:
 
-   - A category is retained when one member satisfies the condition.
-   - All samples in a retained category are kept, including members that do not
-     satisfy the condition themselves.
-   - Categories with no satisfying samples are removed.
+   - An attribute value is retained when one member satisfies the condition.
+   - All samples with a retained attribute value are kept, including members
+     that do not satisfy the condition themselves.
+   - Attribute values with no satisfying samples are removed.
    - Current sample group boundaries are respected if the reducer uses
      `applyToSamples(...)`.
    - Both attributes are augmented before the reducer runs.
@@ -178,13 +182,14 @@ be added later after the state action exists.
 
    Add a short user-facing section under "The actions", near the existing
    retention/filtering actions. The text should explain that the action keeps
-   all samples in a category when at least one sample in that category matches a
-   condition on another attribute.
+   all samples for an attribute value when at least one sample with that value
+   matches a condition on another attribute.
 
    Example wording:
 
-   > This action retains all samples from categories where at least one sample
-   > satisfies a condition on another attribute. For example, after deriving a
+   > This action retains all samples whose value in the selected attribute has
+   > at least one sample satisfying a condition on another attribute. For
+   > example, after deriving a
    > `TP53_mutation_count` metadata column, you can keep all samples from
    > patients with at least one sample where `TP53_mutation_count > 0`.
 

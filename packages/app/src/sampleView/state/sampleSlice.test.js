@@ -609,6 +609,58 @@ describe("sampleSlice reducers", () => {
         });
     });
 
+    it("retains categories with categorical condition matches", () => {
+        let state = sampleSlice.reducer(
+            undefined,
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                    { id: "s3", displayName: "s3", indexNumber: 2 },
+                    { id: "s4", displayName: "s4", indexNumber: 3 },
+                ],
+            })
+        );
+
+        state = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.retainCategoriesByAttribute({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+                condition: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
+                    operator: "in",
+                    values: ["AML"],
+                },
+                [AUGMENTED_KEY]: {
+                    values: {
+                        s1: "p1",
+                        s2: "p1",
+                        s3: "p2",
+                        s4: "p3",
+                    },
+                    conditionValues: {
+                        s1: "AML",
+                        s2: "MDS",
+                        s3: "ALL",
+                        s4: "AML",
+                    },
+                },
+            })
+        );
+
+        expect(state.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            samples: ["s1", "s2", "s4"],
+        });
+    });
+
     it("throws if augmented payload is missing for retainCategoriesByAttribute", () => {
         const state = createSampleHierarchy();
 

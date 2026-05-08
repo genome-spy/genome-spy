@@ -203,6 +203,27 @@ export interface QuantitativeAttributeCondition {
     operand: number;
 }
 
+export interface CategoricalAttributeCondition {
+    /**
+     * Categorical or ordinal attribute tested within each category.
+     */
+    attribute: AttributeIdentifier;
+
+    /**
+     * Membership test applied as `attributeValue in values`.
+     */
+    operator: "in";
+
+    /**
+     * Attribute values that satisfy the condition.
+     */
+    values: Scalar[];
+}
+
+export type AttributeCondition =
+    | QuantitativeAttributeCondition
+    | CategoricalAttributeCondition;
+
 /**
  * Payloads that reference an abstract attribute include this interface.
  * As some of the attributes reside outside the redux store, their values
@@ -308,7 +329,7 @@ export interface RetainCategoriesByAttribute extends PayloadWithAttribute {
      * satisfies this condition. All samples with retained `attribute` values are
      * kept.
      */
-    condition: QuantitativeAttributeCondition;
+    condition: AttributeCondition;
 }
 
 export interface FilterByNominal extends PayloadWithAttribute {
