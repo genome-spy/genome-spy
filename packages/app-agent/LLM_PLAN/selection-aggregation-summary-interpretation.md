@@ -208,6 +208,13 @@ Baseline:
    - Measure success:
      - Tests show pooled summaries mention `visible_samples`.
      - Tests show grouped summaries mention `visible_groups`.
+   - Result:
+     - `attributeSummaryTool.js`: 333 lines
+     - `attributeSummaryTool.test.js`: 439 lines
+     - `genomespy_system_prompt.md`: 560 lines
+     - `generatedToolSchema.json`: 77,927 bytes
+     - `npx vitest run packages/app-agent/src/agent/attributeSummaryTool.test.js`
+       passed.
 
 3. Add generic value distribution.
    - Reuse the per-sample values already available in app-agent summary sources.

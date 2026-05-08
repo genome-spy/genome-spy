@@ -114,6 +114,7 @@ function buildGroupedAttributeSummary(runtime, attribute) {
         ...(source.description ? { description: source.description } : {}),
         dataType: source.dataType,
         scope: source.scope,
+        ...buildSelectionAggregationMetadata(source.attribute, source.scope),
         groupLevels: source.groupLevels,
         groupCount: source.groups.length,
         groups,
@@ -137,6 +138,7 @@ function buildQuantitativeSummary(source) {
         ...(source.description ? { description: source.description } : {}),
         dataType: source.dataType,
         scope: source.scope,
+        ...buildSelectionAggregationMetadata(source.attribute, source.scope),
         sampleCount: source.sampleIds.length,
         ...buildQuantitativeAgentSummary(source.values),
     };
@@ -155,6 +157,39 @@ function buildCategoricalSummary(source) {
         scope: source.scope,
         sampleCount: source.sampleIds.length,
         ...buildCategoricalFieldSummary(source.values),
+    };
+}
+
+/**
+ * @param {AttributeIdentifier} attribute
+ * @param {AttributeSummaryScope} scope
+ */
+function buildSelectionAggregationMetadata(attribute, scope) {
+    if (
+        attribute.type !== "VALUE_AT_LOCUS" ||
+        typeof attribute.specifier !== "object" ||
+        attribute.specifier === null ||
+        !("aggregation" in attribute.specifier)
+    ) {
+        return {};
+    }
+
+    const op = attribute.specifier.aggregation.op;
+
+    return {
+        selectionAggregation: {
+            op,
+            valueLevel: "sample",
+            summaryLevel: scope,
+            interpretation:
+                scope === "visible_groups"
+                    ? "Each value was first aggregated over the selected interval for one sample; each group summary describes the distribution of those per-sample values within that visible group."
+                    : "Each value was first aggregated over the selected interval for one sample; these summary statistics describe the distribution of those per-sample values across visible samples.",
+            nextStepHint:
+                scope === "visible_groups"
+                    ? "Compare group-level distributions; do not interpret a pooled mean as a sample count."
+                    : 'For deeper comparison, first group samples with an intent action, then call getAttributeSummary again with scope: "visible_groups".',
+        },
     };
 }
 

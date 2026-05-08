@@ -85,6 +85,37 @@ function createRuntimeStub() {
             return undefined;
         }),
         getGroupedAttributeSummarySource: vi.fn((attribute) => {
+            if (attribute.type === "VALUE_AT_LOCUS") {
+                return {
+                    attribute,
+                    title: "max(beta)",
+                    dataType: "quantitative",
+                    scope: "visible_groups",
+                    groupLevels: [
+                        {
+                            level: 0,
+                            attribute: {
+                                type: "SAMPLE_ATTRIBUTE",
+                                specifier: "diagnosis",
+                            },
+                            title: "diagnosis",
+                        },
+                    ],
+                    groups: [
+                        {
+                            path: ["A"],
+                            titles: ["A"],
+                            title: "A",
+                            sampleIds: ["sampleA", "sampleB"],
+                        },
+                    ],
+                    valuesBySampleId: {
+                        sampleA: 0.2,
+                        sampleB: 0.8,
+                    },
+                };
+            }
+
             if (attribute.specifier !== "tissue") {
                 return undefined;
             }
@@ -262,6 +293,15 @@ describe("attributeSummaryTool", () => {
                 nonMissingCount: 2,
                 min: 0.2,
                 max: 0.8,
+                selectionAggregation: {
+                    op: "max",
+                    valueLevel: "sample",
+                    summaryLevel: "visible_samples",
+                    interpretation:
+                        "Each value was first aggregated over the selected interval for one sample; these summary statistics describe the distribution of those per-sample values across visible samples.",
+                    nextStepHint:
+                        'For deeper comparison, first group samples with an intent action, then call getAttributeSummary again with scope: "visible_groups".',
+                },
             })
         );
         expect(runtime.getAttributeSummarySource).toHaveBeenCalledWith({
@@ -282,6 +322,35 @@ describe("attributeSummaryTool", () => {
                 aggregation: { op: "max" },
             },
         });
+    });
+
+    it("summarizes grouped selection aggregation candidates", () => {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
+            attribute: {
+                type: "SELECTION_AGGREGATION",
+                candidateId: "brush@track:beta",
+                aggregation: "max",
+            },
+            scope: "visible_groups",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                kind: "grouped_attribute_summary",
+                title: "max(beta)",
+                dataType: "quantitative",
+                scope: "visible_groups",
+                selectionAggregation: {
+                    op: "max",
+                    valueLevel: "sample",
+                    summaryLevel: "visible_groups",
+                    interpretation:
+                        "Each value was first aggregated over the selected interval for one sample; each group summary describes the distribution of those per-sample values within that visible group.",
+                    nextStepHint:
+                        "Compare group-level distributions; do not interpret a pooled mean as a sample count.",
+                },
+            })
+        );
     });
 
     it("returns categorical shares for visible groups", () => {
