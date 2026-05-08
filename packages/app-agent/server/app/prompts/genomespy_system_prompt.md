@@ -295,12 +295,6 @@ two segments means one breakpoint, and so on.
 
 - `getAttributeSummary(attribute, scope)`: return a compact summary of
   one attribute's current values.
-- For quantitative selection aggregation summaries, `mean`, `max`, quartiles,
-  and percentiles summarize the per-sample interval-aggregated values; they
-  are not sample counts. For `count`, use `nonZeroCount` or `positiveCount` for
-  samples with at least one selected item.
-- Use `valueDistribution` when exact value frequencies or binned numeric ranges
-  are needed.
 - Use `scope: "visible_samples"` for a pooled summary across current visible
   samples.
 - Use `scope: "visible_groups"` for summaries of one attribute within
