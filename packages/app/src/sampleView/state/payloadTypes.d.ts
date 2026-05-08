@@ -182,6 +182,25 @@ export interface AugmentedAttribute {
     domain?: Scalar[];
     /** Derived metadata payload computed prior to dispatch */
     metadata?: SetMetadata;
+    /** Condition values for actions that compare two attributes */
+    conditionValues?: Record<string, any>;
+}
+
+export interface QuantitativeAttributeCondition {
+    /**
+     * Quantitative attribute tested within each category.
+     */
+    attribute: AttributeIdentifier;
+
+    /**
+     * Comparison applied as `attributeValue operator operand`.
+     */
+    operator: ComparisonOperatorType;
+
+    /**
+     * Numeric value on the right-hand side of the comparison.
+     */
+    operand: number;
 }
 
 /**
@@ -272,6 +291,24 @@ export interface FilterByQuantitative extends PayloadWithAttribute {
      * Numeric value on the right-hand side of the comparison.
      */
     operand: number;
+}
+
+export interface RetainCategoriesByAttribute extends PayloadWithAttribute {
+    /**
+     * Categorical attribute whose categories are retained.
+     *
+     * All samples with a retained category value are kept.
+     */
+    attribute: AttributeIdentifier;
+
+    /**
+     * Per-sample condition used to decide which values of `attribute` are retained.
+     *
+     * A value of `attribute` is retained when at least one sample with that value
+     * satisfies this condition. All samples with retained `attribute` values are
+     * kept.
+     */
+    condition: QuantitativeAttributeCondition;
 }
 
 export interface FilterByNominal extends PayloadWithAttribute {

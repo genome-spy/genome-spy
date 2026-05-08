@@ -81,6 +81,66 @@ export function retainFirstNCategories(samples, accessor, n) {
 }
 
 /**
+ * Retains all samples in categories where at least one sample satisfies the
+ * condition.
+ *
+ * @param {T[]} samples
+ * @param {function(T):any} categoryAccessor
+ * @param {function(T):any} conditionAccessor
+ * @param {ComparisonOperatorType} operator
+ * @param {any} operand
+ * @returns {T[]}
+ * @template T
+ */
+export function retainCategoriesByCondition(
+    samples,
+    categoryAccessor,
+    conditionAccessor,
+    operator,
+    operand
+) {
+    const retainedCategories = getCategoriesWithMatchingSamples(
+        samples,
+        categoryAccessor,
+        conditionAccessor,
+        operator,
+        operand
+    );
+
+    return samples.filter((sample) =>
+        retainedCategories.has(categoryAccessor(sample))
+    );
+}
+
+/**
+ * @param {Iterable<T>} samples
+ * @param {function(T):any} categoryAccessor
+ * @param {function(T):any} conditionAccessor
+ * @param {ComparisonOperatorType} operator
+ * @param {any} operand
+ * @returns {Set<any>}
+ * @template T
+ */
+export function getCategoriesWithMatchingSamples(
+    samples,
+    categoryAccessor,
+    conditionAccessor,
+    operator,
+    operand
+) {
+    const op = COMPARISON_OPERATORS[operator];
+    const retainedCategories = new Set();
+
+    for (const sample of samples) {
+        if (op(conditionAccessor(sample), operand)) {
+            retainedCategories.add(categoryAccessor(sample));
+        }
+    }
+
+    return retainedCategories;
+}
+
+/**
  * TODO: Ordinal attributes
  *
  * @param {T[]} samples

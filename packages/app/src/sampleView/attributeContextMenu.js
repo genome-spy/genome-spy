@@ -6,8 +6,11 @@ import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 import { advancedAttributeFilterDialog } from "./attributeDialogs/advancedAttributeFilterDialog.js";
 import { showGroupByThresholdsDialog } from "./attributeDialogs/groupByThresholdsDialog.js";
 import retainFirstNCategoriesDialog from "./attributeDialogs/retainFirstNCategoriesDialog.js";
+import { showRetainCategoriesByAttributeDialog } from "./attributeDialogs/retainCategoriesByAttributeDialog.js";
 import { showCreateCustomGroupsDialog } from "./attributeDialogs/createCustomGroupsDialog.js";
 import { sampleSlice } from "./state/sampleSlice.js";
+
+const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
@@ -103,6 +106,18 @@ export default function generateAttributeContextMenu(
                         retainFirstNCategoriesDialog(attributeInfo, sampleView)
                 )
             );
+
+            const retainCategoriesSubmenu = buildRetainCategoriesSubmenu(
+                attributeInfo,
+                sampleView
+            );
+            if (retainCategoriesSubmenu.length) {
+                items.push({
+                    icon: faFilter,
+                    label: "Retain categories based on...",
+                    submenu: retainCategoriesSubmenu,
+                });
+            }
         }
 
         addActions(
@@ -174,6 +189,98 @@ export default function generateAttributeContextMenu(
     });
 
     return items;
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} categoryAttributeInfo
+ * @param {import("./sampleView.js").default} sampleView
+ * @returns {MenuItem[]}
+ */
+function buildRetainCategoriesSubmenu(categoryAttributeInfo, sampleView) {
+    const categoryAttribute = categoryAttributeInfo.attribute;
+    if (
+        categoryAttribute.type !== SAMPLE_ATTRIBUTE ||
+        typeof categoryAttribute.specifier !== "string"
+    ) {
+        return [];
+    }
+
+    return sampleView.sampleHierarchy.sampleMetadata.attributeNames
+        .filter(
+            (attributeName) => attributeName !== categoryAttribute.specifier
+        )
+        .flatMap((attributeName) => {
+            const conditionAttributeInfo =
+                sampleView.compositeAttributeInfoSource.getAttributeInfo({
+                    type: SAMPLE_ATTRIBUTE,
+                    specifier: attributeName,
+                });
+            if (conditionAttributeInfo.type !== "quantitative") {
+                return [];
+            }
+
+            return [
+                {
+                    label: conditionAttributeInfo.title,
+                    submenu: () =>
+                        buildRetainCategoriesConditionSubmenu(
+                            categoryAttributeInfo,
+                            conditionAttributeInfo,
+                            sampleView
+                        ),
+                },
+            ];
+        });
+}
+
+/**
+ * @param {import("./types.js").AttributeInfo} categoryAttributeInfo
+ * @param {import("./types.js").AttributeInfo} conditionAttributeInfo
+ * @param {import("./sampleView.js").default} sampleView
+ * @returns {MenuItem[]}
+ */
+function buildRetainCategoriesConditionSubmenu(
+    categoryAttributeInfo,
+    conditionAttributeInfo,
+    sampleView
+) {
+    const dispatchAction = (
+        /** @type {import("./state/payloadTypes.js").ComparisonOperatorType} */ operator,
+        /** @type {number} */ operand
+    ) =>
+        sampleView.dispatchAttributeAction(
+            sampleView.actions.retainCategoriesByAttribute({
+                attribute: categoryAttributeInfo.attribute,
+                condition: {
+                    attribute: conditionAttributeInfo.attribute,
+                    operator,
+                    operand,
+                },
+            })
+        );
+
+    return [
+        {
+            icon: faFilter,
+            label: "> 0",
+            callback: () => dispatchAction("gt", 0),
+        },
+        {
+            icon: faFilter,
+            label: ">= 1",
+            callback: () => dispatchAction("gte", 1),
+        },
+        {
+            icon: faFilter,
+            label: "Choose custom threshold...",
+            callback: () =>
+                showRetainCategoriesByAttributeDialog(
+                    categoryAttributeInfo,
+                    conditionAttributeInfo,
+                    sampleView
+                ),
+        },
+    ];
 }
 
 /**

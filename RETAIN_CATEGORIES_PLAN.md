@@ -45,10 +45,10 @@ be added later after the state action exists.
 
    The action payload should include:
 
-   - `categoryAttribute`: the attribute whose category values are retained.
-   - `conditionAttribute`: the attribute tested inside each category.
-   - `operator`: comparison operator.
-   - `operand`: numeric threshold.
+   - `attribute`: the attribute whose category values are retained.
+   - `condition.attribute`: the attribute tested inside each category.
+   - `condition.operator`: comparison operator.
+   - `condition.operand`: numeric threshold.
 
    The reducer should find category values where at least one current sample
    satisfies the condition, then retain every current sample whose category
@@ -59,10 +59,10 @@ be added later after the state action exists.
 
    `augmentAttributeAction(...)` currently handles actions with one
    `payload.attribute`. Add a special path for the new action that resolves and
-   stores values for both `categoryAttribute` and `conditionAttribute`.
+   stores values for both `attribute` and `condition.attribute`.
 
-   Keep reducers pure by storing the accessed values in `_augmented`, using
-   explicit keys such as `categoryValues` and `conditionValues`.
+   Keep reducers pure by storing the category values in `_augmented.values` and
+   the condition values in `_augmented.conditionValues`.
 
 3. Add or extend operation helpers in
    `packages/app/src/sampleView/state/sampleOperations.js`.

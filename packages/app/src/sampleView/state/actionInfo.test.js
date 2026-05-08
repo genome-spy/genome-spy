@@ -124,6 +124,39 @@ describe("getActionInfo", () => {
         expect(provenanceTitle).not.toContain("chr");
     });
 
+    it("describes category retention by another attribute", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/retainCategoriesByAttribute`,
+            payload: {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+                condition: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "TP53_mutation_count",
+                    },
+                    operator: "gt",
+                    operand: 0,
+                },
+            },
+        };
+
+        const info = getActionInfo(action, (attribute) => ({
+            ...makeAttributeInfo(),
+            name: /** @type {string} */ (attribute.specifier),
+            title: /** @type {string} */ (attribute.specifier),
+            emphasizedName: /** @type {string} */ (attribute.specifier),
+        }));
+
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+        expect(provenanceTitle).toContain("patient");
+        expect(provenanceTitle).toContain("TP53_mutation_count");
+        expect(provenanceTitle).toContain(">");
+        expect(provenanceTitle).toContain("0");
+    });
+
     it("returns undefined for non-sample actions", () => {
         const info = getActionInfo(
             { type: "other/action", payload: {} },

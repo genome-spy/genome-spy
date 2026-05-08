@@ -4,7 +4,9 @@ import {
     filterNominal,
     filterQuantitative,
     filterUndefined,
+    getCategoriesWithMatchingSamples,
     getMatchedValues,
+    retainCategoriesByCondition,
     retainFirstNCategories,
     retainFirstOfEachCategory,
     sort,
@@ -104,6 +106,50 @@ describe("sampleOperations", () => {
         const retained = retainFirstNCategories(samples, (x) => x, 2);
 
         expect(retained).toEqual([1, 2, 1, 2]);
+    });
+
+    it("retains all samples from categories with a matching sample", () => {
+        const samples = ["s1", "s2", "s3", "s4", "s5"];
+        const patient = {
+            s1: "p1",
+            s2: "p1",
+            s3: "p2",
+            s4: "p2",
+            s5: "p3",
+        };
+        const mutationCount = {
+            s1: 0,
+            s2: 2,
+            s3: 0,
+            s4: 0,
+            s5: 3,
+        };
+
+        const retained = retainCategoriesByCondition(
+            samples,
+            (sample) => patient[sample],
+            (sample) => mutationCount[sample],
+            "gt",
+            0
+        );
+
+        expect(retained).toEqual(["s1", "s2", "s5"]);
+    });
+
+    it("collects categories with matching samples from an iterable", () => {
+        const samples = ["s1", "s2", "s3"];
+        const category = { s1: "p1", s2: "p1", s3: "p2" };
+        const count = { s1: 0, s2: 1, s3: 0 };
+
+        const retainedCategories = getCategoriesWithMatchingSamples(
+            samples.values(),
+            (sample) => category[sample],
+            (sample) => count[sample],
+            "gte",
+            1
+        );
+
+        expect(Array.from(retainedCategories)).toEqual(["p1"]);
     });
 
     it("sorts samples in ascending and descending order", () => {
