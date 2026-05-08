@@ -8,6 +8,7 @@ import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
 const DEFAULT_MAX_GROUPS = 20;
 const DEFAULT_MAX_EXACT_VALUE_COUNTS = 20;
 const DEFAULT_MAX_HISTOGRAM_BINS = 12;
+const VALUE_DISTRIBUTION_SIGNIFICANT_DIGITS = 6;
 
 /**
  * @typedef {import("./agentToolInputs.d.ts").GetAttributeSummaryToolInput} GetAttributeSummaryToolInput
@@ -229,7 +230,9 @@ function buildValueDistribution(values) {
                 .map(([value, count]) => ({
                     value,
                     count,
-                    share: getShare(count, numericValues.length),
+                    share: cleanDistributionNumber(
+                        getShare(count, numericValues.length)
+                    ),
                 })),
         };
     }
@@ -266,7 +269,7 @@ function buildHistogramDistribution(values, distinctCount) {
     }
 
     for (const bin of bins) {
-        bin.share = getShare(bin.count, values.length);
+        bin.share = cleanDistributionNumber(getShare(bin.count, values.length));
     }
 
     return {
@@ -305,6 +308,13 @@ function niceStep(step) {
  */
 function cleanNumber(value) {
     return Number(value.toPrecision(12));
+}
+
+/**
+ * @param {number} value
+ */
+function cleanDistributionNumber(value) {
+    return Number(value.toPrecision(VALUE_DISTRIBUTION_SIGNIFICANT_DIGITS));
 }
 
 /**

@@ -235,9 +235,9 @@ describe("attributeSummaryTool", () => {
                 kind: "value_counts",
                 distinctCount: 3,
                 counts: [
-                    { value: 10, count: 1, share: 1 / 3 },
-                    { value: 20, count: 1, share: 1 / 3 },
-                    { value: 40, count: 1, share: 1 / 3 },
+                    { value: 10, count: 1, share: 0.333333 },
+                    { value: 20, count: 1, share: 0.333333 },
+                    { value: 40, count: 1, share: 0.333333 },
                 ],
             },
         });
