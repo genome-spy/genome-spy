@@ -1,79 +1,14 @@
-import { icon } from "@fortawesome/fontawesome-svg-core";
-import {
-    faArrowUp,
-    faFilter,
-    faTrashAlt,
-} from "@fortawesome/free-solid-svg-icons";
-import { css, html, nothing } from "lit";
+import { faFilter, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
+import { html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
-import { repeat } from "lit/directives/repeat.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { classMap } from "lit/directives/class-map.js";
 import "../../components/generic/histogram.js";
+import "../../components/generic/searchableCheckboxList.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 import { extractAttributeValues } from "../attributeValues.js";
-
-const checkboxListStyles = css`
-    .gs-checkbox-list-wrapper {
-        position: relative;
-
-        .search-note {
-            position: absolute;
-            inset: 0;
-            display: grid;
-            justify-content: center;
-            align-content: center;
-
-            color: #808080;
-            font-size: 85%;
-
-            pointer-events: none;
-
-            > * {
-                position: relative;
-                top: 0.7em;
-            }
-        }
-    }
-
-    .gs-checkbox-list {
-        color: var(--form-control-color);
-        border: var(--form-control-border);
-        border-radius: var(--form-control-border-radius);
-        overflow: auto;
-        max-height: 200px;
-        box-sizing: border-box;
-
-        padding: 0.375em 0.75em;
-
-        margin: 0;
-
-        .color {
-            display: inline-block;
-            width: 0.5em;
-            height: 1em;
-            margin-right: 0.4em;
-        }
-
-        li {
-            list-style: none;
-        }
-
-        label.checkbox {
-            margin-bottom: 0;
-
-            &:hover {
-                background-color: #f4f4f4;
-            }
-        }
-
-        .hidden {
-            display: none;
-        }
-    }
-`;
 
 class DiscreteAttributeFilterDialog extends BaseDialog {
     static properties = {
@@ -84,21 +19,18 @@ class DiscreteAttributeFilterDialog extends BaseDialog {
         categoryToMarker: {},
     };
 
-    static styles = [...super.styles, checkboxListStyles];
-
     constructor() {
         super();
-        /** @type {any[]} */
+        /** @type {import("../../components/generic/searchableCheckboxList.js").SearchableCheckboxListItem[]} */
         this.categories = [];
         /** @type {any|null} */
         this.attributeInfo = null;
         /** @type {any|null} */
         this.sampleView = null;
-        /** @type {(category: import("@genome-spy/core/utils/domainArray.js").scalar) => import("lit").TemplateResult} */
-        this.categoryToMarker = null;
-
-        this.selection = new Set();
-        this.search = "";
+        /** @type {(category: import("@genome-spy/core/spec/channel.js").Scalar) => import("lit").TemplateResult | typeof nothing} */
+        this.categoryToMarker = () => nothing;
+        /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */
+        this.selection = [];
     }
 
     willUpdate(/** @type {Map<string, any>} */ changed) {
@@ -107,163 +39,20 @@ class DiscreteAttributeFilterDialog extends BaseDialog {
         }
     }
 
-    getFilteredCategories() {
-        return this.categories.filter(
-            (category) =>
-                this.search.length == 0 ||
-                category.lowerCaseValue.includes(this.search)
-        );
-    }
-
-    /** @param {HTMLInputElement} input */
-    #onSearchInput(input) {
-        this.search = input.value.toLowerCase();
-        this.requestUpdate();
-    }
-
-    /** @param {Event} event */
-    #onChecked(event) {
-        const checkbox = /** @type {HTMLInputElement} */ (event.target);
-        const category = this.categories[+checkbox.value].value;
-        if (checkbox.checked) {
-            this.selection.add(category);
-        } else {
-            this.selection.delete(category);
-        }
-        this.requestUpdate();
-    }
-
-    /** @param {KeyboardEvent} e */
-    #handleSearchKeyDown(e) {
-        if (e.key == "ArrowDown") {
-            const el = /** @type {HTMLInputElement} */ (
-                this.renderRoot.querySelector(
-                    ".gs-checkbox-list li:first-child input[type='checkbox']"
-                )
-            );
-            el?.focus();
-            e.preventDefault();
-            e.stopPropagation();
-        } else if (e.key == "Enter") {
-            const cats = this.getFilteredCategories();
-            if (cats.length == 1) {
-                this.selection.add(cats[0].value);
-                this.requestUpdate();
-            }
-            e.stopPropagation();
-        }
-    }
-
-    /** @param {KeyboardEvent} event */
-    #handleCheckboxKeyDown(event) {
-        const element = /** @type {HTMLInputElement} */ (event.target);
-        if (element.type != "checkbox") return;
-
-        if (event.key == "ArrowDown") {
-            const next = /** @type {HTMLInputElement} */ (
-                element
-                    .closest("li")
-                    .nextElementSibling?.querySelector("input[type='checkbox']")
-            );
-            next?.focus();
-            event.preventDefault();
-        } else if (event.key == "ArrowUp") {
-            const previous = /** @type {HTMLInputElement} */ (
-                element
-                    .closest("li")
-                    .previousElementSibling?.querySelector(
-                        "input[type='checkbox']"
-                    )
-            );
-            if (previous) previous.focus();
-            else this.#focusSearch();
-            event.preventDefault();
-        } else if (event.key == "Esc") {
-            this.#focusSearch();
-            event.stopPropagation();
-        } else if (event.key == "Tab" && !event.shiftKey) {
-            const last = /** @type {HTMLInputElement} */ (
-                this.renderRoot.querySelector(
-                    ".gs-checkbox-list li:last-child input"
-                )
-            );
-            last?.focus();
-        } else if (event.key == "Tab" && event.shiftKey) {
-            const first = /** @type {HTMLInputElement} */ (
-                this.renderRoot.querySelector(
-                    ".gs-checkbox-list li:first-child input"
-                )
-            );
-            first?.focus();
-        }
-    }
-
-    #focusSearch() {
-        const el = /** @type {HTMLInputElement} */ (
-            this.renderRoot.querySelector("input[type='text']")
-        );
-        el?.focus();
-    }
-
     renderBody() {
-        const filteredCats = this.getFilteredCategories();
         return html`<div class="gs-form-group">
             <p>Select one or more categories and choose an action.</p>
-            <input
-                autofocus
-                type="text"
-                placeholder="Type something to filter the list"
-                @keydown=${(/** @type {KeyboardEvent} */ e) =>
-                    this.#handleSearchKeyDown(e)}
-                @input=${createInputListener((input) =>
-                    this.#onSearchInput(input)
-                )}
-            />
-            <div class="gs-checkbox-list-wrapper">
-                <ul
-                    class="gs-checkbox-list"
-                    @input=${(/** @type {Event} */ e) => this.#onChecked(e)}
-                    @keydown=${(/** @type {KeyboardEvent} */ e) =>
-                        this.#handleCheckboxKeyDown(e)}
-                >
-                    ${repeat(
-                        filteredCats,
-                        (category) => category.value,
-                        (category) =>
-                            html`<li>
-                                <label class="checkbox">
-                                    ${this.categoryToMarker
-                                        ? this.categoryToMarker(category.value)
-                                        : nothing}
-                                    <input
-                                        type="checkbox"
-                                        .checked=${this.selection.has(
-                                            category.value
-                                        )}
-                                        .value=${"" + category.index}
-                                    />
-                                    ${category.stringValue}
-                                </label>
-                            </li>`
-                    )}
-                </ul>
-                ${filteredCats.length == 0
-                    ? html`<div class="search-note">
-                          <div>Nothing found</div>
-                      </div>`
-                    : filteredCats.length == 1 && this.categories.length > 1
-                      ? html`<div class="search-note">
-                            <div>
-                                ${icon(faArrowUp).node[0]} Hit enter to select
-                                the exact match
-                            </div>
-                        </div>`
-                      : nothing}
-            </div>
-            <small>
-                The number of selected categories:
-                <strong>${this.selection.size}</strong>
-            </small>
+            <gs-searchable-checkbox-list
+                .items=${this.categories}
+                .selectedValues=${this.selection}
+                .selectedItemName=${"categories"}
+                .itemMarker=${this.categoryToMarker}
+                @change=${(
+                    /** @type {import("../../components/generic/searchableCheckboxList.js").SearchableCheckboxListChangeEvent} */ event
+                ) => {
+                    this.selection = event.values;
+                }}
+            ></gs-searchable-checkbox-list>
         </div>`;
     }
 
@@ -280,21 +69,13 @@ class DiscreteAttributeFilterDialog extends BaseDialog {
         ];
     }
 
-    updated() {
-        // Prevent the checkbox list from changing size (to smaller) when filtering
-        const checkboxList = /** @type {HTMLElement} */ (
-            this.renderRoot.querySelector(".gs-checkbox-list")
-        );
-        checkboxList.style.minHeight = `${checkboxList.offsetHeight}px`;
-    }
-
     /** @param {boolean} remove */
     #onRetain(remove) {
         this.sampleView.dispatchAttributeAction(
             this.sampleView.actions.filterByNominal({
                 values: this.categories
                     .map((c) => c.value)
-                    .filter((value) => this.selection.has(value)),
+                    .filter((value) => this.selection.includes(value)),
                 attribute: this.attributeInfo.attribute,
                 remove,
             })
@@ -527,11 +308,10 @@ export function discreteAttributeFilterDialog(
 
     const categoryObjects = categories
         .filter((value) => presentValues.has(value))
-        .map((value, index) => ({
-            index,
+        .map((value) => ({
             value,
-            stringValue: `${value}`,
-            lowerCaseValue: `${value}`.toLowerCase(),
+            label: `${value}`,
+            searchText: `${value}`.toLowerCase(),
         }));
 
     return showDialog(
