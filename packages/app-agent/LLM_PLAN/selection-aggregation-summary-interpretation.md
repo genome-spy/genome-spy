@@ -229,6 +229,15 @@ Baseline:
      - Continuous summaries with many distinct values return bounded histogram
        bins.
      - Payload size remains bounded for high-cardinality values.
+   - Result:
+     - `attributeSummaryTool.js`: 437 lines
+     - `attributeSummaryTool.test.js`: 502 lines
+     - `genomespy_system_prompt.md`: 560 lines
+     - `generatedToolSchema.json`: 77,927 bytes
+     - Implemented a local bounded nice-step histogram helper; no dependency
+       changes were needed.
+     - `npx vitest run packages/app-agent/src/agent/attributeSummaryTool.test.js`
+       passed.
 
 4. Update prompt/tool docs.
    - Tell the agent that `mean`, `max`, percentiles, and quartiles are summary

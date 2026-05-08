@@ -6,6 +6,8 @@ import {
 import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
 
 const DEFAULT_MAX_GROUPS = 20;
+const DEFAULT_MAX_EXACT_VALUE_COUNTS = 20;
+const DEFAULT_MAX_HISTOGRAM_BINS = 12;
 
 /**
  * @typedef {import("./agentToolInputs.d.ts").GetAttributeSummaryToolInput} GetAttributeSummaryToolInput
@@ -200,7 +202,109 @@ function buildQuantitativeAgentSummary(values) {
     return {
         ...buildQuantitativeFieldSummary(values),
         ...buildQuantitativeSignSummary(values),
+        valueDistribution: buildValueDistribution(values),
     };
+}
+
+/**
+ * @param {unknown[]} values
+ */
+function buildValueDistribution(values) {
+    const numericValues = values
+        .map(coerceNumericValue)
+        .filter((value) => value !== undefined);
+    /** @type {Map<number, number>} */
+    const counts = new Map();
+
+    for (const value of numericValues) {
+        counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+
+    if (counts.size <= DEFAULT_MAX_EXACT_VALUE_COUNTS) {
+        return {
+            kind: "value_counts",
+            distinctCount: counts.size,
+            counts: Array.from(counts.entries())
+                .sort(([a], [b]) => a - b)
+                .map(([value, count]) => ({
+                    value,
+                    count,
+                    share: getShare(count, numericValues.length),
+                })),
+        };
+    }
+
+    return buildHistogramDistribution(numericValues, counts.size);
+}
+
+/**
+ * @param {number[]} values
+ * @param {number} distinctCount
+ */
+function buildHistogramDistribution(values, distinctCount) {
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const step = niceStep((max - min) / DEFAULT_MAX_HISTOGRAM_BINS);
+    const start = cleanNumber(Math.floor(min / step) * step);
+    const stop = cleanNumber(Math.ceil(max / step) * step);
+    const binCount = Math.max(1, Math.ceil((stop - start) / step));
+    const bins = Array.from({ length: binCount }, (_, index) => ({
+        bin: [
+            cleanNumber(start + index * step),
+            cleanNumber(start + (index + 1) * step),
+        ],
+        count: 0,
+        share: 0,
+    }));
+
+    for (const value of values) {
+        const index = Math.min(
+            Math.floor((value - start) / step),
+            bins.length - 1
+        );
+        bins[index].count++;
+    }
+
+    for (const bin of bins) {
+        bin.share = getShare(bin.count, values.length);
+    }
+
+    return {
+        kind: "histogram",
+        distinctCount,
+        binning: {
+            start,
+            stop: bins[bins.length - 1].bin[1],
+            step,
+        },
+        bins,
+    };
+}
+
+/**
+ * @param {number} step
+ */
+function niceStep(step) {
+    const power = Math.floor(Math.log10(step));
+    const base = 10 ** power;
+    const error = step / base;
+
+    if (error >= 5) {
+        return 10 * base;
+    } else if (error >= 2) {
+        return 5 * base;
+    } else if (error >= 1) {
+        return 2 * base;
+    } else {
+        return base;
+    }
+}
+
+/**
+ * @param {number} value
+ */
+function cleanNumber(value) {
+    return Number(value.toPrecision(12));
 }
 
 /**

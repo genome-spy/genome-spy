@@ -71,6 +71,20 @@ function createRuntimeStub() {
                 };
             }
 
+            if (attribute.specifier === "continuous") {
+                return {
+                    attribute,
+                    title: "continuous",
+                    dataType: "quantitative",
+                    scope: "visible_samples",
+                    sampleIds: Array.from(
+                        { length: 25 },
+                        (_, index) => `sample${index}`
+                    ),
+                    values: Array.from({ length: 25 }, (_, index) => index),
+                };
+            }
+
             if (attribute.specifier === "sex") {
                 return {
                     attribute,
@@ -217,6 +231,15 @@ describe("attributeSummaryTool", () => {
             zeroShare: 0,
             positiveShare: 1,
             nonZeroShare: 1,
+            valueDistribution: {
+                kind: "value_counts",
+                distinctCount: 3,
+                counts: [
+                    { value: 10, count: 1, share: 1 / 3 },
+                    { value: 20, count: 1, share: 1 / 3 },
+                    { value: 40, count: 1, share: 1 / 3 },
+                ],
+            },
         });
     });
 
@@ -239,6 +262,46 @@ describe("attributeSummaryTool", () => {
                 zeroShare: 0.5,
                 positiveShare: 0.5,
                 nonZeroShare: 0.5,
+                valueDistribution: {
+                    kind: "value_counts",
+                    distinctCount: 3,
+                    counts: [
+                        { value: 0, count: 2, share: 0.5 },
+                        { value: 1, count: 1, share: 0.25 },
+                        { value: 2, count: 1, share: 0.25 },
+                    ],
+                },
+            })
+        );
+    });
+
+    it("returns bounded histogram bins for high-cardinality quantitative values", () => {
+        const result = getAttributeSummaryTool(createRuntimeStub(), {
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "continuous",
+            },
+            scope: "visible_samples",
+        });
+
+        expect(result.content).toEqual(
+            expect.objectContaining({
+                valueDistribution: {
+                    kind: "histogram",
+                    distinctCount: 25,
+                    binning: {
+                        start: 0,
+                        stop: 25,
+                        step: 5,
+                    },
+                    bins: [
+                        { bin: [0, 5], count: 5, share: 5 / 25 },
+                        { bin: [5, 10], count: 5, share: 5 / 25 },
+                        { bin: [10, 15], count: 5, share: 5 / 25 },
+                        { bin: [15, 20], count: 5, share: 5 / 25 },
+                        { bin: [20, 25], count: 5, share: 5 / 25 },
+                    ],
+                },
             })
         );
     });
