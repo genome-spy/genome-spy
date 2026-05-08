@@ -661,6 +661,62 @@ describe("sampleSlice reducers", () => {
         });
     });
 
+    it("retains categories requiring all categorical condition values", () => {
+        let state = sampleSlice.reducer(
+            undefined,
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                    { id: "s3", displayName: "s3", indexNumber: 2 },
+                    { id: "s4", displayName: "s4", indexNumber: 3 },
+                    { id: "s5", displayName: "s5", indexNumber: 4 },
+                ],
+            })
+        );
+
+        state = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.retainCategoriesByAttribute({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+                condition: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
+                    operator: "in",
+                    values: ["AML", "MDS"],
+                    required: "all",
+                },
+                [AUGMENTED_KEY]: {
+                    values: {
+                        s1: "p1",
+                        s2: "p1",
+                        s3: "p2",
+                        s4: "p2",
+                        s5: "p3",
+                    },
+                    conditionValues: {
+                        s1: "AML",
+                        s2: "MDS",
+                        s3: "AML",
+                        s4: "ALL",
+                        s5: "MDS",
+                    },
+                },
+            })
+        );
+
+        expect(state.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            samples: ["s1", "s2"],
+        });
+    });
+
     it("throws if augmented payload is missing for retainCategoriesByAttribute", () => {
         const state = createSampleHierarchy();
 

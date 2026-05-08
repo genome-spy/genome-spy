@@ -245,11 +245,17 @@ export default class SearchableCheckboxList extends LitElement {
         }
     }
 
-    #focusSearch() {
+    /** @param {FocusOptions} [options] */
+    focus(options) {
+        this.#focusSearch(options);
+    }
+
+    /** @param {FocusOptions} [options] */
+    #focusSearch(options) {
         const el = /** @type {HTMLInputElement} */ (
             this.renderRoot.querySelector("input[type='text']")
         );
-        el?.focus();
+        el?.focus(options);
     }
 
     updated() {

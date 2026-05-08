@@ -1,6 +1,8 @@
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
 import { css, html } from "lit";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import "../../components/generic/searchableCheckboxList.js";
+import { extractAttributeValues } from "../attributeValues.js";
 
 const OPERATOR_OPTIONS = [
     ["gt", ">"],
@@ -18,6 +20,8 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
         sampleView: {},
         operator: {},
         operand: {},
+        values: {},
+        required: {},
     };
 
     static styles = [
@@ -33,6 +37,12 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
                 gap: var(--gs-basic-spacing);
                 align-items: center;
             }
+
+            .requirement-row {
+                display: grid;
+                gap: 0.35em;
+                margin-top: var(--gs-basic-spacing);
+            }
         `,
     ];
 
@@ -47,6 +57,10 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
         /** @type {import("../state/payloadTypes.js").ComparisonOperatorType} */
         this.operator = "gt";
         this.operand = 0;
+        /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */
+        this.values = [];
+        /** @type {"any" | "all"} */
+        this.required = "any";
     }
 
     /** @param {Map<string, any>} changed */
@@ -81,28 +95,78 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
         return html`<div class="gs-form-group retain-categories-form">
             <p>
                 Retain all ${this.categoryAttributeInfo.title} categories where
-                at least one sample has ${this.conditionAttributeInfo.title}
-                matching:
+                ${this.conditionAttributeInfo.type === "quantitative"
+                    ? "at least one sample has"
+                    : "samples have"}
+                ${this.conditionAttributeInfo.title} matching:
             </p>
-            <div class="condition-row">
-                <select
-                    .value=${this.operator}
-                    @change=${(/** @type {Event} */ event) =>
-                        this.#operatorChanged(event)}
-                >
-                    ${OPERATOR_OPTIONS.map(
-                        ([value, label]) =>
-                            html`<option value=${value}>${label}</option>`
-                    )}
-                </select>
-                <input
-                    type="number"
-                    .value=${String(this.operand)}
-                    @input=${(/** @type {Event} */ event) =>
-                        this.#operandChanged(event)}
-                />
-            </div>
+            ${this.conditionAttributeInfo.type === "quantitative"
+                ? this.#renderQuantitativeCondition()
+                : this.#renderCategoricalCondition()}
         </div>`;
+    }
+
+    #renderQuantitativeCondition() {
+        return html`<div class="condition-row">
+            <select
+                .value=${this.operator}
+                @change=${(/** @type {Event} */ event) =>
+                    this.#operatorChanged(event)}
+            >
+                ${OPERATOR_OPTIONS.map(
+                    ([value, label]) =>
+                        html`<option value=${value}>${label}</option>`
+                )}
+            </select>
+            <input
+                type="number"
+                .value=${String(this.operand)}
+                @input=${(/** @type {Event} */ event) =>
+                    this.#operandChanged(event)}
+            />
+        </div>`;
+    }
+
+    #renderCategoricalCondition() {
+        return html`
+            <gs-searchable-checkbox-list
+                autofocus
+                .items=${this.#getCategoryItems()}
+                .selectedValues=${this.values}
+                .selectedItemName=${"values"}
+                @change=${(
+                    /** @type {import("../../components/generic/searchableCheckboxList.js").SearchableCheckboxListChangeEvent} */ event
+                ) => {
+                    this.values = event.values;
+                }}
+            ></gs-searchable-checkbox-list>
+            <div class="requirement-row">
+                <label>
+                    <input
+                        type="radio"
+                        name="required"
+                        value="any"
+                        .checked=${this.required === "any"}
+                        @change=${() => {
+                            this.required = "any";
+                        }}
+                    />
+                    Any selected value exists
+                </label>
+                <label>
+                    <input
+                        type="radio"
+                        name="required"
+                        value="all"
+                        .checked=${this.required === "all"}
+                        @change=${() => {
+                            this.required = "all";
+                        }}
+                    />
+                    All selected values exist
+                </label>
+            </div>
+        `;
     }
 
     renderButtons() {
@@ -111,22 +175,52 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
             this.makeButton("Retain", () => this.#onRetain(), {
                 iconDef: faFilter,
                 isPrimary: true,
+                disabled:
+                    this.conditionAttributeInfo?.type !== "quantitative" &&
+                    this.values.length === 0,
             }),
         ];
     }
 
     #onRetain() {
+        /** @type {import("../state/payloadTypes.js").AttributeCondition} */
+        let condition;
+        if (this.conditionAttributeInfo.type === "quantitative") {
+            condition = {
+                attribute: this.conditionAttributeInfo.attribute,
+                operator: this.operator,
+                operand: this.operand,
+            };
+        } else {
+            condition = {
+                attribute: this.conditionAttributeInfo.attribute,
+                operator: "in",
+                values: this.values,
+                required: this.required,
+            };
+        }
+
         this.sampleView.dispatchAttributeAction(
             this.sampleView.actions.retainCategoriesByAttribute({
                 attribute: this.categoryAttributeInfo.attribute,
-                condition: {
-                    attribute: this.conditionAttributeInfo.attribute,
-                    operator: this.operator,
-                    operand: this.operand,
-                },
+                condition,
             })
         );
         this.finish({ ok: true });
+    }
+
+    /**
+     * @returns {import("../../components/generic/searchableCheckboxList.js").SearchableCheckboxListItem[]}
+     */
+    #getCategoryItems() {
+        return getAttributeCategories(
+            this.conditionAttributeInfo,
+            this.sampleView
+        ).map((value) => ({
+            value,
+            label: `${value}`,
+            searchText: `${value}`.toLowerCase(),
+        }));
     }
 }
 
@@ -153,6 +247,39 @@ export function showRetainCategoriesByAttributeDialog(
             el.sampleView = sampleView;
             el.operator = "gt";
             el.operand = 0;
+            el.values = [];
+            el.required = "any";
         }
+    );
+}
+
+/**
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @param {import("../sampleView.js").default} sampleView
+ * @returns {import("@genome-spy/core/spec/channel.js").Scalar[]}
+ */
+function getAttributeCategories(attributeInfo, sampleView) {
+    const domain = attributeInfo.scale?.domain?.();
+    if (Array.isArray(domain)) {
+        return domain.filter((value) =>
+            getPresentValues(attributeInfo, sampleView).has(value)
+        );
+    }
+
+    return Array.from(getPresentValues(attributeInfo, sampleView));
+}
+
+/**
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @param {import("../sampleView.js").default} sampleView
+ * @returns {Set<import("@genome-spy/core/spec/channel.js").Scalar>}
+ */
+function getPresentValues(attributeInfo, sampleView) {
+    return new Set(
+        extractAttributeValues(
+            attributeInfo,
+            sampleView.leafSamples,
+            sampleView.sampleHierarchy
+        )
     );
 }

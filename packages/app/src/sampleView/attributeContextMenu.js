@@ -384,6 +384,17 @@ function buildRetainCategoriesConditionItems(
                     sampleView
                 ),
         });
+    } else {
+        items.push({
+            icon: faFilter,
+            label: "Choose values...",
+            callback: () =>
+                showRetainCategoriesByAttributeDialog(
+                    categoryAttributeInfo,
+                    conditionAttributeInfo,
+                    sampleView
+                ),
+        });
     }
 
     return items;

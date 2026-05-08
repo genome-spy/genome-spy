@@ -123,12 +123,68 @@ export function getCategoriesWithMatchingSamples(
     conditionAccessor,
     condition
 ) {
+    if (condition.operator === "in" && condition.required === "all") {
+        return getCategoriesWithAllConditionValues(
+            samples,
+            categoryAccessor,
+            conditionAccessor,
+            condition.values
+        );
+    }
+
     const predicate = createConditionPredicate(condition);
     const retainedCategories = new Set();
 
     for (const sample of samples) {
         if (predicate(conditionAccessor(sample))) {
             retainedCategories.add(categoryAccessor(sample));
+        }
+    }
+
+    return retainedCategories;
+}
+
+/**
+ * @param {Iterable<T>} samples
+ * @param {function(T):any} categoryAccessor
+ * @param {function(T):any} conditionAccessor
+ * @param {any[]} values
+ * @returns {Set<any>}
+ * @template T
+ */
+function getCategoriesWithAllConditionValues(
+    samples,
+    categoryAccessor,
+    conditionAccessor,
+    values
+) {
+    if (values.length === 0) {
+        return new Set();
+    }
+
+    const requiredValues = new Set(values);
+    /** @type {Map<any, Set<any>>} */
+    const categoryToValues = new Map();
+
+    for (const sample of samples) {
+        const conditionValue = conditionAccessor(sample);
+        if (!requiredValues.has(conditionValue)) {
+            continue;
+        }
+
+        const category = categoryAccessor(sample);
+        let foundValues = categoryToValues.get(category);
+        if (!foundValues) {
+            foundValues = new Set();
+            categoryToValues.set(category, foundValues);
+        }
+        foundValues.add(conditionValue);
+    }
+
+    const retainedCategories = new Set();
+    for (const [category, foundValues] of categoryToValues) {
+        if (values.every((value) => foundValues.has(value))) {
+            retainedCategories.add(category);
         }
     }
 

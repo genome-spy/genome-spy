@@ -180,6 +180,41 @@ describe("sampleOperations", () => {
         expect(Array.from(retainedCategories)).toEqual(["p1", "p3"]);
     });
 
+    it("collects categories requiring all categorical condition values", () => {
+        const samples = ["s1", "s2", "s3", "s4", "s5"];
+        const patient = {
+            s1: "p1",
+            s2: "p1",
+            s3: "p2",
+            s4: "p2",
+            s5: "p3",
+        };
+        const diagnosis = {
+            s1: "AML",
+            s2: "MDS",
+            s3: "AML",
+            s4: "ALL",
+            s5: "MDS",
+        };
+
+        const retainedCategories = getCategoriesWithMatchingSamples(
+            samples,
+            (sample) => patient[sample],
+            (sample) => diagnosis[sample],
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+                operator: "in",
+                values: ["AML", "MDS"],
+                required: "all",
+            }
+        );
+
+        expect(Array.from(retainedCategories)).toEqual(["p1"]);
+    });
+
     it("sorts samples in ascending and descending order", () => {
         const samples = ["b", "c", "a"];
 

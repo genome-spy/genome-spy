@@ -218,6 +218,17 @@ export interface CategoricalAttributeCondition {
      * Attribute values that satisfy the condition.
      */
     values: Scalar[];
+
+    /**
+     * Requirement for selected values within each retained category.
+     *
+     * `any` retains a category when at least one sample has one of the selected
+     * values. `all` requires every selected value to occur in at least one
+     * sample in the category.
+     *
+     * __Default value:__ `"any"`
+     */
+    required?: "any" | "all";
 }
 
 export type AttributeCondition =

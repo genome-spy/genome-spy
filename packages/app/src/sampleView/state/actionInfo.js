@@ -205,11 +205,21 @@ const actionHandlers = {
                 payload.condition
             );
 
-        /** @param {string | import("lit").TemplateResult} attr */
-        const makeTitle = (attr) => html`
-            Retain ${attr} values where any sample has
-            ${conditionAttributeTitle} ${formatConditionPredicate(condition)}
-        `;
+        /** @type {(attr: string | import("lit").TemplateResult) => import("lit").TemplateResult} */
+        let makeTitle;
+        if (condition.operator === "in" && condition.required === "all") {
+            makeTitle = (attr) => html`
+                Retain ${attr} values where samples include all
+                ${conditionAttributeTitle} values in
+                ${formatSet(condition.values)}
+            `;
+        } else {
+            makeTitle = (attr) => html`
+                Retain ${attr} values where any sample has
+                ${conditionAttributeTitle}
+                ${formatConditionPredicate(condition)}
+            `;
+        }
 
         return {
             ...template,

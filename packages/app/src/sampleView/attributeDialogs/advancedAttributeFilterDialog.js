@@ -43,6 +43,7 @@ class DiscreteAttributeFilterDialog extends BaseDialog {
         return html`<div class="gs-form-group">
             <p>Select one or more categories and choose an action.</p>
             <gs-searchable-checkbox-list
+                autofocus
                 .items=${this.categories}
                 .selectedValues=${this.selection}
                 .selectedItemName=${"categories"}
