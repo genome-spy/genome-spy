@@ -33,7 +33,8 @@ Implement the first slice for metadata attributes in the App:
 - Quantitative condition: threshold comparison using the existing operators
   `lt`, `lte`, `eq`, `gte`, and `gt`.
 - Categorical condition: membership using the `in` operator and a `values`
-  array.
+  array. Multi-value categorical conditions can require either any selected
+  value or all selected values to occur within the retained category.
 
 Conditions on non-metadata attributes can be added later after the state action
 exists.
@@ -139,7 +140,72 @@ exists.
    The dialog should choose an operator and numeric operand, then dispatch the
    new sample action.
 
-8. Investigate whether predicate result counts are useful and feasible.
+8. Extract the searchable checkbox list into a reusable web component.
+
+   This is a standalone refactor and should be reviewed before implementing
+   the categorical multi-value functionality.
+
+   `DiscreteAttributeFilterDialog` in
+   `packages/app/src/sampleView/attributeDialogs/advancedAttributeFilterDialog.js`
+   currently owns the search field, filtered checkbox list, selected count,
+   keyboard navigation, exact-match Enter behavior, empty-search note, and
+   optional category marker rendering. Extract that behavior into a reusable Lit
+   component, for example `gs-searchable-checkbox-list`, under
+   `packages/app/src/components/generic/` or near the sample-view dialogs if a
+   narrower component is cleaner.
+
+   The component should support:
+
+   - a list of values with display labels and lowercase search text
+   - externally provided selected values
+   - a `change` event that reports the selected values
+   - optional per-item marker rendering for the existing color swatches
+   - the current keyboard behavior from the discrete filter dialog
+   - stable list sizing while filtering
+
+   After extraction, update `DiscreteAttributeFilterDialog` to use the new
+   component without changing its user-visible behavior.
+
+   Add a Storybook story for the checkbox-list component so the extracted UI
+   can be reviewed independently of the sample-view dialogs.
+
+9. Add categorical multi-value condition functionality.
+
+   This is a separate feature change and should be reviewed independently from
+   the component extraction.
+
+   Add a dialog for categorical condition attributes that uses the reusable
+   checkbox-list component to select multiple values. The context menu should
+   keep single-value quick actions such as `= AML`, and add a
+   `Choose values...` item for the dialog because it opens a dialog.
+
+   Extend categorical conditions with an explicit group-level requirement:
+
+   ```js
+   {
+       attribute: conditionAttribute,
+       operator: "in",
+       values: ["AML", "MDS"],
+       required: "any" | "all"
+   }
+   ```
+
+   `required: "any"` keeps the current semantics: retain a category when at
+   least one sample in that category has a condition value in `values`.
+
+   `required: "all"` retains a category only when every selected value occurs
+   in at least one sample in that category. This requires reducer/helper logic
+   that groups observed condition values by retained category; it cannot be
+   implemented as a per-sample predicate alone.
+
+   The dialog should make this choice explicit with concise labels, for example:
+
+   - `Any selected value exists`
+   - `All selected values exist`
+
+   Update action info so provenance distinguishes the two cases clearly.
+
+10. Investigate whether predicate result counts are useful and feasible.
 
    The mockup shows counts such as `(3 patients, 9 samples)` next to each
    predicate. This is useful only if the wording is easy to understand. Counting
@@ -159,7 +225,7 @@ exists.
    Treat this as a UI refinement unless user testing shows that the count
    preview materially improves confidence.
 
-9. Add focused tests.
+11. Add focused tests.
 
    Add tests to:
 
@@ -176,8 +242,12 @@ exists.
    - Current sample group boundaries are respected if the reducer uses
      `applyToSamples(...)`.
    - Both attributes are augmented before the reducer runs.
+   - Categorical `required: "any"` retains categories with at least one
+     selected value.
+   - Categorical `required: "all"` retains only categories containing every
+     selected value.
 
-10. Document the action in
+12. Document the action in
    `docs/sample-collections/analyzing.md`.
 
    Add a short user-facing section under "The actions", near the existing
