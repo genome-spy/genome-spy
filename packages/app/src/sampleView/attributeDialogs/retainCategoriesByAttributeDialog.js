@@ -1,5 +1,6 @@
 import { faFilter } from "@fortawesome/free-solid-svg-icons";
-import { css, html } from "lit";
+import { css, html, nothing } from "lit";
+import { styleMap } from "lit/directives/style-map.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import "../../components/generic/searchableCheckboxList.js";
 import { extractAttributeValues } from "../attributeValues.js";
@@ -134,6 +135,7 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
                 .items=${this.#getCategoryItems()}
                 .selectedValues=${this.values}
                 .selectedItemName=${"values"}
+                .itemMarker=${this.#getCategoryToMarker()}
                 @change=${(
                     /** @type {import("../../components/generic/searchableCheckboxList.js").SearchableCheckboxListChangeEvent} */ event
                 ) => {
@@ -221,6 +223,24 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
             label: `${value}`,
             searchText: `${value}`.toLowerCase(),
         }));
+    }
+
+    /**
+     * @returns {(value: import("@genome-spy/core/spec/channel.js").Scalar) => import("lit").TemplateResult | typeof nothing}
+     */
+    #getCategoryToMarker() {
+        const scale = this.conditionAttributeInfo.scale;
+        if (!scale) {
+            return () => nothing;
+        }
+
+        return (value) =>
+            html`<span
+                class="color"
+                style=${styleMap({
+                    backgroundColor: scale(value).toString(),
+                })}
+            ></span>`;
     }
 }
 
