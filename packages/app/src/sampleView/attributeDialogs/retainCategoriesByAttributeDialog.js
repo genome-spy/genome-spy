@@ -29,20 +29,26 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
         ...super.styles,
         css`
             .retain-categories-form {
-                width: 24em;
+                width: 25em;
             }
 
-            .condition-row {
-                display: grid;
-                grid-template-columns: auto 1fr;
-                gap: var(--gs-basic-spacing);
-                align-items: center;
-            }
+            .gs-form-group {
+                .condition-row {
+                    display: grid;
+                    grid-template-columns: auto 1fr;
+                    gap: var(--gs-basic-spacing);
+                    align-items: center;
+                }
 
-            .requirement-row {
-                display: grid;
-                gap: 0.35em;
-                margin-top: var(--gs-basic-spacing);
+                .requirement-row {
+                    margin-top: var(--gs-basic-spacing);
+                    display: grid;
+                    gap: 0.2em;
+
+                    label {
+                        margin-bottom: 0;
+                    }
+                }
             }
         `,
     ];

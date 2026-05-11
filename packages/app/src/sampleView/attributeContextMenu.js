@@ -19,6 +19,7 @@ import {
     buildPathTree,
     METADATA_PATH_SEPARATOR,
 } from "./metadata/metadataUtils.js";
+import { html } from "lit";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -124,10 +125,8 @@ export default function generateAttributeContextMenu(
             if (retainCategoriesSubmenu.length) {
                 items.push({
                     icon: faFilter,
-                    label:
-                        "Retain " +
-                        attributeInfo.name +
-                        " values based on another attribute",
+                    label: html`Retain ${attributeInfo.emphasizedName} values
+                    based on another attribute`,
                     submenu: retainCategoriesSubmenu,
                 });
             }
@@ -335,11 +334,9 @@ function buildRetainCategoriesConditionSubmenu(
 ) {
     return [
         {
-            label:
-                "Retain " +
-                categoryAttributeInfo.name +
-                " values where any sample has " +
-                conditionAttributeInfo.name,
+            label: html`Retain ${categoryAttributeInfo.emphasizedName} values
+            where any sample has ${conditionAttributeInfo.emphasizedName}
+            matching:`,
             type: "header",
         },
         ...buildRetainCategoriesConditionItems(
@@ -375,7 +372,6 @@ function buildRetainCategoriesConditionItems(
 
     if (conditionAttributeInfo.type === "quantitative") {
         items.push({
-            icon: faFilter,
             label: "Choose custom threshold...",
             callback: () =>
                 showRetainCategoriesByAttributeDialog(
@@ -386,8 +382,7 @@ function buildRetainCategoriesConditionItems(
         });
     } else {
         items.push({
-            icon: faFilter,
-            label: "Choose values...",
+            label: "Choose custom values...",
             callback: () =>
                 showRetainCategoriesByAttributeDialog(
                     categoryAttributeInfo,
@@ -407,11 +402,20 @@ function buildRetainCategoriesConditionItems(
  */
 function getRetainCategoriesConditionSpecs(conditionAttributeInfo, sampleView) {
     if (conditionAttributeInfo.type === "quantitative") {
+        const attribute = conditionAttributeInfo.attribute;
         return [
+            {
+                label: "= 0",
+                condition: {
+                    attribute,
+                    operator: "eq",
+                    operand: 0,
+                },
+            },
             {
                 label: "> 0",
                 condition: {
-                    attribute: conditionAttributeInfo.attribute,
+                    attribute,
                     operator: "gt",
                     operand: 0,
                 },
@@ -419,17 +423,9 @@ function getRetainCategoriesConditionSpecs(conditionAttributeInfo, sampleView) {
             {
                 label: ">= 1",
                 condition: {
-                    attribute: conditionAttributeInfo.attribute,
+                    attribute,
                     operator: "gte",
                     operand: 1,
-                },
-            },
-            {
-                label: "= 0",
-                condition: {
-                    attribute: conditionAttributeInfo.attribute,
-                    operator: "eq",
-                    operand: 0,
                 },
             },
         ];
