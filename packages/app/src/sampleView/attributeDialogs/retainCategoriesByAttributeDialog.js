@@ -2,16 +2,9 @@ import { faFilter } from "@fortawesome/free-solid-svg-icons";
 import { css, html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import "../../components/generic/comparisonOperatorButtons.js";
 import "../../components/generic/searchableCheckboxList.js";
 import { extractAttributeValues } from "../attributeValues.js";
-
-const OPERATOR_OPTIONS = [
-    ["gt", ">"],
-    ["gte", ">="],
-    ["eq", "="],
-    ["lte", "<="],
-    ["lt", "<"],
-];
 
 class RetainCategoriesByAttributeDialog extends BaseDialog {
     static properties = {
@@ -80,12 +73,9 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
         }
     }
 
-    /** @param {Event} event */
+    /** @param {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} event */
     #operatorChanged(event) {
-        this.operator =
-            /** @type {import("../state/payloadTypes.js").ComparisonOperatorType} */ (
-                /** @type {HTMLSelectElement} */ (event.target).value
-            );
+        this.operator = event.value;
     }
 
     /** @param {Event} event */
@@ -115,16 +105,12 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
 
     #renderQuantitativeCondition() {
         return html`<div class="condition-row">
-            <select
+            <gs-comparison-operator-buttons
                 .value=${this.operator}
-                @change=${(/** @type {Event} */ event) =>
-                    this.#operatorChanged(event)}
-            >
-                ${OPERATOR_OPTIONS.map(
-                    ([value, label]) =>
-                        html`<option value=${value}>${label}</option>`
-                )}
-            </select>
+                @change=${(
+                    /** @type {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} */ event
+                ) => this.#operatorChanged(event)}
+            ></gs-comparison-operator-buttons>
             <input
                 type="number"
                 .value=${String(this.operand)}

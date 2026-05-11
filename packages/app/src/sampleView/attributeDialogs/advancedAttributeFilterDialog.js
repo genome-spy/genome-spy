@@ -3,7 +3,7 @@ import { html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
-import { classMap } from "lit/directives/class-map.js";
+import "../../components/generic/comparisonOperatorButtons.js";
 import "../../components/generic/histogram.js";
 import "../../components/generic/searchableCheckboxList.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
@@ -116,10 +116,9 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
         }
     }
 
-    /** @param {Event} e */
-    #operatorChanged(e) {
-        const value = /** @type {HTMLInputElement} */ (e.target).value;
-        this.operator = /** @type {ComparisonOperatorType} */ (value);
+    /** @param {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} event */
+    #operatorChanged(event) {
+        this.operator = event.value;
     }
 
     /** @param {HTMLInputElement} input */
@@ -153,23 +152,13 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
                 >Retain samples where
                 <em>${this.attributeInfo.name}</em> is</label
             >
-            <div class="btn-group" role="group" style="margin-bottom: 1em;">
-                ${Object.entries(verboseOps).map(
-                    ([k, v]) =>
-                        html`<button
-                            class=${classMap({
-                                btn: true,
-                                chosen: k == this.operator,
-                            })}
-                            .value=${k}
-                            @click=${(/** @type {Event} */ e) =>
-                                this.#operatorChanged(e)}
-                            title="${v[1]}"
-                        >
-                            ${v[0]}
-                        </button>`
-                )}
-            </div>
+            <gs-comparison-operator-buttons
+                style="margin-bottom: 1em;"
+                .value=${this.operator}
+                @change=${(
+                    /** @type {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} */ event
+                ) => this.#operatorChanged(event)}
+            ></gs-comparison-operator-buttons>
 
             <gs-histogram
                 .values=${values}
@@ -339,12 +328,3 @@ export function quantitativeAttributeFilterDialog(attributeInfo, sampleView) {
         }
     );
 }
-
-/** @type {Record<ComparisonOperatorType, [string, string]>} */
-const verboseOps = {
-    lt: ["<", "less than"],
-    lte: ["\u2264", "less than or equal to"],
-    eq: ["=", "equal to"],
-    gte: ["\u2265", "greater than or equal to"],
-    gt: [">", "greater than"],
-};
