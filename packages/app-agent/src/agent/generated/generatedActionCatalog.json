@@ -264,6 +264,71 @@
     ]
   },
   {
+    "actionType": "sampleView/retainCategoriesByAttribute",
+    "description": "Retain every sample in each category whose samples satisfy a condition on another attribute.",
+    "usage": "Use this when a categorical attribute links related samples, such as multiple samples from the same patient, and the whole category should be retained if related samples match a quantitative or categorical condition. This is equivalent to `WHERE attribute IN (SELECT attribute WHERE condition)`. Quantitative conditions compare the condition attribute to a numeric operand. Categorical conditions use `operator: \"in\"` with `values`. With categorical conditions, `required: \"any\"` keeps categories with at least one selected condition value and `required: \"all\"` requires every selected condition value to occur in the category.",
+    "payloadType": "RetainCategoriesByAttribute",
+    "payloadFields": [
+      {
+        "name": "attribute",
+        "type": "AttributeIdentifier",
+        "description": "Categorical attribute whose categories are retained. All samples with a retained category value are kept.",
+        "required": true
+      },
+      {
+        "name": "condition",
+        "type": "AttributeCondition",
+        "description": "Per-sample condition used to decide which values of `attribute` are retained. A value of `attribute` is retained when at least one sample with that value satisfies this condition. All samples with retained `attribute` values are kept.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "attribute": {
+        "type": "SAMPLE_ATTRIBUTE",
+        "specifier": "patient_id"
+      },
+      "condition": {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "TP53_mutation_count"
+        },
+        "operator": "gt",
+        "operand": 0
+      }
+    },
+    "examples": [
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "patient_id"
+        },
+        "condition": {
+          "attribute": {
+            "type": "SAMPLE_ATTRIBUTE",
+            "specifier": "TP53_mutation_count"
+          },
+          "operator": "gt",
+          "operand": 0
+        }
+      },
+      {
+        "attribute": {
+          "type": "SAMPLE_ATTRIBUTE",
+          "specifier": "patient_id"
+        },
+        "condition": {
+          "attribute": {
+            "type": "SAMPLE_ATTRIBUTE",
+            "specifier": "diagnosis"
+          },
+          "operator": "in",
+          "values": ["AML", "MDS"],
+          "required": "all"
+        }
+      }
+    ]
+  },
+  {
     "actionType": "sampleView/filterByNominal",
     "description": "Retain or remove samples whose selected attribute matches any of the provided values.",
     "usage": "Use this for exact-match filtering on categorical or ordinal attributes. Set `remove` to `true` to exclude matching samples instead of keeping them.",

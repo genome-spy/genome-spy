@@ -35,6 +35,11 @@
     "description": "Retain samples whose selected quantitative value satisfies a threshold comparison."
   },
   {
+    "actionType": "sampleView/retainCategoriesByAttribute",
+    "title": "Retain patient_id values where any sample has TP53_mutation_count > 0",
+    "description": "Retain every sample in each category whose samples satisfy a condition on another attribute."
+  },
+  {
     "actionType": "sampleView/filterByNominal",
     "title": "Retain samples having diagnosis = AML",
     "description": "Retain or remove samples whose selected attribute matches any of the provided values."

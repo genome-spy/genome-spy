@@ -13,6 +13,7 @@ import type {
     ParamProvenanceEntry,
     RemoveGroup,
     RemoveUndefined,
+    RetainCategoriesByAttribute,
     RetainFirstNCategories,
     RetainFirstOfEach,
     RetainMatched,
@@ -48,6 +49,10 @@ export type AgentIntentBatchStep =
     | {
           actionType: "sampleView/filterByQuantitative";
           payload: FilterByQuantitative;
+      }
+    | {
+          actionType: "sampleView/retainCategoriesByAttribute";
+          payload: RetainCategoriesByAttribute;
       }
     | {
           actionType: "sampleView/filterByNominal";

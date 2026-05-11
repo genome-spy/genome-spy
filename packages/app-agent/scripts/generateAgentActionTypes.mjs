@@ -20,24 +20,12 @@ const outputPath = path.join(
  * @returns {string}
  */
 export function renderGeneratedActionTypes(catalog) {
+    const payloadTypes = Array.from(
+        new Set(catalog.map((entry) => entry.payloadType))
+    ).sort();
     const imports = [
         "import type {",
-        "    AddMetadataFromSource,",
-        "    DeriveMetadata,",
-        "    FilterByNominal,",
-        "    FilterByQuantitative,",
-        "    GroupByNominal,",
-        "    GroupByThresholds,",
-        "    GroupCustom,",
-        "    GroupToQuartiles,",
-        "    ParamProvenanceEntry,",
-        "    RemoveGroup,",
-        "    RemoveUndefined,",
-        "    RetainFirstNCategories,",
-        "    RetainFirstOfEach,",
-        "    RetainMatched,",
-        "    SetMetadata,",
-        "    SortBy,",
+        ...payloadTypes.map((payloadType) => `    ${payloadType},`),
         '} from "@genome-spy/app";',
     ];
 
