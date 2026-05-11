@@ -22,6 +22,7 @@ import {
 import { html } from "lit";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
+const MAX_CATEGORICAL_QUICK_CONDITIONS = 20;
 
 /**
  * @param {string | import("lit").TemplateResult} title Menu title
@@ -358,19 +359,18 @@ function buildRetainCategoriesConditionItems(
     conditionAttributeInfo,
     sampleView
 ) {
-    const items = getRetainCategoriesConditionSpecs(
-        conditionAttributeInfo,
-        sampleView
-    ).map(({ label, condition }) =>
-        createRetainCategoriesConditionItem(
-            categoryAttributeInfo,
-            sampleView,
-            label,
-            condition
-        )
-    );
-
     if (conditionAttributeInfo.type === "quantitative") {
+        const items = getRetainCategoriesConditionSpecs(
+            conditionAttributeInfo
+        ).map(({ label, condition }) =>
+            createRetainCategoriesConditionItem(
+                categoryAttributeInfo,
+                sampleView,
+                label,
+                condition
+            )
+        );
+
         items.push({
             label: "Choose custom threshold...",
             callback: () =>
@@ -380,7 +380,41 @@ function buildRetainCategoriesConditionItems(
                     sampleView
                 ),
         });
+
+        return items;
     } else {
+        const { values, availableCount, unavailableCount } =
+            getCategoricalQuickConditionValues(
+                conditionAttributeInfo,
+                sampleView
+            );
+        const items = values.map((value) =>
+            createRetainCategoriesConditionItem(
+                categoryAttributeInfo,
+                sampleView,
+                "= " + String(value),
+                {
+                    attribute: conditionAttributeInfo.attribute,
+                    operator: "in",
+                    values: [value],
+                }
+            )
+        );
+
+        if (unavailableCount > 0) {
+            items.push({
+                label: `${unavailableCount} unavailable omitted`,
+                type: "header",
+            });
+        }
+
+        if (availableCount > values.length) {
+            items.push({
+                label: `${values.length} of ${availableCount} shown`,
+                type: "header",
+            });
+        }
+
         items.push({
             label: "Choose custom values...",
             callback: () =>
@@ -390,57 +424,43 @@ function buildRetainCategoriesConditionItems(
                     sampleView
                 ),
         });
-    }
 
-    return items;
+        return items;
+    }
 }
 
 /**
  * @param {import("./types.js").AttributeInfo} conditionAttributeInfo
- * @param {import("./sampleView.js").default} sampleView
  * @returns {{ label: string, condition: import("./state/payloadTypes.js").AttributeCondition }[]}
  */
-function getRetainCategoriesConditionSpecs(conditionAttributeInfo, sampleView) {
-    if (conditionAttributeInfo.type === "quantitative") {
-        const attribute = conditionAttributeInfo.attribute;
-        return [
-            {
-                label: "= 0",
-                condition: {
-                    attribute,
-                    operator: "eq",
-                    operand: 0,
-                },
-            },
-            {
-                label: "> 0",
-                condition: {
-                    attribute,
-                    operator: "gt",
-                    operand: 0,
-                },
-            },
-            {
-                label: ">= 1",
-                condition: {
-                    attribute,
-                    operator: "gte",
-                    operand: 1,
-                },
-            },
-        ];
-    }
-
-    return getAttributeCategories(conditionAttributeInfo, sampleView).map(
-        (value) => ({
-            label: "= " + String(value),
+function getRetainCategoriesConditionSpecs(conditionAttributeInfo) {
+    const attribute = conditionAttributeInfo.attribute;
+    return [
+        {
+            label: "= 0",
             condition: {
-                attribute: conditionAttributeInfo.attribute,
-                operator: "in",
-                values: [value],
+                attribute,
+                operator: "eq",
+                operand: 0,
             },
-        })
-    );
+        },
+        {
+            label: "> 0",
+            condition: {
+                attribute,
+                operator: "gt",
+                operand: 0,
+            },
+        },
+        {
+            label: ">= 1",
+            condition: {
+                attribute,
+                operator: "gte",
+                operand: 1,
+            },
+        },
+    ];
 }
 
 /**
@@ -491,23 +511,33 @@ function isRetainCategoriesConditionAttribute(attributeInfo) {
 /**
  * @param {import("./types.js").AttributeInfo} attributeInfo
  * @param {import("./sampleView.js").default} sampleView
- * @returns {any[]}
+ * @returns {{ values: any[], availableCount: number, unavailableCount: number }}
  */
-function getAttributeCategories(attributeInfo, sampleView) {
-    const domain = attributeInfo.scale?.domain?.();
-    if (Array.isArray(domain)) {
-        return domain;
-    }
-
-    return Array.from(
-        new Set(
-            extractAttributeValues(
-                attributeInfo,
-                sampleView.leafSamples,
-                sampleView.sampleHierarchy
-            )
+function getCategoricalQuickConditionValues(attributeInfo, sampleView) {
+    const presentValues = new Set(
+        extractAttributeValues(
+            attributeInfo,
+            sampleView.leafSamples,
+            sampleView.sampleHierarchy
         )
     );
+    const domain = attributeInfo.scale?.domain?.();
+
+    if (Array.isArray(domain)) {
+        const values = domain.filter((value) => presentValues.has(value));
+        return {
+            values: values.slice(0, MAX_CATEGORICAL_QUICK_CONDITIONS),
+            availableCount: values.length,
+            unavailableCount: domain.length - values.length,
+        };
+    }
+
+    const values = Array.from(presentValues);
+    return {
+        values: values.slice(0, MAX_CATEGORICAL_QUICK_CONDITIONS),
+        availableCount: values.length,
+        unavailableCount: 0,
+    };
 }
 
 /**
