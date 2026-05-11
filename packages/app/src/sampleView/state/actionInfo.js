@@ -59,6 +59,7 @@ function formatColumnNameList(columnIds) {
  * @property {Object} template
  * @property {string | import("lit").TemplateResult} attributeName
  * @property {string | import("lit").TemplateResult} attributeTitle
+ * @property {string | import("lit").TemplateResult} conditionAttributeTitle
  */
 
 /**
@@ -193,6 +194,41 @@ const actionHandlers = {
         };
     },
 
+    retainCategoriesByAttribute: ({
+        payload,
+        template,
+        attributeTitle,
+        conditionAttributeTitle,
+    }) => {
+        const condition =
+            /** @type {import("./payloadTypes.js").AttributeCondition} */ (
+                payload.condition
+            );
+
+        /** @type {(attr: string | import("lit").TemplateResult) => import("lit").TemplateResult} */
+        let makeTitle;
+        if (condition.operator === "in" && condition.required === "all") {
+            makeTitle = (attr) => html`
+                Retain ${attr} values where samples include all
+                ${conditionAttributeTitle} values in
+                ${formatSet(condition.values)}
+            `;
+        } else {
+            makeTitle = (attr) => html`
+                Retain ${attr} values where any sample has
+                ${conditionAttributeTitle}
+                ${formatConditionPredicate(condition)}
+            `;
+        }
+
+        return {
+            ...template,
+            title: makeTitle(attributeTitle),
+            provenanceTitle: makeTitle(attributeTitle),
+            icon: faFilter,
+        };
+    },
+
     removeUndefined: ({ template, attributeTitle }) => ({
         ...template,
         title: "Remove samples having missing attribute",
@@ -276,6 +312,21 @@ const actionHandlers = {
 };
 
 /**
+ * @param {import("./payloadTypes.js").AttributeCondition} condition
+ * @returns {import("lit").TemplateResult}
+ */
+function formatConditionPredicate(condition) {
+    if (condition.operator === "in") {
+        return html`in ${formatSet(condition.values)}`;
+    } else {
+        return html`
+            <span class="operator">${verboseOps[condition.operator]}</span>
+            <strong>${attributeNumberFormat(condition.operand)}</strong>
+        `;
+    }
+}
+
+/**
  * Describes an action for displaying it in menus or provenance tracking.
  *
  * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
@@ -292,29 +343,57 @@ export function getActionInfo(action, getAttributeInfo) {
             ? action.payload
             : {};
 
+    /** @param {import("../types.js").AttributeIdentifier | null} attribute */
+    const resolveAttributeInfo = (attribute) => {
+        if (!attribute) {
+            return {};
+        }
+
+        try {
+            const attributeInfo = getAttributeInfo(attribute);
+            const fallbackAttributeName =
+                attribute &&
+                typeof attribute === "object" &&
+                "specifier" in attribute &&
+                typeof attribute.specifier === "string"
+                    ? html` <em>${attribute.specifier}</em> `
+                    : undefined;
+            const attributeName =
+                attributeInfo?.emphasizedName ??
+                (attributeInfo?.name
+                    ? html` <em>${attributeInfo.name}</em> `
+                    : fallbackAttributeName);
+            const attributeTitle = attributeInfo?.title ?? attributeName;
+
+            return { attributeInfo, attributeName, attributeTitle };
+        } catch {
+            const fallbackAttributeName =
+                attribute &&
+                typeof attribute === "object" &&
+                "specifier" in attribute &&
+                typeof attribute.specifier === "string"
+                    ? html` <em>${attribute.specifier}</em> `
+                    : undefined;
+
+            return {
+                attributeInfo: undefined,
+                attributeName: fallbackAttributeName,
+                attributeTitle: fallbackAttributeName,
+            };
+        }
+    };
+
     const attribute =
         "attribute" in payload && payload.attribute ? payload.attribute : null;
-    let attributeInfo;
-    if (attribute) {
-        try {
-            attributeInfo = getAttributeInfo(attribute);
-        } catch {
-            attributeInfo = undefined;
-        }
-    }
-    const fallbackAttributeName =
-        attribute &&
-        typeof attribute === "object" &&
-        "specifier" in attribute &&
-        typeof attribute.specifier === "string"
-            ? html` <em>${attribute.specifier}</em> `
-            : undefined;
-    const attributeName =
-        attributeInfo?.emphasizedName ??
-        (attributeInfo?.name
-            ? html` <em>${attributeInfo.name}</em> `
-            : fallbackAttributeName);
-    const attributeTitle = attributeInfo?.title ?? attributeName;
+    const { attributeName, attributeTitle } = resolveAttributeInfo(attribute);
+    const { attributeTitle: conditionAttributeTitle } = resolveAttributeInfo(
+        "condition" in payload &&
+            payload.condition &&
+            typeof payload.condition === "object" &&
+            "attribute" in payload.condition
+            ? payload.condition.attribute
+            : null
+    );
 
     const template = {
         attributeName,
@@ -327,7 +406,13 @@ export function getActionInfo(action, getAttributeInfo) {
 
     const handler = actionHandlers[actionType];
     if (handler) {
-        return handler({ payload, template, attributeName, attributeTitle });
+        return handler({
+            payload,
+            template,
+            attributeName,
+            attributeTitle,
+            conditionAttributeTitle,
+        });
     }
 
     // Unknown actions should still be renderable in provenance menus. Avoid

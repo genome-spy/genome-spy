@@ -16,6 +16,7 @@ import {
     filterNominal,
     filterQuantitative,
     filterUndefined,
+    getCategoriesWithMatchingSamples,
     getMatchedValues,
     retainFirstNCategories,
     retainFirstOfEachCategory,
@@ -85,6 +86,47 @@ function createObjectAccessor(action) {
         );
     }
     return (sampleId) => obj[sampleId];
+}
+
+/**
+ * @param {PayloadAction<import("./payloadTypes.js").RetainCategoriesByAttribute>} action
+ * @returns {{
+ *   categoryAccessor: function(string):any,
+ *   conditionAccessor: function(string):any,
+ * }}
+ */
+function createRetainCategoriesAccessors(action) {
+    const augmented = action.payload[AUGMENTED_KEY];
+    const values = augmented?.values;
+    const conditionValues = augmented?.conditionValues;
+    if (!values || !conditionValues) {
+        throw new Error(
+            "No accessed category and condition values provided. Did you remember to use SampleView.dispatchAttributeAction()?"
+        );
+    }
+
+    return {
+        categoryAccessor: (sampleId) => values[sampleId],
+        conditionAccessor: (sampleId) => conditionValues[sampleId],
+    };
+}
+
+/**
+ * @param {SampleHierarchy} sampleHierarchy
+ * @param {function(string):any} accessor
+ * @returns {Record<string, any>}
+ */
+function collectSampleGroupValues(sampleHierarchy, accessor) {
+    /** @type {Record<string, any>} */
+    const values = {};
+
+    for (const group of getSampleGroups(sampleHierarchy)) {
+        for (const sampleId of group.samples) {
+            values[sampleId] = accessor(sampleId);
+        }
+    }
+
+    return values;
 }
 
 /**
@@ -394,6 +436,64 @@ export const sampleSlice = createSlice({
                     createObjectAccessor(action),
                     action.payload.operator,
                     action.payload.operand
+                )
+            );
+        },
+
+        /**
+         * Retain every sample in each category whose samples satisfy a condition on another attribute.
+         *
+         * Use this when a categorical attribute links related samples, such as
+         * multiple samples from the same patient, and the whole category should
+         * be retained if related samples match a quantitative or categorical
+         * condition. This is equivalent to
+         * `WHERE attribute IN (SELECT attribute WHERE condition)`.
+         *
+         * Quantitative conditions compare the condition attribute to a numeric
+         * operand. Categorical conditions use `operator: "in"` with `values`.
+         * With categorical conditions, `required: "any"` keeps categories with
+         * at least one selected condition value and `required: "all"` requires
+         * every selected condition value to occur in the category.
+         *
+         * @agent.payloadType RetainCategoriesByAttribute
+         * @agent.category filtering
+         * @agent.attributeKinds nominal,ordinal
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "patient_id" },
+         *   "condition": {
+         *     "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "TP53_mutation_count" },
+         *     "operator": "gt",
+         *     "operand": 0
+         *   }
+         * }
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "patient_id" },
+         *   "condition": {
+         *     "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "diagnosis" },
+         *     "operator": "in",
+         *     "values": ["AML", "MDS"],
+         *     "required": "all"
+         *   }
+         * }
+         */
+        retainCategoriesByAttribute: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainCategoriesByAttribute>} */
+            action
+        ) => {
+            const { categoryAccessor, conditionAccessor } =
+                createRetainCategoriesAccessors(action);
+            const retainedCategories = getCategoriesWithMatchingSamples(
+                getSampleGroups(state).flatMap((group) => group.samples),
+                categoryAccessor,
+                conditionAccessor,
+                action.payload.condition
+            );
+            applyToSamples(state, (samples) =>
+                samples.filter((sample) =>
+                    retainedCategories.has(categoryAccessor(sample))
                 )
             );
         },
@@ -791,8 +891,7 @@ export const sampleSelector = createSelector(
  * TODO: Make an async version for use cases when data must be fetched
  * before accessing attribute values, e.g. when using lazy loading.
  *
- * @template {PayloadWithAttribute} T
- * @param {PayloadAction<T>} action
+ * @param {PayloadAction<any>} action
  * @param {SampleHierarchy} sampleHierarchy
  * @param {import("../compositeAttributeInfoSource.js").AttributeInfoSource} getAttributeInfo
  */
@@ -801,6 +900,17 @@ export function augmentAttributeAction(
     sampleHierarchy,
     getAttributeInfo
 ) {
+    if (!action.type.startsWith(SAMPLE_SLICE_NAME + "/")) {
+        return action;
+    }
+
+    const actionType = /** @type {SampleActionType} */ (
+        action.type.split("/")[1]
+    );
+    if (!(actionType in sampleSlice.actions)) {
+        throw new Error(`Invalid action type: ${actionType}`);
+    }
+
     if (!action.payload.attribute) {
         return action;
     }
@@ -810,13 +920,6 @@ export function augmentAttributeAction(
         throw new Error(
             `Attribute info for attribute "${action.payload.attribute}" not found`
         );
-    }
-
-    const actionType = /** @type {SampleActionType} */ (
-        action.type.split("/")[1]
-    );
-    if (!(actionType in sampleSlice.actions)) {
-        throw new Error(`Invalid action type: ${actionType}`);
     }
 
     if (actionType === "deriveMetadata") {
@@ -841,16 +944,28 @@ export function augmentAttributeAction(
 
     /** @type {import("./payloadTypes.js").AugmentedAttribute} */
     const accessed = {
-        values: getSampleGroups(sampleHierarchy).reduce((acc, group) => {
-            for (const sampleId of group.samples) {
-                acc[sampleId] = wrappedAccessor(sampleId, sampleHierarchy);
-            }
-            return acc;
-        }, /** @type {Record<string, any>} */ ({})),
+        values: collectSampleGroupValues(sampleHierarchy, (sampleId) =>
+            wrappedAccessor(sampleId, sampleHierarchy)
+        ),
     };
 
     if (actionType == "groupByNominal") {
         accessed.domain = attributeInfo.scale?.domain();
+    }
+
+    if (actionType === "retainCategoriesByAttribute") {
+        const retainAction =
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainCategoriesByAttribute>} */ (
+                /** @type {unknown} */ (action)
+            );
+        const conditionAttributeInfo = getAttributeInfo(
+            retainAction.payload.condition.attribute
+        );
+        accessed.conditionValues = collectSampleGroupValues(
+            sampleHierarchy,
+            (sampleId) =>
+                conditionAttributeInfo.accessor(sampleId, sampleHierarchy)
+        );
     }
 
     return {

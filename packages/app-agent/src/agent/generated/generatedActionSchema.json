@@ -153,6 +153,20 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
+              "const": "sampleView/retainCategoriesByAttribute",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/RetainCategoriesByAttribute"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
               "const": "sampleView/filterByNominal",
               "type": "string"
             },
@@ -293,6 +307,16 @@
       "required": ["op"],
       "type": "object"
     },
+    "AttributeCondition": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/QuantitativeAttributeCondition"
+        },
+        {
+          "$ref": "#/definitions/CategoricalAttributeCondition"
+        }
+      ]
+    },
     "AttributeIdentifier": {
       "additionalProperties": false,
       "properties": {
@@ -322,6 +346,34 @@
         "VIEW_ATTRIBUTE"
       ],
       "type": "string"
+    },
+    "CategoricalAttributeCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Categorical or ordinal attribute tested within each category."
+        },
+        "operator": {
+          "const": "in",
+          "description": "Membership test applied as `attributeValue in values`.",
+          "type": "string"
+        },
+        "required": {
+          "description": "Requirement for selected values within each retained category.\n\n`any` retains a category when at least one sample has one of the selected values. `all` requires every selected value to occur in at least one sample in the category.\n\n__Default value:__ `\"any\"`",
+          "enum": ["any", "all"],
+          "type": "string"
+        },
+        "values": {
+          "description": "Attribute values that satisfy the condition.",
+          "items": {
+            "$ref": "#/definitions/Scalar"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["attribute", "operator", "values"],
+      "type": "object"
     },
     "ChromosomalLocus": {
       "additionalProperties": false,
@@ -1010,6 +1062,25 @@
       "required": ["view", "keyTuple"],
       "type": "object"
     },
+    "QuantitativeAttributeCondition": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Quantitative attribute tested within each category."
+        },
+        "operand": {
+          "description": "Numeric value on the right-hand side of the comparison.",
+          "type": "number"
+        },
+        "operator": {
+          "$ref": "#/definitions/ComparisonOperatorType",
+          "description": "Comparison applied as `attributeValue operator operand`."
+        }
+      },
+      "required": ["attribute", "operator", "operand"],
+      "type": "object"
+    },
     "RemoveGroup": {
       "additionalProperties": false,
       "properties": {
@@ -1034,6 +1105,21 @@
         }
       },
       "required": ["attribute"],
+      "type": "object"
+    },
+    "RetainCategoriesByAttribute": {
+      "additionalProperties": false,
+      "properties": {
+        "attribute": {
+          "$ref": "#/definitions/AttributeIdentifier",
+          "description": "Categorical attribute whose categories are retained.\n\nAll samples with a retained category value are kept."
+        },
+        "condition": {
+          "$ref": "#/definitions/AttributeCondition",
+          "description": "Per-sample condition used to decide which values of `attribute` are retained.\n\nA value of `attribute` is retained when at least one sample with that value satisfies this condition. All samples with retained `attribute` values are kept."
+        }
+      },
+      "required": ["attribute", "condition"],
       "type": "object"
     },
     "RetainFirstNCategories": {

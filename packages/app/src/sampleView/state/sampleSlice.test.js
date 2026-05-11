@@ -164,6 +164,56 @@ describe("augmentAttributeAction", () => {
         });
     });
 
+    it("adds category and condition values for retainCategoriesByAttribute actions", () => {
+        const sampleHierarchy = createSampleHierarchy();
+
+        const action = sampleSlice.actions.retainCategoriesByAttribute({
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "patient",
+            },
+            condition: {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "TP53_mutation_count",
+                },
+                operator: "gt",
+                operand: 0,
+            },
+        });
+
+        const augmented = augmentAttributeAction(
+            action,
+            sampleHierarchy,
+            (attribute) => {
+                if (attribute.specifier === "patient") {
+                    return /** @type {any} */ ({
+                        name: "patient",
+                        accessor: (sampleId) =>
+                            sampleId === "s1" ? "p1" : "p2",
+                    });
+                } else {
+                    return /** @type {any} */ ({
+                        name: "TP53_mutation_count",
+                        accessor: (sampleId) => (sampleId === "s2" ? 1 : 0),
+                    });
+                }
+            }
+        );
+
+        const augmentedAttribute = /** @type {AugmentedAttribute} */ (
+            augmented.payload[AUGMENTED_KEY]
+        );
+        expect(augmentedAttribute.values).toEqual({
+            s1: "p1",
+            s2: "p2",
+        });
+        expect(augmentedAttribute.conditionValues).toEqual({
+            s1: 0,
+            s2: 1,
+        });
+    });
+
     it("inherits authored source scale for domain-preserving derived metadata", () => {
         const sampleHierarchy = createSampleHierarchy();
 
@@ -412,6 +462,284 @@ describe("sampleSlice reducers", () => {
             )
         ).toThrow(
             "Metadata source payload is missing. Did you remember to use IntentExecutor.dispatch()?"
+        );
+    });
+
+    it("retains all samples from categories with a matching sample", () => {
+        let state = sampleSlice.reducer(
+            undefined,
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                    { id: "s3", displayName: "s3", indexNumber: 2 },
+                    { id: "s4", displayName: "s4", indexNumber: 3 },
+                    { id: "s5", displayName: "s5", indexNumber: 4 },
+                ],
+            })
+        );
+
+        state = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.retainCategoriesByAttribute({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+                condition: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "TP53_mutation_count",
+                    },
+                    operator: "gt",
+                    operand: 0,
+                },
+                [AUGMENTED_KEY]: {
+                    values: {
+                        s1: "p1",
+                        s2: "p1",
+                        s3: "p2",
+                        s4: "p2",
+                        s5: "p3",
+                    },
+                    conditionValues: {
+                        s1: 0,
+                        s2: 2,
+                        s3: 0,
+                        s4: 0,
+                        s5: 3,
+                    },
+                },
+            })
+        );
+
+        expect(state.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            samples: ["s1", "s2", "s5"],
+        });
+    });
+
+    it("uses matching categories across current groups", () => {
+        const state =
+            /** @type {import("./sampleState.js").SampleHierarchy} */ ({
+                ...createSampleHierarchy(),
+                sampleData: {
+                    ids: ["s1", "s2", "s3", "s4"],
+                    entities: {
+                        s1: { id: "s1", displayName: "s1", indexNumber: 0 },
+                        s2: { id: "s2", displayName: "s2", indexNumber: 1 },
+                        s3: { id: "s3", displayName: "s3", indexNumber: 2 },
+                        s4: { id: "s4", displayName: "s4", indexNumber: 3 },
+                    },
+                },
+                groupMetadata: [
+                    {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "site",
+                        },
+                    },
+                ],
+                rootGroup: {
+                    name: "ROOT",
+                    title: "Root",
+                    groups: [
+                        {
+                            name: "primary",
+                            title: "primary",
+                            samples: ["s1", "s3"],
+                        },
+                        {
+                            name: "metastasis",
+                            title: "metastasis",
+                            samples: ["s2", "s4"],
+                        },
+                    ],
+                },
+            });
+
+        const nextState = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.retainCategoriesByAttribute({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+                condition: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "TP53_mutation_count",
+                    },
+                    operator: "gt",
+                    operand: 0,
+                },
+                [AUGMENTED_KEY]: {
+                    values: {
+                        s1: "p1",
+                        s2: "p1",
+                        s3: "p2",
+                        s4: "p2",
+                    },
+                    conditionValues: {
+                        s1: 0,
+                        s2: 1,
+                        s3: 0,
+                        s4: 0,
+                    },
+                },
+            })
+        );
+
+        expect(nextState.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                {
+                    name: "primary",
+                    title: "primary",
+                    samples: ["s1"],
+                },
+                {
+                    name: "metastasis",
+                    title: "metastasis",
+                    samples: ["s2"],
+                },
+            ],
+        });
+    });
+
+    it("retains categories with categorical condition matches", () => {
+        let state = sampleSlice.reducer(
+            undefined,
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                    { id: "s3", displayName: "s3", indexNumber: 2 },
+                    { id: "s4", displayName: "s4", indexNumber: 3 },
+                ],
+            })
+        );
+
+        state = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.retainCategoriesByAttribute({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+                condition: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
+                    operator: "in",
+                    values: ["AML"],
+                },
+                [AUGMENTED_KEY]: {
+                    values: {
+                        s1: "p1",
+                        s2: "p1",
+                        s3: "p2",
+                        s4: "p3",
+                    },
+                    conditionValues: {
+                        s1: "AML",
+                        s2: "MDS",
+                        s3: "ALL",
+                        s4: "AML",
+                    },
+                },
+            })
+        );
+
+        expect(state.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            samples: ["s1", "s2", "s4"],
+        });
+    });
+
+    it("retains categories requiring all categorical condition values", () => {
+        let state = sampleSlice.reducer(
+            undefined,
+            sampleSlice.actions.setSamples({
+                samples: [
+                    { id: "s1", displayName: "s1", indexNumber: 0 },
+                    { id: "s2", displayName: "s2", indexNumber: 1 },
+                    { id: "s3", displayName: "s3", indexNumber: 2 },
+                    { id: "s4", displayName: "s4", indexNumber: 3 },
+                    { id: "s5", displayName: "s5", indexNumber: 4 },
+                ],
+            })
+        );
+
+        state = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.retainCategoriesByAttribute({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+                condition: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
+                    operator: "in",
+                    values: ["AML", "MDS"],
+                    required: "all",
+                },
+                [AUGMENTED_KEY]: {
+                    values: {
+                        s1: "p1",
+                        s2: "p1",
+                        s3: "p2",
+                        s4: "p2",
+                        s5: "p3",
+                    },
+                    conditionValues: {
+                        s1: "AML",
+                        s2: "MDS",
+                        s3: "AML",
+                        s4: "ALL",
+                        s5: "MDS",
+                    },
+                },
+            })
+        );
+
+        expect(state.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            samples: ["s1", "s2"],
+        });
+    });
+
+    it("throws if augmented payload is missing for retainCategoriesByAttribute", () => {
+        const state = createSampleHierarchy();
+
+        expect(() =>
+            sampleSlice.reducer(
+                state,
+                sampleSlice.actions.retainCategoriesByAttribute({
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "patient",
+                    },
+                    condition: {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "TP53_mutation_count",
+                        },
+                        operator: "gt",
+                        operand: 0,
+                    },
+                })
+            )
+        ).toThrow(
+            "No accessed category and condition values provided. Did you remember to use SampleView.dispatchAttributeAction()?"
         );
     });
 });

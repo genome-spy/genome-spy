@@ -81,6 +81,131 @@ export function retainFirstNCategories(samples, accessor, n) {
 }
 
 /**
+ * Retains all samples in categories where at least one sample satisfies the
+ * condition.
+ *
+ * @param {T[]} samples
+ * @param {function(T):any} categoryAccessor
+ * @param {function(T):any} conditionAccessor
+ * @param {import("./payloadTypes.js").AttributeCondition} condition
+ * @returns {T[]}
+ * @template T
+ */
+export function retainCategoriesByCondition(
+    samples,
+    categoryAccessor,
+    conditionAccessor,
+    condition
+) {
+    const retainedCategories = getCategoriesWithMatchingSamples(
+        samples,
+        categoryAccessor,
+        conditionAccessor,
+        condition
+    );
+
+    return samples.filter((sample) =>
+        retainedCategories.has(categoryAccessor(sample))
+    );
+}
+
+/**
+ * @param {Iterable<T>} samples
+ * @param {function(T):any} categoryAccessor
+ * @param {function(T):any} conditionAccessor
+ * @param {import("./payloadTypes.js").AttributeCondition} condition
+ * @returns {Set<any>}
+ * @template T
+ */
+export function getCategoriesWithMatchingSamples(
+    samples,
+    categoryAccessor,
+    conditionAccessor,
+    condition
+) {
+    if (condition.operator === "in" && condition.required === "all") {
+        return getCategoriesWithAllConditionValues(
+            samples,
+            categoryAccessor,
+            conditionAccessor,
+            condition.values
+        );
+    }
+
+    const predicate = createConditionPredicate(condition);
+    const retainedCategories = new Set();
+
+    for (const sample of samples) {
+        if (predicate(conditionAccessor(sample))) {
+            retainedCategories.add(categoryAccessor(sample));
+        }
+    }
+
+    return retainedCategories;
+}
+
+/**
+ * @param {Iterable<T>} samples
+ * @param {function(T):any} categoryAccessor
+ * @param {function(T):any} conditionAccessor
+ * @param {any[]} values
+ * @returns {Set<any>}
+ * @template T
+ */
+function getCategoriesWithAllConditionValues(
+    samples,
+    categoryAccessor,
+    conditionAccessor,
+    values
+) {
+    if (values.length === 0) {
+        return new Set();
+    }
+
+    const requiredValues = new Set(values);
+    /** @type {Map<any, Set<any>>} */
+    const categoryToValues = new Map();
+
+    for (const sample of samples) {
+        const conditionValue = conditionAccessor(sample);
+        if (!requiredValues.has(conditionValue)) {
+            continue;
+        }
+
+        const category = categoryAccessor(sample);
+        let foundValues = categoryToValues.get(category);
+        if (!foundValues) {
+            foundValues = new Set();
+            categoryToValues.set(category, foundValues);
+        }
+        foundValues.add(conditionValue);
+    }
+
+    const retainedCategories = new Set();
+    for (const [category, foundValues] of categoryToValues) {
+        if (values.every((value) => foundValues.has(value))) {
+            retainedCategories.add(category);
+        }
+    }
+
+    return retainedCategories;
+}
+
+/**
+ * @param {import("./payloadTypes.js").AttributeCondition} condition
+ * @returns {function(any):boolean}
+ */
+function createConditionPredicate(condition) {
+    if (condition.operator === "in") {
+        const values = new Set(condition.values);
+        return (value) => values.has(value);
+    } else {
+        const op = COMPARISON_OPERATORS[condition.operator];
+        return (value) => op(value, condition.operand);
+    }
+}
+
+/**
  * TODO: Ordinal attributes
  *
  * @param {T[]} samples
@@ -107,8 +232,7 @@ export function sort(samples, accessor, descending = false) {
 }
 
 /**
- * @type {Record<ComparisonOperatorType, (a: T, b: T) => boolean>}
- * @template T
+ * @type {Record<ComparisonOperatorType, (a: any, b: any) => boolean>}
  */
 const COMPARISON_OPERATORS = {
     lt: (a, b) => a < b,

@@ -4,7 +4,9 @@ import {
     filterNominal,
     filterQuantitative,
     filterUndefined,
+    getCategoriesWithMatchingSamples,
     getMatchedValues,
+    retainCategoriesByCondition,
     retainFirstNCategories,
     retainFirstOfEachCategory,
     sort,
@@ -104,6 +106,113 @@ describe("sampleOperations", () => {
         const retained = retainFirstNCategories(samples, (x) => x, 2);
 
         expect(retained).toEqual([1, 2, 1, 2]);
+    });
+
+    it("retains all samples from categories with a matching sample", () => {
+        const samples = ["s1", "s2", "s3", "s4", "s5"];
+        const patient = {
+            s1: "p1",
+            s2: "p1",
+            s3: "p2",
+            s4: "p2",
+            s5: "p3",
+        };
+        const mutationCount = {
+            s1: 0,
+            s2: 2,
+            s3: 0,
+            s4: 0,
+            s5: 3,
+        };
+
+        const retained = retainCategoriesByCondition(
+            samples,
+            (sample) => patient[sample],
+            (sample) => mutationCount[sample],
+            {
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "mutations" },
+                operator: "gt",
+                operand: 0,
+            }
+        );
+
+        expect(retained).toEqual(["s1", "s2", "s5"]);
+    });
+
+    it("collects categories with matching samples from an iterable", () => {
+        const samples = ["s1", "s2", "s3"];
+        const category = { s1: "p1", s2: "p1", s3: "p2" };
+        const count = { s1: 0, s2: 1, s3: 0 };
+
+        const retainedCategories = getCategoriesWithMatchingSamples(
+            samples.values(),
+            (sample) => category[sample],
+            (sample) => count[sample],
+            {
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "count" },
+                operator: "gte",
+                operand: 1,
+            }
+        );
+
+        expect(Array.from(retainedCategories)).toEqual(["p1"]);
+    });
+
+    it("collects categories with categorical condition matches", () => {
+        const samples = ["s1", "s2", "s3", "s4"];
+        const patient = { s1: "p1", s2: "p1", s3: "p2", s4: "p3" };
+        const diagnosis = { s1: "AML", s2: "MDS", s3: "ALL", s4: "AML" };
+
+        const retainedCategories = getCategoriesWithMatchingSamples(
+            samples,
+            (sample) => patient[sample],
+            (sample) => diagnosis[sample],
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+                operator: "in",
+                values: ["AML"],
+            }
+        );
+
+        expect(Array.from(retainedCategories)).toEqual(["p1", "p3"]);
+    });
+
+    it("collects categories requiring all categorical condition values", () => {
+        const samples = ["s1", "s2", "s3", "s4", "s5"];
+        const patient = {
+            s1: "p1",
+            s2: "p1",
+            s3: "p2",
+            s4: "p2",
+            s5: "p3",
+        };
+        const diagnosis = {
+            s1: "AML",
+            s2: "MDS",
+            s3: "AML",
+            s4: "ALL",
+            s5: "MDS",
+        };
+
+        const retainedCategories = getCategoriesWithMatchingSamples(
+            samples,
+            (sample) => patient[sample],
+            (sample) => diagnosis[sample],
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+                operator: "in",
+                values: ["AML", "MDS"],
+                required: "all",
+            }
+        );
+
+        expect(Array.from(retainedCategories)).toEqual(["p1"]);
     });
 
     it("sorts samples in ascending and descending order", () => {
