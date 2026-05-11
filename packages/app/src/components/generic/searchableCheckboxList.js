@@ -3,7 +3,7 @@ import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
 import { LitElement, css, html, nothing } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 import { createInputListener } from "../dialogs/saveImageDialog.js";
-import { faStyles } from "./componentStyles.js";
+import { faStyles, formStyles } from "./componentStyles.js";
 
 /**
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
@@ -31,16 +31,15 @@ export default class SearchableCheckboxList extends LitElement {
 
     static styles = [
         faStyles,
+        formStyles,
         css`
             :host {
-                display: block;
-                --form-control-color: #212529;
-                --form-control-border-color: #ced4da;
-                --form-control-border: 1px solid
-                    var(--form-control-border-color);
-                --form-control-border-radius: 0.25em;
+                display: flex;
+                flex-direction: column;
+                gap: var(--gs-basic-spacing, 0.5em);
             }
 
+            /** Duplicates gs-form-group styles. TODO: Fix. */
             input[type="text"] {
                 display: block;
                 width: 100%;
@@ -102,7 +101,7 @@ export default class SearchableCheckboxList extends LitElement {
                 display: inline-block;
                 width: 0.5em;
                 height: 1em;
-                margin-right: 0.4em;
+                margin-right: 0.3em;
             }
 
             li {
@@ -110,8 +109,7 @@ export default class SearchableCheckboxList extends LitElement {
             }
 
             label.checkbox {
-                display: inline-block;
-                margin-bottom: 0;
+                display: block;
 
                 &:hover {
                     background-color: #f4f4f4;
@@ -120,8 +118,9 @@ export default class SearchableCheckboxList extends LitElement {
 
             small {
                 display: block;
-                margin-top: 0.3em;
                 color: #606060;
+                text-box-edge: cap alphabetic;
+                text-box-trim: trim-both;
             }
         `,
     ];
