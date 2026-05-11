@@ -441,12 +441,19 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain all samples whose selected attribute value has at least one matching sample.
+         * Retain every sample in each category whose samples satisfy a condition on another attribute.
          *
-         * Use this when a categorical attribute links related samples, such as multiple
-         * samples from the same patient, and the whole category should be retained if
-         * any related sample matches a quantitative condition. This is equivalent to
+         * Use this when a categorical attribute links related samples, such as
+         * multiple samples from the same patient, and the whole category should
+         * be retained if related samples match a quantitative or categorical
+         * condition. This is equivalent to
          * `WHERE attribute IN (SELECT attribute WHERE condition)`.
+         *
+         * Quantitative conditions compare the condition attribute to a numeric
+         * operand. Categorical conditions use `operator: "in"` with `values`.
+         * With categorical conditions, `required: "any"` keeps categories with
+         * at least one selected condition value and `required: "all"` requires
+         * every selected condition value to occur in the category.
          *
          * @agent.payloadType RetainCategoriesByAttribute
          * @agent.category filtering
@@ -458,6 +465,16 @@ export const sampleSlice = createSlice({
          *     "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "TP53_mutation_count" },
          *     "operator": "gt",
          *     "operand": 0
+         *   }
+         * }
+         * @example
+         * {
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "patient_id" },
+         *   "condition": {
+         *     "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "diagnosis" },
+         *     "operator": "in",
+         *     "values": ["AML", "MDS"],
+         *     "required": "all"
          *   }
          * }
          */
