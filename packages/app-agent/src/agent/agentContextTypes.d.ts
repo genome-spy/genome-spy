@@ -51,6 +51,7 @@ export interface AgentAttributeSummary {
     title: string;
     description?: string;
     dataType: string;
+    semanticType?: string;
     visible?: boolean;
 }
 

@@ -61,6 +61,7 @@ function buildAttributeSummary(agentApi, sampleHierarchy) {
             title: templateResultToString(info.title),
             description: info.description,
             dataType: info.type,
+            semanticType: def.semanticType,
             visible: def.visible === false ? false : undefined,
         };
     });

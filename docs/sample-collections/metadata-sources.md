@@ -169,6 +169,10 @@ Example:
 In this example, `purity` and `ploidy` are configured as quantitative with
 custom scales, and `treatment` gets a custom title. Other imported columns
 without explicit defs still work: GenomeSpy infers their type from values.
+Attributes may also define an optional `semanticType` to describe
+domain-specific meaning for agents and specialized UI. Supported values are
+`"subjectId"`, `"modelSystemId"`, `"timeToEvent"`, `"eventStatus"`, and
+`"category"`.
 When using grouped/hierarchical names (`attributeGroupSeparator`), `attributes`
 can also target group nodes for shared defaults. See
 [`Grouping and hierarchy`](#grouping-and-hierarchy).

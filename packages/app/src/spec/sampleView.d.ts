@@ -46,6 +46,13 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
 
 export type SampleAttributeType = "nominal" | "ordinal" | "quantitative";
 
+export type SampleAttributeSemanticType =
+    | "subjectId"
+    | "modelSystemId"
+    | "timeToEvent"
+    | "eventStatus"
+    | "category";
+
 export interface SampleAttributeDef {
     /**
      * A description of the metadata attribute. Can be used for documentation
@@ -57,6 +64,11 @@ export interface SampleAttributeDef {
      * The attribute type. One of `"nominal"`, `"ordinal"`, or `"quantitative"`.
      */
     type?: SampleAttributeType;
+
+    /**
+     * Optional domain-specific semantics for agent guidance and specialized UI.
+     */
+    semanticType?: SampleAttributeSemanticType;
 
     /**
      * Scale definition for the (default) color channel

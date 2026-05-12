@@ -249,7 +249,10 @@ function createAppStub(options = {}) {
                     sampleMetadata: {
                         attributeNames: ["diagnosis", "purity"],
                         attributeDefs: {
-                            diagnosis: { visible: true },
+                            diagnosis: {
+                                visible: true,
+                                semanticType: "category",
+                            },
                             purity: { visible: false },
                         },
                     },
@@ -351,6 +354,7 @@ describe("getAgentContext", () => {
             specifier: "diagnosis",
         });
         expect(context.attributes[0].description).toBe("Description diagnosis");
+        expect(context.attributes[0].semanticType).toBe("category");
         expect(context.searchableViews).toEqual([
             expect.objectContaining({
                 selector: {
