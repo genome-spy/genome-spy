@@ -37,7 +37,7 @@
   {
     "actionType": "sampleView/retainCategoriesByAttribute",
     "title": "Retain patient_id values where any sample has TP53_mutation_count > 0",
-    "description": "Retain every sample in each category whose samples satisfy a condition on another attribute."
+    "description": "Retain all samples from category values that have matching samples according to a condition on another attribute."
   },
   {
     "actionType": "sampleView/filterByNominal",

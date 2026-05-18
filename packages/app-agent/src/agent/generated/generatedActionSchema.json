@@ -1176,6 +1176,10 @@
           "$ref": "#/definitions/Scale",
           "description": "Scale definition for the (default) color channel"
         },
+        "semanticType": {
+          "$ref": "#/definitions/SampleAttributeSemanticType",
+          "description": "Optional domain-specific semantics for agent guidance and specialized UI."
+        },
         "title": {
           "description": "The title of the attribute. Defaults to attribute name.",
           "type": "string"
@@ -1194,6 +1198,16 @@
         }
       },
       "type": "object"
+    },
+    "SampleAttributeSemanticType": {
+      "enum": [
+        "subjectId",
+        "modelSystemId",
+        "timeToEvent",
+        "eventStatus",
+        "category"
+      ],
+      "type": "string"
     },
     "SampleAttributeType": {
       "enum": ["nominal", "ordinal", "quantitative"],

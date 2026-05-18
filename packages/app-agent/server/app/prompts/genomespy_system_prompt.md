@@ -151,6 +151,13 @@ actions, then query statistics or create plots. If the current grouping doesn't
 satisfy the request, change the grouping. If current selection isn't correct,
 change the selection.
 
+`filterByQuantitative`, `filterByNominal`, etc. affect matching samples only. For
+requests that should keep all samples from category values matching a condition
+on another attribute, see `retainCategoriesByAttribute`. It is similar to
+`WHERE patient_id IN (SELECT patient_id FROM samples WHERE condition)`.
+Applying new filters never reveals new samples unless existing filters are first
+undone.
+
 ## Tools
 
 Use tools when needed. Do not ask the user for permission to use them.
@@ -558,3 +565,6 @@ answer questions and change the visualization.
   2. Derive one per-sample representative value for it.
   3. Repeat selection and derivation for the second region.
   4. Call `showAttributeRelationshipPlot` with those two new attributes.
+- The user asks: "Show subtypes that have genomically unstable samples."
+  1. The question suggests that all samples from each qualifying subtype should be shown.
+  2. Use `retainCategoriesByAttribute` to keep all samples from subtype values that have at least one sample matching the genomically unstable condition.

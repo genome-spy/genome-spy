@@ -222,7 +222,7 @@
   {
     "actionType": "sampleView/filterByQuantitative",
     "description": "Retain samples whose selected quantitative value satisfies a threshold comparison.",
-    "usage": "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`.",
+    "usage": "Use this for numeric filters such as values greater than, less than, or equal to a chosen threshold. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`. Only matching samples remain. To keep all samples from category values that match a condition on another attribute, use `retainCategoriesByAttribute`.",
     "payloadType": "FilterByQuantitative",
     "payloadFields": [
       {
@@ -265,8 +265,8 @@
   },
   {
     "actionType": "sampleView/retainCategoriesByAttribute",
-    "description": "Retain every sample in each category whose samples satisfy a condition on another attribute.",
-    "usage": "Use this when a categorical attribute links related samples, such as multiple samples from the same patient, and the whole category should be retained if related samples match a quantitative or categorical condition. This is equivalent to `WHERE attribute IN (SELECT attribute WHERE condition)`. Quantitative conditions compare the condition attribute to a numeric operand. Categorical conditions use `operator: \"in\"` with `values`. With categorical conditions, `required: \"any\"` keeps categories with at least one selected condition value and `required: \"all\"` requires every selected condition value to occur in the category.",
+    "description": "Retain all samples from category values that have matching samples according to a condition on another attribute.",
+    "usage": "Use this when a categorical attribute links related samples, such as multiple samples from the same patient, and the whole category should be retained if related samples match a quantitative or categorical condition. This is like `WHERE patient_id IN (SELECT patient_id FROM samples WHERE TP53_mutation_count > 0)`. Quantitative conditions compare the condition attribute to a numeric operand. Categorical conditions use `operator: \"in\"` with `values`. With categorical conditions, `required: \"any\"` keeps categories with at least one selected condition value and `required: \"all\"` requires every selected condition value to occur in the category.",
     "payloadType": "RetainCategoriesByAttribute",
     "payloadFields": [
       {
@@ -331,7 +331,7 @@
   {
     "actionType": "sampleView/filterByNominal",
     "description": "Retain or remove samples whose selected attribute matches any of the provided values.",
-    "usage": "Use this for exact-match filtering on categorical or ordinal attributes. Set `remove` to `true` to exclude matching samples instead of keeping them.",
+    "usage": "Use this for exact-match filtering on categorical or ordinal attributes. Set `remove` to `true` to exclude matching samples instead of keeping them. Only matching samples remain. To keep all samples from category values that match a condition on another attribute, use `retainCategoriesByAttribute`.",
     "payloadType": "FilterByNominal",
     "payloadFields": [
       {

@@ -414,6 +414,10 @@ export const sampleSlice = createSlice({
          * selection-derived aggregation candidate from
          * `selectionAggregation.fields`.
          *
+         * Only matching samples remain. To keep all samples from category
+         * values that match a condition on another attribute, use
+         * `retainCategoriesByAttribute`.
+         *
          * @agent.payloadType FilterByQuantitative
          * @agent.category filtering
          * @agent.requiresAttribute true
@@ -441,13 +445,13 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain every sample in each category whose samples satisfy a condition on another attribute.
+         * Retain all samples from category values that have matching samples according to a condition on another attribute.
          *
          * Use this when a categorical attribute links related samples, such as
          * multiple samples from the same patient, and the whole category should
          * be retained if related samples match a quantitative or categorical
-         * condition. This is equivalent to
-         * `WHERE attribute IN (SELECT attribute WHERE condition)`.
+         * condition. This is like
+         * `WHERE patient_id IN (SELECT patient_id FROM samples WHERE TP53_mutation_count > 0)`.
          *
          * Quantitative conditions compare the condition attribute to a numeric
          * operand. Categorical conditions use `operator: "in"` with `values`.
@@ -504,6 +508,10 @@ export const sampleSlice = createSlice({
          * Use this for exact-match filtering on categorical or ordinal
          * attributes. Set `remove` to `true` to exclude matching samples
          * instead of keeping them.
+         *
+         * Only matching samples remain. To keep all samples from category
+         * values that match a condition on another attribute, use
+         * `retainCategoriesByAttribute`.
          *
          * @agent.payloadType FilterByNominal
          * @agent.category filtering

@@ -288,9 +288,10 @@ export interface ZoomToScaleToolInput {
 /**
  * Execute one provenance-changing action. Actions are additive. Before
  * submitting a new action, always consult the current provenance state that
- * defines the state of the analysis. Jump to a prior provenance state if
- * necessary to continue from an earlier point in the analysis. In addition,
- * before constructing the action, ensure that every `attribute`
+ * defines the state of the analysis. Does it make sense to add this action
+ * on top of the actions already in provenance? Jump to a prior provenance
+ * state if necessary to continue from an earlier point in the analysis.
+ * In addition, before constructing the action, ensure that every `attribute`
  * (AttributeIdentifier) is presented to you in the context or tool results.
  *
  * @example
