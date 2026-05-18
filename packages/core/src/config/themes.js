@@ -39,7 +39,7 @@ const VEGALITE_THEME = {
         quantitativeColorScheme: "blues",
     },
     range: {
-        heatmap: "viridis",
+        heatmap: "yellowgreenblue",
         ramp: "blues",
         diverging: "blueorange",
     },

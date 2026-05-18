@@ -196,6 +196,18 @@ describe("scale config defaults", () => {
         expect(props.scheme).toBe("magma");
     });
 
+    test("default heatmap range matches Vega-Lite's named heatmap range", () => {
+        const props = resolveScalePropsBase({
+            channel: "color",
+            dataType: "quantitative",
+            orderedMembers: [createMember("color", undefined, "rect")],
+            isExplicitDomain: false,
+            configScopes: [INTERNAL_DEFAULT_CONFIG],
+        });
+
+        expect(props.scheme).toBe("yellowgreenblue");
+    });
+
     test("quantitative color on non-rect uses ramp scheme default", () => {
         const props = resolveScalePropsBase({
             channel: "color",
