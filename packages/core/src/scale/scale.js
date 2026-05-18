@@ -483,13 +483,21 @@ function configureRangeStep(type, _, count) {
 
 function configureScheme(type, _, count) {
     var extent = _.schemeExtent,
+        schemeCount = _.schemeCount,
         name,
         scheme;
 
     if (isArray(_.scheme)) {
         scheme = interpolateColors(_.scheme, _.interpolate, _.interpolateGamma);
     } else {
-        name = _.scheme.toLowerCase();
+        if (isString(_.scheme)) {
+            name = _.scheme.toLowerCase();
+        } else {
+            name = _.scheme.name.toLowerCase();
+            extent = _.scheme.extent ?? extent;
+            schemeCount = _.scheme.count ?? schemeCount;
+        }
+
         scheme = getScheme(name);
         if (!scheme) error(`Unrecognized scheme name: ${_.scheme}`);
     }
@@ -501,7 +509,7 @@ function configureScheme(type, _, count) {
             : type === BinOrdinal
               ? count - 1
               : type === Quantile || type === Quantize
-                ? +_.schemeCount || DEFAULT_COUNT
+                ? +schemeCount || DEFAULT_COUNT
                 : count;
 
     // adjust and/or quantize scheme as appropriate

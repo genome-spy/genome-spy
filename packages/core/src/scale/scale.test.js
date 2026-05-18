@@ -206,6 +206,14 @@ test("Scale respects range color schemes", function () {
     expect(v(0)).toBe(u(0.9));
     expect(v(1)).toBe(u(0.2));
 
+    s = scale({
+        type: "sequential",
+        scheme: { name: "viridis", extent: [1, 0] },
+    });
+    v = s.interpolator();
+    expect(v(0)).toBe(u(1));
+    expect(v(1)).toBe(u(0));
+
     // Scheme-backed continuous scales need the interpolating family even if
     // the real domain is assigned later.
     s = scale({ type: "linear", scheme: "viridis" });
@@ -230,6 +238,18 @@ test("Scale respects range color schemes", function () {
     expect(v[0]).toBe(u(1 / 4));
     expect(v[1]).toBe(u(2 / 4));
     expect(v[2]).toBe(u(3 / 4));
+
+    // quantize to count provided as a scheme parameter object
+    s = scale({
+        type: "quantize",
+        scheme: { name: "viridis", count: 4 },
+    });
+    v = s.range();
+    expect(v.length).toBe(4);
+    expect(v[0]).toBe(u(1 / 5));
+    expect(v[1]).toBe(u(2 / 5));
+    expect(v[2]).toBe(u(3 / 5));
+    expect(v[3]).toBe(u(4 / 5));
 });
 
 test("Scale warns for zero in log domain", function () {
