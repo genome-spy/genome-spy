@@ -200,11 +200,6 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                     readonly
                     .value=${this.fieldInfo.field}
                 />
-                <small>
-                    ${this.aggregation === "count"
-                        ? "Count includes only non-missing values of this field."
-                        : "The selected operation is applied to this field."}
-                </small>
             </div>
 
             <div class="gs-form-group">
@@ -228,6 +223,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                         `
                     )}
                 </select>
+                <small>Only non-null values are considered.</small>
             </div>
 
             ${this.#renderExpressionSummary()}

@@ -329,6 +329,7 @@ Aggregation field
 
 Aggregation operation
 [Count]
+Only non-null values are considered.
 
 Result: count(VAF where functionalCategory in {frameshift}) per sample
 ```
