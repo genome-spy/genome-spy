@@ -86,7 +86,7 @@ describe("createDerivedAttributeName", () => {
     it("prefers compact names for filtered count interval aggregations", () => {
         const attributeInfo =
             /** @type {import("../types.js").AttributeInfo} */ ({
-                name: "count(where consequence = frameshift)",
+                name: "count(VAF where consequence = frameshift)",
                 attribute: {
                     type: "VALUE_AT_LOCUS",
                     specifier: {

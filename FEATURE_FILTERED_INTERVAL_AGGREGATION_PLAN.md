@@ -221,7 +221,8 @@ Example:
      `AttributeInfo` already exists and no feature-filter setup is needed.
    - Replace the current two-modal feature-filter flow with a single multi-step
      dialog modeled after `UploadMetadataDialog`.
-   - Page 1: configure feature filter field, predicate, and aggregation.
+   - Page 1: configure feature filter field, filter condition, aggregation
+     field, and aggregation operation.
    - Page 2: configure the derived metadata name, optional group path, and
      scale.
    - When advancing from page 1 to page 2, build the filtered interval
@@ -249,7 +250,10 @@ Example:
      `gs-derived-metadata-configurator` for name, group, and scale
      configuration. Shared page-state mechanics were extracted into
      `DialogWizardController` after comparing the feature-filtered wizard with
-     `UploadMetadataDialog`.
+     `UploadMetadataDialog`. The first page now keeps its help text stable,
+     exposes the aggregation field as form content, and shows a compact live
+     expression summary instead of changing explanatory prose when controls
+     change.
 
 9. Reuse generic components.
    - Use `gs-comparison-operator-buttons` for quantitative predicates.
@@ -303,7 +307,7 @@ Initial menu:
 
 ```text
 Interval aggregation
-  Item count
+  Count
   Minimum
   Maximum
   Weighted mean
@@ -311,18 +315,28 @@ Interval aggregation
   Filter features and aggregate...
 ```
 
-Dialog sentence target:
+Dialog layout target:
 
 ```text
-For each sample, count non-missing VAF values in the selected region where
-functionalCategory is frameshift.
+Filter field
+[functionalCategory]
+
+Filter condition
+[frameshift]
+
+Aggregation field
+[VAF]
+
+Aggregation operation
+[Count]
+
+Result: count(VAF where functionalCategory in [frameshift]) per sample
 ```
 
 or:
 
 ```text
-For each sample, compute max(VAF) in the selected region where
-functionalCategory is frameshift.
+Result: max(VAF where functionalCategory in [frameshift]) per sample
 ```
 
 ## Open Questions

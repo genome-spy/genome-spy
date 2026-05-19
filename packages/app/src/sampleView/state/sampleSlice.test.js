@@ -272,7 +272,7 @@ describe("augmentAttributeAction", () => {
             () =>
                 /** @type {any} */ ({
                     attribute: action.payload.attribute,
-                    name: "item count",
+                    name: "count(value)",
                     type: "quantitative",
                     scaleSpec: { domainMid: 0 },
                     valuesProvider: ({ sampleIds }) =>

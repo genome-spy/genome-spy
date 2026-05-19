@@ -2,13 +2,17 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faCaretLeft,
     faCaretRight,
-    faExclamationCircle,
+    faInfoCircle,
     faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { css, html } from "lit";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import DialogWizardController from "../../components/generic/dialogWizardController.js";
-import { formatAggregationLabel } from "../attributeAggregation/aggregationOps.js";
+import {
+    formatAggregationFunctionName,
+    formatAggregationLabel,
+    getAggregationOpInfo,
+} from "../attributeAggregation/aggregationOps.js";
 import {
     buildDerivedMetadataIntent,
     createDerivedAttributeName,
@@ -42,6 +46,19 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         css`
             dialog {
                 width: 560px;
+            }
+
+            .expression-summary {
+                margin-top: var(--gs-basic-spacing, 10px);
+                padding: 0.5em 0.75em;
+                background-color: #f6f6f6;
+                border: var(--form-control-border);
+                border-radius: var(--form-control-border-radius);
+            }
+
+            .expression-summary code {
+                white-space: normal;
+                overflow-wrap: anywhere;
             }
         `,
     ];
@@ -105,8 +122,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         /** @type {boolean} */
         this._metadataConfigHasErrors = false;
 
-        this.dialogTitle =
-            "Derive metadata by filtering and aggregating features";
+        this.dialogTitle = "Create sample metadata from features";
 
         this.#wizard = new DialogWizardController(this, [
             {
@@ -125,8 +141,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     /** @param {Map<string, any>} changed */
     willUpdate(changed) {
         if (changed.has("fieldInfo") && this.fieldInfo) {
-            this.dialogTitle =
-                "Derive metadata by filtering and aggregating features";
+            this.dialogTitle = "Create sample metadata from features";
             this.aggregation = this.fieldInfo.supportedAggregations.includes(
                 "count"
             )
@@ -153,7 +168,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             ${this.#renderInfoBox()}
 
             <div class="gs-form-group">
-                <label for="featureFilterField">Feature filter field</label>
+                <label for="featureFilterField">Filter field</label>
                 <select
                     id="featureFilterField"
                     .value=${this.filterField}
@@ -171,14 +186,29 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             </div>
 
             <div class="gs-form-group">
-                <label>Predicate</label>
+                <label>Filter condition</label>
                 ${this.#isQuantitativeFilter()
                     ? this.#renderQuantitativePredicate()
                     : this.#renderCategoricalPredicate()}
             </div>
 
             <div class="gs-form-group">
-                <label for="featureAggregation">Aggregation</label>
+                <label for="featureAggregationField">Aggregation field</label>
+                <input
+                    id="featureAggregationField"
+                    type="text"
+                    readonly
+                    .value=${this.fieldInfo.field}
+                />
+                <small>
+                    ${this.aggregation === "count"
+                        ? "Count includes only non-missing values of this field."
+                        : "The selected operation is applied to this field."}
+                </small>
+            </div>
+
+            <div class="gs-form-group">
+                <label for="featureAggregation">Aggregation operation</label>
                 <select
                     id="featureAggregation"
                     .value=${this.aggregation}
@@ -191,17 +221,16 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                     }}
                 >
                     ${this.fieldInfo.supportedAggregations.map(
-                        (op) => html`<option value=${op}>${op}</option>`
+                        (op) => html`
+                            <option value=${op}>
+                                ${getAggregationOpInfo(op).label}
+                            </option>
+                        `
                     )}
                 </select>
-                <small>
-                    ${this.aggregation === "count"
-                        ? "Count features that match the predicate."
-                        : html`${formatAggregationLabel(this.aggregation)} of
-                              <em>${this.fieldInfo.field}</em> over features
-                              that match the predicate.`}
-                </small>
             </div>
+
+            ${this.#renderExpressionSummary()}
         `;
     }
 
@@ -305,38 +334,69 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     #renderInfoBox() {
         return html`
             <div class="gs-alert info">
-                ${icon(faExclamationCircle).node[0]}
+                ${icon(faInfoCircle).node[0]}
                 <div>
                     <p>
-                        You are deriving a new sample metadata attribute from
-                        features in the selected interval.
-                    </p>
-                    <p>
-                        For each sample, features are first filtered where
-                        <em
-                            >${this.filterField ||
-                            "the selected feature field"}</em
-                        >
-                        matches the predicate. ${this.#renderAggregationStep()}
-                        Next lets you name the new metadata attribute and
-                        configure its scale.
+                        Create a new sample metadata attribute by filtering
+                        features in the selected interval and aggregating the
+                        result separately for each sample.
                     </p>
                 </div>
             </div>
         `;
     }
 
-    #renderAggregationStep() {
+    #renderExpressionSummary() {
+        return html`
+            <div class="expression-summary">
+                Result:
+                <code>${this.#formatAggregationPreview()}</code>
+                per sample
+            </div>
+        `;
+    }
+
+    /**
+     * @returns {string}
+     */
+    #formatAggregationPreview() {
         if (!this.fieldInfo) {
             return "";
         }
 
+        const filterExpression = this.#formatFeatureFilterPreview();
+        const field = this.fieldInfo.field;
         if (this.aggregation === "count") {
-            return html`Then it counts the matching features for that sample.`;
+            return `${formatAggregationFunctionName(this.aggregation)}(${field} where ${filterExpression})`;
         }
 
-        return html`Then it computes ${formatAggregationLabel(this.aggregation)}
-            of <em>${this.fieldInfo.field}</em> for that sample.`;
+        return `${formatAggregationLabel(this.aggregation)}(${field} where ${filterExpression})`;
+    }
+
+    /**
+     * @returns {string}
+     */
+    #formatFeatureFilterPreview() {
+        if (this.#isQuantitativeFilter()) {
+            return (
+                this.filterField +
+                " " +
+                formatFilterOperator(this.operator) +
+                " " +
+                (this.valueText.trim() || "...")
+            );
+        }
+
+        if (this.selectedValues.length === 0) {
+            return this.filterField + " in [...]";
+        }
+
+        return (
+            this.filterField +
+            " in [" +
+            this.selectedValues.map(String).join(", ") +
+            "]"
+        );
     }
 
     #isQuantitativeFilter() {
@@ -554,4 +614,27 @@ function isScalar(value) {
         typeof value === "number" ||
         typeof value === "boolean"
     );
+}
+
+/**
+ * @param {import("../sampleViewTypes.js").FeatureFilter["operator"]} operator
+ * @returns {string}
+ */
+function formatFilterOperator(operator) {
+    switch (operator) {
+        case "eq":
+            return "=";
+        case "lt":
+            return "<";
+        case "lte":
+            return "<=";
+        case "gt":
+            return ">";
+        case "gte":
+            return ">=";
+        case "in":
+            return "in";
+        default:
+            throw new Error("Unknown feature filter operator: " + operator);
+    }
 }

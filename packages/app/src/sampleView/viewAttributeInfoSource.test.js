@@ -213,8 +213,8 @@ describe("getViewAttributeInfo", () => {
         });
 
         const title = templateResultToString(info.title);
-        expect(info.name).toBe("count(where consequence = frameshift)");
-        expect(title).toContain("count(where consequence = frameshift)");
+        expect(info.name).toBe("count(value where consequence = frameshift)");
+        expect(title).toContain("count(value where consequence = frameshift)");
     });
 
     it("prefixes ambiguous imported view and selection names with scope", () => {

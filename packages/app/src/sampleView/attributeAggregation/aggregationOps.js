@@ -16,8 +16,8 @@ import { isIntervalSpecifier } from "../sampleViewTypes.js";
 export const aggregationOps = [
     {
         op: "count",
-        label: "Item count",
-        description: "Number of overlapping items (ignores field values)",
+        label: "Count",
+        description: "Number of non-missing values in the interval",
         preservesScaleDomain: false,
     },
     {
@@ -160,14 +160,12 @@ export function formatAggregationExpression(op, field, featureFilter) {
         ? " where " + formatFeatureFilterExpression(featureFilter)
         : "";
 
-    if (op === "count" && !featureFilter) {
-        return formatAggregationLabel(op);
-    }
     if (op === "count") {
         return (
             formatAggregationFunctionName(op) +
             "(" +
-            filterExpression.trim() +
+            field +
+            filterExpression +
             ")"
         );
     }

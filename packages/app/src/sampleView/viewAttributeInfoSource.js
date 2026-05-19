@@ -213,12 +213,13 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
  * @returns {import("lit").TemplateResult}
  */
 function formatAggregationTitle(op, field, featureFilter) {
-    if (op === "count" && !featureFilter) {
-        return html`${formatAggregationLabel(op)}`;
-    }
     if (op === "count") {
-        return html`${formatAggregationFunctionName(op)}(where
-        ${formatFeatureFilterTitle(featureFilter)})`;
+        const filterTitle = featureFilter
+            ? html` where ${formatFeatureFilterTitle(featureFilter)}`
+            : "";
+        return html`${formatAggregationFunctionName(op)}(<em class="attribute"
+                >${field}</em
+            >${filterTitle})`;
     }
     const filterTitle = featureFilter
         ? html` where ${formatFeatureFilterTitle(featureFilter)}`
