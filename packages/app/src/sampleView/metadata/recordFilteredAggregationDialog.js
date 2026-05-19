@@ -56,14 +56,14 @@ class RecordFilteredAggregationDialog extends BaseDialog {
         this.selectedValues = [];
 
         this.dialogTitle =
-            "Derive metadata by filtering and aggregating records";
+            "Derive metadata by filtering and aggregating features";
     }
 
     /** @param {Map<string, any>} changed */
     willUpdate(changed) {
         if (changed.has("fieldInfo") && this.fieldInfo) {
             this.dialogTitle =
-                "Derive metadata by filtering and aggregating records";
+                "Derive metadata by filtering and aggregating features";
             this.aggregation = this.fieldInfo.supportedAggregations.includes(
                 "count"
             )
@@ -86,7 +86,7 @@ class RecordFilteredAggregationDialog extends BaseDialog {
             ${this.#renderInfoBox()}
 
             <div class="gs-form-group">
-                <label for="recordFilterField">Record filter field</label>
+                <label for="recordFilterField">Feature filter field</label>
                 <select
                     id="recordFilterField"
                     .value=${this.filterField}
@@ -129,10 +129,10 @@ class RecordFilteredAggregationDialog extends BaseDialog {
                 </select>
                 <small>
                     ${this.aggregation === "count"
-                        ? "Count records that match the predicate."
+                        ? "Count features that match the predicate."
                         : html`${formatAggregationLabel(this.aggregation)} of
-                              <em>${this.fieldInfo.field}</em> over records that
-                              match the predicate.`}
+                              <em>${this.fieldInfo.field}</em> over features
+                              that match the predicate.`}
                 </small>
             </div>
         `;
@@ -206,13 +206,13 @@ class RecordFilteredAggregationDialog extends BaseDialog {
                 <div>
                     <p>
                         You are deriving a new sample metadata attribute from
-                        records in the selected interval.
+                        features in the selected interval.
                     </p>
                     <p>
-                        For each sample, records are first filtered where
+                        For each sample, features are first filtered where
                         <em
                             >${this.filterField ||
-                            "the selected record field"}</em
+                            "the selected feature field"}</em
                         >
                         matches the predicate. ${this.#renderAggregationStep()}
                         Continue opens the derived metadata dialog for naming,
@@ -229,7 +229,7 @@ class RecordFilteredAggregationDialog extends BaseDialog {
         }
 
         if (this.aggregation === "count") {
-            return html`Then it counts the matching records for that sample.`;
+            return html`Then it counts the matching features for that sample.`;
         }
 
         return html`Then it computes ${formatAggregationLabel(this.aggregation)}

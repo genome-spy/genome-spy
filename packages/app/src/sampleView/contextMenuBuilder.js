@@ -167,7 +167,7 @@ export function buildIntervalAggregationMenu({
         ...(fieldInfo.filterableFields.length > 0
             ? [
                   {
-                      label: "Filter records and aggregate...",
+                      label: "Filter features and aggregate...",
                       callback: () => {
                           void showRecordFilteredAggregationDialog({
                               fieldInfo,

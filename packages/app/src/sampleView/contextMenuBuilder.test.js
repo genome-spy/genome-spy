@@ -78,7 +78,7 @@ describe("contextMenuBuilder", () => {
         expect(menu).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
-                    label: "Filter records and aggregate...",
+                    label: "Filter features and aggregate...",
                     callback: expect.any(Function),
                 }),
             ])
