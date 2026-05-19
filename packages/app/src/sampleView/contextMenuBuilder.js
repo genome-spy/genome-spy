@@ -112,6 +112,35 @@ export function buildIntervalAggregationMenu({
     attributeType,
     sampleView,
 }) {
+    /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+    const filteredAggregationItems =
+        fieldInfo.filterableFields.length > 0
+            ? [
+                  {
+                      type: "divider",
+                  },
+                  {
+                      type: "header",
+                      label: "Advanced interval aggregation",
+                  },
+                  {
+                      label: "Filter features and aggregate...",
+                      callback: () => {
+                          void showFeatureFilteredAggregationDialog({
+                              fieldInfo,
+                              aggregationFieldInfos,
+                              selectionIntervalComplex,
+                              selectionIntervalSource,
+                              sampleHierarchy,
+                              attributeInfoSource,
+                              attributeType,
+                              sampleView,
+                          });
+                      },
+                  },
+              ]
+            : [];
+
     return [
         { label: "Interval aggregation", type: "header" },
         ...fieldInfo.supportedAggregations.map((op) => {
@@ -165,25 +194,7 @@ export function buildIntervalAggregationMenu({
                 submenu: submenuItems,
             };
         }),
-        ...(fieldInfo.filterableFields.length > 0
-            ? [
-                  {
-                      label: "Filter features and aggregate...",
-                      callback: () => {
-                          void showFeatureFilteredAggregationDialog({
-                              fieldInfo,
-                              aggregationFieldInfos,
-                              selectionIntervalComplex,
-                              selectionIntervalSource,
-                              sampleHierarchy,
-                              attributeInfoSource,
-                              attributeType,
-                              sampleView,
-                          });
-                      },
-                  },
-              ]
-            : []),
+        ...filteredAggregationItems,
     ];
 }
 
