@@ -216,6 +216,11 @@ Example:
    - Use `gs-searchable-checkbox-list` for categorical predicates.
    - Add or update Storybook stories if a new predicate editor component is
      extracted.
+   - Status: implemented in the first dialog. Quantitative predicates use
+     `gs-comparison-operator-buttons`, and categorical predicates use
+     `gs-searchable-checkbox-list` with values collected from raw records in
+     the selected interval. No new component was extracted, so the existing
+     component stories remain sufficient.
 
 9. Add agent support.
    - Extend `SELECTION_AGGREGATION` agent candidates with optional

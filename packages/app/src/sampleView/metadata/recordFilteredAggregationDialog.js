@@ -2,6 +2,9 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { html } from "lit";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { handleAddToMetadata } from "./deriveMetadataFlow.js";
+import { collectIntervalRecordFieldValues } from "../selectionRecordFieldValues.js";
+import "../../components/generic/comparisonOperatorButtons.js";
+import "../../components/generic/searchableCheckboxList.js";
 
 /**
  * @typedef {{
@@ -14,10 +17,13 @@ class RecordFilteredAggregationDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         fieldInfo: {},
+        selectionIntervalComplex: {},
+        selectionIntervalSource: {},
         aggregation: { state: true },
         filterField: { state: true },
         operator: { state: true },
         valueText: { state: true },
+        selectedValues: { state: true },
     };
 
     constructor() {
@@ -25,6 +31,12 @@ class RecordFilteredAggregationDialog extends BaseDialog {
 
         /** @type {import("../selectionAggregationCandidates.js").SelectionAggregationFieldInfo | null} */
         this.fieldInfo = null;
+
+        /** @type {import("../types.js").Interval | null} */
+        this.selectionIntervalComplex = null;
+
+        /** @type {import("../sampleViewTypes.js").SelectionIntervalSource | null} */
+        this.selectionIntervalSource = null;
 
         /** @type {import("../types.js").AggregationOp} */
         this.aggregation = "count";
@@ -37,6 +49,9 @@ class RecordFilteredAggregationDialog extends BaseDialog {
 
         /** @type {string} */
         this.valueText = "";
+
+        /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */
+        this.selectedValues = [];
 
         this.dialogTitle = "Filter records and aggregate";
     }
@@ -51,6 +66,7 @@ class RecordFilteredAggregationDialog extends BaseDialog {
                 : this.fieldInfo.supportedAggregations[0];
             this.filterField = this.fieldInfo.filterableFields[0]?.field ?? "";
             this.operator = this.#isQuantitativeFilter() ? "gt" : "in";
+            this.selectedValues = [];
         }
     }
 
@@ -81,37 +97,10 @@ class RecordFilteredAggregationDialog extends BaseDialog {
             </div>
 
             <div class="gs-form-group">
-                <label for="recordFilterOperator">Predicate</label>
-                <div class="input-group">
-                    <select
-                        id="recordFilterOperator"
-                        .value=${this.operator}
-                        @change=${(/** @type {Event} */ event) =>
-                            this.#operatorChanged(event)}
-                    >
-                        ${this.#operatorOptions().map(
-                            ([operator, label]) => html`
-                                <option value=${operator}>${label}</option>
-                            `
-                        )}
-                    </select>
-                    <input
-                        autofocus
-                        type=${this.#isQuantitativeFilter() &&
-                        this.operator !== "in"
-                            ? "number"
-                            : "text"}
-                        .value=${this.valueText}
-                        placeholder=${this.operator === "in"
-                            ? "value, another value"
-                            : "value"}
-                        @input=${(/** @type {Event} */ event) => {
-                            this.valueText = /** @type {HTMLInputElement} */ (
-                                event.target
-                            ).value;
-                        }}
-                    />
-                </div>
+                <label>Predicate</label>
+                ${this.#isQuantitativeFilter()
+                    ? this.#renderQuantitativePredicate()
+                    : this.#renderCategoricalPredicate()}
             </div>
 
             <div class="gs-form-group">
@@ -159,31 +148,48 @@ class RecordFilteredAggregationDialog extends BaseDialog {
             event.target
         ).value;
         this.operator = this.#isQuantitativeFilter() ? "gt" : "in";
+        this.valueText = "";
+        this.selectedValues = [];
     }
 
-    /** @param {Event} event */
-    #operatorChanged(event) {
-        this.operator =
-            /** @type {import("../sampleViewTypes.js").RecordFilter["operator"]} */ (
-                /** @type {HTMLSelectElement} */ (event.target).value
-            );
+    #renderQuantitativePredicate() {
+        return html`<div class="input-group">
+            <gs-comparison-operator-buttons
+                .value=${this.operator}
+                @change=${(
+                    /** @type {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} */ event
+                ) => {
+                    this.operator = event.value;
+                }}
+            ></gs-comparison-operator-buttons>
+            <input
+                autofocus
+                type="number"
+                .value=${this.valueText}
+                placeholder="value"
+                @input=${(/** @type {Event} */ event) => {
+                    this.valueText = /** @type {HTMLInputElement} */ (
+                        event.target
+                    ).value;
+                }}
+            />
+        </div>`;
     }
 
-    /**
-     * @returns {Array<[import("../sampleViewTypes.js").RecordFilter["operator"], string]>}
-     */
-    #operatorOptions() {
-        if (!this.#isQuantitativeFilter()) {
-            return [["in", "is one of"]];
-        }
-
-        return [
-            ["gt", ">"],
-            ["gte", ">="],
-            ["eq", "="],
-            ["lte", "<="],
-            ["lt", "<"],
-        ];
+    #renderCategoricalPredicate() {
+        return html`
+            <gs-searchable-checkbox-list
+                autofocus
+                .items=${this.#getCategoryItems()}
+                .selectedValues=${this.selectedValues}
+                .selectedItemName=${"values"}
+                @change=${(
+                    /** @type {import("../../components/generic/searchableCheckboxList.js").SearchableCheckboxListChangeEvent} */ event
+                ) => {
+                    this.selectedValues = event.values;
+                }}
+            ></gs-searchable-checkbox-list>
+        `;
     }
 
     #isQuantitativeFilter() {
@@ -197,13 +203,18 @@ class RecordFilteredAggregationDialog extends BaseDialog {
     }
 
     #canContinue() {
-        if (!this.filterField || this.valueText.trim().length === 0) {
+        if (!this.filterField) {
             return false;
         }
 
-        return (
-            !this.#isQuantitativeFilter() || Number.isFinite(+this.valueText)
-        );
+        if (this.#isQuantitativeFilter()) {
+            return (
+                this.valueText.trim().length > 0 &&
+                Number.isFinite(+this.valueText)
+            );
+        }
+
+        return this.selectedValues.length > 0;
     }
 
     #onContinue() {
@@ -225,22 +236,11 @@ class RecordFilteredAggregationDialog extends BaseDialog {
      * @returns {import("../sampleViewTypes.js").RecordFilter}
      */
     #createRecordFilter() {
-        if (this.operator === "in") {
+        if (!this.#isQuantitativeFilter()) {
             return {
                 field: this.filterField,
                 operator: "in",
-                values: this.valueText
-                    .split(",")
-                    .map((value) => value.trim())
-                    .filter((value) => value.length > 0),
-            };
-        }
-
-        if (this.operator === "eq" && !this.#isQuantitativeFilter()) {
-            return {
-                field: this.filterField,
-                operator: "eq",
-                value: this.valueText.trim(),
+                values: this.selectedValues,
             };
         }
 
@@ -251,6 +251,28 @@ class RecordFilteredAggregationDialog extends BaseDialog {
             ),
             value: +this.valueText,
         };
+    }
+
+    /**
+     * @returns {import("../../components/generic/searchableCheckboxList.js").SearchableCheckboxListItem[]}
+     */
+    #getCategoryItems() {
+        if (!this.fieldInfo || !this.selectionIntervalComplex) {
+            return [];
+        }
+
+        const values =
+            collectIntervalRecordFieldValues(
+                this.fieldInfo.view,
+                this.selectionIntervalSource ?? this.selectionIntervalComplex,
+                this.filterField
+            ) ?? [];
+
+        return Array.from(new Set(values.filter(isScalar))).map((value) => ({
+            value,
+            label: `${value}`,
+            searchText: `${value}`.toLowerCase(),
+        }));
     }
 }
 
@@ -282,7 +304,10 @@ export async function showRecordFilteredAggregationDialog({
         "gs-record-filtered-aggregation-dialog",
         (/** @type {RecordFilteredAggregationDialog} */ dialog) => {
             dialog.fieldInfo = fieldInfo;
+            dialog.selectionIntervalComplex = selectionIntervalComplex;
+            dialog.selectionIntervalSource = selectionIntervalSource ?? null;
             dialog.valueText = "";
+            dialog.selectedValues = [];
         }
     );
 
@@ -305,4 +330,17 @@ export async function showRecordFilteredAggregationDialog({
     });
 
     await handleAddToMetadata(attributeInfo, sampleHierarchy, sampleView);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is import("@genome-spy/core/spec/channel.js").Scalar}
+ */
+function isScalar(value) {
+    return (
+        value === null ||
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+    );
 }

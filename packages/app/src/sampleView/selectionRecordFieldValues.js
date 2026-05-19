@@ -16,6 +16,30 @@ export function collectSelectionRecordFieldValues(
     selectionSelector,
     field
 ) {
+    return collectIntervalRecordFieldValues(
+        view,
+        {
+            type: "selection",
+            selector: selectionSelector,
+        },
+        field
+    );
+}
+
+/**
+ * Collects raw record field values inside an interval before per-sample
+ * aggregation.
+ *
+ * @param {import("@genome-spy/core/view/unitView.js").default} view
+ * @param {import("./sampleViewTypes.js").IntervalReference} intervalReference
+ * @param {string} field
+ * @returns {unknown[] | undefined}
+ */
+export function collectIntervalRecordFieldValues(
+    view,
+    intervalReference,
+    field
+) {
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
     if (!collector || !xAccessor) {
@@ -24,10 +48,7 @@ export function collectSelectionRecordFieldValues(
 
     const interval = resolveIntervalReference(
         view.getLayoutAncestors().at(-1),
-        {
-            type: "selection",
-            selector: selectionSelector,
-        }
+        intervalReference
     );
     const [start, end] = normalizeInterval(view, interval);
     const x2Accessor = view.getDataAccessor("x2");
