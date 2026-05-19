@@ -72,6 +72,7 @@ export type {
     IntervalReference,
     IntervalSpecifier,
     LocusSpecifier,
+    RecordFilter,
     SelectionIntervalSource,
     ViewAttributeSpecifier,
     ViewRef,

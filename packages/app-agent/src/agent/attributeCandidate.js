@@ -51,7 +51,8 @@ export function resolveAgentAttributeCandidateRecord(runtime, candidate) {
         const resolution = buildSelectionAggregationAttribute(
             volatileContext,
             candidate.candidateId,
-            candidate.aggregation
+            candidate.aggregation,
+            candidate.recordFilter
         );
         const interval = findSelectionInterval(
             volatileContext,

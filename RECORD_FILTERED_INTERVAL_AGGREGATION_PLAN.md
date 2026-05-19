@@ -234,6 +234,10 @@ Example:
      record-field summary tool using `candidateId` and field name.
    - Explain the semantics as:
      `WHERE selected interval AND recordFilter GROUP BY sample`.
+   - Status: implemented. Agent-facing `SELECTION_AGGREGATION` candidates
+     accept one optional leaf `recordFilter`, validate its field against
+     `filterableFields`, and materialize it into the canonical interval
+     attribute.
 
 10. Add tests.
    - Predicate evaluator unit tests.

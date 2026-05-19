@@ -105,6 +105,23 @@ describe("actionShapeValidator", () => {
         expect(agentFacing.ok).toBe(true);
     });
 
+    it("accepts flat record filters on selection aggregation candidates", () => {
+        const result = validateAgentActionPayloadShape("sampleView/sortBy", {
+            attribute: {
+                type: "SELECTION_AGGREGATION",
+                candidateId: "brush@mutations:VAF",
+                aggregation: "max",
+                recordFilter: {
+                    field: "functionalCategory",
+                    operator: "in",
+                    values: ["frameshift"],
+                },
+            },
+        });
+
+        expect(result.ok).toBe(true);
+    });
+
     it("rejects hand-written value-at-locus attributes in agent-facing action payloads", () => {
         const result = validateAgentActionPayloadShape("sampleView/sortBy", {
             attribute: {

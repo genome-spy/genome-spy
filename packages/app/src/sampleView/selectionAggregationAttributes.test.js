@@ -38,4 +38,37 @@ describe("selectionAggregationAttributes", () => {
             },
         });
     });
+
+    it("adds record filters to selection aggregation attributes", () => {
+        expect(
+            buildSelectionAggregationAttributeIdentifier({
+                viewSelector: {
+                    scope: [],
+                    view: "mutations",
+                },
+                field: "VAF",
+                selectionSelector: {
+                    scope: [],
+                    param: "brush",
+                },
+                aggregation: "max",
+                recordFilter: {
+                    field: "functionalCategory",
+                    operator: "in",
+                    values: ["frameshift"],
+                },
+            })
+        ).toMatchObject({
+            specifier: {
+                aggregation: {
+                    op: "max",
+                },
+                recordFilter: {
+                    field: "functionalCategory",
+                    operator: "in",
+                    values: ["frameshift"],
+                },
+            },
+        });
+    });
 });

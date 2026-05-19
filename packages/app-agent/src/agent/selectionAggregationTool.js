@@ -11,12 +11,14 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
  * @param {import("./types.js").AgentVolatileContext} volatileContext
  * @param {string} candidateId
  * @param {import("@genome-spy/app/agentShared").AggregationOp} aggregation
+ * @param {import("@genome-spy/app/agentShared").RecordFilter} [recordFilter]
  * @returns {import("./types.js").SelectionAggregationResolution}
  */
 export function buildSelectionAggregationAttribute(
     volatileContext,
     candidateId,
-    aggregation
+    aggregation,
+    recordFilter
 ) {
     const candidate = volatileContext.selectionAggregation.fields.find(
         (field) => field.candidateId === candidateId
@@ -51,11 +53,16 @@ export function buildSelectionAggregationAttribute(
         );
     }
 
+    if (recordFilter) {
+        validateRecordFilter(candidate, recordFilter);
+    }
+
     const attribute = buildSelectionAggregationAttributeIdentifier({
         viewSelector: candidate.viewSelector,
         field: candidate.field,
         selectionSelector: candidate.selectionSelector,
         aggregation,
+        recordFilter,
     });
 
     return {
@@ -66,14 +73,58 @@ export function buildSelectionAggregationAttribute(
         selectionSelector: candidate.selectionSelector,
         field: candidate.field,
         attribute,
-        title: formatAggregationExpression(aggregation, candidate.field),
+        title: formatAggregationExpression(
+            aggregation,
+            candidate.field,
+            recordFilter
+        ),
         description:
             "Aggregated " +
             candidate.field +
             " values over the " +
             formatParamSelector(candidate.selectionSelector) +
-            " selection",
+            " selection" +
+            (recordFilter ? " after filtering records" : ""),
     };
+}
+
+/**
+ * @param {import("./types.js").AgentViewFieldSummary} candidate
+ * @param {import("@genome-spy/app/agentShared").RecordFilter} filter
+ */
+function validateRecordFilter(candidate, filter) {
+    const field = candidate.filterableFields.find(
+        (filterField) => filterField.field === filter.field
+    );
+    if (!field) {
+        throw new ToolCallRejectionError(
+            "Record filter field " +
+                filter.field +
+                " is not listed in filterableFields for candidate " +
+                candidate.candidateId +
+                "."
+        );
+    }
+
+    if (field.dataType === "quantitative" && filter.operator === "in") {
+        throw new ToolCallRejectionError(
+            "Use a comparison operator for quantitative record filter field " +
+                filter.field +
+                "."
+        );
+    }
+
+    if (
+        field.dataType !== "quantitative" &&
+        filter.operator !== "eq" &&
+        filter.operator !== "in"
+    ) {
+        throw new ToolCallRejectionError(
+            "Use operator 'in' or 'eq' for categorical record filter field " +
+                filter.field +
+                "."
+        );
+    }
 }
 
 /**

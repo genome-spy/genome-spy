@@ -1,6 +1,10 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
 import type { AgentIntentBatchStep } from "./generated/generatedActionTypes.js";
-import type { AggregationOp, ViewSelector } from "@genome-spy/app/agentShared";
+import type {
+    AggregationOp,
+    RecordFilter,
+    ViewSelector,
+} from "@genome-spy/app/agentShared";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import type { NumericDomain } from "@genome-spy/core/spec/scale.js";
 
@@ -29,6 +33,14 @@ type SelectionAggregationCandidate = {
      * sample. This cannot be used to aggregate across samples or groups.
      */
     aggregation: AggregationOp;
+
+    /**
+     * Optional raw-record predicate applied inside the selected interval before
+     * per-sample aggregation. Use one field copied from the candidate's
+     * `filterableFields`; call `getSelectionRecordFieldSummary` first if exact
+     * categorical values or numeric bounds are needed.
+     */
+    recordFilter?: RecordFilter;
 };
 
 export type AgentAttributeCandidate =

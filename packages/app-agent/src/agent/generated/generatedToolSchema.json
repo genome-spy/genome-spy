@@ -1892,6 +1892,10 @@
           "description": "Exact candidate id copied from `selectionAggregation.fields`. Do not construct this from parameter, view, or field names.",
           "type": "string"
         },
+        "recordFilter": {
+          "$ref": "#/definitions/RecordFilter",
+          "description": "Optional raw-record predicate applied inside the selected interval before per-sample aggregation. Use one field copied from the candidate's `filterableFields`; call `getSelectionRecordFieldSummary` first if exact categorical values or numeric bounds are needed."
+        },
         "type": {
           "const": "SELECTION_AGGREGATION",
           "type": "string"

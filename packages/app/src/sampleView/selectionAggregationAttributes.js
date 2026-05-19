@@ -7,6 +7,7 @@
  *   field: import("@genome-spy/core/spec/channel.js").Field;
  *   selectionSelector: { scope: string[]; param: string };
  *   aggregation: import("./types.js").AggregationOp;
+ *   recordFilter?: import("./sampleViewTypes.js").RecordFilter;
  * }} params
  * @returns {import("./types.js").AttributeIdentifier}
  */
@@ -15,6 +16,7 @@ export function buildSelectionAggregationAttributeIdentifier({
     field,
     selectionSelector,
     aggregation,
+    recordFilter,
 }) {
     return {
         type: "VALUE_AT_LOCUS",
@@ -28,6 +30,7 @@ export function buildSelectionAggregationAttributeIdentifier({
             aggregation: {
                 op: aggregation,
             },
+            ...(recordFilter ? { recordFilter } : {}),
         },
     };
 }

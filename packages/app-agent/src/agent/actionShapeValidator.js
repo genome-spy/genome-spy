@@ -104,6 +104,11 @@ const selectionAggregationCandidateSchema = {
                 "Exact candidate id copied from selectionAggregation.fields. Do not construct this from parameter, view, or field names.",
             type: "string",
         },
+        recordFilter: {
+            $ref: "#/definitions/RecordFilter",
+            description:
+                "Optional raw-record predicate applied inside the selected interval before per-sample aggregation.",
+        },
         type: {
             const: "SELECTION_AGGREGATION",
             type: "string",
