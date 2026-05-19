@@ -211,7 +211,37 @@ Example:
      dialog chooses the feature filter and aggregation operation before handing
      the resulting attribute to the derived metadata dialog.
 
-8. Reuse generic components.
+8. Convert the feature-filtered metadata derivation flow into a wizard.
+   - Keep the generic `showDerivedMetadataDialog` path for existing direct
+     "Add to sample metadata..." actions. That dialog is still useful when an
+     `AttributeInfo` already exists and no feature-filter setup is needed.
+   - Replace the current two-modal feature-filter flow with a single multi-step
+     dialog modeled after `UploadMetadataDialog`.
+   - Page 1: configure feature filter field, predicate, and aggregation.
+   - Page 2: configure the derived metadata name, optional group path, and
+     scale.
+   - When advancing from page 1 to page 2, build the filtered interval
+     `AttributeInfo`, compute sample ids and values, and validate that the
+     derived values align with samples.
+   - Reuse the existing derived metadata name, validation, default scale,
+     observed-domain, and scale sanitization helpers.
+   - Prefer extracting the final-page name/group/scale controls from
+     `DerivedMetadataDialog` into a small reusable derived metadata
+     configurator if the wizard would otherwise duplicate form validation,
+     scale configuration, or payload construction.
+   - Do not start with a generic `<gs-wizard-dialog>` component or mixin.
+     Implement the feature-filtered wizard page flow locally first, following
+     the `UploadMetadataDialog` page-array pattern.
+   - After the second wizard exists, compare it with `UploadMetadataDialog`.
+     If the navigation duplication is real, extract only the shared page-state
+     mechanics into a small helper/controller: current page, first/last page,
+     `canAdvance`, `advance(direction)`, and Next/Finish labeling. Keep page
+     rendering and domain validation in each dialog.
+   - Finish should dispatch the same `deriveMetadata` intent as
+     `handleAddToMetadata`.
+   - Status: pending.
+
+9. Reuse generic components.
    - Use `gs-comparison-operator-buttons` for quantitative predicates.
    - Use `gs-searchable-checkbox-list` for categorical predicates.
    - Add or update Storybook stories if a new predicate editor component is
@@ -222,7 +252,7 @@ Example:
      the selected interval. No new component was extracted, so the existing
      component stories remain sufficient.
 
-9. Add agent support.
+10. Add agent support.
    - Extend `SELECTION_AGGREGATION` agent candidates with optional
      `featureFilter`.
    - Validate that `candidateId` and `aggregation` are copied from context.
@@ -239,7 +269,7 @@ Example:
      `filterableFields`, and materialize it into the canonical interval
      attribute.
 
-10. Add tests.
+11. Add tests.
    - Predicate evaluator unit tests.
    - Interval aggregation accessor tests for categorical and quantitative
      feature filters.
