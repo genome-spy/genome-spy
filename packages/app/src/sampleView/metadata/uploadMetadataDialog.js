@@ -16,6 +16,7 @@ import "../../components/generic/customSelect.js";
 import "./metadataHierarchyConfigurator.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
+import DialogWizardController from "../../components/generic/dialogWizardController.js";
 import { buildSetMetadataPayload } from "./metadataUtils.js";
 import { inferMetadataFileType, readTextFile } from "./metadataFileUtils.js";
 import { validateMetadata } from "./metadataValidation.js";
@@ -44,27 +45,8 @@ class UploadMetadataDialog extends BaseDialog {
     /** @type {import("./metadataUtils.js").MetadataConfig} */
     #metadataConfig;
 
-    /**
-     * @type {{title: string, render: () => import("lit").TemplateResult<1>, canAdvance?: () => boolean, onAdvance?: () => boolean}[]}
-     */
-    #pages = [
-        {
-            title: "Load",
-            render: () => this.#renderUpload(),
-            canAdvance: () => this._parsedItems != null,
-        },
-        {
-            title: "Preview & Validate",
-            render: () => this.#renderPreview(),
-            canAdvance: () =>
-                this.#validationResult?.statistics?.samplesInBoth?.size > 0,
-        },
-        {
-            title: "Configure Attributes",
-            render: () => this.#renderConfiguration(),
-            onAdvance: () => this.#submit(),
-        },
-    ];
+    /** @type {DialogWizardController} */
+    #wizard;
 
     constructor() {
         super();
@@ -81,6 +63,22 @@ class UploadMetadataDialog extends BaseDialog {
         this._fileName = null;
 
         this._page = 0;
+
+        this.#wizard = new DialogWizardController(this, [
+            {
+                render: () => this.#renderUpload(),
+                canAdvance: () => this._parsedItems != null,
+            },
+            {
+                render: () => this.#renderPreview(),
+                canAdvance: () =>
+                    this.#validationResult?.statistics?.samplesInBoth?.size > 0,
+            },
+            {
+                render: () => this.#renderConfiguration(),
+                onAdvance: () => this.#submit(),
+            },
+        ]);
     }
 
     static styles = [
@@ -241,54 +239,30 @@ class UploadMetadataDialog extends BaseDialog {
     }
 
     renderBody() {
-        const pageEntry = this.#pages[this._page];
-        if (!pageEntry) {
-            return html`<p>Invalid page</p>`;
-        }
-        return pageEntry.render();
+        return this.#wizard.currentPage.render();
     }
 
     /**
      * @param {-1 | 1} direction
      */
     #changePage(direction) {
-        if (direction > 0) {
-            const pageEntry = this.#pages[this._page];
-            if (typeof pageEntry.onAdvance === "function") {
-                pageEntry.onAdvance();
-            }
-        }
-
-        const newPage = this._page + direction;
-        if (newPage < 0 || newPage >= this.#pages.length) {
-            return true;
-        }
-
-        this._page = newPage;
-
-        // Prevent closing the dialog
-        return true;
+        return this.#wizard.advance(direction);
     }
 
     #canAdvancePage() {
-        const pageEntry = this.#pages[this._page];
-        if (typeof pageEntry.canAdvance === "function") {
-            return !!pageEntry.canAdvance();
-        }
-        return true;
+        return this.#wizard.canAdvance();
     }
 
     renderButtons() {
-        const next =
-            this._page === this.#pages.length - 1
-                ? { label: "Finish", icon: null }
-                : { label: "Next", icon: faCaretRight };
+        const next = this.#wizard.isLastPage
+            ? { label: "Finish", icon: null }
+            : { label: "Next", icon: faCaretRight };
 
         return [
             this.makeCloseButton("Cancel"),
             this.makeButton("Previous", () => this.#changePage(-1), {
                 iconDef: faCaretLeft,
-                disabled: this._page === 0,
+                disabled: this.#wizard.isFirstPage,
             }),
             this.makeButton(next.label, () => this.#changePage(1), {
                 iconDef: next.icon ?? undefined,
@@ -296,6 +270,12 @@ class UploadMetadataDialog extends BaseDialog {
                 isPrimary: true,
             }),
         ];
+    }
+
+    resetWizard() {
+        this.#wizard.reset();
+        this._parsedItems = null;
+        this._fileName = null;
     }
 }
 
@@ -327,6 +307,7 @@ export function showUploadMetadataDialog(sampleView) {
             el.existingSampleIds = new Set(
                 sampleView.sampleHierarchy.sampleData.ids
             );
+            el.resetWizard();
         },
         (result) => {
             if (!result.ok) {

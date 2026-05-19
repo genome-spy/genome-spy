@@ -243,8 +243,9 @@ Example:
      two-page wizard. `DerivedMetadataDialog` remains available for direct
      "Add to sample metadata..." actions, and both paths share the extracted
      `gs-derived-metadata-configurator` for name, group, and scale
-     configuration. Wizard page-state handling remains local because only two
-     dialogs currently use that pattern.
+     configuration. Shared page-state mechanics were extracted into
+     `DialogWizardController` after comparing the feature-filtered wizard with
+     `UploadMetadataDialog`.
 
 9. Reuse generic components.
    - Use `gs-comparison-operator-buttons` for quantitative predicates.

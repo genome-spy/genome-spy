@@ -7,6 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { css, html } from "lit";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import DialogWizardController from "../../components/generic/dialogWizardController.js";
 import { formatAggregationLabel } from "../attributeAggregation/aggregationOps.js";
 import {
     buildDerivedMetadataIntent,
@@ -44,6 +45,9 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             }
         `,
     ];
+
+    /** @type {DialogWizardController} */
+    #wizard;
 
     constructor() {
         super();
@@ -103,6 +107,19 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
 
         this.dialogTitle =
             "Derive metadata by filtering and aggregating features";
+
+        this.#wizard = new DialogWizardController(this, [
+            {
+                render: () => this.#renderFeatureFilterPage(),
+                canAdvance: () => this.#canContinue(),
+                onAdvance: () => this.#prepareMetadataPage(),
+            },
+            {
+                render: () => this.#renderMetadataPage(),
+                canAdvance: () => !this._metadataConfigHasErrors,
+                onAdvance: () => this.#finish(),
+            },
+        ]);
     }
 
     /** @param {Map<string, any>} changed */
@@ -122,11 +139,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     }
 
     renderBody() {
-        if (this._page === 1) {
-            return this.#renderMetadataPage();
-        }
-
-        return this.#renderFeatureFilterPage();
+        return this.#wizard.currentPage.render();
     }
 
     #renderFeatureFilterPage() {
@@ -220,12 +233,12 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     }
 
     renderButtons() {
-        const isLastPage = this._page === 1;
+        const isLastPage = this.#wizard.isLastPage;
         return [
             this.makeCloseButton("Cancel"),
             this.makeButton("Previous", () => this.#changePage(-1), {
                 iconDef: faCaretLeft,
-                disabled: this._page === 0,
+                disabled: this.#wizard.isFirstPage,
             }),
             this.makeButton(
                 isLastPage ? "Finish" : "Next",
@@ -355,21 +368,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
      * @param {-1 | 1} direction
      */
     #changePage(direction) {
-        if (direction < 0) {
-            this._page = 0;
-            return true;
-        }
-
-        if (this._page === 0) {
-            if (!this.#prepareMetadataPage()) {
-                return true;
-            }
-
-            this._page = 1;
-            return true;
-        }
-
-        return this.#finish();
+        return this.#wizard.advance(direction);
     }
 
     /**
@@ -470,11 +469,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     }
 
     #canAdvancePage() {
-        if (this._page === 0) {
-            return this.#canContinue();
-        }
-
-        return !this._metadataConfigHasErrors;
+        return this.#wizard.canAdvance();
     }
 
     /**
@@ -506,6 +501,15 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             label: `${value}`,
             searchText: `${value}`.toLowerCase(),
         }));
+    }
+
+    resetWizard() {
+        this.#wizard.reset();
+        this._attributeInfo = null;
+        this._sampleIds = null;
+        this._values = null;
+        this._attributeName = "";
+        this._metadataConfigHasErrors = false;
     }
 }
 
@@ -545,12 +549,7 @@ export async function showFeatureFilteredAggregationDialog({
             dialog.sampleView = sampleView;
             dialog.valueText = "";
             dialog.selectedValues = [];
-            dialog._page = 0;
-            dialog._attributeInfo = null;
-            dialog._sampleIds = null;
-            dialog._values = null;
-            dialog._attributeName = "";
-            dialog._metadataConfigHasErrors = false;
+            dialog.resetWizard();
         }
     );
 }
