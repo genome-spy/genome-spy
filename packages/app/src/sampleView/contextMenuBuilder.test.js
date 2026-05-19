@@ -1,7 +1,10 @@
 // @ts-check
 import { describe, expect, test } from "vitest";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
-import { getUnavailablePointQueryViews } from "./contextMenuBuilder.js";
+import {
+    buildIntervalAggregationMenu,
+    getUnavailablePointQueryViews,
+} from "./contextMenuBuilder.js";
 
 describe("contextMenuBuilder", () => {
     test("reports unnamed categorical point-query views as unavailable", async () => {
@@ -49,5 +52,36 @@ describe("contextMenuBuilder", () => {
         expect(
             getUnavailablePointQueryViews(targetView, /** @type {any} */ (view))
         ).toEqual([targetView]);
+    });
+
+    test("adds filtered aggregation entry when filterable fields are available", () => {
+        const menu = buildIntervalAggregationMenu({
+            fieldInfo: /** @type {any} */ ({
+                field: "VAF",
+                viewSelector: { scope: [], view: "mutations" },
+                supportedAggregations: [],
+                filterableFields: [
+                    {
+                        field: "functionalCategory",
+                        type: "nominal",
+                    },
+                ],
+            }),
+            selectionIntervalComplex: [1, 2],
+            sample: /** @type {any} */ (undefined),
+            sampleHierarchy: /** @type {any} */ ({}),
+            attributeInfoSource: /** @type {any} */ ({}),
+            attributeType: "VALUE_AT_LOCUS",
+            sampleView: /** @type {any} */ ({}),
+        });
+
+        expect(menu).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    label: "Filter records and aggregate...",
+                    callback: expect.any(Function),
+                }),
+            ])
+        );
     });
 });

@@ -206,6 +206,10 @@ Example:
      - aggregation field, except for item count
    - Then pass the resulting filtered aggregation attribute into the existing
      derived metadata dialog for name, group, and scale configuration.
+   - Status: implemented as the first metadata-derivation entry point. The
+     aggregation field remains selected by the existing field submenu, and the
+     dialog chooses the record filter and aggregation operation before handing
+     the resulting attribute to the derived metadata dialog.
 
 8. Reuse generic components.
    - Use `gs-comparison-operator-buttons` for quantitative predicates.
