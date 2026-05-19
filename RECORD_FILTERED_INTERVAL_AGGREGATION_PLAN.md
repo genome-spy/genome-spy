@@ -191,6 +191,10 @@ Example:
      is insufficient.
    - Use this helper from the agent when exact filter values or numeric bounds
      are needed.
+   - Status: implemented for the agent path. App exposes raw record values for
+     one encoded field inside a selected interval, and the agent exposes
+     `getSelectionRecordFieldSummary` for lazy categorical or quantitative
+     summaries. Dialog reuse remains for the later UI step.
 
 7. Add the first UI entry point.
    - Keep the existing interval aggregation operation submenu unchanged.

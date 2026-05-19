@@ -72,6 +72,12 @@ export interface AgentApi {
         selector: ViewSelector
     ): import("@genome-spy/core/view/view.js").default | undefined;
 
+    getSelectionRecordFieldValues(
+        viewSelector: ViewSelector,
+        selectionSelector: import("@genome-spy/core/view/viewSelectors.js").ParamSelector,
+        field: string
+    ): unknown[] | undefined;
+
     /**
      * Returns the provenance actions currently available to the agent.
      */

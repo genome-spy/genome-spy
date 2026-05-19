@@ -175,6 +175,32 @@ export interface GetAttributeSummaryToolInput {
 }
 
 /**
+ * Summarize one raw record field inside a selected interval before per-sample
+ * aggregation. Use this when choosing a `recordFilter` for a
+ * `SELECTION_AGGREGATION` candidate and the compact
+ * `selectionAggregation.fields[].filterableFields` metadata is not enough.
+ * The field must be copied from that candidate's `filterableFields`.
+ *
+ * @example
+ * {
+ *   "candidateId": "brush@mutations:VAF",
+ *   "field": "functionalCategory"
+ * }
+ */
+export interface GetSelectionRecordFieldSummaryToolInput {
+    /**
+     * Exact candidate id copied from `selectionAggregation.fields`.
+     */
+    candidateId: string;
+
+    /**
+     * Raw record field copied from the selected candidate's
+     * `filterableFields`.
+     */
+    field: string;
+}
+
+/**
  * Resolve a free-text metadata value against current visible categorical sample
  * metadata values. Use this when the user names a category value such as
  * `relapse`, `AML`, or `female` but does not name the metadata attribute that
@@ -410,6 +436,7 @@ export interface AgentToolInputs {
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     getAttributeSummary: GetAttributeSummaryToolInput;
+    getSelectionRecordFieldSummary: GetSelectionRecordFieldSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     getIntentActionDocs: GetIntentActionDocsToolInput;

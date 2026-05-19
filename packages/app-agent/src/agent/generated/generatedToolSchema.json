@@ -311,6 +311,9 @@
         "getIntentActionDocs": {
           "$ref": "#/definitions/GetIntentActionDocsToolInput"
         },
+        "getSelectionRecordFieldSummary": {
+          "$ref": "#/definitions/GetSelectionRecordFieldSummaryToolInput"
+        },
         "jumpToInitialProvenanceState": {
           "$ref": "#/definitions/JumpToInitialProvenanceStateToolInput"
         },
@@ -349,6 +352,7 @@
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
         "getAttributeSummary",
+        "getSelectionRecordFieldSummary",
         "resolveMetadataAttributeValues",
         "searchViewDatums",
         "getIntentActionDocs",
@@ -676,6 +680,28 @@
         }
       },
       "required": ["actionType"],
+      "type": "object"
+    },
+    "GetSelectionRecordFieldSummaryToolInput": {
+      "additionalProperties": false,
+      "description": "Summarize one raw record field inside a selected interval before per-sample aggregation. Use this when choosing a `recordFilter` for a `SELECTION_AGGREGATION` candidate and the compact `selectionAggregation.fields[].filterableFields` metadata is not enough. The field must be copied from that candidate's `filterableFields`.",
+      "examples": [
+        {
+          "candidateId": "brush@mutations:VAF",
+          "field": "functionalCategory"
+        }
+      ],
+      "properties": {
+        "candidateId": {
+          "description": "Exact candidate id copied from `selectionAggregation.fields`.",
+          "type": "string"
+        },
+        "field": {
+          "description": "Raw record field copied from the selected candidate's `filterableFields`.",
+          "type": "string"
+        }
+      },
+      "required": ["candidateId", "field"],
       "type": "object"
     },
     "GroupByNominal": {
