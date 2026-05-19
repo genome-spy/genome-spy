@@ -169,6 +169,10 @@ Example:
    - Keep volatile agent context small. Candidate context should tell the agent
      what can be inspected, not contain the inspection results.
    - Avoid showing hidden or unaddressable fields.
+   - Status: implemented for encoded non-positional fields on visible,
+     addressable views. `selectionAggregation.fields` now carries structural
+     `filterableFields` metadata without value summaries or filtered candidate
+     variants.
 
 6. Add lazy record-field summary support.
    - Existing `getAttributeSummary` summarizes sample-level attributes after
