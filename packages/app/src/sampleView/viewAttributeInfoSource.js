@@ -116,7 +116,8 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
     if (
         !channelDef &&
         "aggregation" in specifier &&
-        specifier.aggregation.op !== "count"
+        specifier.aggregation.op !== "count" &&
+        specifier.aggregation.op !== "itemCount"
     ) {
         throw new Error(
             `Aggregation '${specifier.aggregation.op}' requires a field definition for '${specifier.field}' in view '${view.name}'`
@@ -214,6 +215,13 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
  * @returns {import("lit").TemplateResult}
  */
 function formatAggregationTitle(op, field, featureFilter) {
+    if (op === "itemCount") {
+        const filterTitle = featureFilter
+            ? html`(where ${formatFeatureFilterTitle(featureFilter)})`
+            : "";
+        return html`${formatAggregationFunctionName(op)}${filterTitle}`;
+    }
+
     if (op === "count") {
         const filterTitle = featureFilter
             ? html` where ${formatFeatureFilterTitle(featureFilter)}`

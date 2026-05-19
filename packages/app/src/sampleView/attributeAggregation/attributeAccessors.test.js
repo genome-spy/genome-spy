@@ -231,6 +231,34 @@ describe("createViewAttributeAccessor", () => {
         expect(accessor("sample-1")).toBe(2);
     });
 
+    test("item count interval aggregation counts features without field values", () => {
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
+        const view = createView({
+            data: [
+                { pos: 4, consequence: "missense" },
+                { pos: 5, consequence: "frameshift" },
+                { pos: 6, consequence: "frameshift" },
+                { pos: 8, consequence: "frameshift" },
+            ],
+            xAccessor,
+        });
+
+        const accessor = createViewAttributeAccessorAny(view, {
+            view: "test",
+            field: "Items",
+            interval: [4, 6],
+            aggregation: { op: "itemCount" },
+            featureFilter: {
+                field: "consequence",
+                operator: "eq",
+                value: "frameshift",
+            },
+        });
+
+        expect(accessor("sample-1")).toBe(2);
+    });
+
     test("returns undefined for non-count interval aggregation when no features match the filter", () => {
         const paramRuntime = new ViewParamRuntime(() => undefined);
         const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);

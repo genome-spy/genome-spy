@@ -343,6 +343,15 @@ or:
 Result: max(VAF where functionalCategory in {frameshift}) per sample
 ```
 
+Synthetic feature-count candidates use a separate `itemCount` aggregation
+internally. This keeps `count(field)` as a count of non-null field values while
+still allowing true feature counts for views that expose only positional
+features:
+
+```text
+Result: item count(where functionalCategory in {frameshift}) per sample
+```
+
 ## Open Questions
 
 - Should categorical values be summarized over the selected interval only, or

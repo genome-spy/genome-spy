@@ -366,7 +366,7 @@
     },
     "AggregationOp": {
       "description": "Aggregation operators supported by interval-based attribute access.",
-      "enum": ["min", "max", "weightedMean", "variance", "count"],
+      "enum": ["itemCount", "min", "max", "weightedMean", "variance", "count"],
       "type": "string"
     },
     "AggregationSpec": {

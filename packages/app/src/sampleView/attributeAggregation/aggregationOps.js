@@ -15,6 +15,12 @@ import { isIntervalSpecifier } from "../sampleViewTypes.js";
 /** @type {AggregationOpInfo[]} */
 export const aggregationOps = [
     {
+        op: "itemCount",
+        label: "Item count",
+        description: "Number of features in the interval",
+        preservesScaleDomain: false,
+    },
+    {
         op: "count",
         label: "Count",
         description: "Number of non-missing values in the interval",
@@ -159,6 +165,13 @@ export function formatAggregationExpression(op, field, featureFilter) {
     const filterExpression = featureFilter
         ? " where " + formatFeatureFilterExpression(featureFilter)
         : "";
+
+    if (op === "itemCount") {
+        return (
+            formatAggregationFunctionName(op) +
+            (featureFilter ? "(" + filterExpression.trim() + ")" : "")
+        );
+    }
 
     if (op === "count") {
         return (

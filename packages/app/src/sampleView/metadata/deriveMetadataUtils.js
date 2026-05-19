@@ -229,7 +229,10 @@ function createFilteredAggregationAttributeName(attributeInfo) {
     }
 
     const filterPart = formatFeatureFilterNamePart(specifier.featureFilter);
-    if (specifier.aggregation.op === "count") {
+    if (
+        specifier.aggregation.op === "count" ||
+        specifier.aggregation.op === "itemCount"
+    ) {
         return filterPart + "_count";
     }
 
@@ -280,6 +283,8 @@ function formatMetadataNamePart(value) {
  */
 function formatAggregationNamePrefix(op) {
     switch (op) {
+        case "itemCount":
+            return "count";
         case "count":
             return "count";
         case "min":

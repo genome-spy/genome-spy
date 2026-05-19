@@ -150,13 +150,14 @@ export function createViewAttributeAccessor(view, specifier) {
         const [start, end] = getNumericBounds();
         const data = collector.facetBatches.get(asArray(sampleId));
         if (!data?.length) {
-            return op === "count" ? 0 : undefined;
+            return op === "count" || op === "itemCount" ? 0 : undefined;
         }
 
         /** @type {number[]} */
         const values = [];
         /** @type {number[]} */
         const weights = [];
+        let itemCount = 0;
 
         visitIntervalFeatures(
             data,
@@ -167,12 +168,15 @@ export function createViewAttributeAccessor(view, specifier) {
             end,
             (datum, weight) => {
                 if (featureMatches(datum)) {
+                    itemCount += 1;
                     collectAggregationValue(datum, weight, values, weights);
                 }
             }
         );
 
         switch (op) {
+            case "itemCount":
+                return itemCount;
             case "count":
                 return aggregateCount(values);
             case "min":

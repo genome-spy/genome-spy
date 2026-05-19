@@ -94,4 +94,44 @@ describe("selectionAggregationCandidates", () => {
             ])
         );
     });
+
+    it("uses itemCount for synthetic item aggregation candidates", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "S1", pos: 1 },
+                    { sample: "S2", pos: 2 },
+                ],
+            },
+            samples: {},
+            spec: {
+                name: "track",
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "pos", type: "quantitative" },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        const targetView = /** @type {any} */ (
+            view.findDescendantByName("track")
+        );
+        const candidates = getSelectionAggregationFieldInfos(
+            /** @type {any} */ (targetView),
+            /** @type {any} */ (view),
+            true
+        );
+
+        expect(candidates).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    field: "Items",
+                    supportedAggregations: ["itemCount"],
+                }),
+            ])
+        );
+    });
 });

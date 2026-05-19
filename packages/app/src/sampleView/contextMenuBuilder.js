@@ -116,10 +116,13 @@ export function buildIntervalAggregationMenu({
         { label: "Interval aggregation", type: "header" },
         ...fieldInfo.supportedAggregations.map((op) => {
             const opInfo = getAggregationOpInfo(op);
-            const menuTitle = html`Using ${opInfo.label.toLowerCase()}(<em
-                    class="attribute"
-                    >${fieldInfo.field}</em
-                >) over interval...`;
+            const menuTitle =
+                op === "itemCount"
+                    ? html`Using ${opInfo.label.toLowerCase()} over interval...`
+                    : html`Using ${opInfo.label.toLowerCase()}(<em
+                              class="attribute"
+                              >${fieldInfo.field}</em
+                          >) over interval...`;
 
             /** @type {import("./sampleViewTypes.js").IntervalSpecifier} */
             const specifier = selectionIntervalSource

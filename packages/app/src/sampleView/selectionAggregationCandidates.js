@@ -6,12 +6,19 @@ import {
     getUniqueViewRefKeys,
     getViewRefKey,
 } from "./viewRef.js";
-import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 
 /** @type {import("./types.js").AggregationOp[]} */
 const DEFAULT_AGGREGATIONS = ["count"];
 /** @type {import("./types.js").AggregationOp[]} */
-const QUANTITATIVE_AGGREGATIONS = aggregationOps.map((entry) => entry.op);
+const ITEM_COUNT_AGGREGATIONS = ["itemCount"];
+/** @type {import("./types.js").AggregationOp[]} */
+const QUANTITATIVE_AGGREGATIONS = [
+    "count",
+    "min",
+    "max",
+    "weightedMean",
+    "variance",
+];
 
 /**
  * Candidate field summary used by the interval aggregation UI and agent
@@ -106,7 +113,7 @@ export function getSelectionAggregationFieldInfos(
                         field: "Items",
                         type: "nominal",
                         description: undefined,
-                        supportedAggregations: DEFAULT_AGGREGATIONS,
+                        supportedAggregations: ITEM_COUNT_AGGREGATIONS,
                         candidateId: createSelectionAggregationCandidateId(
                             createViewRef(unitView),
                             "Items"

@@ -237,7 +237,9 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                         `
                     )}
                 </select>
-                <small>Only non-null values are considered.</small>
+                ${this.aggregation === "itemCount"
+                    ? ""
+                    : html`<small>Only non-null values are considered.</small>`}
             </div>
 
             ${this.#renderExpressionSummary()}
@@ -384,6 +386,10 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
 
         const filterExpression = this.#formatFeatureFilterPreview();
         const field = this.aggregationField;
+        if (this.aggregation === "itemCount") {
+            return `${formatAggregationFunctionName(this.aggregation)}(where ${filterExpression})`;
+        }
+
         if (this.aggregation === "count") {
             return `${formatAggregationFunctionName(this.aggregation)}(${field} where ${filterExpression})`;
         }
