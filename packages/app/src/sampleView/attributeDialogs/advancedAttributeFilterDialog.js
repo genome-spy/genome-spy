@@ -218,7 +218,7 @@ customElements.define(
 
 /**
  * @typedef {import("@genome-spy/core/spec/channel.js").Scalar} Scalar
- * @typedef {import("../state/sampleOperations.js").ComparisonOperatorType} ComparisonOperatorType
+ * @typedef {import("../state/payloadTypes.js").ComparisonOperatorType} ComparisonOperatorType
  */
 
 /**

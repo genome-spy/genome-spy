@@ -1,6 +1,7 @@
 import { range } from "d3-array";
 import mapSort from "mapsort";
 import { isNumber } from "vega-util";
+import { createComparisonPredicate } from "../../utils/predicates/comparison.js";
 
 /**
  * Wraps an accessor for comparison. Handles data with missing values
@@ -33,10 +34,6 @@ export function wrapAccessorForComparison(accessor, attributeInfo) {
 
     return (sampleId) => wrapper(accessor(sampleId));
 }
-
-/**
- * @typedef {"lt" | "lte" | "eq" | "gte" | "gt"} ComparisonOperatorType
- */
 
 /**
  *
@@ -200,8 +197,7 @@ function createConditionPredicate(condition) {
         const values = new Set(condition.values);
         return (value) => values.has(value);
     } else {
-        const op = COMPARISON_OPERATORS[condition.operator];
-        return (value) => op(value, condition.operand);
+        return createComparisonPredicate(condition.operator, condition.operand);
     }
 }
 
@@ -232,28 +228,17 @@ export function sort(samples, accessor, descending = false) {
 }
 
 /**
- * @type {Record<ComparisonOperatorType, (a: any, b: any) => boolean>}
- */
-const COMPARISON_OPERATORS = {
-    lt: (a, b) => a < b,
-    lte: (a, b) => a <= b,
-    eq: (a, b) => a == b,
-    gte: (a, b) => a >= b,
-    gt: (a, b) => a > b,
-};
-
-/**
  * @param {T[]} samples
  * @param {function(T):any} accessor
- * @param {ComparisonOperatorType} operator The comparison operator
+ * @param {import("./payloadTypes.js").ComparisonOperatorType} operator The comparison operator
  * @param {any} operand
  * @returns {T[]}
  * @template T
  *
  */
 export function filterQuantitative(samples, accessor, operator, operand) {
-    const op = COMPARISON_OPERATORS[operator];
-    return samples.filter((sample) => op(accessor(sample), operand));
+    const predicate = createComparisonPredicate(operator, operand);
+    return samples.filter((sample) => predicate(accessor(sample)));
 }
 
 /**

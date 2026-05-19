@@ -122,6 +122,9 @@ Example:
    - Support `eq`, `in`, `lt`, `lte`, `gt`, and `gte`.
    - Keep field access simple initially: literal datum keys only.
    - Leave boolean composition out of scope for the initial implementation.
+   - Status: implemented in `packages/app/src/utils/predicates/recordFilter`.
+     Numeric comparisons reuse shared comparison helpers and keep existing
+     JavaScript comparison semantics.
 
 2. Add `recordFilter` to interval specifier types.
    - Update `sampleViewTypes.d.ts`.
