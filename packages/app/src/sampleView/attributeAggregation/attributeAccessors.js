@@ -10,6 +10,7 @@ import {
     aggregateVariance,
     aggregateWeightedMean,
 } from "./attributeAggregation.js";
+import { visitIntervalFeatures } from "./intervalFeatureTraversal.js";
 
 /**
  * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
@@ -79,11 +80,8 @@ export function createViewAttributeAccessor(view, specifier) {
     const root = view.getLayoutAncestors().at(-1);
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
-    const x2Accessor = view.getDataAccessor("x2");
     const hitTestMode = view.mark?.defaultHitTestMode ?? "intersects";
-    // Missing x2 or equal accessors imply point features, so treat x and x2 as the same value.
-    const isPointFeature =
-        !x2Accessor || (xAccessor && xAccessor.equals(x2Accessor));
+    const x2Accessor = view.getDataAccessor("x2");
 
     if (!collector || !xAccessor) {
         return () => undefined;
@@ -165,46 +163,19 @@ export function createViewAttributeAccessor(view, specifier) {
             }
         };
 
-        if (isPointFeature) {
-            for (let i = 0; i < data.length; i++) {
-                const datum = data[i];
-                if (!featureMatches(datum)) {
-                    continue;
-                }
-                const x = /** @type {number} */ (xAccessor(datum));
-                if (x >= start && x <= end) {
-                    collectValue(datum);
-                }
-            }
-        } else {
-            for (let i = 0; i < data.length; i++) {
-                const datum = data[i];
-                if (!featureMatches(datum)) {
-                    continue;
-                }
-                const x = /** @type {number} */ (xAccessor(datum));
-                const x2 = /** @type {number} */ (x2Accessor(datum));
-                if (hitTestMode === "endpoints") {
-                    if (
-                        (x >= start && x <= end) ||
-                        (x2 >= start && x2 <= end)
-                    ) {
-                        collectValue(datum);
-                    }
-                } else if (hitTestMode === "encloses") {
-                    if (x >= start && x2 <= end) {
-                        collectValue(datum, x2 - x);
-                    }
-                } else {
-                    // intersects
-                    const overlapStart = Math.max(x, start);
-                    const overlapEnd = Math.min(x2, end);
-                    if (overlapEnd > overlapStart) {
-                        collectValue(datum, overlapEnd - overlapStart);
-                    }
+        visitIntervalFeatures(
+            data,
+            xAccessor,
+            x2Accessor,
+            hitTestMode,
+            start,
+            end,
+            (datum, weight) => {
+                if (featureMatches(datum)) {
+                    collectValue(datum, weight);
                 }
             }
-        }
+        );
 
         switch (op) {
             case "count":

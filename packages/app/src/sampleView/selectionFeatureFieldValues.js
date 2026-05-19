@@ -1,6 +1,7 @@
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { resolveIntervalReference } from "./intervalReferenceResolver.js";
+import { visitIntervalFeatures } from "./attributeAggregation/intervalFeatureTraversal.js";
 
 /**
  * Collects raw feature field values inside a selection interval before
@@ -53,46 +54,24 @@ export function collectIntervalFeatureFieldValues(
     const [start, end] = normalizeInterval(view, interval);
     const x2Accessor = view.getDataAccessor("x2");
     const hitTestMode = view.mark?.defaultHitTestMode ?? "intersects";
-    const isPointFeature =
-        !x2Accessor || (xAccessor && xAccessor.equals(x2Accessor));
 
     /** @type {unknown[]} */
     const values = [];
     for (const data of collector.facetBatches.values()) {
-        for (const datum of data) {
-            const x = /** @type {number} */ (xAccessor(datum));
-            if (isPointFeature) {
-                if (x >= start && x <= end) {
-                    values.push(datum[field]);
-                }
-            } else {
-                const x2 = /** @type {number} */ (x2Accessor(datum));
-                if (featureOverlapsInterval(x, x2, start, end, hitTestMode)) {
-                    values.push(datum[field]);
-                }
+        visitIntervalFeatures(
+            data,
+            xAccessor,
+            x2Accessor,
+            hitTestMode,
+            start,
+            end,
+            (datum) => {
+                values.push(datum[field]);
             }
-        }
+        );
     }
 
     return values;
-}
-
-/**
- * @param {number} x
- * @param {number} x2
- * @param {number} start
- * @param {number} end
- * @param {string} hitTestMode
- * @returns {boolean}
- */
-function featureOverlapsInterval(x, x2, start, end, hitTestMode) {
-    if (hitTestMode === "endpoints") {
-        return (x >= start && x <= end) || (x2 >= start && x2 <= end);
-    } else if (hitTestMode === "encloses") {
-        return x >= start && x2 <= end;
-    } else {
-        return Math.min(x2, end) > Math.max(x, start);
-    }
 }
 
 /**
