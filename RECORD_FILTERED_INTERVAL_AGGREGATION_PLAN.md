@@ -140,6 +140,9 @@ Example:
    - Evaluate the predicate before values and weights are collected.
    - Preserve current `count` semantics: no matching records should yield `0`;
      non-count aggregations should yield `undefined`.
+   - Status: implemented. Filtering is applied before interval-matching
+     records are added to aggregation values and weights. Existing aggregation
+     behavior already covers empty filtered results.
 
 4. Improve titles and generated names.
    - Include the record filter in `AttributeInfo.title` and

@@ -179,4 +179,85 @@ describe("createViewAttributeAccessor", () => {
 
         expect(accessor("sample-1")).toBe(20);
     });
+
+    test("filters records before count interval aggregation", () => {
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
+        const view = createView({
+            data: [
+                { pos: 4, value: 10, consequence: "missense" },
+                { pos: 5, value: 20, consequence: "frameshift" },
+                { pos: 6, value: 30, consequence: "frameshift" },
+                { pos: 8, value: 40, consequence: "frameshift" },
+            ],
+            xAccessor,
+        });
+
+        const accessor = createViewAttributeAccessorAny(view, {
+            view: "test",
+            field: "value",
+            interval: [4, 6],
+            aggregation: { op: "count" },
+            recordFilter: {
+                field: "consequence",
+                operator: "eq",
+                value: "frameshift",
+            },
+        });
+
+        expect(accessor("sample-1")).toBe(2);
+    });
+
+    test("returns undefined for non-count interval aggregation when no records match the filter", () => {
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
+        const view = createView({
+            data: [
+                { pos: 4, value: 10, consequence: "missense" },
+                { pos: 5, value: 20, consequence: "missense" },
+            ],
+            xAccessor,
+        });
+
+        const accessor = createViewAttributeAccessorAny(view, {
+            view: "test",
+            field: "value",
+            interval: [4, 6],
+            aggregation: { op: "max" },
+            recordFilter: {
+                field: "consequence",
+                operator: "eq",
+                value: "frameshift",
+            },
+        });
+
+        expect(accessor("sample-1")).toBeUndefined();
+    });
+
+    test("supports quantitative record filters in interval aggregation", () => {
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
+        const view = createView({
+            data: [
+                { pos: 4, value: 10, cadd: 8 },
+                { pos: 5, value: 20, cadd: 21 },
+                { pos: 6, value: 30, cadd: 18 },
+            ],
+            xAccessor,
+        });
+
+        const accessor = createViewAttributeAccessorAny(view, {
+            view: "test",
+            field: "value",
+            interval: [4, 6],
+            aggregation: { op: "max" },
+            recordFilter: {
+                field: "cadd",
+                operator: "gte",
+                value: 10,
+            },
+        });
+
+        expect(accessor("sample-1")).toBe(30);
+    });
 });
