@@ -130,6 +130,10 @@ Example:
    - Update `sampleViewTypes.d.ts`.
    - Update generated app/agent schemas if needed.
    - Add docs that describe the filter as applying before aggregation.
+   - Status: implemented. `RecordFilter` now lives in
+     `sampleViewTypes.d.ts` so generated app-agent schemas can include the
+     filter shape. The predicate evaluator imports that type through JSDoc to
+     avoid a second source of truth.
 
 3. Apply `recordFilter` in interval aggregation accessors.
    - Update `createViewAttributeAccessor`.

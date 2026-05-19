@@ -833,6 +833,10 @@
           "$ref": "#/definitions/IntervalReference",
           "description": "Literal interval or a selection source resolved at action execution time"
         },
+        "recordFilter": {
+          "$ref": "#/definitions/RecordFilter",
+          "description": "Predicate applied to raw records before aggregation."
+        },
         "view": {
           "$ref": "#/definitions/ViewRef",
           "description": "A unique view reference. Legacy values may be a view name string."
@@ -1269,6 +1273,88 @@
       },
       "required": ["attribute", "operator", "operand"],
       "type": "object"
+    },
+    "RecordFilter": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "description": "Record field to test.",
+              "type": "string"
+            },
+            "operator": {
+              "const": "eq",
+              "description": "Retain records where the field is exactly this value.",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Scalar"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Matched value."
+            }
+          },
+          "required": ["field", "operator", "value"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "description": "Record field to test.",
+              "type": "string"
+            },
+            "operator": {
+              "const": "in",
+              "description": "Retain records where the field is one of the listed values.",
+              "type": "string"
+            },
+            "values": {
+              "description": "Matched values.",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Scalar"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          },
+          "required": ["field", "operator", "values"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "description": "Record field to test.",
+              "type": "string"
+            },
+            "operator": {
+              "description": "Numeric comparison operator.",
+              "enum": ["lt", "lte", "gt", "gte"],
+              "type": "string"
+            },
+            "value": {
+              "description": "Numeric threshold.",
+              "type": "number"
+            }
+          },
+          "required": ["field", "operator", "value"],
+          "type": "object"
+        }
+      ],
+      "description": "Predicate applied to raw view records before interval aggregation."
     },
     "RemoveGroup": {
       "additionalProperties": false,
