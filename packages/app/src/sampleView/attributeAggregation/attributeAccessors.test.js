@@ -208,6 +208,29 @@ describe("createViewAttributeAccessor", () => {
         expect(accessor("sample-1")).toBe(2);
     });
 
+    test("count interval aggregation ignores missing field values", () => {
+        const paramRuntime = new ViewParamRuntime(() => undefined);
+        const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
+        const view = createView({
+            data: [
+                { pos: 4, value: 10 },
+                { pos: 5, value: null },
+                { pos: 6 },
+                { pos: 7, value: 20 },
+            ],
+            xAccessor,
+        });
+
+        const accessor = createViewAttributeAccessorAny(view, {
+            view: "test",
+            field: "value",
+            interval: [4, 7],
+            aggregation: { op: "count" },
+        });
+
+        expect(accessor("sample-1")).toBe(2);
+    });
+
     test("returns undefined for non-count interval aggregation when no features match the filter", () => {
         const paramRuntime = new ViewParamRuntime(() => undefined);
         const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);

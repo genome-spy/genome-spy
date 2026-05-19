@@ -10,7 +10,7 @@ sorting, grouping, summaries, and plots.
 Conceptually, this extends the current interval aggregation:
 
 ```sql
-SELECT count(*)
+SELECT count(VAF)
 FROM mutations
 WHERE pos BETWEEN 1234 AND 2345
 GROUP BY sampleId;
@@ -19,7 +19,7 @@ GROUP BY sampleId;
 to:
 
 ```sql
-SELECT count(*)
+SELECT count(VAF)
 FROM mutations
 WHERE pos BETWEEN 1234 AND 2345
   AND functionalCategory = 'frameshift'
@@ -138,11 +138,15 @@ Example:
 3. Apply `featureFilter` in interval aggregation accessors.
    - Update `createViewAttributeAccessor`.
    - Evaluate the predicate before values and weights are collected.
-   - Preserve current `count` semantics: no matching features should yield `0`;
+   - Count only non-null/non-undefined values of the aggregation field. The
+     aggregation operation is applied to a specific attribute, so `count` should
+     behave like `count(field)`, not `count(*)`.
+   - No matching or non-missing features should yield `0` for `count`;
      non-count aggregations should yield `undefined`.
    - Status: implemented. Filtering is applied before interval-matching
-     features are added to aggregation values and weights. Existing aggregation
-     behavior already covers empty filtered results.
+     features are added to aggregation values and weights. Missing aggregation
+     field values are skipped before aggregation, so count reflects non-missing
+     values of the selected field.
 
 4. Improve titles and generated names.
    - Include the feature filter in `AttributeInfo.title` and
@@ -203,7 +207,7 @@ Example:
      - feature filter field
      - predicate operator and value(s)
      - aggregation operation
-     - aggregation field, except for item count
+     - aggregation field
    - Then pass the resulting filtered aggregation attribute into the existing
      derived metadata dialog for name, group, and scale configuration.
    - Status: implemented as the first metadata-derivation entry point. The
@@ -310,7 +314,7 @@ Interval aggregation
 Dialog sentence target:
 
 ```text
-For each sample, count mutations in the selected region where
+For each sample, count non-missing VAF values in the selected region where
 functionalCategory is frameshift.
 ```
 

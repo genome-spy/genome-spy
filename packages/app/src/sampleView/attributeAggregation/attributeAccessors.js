@@ -151,6 +151,20 @@ export function createViewAttributeAccessor(view, specifier) {
         /** @type {number[]} */
         const weights = [];
 
+        /**
+         * @param {any} datum
+         * @param {number} [weight]
+         */
+        const collectValue = (datum, weight = 1) => {
+            const value = valueAccessor(datum);
+            if (value != null) {
+                values.push(value);
+                if (needsWeights) {
+                    weights.push(weight);
+                }
+            }
+        };
+
         if (isPointFeature) {
             for (let i = 0; i < data.length; i++) {
                 const datum = data[i];
@@ -159,10 +173,7 @@ export function createViewAttributeAccessor(view, specifier) {
                 }
                 const x = /** @type {number} */ (xAccessor(datum));
                 if (x >= start && x <= end) {
-                    values.push(valueAccessor(datum));
-                    if (needsWeights) {
-                        weights.push(1);
-                    }
+                    collectValue(datum);
                 }
             }
         } else {
@@ -178,27 +189,18 @@ export function createViewAttributeAccessor(view, specifier) {
                         (x >= start && x <= end) ||
                         (x2 >= start && x2 <= end)
                     ) {
-                        values.push(valueAccessor(datum));
-                        if (needsWeights) {
-                            weights.push(1);
-                        }
+                        collectValue(datum);
                     }
                 } else if (hitTestMode === "encloses") {
                     if (x >= start && x2 <= end) {
-                        values.push(valueAccessor(datum));
-                        if (needsWeights) {
-                            weights.push(x2 - x);
-                        }
+                        collectValue(datum, x2 - x);
                     }
                 } else {
                     // intersects
                     const overlapStart = Math.max(x, start);
                     const overlapEnd = Math.min(x2, end);
                     if (overlapEnd > overlapStart) {
-                        values.push(valueAccessor(datum));
-                        if (needsWeights) {
-                            weights.push(overlapEnd - overlapStart);
-                        }
+                        collectValue(datum, overlapEnd - overlapStart);
                     }
                 }
             }
