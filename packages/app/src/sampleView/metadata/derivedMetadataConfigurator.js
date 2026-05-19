@@ -105,34 +105,6 @@ export default class DerivedMetadataConfigurator extends LitElement {
     }
 
     /**
-     * @param {{
-     *  attributeInfo: import("../types.js").AttributeInfo,
-     *  sampleIds: string[],
-     *  values: any[],
-     *  existingAttributeNames: string[],
-     *  defaultName: string,
-     * }} params
-     */
-    configure({
-        attributeInfo,
-        sampleIds,
-        values,
-        existingAttributeNames,
-        defaultName,
-    }) {
-        this.attributeInfo = attributeInfo;
-        this.sampleIds = sampleIds;
-        this.values = values;
-        this.existingAttributeNames = existingAttributeNames;
-        this.attributeName = defaultName;
-        this.groupPath = "";
-        this._scale = getDefaultDerivedMetadataScale(attributeInfo) ?? null;
-        this._scaleConfigured = false;
-        this._observedDomain = null;
-        this._form.reset();
-    }
-
-    /**
      * @param {Map<string, unknown>} changed
      */
     willUpdate(changed) {
