@@ -250,6 +250,12 @@ Example:
    - Action/agent shape validation tests for filtered selection aggregation
      candidates.
    - UI tests or focused component tests for the dialog if practical.
+   - Status: completed with focused coverage across the implementation:
+     predicate evaluator tests, interval aggregation accessor tests, candidate
+     metadata tests, lazy record-field summary tests, agent materialization and
+     action-shape validation tests, and a context-menu entry-point test. The
+     dialog itself is covered through type checking and linting; no separate
+     browser-level dialog test was added in this pass.
 
 ## UI Notes
 
