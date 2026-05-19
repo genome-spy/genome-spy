@@ -4,7 +4,7 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
 import { buildSelectionAggregationAttribute } from "./selectionAggregationTool.js";
 
 describe("buildSelectionAggregationAttribute", () => {
-    it("materializes record filters into selection aggregation attributes", () => {
+    it("materializes feature filters into selection aggregation attributes", () => {
         const result = buildSelectionAggregationAttribute(
             createVolatileContext(),
             "brush@mutations:VAF",
@@ -27,7 +27,7 @@ describe("buildSelectionAggregationAttribute", () => {
                 aggregation: {
                     op: "max",
                 },
-                recordFilter: {
+                featureFilter: {
                     field: "functionalCategory",
                     operator: "in",
                     values: ["frameshift"],
@@ -39,7 +39,7 @@ describe("buildSelectionAggregationAttribute", () => {
         );
     });
 
-    it("rejects record filters using fields outside filterableFields", () => {
+    it("rejects feature filters using fields outside filterableFields", () => {
         expect(() =>
             buildSelectionAggregationAttribute(
                 createVolatileContext(),

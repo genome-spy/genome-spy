@@ -6,7 +6,7 @@ import {
     formatAggregationExpression,
     formatAggregationFunctionName,
     formatAggregationLabel,
-    formatRecordFilterValue,
+    formatFeatureFilterValue,
 } from "./attributeAggregation/aggregationOps.js";
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
@@ -48,7 +48,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             ? formatAggregationExpression(
                   specifier.aggregation.op,
                   specifier.field,
-                  specifier.recordFilter
+                  specifier.featureFilter
               )
             : specifier.field;
     const emphasizedName =
@@ -56,7 +56,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             ? formatAggregationTitle(
                   specifier.aggregation.op,
                   specifier.field,
-                  specifier.recordFilter
+                  specifier.featureFilter
               )
             : html`<em class="attribute">${specifier.field}</em>`;
     const attributeTitle =
@@ -64,7 +64,7 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
             ? formatAggregationTitle(
                   specifier.aggregation.op,
                   specifier.field,
-                  specifier.recordFilter
+                  specifier.featureFilter
               )
             : html`<em class="attribute">${specifier.field}</em>`;
 
@@ -209,44 +209,44 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
 /**
  * @param {import("./types.js").AggregationOp} op
  * @param {string} field
- * @param {import("./sampleViewTypes.js").RecordFilter} [recordFilter]
+ * @param {import("./sampleViewTypes.js").FeatureFilter} [featureFilter]
  * @returns {import("lit").TemplateResult}
  */
-function formatAggregationTitle(op, field, recordFilter) {
-    if (op === "count" && !recordFilter) {
+function formatAggregationTitle(op, field, featureFilter) {
+    if (op === "count" && !featureFilter) {
         return html`${formatAggregationLabel(op)}`;
     }
     if (op === "count") {
         return html`${formatAggregationFunctionName(op)}(where
-        ${formatRecordFilterTitle(recordFilter)})`;
+        ${formatFeatureFilterTitle(featureFilter)})`;
     }
-    const filterTitle = recordFilter
-        ? html` where ${formatRecordFilterTitle(recordFilter)}`
+    const filterTitle = featureFilter
+        ? html` where ${formatFeatureFilterTitle(featureFilter)}`
         : "";
     return html`${formatAggregationLabel(op)}(<em class="attribute">${field}</em
         >${filterTitle})`;
 }
 
 /**
- * @param {import("./sampleViewTypes.js").RecordFilter} filter
+ * @param {import("./sampleViewTypes.js").FeatureFilter} filter
  * @returns {import("lit").TemplateResult}
  */
-function formatRecordFilterTitle(filter) {
+function formatFeatureFilterTitle(filter) {
     if (filter.operator === "in") {
         return html`<em class="attribute">${filter.field}</em> in
-            [${filter.values.map(formatRecordFilterValue).join(", ")}]`;
+            [${filter.values.map(formatFeatureFilterValue).join(", ")}]`;
     }
 
     return html`<em class="attribute">${filter.field}</em>
-        ${formatRecordFilterOperator(filter.operator)}
-        ${formatRecordFilterValue(filter.value)}`;
+        ${formatFeatureFilterOperator(filter.operator)}
+        ${formatFeatureFilterValue(filter.value)}`;
 }
 
 /**
- * @param {import("./sampleViewTypes.js").RecordFilter["operator"]} operator
+ * @param {import("./sampleViewTypes.js").FeatureFilter["operator"]} operator
  * @returns {string}
  */
-function formatRecordFilterOperator(operator) {
+function formatFeatureFilterOperator(operator) {
     switch (operator) {
         case "eq":
             return "=";
@@ -261,7 +261,7 @@ function formatRecordFilterOperator(operator) {
         case "in":
             return "in";
         default:
-            throw new Error("Unknown record filter operator: " + operator);
+            throw new Error("Unknown feature filter operator: " + operator);
     }
 }
 

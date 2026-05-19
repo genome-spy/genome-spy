@@ -5,14 +5,14 @@ import {
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 
 /**
- * @typedef {import("./agentToolInputs.d.ts").GetSelectionRecordFieldSummaryToolInput} GetSelectionRecordFieldSummaryToolInput
+ * @typedef {import("./agentToolInputs.d.ts").GetSelectionFeatureFieldSummaryToolInput} GetSelectionFeatureFieldSummaryToolInput
  * @typedef {{
  *     agentApi: Pick<
  *         import("@genome-spy/app/agentApi").AgentApi,
- *         "getSelectionRecordFieldValues"
+ *         "getSelectionFeatureFieldValues"
  *     >;
  *     getAgentVolatileContext(): import("./types.js").AgentVolatileContext;
- * }} SelectionRecordFieldSummaryRuntime
+ * }} SelectionFeatureFieldSummaryRuntime
  * @typedef {{
  *     text: string;
  *     content?: unknown;
@@ -20,14 +20,14 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
  */
 
 /**
- * Summarizes one raw record field inside the selected interval before
+ * Summarizes one raw feature field inside the selected interval before
  * per-sample aggregation.
  *
- * @param {SelectionRecordFieldSummaryRuntime} runtime
- * @param {GetSelectionRecordFieldSummaryToolInput} input
+ * @param {SelectionFeatureFieldSummaryRuntime} runtime
+ * @param {GetSelectionFeatureFieldSummaryToolInput} input
  * @returns {AgentToolExecutionResult}
  */
-export function getSelectionRecordFieldSummaryTool(runtime, input) {
+export function getSelectionFeatureFieldSummaryTool(runtime, input) {
     const candidate = runtime
         .getAgentVolatileContext()
         .selectionAggregation.fields.find(
@@ -60,26 +60,26 @@ export function getSelectionRecordFieldSummaryTool(runtime, input) {
         );
     }
 
-    const values = runtime.agentApi.getSelectionRecordFieldValues(
+    const values = runtime.agentApi.getSelectionFeatureFieldValues(
         candidate.viewSelector,
         candidate.selectionSelector,
         input.field
     );
     if (!values) {
         throw new ToolCallRejectionError(
-            "The requested selection record field could not be summarized."
+            "The requested selection feature field could not be summarized."
         );
     }
 
     const content = {
-        kind: "selection_record_field_summary",
+        kind: "selection_feature_field_summary",
         candidateId: input.candidateId,
         field: input.field,
         dataType: filterField.dataType,
         ...(filterField.description
             ? { description: filterField.description }
             : {}),
-        recordCount: values.length,
+        featureCount: values.length,
         ...(filterField.dataType === "quantitative"
             ? buildQuantitativeFieldSummary(values)
             : buildCategoricalFieldSummary(values)),
@@ -87,7 +87,7 @@ export function getSelectionRecordFieldSummaryTool(runtime, input) {
 
     return {
         text:
-            "Summarized raw record field " +
+            "Summarized raw feature field " +
             input.field +
             " for selection aggregation candidate " +
             input.candidateId +

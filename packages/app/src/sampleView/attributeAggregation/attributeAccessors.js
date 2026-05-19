@@ -2,7 +2,7 @@ import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createDatumAtAccessor } from "../datumLookup.js";
 import { resolveIntervalReference } from "../intervalReferenceResolver.js";
-import { createRecordFilterPredicate } from "../../utils/predicates/recordFilter.js";
+import { createFeatureFilterPredicate } from "../../utils/predicates/featureFilter.js";
 import {
     aggregateCount,
     aggregateMax,
@@ -112,8 +112,8 @@ export function createViewAttributeAccessor(view, specifier) {
     }
 
     const valueAccessor = (/** @type {any} */ datum) => datum[specifier.field];
-    const recordMatches = specifier.recordFilter
-        ? createRecordFilterPredicate(specifier.recordFilter)
+    const featureMatches = specifier.featureFilter
+        ? createFeatureFilterPredicate(specifier.featureFilter)
         : () => true;
     /** @type {[number, number] | undefined} */
     let numericBounds;
@@ -154,7 +154,7 @@ export function createViewAttributeAccessor(view, specifier) {
         if (isPointFeature) {
             for (let i = 0; i < data.length; i++) {
                 const datum = data[i];
-                if (!recordMatches(datum)) {
+                if (!featureMatches(datum)) {
                     continue;
                 }
                 const x = /** @type {number} */ (xAccessor(datum));
@@ -168,7 +168,7 @@ export function createViewAttributeAccessor(view, specifier) {
         } else {
             for (let i = 0; i < data.length; i++) {
                 const datum = data[i];
-                if (!recordMatches(datum)) {
+                if (!featureMatches(datum)) {
                     continue;
                 }
                 const x = /** @type {number} */ (xAccessor(datum));

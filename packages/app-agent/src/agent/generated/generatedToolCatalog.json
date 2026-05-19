@@ -119,9 +119,9 @@
     "strict": true
   },
   {
-    "toolName": "getSelectionRecordFieldSummary",
-    "description": "Summarize one raw record field inside a selected interval before per-sample aggregation.",
-    "inputType": "GetSelectionRecordFieldSummaryToolInput",
+    "toolName": "getSelectionFeatureFieldSummary",
+    "description": "Summarize one raw feature field inside a selected interval before per-sample aggregation.",
+    "inputType": "GetSelectionFeatureFieldSummaryToolInput",
     "inputFields": [
       {
         "name": "candidateId",
@@ -132,7 +132,7 @@
       {
         "name": "field",
         "type": "string",
-        "description": "Raw record field copied from the selected candidate's `filterableFields`.",
+        "description": "Raw feature field copied from the selected candidate's `filterableFields`.",
         "required": true
       }
     ],

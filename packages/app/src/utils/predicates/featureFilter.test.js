@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createRecordFilterPredicate } from "./recordFilter.js";
+import { createFeatureFilterPredicate } from "./featureFilter.js";
 
-describe("recordFilter", () => {
-    it("matches records by exact equality", () => {
-        const predicate = createRecordFilterPredicate({
+describe("featureFilter", () => {
+    it("matches features by exact equality", () => {
+        const predicate = createFeatureFilterPredicate({
             field: "functionalCategory",
             operator: "eq",
             value: "frameshift",
@@ -14,8 +14,8 @@ describe("recordFilter", () => {
         expect(predicate({ functionalCategory: null })).toBe(false);
     });
 
-    it("matches records by membership", () => {
-        const predicate = createRecordFilterPredicate({
+    it("matches features by membership", () => {
+        const predicate = createFeatureFilterPredicate({
             field: "functionalCategory",
             operator: "in",
             values: ["frameshift", "splice_site"],
@@ -27,7 +27,7 @@ describe("recordFilter", () => {
     });
 
     it("matches null values by membership", () => {
-        const predicate = createRecordFilterPredicate({
+        const predicate = createFeatureFilterPredicate({
             field: "functionalCategory",
             operator: "in",
             values: [null, "unknown"],
@@ -40,8 +40,8 @@ describe("recordFilter", () => {
         ).toBe(true);
     });
 
-    it("matches records by numeric comparison", () => {
-        const predicate = createRecordFilterPredicate({
+    it("matches features by numeric comparison", () => {
+        const predicate = createFeatureFilterPredicate({
             field: "CADD",
             operator: "gte",
             value: 20,
@@ -53,7 +53,7 @@ describe("recordFilter", () => {
     });
 
     it("uses JavaScript comparison semantics for numeric comparisons", () => {
-        const predicate = createRecordFilterPredicate({
+        const predicate = createFeatureFilterPredicate({
             field: "CADD",
             operator: "lt",
             value: 20,
@@ -66,7 +66,7 @@ describe("recordFilter", () => {
 
     it("supports all numeric comparison operators", () => {
         const matches = (/** @type {"lt" | "lte" | "gt" | "gte"} */ operator) =>
-            createRecordFilterPredicate({
+            createFeatureFilterPredicate({
                 field: "CADD",
                 operator,
                 value: 20,

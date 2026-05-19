@@ -4,9 +4,9 @@ import { InternMap } from "internmap";
 import ViewParamRuntime from "@genome-spy/core/paramRuntime/viewParamRuntime.js";
 import { createAccessor } from "@genome-spy/core/encoder/accessor.js";
 import { createIntervalSelection } from "@genome-spy/core/selection/selection.js";
-import { collectSelectionRecordFieldValues } from "./selectionRecordFieldValues.js";
+import { collectSelectionFeatureFieldValues } from "./selectionFeatureFieldValues.js";
 
-describe("collectSelectionRecordFieldValues", () => {
+describe("collectSelectionFeatureFieldValues", () => {
     test("collects raw field values inside the selected interval", () => {
         const rootViewParamRuntime = new ViewParamRuntime(() => undefined);
         const setBrush = rootViewParamRuntime.registerParam({
@@ -55,7 +55,7 @@ describe("collectSelectionRecordFieldValues", () => {
                 })
             );
 
-        const values = collectSelectionRecordFieldValues(
+        const values = collectSelectionFeatureFieldValues(
             view,
             { scope: [], param: "brush" },
             "consequence"

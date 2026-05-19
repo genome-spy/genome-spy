@@ -4,18 +4,18 @@ import { html } from "lit";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { formatAggregationLabel } from "../attributeAggregation/aggregationOps.js";
 import { handleAddToMetadata } from "./deriveMetadataFlow.js";
-import { collectIntervalRecordFieldValues } from "../selectionRecordFieldValues.js";
+import { collectIntervalFeatureFieldValues } from "../selectionFeatureFieldValues.js";
 import "../../components/generic/comparisonOperatorButtons.js";
 import "../../components/generic/searchableCheckboxList.js";
 
 /**
  * @typedef {{
  *     aggregation: import("../types.js").AggregationOp;
- *     recordFilter: import("../sampleViewTypes.js").RecordFilter;
- * }} RecordFilteredAggregationConfig
+ *     featureFilter: import("../sampleViewTypes.js").FeatureFilter;
+ * }} FeatureFilteredAggregationConfig
  */
 
-class RecordFilteredAggregationDialog extends BaseDialog {
+class FeatureFilteredAggregationDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         fieldInfo: {},
@@ -46,7 +46,7 @@ class RecordFilteredAggregationDialog extends BaseDialog {
         /** @type {string} */
         this.filterField = "";
 
-        /** @type {import("../sampleViewTypes.js").RecordFilter["operator"]} */
+        /** @type {import("../sampleViewTypes.js").FeatureFilter["operator"]} */
         this.operator = "in";
 
         /** @type {string} */
@@ -78,7 +78,7 @@ class RecordFilteredAggregationDialog extends BaseDialog {
     renderBody() {
         if (!this.fieldInfo) {
             throw new Error(
-                "Record-filtered aggregation dialog is missing field info."
+                "Feature-filtered aggregation dialog is missing field info."
             );
         }
 
@@ -86,9 +86,9 @@ class RecordFilteredAggregationDialog extends BaseDialog {
             ${this.#renderInfoBox()}
 
             <div class="gs-form-group">
-                <label for="recordFilterField">Feature filter field</label>
+                <label for="featureFilterField">Feature filter field</label>
                 <select
-                    id="recordFilterField"
+                    id="featureFilterField"
                     .value=${this.filterField}
                     @change=${(/** @type {Event} */ event) =>
                         this.#filterFieldChanged(event)}
@@ -111,9 +111,9 @@ class RecordFilteredAggregationDialog extends BaseDialog {
             </div>
 
             <div class="gs-form-group">
-                <label for="recordAggregation">Aggregation</label>
+                <label for="featureAggregation">Aggregation</label>
                 <select
-                    id="recordAggregation"
+                    id="featureAggregation"
                     .value=${this.aggregation}
                     @change=${(/** @type {Event} */ event) => {
                         this.aggregation =
@@ -270,16 +270,16 @@ class RecordFilteredAggregationDialog extends BaseDialog {
             ok: true,
             data: {
                 aggregation: this.aggregation,
-                recordFilter: this.#createRecordFilter(),
+                featureFilter: this.#createFeatureFilter(),
             },
         });
         return false;
     }
 
     /**
-     * @returns {import("../sampleViewTypes.js").RecordFilter}
+     * @returns {import("../sampleViewTypes.js").FeatureFilter}
      */
-    #createRecordFilter() {
+    #createFeatureFilter() {
         if (!this.#isQuantitativeFilter()) {
             return {
                 field: this.filterField,
@@ -306,7 +306,7 @@ class RecordFilteredAggregationDialog extends BaseDialog {
         }
 
         const values =
-            collectIntervalRecordFieldValues(
+            collectIntervalFeatureFieldValues(
                 this.fieldInfo.view,
                 this.selectionIntervalSource ?? this.selectionIntervalComplex,
                 this.filterField
@@ -321,8 +321,8 @@ class RecordFilteredAggregationDialog extends BaseDialog {
 }
 
 customElements.define(
-    "gs-record-filtered-aggregation-dialog",
-    RecordFilteredAggregationDialog
+    "gs-feature-filtered-aggregation-dialog",
+    FeatureFilteredAggregationDialog
 );
 
 /**
@@ -335,7 +335,7 @@ customElements.define(
  * @param {import("../types.js").AttributeIdentifierType} params.attributeType
  * @param {import("../sampleView.js").default} params.sampleView
  */
-export async function showRecordFilteredAggregationDialog({
+export async function showFeatureFilteredAggregationDialog({
     fieldInfo,
     selectionIntervalComplex,
     selectionIntervalSource,
@@ -345,8 +345,8 @@ export async function showRecordFilteredAggregationDialog({
     sampleView,
 }) {
     const result = await showDialog(
-        "gs-record-filtered-aggregation-dialog",
-        (/** @type {RecordFilteredAggregationDialog} */ dialog) => {
+        "gs-feature-filtered-aggregation-dialog",
+        (/** @type {FeatureFilteredAggregationDialog} */ dialog) => {
             dialog.fieldInfo = fieldInfo;
             dialog.selectionIntervalComplex = selectionIntervalComplex;
             dialog.selectionIntervalSource = selectionIntervalSource ?? null;
@@ -359,14 +359,16 @@ export async function showRecordFilteredAggregationDialog({
         return;
     }
 
-    const config = /** @type {RecordFilteredAggregationConfig} */ (result.data);
+    const config = /** @type {FeatureFilteredAggregationConfig} */ (
+        result.data
+    );
     /** @type {import("../sampleViewTypes.js").IntervalSpecifier} */
     const specifier = {
         view: fieldInfo.viewSelector,
         field: fieldInfo.field,
         interval: selectionIntervalSource ?? selectionIntervalComplex,
         aggregation: { op: config.aggregation },
-        recordFilter: config.recordFilter,
+        featureFilter: config.featureFilter,
     };
     const attributeInfo = attributeInfoSource.getAttributeInfo({
         type: attributeType,

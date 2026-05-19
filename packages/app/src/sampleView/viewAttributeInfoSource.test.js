@@ -169,7 +169,7 @@ describe("getViewAttributeInfo", () => {
         expect(title).toContain("chr1:1-2");
     });
 
-    it("includes record filters in interval aggregation names and titles", () => {
+    it("includes feature filters in interval aggregation names and titles", () => {
         const view = createViewStub();
         resolveViewRefMock.mockReturnValue(view);
 
@@ -180,7 +180,7 @@ describe("getViewAttributeInfo", () => {
                 field: "value",
                 aggregation: { op: "max" },
                 interval: [1, 2],
-                recordFilter: {
+                featureFilter: {
                     field: "consequence",
                     operator: "eq",
                     value: "frameshift",
@@ -204,7 +204,7 @@ describe("getViewAttributeInfo", () => {
                 field: "value",
                 aggregation: { op: "count" },
                 interval: [1, 2],
-                recordFilter: {
+                featureFilter: {
                     field: "consequence",
                     operator: "eq",
                     value: "frameshift",

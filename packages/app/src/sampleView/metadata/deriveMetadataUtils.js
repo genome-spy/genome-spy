@@ -3,7 +3,7 @@ import {
     METADATA_PATH_SEPARATOR,
 } from "./metadataUtils.js";
 import {
-    formatRecordFilterValue,
+    formatFeatureFilterValue,
     preservesScaleDomainForAttribute,
 } from "../attributeAggregation/aggregationOps.js";
 import { isIntervalSpecifier } from "../sampleViewTypes.js";
@@ -223,12 +223,12 @@ function createFilteredAggregationAttributeName(attributeInfo) {
         !specifier ||
         typeof specifier !== "object" ||
         !isIntervalSpecifier(specifier) ||
-        !specifier.recordFilter
+        !specifier.featureFilter
     ) {
         return null;
     }
 
-    const filterPart = formatRecordFilterNamePart(specifier.recordFilter);
+    const filterPart = formatFeatureFilterNamePart(specifier.featureFilter);
     if (specifier.aggregation.op === "count") {
         return filterPart + "_count";
     }
@@ -243,16 +243,16 @@ function createFilteredAggregationAttributeName(attributeInfo) {
 }
 
 /**
- * @param {import("../sampleViewTypes.js").RecordFilter} filter
+ * @param {import("../sampleViewTypes.js").FeatureFilter} filter
  * @returns {string}
  */
-function formatRecordFilterNamePart(filter) {
+function formatFeatureFilterNamePart(filter) {
     if (filter.operator === "eq") {
-        return formatMetadataNamePart(formatRecordFilterValue(filter.value));
+        return formatMetadataNamePart(formatFeatureFilterValue(filter.value));
     } else if (filter.operator === "in") {
         return filter.values
             .map((value) =>
-                formatMetadataNamePart(formatRecordFilterValue(value))
+                formatMetadataNamePart(formatFeatureFilterValue(value))
             )
             .join("_");
     } else {
@@ -261,7 +261,7 @@ function formatRecordFilterNamePart(filter) {
             "_" +
             filter.operator +
             "_" +
-            formatMetadataNamePart(formatRecordFilterValue(filter.value))
+            formatMetadataNamePart(formatFeatureFilterValue(filter.value))
         );
     }
 }

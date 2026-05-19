@@ -11,14 +11,14 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
  * @param {import("./types.js").AgentVolatileContext} volatileContext
  * @param {string} candidateId
  * @param {import("@genome-spy/app/agentShared").AggregationOp} aggregation
- * @param {import("@genome-spy/app/agentShared").RecordFilter} [recordFilter]
+ * @param {import("@genome-spy/app/agentShared").FeatureFilter} [featureFilter]
  * @returns {import("./types.js").SelectionAggregationResolution}
  */
 export function buildSelectionAggregationAttribute(
     volatileContext,
     candidateId,
     aggregation,
-    recordFilter
+    featureFilter
 ) {
     const candidate = volatileContext.selectionAggregation.fields.find(
         (field) => field.candidateId === candidateId
@@ -53,8 +53,8 @@ export function buildSelectionAggregationAttribute(
         );
     }
 
-    if (recordFilter) {
-        validateRecordFilter(candidate, recordFilter);
+    if (featureFilter) {
+        validateFeatureFilter(candidate, featureFilter);
     }
 
     const attribute = buildSelectionAggregationAttributeIdentifier({
@@ -62,7 +62,7 @@ export function buildSelectionAggregationAttribute(
         field: candidate.field,
         selectionSelector: candidate.selectionSelector,
         aggregation,
-        recordFilter,
+        featureFilter,
     });
 
     return {
@@ -76,7 +76,7 @@ export function buildSelectionAggregationAttribute(
         title: formatAggregationExpression(
             aggregation,
             candidate.field,
-            recordFilter
+            featureFilter
         ),
         description:
             "Aggregated " +
@@ -84,21 +84,21 @@ export function buildSelectionAggregationAttribute(
             " values over the " +
             formatParamSelector(candidate.selectionSelector) +
             " selection" +
-            (recordFilter ? " after filtering records" : ""),
+            (featureFilter ? " after filtering features" : ""),
     };
 }
 
 /**
  * @param {import("./types.js").AgentViewFieldSummary} candidate
- * @param {import("@genome-spy/app/agentShared").RecordFilter} filter
+ * @param {import("@genome-spy/app/agentShared").FeatureFilter} filter
  */
-function validateRecordFilter(candidate, filter) {
+function validateFeatureFilter(candidate, filter) {
     const field = candidate.filterableFields.find(
         (filterField) => filterField.field === filter.field
     );
     if (!field) {
         throw new ToolCallRejectionError(
-            "Record filter field " +
+            "Feature filter field " +
                 filter.field +
                 " is not listed in filterableFields for candidate " +
                 candidate.candidateId +
@@ -108,7 +108,7 @@ function validateRecordFilter(candidate, filter) {
 
     if (field.dataType === "quantitative" && filter.operator === "in") {
         throw new ToolCallRejectionError(
-            "Use a comparison operator for quantitative record filter field " +
+            "Use a comparison operator for quantitative feature filter field " +
                 filter.field +
                 "."
         );
@@ -120,7 +120,7 @@ function validateRecordFilter(candidate, filter) {
         filter.operator !== "in"
     ) {
         throw new ToolCallRejectionError(
-            "Use operator 'in' or 'eq' for categorical record filter field " +
+            "Use operator 'in' or 'eq' for categorical feature filter field " +
                 filter.field +
                 "."
         );

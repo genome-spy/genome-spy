@@ -1,17 +1,17 @@
 import { createComparisonPredicate } from "./comparison.js";
 
 /**
- * @typedef {import("../../sampleView/sampleViewTypes.js").RecordFilter} RecordFilter
+ * @typedef {import("../../sampleView/sampleViewTypes.js").FeatureFilter} FeatureFilter
  */
 
 /**
- * Creates a predicate for matching raw view records before per-sample interval
+ * Creates a predicate for matching raw view features before per-sample interval
  * aggregation.
  *
- * @param {RecordFilter} filter
+ * @param {FeatureFilter} filter
  * @returns {(datum: Record<string, unknown>) => boolean}
  */
-export function createRecordFilterPredicate(filter) {
+export function createFeatureFilterPredicate(filter) {
     const field = filter.field;
 
     if (filter.operator === "eq") {

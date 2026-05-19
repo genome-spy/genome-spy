@@ -8,7 +8,7 @@ import { getAggregationOpInfo } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 import { appendPlotMenuItems } from "./plotMenuItems.js";
 import { handleAddToMetadata } from "./metadata/deriveMetadataFlow.js";
-import { showRecordFilteredAggregationDialog } from "./metadata/recordFilteredAggregationDialog.js";
+import { showFeatureFilteredAggregationDialog } from "./metadata/featureFilteredAggregationDialog.js";
 import {
     getContextMenuFieldInfos,
     getUnavailablePointQueryViews,
@@ -169,7 +169,7 @@ export function buildIntervalAggregationMenu({
                   {
                       label: "Filter features and aggregate...",
                       callback: () => {
-                          void showRecordFilteredAggregationDialog({
+                          void showFeatureFilteredAggregationDialog({
                               fieldInfo,
                               selectionIntervalComplex,
                               selectionIntervalSource,

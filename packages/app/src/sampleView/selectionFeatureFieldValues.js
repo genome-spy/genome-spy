@@ -3,7 +3,7 @@ import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { resolveIntervalReference } from "./intervalReferenceResolver.js";
 
 /**
- * Collects raw record field values inside a selection interval before
+ * Collects raw feature field values inside a selection interval before
  * per-sample aggregation.
  *
  * @param {import("@genome-spy/core/view/unitView.js").default} view
@@ -11,12 +11,12 @@ import { resolveIntervalReference } from "./intervalReferenceResolver.js";
  * @param {string} field
  * @returns {unknown[] | undefined}
  */
-export function collectSelectionRecordFieldValues(
+export function collectSelectionFeatureFieldValues(
     view,
     selectionSelector,
     field
 ) {
-    return collectIntervalRecordFieldValues(
+    return collectIntervalFeatureFieldValues(
         view,
         {
             type: "selection",
@@ -27,7 +27,7 @@ export function collectSelectionRecordFieldValues(
 }
 
 /**
- * Collects raw record field values inside an interval before per-sample
+ * Collects raw feature field values inside an interval before per-sample
  * aggregation.
  *
  * @param {import("@genome-spy/core/view/unitView.js").default} view
@@ -35,7 +35,7 @@ export function collectSelectionRecordFieldValues(
  * @param {string} field
  * @returns {unknown[] | undefined}
  */
-export function collectIntervalRecordFieldValues(
+export function collectIntervalFeatureFieldValues(
     view,
     intervalReference,
     field
@@ -67,7 +67,7 @@ export function collectIntervalRecordFieldValues(
                 }
             } else {
                 const x2 = /** @type {number} */ (x2Accessor(datum));
-                if (recordOverlapsInterval(x, x2, start, end, hitTestMode)) {
+                if (featureOverlapsInterval(x, x2, start, end, hitTestMode)) {
                     values.push(datum[field]);
                 }
             }
@@ -85,7 +85,7 @@ export function collectIntervalRecordFieldValues(
  * @param {string} hitTestMode
  * @returns {boolean}
  */
-function recordOverlapsInterval(x, x2, start, end, hitTestMode) {
+function featureOverlapsInterval(x, x2, start, end, hitTestMode) {
     if (hitTestMode === "endpoints") {
         return (x >= start && x <= end) || (x2 >= start && x2 <= end);
     } else if (hitTestMode === "encloses") {
@@ -109,7 +109,7 @@ function normalizeInterval(view, interval) {
         typeof scalarInterval[1] !== "number"
     ) {
         throw new Error(
-            "Selection record summaries require numeric intervals."
+            "Selection feature summaries require numeric intervals."
         );
     }
 

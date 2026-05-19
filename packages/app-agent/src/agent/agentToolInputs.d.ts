@@ -2,7 +2,7 @@ import type { AgentIntentActionRequest } from "./schemaContract.js";
 import type { AgentIntentBatchStep } from "./generated/generatedActionTypes.js";
 import type {
     AggregationOp,
-    RecordFilter,
+    FeatureFilter,
     ViewSelector,
 } from "@genome-spy/app/agentShared";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
@@ -35,12 +35,12 @@ type SelectionAggregationCandidate = {
     aggregation: AggregationOp;
 
     /**
-     * Optional raw-record predicate applied inside the selected interval before
+     * Optional raw-feature predicate applied inside the selected interval before
      * per-sample aggregation. Use one field copied from the candidate's
-     * `filterableFields`; call `getSelectionRecordFieldSummary` first if exact
+     * `filterableFields`; call `getSelectionFeatureFieldSummary` first if exact
      * categorical values or numeric bounds are needed.
      */
-    recordFilter?: RecordFilter;
+    featureFilter?: FeatureFilter;
 };
 
 export type AgentAttributeCandidate =
@@ -187,8 +187,8 @@ export interface GetAttributeSummaryToolInput {
 }
 
 /**
- * Summarize one raw record field inside a selected interval before per-sample
- * aggregation. Use this when choosing a `recordFilter` for a
+ * Summarize one raw feature field inside a selected interval before per-sample
+ * aggregation. Use this when choosing a `featureFilter` for a
  * `SELECTION_AGGREGATION` candidate and the compact
  * `selectionAggregation.fields[].filterableFields` metadata is not enough.
  * The field must be copied from that candidate's `filterableFields`.
@@ -199,14 +199,14 @@ export interface GetAttributeSummaryToolInput {
  *   "field": "functionalCategory"
  * }
  */
-export interface GetSelectionRecordFieldSummaryToolInput {
+export interface GetSelectionFeatureFieldSummaryToolInput {
     /**
      * Exact candidate id copied from `selectionAggregation.fields`.
      */
     candidateId: string;
 
     /**
-     * Raw record field copied from the selected candidate's
+     * Raw feature field copied from the selected candidate's
      * `filterableFields`.
      */
     field: string;
@@ -448,7 +448,7 @@ export interface AgentToolInputs {
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     getAttributeSummary: GetAttributeSummaryToolInput;
-    getSelectionRecordFieldSummary: GetSelectionRecordFieldSummaryToolInput;
+    getSelectionFeatureFieldSummary: GetSelectionFeatureFieldSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     getIntentActionDocs: GetIntentActionDocsToolInput;

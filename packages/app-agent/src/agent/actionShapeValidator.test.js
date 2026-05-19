@@ -105,13 +105,13 @@ describe("actionShapeValidator", () => {
         expect(agentFacing.ok).toBe(true);
     });
 
-    it("accepts flat record filters on selection aggregation candidates", () => {
+    it("accepts flat feature filters on selection aggregation candidates", () => {
         const result = validateAgentActionPayloadShape("sampleView/sortBy", {
             attribute: {
                 type: "SELECTION_AGGREGATION",
                 candidateId: "brush@mutations:VAF",
                 aggregation: "max",
-                recordFilter: {
+                featureFilter: {
                     field: "functionalCategory",
                     operator: "in",
                     values: ["frameshift"],

@@ -69,7 +69,7 @@ describe("createDerivedAttributeName", () => {
                         field: "VAF",
                         interval: [1, 2],
                         aggregation: { op: "max" },
-                        recordFilter: {
+                        featureFilter: {
                             field: "consequence",
                             operator: "eq",
                             value: "frameshift",
@@ -94,7 +94,7 @@ describe("createDerivedAttributeName", () => {
                         field: "VAF",
                         interval: [1, 2],
                         aggregation: { op: "count" },
-                        recordFilter: {
+                        featureFilter: {
                             field: "consequence",
                             operator: "eq",
                             value: "frameshift",

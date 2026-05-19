@@ -39,7 +39,7 @@ describe("selectionAggregationAttributes", () => {
         });
     });
 
-    it("adds record filters to selection aggregation attributes", () => {
+    it("adds feature filters to selection aggregation attributes", () => {
         expect(
             buildSelectionAggregationAttributeIdentifier({
                 viewSelector: {
@@ -52,7 +52,7 @@ describe("selectionAggregationAttributes", () => {
                     param: "brush",
                 },
                 aggregation: "max",
-                recordFilter: {
+                featureFilter: {
                     field: "functionalCategory",
                     operator: "in",
                     values: ["frameshift"],
@@ -63,7 +63,7 @@ describe("selectionAggregationAttributes", () => {
                 aggregation: {
                     op: "max",
                 },
-                recordFilter: {
+                featureFilter: {
                     field: "functionalCategory",
                     operator: "in",
                     values: ["frameshift"],

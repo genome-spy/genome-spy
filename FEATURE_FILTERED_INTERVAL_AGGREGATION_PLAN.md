@@ -1,9 +1,9 @@
-# Record-Filtered Interval Aggregation Plan
+# Feature-Filtered Interval Aggregation Plan
 
 ## Goal
 
-Allow interval aggregation attributes to aggregate only records that match a
-record-level predicate. The result should still behave as a normal
+Allow interval aggregation attributes to aggregate only features that match a
+feature-level predicate. The result should still behave as a normal
 `AttributeIdentifier`, so it can be used by metadata derivation, filtering,
 sorting, grouping, summaries, and plots.
 
@@ -55,10 +55,10 @@ Selection expansion already has predicate types, including boolean logic, but
 they are tied to selection expansion and include origin-specific constructs such
 as `valueFromField`.
 
-Introduce a generic predicate type for record filters:
+Introduce a generic predicate type for feature filters:
 
 ```ts
-export type RecordFilter =
+export type FeatureFilter =
     | {
           field: string;
           operator: "eq";
@@ -83,13 +83,13 @@ easier for agents and users to construct valid filters.
 
 ## Data Model
 
-Extend interval-backed view attributes with an optional record filter:
+Extend interval-backed view attributes with an optional feature filter:
 
 ```ts
 export interface IntervalSpecifier extends BaseSpecifier {
     interval: IntervalReference;
     aggregation: AggregationSpec;
-    recordFilter?: RecordFilter;
+    featureFilter?: FeatureFilter;
 }
 ```
 
@@ -106,7 +106,7 @@ Example:
       selector: { scope: [], param: "brush" }
     },
     aggregation: { op: "max" },
-    recordFilter: {
+    featureFilter: {
       field: "functionalCategory",
       operator: "eq",
       value: "frameshift"
@@ -122,45 +122,45 @@ Example:
    - Support `eq`, `in`, `lt`, `lte`, `gt`, and `gte`.
    - Keep field access simple initially: literal datum keys only.
    - Leave boolean composition out of scope for the initial implementation.
-   - Status: implemented in `packages/app/src/utils/predicates/recordFilter`.
+   - Status: implemented in `packages/app/src/utils/predicates/featureFilter`.
      Numeric comparisons reuse shared comparison helpers and keep existing
      JavaScript comparison semantics.
 
-2. Add `recordFilter` to interval specifier types.
+2. Add `featureFilter` to interval specifier types.
    - Update `sampleViewTypes.d.ts`.
    - Update generated app/agent schemas if needed.
    - Add docs that describe the filter as applying before aggregation.
-   - Status: implemented. `RecordFilter` now lives in
+   - Status: implemented. `FeatureFilter` now lives in
      `sampleViewTypes.d.ts` so generated app-agent schemas can include the
      filter shape. The predicate evaluator imports that type through JSDoc to
      avoid a second source of truth.
 
-3. Apply `recordFilter` in interval aggregation accessors.
+3. Apply `featureFilter` in interval aggregation accessors.
    - Update `createViewAttributeAccessor`.
    - Evaluate the predicate before values and weights are collected.
-   - Preserve current `count` semantics: no matching records should yield `0`;
+   - Preserve current `count` semantics: no matching features should yield `0`;
      non-count aggregations should yield `undefined`.
    - Status: implemented. Filtering is applied before interval-matching
-     records are added to aggregation values and weights. Existing aggregation
+     features are added to aggregation values and weights. Existing aggregation
      behavior already covers empty filtered results.
 
 4. Improve titles and generated names.
-   - Include the record filter in `AttributeInfo.title` and
+   - Include the feature filter in `AttributeInfo.title` and
      `emphasizedName`.
    - Use compact symbolic titles such as
      `max(VAF where functionalCategory = frameshift)`.
    - Update derived metadata name generation so filtered aggregations produce
      readable defaults such as `max_frameshift_VAF` or
      `frameshift_mutation_count`.
-   - Status: implemented for the current leaf `RecordFilter` shape. Generated
+   - Status: implemented for the current leaf `FeatureFilter` shape. Generated
      names use the filter value for equality and set filters, and include the
      filter field for numeric threshold filters.
 
-5. Expose filterable record fields.
+5. Expose filterable feature fields.
    - Extend selection aggregation candidate discovery to report only compact
      filterable field metadata, not precomputed filter variants.
    - Include only structural information: field name, type, title/description
-     if available, and whether the field is usable as a record filter.
+     if available, and whether the field is usable as a feature filter.
    - Initially expose only encoded fields from visible, addressable views. Do
      not inspect or expose unencoded fields that merely happen to be present in
      the view data.
@@ -174,16 +174,16 @@ Example:
      `filterableFields` metadata without value summaries or filtered candidate
      variants.
 
-6. Add lazy record-field summary support.
+6. Add lazy feature-field summary support.
    - Existing `getAttributeSummary` summarizes sample-level attributes after
-     aggregation, so it cannot answer raw record-filter questions directly.
+     aggregation, so it cannot answer raw feature-filter questions directly.
    - Existing `searchViewDatums` searches configured searchable views, but it is
      not a general field summary tool.
-   - Add an app-side helper for summarizing one raw record field in the selected
+   - Add an app-side helper for summarizing one raw feature field in the selected
      interval and candidate view before per-sample aggregation.
    - Expose this as a separate agent tool rather than overloading
      `getAttributeSummary`. A possible name is
-     `getSelectionRecordFieldSummary`.
+     `getSelectionFeatureFieldSummary`.
    - Reuse existing summary conventions where possible: exact value counts for
      bounded categorical fields, numeric extent or histogram for quantitative
      fields.
@@ -191,16 +191,16 @@ Example:
      is insufficient.
    - Use this helper from the agent when exact filter values or numeric bounds
      are needed.
-   - Status: implemented for the agent path. App exposes raw record values for
+   - Status: implemented for the agent path. App exposes raw feature values for
      one encoded field inside a selected interval, and the agent exposes
-     `getSelectionRecordFieldSummary` for lazy categorical or quantitative
+     `getSelectionFeatureFieldSummary` for lazy categorical or quantitative
      summaries. Dialog reuse remains for the later UI step.
 
 7. Add the first UI entry point.
    - Keep the existing interval aggregation operation submenu unchanged.
-   - Append `Filter records and aggregate...` under `Interval aggregation`.
+   - Append `Filter features and aggregate...` under `Interval aggregation`.
    - Open a dedicated dialog that lets the user choose:
-     - record filter field
+     - feature filter field
      - predicate operator and value(s)
      - aggregation operation
      - aggregation field, except for item count
@@ -208,7 +208,7 @@ Example:
      derived metadata dialog for name, group, and scale configuration.
    - Status: implemented as the first metadata-derivation entry point. The
      aggregation field remains selected by the existing field submenu, and the
-     dialog chooses the record filter and aggregation operation before handing
+     dialog chooses the feature filter and aggregation operation before handing
      the resulting attribute to the derived metadata dialog.
 
 8. Reuse generic components.
@@ -218,41 +218,41 @@ Example:
      extracted.
    - Status: implemented in the first dialog. Quantitative predicates use
      `gs-comparison-operator-buttons`, and categorical predicates use
-     `gs-searchable-checkbox-list` with values collected from raw records in
+     `gs-searchable-checkbox-list` with values collected from raw features in
      the selected interval. No new component was extracted, so the existing
      component stories remain sufficient.
 
 9. Add agent support.
    - Extend `SELECTION_AGGREGATION` agent candidates with optional
-     `recordFilter`.
+     `featureFilter`.
    - Validate that `candidateId` and `aggregation` are copied from context.
-   - Validate `recordFilter` shape and supported operators.
-   - Keep the tool schema flat by accepting only one record filter leaf.
-   - Do not enumerate record-filtered candidates in
+   - Validate `featureFilter` shape and supported operators.
+   - Keep the tool schema flat by accepting only one feature filter leaf.
+   - Do not enumerate feature-filtered candidates in
      `selectionAggregation.fields`.
    - If the agent needs exact filter values or numeric bounds, call the lazy
-     record-field summary tool using `candidateId` and field name.
+     feature-field summary tool using `candidateId` and field name.
    - Explain the semantics as:
-     `WHERE selected interval AND recordFilter GROUP BY sample`.
+     `WHERE selected interval AND featureFilter GROUP BY sample`.
    - Status: implemented. Agent-facing `SELECTION_AGGREGATION` candidates
-     accept one optional leaf `recordFilter`, validate its field against
+     accept one optional leaf `featureFilter`, validate its field against
      `filterableFields`, and materialize it into the canonical interval
      attribute.
 
 10. Add tests.
    - Predicate evaluator unit tests.
    - Interval aggregation accessor tests for categorical and quantitative
-     record filters.
+     feature filters.
    - Count vs non-count empty-result behavior.
-   - Candidate metadata tests that verify record-filter variants are not
+   - Candidate metadata tests that verify feature-filter variants are not
      enumerated.
-   - Lazy record-field summary tests for low- and high-cardinality fields.
+   - Lazy feature-field summary tests for low- and high-cardinality fields.
    - Action/agent shape validation tests for filtered selection aggregation
      candidates.
    - UI tests or focused component tests for the dialog if practical.
    - Status: completed with focused coverage across the implementation:
      predicate evaluator tests, interval aggregation accessor tests, candidate
-     metadata tests, lazy record-field summary tests, agent materialization and
+     metadata tests, lazy feature-field summary tests, agent materialization and
      action-shape validation tests, and a context-menu entry-point test. The
      dialog itself is covered through type checking and linting; no separate
      browser-level dialog test was added in this pass.
@@ -268,7 +268,7 @@ Interval aggregation
   Maximum
   Weighted mean
   Variance
-  Filter records and aggregate...
+  Filter features and aggregate...
 ```
 
 Dialog sentence target:
@@ -288,8 +288,8 @@ functionalCategory is frameshift.
 ## Open Questions
 
 - Should categorical values be summarized over the selected interval only, or
-  over all currently loaded records for the candidate view?
-- Should the raw-record summary tool accept an optional `recordFilter` so the
+  over all currently loaded features for the candidate view?
+- Should the raw-feature summary tool accept an optional `featureFilter` so the
   user or agent can inspect a second field after narrowing by the first?
-- If boolean logic is needed later, should it be added to the internal record
+- If boolean logic is needed later, should it be added to the internal feature
   filter shape first, or exposed through a separate advanced query builder?

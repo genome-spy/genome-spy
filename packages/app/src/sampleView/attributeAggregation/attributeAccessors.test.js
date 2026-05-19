@@ -180,7 +180,7 @@ describe("createViewAttributeAccessor", () => {
         expect(accessor("sample-1")).toBe(20);
     });
 
-    test("filters records before count interval aggregation", () => {
+    test("filters features before count interval aggregation", () => {
         const paramRuntime = new ViewParamRuntime(() => undefined);
         const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
         const view = createView({
@@ -198,7 +198,7 @@ describe("createViewAttributeAccessor", () => {
             field: "value",
             interval: [4, 6],
             aggregation: { op: "count" },
-            recordFilter: {
+            featureFilter: {
                 field: "consequence",
                 operator: "eq",
                 value: "frameshift",
@@ -208,7 +208,7 @@ describe("createViewAttributeAccessor", () => {
         expect(accessor("sample-1")).toBe(2);
     });
 
-    test("returns undefined for non-count interval aggregation when no records match the filter", () => {
+    test("returns undefined for non-count interval aggregation when no features match the filter", () => {
         const paramRuntime = new ViewParamRuntime(() => undefined);
         const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
         const view = createView({
@@ -224,7 +224,7 @@ describe("createViewAttributeAccessor", () => {
             field: "value",
             interval: [4, 6],
             aggregation: { op: "max" },
-            recordFilter: {
+            featureFilter: {
                 field: "consequence",
                 operator: "eq",
                 value: "frameshift",
@@ -234,7 +234,7 @@ describe("createViewAttributeAccessor", () => {
         expect(accessor("sample-1")).toBeUndefined();
     });
 
-    test("supports quantitative record filters in interval aggregation", () => {
+    test("supports quantitative feature filters in interval aggregation", () => {
         const paramRuntime = new ViewParamRuntime(() => undefined);
         const xAccessor = createAccessor("x", { field: "pos" }, paramRuntime);
         const view = createView({
@@ -251,7 +251,7 @@ describe("createViewAttributeAccessor", () => {
             field: "value",
             interval: [4, 6],
             aggregation: { op: "max" },
-            recordFilter: {
+            featureFilter: {
                 field: "cadd",
                 operator: "gte",
                 value: 10,

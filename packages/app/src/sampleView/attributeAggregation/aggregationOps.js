@@ -80,15 +80,15 @@ export function formatAggregationFunctionName(op) {
 }
 
 /**
- * @param {import("../sampleViewTypes.js").RecordFilter} filter
+ * @param {import("../sampleViewTypes.js").FeatureFilter} filter
  * @returns {string}
  */
-export function formatRecordFilterExpression(filter) {
+export function formatFeatureFilterExpression(filter) {
     if (filter.operator === "in") {
         return (
             filter.field +
             " in [" +
-            filter.values.map(formatRecordFilterValue).join(", ") +
+            filter.values.map(formatFeatureFilterValue).join(", ") +
             "]"
         );
     }
@@ -96,17 +96,17 @@ export function formatRecordFilterExpression(filter) {
     return (
         filter.field +
         " " +
-        formatRecordFilterOperator(filter.operator) +
+        formatFeatureFilterOperator(filter.operator) +
         " " +
-        formatRecordFilterValue(filter.value)
+        formatFeatureFilterValue(filter.value)
     );
 }
 
 /**
- * @param {import("../sampleViewTypes.js").RecordFilter["operator"]} operator
+ * @param {import("../sampleViewTypes.js").FeatureFilter["operator"]} operator
  * @returns {string}
  */
-function formatRecordFilterOperator(operator) {
+function formatFeatureFilterOperator(operator) {
     switch (operator) {
         case "eq":
             return "=";
@@ -121,7 +121,7 @@ function formatRecordFilterOperator(operator) {
         case "in":
             return "in";
         default:
-            throw new Error("Unknown record filter operator: " + operator);
+            throw new Error("Unknown feature filter operator: " + operator);
     }
 }
 
@@ -129,7 +129,7 @@ function formatRecordFilterOperator(operator) {
  * @param {import("@genome-spy/core/spec/channel.js").Scalar | null} value
  * @returns {string}
  */
-export function formatRecordFilterValue(value) {
+export function formatFeatureFilterValue(value) {
     return value === null ? "null" : String(value);
 }
 
@@ -152,15 +152,15 @@ export function preservesScaleDomainForAttribute(attributeIdentifier) {
 /**
  * @param {AggregationOp} op
  * @param {string} field
- * @param {import("../sampleViewTypes.js").RecordFilter} [recordFilter]
+ * @param {import("../sampleViewTypes.js").FeatureFilter} [featureFilter]
  * @returns {string}
  */
-export function formatAggregationExpression(op, field, recordFilter) {
-    const filterExpression = recordFilter
-        ? " where " + formatRecordFilterExpression(recordFilter)
+export function formatAggregationExpression(op, field, featureFilter) {
+    const filterExpression = featureFilter
+        ? " where " + formatFeatureFilterExpression(featureFilter)
         : "";
 
-    if (op === "count" && !recordFilter) {
+    if (op === "count" && !featureFilter) {
         return formatAggregationLabel(op);
     }
     if (op === "count") {

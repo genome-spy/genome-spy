@@ -1,29 +1,29 @@
 // @ts-check
 import { describe, expect, it, vi } from "vitest";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
-import { getSelectionRecordFieldSummaryTool } from "./selectionRecordFieldSummaryTool.js";
+import { getSelectionFeatureFieldSummaryTool } from "./selectionFeatureFieldSummaryTool.js";
 
-describe("getSelectionRecordFieldSummaryTool", () => {
-    it("summarizes quantitative raw record fields for a selection candidate", () => {
-        const getSelectionRecordFieldValues = vi.fn(() => [2, 4, 6]);
-        const runtime = createRuntime(getSelectionRecordFieldValues);
+describe("getSelectionFeatureFieldSummaryTool", () => {
+    it("summarizes quantitative raw feature fields for a selection candidate", () => {
+        const getSelectionFeatureFieldValues = vi.fn(() => [2, 4, 6]);
+        const runtime = createRuntime(getSelectionFeatureFieldValues);
 
-        const result = getSelectionRecordFieldSummaryTool(runtime, {
+        const result = getSelectionFeatureFieldSummaryTool(runtime, {
             candidateId: "brush@track:VAF",
             field: "CADD",
         });
 
-        expect(getSelectionRecordFieldValues).toHaveBeenCalledWith(
+        expect(getSelectionFeatureFieldValues).toHaveBeenCalledWith(
             { scope: [], view: "track" },
             { scope: [], param: "brush" },
             "CADD"
         );
         expect(result.content).toMatchObject({
-            kind: "selection_record_field_summary",
+            kind: "selection_feature_field_summary",
             candidateId: "brush@track:VAF",
             field: "CADD",
             dataType: "quantitative",
-            recordCount: 3,
+            featureCount: 3,
             min: 2,
             max: 6,
             mean: 4,
@@ -34,7 +34,7 @@ describe("getSelectionRecordFieldSummaryTool", () => {
         const runtime = createRuntime(vi.fn(() => []));
 
         expect(() =>
-            getSelectionRecordFieldSummaryTool(runtime, {
+            getSelectionFeatureFieldSummaryTool(runtime, {
                 candidateId: "brush@track:VAF",
                 field: "missing",
             })
@@ -43,13 +43,13 @@ describe("getSelectionRecordFieldSummaryTool", () => {
 });
 
 /**
- * @param {(viewSelector: any, selectionSelector: any, field: string) => unknown[]} getSelectionRecordFieldValues
+ * @param {(viewSelector: any, selectionSelector: any, field: string) => unknown[]} getSelectionFeatureFieldValues
  * @returns {any}
  */
-function createRuntime(getSelectionRecordFieldValues) {
+function createRuntime(getSelectionFeatureFieldValues) {
     return {
         agentApi: {
-            getSelectionRecordFieldValues,
+            getSelectionFeatureFieldValues,
         },
         getAgentVolatileContext: () => ({
             selectionAggregation: {

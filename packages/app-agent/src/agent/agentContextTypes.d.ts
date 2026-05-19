@@ -299,7 +299,7 @@ export type AgentParameterDeclaration =
 /**
  * Field inside a selected view that can be aggregated into a derived workflow.
  */
-export interface AgentRecordFilterFieldSummary {
+export interface AgentFeatureFilterFieldSummary {
     field: string;
     dataType: string;
     description?: string;
@@ -313,7 +313,7 @@ export interface AgentViewFieldSummary {
     dataType: string;
     selectionSelector: ParamSelector;
     supportedAggregations: string[];
-    filterableFields: AgentRecordFilterFieldSummary[];
+    filterableFields: AgentFeatureFilterFieldSummary[];
 }
 
 /**
