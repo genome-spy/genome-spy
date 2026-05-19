@@ -1328,6 +1328,9 @@ export default class SampleView extends ContainerView {
                     label: fieldInfo.field,
                     submenu: buildIntervalAggregationMenu({
                         fieldInfo,
+                        aggregationFieldInfos: uniqueFieldInfos.filter(
+                            (candidate) => candidate.view === fieldInfo.view
+                        ),
                         selectionIntervalComplex,
                         selectionIntervalSource,
                         ...attributeMenuBase,

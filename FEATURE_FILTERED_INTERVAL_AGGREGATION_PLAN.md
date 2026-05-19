@@ -253,7 +253,10 @@ Example:
      `UploadMetadataDialog`. The first page now keeps its help text stable,
      exposes the aggregation field as form content, and shows a compact live
      expression summary instead of changing explanatory prose when controls
-     change.
+     change. The aggregation field is now a dropdown initialized from the
+     field chosen in the context menu, populated with other aggregatable fields
+     from the same view. This keeps the UI flexible without adding sibling
+     aggregation fields to the volatile agent context.
 
 9. Reuse generic components.
    - Use `gs-comparison-operator-buttons` for quantitative predicates.
@@ -325,7 +328,7 @@ Filter condition
 [frameshift]
 
 Aggregation field
-[VAF]
+[VAF ▼]
 
 Aggregation operation
 [Count]

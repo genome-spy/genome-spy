@@ -91,6 +91,7 @@ export function resolveIntervalSelection(selectionInfo, selectionPoint) {
 /**
  * @param {Object} params
  * @param {FieldInfo} params.fieldInfo
+ * @param {FieldInfo[]} params.aggregationFieldInfos
  * @param {import("./types.js").Interval} params.selectionIntervalComplex
  * @param {import("./sampleViewTypes.js").SelectionIntervalSource} [params.selectionIntervalSource]
  * @param {import("./state/sampleState.js").Sample} params.sample
@@ -102,6 +103,7 @@ export function resolveIntervalSelection(selectionInfo, selectionPoint) {
  */
 export function buildIntervalAggregationMenu({
     fieldInfo,
+    aggregationFieldInfos,
     selectionIntervalComplex,
     selectionIntervalSource,
     sample,
@@ -167,6 +169,7 @@ export function buildIntervalAggregationMenu({
                       callback: () => {
                           void showFeatureFilteredAggregationDialog({
                               fieldInfo,
+                              aggregationFieldInfos,
                               selectionIntervalComplex,
                               selectionIntervalSource,
                               sampleHierarchy,

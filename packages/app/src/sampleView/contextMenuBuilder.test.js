@@ -1,10 +1,15 @@
 // @ts-check
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import {
     buildIntervalAggregationMenu,
     getUnavailablePointQueryViews,
 } from "./contextMenuBuilder.js";
+import { showFeatureFilteredAggregationDialog } from "./metadata/featureFilteredAggregationDialog.js";
+
+vi.mock("./metadata/featureFilteredAggregationDialog.js", () => ({
+    showFeatureFilteredAggregationDialog: vi.fn(),
+}));
 
 describe("contextMenuBuilder", () => {
     test("reports unnamed categorical point-query views as unavailable", async () => {
@@ -55,6 +60,10 @@ describe("contextMenuBuilder", () => {
     });
 
     test("adds filtered aggregation entry when filterable fields are available", () => {
+        const aggregationFieldInfos = [
+            { field: "VAF", type: "quantitative" },
+            { field: "Func", type: "nominal" },
+        ];
         const menu = buildIntervalAggregationMenu({
             fieldInfo: /** @type {any} */ ({
                 field: "VAF",
@@ -67,6 +76,7 @@ describe("contextMenuBuilder", () => {
                     },
                 ],
             }),
+            aggregationFieldInfos: /** @type {any} */ (aggregationFieldInfos),
             selectionIntervalComplex: [1, 2],
             sample: /** @type {any} */ (undefined),
             sampleHierarchy: /** @type {any} */ ({}),
@@ -82,6 +92,17 @@ describe("contextMenuBuilder", () => {
                     callback: expect.any(Function),
                 }),
             ])
+        );
+
+        const item = menu.find(
+            (entry) => entry.label === "Filter features and aggregate..."
+        );
+        item?.callback?.();
+
+        expect(showFeatureFilteredAggregationDialog).toHaveBeenCalledWith(
+            expect.objectContaining({
+                aggregationFieldInfos,
+            })
         );
     });
 });

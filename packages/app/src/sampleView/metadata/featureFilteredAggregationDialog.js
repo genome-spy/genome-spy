@@ -26,9 +26,11 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         fieldInfo: {},
+        aggregationFieldInfos: {},
         selectionIntervalComplex: {},
         selectionIntervalSource: {},
         aggregation: { state: true },
+        aggregationField: { state: true },
         filterField: { state: true },
         operator: { state: true },
         valueText: { state: true },
@@ -72,6 +74,9 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         /** @type {import("../selectionAggregationCandidates.js").SelectionAggregationFieldInfo | null} */
         this.fieldInfo = null;
 
+        /** @type {import("../selectionAggregationCandidates.js").SelectionAggregationFieldInfo[]} */
+        this.aggregationFieldInfos = [];
+
         /** @type {import("../types.js").Interval | null} */
         this.selectionIntervalComplex = null;
 
@@ -80,6 +85,9 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
 
         /** @type {import("../types.js").AggregationOp} */
         this.aggregation = "count";
+
+        /** @type {string} */
+        this.aggregationField = "";
 
         /** @type {string} */
         this.filterField = "";
@@ -142,11 +150,8 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     willUpdate(changed) {
         if (changed.has("fieldInfo") && this.fieldInfo) {
             this.dialogTitle = "Create sample metadata from features";
-            this.aggregation = this.fieldInfo.supportedAggregations.includes(
-                "count"
-            )
-                ? "count"
-                : this.fieldInfo.supportedAggregations[0];
+            this.aggregationField = this.fieldInfo.field;
+            this.#normalizeAggregationForField();
             this.filterField = this.fieldInfo.filterableFields[0]?.field ?? "";
             this.operator = this.#isQuantitativeFilter() ? "gt" : "in";
             this.selectedValues = [];
@@ -194,12 +199,21 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
 
             <div class="gs-form-group">
                 <label for="featureAggregationField">Aggregation field</label>
-                <input
+                <select
                     id="featureAggregationField"
-                    type="text"
-                    readonly
-                    .value=${this.fieldInfo.field}
-                />
+                    .value=${this.aggregationField}
+                    @change=${(/** @type {Event} */ event) => {
+                        this.#aggregationFieldChanged(event);
+                    }}
+                >
+                    ${this.#getAggregationFieldInfos().map(
+                        (field) => html`
+                            <option value=${field.field}>
+                                ${field.field} (${field.type})
+                            </option>
+                        `
+                    )}
+                </select>
             </div>
 
             <div class="gs-form-group">
@@ -215,7 +229,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                             );
                     }}
                 >
-                    ${this.fieldInfo.supportedAggregations.map(
+                    ${this.#getSupportedAggregations().map(
                         (op) => html`
                             <option value=${op}>
                                 ${getAggregationOpInfo(op).label}
@@ -275,6 +289,14 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                 }
             ),
         ];
+    }
+
+    /** @param {Event} event */
+    #aggregationFieldChanged(event) {
+        this.aggregationField = /** @type {HTMLSelectElement} */ (
+            event.target
+        ).value;
+        this.#normalizeAggregationForField();
     }
 
     /** @param {Event} event */
@@ -361,7 +383,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         }
 
         const filterExpression = this.#formatFeatureFilterPreview();
-        const field = this.fieldInfo.field;
+        const field = this.aggregationField;
         if (this.aggregation === "count") {
             return `${formatAggregationFunctionName(this.aggregation)}(${field} where ${filterExpression})`;
         }
@@ -405,8 +427,44 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         );
     }
 
+    /**
+     * @returns {import("../selectionAggregationCandidates.js").SelectionAggregationFieldInfo[]}
+     */
+    #getAggregationFieldInfos() {
+        if (this.aggregationFieldInfos.length > 0) {
+            return this.aggregationFieldInfos;
+        }
+
+        return this.fieldInfo ? [this.fieldInfo] : [];
+    }
+
+    /**
+     * @returns {import("../selectionAggregationCandidates.js").SelectionAggregationFieldInfo | undefined}
+     */
+    #getAggregationFieldInfo() {
+        return this.#getAggregationFieldInfos().find(
+            (field) => field.field === this.aggregationField
+        );
+    }
+
+    /**
+     * @returns {import("../types.js").AggregationOp[]}
+     */
+    #getSupportedAggregations() {
+        return this.#getAggregationFieldInfo()?.supportedAggregations ?? [];
+    }
+
+    #normalizeAggregationForField() {
+        const supported = this.#getSupportedAggregations();
+        if (!supported.includes(this.aggregation)) {
+            this.aggregation = supported.includes("count")
+                ? "count"
+                : supported[0];
+        }
+    }
+
     #canContinue() {
-        if (!this.filterField) {
+        if (!this.filterField || !this.aggregationField) {
             return false;
         }
 
@@ -460,7 +518,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         /** @type {import("../sampleViewTypes.js").IntervalSpecifier} */
         const specifier = {
             view: this.fieldInfo.viewSelector,
-            field: this.fieldInfo.field,
+            field: this.aggregationField,
             interval:
                 this.selectionIntervalSource ?? this.selectionIntervalComplex,
             aggregation: { op: this.aggregation },
@@ -566,6 +624,7 @@ customElements.define(
 /**
  * @param {Object} params
  * @param {import("../selectionAggregationCandidates.js").SelectionAggregationFieldInfo} params.fieldInfo
+ * @param {import("../selectionAggregationCandidates.js").SelectionAggregationFieldInfo[]} params.aggregationFieldInfos
  * @param {import("../types.js").Interval} params.selectionIntervalComplex
  * @param {import("../sampleViewTypes.js").SelectionIntervalSource} [params.selectionIntervalSource]
  * @param {import("../state/sampleState.js").SampleHierarchy} params.sampleHierarchy
@@ -575,6 +634,7 @@ customElements.define(
  */
 export async function showFeatureFilteredAggregationDialog({
     fieldInfo,
+    aggregationFieldInfos,
     selectionIntervalComplex,
     selectionIntervalSource,
     sampleHierarchy,
@@ -586,6 +646,7 @@ export async function showFeatureFilteredAggregationDialog({
         "gs-feature-filtered-aggregation-dialog",
         (/** @type {FeatureFilteredAggregationDialog} */ dialog) => {
             dialog.fieldInfo = fieldInfo;
+            dialog.aggregationFieldInfos = aggregationFieldInfos;
             dialog.selectionIntervalComplex = selectionIntervalComplex;
             dialog.selectionIntervalSource = selectionIntervalSource ?? null;
             dialog.sampleHierarchy = sampleHierarchy;
