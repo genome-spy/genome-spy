@@ -4,7 +4,9 @@ import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { html } from "lit";
 import {
     formatAggregationExpression,
+    formatAggregationFunctionName,
     formatAggregationLabel,
+    formatRecordFilterValue,
 } from "./attributeAggregation/aggregationOps.js";
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
@@ -45,16 +47,25 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         "aggregation" in specifier
             ? formatAggregationExpression(
                   specifier.aggregation.op,
-                  specifier.field
+                  specifier.field,
+                  specifier.recordFilter
               )
             : specifier.field;
     const emphasizedName =
         "aggregation" in specifier
-            ? formatAggregationTitle(specifier.aggregation.op, specifier.field)
+            ? formatAggregationTitle(
+                  specifier.aggregation.op,
+                  specifier.field,
+                  specifier.recordFilter
+              )
             : html`<em class="attribute">${specifier.field}</em>`;
     const attributeTitle =
         "aggregation" in specifier
-            ? formatAggregationTitle(specifier.aggregation.op, specifier.field)
+            ? formatAggregationTitle(
+                  specifier.aggregation.op,
+                  specifier.field,
+                  specifier.recordFilter
+              )
             : html`<em class="attribute">${specifier.field}</em>`;
 
     const accessor = createViewAttributeAccessor(view, specifier);
@@ -198,14 +209,60 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
 /**
  * @param {import("./types.js").AggregationOp} op
  * @param {string} field
+ * @param {import("./sampleViewTypes.js").RecordFilter} [recordFilter]
  * @returns {import("lit").TemplateResult}
  */
-function formatAggregationTitle(op, field) {
-    if (op === "count") {
+function formatAggregationTitle(op, field, recordFilter) {
+    if (op === "count" && !recordFilter) {
         return html`${formatAggregationLabel(op)}`;
     }
+    if (op === "count") {
+        return html`${formatAggregationFunctionName(op)}(where
+        ${formatRecordFilterTitle(recordFilter)})`;
+    }
+    const filterTitle = recordFilter
+        ? html` where ${formatRecordFilterTitle(recordFilter)}`
+        : "";
     return html`${formatAggregationLabel(op)}(<em class="attribute">${field}</em
-        >)`;
+        >${filterTitle})`;
+}
+
+/**
+ * @param {import("./sampleViewTypes.js").RecordFilter} filter
+ * @returns {import("lit").TemplateResult}
+ */
+function formatRecordFilterTitle(filter) {
+    if (filter.operator === "in") {
+        return html`<em class="attribute">${filter.field}</em> in
+            [${filter.values.map(formatRecordFilterValue).join(", ")}]`;
+    }
+
+    return html`<em class="attribute">${filter.field}</em>
+        ${formatRecordFilterOperator(filter.operator)}
+        ${formatRecordFilterValue(filter.value)}`;
+}
+
+/**
+ * @param {import("./sampleViewTypes.js").RecordFilter["operator"]} operator
+ * @returns {string}
+ */
+function formatRecordFilterOperator(operator) {
+    switch (operator) {
+        case "eq":
+            return "=";
+        case "lt":
+            return "<";
+        case "lte":
+            return "<=";
+        case "gt":
+            return ">";
+        case "gte":
+            return ">=";
+        case "in":
+            return "in";
+        default:
+            throw new Error("Unknown record filter operator: " + operator);
+    }
 }
 
 /**

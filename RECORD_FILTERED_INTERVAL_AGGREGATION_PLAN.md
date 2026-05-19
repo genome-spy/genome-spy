@@ -152,6 +152,9 @@ Example:
    - Update derived metadata name generation so filtered aggregations produce
      readable defaults such as `max_frameshift_VAF` or
      `frameshift_mutation_count`.
+   - Status: implemented for the current leaf `RecordFilter` shape. Generated
+     names use the filter value for equality and set filters, and include the
+     filter field for numeric threshold filters.
 
 5. Expose filterable record fields.
    - Extend selection aggregation candidate discovery to report only compact

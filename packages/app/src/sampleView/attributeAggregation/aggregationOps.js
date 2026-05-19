@@ -72,6 +72,68 @@ export function formatAggregationLabel(op) {
 }
 
 /**
+ * @param {AggregationOp} op
+ * @returns {string}
+ */
+export function formatAggregationFunctionName(op) {
+    return op === "count" ? "count" : formatAggregationLabel(op);
+}
+
+/**
+ * @param {import("../sampleViewTypes.js").RecordFilter} filter
+ * @returns {string}
+ */
+export function formatRecordFilterExpression(filter) {
+    if (filter.operator === "in") {
+        return (
+            filter.field +
+            " in [" +
+            filter.values.map(formatRecordFilterValue).join(", ") +
+            "]"
+        );
+    }
+
+    return (
+        filter.field +
+        " " +
+        formatRecordFilterOperator(filter.operator) +
+        " " +
+        formatRecordFilterValue(filter.value)
+    );
+}
+
+/**
+ * @param {import("../sampleViewTypes.js").RecordFilter["operator"]} operator
+ * @returns {string}
+ */
+function formatRecordFilterOperator(operator) {
+    switch (operator) {
+        case "eq":
+            return "=";
+        case "lt":
+            return "<";
+        case "lte":
+            return "<=";
+        case "gt":
+            return ">";
+        case "gte":
+            return ">=";
+        case "in":
+            return "in";
+        default:
+            throw new Error("Unknown record filter operator: " + operator);
+    }
+}
+
+/**
+ * @param {import("@genome-spy/core/spec/channel.js").Scalar | null} value
+ * @returns {string}
+ */
+export function formatRecordFilterValue(value) {
+    return value === null ? "null" : String(value);
+}
+
+/**
  * @param {import("../types.js").AttributeIdentifier} attributeIdentifier
  * @returns {boolean}
  */
@@ -90,11 +152,24 @@ export function preservesScaleDomainForAttribute(attributeIdentifier) {
 /**
  * @param {AggregationOp} op
  * @param {string} field
+ * @param {import("../sampleViewTypes.js").RecordFilter} [recordFilter]
  * @returns {string}
  */
-export function formatAggregationExpression(op, field) {
-    if (op === "count") {
+export function formatAggregationExpression(op, field, recordFilter) {
+    const filterExpression = recordFilter
+        ? " where " + formatRecordFilterExpression(recordFilter)
+        : "";
+
+    if (op === "count" && !recordFilter) {
         return formatAggregationLabel(op);
     }
-    return formatAggregationLabel(op) + "(" + field + ")";
+    if (op === "count") {
+        return (
+            formatAggregationFunctionName(op) +
+            "(" +
+            filterExpression.trim() +
+            ")"
+        );
+    }
+    return formatAggregationLabel(op) + "(" + field + filterExpression + ")";
 }
