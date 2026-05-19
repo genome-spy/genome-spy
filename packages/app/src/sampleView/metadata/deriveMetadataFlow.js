@@ -36,7 +36,6 @@ export async function handleAddToMetadata(
 
     const result = await showDerivedMetadataDialog({
         attributeInfo,
-        sampleIds,
         values,
         existingAttributeNames: sampleHierarchy.sampleMetadata.attributeNames,
         defaultName: attributeName,

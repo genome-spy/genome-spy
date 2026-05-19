@@ -32,7 +32,6 @@ import "./configureScaleDialog.js";
 export default class DerivedMetadataConfigurator extends LitElement {
     static properties = {
         attributeInfo: { attribute: false },
-        sampleIds: { attribute: false },
         values: { attribute: false },
         existingAttributeNames: { attribute: false },
         attributeName: { state: true },
@@ -66,9 +65,6 @@ export default class DerivedMetadataConfigurator extends LitElement {
 
         /** @type {import("../types.js").AttributeInfo | null} */
         this.attributeInfo = null;
-
-        /** @type {string[] | null} */
-        this.sampleIds = null;
 
         /** @type {any[] | null} */
         this.values = null;
@@ -139,7 +135,7 @@ export default class DerivedMetadataConfigurator extends LitElement {
     }
 
     render() {
-        if (!this.attributeInfo || !this.sampleIds || !this.values) {
+        if (!this.attributeInfo || !this.values) {
             throw new Error("Derived metadata configurator is missing data.");
         }
 
@@ -233,7 +229,7 @@ export default class DerivedMetadataConfigurator extends LitElement {
     }
 
     async #configureScale() {
-        if (!this.attributeInfo || !this.sampleIds || !this.values) {
+        if (!this.attributeInfo || !this.values) {
             throw new Error("Scale configuration requires attribute data.");
         }
 

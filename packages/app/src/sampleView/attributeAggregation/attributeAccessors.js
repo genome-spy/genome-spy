@@ -1,4 +1,3 @@
-import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createDatumAtAccessor } from "../datumLookup.js";
 import { resolveIntervalReference } from "../intervalReferenceResolver.js";
@@ -10,28 +9,7 @@ import {
     aggregateVariance,
     aggregateWeightedMean,
 } from "./attributeAggregation.js";
-import { visitIntervalFeatures } from "./intervalFeatureTraversal.js";
-
-/**
- * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
- * @param {import("@genome-spy/core/spec/channel.js").Scalar | import("@genome-spy/core/spec/genome.js").ChromosomalLocus} value
- * @returns {import("@genome-spy/core/spec/channel.js").Scalar}
- */
-function toScalar(scaleResolution, value) {
-    if (!isChromosomalLocus(value)) {
-        return value;
-    }
-
-    const scale = scaleResolution.getScale();
-    const genome = "genome" in scale ? scale.genome() : undefined;
-    if (!genome) {
-        throw new Error(
-            "Encountered a chromosomal locus but no genome is available!"
-        );
-    }
-
-    return genome.toContinuous(value.chrom, value.pos);
-}
+import { toScalar, visitIntervalFeatures } from "./intervalFeatureTraversal.js";
 
 /**
  * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution

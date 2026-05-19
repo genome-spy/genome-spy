@@ -7,7 +7,6 @@ export class DerivedMetadataDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         attributeInfo: {},
-        sampleIds: {},
         values: {},
         existingAttributeNames: {},
         attributeName: { state: true },
@@ -29,9 +28,6 @@ export class DerivedMetadataDialog extends BaseDialog {
         /** @type {import("../types.js").AttributeInfo | null} */
         this.attributeInfo = null;
 
-        /** @type {string[] | null} */
-        this.sampleIds = null;
-
         /** @type {any[] | null} */
         this.values = null;
 
@@ -48,7 +44,7 @@ export class DerivedMetadataDialog extends BaseDialog {
     }
 
     renderBody() {
-        if (!this.attributeInfo || !this.sampleIds || !this.values) {
+        if (!this.attributeInfo || !this.values) {
             throw new Error(
                 "Derived metadata dialog is missing required data."
             );
@@ -57,7 +53,6 @@ export class DerivedMetadataDialog extends BaseDialog {
         return html`
             <gs-derived-metadata-configurator
                 .attributeInfo=${this.attributeInfo}
-                .sampleIds=${this.sampleIds}
                 .values=${this.values}
                 .existingAttributeNames=${this.existingAttributeNames}
                 .attributeName=${this.attributeName}
@@ -106,7 +101,6 @@ customElements.define("gs-derived-metadata-dialog", DerivedMetadataDialog);
 /**
  * @param {{
  *  attributeInfo: import("../types.js").AttributeInfo,
- *  sampleIds: string[],
  *  values: any[],
  *  existingAttributeNames: string[],
  *  defaultName: string,
@@ -115,7 +109,6 @@ customElements.define("gs-derived-metadata-dialog", DerivedMetadataDialog);
  */
 export function showDerivedMetadataDialog({
     attributeInfo,
-    sampleIds,
     values,
     existingAttributeNames,
     defaultName,
@@ -124,7 +117,6 @@ export function showDerivedMetadataDialog({
         "gs-derived-metadata-dialog",
         (/** @type {DerivedMetadataDialog} */ dialog) => {
             dialog.attributeInfo = attributeInfo;
-            dialog.sampleIds = sampleIds;
             dialog.values = values;
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;

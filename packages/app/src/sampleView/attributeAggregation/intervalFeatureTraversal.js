@@ -1,3 +1,5 @@
+import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
+
 /**
  * Visits point or interval features that overlap the selected x interval.
  *
@@ -61,4 +63,45 @@ function getIntervalFeatureWeight(x, x2, start, end, hitTestMode) {
         const overlapEnd = Math.min(x2, end);
         return Math.max(0, overlapEnd - overlapStart);
     }
+}
+
+/**
+ * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
+ * @param {import("@genome-spy/core/spec/channel.js").Scalar | import("@genome-spy/core/spec/genome.js").ChromosomalLocus} value
+ * @returns {import("@genome-spy/core/spec/channel.js").Scalar}
+ */
+export function toScalar(scaleResolution, value) {
+    if (!isChromosomalLocus(value)) {
+        return value;
+    }
+
+    const scale = scaleResolution.getScale();
+    const genome = "genome" in scale ? scale.genome() : undefined;
+    if (!genome) {
+        throw new Error(
+            "Encountered a chromosomal locus but no genome is available."
+        );
+    }
+
+    return genome.toContinuous(value.chrom, value.pos);
+}
+
+/**
+ * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
+ * @param {import("../types.js").Interval} interval
+ * @param {string} errorMessage
+ * @returns {[number, number]}
+ */
+export function normalizeNumericInterval(
+    scaleResolution,
+    interval,
+    errorMessage
+) {
+    const start = toScalar(scaleResolution, interval[0]);
+    const end = toScalar(scaleResolution, interval[1]);
+    if (typeof start !== "number" || typeof end !== "number") {
+        throw new Error(errorMessage);
+    }
+
+    return start <= end ? [start, end] : [end, start];
 }

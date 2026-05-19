@@ -7,6 +7,7 @@ import {
     formatAggregationExpression,
     formatAggregationFunctionName,
     formatAggregationLabel,
+    formatFeatureFilterOperator,
     formatFeatureFilterValue,
 } from "./attributeAggregation/aggregationOps.js";
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
@@ -256,29 +257,6 @@ function formatFeatureFilterTitle(filter) {
     return html`<em class="attribute">${filter.field}</em>
         ${formatFeatureFilterOperator(filter.operator)}
         ${formatFeatureFilterValue(filter.value)}`;
-}
-
-/**
- * @param {import("./sampleViewTypes.js").FeatureFilter["operator"]} operator
- * @returns {string}
- */
-function formatFeatureFilterOperator(operator) {
-    switch (operator) {
-        case "eq":
-            return "=";
-        case "lt":
-            return "<";
-        case "lte":
-            return "<=";
-        case "gt":
-            return ">";
-        case "gte":
-            return ">=";
-        case "in":
-            return "in";
-        default:
-            throw new Error("Unknown feature filter operator: " + operator);
-    }
 }
 
 /**

@@ -112,7 +112,7 @@ export function formatFeatureFilterExpression(filter) {
  * @param {import("../sampleViewTypes.js").FeatureFilter["operator"]} operator
  * @returns {string}
  */
-function formatFeatureFilterOperator(operator) {
+export function formatFeatureFilterOperator(operator) {
     switch (operator) {
         case "eq":
             return "=";

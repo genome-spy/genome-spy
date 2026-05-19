@@ -11,6 +11,7 @@ import DialogWizardController from "../../components/generic/dialogWizardControl
 import {
     formatAggregationFunctionName,
     formatAggregationLabel,
+    formatFeatureFilterOperator,
     getAggregationOpInfo,
 } from "../attributeAggregation/aggregationOps.js";
 import {
@@ -37,7 +38,6 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         selectedValues: { state: true },
         _page: { state: true },
         _attributeInfo: { state: true },
-        _sampleIds: { state: true },
         _values: { state: true },
         _attributeName: { state: true },
         _metadataConfigHasErrors: { state: true },
@@ -117,9 +117,6 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
 
         /** @type {import("../types.js").AttributeInfo | null} */
         this._attributeInfo = null;
-
-        /** @type {string[] | null} */
-        this._sampleIds = null;
 
         /** @type {any[] | null} */
         this._values = null;
@@ -247,19 +244,13 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     }
 
     #renderMetadataPage() {
-        if (
-            !this._attributeInfo ||
-            !this._sampleIds ||
-            !this._values ||
-            !this.sampleHierarchy
-        ) {
+        if (!this._attributeInfo || !this._values || !this.sampleHierarchy) {
             throw new Error("Feature-filtered metadata page is missing data.");
         }
 
         return html`
             <gs-derived-metadata-configurator
                 .attributeInfo=${this._attributeInfo}
-                .sampleIds=${this._sampleIds}
                 .values=${this._values}
                 .existingAttributeNames=${this.sampleHierarchy.sampleMetadata
                     .attributeNames}
@@ -405,7 +396,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             return (
                 this.filterField +
                 " " +
-                formatFilterOperator(this.operator) +
+                formatFeatureFilterOperator(this.operator) +
                 " " +
                 (this.valueText.trim() || "...")
             );
@@ -547,7 +538,6 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         }
 
         this._attributeInfo = attributeInfo;
-        this._sampleIds = sampleIds;
         this._values = values;
         this._attributeName = createDerivedAttributeName(
             attributeInfo,
@@ -615,7 +605,6 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     resetWizard() {
         this.#wizard.reset();
         this._attributeInfo = null;
-        this._sampleIds = null;
         this._values = null;
         this._attributeName = "";
         this._metadataConfigHasErrors = false;
@@ -677,27 +666,4 @@ function isScalar(value) {
         typeof value === "number" ||
         typeof value === "boolean"
     );
-}
-
-/**
- * @param {import("../sampleViewTypes.js").FeatureFilter["operator"]} operator
- * @returns {string}
- */
-function formatFilterOperator(operator) {
-    switch (operator) {
-        case "eq":
-            return "=";
-        case "lt":
-            return "<";
-        case "lte":
-            return "<=";
-        case "gt":
-            return ">";
-        case "gte":
-            return ">=";
-        case "in":
-            return "in";
-        default:
-            throw new Error("Unknown feature filter operator: " + operator);
-    }
 }
