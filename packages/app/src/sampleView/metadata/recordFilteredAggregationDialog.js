@@ -1,6 +1,8 @@
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import { icon } from "@fortawesome/fontawesome-svg-core";
+import { faExclamationCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { html } from "lit";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
+import { formatAggregationLabel } from "../attributeAggregation/aggregationOps.js";
 import { handleAddToMetadata } from "./deriveMetadataFlow.js";
 import { collectIntervalRecordFieldValues } from "../selectionRecordFieldValues.js";
 import "../../components/generic/comparisonOperatorButtons.js";
@@ -53,12 +55,15 @@ class RecordFilteredAggregationDialog extends BaseDialog {
         /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */
         this.selectedValues = [];
 
-        this.dialogTitle = "Filter records and aggregate";
+        this.dialogTitle =
+            "Derive metadata by filtering and aggregating records";
     }
 
     /** @param {Map<string, any>} changed */
     willUpdate(changed) {
         if (changed.has("fieldInfo") && this.fieldInfo) {
+            this.dialogTitle =
+                "Derive metadata by filtering and aggregating records";
             this.aggregation = this.fieldInfo.supportedAggregations.includes(
                 "count"
             )
@@ -78,6 +83,8 @@ class RecordFilteredAggregationDialog extends BaseDialog {
         }
 
         return html`
+            ${this.#renderInfoBox()}
+
             <div class="gs-form-group">
                 <label for="recordFilterField">Record filter field</label>
                 <select
@@ -122,10 +129,10 @@ class RecordFilteredAggregationDialog extends BaseDialog {
                 </select>
                 <small>
                     ${this.aggregation === "count"
-                        ? "Count records matching the filter."
-                        : html`Aggregate
-                              <em>${this.fieldInfo.field}</em> records matching
-                              the filter.`}
+                        ? "Count records that match the predicate."
+                        : html`${formatAggregationLabel(this.aggregation)} of
+                              <em>${this.fieldInfo.field}</em> over records that
+                              match the predicate.`}
                 </small>
             </div>
         `;
@@ -190,6 +197,43 @@ class RecordFilteredAggregationDialog extends BaseDialog {
                 }}
             ></gs-searchable-checkbox-list>
         `;
+    }
+
+    #renderInfoBox() {
+        return html`
+            <div class="gs-alert info">
+                ${icon(faExclamationCircle).node[0]}
+                <div>
+                    <p>
+                        You are deriving a new sample metadata attribute from
+                        records in the selected interval.
+                    </p>
+                    <p>
+                        For each sample, records are first filtered where
+                        <em
+                            >${this.filterField ||
+                            "the selected record field"}</em
+                        >
+                        matches the predicate. ${this.#renderAggregationStep()}
+                        Continue opens the derived metadata dialog for naming,
+                        grouping, and scale configuration.
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+
+    #renderAggregationStep() {
+        if (!this.fieldInfo) {
+            return "";
+        }
+
+        if (this.aggregation === "count") {
+            return html`Then it counts the matching records for that sample.`;
+        }
+
+        return html`Then it computes ${formatAggregationLabel(this.aggregation)}
+            of <em>${this.fieldInfo.field}</em> for that sample.`;
     }
 
     #isQuantitativeFilter() {
