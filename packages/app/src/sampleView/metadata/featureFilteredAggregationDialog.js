@@ -236,17 +236,17 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         const isLastPage = this.#wizard.isLastPage;
         return [
             this.makeCloseButton("Cancel"),
-            this.makeButton("Previous", () => this.#changePage(-1), {
+            this.makeButton("Previous", () => this.#wizard.advance(-1), {
                 iconDef: faCaretLeft,
                 disabled: this.#wizard.isFirstPage,
             }),
             this.makeButton(
                 isLastPage ? "Finish" : "Next",
-                () => this.#changePage(1),
+                () => this.#wizard.advance(1),
                 {
                     iconDef: isLastPage ? faPlus : faCaretRight,
                     isPrimary: true,
-                    disabled: !this.#canAdvancePage(),
+                    disabled: !this.#wizard.canAdvance(),
                 }
             ),
         ];
@@ -365,13 +365,6 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     }
 
     /**
-     * @param {-1 | 1} direction
-     */
-    #changePage(direction) {
-        return this.#wizard.advance(direction);
-    }
-
-    /**
      * @returns {import("../sampleViewTypes.js").FeatureFilter}
      */
     #createFeatureFilter() {
@@ -466,10 +459,6 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         );
         this.finish({ ok: true });
         return false;
-    }
-
-    #canAdvancePage() {
-        return this.#wizard.canAdvance();
     }
 
     /**

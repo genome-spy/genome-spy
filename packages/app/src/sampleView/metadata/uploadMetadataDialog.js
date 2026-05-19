@@ -142,7 +142,7 @@ class UploadMetadataDialog extends BaseDialog {
             this._parsedItems
         );
 
-        this.#changePage(1);
+        this.#wizard.advance(1);
     }
 
     /**
@@ -242,17 +242,6 @@ class UploadMetadataDialog extends BaseDialog {
         return this.#wizard.currentPage.render();
     }
 
-    /**
-     * @param {-1 | 1} direction
-     */
-    #changePage(direction) {
-        return this.#wizard.advance(direction);
-    }
-
-    #canAdvancePage() {
-        return this.#wizard.canAdvance();
-    }
-
     renderButtons() {
         const next = this.#wizard.isLastPage
             ? { label: "Finish", icon: null }
@@ -260,13 +249,13 @@ class UploadMetadataDialog extends BaseDialog {
 
         return [
             this.makeCloseButton("Cancel"),
-            this.makeButton("Previous", () => this.#changePage(-1), {
+            this.makeButton("Previous", () => this.#wizard.advance(-1), {
                 iconDef: faCaretLeft,
                 disabled: this.#wizard.isFirstPage,
             }),
-            this.makeButton(next.label, () => this.#changePage(1), {
+            this.makeButton(next.label, () => this.#wizard.advance(1), {
                 iconDef: next.icon ?? undefined,
-                disabled: !this.#canAdvancePage(),
+                disabled: !this.#wizard.canAdvance(),
                 isPrimary: true,
             }),
         ];
