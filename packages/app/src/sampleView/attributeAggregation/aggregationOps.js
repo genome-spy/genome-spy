@@ -87,9 +87,9 @@ export function formatFeatureFilterExpression(filter) {
     if (filter.operator === "in") {
         return (
             filter.field +
-            " in [" +
+            " in {" +
             filter.values.map(formatFeatureFilterValue).join(", ") +
-            "]"
+            "}"
         );
     }
 

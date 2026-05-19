@@ -330,13 +330,13 @@ Aggregation field
 Aggregation operation
 [Count]
 
-Result: count(VAF where functionalCategory in [frameshift]) per sample
+Result: count(VAF where functionalCategory in {frameshift}) per sample
 ```
 
 or:
 
 ```text
-Result: max(VAF where functionalCategory in [frameshift]) per sample
+Result: max(VAF where functionalCategory in {frameshift}) per sample
 ```
 
 ## Open Questions

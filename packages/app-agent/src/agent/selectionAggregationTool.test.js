@@ -35,7 +35,7 @@ describe("buildSelectionAggregationAttribute", () => {
             },
         });
         expect(result.title).toBe(
-            "max(VAF where functionalCategory in [frameshift])"
+            "max(VAF where functionalCategory in {frameshift})"
         );
     });
 

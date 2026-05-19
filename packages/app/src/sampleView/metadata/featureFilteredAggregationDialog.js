@@ -388,14 +388,14 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         }
 
         if (this.selectedValues.length === 0) {
-            return this.filterField + " in [...]";
+            return this.filterField + " in {...}";
         }
 
         return (
             this.filterField +
-            " in [" +
+            " in {" +
             this.selectedValues.map(String).join(", ") +
-            "]"
+            "}"
         );
     }
 

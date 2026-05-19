@@ -2,6 +2,7 @@ import { isChannelWithScale } from "@genome-spy/core/encoder/encoder.js";
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { html } from "lit";
+import { map } from "lit/directives/map.js";
 import {
     formatAggregationExpression,
     formatAggregationFunctionName,
@@ -235,7 +236,13 @@ function formatAggregationTitle(op, field, featureFilter) {
 function formatFeatureFilterTitle(filter) {
     if (filter.operator === "in") {
         return html`<em class="attribute">${filter.field}</em> in
-            [${filter.values.map(formatFeatureFilterValue).join(", ")}]`;
+            {${map(
+                filter.values,
+                (value, i) =>
+                    html`${i > 0 ? ", " : ""}<strong
+                            >${formatFeatureFilterValue(value)}</strong
+                        >`
+            )}}`;
     }
 
     return html`<em class="attribute">${filter.field}</em>
