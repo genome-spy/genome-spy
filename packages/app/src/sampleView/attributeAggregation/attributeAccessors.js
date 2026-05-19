@@ -55,11 +55,6 @@ function normalizeInterval(scaleResolution, specifier, root) {
 }
 
 /**
- * @param {import("@genome-spy/core/view/unitView.js").default} view
- * @param {import("../sampleViewTypes.js").ViewAttributeSpecifier} specifier
- * @returns {import("../types.js").AttributeInfo["accessor"]}
- */
-/**
  * Builds a per-sample accessor for point or interval-based view attributes.
  *
  * @param {import("@genome-spy/core/view/unitView.js").default} view
@@ -136,6 +131,20 @@ export function createViewAttributeAccessor(view, specifier) {
     };
     const op = specifier.aggregation.op;
     const needsWeights = op === "weightedMean" || op === "variance";
+    const collectAggregationValue = (
+        /** @type {any} */ datum,
+        /** @type {number} */ weight,
+        /** @type {number[]} */ values,
+        /** @type {number[]} */ weights
+    ) => {
+        const value = valueAccessor(datum);
+        if (value != null) {
+            values.push(value);
+            if (needsWeights) {
+                weights.push(weight);
+            }
+        }
+    };
 
     return (sampleId) => {
         const [start, end] = getNumericBounds();
@@ -149,20 +158,6 @@ export function createViewAttributeAccessor(view, specifier) {
         /** @type {number[]} */
         const weights = [];
 
-        /**
-         * @param {any} datum
-         * @param {number} [weight]
-         */
-        const collectValue = (datum, weight = 1) => {
-            const value = valueAccessor(datum);
-            if (value != null) {
-                values.push(value);
-                if (needsWeights) {
-                    weights.push(weight);
-                }
-            }
-        };
-
         visitIntervalFeatures(
             data,
             xAccessor,
@@ -172,7 +167,7 @@ export function createViewAttributeAccessor(view, specifier) {
             end,
             (datum, weight) => {
                 if (featureMatches(datum)) {
-                    collectValue(datum, weight);
+                    collectAggregationValue(datum, weight, values, weights);
                 }
             }
         );
