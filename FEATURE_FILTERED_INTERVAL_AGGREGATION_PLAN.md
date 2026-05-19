@@ -239,7 +239,12 @@ Example:
      rendering and domain validation in each dialog.
    - Finish should dispatch the same `deriveMetadata` intent as
      `handleAddToMetadata`.
-   - Status: pending.
+   - Status: implemented. The feature-filtered aggregation flow now uses a
+     two-page wizard. `DerivedMetadataDialog` remains available for direct
+     "Add to sample metadata..." actions, and both paths share the extracted
+     `gs-derived-metadata-configurator` for name, group, and scale
+     configuration. Wizard page-state handling remains local because only two
+     dialogs currently use that pattern.
 
 9. Reuse generic components.
    - Use `gs-comparison-operator-buttons` for quantitative predicates.

@@ -1,19 +1,21 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faExclamationCircle, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { html } from "lit";
+import {
+    faCaretLeft,
+    faCaretRight,
+    faExclamationCircle,
+    faPlus,
+} from "@fortawesome/free-solid-svg-icons";
+import { css, html } from "lit";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { formatAggregationLabel } from "../attributeAggregation/aggregationOps.js";
-import { handleAddToMetadata } from "./deriveMetadataFlow.js";
+import {
+    buildDerivedMetadataIntent,
+    createDerivedAttributeName,
+} from "./deriveMetadataUtils.js";
 import { collectIntervalFeatureFieldValues } from "../selectionFeatureFieldValues.js";
+import "./derivedMetadataConfigurator.js";
 import "../../components/generic/comparisonOperatorButtons.js";
 import "../../components/generic/searchableCheckboxList.js";
-
-/**
- * @typedef {{
- *     aggregation: import("../types.js").AggregationOp;
- *     featureFilter: import("../sampleViewTypes.js").FeatureFilter;
- * }} FeatureFilteredAggregationConfig
- */
 
 class FeatureFilteredAggregationDialog extends BaseDialog {
     static properties = {
@@ -26,7 +28,22 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         operator: { state: true },
         valueText: { state: true },
         selectedValues: { state: true },
+        _page: { state: true },
+        _attributeInfo: { state: true },
+        _sampleIds: { state: true },
+        _values: { state: true },
+        _attributeName: { state: true },
+        _metadataConfigHasErrors: { state: true },
     };
+
+    static styles = [
+        ...super.styles,
+        css`
+            dialog {
+                width: 560px;
+            }
+        `,
+    ];
 
     constructor() {
         super();
@@ -55,6 +72,35 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */
         this.selectedValues = [];
 
+        /** @type {import("../state/sampleState.js").SampleHierarchy | null} */
+        this.sampleHierarchy = null;
+
+        /** @type {import("../compositeAttributeInfoSource.js").default | null} */
+        this.attributeInfoSource = null;
+
+        /** @type {import("../types.js").AttributeIdentifierType | null} */
+        this.attributeType = null;
+
+        /** @type {import("../sampleView.js").default | null} */
+        this.sampleView = null;
+
+        this._page = 0;
+
+        /** @type {import("../types.js").AttributeInfo | null} */
+        this._attributeInfo = null;
+
+        /** @type {string[] | null} */
+        this._sampleIds = null;
+
+        /** @type {any[] | null} */
+        this._values = null;
+
+        /** @type {string} */
+        this._attributeName = "";
+
+        /** @type {boolean} */
+        this._metadataConfigHasErrors = false;
+
         this.dialogTitle =
             "Derive metadata by filtering and aggregating features";
     }
@@ -76,6 +122,14 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
     }
 
     renderBody() {
+        if (this._page === 1) {
+            return this.#renderMetadataPage();
+        }
+
+        return this.#renderFeatureFilterPage();
+    }
+
+    #renderFeatureFilterPage() {
         if (!this.fieldInfo) {
             throw new Error(
                 "Feature-filtered aggregation dialog is missing field info."
@@ -138,14 +192,50 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         `;
     }
 
+    #renderMetadataPage() {
+        if (
+            !this._attributeInfo ||
+            !this._sampleIds ||
+            !this._values ||
+            !this.sampleHierarchy
+        ) {
+            throw new Error("Feature-filtered metadata page is missing data.");
+        }
+
+        return html`
+            <gs-derived-metadata-configurator
+                .attributeInfo=${this._attributeInfo}
+                .sampleIds=${this._sampleIds}
+                .values=${this._values}
+                .existingAttributeNames=${this.sampleHierarchy.sampleMetadata
+                    .attributeNames}
+                .attributeName=${this._attributeName}
+                @metadata-config-validity-change=${(
+                    /** @type {CustomEvent<{ hasErrors: boolean }>} */ event
+                ) => {
+                    this._metadataConfigHasErrors = event.detail.hasErrors;
+                }}
+            ></gs-derived-metadata-configurator>
+        `;
+    }
+
     renderButtons() {
+        const isLastPage = this._page === 1;
         return [
-            this.makeCloseButton(),
-            this.makeButton("Continue", () => this.#onContinue(), {
-                iconDef: faPlus,
-                isPrimary: true,
-                disabled: !this.#canContinue(),
+            this.makeCloseButton("Cancel"),
+            this.makeButton("Previous", () => this.#changePage(-1), {
+                iconDef: faCaretLeft,
+                disabled: this._page === 0,
             }),
+            this.makeButton(
+                isLastPage ? "Finish" : "Next",
+                () => this.#changePage(1),
+                {
+                    iconDef: isLastPage ? faPlus : faCaretRight,
+                    isPrimary: true,
+                    disabled: !this.#canAdvancePage(),
+                }
+            ),
         ];
     }
 
@@ -215,8 +305,8 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                             "the selected feature field"}</em
                         >
                         matches the predicate. ${this.#renderAggregationStep()}
-                        Continue opens the derived metadata dialog for naming,
-                        grouping, and scale configuration.
+                        Next lets you name the new metadata attribute and
+                        configure its scale.
                     </p>
                 </div>
             </div>
@@ -261,19 +351,25 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         return this.selectedValues.length > 0;
     }
 
-    #onContinue() {
-        if (!this.#canContinue()) {
+    /**
+     * @param {-1 | 1} direction
+     */
+    #changePage(direction) {
+        if (direction < 0) {
+            this._page = 0;
             return true;
         }
 
-        this.finish({
-            ok: true,
-            data: {
-                aggregation: this.aggregation,
-                featureFilter: this.#createFeatureFilter(),
-            },
-        });
-        return false;
+        if (this._page === 0) {
+            if (!this.#prepareMetadataPage()) {
+                return true;
+            }
+
+            this._page = 1;
+            return true;
+        }
+
+        return this.#finish();
     }
 
     /**
@@ -295,6 +391,99 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             ),
             value: +this.valueText,
         };
+    }
+
+    #prepareMetadataPage() {
+        if (
+            !this.fieldInfo ||
+            !this.sampleHierarchy ||
+            !this.attributeInfoSource ||
+            !this.attributeType
+        ) {
+            throw new Error(
+                "Feature-filtered aggregation wizard is missing required data."
+            );
+        }
+
+        if (!this.sampleHierarchy.sampleData) {
+            throw new Error("Sample data has not been initialized.");
+        }
+
+        /** @type {import("../sampleViewTypes.js").IntervalSpecifier} */
+        const specifier = {
+            view: this.fieldInfo.viewSelector,
+            field: this.fieldInfo.field,
+            interval:
+                this.selectionIntervalSource ?? this.selectionIntervalComplex,
+            aggregation: { op: this.aggregation },
+            featureFilter: this.#createFeatureFilter(),
+        };
+        const attributeInfo = this.attributeInfoSource.getAttributeInfo({
+            type: this.attributeType,
+            specifier,
+        });
+        const sampleIds = this.sampleHierarchy.sampleData.ids;
+        const values = attributeInfo.valuesProvider({
+            sampleIds,
+            sampleHierarchy: this.sampleHierarchy,
+        });
+
+        if (values.length !== sampleIds.length) {
+            throw new Error(
+                "Derived metadata values length does not match sample ids."
+            );
+        }
+
+        this._attributeInfo = attributeInfo;
+        this._sampleIds = sampleIds;
+        this._values = values;
+        this._attributeName = createDerivedAttributeName(
+            attributeInfo,
+            this.sampleHierarchy.sampleMetadata.attributeNames
+        );
+        this._metadataConfigHasErrors = false;
+        return true;
+    }
+
+    #finish() {
+        if (!this._attributeInfo || !this.sampleView) {
+            throw new Error(
+                "Feature-filtered aggregation wizard is missing derived data."
+            );
+        }
+
+        const config = this.#metadataConfigurator()?.getConfig();
+        if (!config) {
+            return true;
+        }
+
+        this.sampleView.intentExecutor.dispatch(
+            this.sampleView.actions.deriveMetadata(
+                buildDerivedMetadataIntent(
+                    this._attributeInfo.attribute,
+                    config
+                )
+            )
+        );
+        this.finish({ ok: true });
+        return false;
+    }
+
+    #canAdvancePage() {
+        if (this._page === 0) {
+            return this.#canContinue();
+        }
+
+        return !this._metadataConfigHasErrors;
+    }
+
+    /**
+     * @returns {import("./derivedMetadataConfigurator.js").default | null}
+     */
+    #metadataConfigurator() {
+        return this.renderRoot.querySelector(
+            "gs-derived-metadata-configurator"
+        );
     }
 
     /**
@@ -344,38 +533,26 @@ export async function showFeatureFilteredAggregationDialog({
     attributeType,
     sampleView,
 }) {
-    const result = await showDialog(
+    await showDialog(
         "gs-feature-filtered-aggregation-dialog",
         (/** @type {FeatureFilteredAggregationDialog} */ dialog) => {
             dialog.fieldInfo = fieldInfo;
             dialog.selectionIntervalComplex = selectionIntervalComplex;
             dialog.selectionIntervalSource = selectionIntervalSource ?? null;
+            dialog.sampleHierarchy = sampleHierarchy;
+            dialog.attributeInfoSource = attributeInfoSource;
+            dialog.attributeType = attributeType;
+            dialog.sampleView = sampleView;
             dialog.valueText = "";
             dialog.selectedValues = [];
+            dialog._page = 0;
+            dialog._attributeInfo = null;
+            dialog._sampleIds = null;
+            dialog._values = null;
+            dialog._attributeName = "";
+            dialog._metadataConfigHasErrors = false;
         }
     );
-
-    if (!result.ok) {
-        return;
-    }
-
-    const config = /** @type {FeatureFilteredAggregationConfig} */ (
-        result.data
-    );
-    /** @type {import("../sampleViewTypes.js").IntervalSpecifier} */
-    const specifier = {
-        view: fieldInfo.viewSelector,
-        field: fieldInfo.field,
-        interval: selectionIntervalSource ?? selectionIntervalComplex,
-        aggregation: { op: config.aggregation },
-        featureFilter: config.featureFilter,
-    };
-    const attributeInfo = attributeInfoSource.getAttributeInfo({
-        type: attributeType,
-        specifier,
-    });
-
-    await handleAddToMetadata(attributeInfo, sampleHierarchy, sampleView);
 }
 
 /**
