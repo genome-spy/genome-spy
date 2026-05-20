@@ -151,6 +151,11 @@ export type ThresholdOperator = "lt" | "lte";
 export type ComparisonOperatorType = "lt" | "lte" | "eq" | "gte" | "gt";
 
 /**
+ * Exact categorical value used by nominal sample filters.
+ */
+export type NominalFilterValue = Scalar | null;
+
+/**
  * Numeric threshold used when partitioning or filtering quantitative values.
  */
 export interface Threshold {
@@ -347,7 +352,7 @@ export interface FilterByNominal extends PayloadWithAttribute {
     /**
      * Attribute values matched by exact equality.
      */
-    values: any[];
+    values: NominalFilterValue[];
 
     /**
      * Whether to remove matching samples instead of retaining them.

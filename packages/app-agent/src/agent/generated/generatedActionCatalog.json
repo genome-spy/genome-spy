@@ -342,7 +342,7 @@
       },
       {
         "name": "values",
-        "type": "any[]",
+        "type": "NominalFilterValue[]",
         "description": "Attribute values matched by exact equality.",
         "required": true
       },

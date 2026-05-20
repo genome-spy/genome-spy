@@ -679,7 +679,9 @@
         },
         "values": {
           "description": "Attribute values matched by exact equality.",
-          "items": {},
+          "items": {
+            "$ref": "#/definitions/NominalFilterValue"
+          },
           "type": "array"
         }
       },
@@ -1050,6 +1052,17 @@
       },
       "required": ["or"],
       "type": "object"
+    },
+    "NominalFilterValue": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Scalar"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Exact categorical value used by nominal sample filters."
     },
     "NumericDomain": {
       "items": {
