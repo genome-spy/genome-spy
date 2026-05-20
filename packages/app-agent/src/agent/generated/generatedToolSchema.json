@@ -28,16 +28,6 @@
       "required": ["columnIds"],
       "type": "object"
     },
-    "AgentAttributeCandidate": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/SampleAttributeIdentifier"
-        },
-        {
-          "$ref": "#/definitions/SelectionAggregationCandidate"
-        }
-      ]
-    },
     "AgentChromosomalLocus": {
       "additionalProperties": false,
       "properties": {
@@ -404,6 +394,9 @@
         }
       ]
     },
+    "AttributeSummaryCandidate": {
+      "$ref": "#/definitions/UnfilteredAgentAttributeCandidate"
+    },
     "AttributeSummaryScope": {
       "enum": ["visible_samples", "visible_groups"],
       "type": "string"
@@ -737,7 +730,7 @@
       ],
       "properties": {
         "attribute": {
-          "$ref": "#/definitions/AgentAttributeCandidate",
+          "$ref": "#/definitions/AttributeSummaryCandidate",
           "description": "Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for sample metadata attributes from context. Use `SELECTION_AGGREGATION` for selection-derived candidates from `selectionAggregation.fields`."
         },
         "scope": {
@@ -1365,7 +1358,7 @@
       "description": "Expanded point selection value stored in provenance."
     },
     "PlotAttributeIdentifier": {
-      "$ref": "#/definitions/AgentAttributeCandidate"
+      "$ref": "#/definitions/UnfilteredAgentAttributeCandidate"
     },
     "PointExpandOrigin": {
       "additionalProperties": false,
@@ -1916,25 +1909,6 @@
       "required": ["selector", "query", "field", "mode"],
       "type": "object"
     },
-    "SelectionAggregationCandidate": {
-      "additionalProperties": false,
-      "properties": {
-        "aggregation": {
-          "$ref": "#/definitions/AggregationOp",
-          "description": "Aggregation applied within the selected interval separately for each sample. This cannot be used to aggregate across samples or groups."
-        },
-        "candidateId": {
-          "description": "Exact candidate id copied from `selectionAggregation.fields`. Do not construct this from parameter, view, or field names.",
-          "type": "string"
-        },
-        "type": {
-          "const": "SELECTION_AGGREGATION",
-          "type": "string"
-        }
-      },
-      "required": ["type", "candidateId", "aggregation"],
-      "type": "object"
-    },
     "SelectionDomainRef": {
       "additionalProperties": false,
       "properties": {
@@ -2270,6 +2244,35 @@
       "enum": ["lt", "lte"],
       "type": "string"
     },
+    "UnfilteredAgentAttributeCandidate": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SampleAttributeIdentifier"
+        },
+        {
+          "$ref": "#/definitions/UnfilteredSelectionAggregationCandidate"
+        }
+      ]
+    },
+    "UnfilteredSelectionAggregationCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "$ref": "#/definitions/AggregationOp",
+          "description": "Aggregation applied within the selected interval separately for each sample. This cannot be used to aggregate across samples or groups."
+        },
+        "candidateId": {
+          "description": "Exact candidate id copied from `selectionAggregation.fields`. Do not construct this from parameter, view, or field names.",
+          "type": "string"
+        },
+        "type": {
+          "const": "SELECTION_AGGREGATION",
+          "type": "string"
+        }
+      },
+      "required": ["type", "candidateId", "aggregation"],
+      "type": "object"
+    },
     "UrlGenomeDefinition": {
       "additionalProperties": false,
       "properties": {
@@ -2379,6 +2382,29 @@
         }
       },
       "required": ["scaleName", "domain"],
+      "type": "object"
+    },
+    "SelectionAggregationCandidate": {
+      "additionalProperties": false,
+      "properties": {
+        "aggregation": {
+          "$ref": "#/definitions/AggregationOp",
+          "description": "Aggregation applied within the selected interval separately for each sample. This cannot be used to aggregate across samples or groups."
+        },
+        "candidateId": {
+          "description": "Exact candidate id copied from `selectionAggregation.fields`. Do not construct this from parameter, view, or field names.",
+          "type": "string"
+        },
+        "type": {
+          "const": "SELECTION_AGGREGATION",
+          "type": "string"
+        },
+        "featureFilter": {
+          "$ref": "#/definitions/FeatureFilter",
+          "description": "Optional raw-feature predicate applied inside the selected interval before per-sample aggregation. Use one field copied from the candidate's `filterableFields`; call `getSelectionFeatureFieldSummary` first if exact categorical values or numeric bounds are needed."
+        }
+      },
+      "required": ["type", "candidateId", "aggregation"],
       "type": "object"
     }
   }

@@ -6,7 +6,6 @@ import { repairJsonEncodedObjects } from "./schemaJsonRepair.js";
 import {
     createActionSchemaWrapper,
     createAgentActionSchemaWrapper,
-    getAgentActionPayloadSchema,
     getActionPayloadSchema,
     getAgentActionSchemaDefinitions,
     stepVariants,
@@ -77,14 +76,18 @@ const agentPayloadValidatorsByActionType = new Map(
         return [
             actionType,
             ajv.compile(
-                createAgentActionSchemaWrapper(
-                    getAgentActionPayloadSchema(actionType) ??
-                        entry.properties.payload
-                )
+                createAgentActionSchemaWrapper(entry.properties.payload)
             ),
         ];
     })
 );
+
+const filteredSelectionAggregationWorkflowHint =
+    " filters raw features before interval aggregation. GenomeSpy's current UI " +
+    "can only apply filtered selection aggregations by first materializing " +
+    "them as sample metadata. Use sampleView/deriveMetadata with this " +
+    "filtered SELECTION_AGGREGATION, wait for refreshed context, then use " +
+    "the derived SAMPLE_ATTRIBUTE in the requested action.";
 
 // Param changes have deep discriminated unions in the generated schema. These
 // smaller validators support clearer, path-specific rejection messages below.
@@ -251,8 +254,7 @@ export function validateAgentActionPayloadShape(
         return {
             ok: false,
             errors: unsupportedFeatureFilterPaths.map(
-                (path) =>
-                    path + " is only supported by sampleView/deriveMetadata."
+                (path) => path + filteredSelectionAggregationWorkflowHint
             ),
         };
     }

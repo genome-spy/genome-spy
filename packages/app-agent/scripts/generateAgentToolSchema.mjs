@@ -37,10 +37,23 @@ function relaxAgentAttributeIdentifiers(schema) {
     const definitions = schema.definitions;
     if (
         !definitions?.AttributeIdentifier ||
-        !definitions?.SelectionAggregationCandidate
+        !definitions?.UnfilteredSelectionAggregationCandidate ||
+        !definitions?.FeatureFilter
     ) {
         return schema;
     }
+
+    definitions.SelectionAggregationCandidate = {
+        ...definitions.UnfilteredSelectionAggregationCandidate,
+        properties: {
+            ...definitions.UnfilteredSelectionAggregationCandidate.properties,
+            featureFilter: {
+                $ref: "#/definitions/FeatureFilter",
+                description:
+                    "Optional raw-feature predicate applied inside the selected interval before per-sample aggregation. Use one field copied from the candidate's `filterableFields`; call `getSelectionFeatureFieldSummary` first if exact categorical values or numeric bounds are needed.",
+            },
+        },
+    };
 
     definitions.AttributeIdentifier = {
         anyOf: [

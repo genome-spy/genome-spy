@@ -120,9 +120,10 @@ describe("actionShapeValidator", () => {
         });
 
         expect(result.ok).toBe(false);
-        expect(result.errors).toContain(
-            "$.attribute.featureFilter is only supported by sampleView/deriveMetadata."
-        );
+        expect(result.errors[0]).toContain("$.attribute.featureFilter");
+        expect(result.errors[0]).toContain("GenomeSpy's current UI");
+        expect(result.errors[0]).toContain("sampleView/deriveMetadata");
+        expect(result.errors[0]).toContain("derived SAMPLE_ATTRIBUTE");
     });
 
     it("accepts feature filters on deriveMetadata selection aggregation attributes", () => {
@@ -144,6 +145,37 @@ describe("actionShapeValidator", () => {
         );
 
         expect(result.ok).toBe(true);
+    });
+
+    it("rejects feature filters in nested non-deriveMetadata action attributes", () => {
+        const result = validateAgentActionPayloadShape(
+            "sampleView/retainCategoriesByAttribute",
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+                condition: {
+                    attribute: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "brush@mutations:Func",
+                        aggregation: "count",
+                        featureFilter: {
+                            field: "functionalCategory",
+                            operator: "eq",
+                            value: "stopgain",
+                        },
+                    },
+                    operator: "gt",
+                    operand: 0,
+                },
+            }
+        );
+
+        expect(result.ok).toBe(false);
+        expect(result.errors[0]).toContain(
+            "$.condition.attribute.featureFilter"
+        );
     });
 
     it("rejects hand-written value-at-locus attributes in agent-facing action payloads", () => {

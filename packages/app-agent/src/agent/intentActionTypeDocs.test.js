@@ -22,28 +22,32 @@ describe("intentActionTypeDocs", () => {
         );
         expect(
             JSON.stringify(docs.definitions.SelectionAggregationCandidate)
-        ).not.toContain("featureFilter");
+        ).toContain("featureFilter");
+        expect(docs.examples).toContainEqual({
+            type: "SELECTION_AGGREGATION",
+            candidateId: "brush@mutations:VAF",
+            aggregation: "count",
+            featureFilter: {
+                field: "functionalCategory",
+                operator: "eq",
+                value: "stopgain",
+            },
+        });
         expect(docs.notes.join(" ")).toContain("selectionAggregation.fields");
+        expect(docs.notes.join(" ")).toContain(
+            "featureFilter is executable only through deriveMetadata"
+        );
     });
 
-    it("returns filtered attribute docs only for deriveMetadata attributes", () => {
+    it("keeps deriveMetadata on the shared AttributeIdentifier docs", () => {
         const deriveMetadata = getActionCatalogEntry(
             "sampleView/deriveMetadata"
         );
         const attributeField = deriveMetadata.payloadFields.find(
             (field) => field.name === "attribute"
         );
-        const docs = getIntentActionTypeDocs({
-            typeName: attributeField.type,
-            referenceDepth: 1,
-        });
 
-        expect(attributeField.type).toBe("DeriveMetadataAttributeIdentifier");
-        expect(
-            JSON.stringify(
-                docs.definitions.DeriveMetadataSelectionAggregationCandidate
-            )
-        ).toContain("featureFilter");
+        expect(attributeField.type).toBe("AttributeIdentifier");
     });
 
     it("returns enum docs for ComparisonOperatorType", () => {

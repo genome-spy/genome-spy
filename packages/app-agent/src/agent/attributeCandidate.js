@@ -9,7 +9,7 @@ import { ToolCallRejectionError } from "./agentToolErrors.js";
  *     getAgentVolatileContext(): import("./types.d.ts").AgentVolatileContext;
  *     agentApi?: Pick<import("@genome-spy/app/agentApi").AgentApi, "materializeAttributeIdentifier">;
  * }} runtime
- * @param {import("./agentToolInputs.d.ts").AgentAttributeCandidate | import("./agentToolInputs.d.ts").DeriveMetadataAttributeIdentifier} candidate
+ * @param {import("./agentToolInputs.d.ts").AgentAttributeCandidate} candidate
  * @returns {import("@genome-spy/app/agentShared").AttributeIdentifier}
  */
 export function resolveAgentAttributeCandidate(runtime, candidate) {
@@ -24,9 +24,9 @@ export function resolveAgentAttributeCandidate(runtime, candidate) {
  *     getAgentVolatileContext(): import("./types.d.ts").AgentVolatileContext;
  *     agentApi?: Pick<import("@genome-spy/app/agentApi").AgentApi, "materializeAttributeIdentifier">;
  * }} runtime
- * @param {import("./agentToolInputs.d.ts").AgentAttributeCandidate | import("./agentToolInputs.d.ts").DeriveMetadataAttributeIdentifier} candidate
+ * @param {import("./agentToolInputs.d.ts").AgentAttributeCandidate} candidate
  * @returns {{
- *     input: import("./agentToolInputs.d.ts").AgentAttributeCandidate | import("./agentToolInputs.d.ts").DeriveMetadataAttributeIdentifier;
+ *     input: import("./agentToolInputs.d.ts").AgentAttributeCandidate;
  *     normalized: import("@genome-spy/app/agentShared").AttributeIdentifier;
  *     plotAttribute: import("@genome-spy/app/agentShared").AttributeIdentifier;
  * }}

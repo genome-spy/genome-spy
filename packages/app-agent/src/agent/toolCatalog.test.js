@@ -304,17 +304,19 @@ describe("toolCatalog", () => {
         ).not.toContain("domainAtActionTime");
     });
 
-    it("does not expose feature filters in plotting tool attribute schemas", () => {
-        const plottingToolNames = new Set([
+    it("does not expose feature filters in direct attribute tool schemas", () => {
+        const directAttributeToolNames = new Set([
+            "getAttributeSummary",
             "showCategoryCountsPlot",
             "showAttributeDistributionPlot",
             "showAttributeRelationshipPlot",
         ]);
-        const plottingToolDefinitions = buildResponsesToolDefinitions().filter(
-            (tool) => plottingToolNames.has(tool.name)
-        );
+        const directAttributeToolDefinitions =
+            buildResponsesToolDefinitions().filter((tool) =>
+                directAttributeToolNames.has(tool.name)
+            );
 
-        expect(JSON.stringify(plottingToolDefinitions)).not.toContain(
+        expect(JSON.stringify(directAttributeToolDefinitions)).not.toContain(
             "featureFilter"
         );
     });

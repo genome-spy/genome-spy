@@ -379,22 +379,6 @@ function normalizeActionUsage(text) {
  * @param {PayloadFieldDoc[]} fields
  * @returns {PayloadFieldDoc[]}
  */
-function projectAgentPayloadFields(actionType, fields) {
-    if (actionType !== "sampleView/deriveMetadata") {
-        return fields;
-    }
-
-    return fields.map((field) =>
-        field.name === "attribute" && field.type === "AttributeIdentifier"
-            ? {
-                  ...field,
-                  type: "DeriveMetadataAttributeIdentifier",
-                  typeRefs: ["DeriveMetadataAttributeIdentifier"],
-              }
-            : field
-    );
-}
-
 /**
  * @param {string} actionType
  * @param {string} localActionName
@@ -422,10 +406,7 @@ function buildEntry(actionType, localActionName, node, payloadTypeDocs) {
         description: normalizeActionDescription(summary),
         usage: normalizeActionUsage(summary),
         payloadType,
-        payloadFields: projectAgentPayloadFields(
-            actionType,
-            payloadTypeDoc.fields
-        ),
+        payloadFields: payloadTypeDoc.fields,
         examplePayload,
         examples,
     };

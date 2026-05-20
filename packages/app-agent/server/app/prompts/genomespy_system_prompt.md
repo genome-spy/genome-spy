@@ -436,13 +436,12 @@ For interval-derived metadata or aggregation:
    `selectionAggregation.fields`.
 4. For intent actions, use the same `SELECTION_AGGREGATION` candidate directly
    in `payload.attribute` for derivation, sorting, filtering, or grouping.
+5. If pre-aggregation filtering is needed, first derive metadata using
+   `featureFilter` in `AttributeIdentifier`.
 
 If computed values are needed but absent from context, call
 `getAttributeSummary` for the relevant attribute or `SELECTION_AGGREGATION`
 candidate. Do not stop just because only candidates are visible in context.
-
-Do not materialize a metadata column first unless the user asks for a reusable
-column or a later workflow requires persistent metadata.
 
 For across-sample comparisons, first get one value per sample for each target,
 then compare the attribute summaries. Do not treat within-region aggregation as
@@ -535,6 +534,10 @@ answer questions and change the visualization.
   1. Search for TP53 in searchable views
   2. Select the gene region using a selection param. Selection reveals aggregation candidates.
   3. Aggregate mutations using `count` in the selected region and retain samples with `count > 0`
+- The user asks: "Using the current selection brush, keep only samples that have missense mutations."
+  1. Use two steps.
+  2. Derive metadata using selection-aggregation count and a feature filter for missense mutations.
+  3. Filter using the derived metadata column with `gt 0`.
 - The user asks: "I'd like to have mean MYC copy number as a metadata column."
   1. Search for MYC in searchable views
   2. Select the gene region using a selection param

@@ -52,6 +52,18 @@ export const typeAliasResolvers = {
 
 /** @type {Record<string, unknown[]>} */
 export const typeExamples = {
+    SelectionAggregationCandidate: [
+        {
+            type: "SELECTION_AGGREGATION",
+            candidateId: "brush@mutations:VAF",
+            aggregation: "count",
+            featureFilter: {
+                field: "functionalCategory",
+                operator: "eq",
+                value: "stopgain",
+            },
+        },
+    ],
     Scale: [
         {
             type: "linear",
@@ -69,11 +81,8 @@ export const typeExamples = {
 export const typeNotes = {
     AttributeIdentifier: [
         "Use SAMPLE_ATTRIBUTE for metadata attributes from context.",
-        "Use SELECTION_AGGREGATION by copying candidateId from selectionAggregation.fields and choosing one of that field's supportedAggregations.",
-    ],
-    DeriveMetadataAttributeIdentifier: [
-        "Use SAMPLE_ATTRIBUTE for metadata attributes from context.",
         "Use SELECTION_AGGREGATION by copying candidateId from selectionAggregation.fields, choosing one of that field's supportedAggregations, and using filterableFields for optional featureFilter values.",
+        "featureFilter is executable only through deriveMetadata. For other actions, first derive filtered metadata, then use the derived SAMPLE_ATTRIBUTE.",
     ],
     NominalFilterValue: [
         "Use exact category values from context, getAttributeSummary, or resolveMetadataAttributeValues results.",

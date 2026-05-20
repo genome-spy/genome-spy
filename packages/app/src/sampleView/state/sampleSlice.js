@@ -272,6 +272,9 @@ export const sampleSlice = createSlice({
          * Use this when an existing attribute should be materialized as sample
          * metadata under a new column name. For selection-derived values, use
          * a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`.
+         * Call `getIntentActionTypeDocs` for `AttributeIdentifier` if raw
+         * features inside the selected interval should be filtered before
+         * aggregation.
          *
          * @agent.payloadType DeriveMetadata
          * @agent.category metadata
@@ -452,6 +455,10 @@ export const sampleSlice = createSlice({
          * be retained if related samples match a quantitative or categorical
          * condition. This is like
          * `WHERE patient_id IN (SELECT patient_id FROM samples WHERE TP53_mutation_count > 0)`.
+         * If the condition depends on filtering raw features inside a
+         * selection, first use `deriveMetadata` to create that filtered
+         * per-sample attribute. Then use this action only if all samples from
+         * matching category values should be retained.
          *
          * Quantitative conditions compare the condition attribute to a numeric
          * operand. Categorical conditions use `operator: "in"` with `values`.

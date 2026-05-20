@@ -45,13 +45,13 @@
   {
     "actionType": "sampleView/deriveMetadata",
     "description": "Add a derived metadata column from a selected or aggregated attribute.",
-    "usage": "Use this when an existing attribute should be materialized as sample metadata under a new column name. For selection-derived values, use a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`.",
+    "usage": "Use this when an existing attribute should be materialized as sample metadata under a new column name. For selection-derived values, use a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`. Call `getIntentActionTypeDocs` for `AttributeIdentifier` if raw features inside the selected interval should be filtered before aggregation.",
     "payloadType": "DeriveMetadata",
     "payloadFields": [
       {
         "name": "attribute",
-        "type": "DeriveMetadataAttributeIdentifier",
-        "typeRefs": ["DeriveMetadataAttributeIdentifier"],
+        "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       },
@@ -284,7 +284,7 @@
   {
     "actionType": "sampleView/retainCategoriesByAttribute",
     "description": "Retain all samples from category values that have matching samples according to a condition on another attribute.",
-    "usage": "Use this when a categorical attribute links related samples, such as multiple samples from the same patient, and the whole category should be retained if related samples match a quantitative or categorical condition. This is like `WHERE patient_id IN (SELECT patient_id FROM samples WHERE TP53_mutation_count > 0)`. Quantitative conditions compare the condition attribute to a numeric operand. Categorical conditions use `operator: \"in\"` with `values`. With categorical conditions, `required: \"any\"` keeps categories with at least one selected condition value and `required: \"all\"` requires every selected condition value to occur in the category.",
+    "usage": "Use this when a categorical attribute links related samples, such as multiple samples from the same patient, and the whole category should be retained if related samples match a quantitative or categorical condition. This is like `WHERE patient_id IN (SELECT patient_id FROM samples WHERE TP53_mutation_count > 0)`. If the condition depends on filtering raw features inside a selection, first use `deriveMetadata` to create that filtered per-sample attribute. Then use this action only if all samples from matching category values should be retained. Quantitative conditions compare the condition attribute to a numeric operand. Categorical conditions use `operator: \"in\"` with `values`. With categorical conditions, `required: \"any\"` keeps categories with at least one selected condition value and `required: \"all\"` requires every selected condition value to occur in the category.",
     "payloadType": "RetainCategoriesByAttribute",
     "payloadFields": [
       {

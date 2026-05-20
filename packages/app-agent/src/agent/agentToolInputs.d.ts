@@ -33,29 +33,32 @@ type SelectionAggregationCandidate = {
      * sample. This cannot be used to aggregate across samples or groups.
      */
     aggregation: AggregationOp;
+
+    /**
+     * Optional raw-feature predicate applied inside the selected interval
+     * before per-sample aggregation. Use one field copied from the candidate's
+     * `filterableFields`; call `getSelectionFeatureFieldSummary` first if
+     * exact categorical values or numeric bounds are needed.
+     */
+    featureFilter?: FeatureFilter;
 };
 
-type DeriveMetadataSelectionAggregationCandidate =
-    SelectionAggregationCandidate & {
-        /**
-         * Optional raw-feature predicate applied inside the selected interval
-         * before per-sample aggregation. Use one field copied from the
-         * candidate's `filterableFields`; call
-         * `getSelectionFeatureFieldSummary` first if exact categorical values
-         * or numeric bounds are needed.
-         */
-        featureFilter?: FeatureFilter;
-    };
-
-export type DeriveMetadataAttributeIdentifier =
-    | SampleAttributeIdentifier
-    | DeriveMetadataSelectionAggregationCandidate;
+type UnfilteredSelectionAggregationCandidate = Omit<
+    SelectionAggregationCandidate,
+    "featureFilter"
+>;
 
 export type AgentAttributeCandidate =
     | SampleAttributeIdentifier
     | SelectionAggregationCandidate;
 
-export type PlotAttributeIdentifier = AgentAttributeCandidate;
+type UnfilteredAgentAttributeCandidate =
+    | SampleAttributeIdentifier
+    | UnfilteredSelectionAggregationCandidate;
+
+export type PlotAttributeIdentifier = UnfilteredAgentAttributeCandidate;
+
+type AttributeSummaryCandidate = UnfilteredAgentAttributeCandidate;
 
 type IntentActionType = AgentIntentBatchStep["actionType"];
 type AttributeSummaryScope = "visible_samples" | "visible_groups";
@@ -184,7 +187,7 @@ export interface GetAttributeSummaryToolInput {
      * metadata attributes from context. Use `SELECTION_AGGREGATION` for
      * selection-derived candidates from `selectionAggregation.fields`.
      */
-    attribute: AgentAttributeCandidate;
+    attribute: AttributeSummaryCandidate;
 
     /**
      * Summary scope. Use `visible_samples` for a pooled summary across the
