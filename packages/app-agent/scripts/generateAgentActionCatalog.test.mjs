@@ -27,4 +27,41 @@ describe("generateAgentActionCatalog", () => {
 
         expect(actual).toBe(expected);
     });
+
+    it("generates queryable type references for action payload fields", async () => {
+        const catalog = await createGeneratedActionCatalog();
+
+        const sortBy = catalog.find(
+            (entry) => entry.actionType === "sampleView/sortBy"
+        );
+        expect(sortBy.payloadFields).toContainEqual(
+            expect.objectContaining({
+                name: "attribute",
+                type: "AttributeIdentifier",
+                typeRefs: ["AttributeIdentifier"],
+            })
+        );
+
+        const deriveMetadata = catalog.find(
+            (entry) => entry.actionType === "sampleView/deriveMetadata"
+        );
+        expect(deriveMetadata.payloadFields).toContainEqual(
+            expect.objectContaining({
+                name: "scale",
+                type: 'SampleAttributeDef["scale"] | null',
+                typeRefs: ["Scale"],
+            })
+        );
+
+        const groupByThresholds = catalog.find(
+            (entry) => entry.actionType === "sampleView/groupByThresholds"
+        );
+        expect(groupByThresholds.payloadFields).toContainEqual(
+            expect.objectContaining({
+                name: "thresholds",
+                type: "[Threshold, ...Threshold[]]",
+                typeRefs: ["Threshold"],
+            })
+        );
+    });
 });

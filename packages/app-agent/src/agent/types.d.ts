@@ -69,6 +69,14 @@ export interface AgentPayloadField {
     /** Human-readable type description used in docs and schemas. */
     type: string;
 
+    /**
+     * Queryable type names referenced by `type`.
+     *
+     * Primitive display types have an empty array. Wrapper expressions such as
+     * `[Threshold, ...Threshold[]]` reference their inner named types.
+     */
+    typeRefs: string[];
+
     /** Short description of the field's meaning. */
     description: string;
 

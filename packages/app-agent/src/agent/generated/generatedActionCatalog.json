@@ -8,18 +8,21 @@
       {
         "name": "columnarMetadata",
         "type": "ColumnarMetadata",
+        "typeRefs": ["ColumnarMetadata"],
         "description": "Metadata encoded in columnar form, aligned to the sample order.",
         "required": true
       },
       {
         "name": "attributeDefs",
         "type": "Record<AttributeName, SampleAttributeDef>",
+        "typeRefs": ["SampleAttributeDef"],
         "description": "Optional attribute definitions for the incoming metadata columns. Use this to preserve attribute types, titles, scales, or other metadata settings instead of relying on inference.",
         "required": false
       },
       {
         "name": "replace",
         "type": "boolean",
+        "typeRefs": [],
         "description": "Whether to replace the current metadata set. If `true`, only the provided columns remain. If omitted or `false`, the provided columns are merged into the existing metadata.",
         "required": false
       }
@@ -48,24 +51,28 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       },
       {
         "name": "name",
         "type": "string",
+        "typeRefs": [],
         "description": "Name of the derived metadata column. This becomes the leaf attribute name written into metadata. Prefer a short user-facing name.",
         "required": true
       },
       {
         "name": "groupPath",
         "type": "string",
+        "typeRefs": [],
         "description": "Optional metadata group path for the derived column. When provided, the resulting attribute is written under `groupPath/name`.",
         "required": false
       },
       {
         "name": "scale",
         "type": "SampleAttributeDef[\"scale\"] | null",
+        "typeRefs": ["Scale"],
         "description": "If omitted, derived metadata may inherit an authored source scale when the aggregation preserves the source value domain. Use `null` to force automatic scale inference without inheritance.",
         "required": false
       }
@@ -96,24 +103,28 @@
       {
         "name": "sourceId",
         "type": "string",
+        "typeRefs": [],
         "description": "Configured metadata source to read from. Omit this only when exactly one source is available.",
         "required": false
       },
       {
         "name": "columnIds",
         "type": "string[]",
+        "typeRefs": [],
         "description": "Column ids to import from the selected source.",
         "required": true
       },
       {
         "name": "groupPath",
         "type": "string",
+        "typeRefs": [],
         "description": "Optional metadata group path override for the imported columns.",
         "required": false
       },
       {
         "name": "replace",
         "type": "boolean",
+        "typeRefs": [],
         "description": "Whether to replace the current metadata set. If `true`, only the imported columns remain. If omitted or `false`, the imported columns are merged into the existing metadata.",
         "required": false
       }
@@ -136,6 +147,7 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       }
@@ -164,6 +176,7 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       }
@@ -192,12 +205,14 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       },
       {
         "name": "n",
         "type": "number",
+        "typeRefs": [],
         "description": "Maximum number of distinct categories to retain. Categories are taken in first-seen order within each current group.",
         "required": true
       }
@@ -228,18 +243,21 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       },
       {
         "name": "operator",
         "type": "ComparisonOperatorType",
+        "typeRefs": ["ComparisonOperatorType"],
         "description": "Comparison applied as `attributeValue operator operand`.",
         "required": true
       },
       {
         "name": "operand",
         "type": "number",
+        "typeRefs": [],
         "description": "Numeric value on the right-hand side of the comparison.",
         "required": true
       }
@@ -272,12 +290,14 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Categorical attribute whose categories are retained. All samples with a retained category value are kept.",
         "required": true
       },
       {
         "name": "condition",
         "type": "AttributeCondition",
+        "typeRefs": ["AttributeCondition"],
         "description": "Per-sample condition used to decide which values of `attribute` are retained. A value of `attribute` is retained when at least one sample with that value satisfies this condition. All samples with retained `attribute` values are kept.",
         "required": true
       }
@@ -337,18 +357,21 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       },
       {
         "name": "values",
         "type": "NominalFilterValue[]",
+        "typeRefs": ["NominalFilterValue"],
         "description": "Attribute values matched by exact equality.",
         "required": true
       },
       {
         "name": "remove",
         "type": "boolean",
+        "typeRefs": [],
         "description": "Whether to remove matching samples instead of retaining them. If omitted or `false`, only matching samples are kept.",
         "required": false
       }
@@ -379,6 +402,7 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       }
@@ -407,12 +431,14 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       },
       {
         "name": "groups",
         "type": "CustomGroups",
+        "typeRefs": ["CustomGroups"],
         "description": "Mapping from output group name to attribute values assigned to that group. Samples whose value is not listed in any group are omitted from the grouped result.",
         "required": true
       }
@@ -449,6 +475,7 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       }
@@ -477,6 +504,7 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       }
@@ -505,12 +533,14 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       },
       {
         "name": "thresholds",
         "type": "[Threshold, ...Threshold[]]",
+        "typeRefs": ["Threshold"],
         "description": "Thresholds used to stratify the samples. Supply these in ascending operand order. Adjacent thresholds define the output intervals.",
         "required": true
       }
@@ -559,6 +589,7 @@
       {
         "name": "path",
         "type": "string[]",
+        "typeRefs": [],
         "description": "Group names from outermost to innermost, excluding the implicit ROOT.",
         "required": true
       }
@@ -581,6 +612,7 @@
       {
         "name": "attribute",
         "type": "AttributeIdentifier",
+        "typeRefs": ["AttributeIdentifier"],
         "description": "Attribute whose values must be present in every current non-empty group.",
         "required": true
       }
@@ -609,18 +641,21 @@
       {
         "name": "selector",
         "type": "ParamSelector",
+        "typeRefs": ["ParamSelector"],
         "description": "Structured selector for the parameter.",
         "required": true
       },
       {
         "name": "value",
         "type": "ParamValue",
+        "typeRefs": ["ParamValue"],
         "description": "Serialized parameter value.",
         "required": true
       },
       {
         "name": "origin",
         "type": "ParamOrigin",
+        "typeRefs": ["ParamOrigin"],
         "description": "Optional datum origin for replayable values.",
         "required": false
       }
