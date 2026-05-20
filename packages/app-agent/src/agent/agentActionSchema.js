@@ -90,7 +90,7 @@ export const typeExamples = {
 export const typeNotes = {
     AttributeIdentifier: [
         "Use SAMPLE_ATTRIBUTE for metadata attributes from context.",
-        "Use SELECTION_AGGREGATION only by copying a candidate from selectionAggregation.fields.",
+        "Use SELECTION_AGGREGATION by copying candidateId from selectionAggregation.fields, choosing one of that field's supportedAggregations, and using filterableFields for optional featureFilter values.",
     ],
     NominalFilterValue: [
         "Use exact category values from context, getAttributeSummary, or resolveMetadataAttributeValues results.",

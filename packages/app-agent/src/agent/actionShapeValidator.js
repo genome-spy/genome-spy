@@ -223,7 +223,7 @@ export function validateAgentActionPayloadShape(
             errors: internalAttributePaths.map(
                 (path) =>
                     path +
-                    " uses internal VALUE_AT_LOCUS syntax. Use a SAMPLE_ATTRIBUTE from context or a SELECTION_AGGREGATION candidate copied from selectionAggregation.fields."
+                    " uses internal VALUE_AT_LOCUS syntax. Use a SAMPLE_ATTRIBUTE from context or a SELECTION_AGGREGATION attribute with candidateId copied from selectionAggregation.fields."
             ),
         };
     }
