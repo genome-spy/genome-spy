@@ -221,7 +221,7 @@ export const agentTools = {
             actionType: entry.actionType,
             description: entry.description,
             ...(entry.usage ? { usage: entry.usage } : {}),
-            payloadFields: entry.payloadFields,
+            payloadFields: entry.payloadFields.map(projectPayloadFieldDoc),
             examples: entry.examples,
             referencedTypes: getReferencedPayloadFieldTypes(
                 entry.payloadFields
@@ -342,6 +342,19 @@ function getReferencedPayloadFieldTypes(payloadFields) {
     return Array.from(
         new Set(payloadFields.flatMap((field) => field.typeRefs))
     );
+}
+
+/**
+ * @param {import("./types.d.ts").AgentActionPayloadField} field
+ * @returns {import("./types.d.ts").AgentPayloadField}
+ */
+function projectPayloadFieldDoc(field) {
+    return {
+        name: field.name,
+        type: field.type,
+        description: field.description,
+        required: field.required,
+    };
 }
 
 /**

@@ -371,6 +371,7 @@ describe("agentTools", () => {
         );
         expect(result.content).not.toHaveProperty("payloadType");
         expect(result.content).not.toHaveProperty("schema");
+        expect(result.content.payloadFields[0]).not.toHaveProperty("typeRefs");
         expect(result.content.referencedTypes).toEqual(["AttributeIdentifier"]);
     });
 
