@@ -210,17 +210,34 @@
         "type": "IntentActionType",
         "description": "Intent action type whose docs should be read.",
         "required": true
+      }
+    ],
+    "exampleInput": {
+      "actionType": "sampleView/groupToQuartiles"
+    },
+    "strict": true
+  },
+  {
+    "toolName": "getIntentActionTypeDocs",
+    "description": "Read schema and usage details for one intent action payload field type.",
+    "inputType": "GetIntentActionTypeDocsToolInput",
+    "inputFields": [
+      {
+        "name": "typeName",
+        "type": "string",
+        "description": "Type copied from an action `payloadFields[].type` value or from a previous action type docs response's `referencedTypes`.",
+        "required": true
       },
       {
-        "name": "includeSchema",
-        "type": "boolean",
-        "description": "Whether to include a compact self-contained schema bundle for the action payload and referenced complex field types. The default response is more compact and usually sufficient.",
+        "name": "referenceDepth",
+        "type": "0 | 1",
+        "description": "How far to include referenced definitions. Use `0` for only the requested type and `1` for immediate referenced types.",
         "required": false
       }
     ],
     "exampleInput": {
-      "actionType": "sampleView/groupToQuartiles",
-      "includeSchema": false
+      "typeName": "AttributeIdentifier",
+      "referenceDepth": 1
     },
     "strict": true
   },
