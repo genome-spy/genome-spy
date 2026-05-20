@@ -252,6 +252,15 @@ describe("toolCatalog", () => {
         );
     });
 
+    it("suggests schema docs after malformed submitIntentAction arguments", () => {
+        const message = formatToolCallRejection("submitIntentAction", [
+            "$.action.payload.attribute.type must be equal to one of the allowed values.",
+        ]);
+
+        expect(message).toContain("getIntentActionDocs");
+        expect(message).toContain("includeSchema: true");
+    });
+
     it("keeps string values as strings when a tool schema expects a string", () => {
         const toolArguments = {
             query: '{"type":"SAMPLE_ATTRIBUTE","specifier":"mutations"}',

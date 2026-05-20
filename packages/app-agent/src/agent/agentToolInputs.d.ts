@@ -290,8 +290,9 @@ export interface GetIntentActionDocsToolInput {
     actionType: IntentActionType;
 
     /**
-     * Whether to include the raw payload schema. The default response is more
-     * compact and usually sufficient.
+     * Whether to include a compact self-contained schema bundle for the
+     * action payload and referenced complex field types. The default response
+     * is more compact and usually sufficient.
      */
     includeSchema?: boolean;
 }

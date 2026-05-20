@@ -4,7 +4,7 @@ import { getSelectionFeatureFieldSummaryTool } from "./selectionFeatureFieldSumm
 import { resolveMetadataAttributeValuesTool } from "./resolveMetadataAttributeValuesTool.js";
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
-import generatedActionSchema from "./generated/generatedActionSchema.json" with { type: "json" };
+import { getAgentActionPayloadSchemaBundle } from "./agentActionSchema.js";
 import { resolveAgentAttributeCandidateRecord } from "./attributeCandidate.js";
 import { normalizeAgentIntentActionAttributes } from "./agentIntentActionAttributes.js";
 
@@ -224,7 +224,7 @@ export const agentTools = {
             payloadFields: entry.payloadFields,
             examples: entry.examples,
             ...(input.includeSchema
-                ? { schema: getActionPayloadSchema(entry.actionType) }
+                ? { schema: getRequiredActionPayloadSchema(entry.actionType) }
                 : {}),
         };
 
@@ -318,20 +318,15 @@ export const agentTools = {
  * @param {import("./types.d.ts").AgentActionType} actionType
  * @returns {Record<string, any>}
  */
-function getActionPayloadSchema(actionType) {
-    const stepSchemas =
-        generatedActionSchema.definitions.AgentIntentBatchStep.anyOf;
-    const stepSchema = stepSchemas.find(
-        (schema) => schema.properties.actionType.const === actionType
-    );
-
-    if (!stepSchema) {
+function getRequiredActionPayloadSchema(actionType) {
+    const schema = getAgentActionPayloadSchemaBundle(actionType);
+    if (!schema) {
         throw new ToolCallRejectionError(
             "Missing generated schema for intent actionType " + actionType + "."
         );
     }
 
-    return stepSchema.properties.payload;
+    return schema;
 }
 
 /**

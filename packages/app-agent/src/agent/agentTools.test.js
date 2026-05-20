@@ -392,9 +392,79 @@ describe("agentTools", () => {
             includeSchema: true,
         });
 
-        expect(result.content.schema).toEqual({
+        expect(result.content.schema).toMatchObject({
+            $schema: "http://json-schema.org/draft-07/schema#",
             $ref: "#/definitions/SortBy",
+            definitions: {
+                SortBy: {
+                    properties: {
+                        attribute: {
+                            $ref: "#/definitions/AttributeIdentifier",
+                        },
+                    },
+                },
+                AttributeIdentifier: {
+                    anyOf: [
+                        { $ref: "#/definitions/SampleAttributeIdentifier" },
+                        {
+                            $ref: "#/definitions/SelectionAggregationCandidate",
+                        },
+                    ],
+                },
+                SampleAttributeIdentifier: {
+                    properties: {
+                        type: { const: "SAMPLE_ATTRIBUTE" },
+                        specifier: { type: "string" },
+                    },
+                },
+                SelectionAggregationCandidate: {
+                    properties: {
+                        type: { const: "SELECTION_AGGREGATION" },
+                        candidateId: { type: "string" },
+                    },
+                },
+            },
         });
+        expect(result.content.schema.definitions).not.toHaveProperty(
+            "AgentIntentBatch"
+        );
+        expect(result.content.schema.definitions).not.toHaveProperty("Scale");
+    });
+
+    it("keeps action payload schema docs from expanding fat shared spec definitions", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = tools.getIntentActionDocs(runtime, {
+            actionType: "sampleView/deriveMetadata",
+            includeSchema: true,
+        });
+
+        expect(result.content.schema.definitions).toMatchObject({
+            DeriveMetadata: {
+                properties: {
+                    scale: {
+                        anyOf: [
+                            {
+                                $ref: "#/definitions/Scale",
+                            },
+                            {
+                                type: "null",
+                            },
+                        ],
+                    },
+                },
+            },
+            Scale: {
+                type: "object",
+            },
+        });
+        expect(result.content.schema.definitions.Scale).not.toHaveProperty(
+            "properties"
+        );
+        expect(result.content.schema.definitions).not.toHaveProperty(
+            "InlineLocusAssembly"
+        );
     });
 
     it("shows relationship plots through the host API", async () => {
