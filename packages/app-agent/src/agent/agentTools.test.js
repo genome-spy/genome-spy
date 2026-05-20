@@ -370,6 +370,8 @@ describe("agentTools", () => {
             })
         );
         expect(result.content).not.toHaveProperty("payloadType");
+        expect(result.content).not.toHaveProperty("schema");
+        expect(result.content.referencedTypes).toEqual(["AttributeIdentifier"]);
     });
 
     it("rejects unknown intent action doc lookups", () => {
@@ -383,87 +385,20 @@ describe("agentTools", () => {
         ).toThrow(ToolCallRejectionError);
     });
 
-    it("optionally includes action payload schema in action docs", () => {
+    it("returns docs for an intent payload field type", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.getIntentActionDocs(runtime, {
-            actionType: "sampleView/sortBy",
-            includeSchema: true,
+        const result = tools.getIntentActionTypeDocs(runtime, {
+            typeName: "AttributeIdentifier",
+            referenceDepth: 1,
         });
 
-        expect(result.content.schema).toMatchObject({
-            $schema: "http://json-schema.org/draft-07/schema#",
-            $ref: "#/definitions/SortBy",
-            definitions: {
-                SortBy: {
-                    properties: {
-                        attribute: {
-                            $ref: "#/definitions/AttributeIdentifier",
-                        },
-                    },
-                },
-                AttributeIdentifier: {
-                    anyOf: [
-                        { $ref: "#/definitions/SampleAttributeIdentifier" },
-                        {
-                            $ref: "#/definitions/SelectionAggregationCandidate",
-                        },
-                    ],
-                },
-                SampleAttributeIdentifier: {
-                    properties: {
-                        type: { const: "SAMPLE_ATTRIBUTE" },
-                        specifier: { type: "string" },
-                    },
-                },
-                SelectionAggregationCandidate: {
-                    properties: {
-                        type: { const: "SELECTION_AGGREGATION" },
-                        candidateId: { type: "string" },
-                    },
-                },
-            },
-        });
-        expect(result.content.schema.definitions).not.toHaveProperty(
-            "AgentIntentBatch"
+        expect(result.text).toBe(
+            "Read docs for intent type AttributeIdentifier. No action was executed."
         );
-        expect(result.content.schema.definitions).not.toHaveProperty("Scale");
-    });
-
-    it("keeps action payload schema docs from expanding fat shared spec definitions", () => {
-        const runtime = createRuntimeStub();
-        const tools = agentTools;
-
-        const result = tools.getIntentActionDocs(runtime, {
-            actionType: "sampleView/deriveMetadata",
-            includeSchema: true,
-        });
-
-        expect(result.content.schema.definitions).toMatchObject({
-            DeriveMetadata: {
-                properties: {
-                    scale: {
-                        anyOf: [
-                            {
-                                $ref: "#/definitions/Scale",
-                            },
-                            {
-                                type: "null",
-                            },
-                        ],
-                    },
-                },
-            },
-            Scale: {
-                type: "object",
-            },
-        });
-        expect(result.content.schema.definitions.Scale).not.toHaveProperty(
-            "properties"
-        );
-        expect(result.content.schema.definitions).not.toHaveProperty(
-            "InlineLocusAssembly"
+        expect(result.content.definitions).toHaveProperty(
+            "SelectionAggregationCandidate"
         );
     });
 

@@ -4,7 +4,7 @@ import { getSelectionFeatureFieldSummaryTool } from "./selectionFeatureFieldSumm
 import { resolveMetadataAttributeValuesTool } from "./resolveMetadataAttributeValuesTool.js";
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
-import { getAgentActionPayloadSchemaBundle } from "./agentActionSchema.js";
+import { getIntentActionTypeDocs as getIntentActionTypeDocsContent } from "./intentActionTypeDocs.js";
 import { resolveAgentAttributeCandidateRecord } from "./attributeCandidate.js";
 import { normalizeAgentIntentActionAttributes } from "./agentIntentActionAttributes.js";
 
@@ -223,9 +223,9 @@ export const agentTools = {
             ...(entry.usage ? { usage: entry.usage } : {}),
             payloadFields: entry.payloadFields,
             examples: entry.examples,
-            ...(input.includeSchema
-                ? { schema: getRequiredActionPayloadSchema(entry.actionType) }
-                : {}),
+            referencedTypes: getReferencedPayloadFieldTypes(
+                entry.payloadFields
+            ),
         };
 
         return {
@@ -235,6 +235,26 @@ export const agentTools = {
                 ". No action was executed.",
             content,
         };
+    },
+
+    /**
+     * @param {AgentToolRuntime} _runtime
+     * @param {import("./agentToolInputs.d.ts").GetIntentActionTypeDocsToolInput} input
+     */
+    getIntentActionTypeDocs(_runtime, input) {
+        try {
+            return {
+                text:
+                    "Read docs for intent type " +
+                    input.typeName +
+                    ". No action was executed.",
+                content: getIntentActionTypeDocsContent(input),
+            };
+        } catch (error) {
+            throw new ToolCallRejectionError(
+                error instanceof Error ? error.message : String(error)
+            );
+        }
     },
 
     /**
@@ -315,18 +335,13 @@ export const agentTools = {
 };
 
 /**
- * @param {import("./types.d.ts").AgentActionType} actionType
- * @returns {Record<string, any>}
+ * @param {import("./types.d.ts").AgentPayloadField[]} payloadFields
+ * @returns {string[]}
  */
-function getRequiredActionPayloadSchema(actionType) {
-    const schema = getAgentActionPayloadSchemaBundle(actionType);
-    if (!schema) {
-        throw new ToolCallRejectionError(
-            "Missing generated schema for intent actionType " + actionType + "."
-        );
-    }
-
-    return schema;
+function getReferencedPayloadFieldTypes(payloadFields) {
+    return Array.from(
+        new Set(payloadFields.flatMap((field) => field.typeRefs))
+    );
 }
 
 /**
