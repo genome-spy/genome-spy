@@ -339,6 +339,10 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                     this.selectedValues = event.values;
                 }}
             ></gs-searchable-checkbox-list>
+            <small>
+                A feature matches when ${this.filterField} is any selected
+                value.
+            </small>
         `;
     }
 
