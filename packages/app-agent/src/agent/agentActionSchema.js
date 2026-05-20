@@ -66,15 +66,6 @@ export const docsOnlyTypeSummaries = {
     },
 };
 
-/** @type {Record<string, any>} */
-const actionDocSchemaDefinitionSummaries = {
-    Scale: {
-        description:
-            "Scale definitions are accepted but omitted from action docs because the full visualization scale schema is large. Omit this field unless the user explicitly asks to preserve or override a scale; use null to force automatic scale inference.",
-        type: "object",
-    },
-};
-
 /** @type {Record<string, string>} */
 export const typeAliasResolvers = {
     'SampleAttributeDef["scale"]': "Scale",
@@ -318,93 +309,6 @@ function refSchema(typeName) {
         return cloneJson(primitiveTypeSchemas[typeName]);
     }
     return { $ref: definitionRefPrefix + typeName };
-}
-
-/**
- * Builds the compact schema bundle returned by action docs. The root schema
- * may keep `$ref`s, but referenced definitions needed by that payload are
- * included. Some broad app/core spec definitions are represented by compact
- * placeholders so action docs do not become a full visualization grammar dump.
- *
- * @param {import("./types.js").AgentActionType} actionType
- * @returns {Record<string, any> | undefined}
- */
-export function getAgentActionPayloadSchemaBundle(actionType) {
-    const payloadSchema = getActionPayloadSchema(actionType);
-    if (!payloadSchema) {
-        return undefined;
-    }
-
-    const definitions = getAgentActionSchemaDefinitions();
-
-    return {
-        $schema: generatedActionSchema.$schema,
-        ...cloneJson(payloadSchema),
-        definitions: collectReachableDefinitions(payloadSchema, definitions),
-    };
-}
-
-/**
- * @param {unknown} schema
- * @param {Record<string, any>} definitions
- * @returns {Record<string, any>}
- */
-function collectReachableDefinitions(schema, definitions) {
-    /** @type {Set<string>} */
-    const visited = new Set();
-    /** @type {Record<string, any>} */
-    const reachable = {};
-
-    visitSchema(schema, definitions, visited, reachable);
-
-    return reachable;
-}
-
-/**
- * @param {unknown} schema
- * @param {Record<string, any>} definitions
- * @param {Set<string>} visited
- * @param {Record<string, any>} reachable
- */
-function visitSchema(schema, definitions, visited, reachable) {
-    if (schema === null || typeof schema !== "object") {
-        return;
-    }
-
-    if (Array.isArray(schema)) {
-        for (const item of schema) {
-            visitSchema(item, definitions, visited, reachable);
-        }
-        return;
-    }
-
-    const objectSchema = /** @type {Record<string, any>} */ (schema);
-    const ref = objectSchema.$ref;
-    if (typeof ref === "string" && ref.startsWith(definitionRefPrefix)) {
-        const definitionName = ref.slice(definitionRefPrefix.length);
-        const actionDocSummary =
-            actionDocSchemaDefinitionSummaries[definitionName];
-        if (actionDocSummary) {
-            reachable[definitionName] = cloneJson(actionDocSummary);
-            visited.add(definitionName);
-            return;
-        }
-
-        if (!visited.has(definitionName) && definitions[definitionName]) {
-            visited.add(definitionName);
-            reachable[definitionName] = cloneJson(definitions[definitionName]);
-            visitSchema(
-                definitions[definitionName],
-                definitions,
-                visited,
-                reachable
-            );
-        }
-    }
-
-    for (const value of Object.values(objectSchema)) {
-        visitSchema(value, definitions, visited, reachable);
-    }
 }
 
 /**

@@ -618,7 +618,6 @@ describe("createAgentSessionController", () => {
                 name: "getIntentActionDocs",
                 arguments: {
                     actionType: "sampleView/groupByNominal",
-                    includeSchema: false,
                 },
             },
             {
