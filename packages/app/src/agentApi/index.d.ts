@@ -33,7 +33,7 @@ export interface AgentApi {
 
     /**
      * Resolves live selection-backed intervals inside an attribute identifier to
-     * literal intervals for formatting and durable records.
+     * literal intervals for formatting and durable features.
      */
     materializeAttributeIdentifier(
         attribute: AttributeIdentifier
@@ -71,6 +71,12 @@ export interface AgentApi {
     resolveViewSelector(
         selector: ViewSelector
     ): import("@genome-spy/core/view/view.js").default | undefined;
+
+    getSelectionFeatureFieldValues(
+        viewSelector: ViewSelector,
+        selectionSelector: import("@genome-spy/core/view/viewSelectors.js").ParamSelector,
+        field: string
+    ): unknown[] | undefined;
 
     /**
      * Returns the provenance actions currently available to the agent.

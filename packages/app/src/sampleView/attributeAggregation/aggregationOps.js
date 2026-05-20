@@ -15,9 +15,15 @@ import { isIntervalSpecifier } from "../sampleViewTypes.js";
 /** @type {AggregationOpInfo[]} */
 export const aggregationOps = [
     {
-        op: "count",
+        op: "itemCount",
         label: "Item count",
-        description: "Number of overlapping items (ignores field values)",
+        description: "Number of features in the interval",
+        preservesScaleDomain: false,
+    },
+    {
+        op: "count",
+        label: "Count",
+        description: "Number of non-missing values in the interval",
         preservesScaleDomain: false,
     },
     {
@@ -72,6 +78,68 @@ export function formatAggregationLabel(op) {
 }
 
 /**
+ * @param {AggregationOp} op
+ * @returns {string}
+ */
+export function formatAggregationFunctionName(op) {
+    return op === "count" ? "count" : formatAggregationLabel(op);
+}
+
+/**
+ * @param {import("../sampleViewTypes.js").FeatureFilter} filter
+ * @returns {string}
+ */
+export function formatFeatureFilterExpression(filter) {
+    if (filter.operator === "in") {
+        return (
+            filter.field +
+            " in {" +
+            filter.values.map(formatFeatureFilterValue).join(", ") +
+            "}"
+        );
+    }
+
+    return (
+        filter.field +
+        " " +
+        formatFeatureFilterOperator(filter.operator) +
+        " " +
+        formatFeatureFilterValue(filter.value)
+    );
+}
+
+/**
+ * @param {import("../sampleViewTypes.js").FeatureFilter["operator"]} operator
+ * @returns {string}
+ */
+export function formatFeatureFilterOperator(operator) {
+    switch (operator) {
+        case "eq":
+            return "=";
+        case "lt":
+            return "<";
+        case "lte":
+            return "<=";
+        case "gt":
+            return ">";
+        case "gte":
+            return ">=";
+        case "in":
+            return "in";
+        default:
+            throw new Error("Unknown feature filter operator: " + operator);
+    }
+}
+
+/**
+ * @param {import("@genome-spy/core/spec/channel.js").Scalar | null} value
+ * @returns {string}
+ */
+export function formatFeatureFilterValue(value) {
+    return value === null ? "null" : String(value);
+}
+
+/**
  * @param {import("../types.js").AttributeIdentifier} attributeIdentifier
  * @returns {boolean}
  */
@@ -90,11 +158,29 @@ export function preservesScaleDomainForAttribute(attributeIdentifier) {
 /**
  * @param {AggregationOp} op
  * @param {string} field
+ * @param {import("../sampleViewTypes.js").FeatureFilter} [featureFilter]
  * @returns {string}
  */
-export function formatAggregationExpression(op, field) {
-    if (op === "count") {
-        return formatAggregationLabel(op);
+export function formatAggregationExpression(op, field, featureFilter) {
+    const filterExpression = featureFilter
+        ? " where " + formatFeatureFilterExpression(featureFilter)
+        : "";
+
+    if (op === "itemCount") {
+        return (
+            formatAggregationFunctionName(op) +
+            (featureFilter ? "(" + filterExpression.trim() + ")" : "")
+        );
     }
-    return formatAggregationLabel(op) + "(" + field + ")";
+
+    if (op === "count") {
+        return (
+            formatAggregationFunctionName(op) +
+            "(" +
+            field +
+            filterExpression +
+            ")"
+        );
+    }
+    return formatAggregationLabel(op) + "(" + field + filterExpression + ")";
 }

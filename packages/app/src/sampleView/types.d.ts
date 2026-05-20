@@ -38,6 +38,7 @@ export type Interval = [IntervalPoint, IntervalPoint];
  * Aggregation operators supported by interval-based attribute access.
  */
 export type AggregationOp =
+    | "itemCount"
     | "min"
     | "max"
     | "weightedMean"

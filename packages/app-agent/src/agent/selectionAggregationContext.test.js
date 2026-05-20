@@ -60,8 +60,18 @@ describe("getSelectionAggregationContext", () => {
         const spec = {
             data: {
                 values: [
-                    { sample: "S1", gene: "EGFR", beta: 1.2 },
-                    { sample: "S2", gene: "TP53", beta: -0.4 },
+                    {
+                        sample: "S1",
+                        gene: "EGFR",
+                        beta: 1.2,
+                        consequence: "missense",
+                    },
+                    {
+                        sample: "S2",
+                        gene: "TP53",
+                        beta: -0.4,
+                        consequence: "frameshift",
+                    },
                 ],
             },
             samples: {},
@@ -75,6 +85,11 @@ describe("getSelectionAggregationContext", () => {
                         field: "beta",
                         type: "quantitative",
                         description: "Beta-value track",
+                    },
+                    stroke: {
+                        field: "consequence",
+                        type: "nominal",
+                        description: "Variant consequence",
                     },
                 },
             },
@@ -127,40 +142,54 @@ describe("getSelectionAggregationContext", () => {
 
         const context = getSelectionAggregationContext(agentApi);
 
-        expect(context.fields).toEqual([
-            expect.objectContaining({
-                field: "beta",
-                candidateId: "brush@track:beta",
-                viewSelector: {
-                    scope: [],
-                    view: "track",
-                },
-                selectionSelector: {
-                    scope: [],
-                    param: "brush",
-                },
-                supportedAggregations: expect.arrayContaining([
-                    "weightedMean",
-                    "variance",
-                ]),
-            }),
-            expect.objectContaining({
-                field: "beta",
-                candidateId: "brush2@track:beta",
-                viewSelector: {
-                    scope: [],
-                    view: "track",
-                },
-                selectionSelector: {
-                    scope: [],
-                    param: "brush2",
-                },
-                supportedAggregations: expect.arrayContaining([
-                    "weightedMean",
-                    "variance",
-                ]),
-            }),
-        ]);
+        expect(context.fields).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    field: "beta",
+                    candidateId: "brush@track:beta",
+                    viewSelector: {
+                        scope: [],
+                        view: "track",
+                    },
+                    selectionSelector: {
+                        scope: [],
+                        param: "brush",
+                    },
+                    supportedAggregations: expect.arrayContaining([
+                        "weightedMean",
+                        "variance",
+                    ]),
+                    filterableFields: expect.arrayContaining([
+                        {
+                            field: "beta",
+                            dataType: "quantitative",
+                            description: "Beta-value track",
+                        },
+                        {
+                            field: "consequence",
+                            dataType: "nominal",
+                            description: "Variant consequence",
+                        },
+                    ]),
+                }),
+                expect.objectContaining({
+                    field: "beta",
+                    candidateId: "brush2@track:beta",
+                    viewSelector: {
+                        scope: [],
+                        view: "track",
+                    },
+                    selectionSelector: {
+                        scope: [],
+                        param: "brush2",
+                    },
+                    supportedAggregations: expect.arrayContaining([
+                        "weightedMean",
+                        "variance",
+                    ]),
+                }),
+            ])
+        );
         expect(context.fields[0]).not.toHaveProperty("viewTitle");
         expect(context.fields[0]).not.toHaveProperty("description");
     });

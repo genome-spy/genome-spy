@@ -2,9 +2,13 @@ import { isChannelWithScale } from "@genome-spy/core/encoder/encoder.js";
 import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { locusOrNumberToString } from "@genome-spy/core/genome/locusFormat.js";
 import { html } from "lit";
+import { map } from "lit/directives/map.js";
 import {
     formatAggregationExpression,
+    formatAggregationFunctionName,
     formatAggregationLabel,
+    formatFeatureFilterOperator,
+    formatFeatureFilterValue,
 } from "./attributeAggregation/aggregationOps.js";
 import { createViewAttributeAccessor } from "./attributeAggregation/attributeAccessors.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
@@ -45,16 +49,25 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
         "aggregation" in specifier
             ? formatAggregationExpression(
                   specifier.aggregation.op,
-                  specifier.field
+                  specifier.field,
+                  specifier.featureFilter
               )
             : specifier.field;
     const emphasizedName =
         "aggregation" in specifier
-            ? formatAggregationTitle(specifier.aggregation.op, specifier.field)
+            ? formatAggregationTitle(
+                  specifier.aggregation.op,
+                  specifier.field,
+                  specifier.featureFilter
+              )
             : html`<em class="attribute">${specifier.field}</em>`;
     const attributeTitle =
         "aggregation" in specifier
-            ? formatAggregationTitle(specifier.aggregation.op, specifier.field)
+            ? formatAggregationTitle(
+                  specifier.aggregation.op,
+                  specifier.field,
+                  specifier.featureFilter
+              )
             : html`<em class="attribute">${specifier.field}</em>`;
 
     const accessor = createViewAttributeAccessor(view, specifier);
@@ -104,7 +117,8 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
     if (
         !channelDef &&
         "aggregation" in specifier &&
-        specifier.aggregation.op !== "count"
+        specifier.aggregation.op !== "count" &&
+        specifier.aggregation.op !== "itemCount"
     ) {
         throw new Error(
             `Aggregation '${specifier.aggregation.op}' requires a field definition for '${specifier.field}' in view '${view.name}'`
@@ -198,14 +212,51 @@ export default function getViewAttributeInfo(rootView, attributeIdentifier) {
 /**
  * @param {import("./types.js").AggregationOp} op
  * @param {string} field
+ * @param {import("./sampleViewTypes.js").FeatureFilter} [featureFilter]
  * @returns {import("lit").TemplateResult}
  */
-function formatAggregationTitle(op, field) {
-    if (op === "count") {
-        return html`${formatAggregationLabel(op)}`;
+function formatAggregationTitle(op, field, featureFilter) {
+    if (op === "itemCount") {
+        const filterTitle = featureFilter
+            ? html`(where ${formatFeatureFilterTitle(featureFilter)})`
+            : "";
+        return html`${formatAggregationFunctionName(op)}${filterTitle}`;
     }
+
+    if (op === "count") {
+        const filterTitle = featureFilter
+            ? html` where ${formatFeatureFilterTitle(featureFilter)}`
+            : "";
+        return html`${formatAggregationFunctionName(op)}(<em class="attribute"
+                >${field}</em
+            >${filterTitle})`;
+    }
+    const filterTitle = featureFilter
+        ? html` where ${formatFeatureFilterTitle(featureFilter)}`
+        : "";
     return html`${formatAggregationLabel(op)}(<em class="attribute">${field}</em
-        >)`;
+        >${filterTitle})`;
+}
+
+/**
+ * @param {import("./sampleViewTypes.js").FeatureFilter} filter
+ * @returns {import("lit").TemplateResult}
+ */
+function formatFeatureFilterTitle(filter) {
+    if (filter.operator === "in") {
+        return html`<em class="attribute">${filter.field}</em> in
+            {${map(
+                filter.values,
+                (value, i) =>
+                    html`${i > 0 ? ", " : ""}<strong
+                            >${formatFeatureFilterValue(value)}</strong
+                        >`
+            )}}`;
+    }
+
+    return html`<em class="attribute">${filter.field}</em>
+        ${formatFeatureFilterOperator(filter.operator)}
+        ${formatFeatureFilterValue(filter.value)}`;
 }
 
 /**

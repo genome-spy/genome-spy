@@ -72,6 +72,7 @@ export type {
     IntervalReference,
     IntervalSpecifier,
     LocusSpecifier,
+    FeatureFilter,
     SelectionIntervalSource,
     ViewAttributeSpecifier,
     ViewRef,

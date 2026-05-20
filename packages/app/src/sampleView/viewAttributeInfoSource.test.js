@@ -169,6 +169,78 @@ describe("getViewAttributeInfo", () => {
         expect(title).toContain("chr1:1-2");
     });
 
+    it("includes feature filters in interval aggregation names and titles", () => {
+        const view = createViewStub();
+        resolveViewRefMock.mockReturnValue(view);
+
+        const info = getViewAttributeInfo(/** @type {any} */ ({}), {
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: "track",
+                field: "value",
+                aggregation: { op: "max" },
+                interval: [1, 2],
+                featureFilter: {
+                    field: "consequence",
+                    operator: "eq",
+                    value: "frameshift",
+                },
+            },
+        });
+
+        const title = templateResultToString(info.title);
+        expect(info.name).toBe("max(value where consequence = frameshift)");
+        expect(title).toContain("max(value where consequence = frameshift)");
+    });
+
+    it("uses count syntax for filtered count aggregation titles", () => {
+        const view = createViewStub();
+        resolveViewRefMock.mockReturnValue(view);
+
+        const info = getViewAttributeInfo(/** @type {any} */ ({}), {
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: "track",
+                field: "value",
+                aggregation: { op: "count" },
+                interval: [1, 2],
+                featureFilter: {
+                    field: "consequence",
+                    operator: "eq",
+                    value: "frameshift",
+                },
+            },
+        });
+
+        const title = templateResultToString(info.title);
+        expect(info.name).toBe("count(value where consequence = frameshift)");
+        expect(title).toContain("count(value where consequence = frameshift)");
+    });
+
+    it("uses item count syntax for filtered item count aggregation titles", () => {
+        const view = createViewStub();
+        resolveViewRefMock.mockReturnValue(view);
+
+        const info = getViewAttributeInfo(/** @type {any} */ ({}), {
+            type: "VALUE_AT_LOCUS",
+            specifier: {
+                view: "track",
+                field: "Items",
+                aggregation: { op: "itemCount" },
+                interval: [1, 2],
+                featureFilter: {
+                    field: "consequence",
+                    operator: "eq",
+                    value: "frameshift",
+                },
+            },
+        });
+
+        const title = templateResultToString(info.title);
+        expect(info.name).toBe("item count(where consequence = frameshift)");
+        expect(title).toContain("item count(where consequence = frameshift)");
+    });
+
     it("prefixes ambiguous imported view and selection names with scope", () => {
         const panelA = createViewStub();
         panelA.paramRuntime.registerParam({

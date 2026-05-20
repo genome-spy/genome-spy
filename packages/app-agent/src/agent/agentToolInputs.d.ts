@@ -1,6 +1,10 @@
 import type { AgentIntentActionRequest } from "./schemaContract.js";
 import type { AgentIntentBatchStep } from "./generated/generatedActionTypes.js";
-import type { AggregationOp, ViewSelector } from "@genome-spy/app/agentShared";
+import type {
+    AggregationOp,
+    FeatureFilter,
+    ViewSelector,
+} from "@genome-spy/app/agentShared";
 import type { ChromosomalLocus } from "@genome-spy/core/spec/genome.js";
 import type { NumericDomain } from "@genome-spy/core/spec/scale.js";
 
@@ -29,6 +33,14 @@ type SelectionAggregationCandidate = {
      * sample. This cannot be used to aggregate across samples or groups.
      */
     aggregation: AggregationOp;
+
+    /**
+     * Optional raw-feature predicate applied inside the selected interval before
+     * per-sample aggregation. Use one field copied from the candidate's
+     * `filterableFields`; call `getSelectionFeatureFieldSummary` first if exact
+     * categorical values or numeric bounds are needed.
+     */
+    featureFilter?: FeatureFilter;
 };
 
 export type AgentAttributeCandidate =
@@ -172,6 +184,32 @@ export interface GetAttributeSummaryToolInput {
      * current visible group after grouping has already been applied.
      */
     scope: AttributeSummaryScope;
+}
+
+/**
+ * Summarize one raw feature field inside a selected interval before per-sample
+ * aggregation. Use this when choosing a `featureFilter` for a
+ * `SELECTION_AGGREGATION` candidate and the compact
+ * `selectionAggregation.fields[].filterableFields` metadata is not enough.
+ * The field must be copied from that candidate's `filterableFields`.
+ *
+ * @example
+ * {
+ *   "candidateId": "brush@mutations:VAF",
+ *   "field": "functionalCategory"
+ * }
+ */
+export interface GetSelectionFeatureFieldSummaryToolInput {
+    /**
+     * Exact candidate id copied from `selectionAggregation.fields`.
+     */
+    candidateId: string;
+
+    /**
+     * Raw feature field copied from the selected candidate's
+     * `filterableFields`.
+     */
+    field: string;
 }
 
 /**
@@ -410,6 +448,7 @@ export interface AgentToolInputs {
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     getAttributeSummary: GetAttributeSummaryToolInput;
+    getSelectionFeatureFieldSummary: GetSelectionFeatureFieldSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     getIntentActionDocs: GetIntentActionDocsToolInput;

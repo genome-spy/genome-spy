@@ -2,12 +2,23 @@
 import { describe, it, expect } from "vitest";
 import { createDerivedAttributeName } from "./deriveMetadataUtils.js";
 
+/**
+ * @param {string} name
+ * @returns {import("../types.js").AttributeInfo}
+ */
+function makeAttributeInfo(name) {
+    return /** @type {import("../types.js").AttributeInfo} */ ({
+        name,
+        attribute: {
+            type: "SAMPLE_ATTRIBUTE",
+            specifier: name,
+        },
+    });
+}
+
 describe("createDerivedAttributeName", () => {
     it("returns the full name when it is short and unique", () => {
-        const attributeInfo =
-            /** @type {import("../types.js").AttributeInfo} */ ({
-                name: "PurifiedLogR",
-            });
+        const attributeInfo = makeAttributeInfo("PurifiedLogR");
 
         const result = createDerivedAttributeName(attributeInfo, []);
 
@@ -15,10 +26,9 @@ describe("createDerivedAttributeName", () => {
     });
 
     it("compresses long names without ellipses", () => {
-        const attributeInfo =
-            /** @type {import("../types.js").AttributeInfo} */ ({
-                name: "Very Long Attribute Name For Samples",
-            });
+        const attributeInfo = makeAttributeInfo(
+            "Very Long Attribute Name For Samples"
+        );
 
         const result = createDerivedAttributeName(attributeInfo, []);
 
@@ -28,10 +38,9 @@ describe("createDerivedAttributeName", () => {
     });
 
     it("adds a numeric suffix when the name collides", () => {
-        const attributeInfo =
-            /** @type {import("../types.js").AttributeInfo} */ ({
-                name: "Very Long Attribute Name For Samples",
-            });
+        const attributeInfo = makeAttributeInfo(
+            "Very Long Attribute Name For Samples"
+        );
 
         // Create a collision by reusing the first candidate.
         const first = createDerivedAttributeName(attributeInfo, []);
@@ -42,13 +51,60 @@ describe("createDerivedAttributeName", () => {
     });
 
     it("uses operator prefix and compressed attribute tokens", () => {
-        const attributeInfo =
-            /** @type {import("../types.js").AttributeInfo} */ ({
-                name: "weighted mean(purifiedLogR)",
-            });
+        const attributeInfo = makeAttributeInfo("weighted mean(purifiedLogR)");
 
         const result = createDerivedAttributeName(attributeInfo, []);
 
         expect(result).toBe("wMean_pLogR");
+    });
+
+    it("prefers compact names for filtered non-count interval aggregations", () => {
+        const attributeInfo =
+            /** @type {import("../types.js").AttributeInfo} */ ({
+                name: "max(VAF where consequence = frameshift)",
+                attribute: {
+                    type: "VALUE_AT_LOCUS",
+                    specifier: {
+                        view: "track",
+                        field: "VAF",
+                        interval: [1, 2],
+                        aggregation: { op: "max" },
+                        featureFilter: {
+                            field: "consequence",
+                            operator: "eq",
+                            value: "frameshift",
+                        },
+                    },
+                },
+            });
+
+        const result = createDerivedAttributeName(attributeInfo, []);
+
+        expect(result).toBe("max_frameshift_VAF");
+    });
+
+    it("prefers compact names for filtered count interval aggregations", () => {
+        const attributeInfo =
+            /** @type {import("../types.js").AttributeInfo} */ ({
+                name: "count(VAF where consequence = frameshift)",
+                attribute: {
+                    type: "VALUE_AT_LOCUS",
+                    specifier: {
+                        view: "track",
+                        field: "VAF",
+                        interval: [1, 2],
+                        aggregation: { op: "count" },
+                        featureFilter: {
+                            field: "consequence",
+                            operator: "eq",
+                            value: "frameshift",
+                        },
+                    },
+                },
+            });
+
+        const result = createDerivedAttributeName(attributeInfo, []);
+
+        expect(result).toBe("frameshift_count");
     });
 });

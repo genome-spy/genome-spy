@@ -2,7 +2,11 @@ import {
     applyGroupToAttributeDefs,
     METADATA_PATH_SEPARATOR,
 } from "./metadataUtils.js";
-import { preservesScaleDomainForAttribute } from "../attributeAggregation/aggregationOps.js";
+import {
+    formatFeatureFilterValue,
+    preservesScaleDomainForAttribute,
+} from "../attributeAggregation/aggregationOps.js";
+import { isIntervalSpecifier } from "../sampleViewTypes.js";
 import { color as d3color } from "d3-color";
 import emptyToUndefined from "../../utils/emptyToUndefined.js";
 import { compressAttributeName } from "./derivedMetadataNameUtils.js";
@@ -173,9 +177,10 @@ function isCssColor(value) {
 export function createDerivedAttributeName(attributeInfo, existingNames) {
     const existing = new Set(existingNames);
     const base =
-        attributeInfo.name && attributeInfo.name.length > 0
+        createFilteredAggregationAttributeName(attributeInfo) ??
+        (attributeInfo.name && attributeInfo.name.length > 0
             ? attributeInfo.name.trim()
-            : "Derived";
+            : "Derived");
 
     const preferredLength = 20;
     /** @type {string[]} */
@@ -206,6 +211,93 @@ export function createDerivedAttributeName(attributeInfo, existingNames) {
     }
 
     throw new Error("Unable to generate a unique metadata attribute name.");
+}
+
+/**
+ * @param {import("../types.js").AttributeInfo} attributeInfo
+ * @returns {string | null}
+ */
+function createFilteredAggregationAttributeName(attributeInfo) {
+    const specifier = attributeInfo.attribute.specifier;
+    if (
+        !specifier ||
+        typeof specifier !== "object" ||
+        !isIntervalSpecifier(specifier) ||
+        !specifier.featureFilter
+    ) {
+        return null;
+    }
+
+    const filterPart = formatFeatureFilterNamePart(specifier.featureFilter);
+    if (
+        specifier.aggregation.op === "count" ||
+        specifier.aggregation.op === "itemCount"
+    ) {
+        return filterPart + "_count";
+    }
+
+    return (
+        formatAggregationNamePrefix(specifier.aggregation.op) +
+        "_" +
+        filterPart +
+        "_" +
+        specifier.field
+    );
+}
+
+/**
+ * @param {import("../sampleViewTypes.js").FeatureFilter} filter
+ * @returns {string}
+ */
+function formatFeatureFilterNamePart(filter) {
+    if (filter.operator === "eq") {
+        return formatMetadataNamePart(formatFeatureFilterValue(filter.value));
+    } else if (filter.operator === "in") {
+        return filter.values
+            .map((value) =>
+                formatMetadataNamePart(formatFeatureFilterValue(value))
+            )
+            .join("_");
+    } else {
+        return (
+            formatMetadataNamePart(filter.field) +
+            "_" +
+            filter.operator +
+            "_" +
+            formatMetadataNamePart(formatFeatureFilterValue(filter.value))
+        );
+    }
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+function formatMetadataNamePart(value) {
+    return value.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+/**
+ * @param {import("../types.js").AggregationOp} op
+ * @returns {string}
+ */
+function formatAggregationNamePrefix(op) {
+    switch (op) {
+        case "itemCount":
+            return "count";
+        case "count":
+            return "count";
+        case "min":
+            return "min";
+        case "max":
+            return "max";
+        case "weightedMean":
+            return "wMean";
+        case "variance":
+            return "var";
+        default:
+            throw new Error("Unknown aggregation op: " + op);
+    }
 }
 
 /**

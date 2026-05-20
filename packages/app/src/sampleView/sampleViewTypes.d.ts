@@ -103,11 +103,49 @@ export type IntervalReference = Interval | SelectionIntervalSource;
 export type IntervalCarrier = { interval: IntervalReference };
 
 /**
+ * Predicate applied to raw view features before interval aggregation.
+ */
+export type FeatureFilter =
+    | {
+          /** Feature field to test. */
+          field: string;
+
+          /** Retain features where the field is exactly this value. */
+          operator: "eq";
+
+          /** Matched value. */
+          value: Scalar | null;
+      }
+    | {
+          /** Feature field to test. */
+          field: string;
+
+          /** Retain features where the field is one of the listed values. */
+          operator: "in";
+
+          /** Matched values. */
+          values: (Scalar | null)[];
+      }
+    | {
+          /** Feature field to test. */
+          field: string;
+
+          /** Numeric comparison operator. */
+          operator: "lt" | "lte" | "gt" | "gte";
+
+          /** Numeric threshold. */
+          value: number;
+      };
+
+/**
  * Specifier that summarizes a field over an interval.
  */
 export interface IntervalSpecifier extends BaseSpecifier {
     /** Literal interval or a selection source resolved at action execution time */
     interval: IntervalReference;
+
+    /** Predicate applied to raw features before aggregation. */
+    featureFilter?: FeatureFilter;
 
     /** Aggregation operation to apply over the interval */
     aggregation: AggregationSpec;

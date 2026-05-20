@@ -1,45 +1,16 @@
-import { html, css } from "lit";
-import { icon } from "@fortawesome/fontawesome-svg-core";
-import {
-    faExclamationCircle,
-    faPenToSquare,
-    faPlus,
-} from "@fortawesome/free-solid-svg-icons";
+import { css, html } from "lit";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
-import { FormController } from "../../components/forms/formController.js";
-import { formField } from "../../components/forms/formField.js";
-import { schemeToDataUrl } from "../../utils/ui/schemeToDataUrl.js";
-import { computeObservedDomain } from "./scaleUtils.js";
-import {
-    getDefaultDerivedMetadataScale,
-    resolveDataType,
-    sanitizeScaleForDerivedMetadata,
-    validateDerivedMetadataName,
-} from "./deriveMetadataUtils.js";
-import { METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
-import "./configureScaleDialog.js";
-
-/**
- * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleAttributeType} SampleAttributeType
- */
-/**
- * @typedef {object} DerivedMetadataConfig
- * @property {string} name
- * @property {string} groupPath
- * @property {import("@genome-spy/core/spec/scale.js").Scale | null} [scale]
- */
+import "./derivedMetadataConfigurator.js";
 
 export class DerivedMetadataDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         attributeInfo: {},
-        sampleIds: {},
         values: {},
         existingAttributeNames: {},
         attributeName: { state: true },
-        groupPath: { state: true },
-        _scale: { state: true },
-        _scaleConfigured: { state: true },
+        _configHasErrors: { state: true },
     };
 
     static styles = [
@@ -47,16 +18,6 @@ export class DerivedMetadataDialog extends BaseDialog {
         css`
             dialog {
                 width: 520px;
-            }
-
-            .scale-summary {
-                display: flex;
-                gap: var(--gs-basic-spacing);
-                color: var(--gs-muted-color, #666);
-
-                img {
-                    display: block;
-                }
             }
         `,
     ];
@@ -67,9 +28,6 @@ export class DerivedMetadataDialog extends BaseDialog {
         /** @type {import("../types.js").AttributeInfo | null} */
         this.attributeInfo = null;
 
-        /** @type {string[] | null} */
-        this.sampleIds = null;
-
         /** @type {any[] | null} */
         this.values = null;
 
@@ -79,200 +37,61 @@ export class DerivedMetadataDialog extends BaseDialog {
         /** @type {string} */
         this.attributeName = "";
 
-        /** @type {string} */
-        this.groupPath = "";
-
-        /** @type {import("@genome-spy/core/spec/scale.js").Scale | null} */
-        this._scale = null;
-
         /** @type {boolean} */
-        this._scaleConfigured = false;
-
-        /** @type {FormController} */
-        this._form = new FormController(this);
-        this._form.defineField("name", {
-            valueKey: "attributeName",
-            validate: () => this.#validateName(),
-        });
-        this._form.defineField("group", {
-            valueKey: "groupPath",
-            validate: () => null,
-            affects: ["name"],
-        });
+        this._configHasErrors = false;
 
         this.dialogTitle = "Add to metadata";
-
-        /** @type {(string | number)[] | null} */
-        this._observedDomain = null;
     }
 
     renderBody() {
-        if (!this.attributeInfo || !this.sampleIds || !this.values) {
+        if (!this.attributeInfo || !this.values) {
             throw new Error(
                 "Derived metadata dialog is missing required data."
             );
         }
 
-        const dataType = resolveDataType(this.attributeInfo);
-        const scaleSummary =
-            this._scaleConfigured && this._scale
-                ? describeScale(this._scale)
-                : "Auto";
-
         return html`
-            <div class="gs-alert info">
-                ${icon(faExclamationCircle).node[0]}
-                <div>
-                    <p>
-                        You are creating a new metadata attribute derived
-                        from:<br />
-                        ${this.attributeInfo.title}.
-                    </p>
-                    <p>Data type: ${dataType}</p>
-                </div>
-            </div>
-
-            <div class="gs-form-group">
-                <label for="derivedAttributeName">Derived attribute name</label>
-                <input
-                    id="derivedAttributeName"
-                    type="text"
-                    ${formField(this._form, "name")}
-                />
-                ${this._form.feedback("name")}
-                <small>Keep names concise (around 20 characters).</small>
-            </div>
-
-            <div class="gs-form-group">
-                <label for="derivedAttributeGroup">Group (optional)</label>
-                <input
-                    id="derivedAttributeGroup"
-                    type="text"
-                    placeholder="A new or existing metadata group path"
-                    ${formField(this._form, "group")}
-                />
-                <small
-                    >Use ${METADATA_PATH_SEPARATOR} to create hierarchy
-                    levels.</small
-                >
-            </div>
-
-            <div class="gs-form-group">
-                <label>Scale</label>
-                <div class="input-group">
-                    <div class="fake-input">${scaleSummary}</div>
-                    <button
-                        class="btn"
-                        type="button"
-                        title="Configure scale"
-                        @click=${() => this.#configureScale()}
-                    >
-                        ${icon(faPenToSquare).node[0]} Configure
-                    </button>
-                </div>
-            </div>
+            <gs-derived-metadata-configurator
+                .attributeInfo=${this.attributeInfo}
+                .values=${this.values}
+                .existingAttributeNames=${this.existingAttributeNames}
+                .attributeName=${this.attributeName}
+                @metadata-config-validity-change=${(
+                    /** @type {CustomEvent<{ hasErrors: boolean }>} */ event
+                ) => {
+                    this._configHasErrors = event.detail.hasErrors;
+                }}
+            ></gs-derived-metadata-configurator>
         `;
     }
 
     renderButtons() {
-        const hasErrors = this._form.hasErrors();
         return [
             this.makeCloseButton(),
             this.makeButton("Add", () => this.#onAdd(), {
                 iconDef: faPlus,
-                disabled: hasErrors,
+                disabled: this._configHasErrors,
                 isPrimary: true,
             }),
         ];
     }
 
-    async #configureScale() {
-        if (!this.attributeInfo || !this.sampleIds || !this.values) {
-            throw new Error("Scale configuration requires attribute data.");
-        }
-
-        const dataType = resolveDataType(this.attributeInfo);
-        const observedDomain = this.#getObservedDomain();
-
-        const result = await showDialog(
-            "gs-configure-scale-dialog",
-            (
-                /** @type {import("./configureScaleDialog.js").default} */ dialog
-            ) => {
-                dialog.dataType = dataType;
-                dialog.observedDomain = observedDomain;
-                if (this._scale) {
-                    dialog.scale = this._scale;
-                }
-            }
-        );
-
-        if (result.ok) {
-            const scale = sanitizeScaleForDerivedMetadata(
-                /** @type {import("@genome-spy/core/spec/scale.js").Scale | undefined} */ (
-                    result.data
-                )
-            );
-            this._scale = scale ?? null;
-            this._scaleConfigured = true;
-        }
-    }
-
     #onAdd() {
-        if (!this.attributeInfo || !this.sampleIds || !this.values) {
-            throw new Error(
-                "Derived metadata dialog is missing required data."
-            );
-        }
-
-        if (this._form.validateAll()) {
+        const config = this.#configurator()?.getConfig();
+        if (!config) {
             return true;
         }
 
-        const attributeName = this.attributeName.trim();
-        const groupPath = this.groupPath.trim();
-        /** @type {DerivedMetadataConfig} */
-        const payload = {
-            name: attributeName,
-            groupPath,
-            ...(this._scaleConfigured
-                ? this._scale && hasScaleProperties(this._scale)
-                    ? { scale: this._scale }
-                    : { scale: null }
-                : {}),
-        };
-
-        this.finish({ ok: true, data: payload });
+        this.finish({ ok: true, data: config });
         return false;
     }
 
     /**
-     * @returns {(string | number)[]}
+     * @returns {import("./derivedMetadataConfigurator.js").default | null}
      */
-    #getObservedDomain() {
-        if (!this.attributeInfo || !this.values) {
-            throw new Error("Observed domain requires attribute values.");
-        }
-
-        if (!this._observedDomain) {
-            this._observedDomain = computeObservedDomain(
-                resolveDataType(this.attributeInfo),
-                this.values
-            );
-        }
-
-        return this._observedDomain;
-    }
-
-    /**
-     * @returns {string | null}
-     */
-    #validateName() {
-        return validateDerivedMetadataName(
-            this.attributeName,
-            this.groupPath,
-            this.existingAttributeNames,
-            this.attributeInfo
+    #configurator() {
+        return this.renderRoot.querySelector(
+            "gs-derived-metadata-configurator"
         );
     }
 }
@@ -282,7 +101,6 @@ customElements.define("gs-derived-metadata-dialog", DerivedMetadataDialog);
 /**
  * @param {{
  *  attributeInfo: import("../types.js").AttributeInfo,
- *  sampleIds: string[],
  *  values: any[],
  *  existingAttributeNames: string[],
  *  defaultName: string,
@@ -291,7 +109,6 @@ customElements.define("gs-derived-metadata-dialog", DerivedMetadataDialog);
  */
 export function showDerivedMetadataDialog({
     attributeInfo,
-    sampleIds,
     values,
     existingAttributeNames,
     defaultName,
@@ -300,56 +117,10 @@ export function showDerivedMetadataDialog({
         "gs-derived-metadata-dialog",
         (/** @type {DerivedMetadataDialog} */ dialog) => {
             dialog.attributeInfo = attributeInfo;
-            dialog.sampleIds = sampleIds;
             dialog.values = values;
             dialog.existingAttributeNames = existingAttributeNames;
             dialog.attributeName = defaultName;
-            dialog._form.reset();
-            dialog._scale =
-                getDefaultDerivedMetadataScale(attributeInfo) ?? null;
-            dialog._scaleConfigured = false;
+            dialog._configHasErrors = false;
         }
     );
-}
-
-/**
- * @param {import("@genome-spy/core/spec/scale.js").Scale} scale
- */
-function describeScale(scale) {
-    if (!scale) {
-        return html`Auto`;
-    }
-
-    /** @type {import("lit").TemplateResult<1>[]} */
-    const parts = [];
-
-    if (scale.scheme) {
-        const schemeName =
-            typeof scale.scheme === "string" ? scale.scheme : scale.scheme.name;
-        parts.push(
-            html`<img
-                src=${schemeToDataUrl(schemeName)}
-                alt=${schemeName}
-                title=${schemeName}
-            />`
-        );
-    }
-
-    if (scale.type) {
-        parts.push(html`<div class="badge">${scale.type}</div>`);
-    }
-
-    if (parts.length === 0) {
-        parts.push(html`Auto`);
-    }
-
-    return html`<div class="scale-summary">${parts}</div>`;
-}
-
-/**
- * @param {import("@genome-spy/core/spec/scale.js").Scale} scale
- * @returns {boolean}
- */
-function hasScaleProperties(scale) {
-    return Object.keys(scale).length > 0;
 }

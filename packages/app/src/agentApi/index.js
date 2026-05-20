@@ -3,6 +3,7 @@ import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { resolveViewSelector as resolveCoreViewSelector } from "@genome-spy/core/view/viewSelectors.js";
 import { resolveIntervalReference } from "../sampleView/intervalReferenceResolver.js";
 import { isIntervalSource } from "../sampleView/sampleViewTypes.js";
+import { collectSelectionFeatureFieldValues } from "../sampleView/selectionFeatureFieldValues.js";
 import {
     buildHierarchyBarplot,
     buildHierarchyBoxplot,
@@ -118,6 +119,32 @@ export function createAgentApi(app) {
             }
 
             return resolveCoreViewSelector(viewRoot, selector);
+        },
+
+        /**
+         * @param {import("@genome-spy/core/view/viewSelectors.js").ViewSelector} viewSelector
+         * @param {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} selectionSelector
+         * @param {string} field
+         * @returns {unknown[] | undefined}
+         */
+        getSelectionFeatureFieldValues(viewSelector, selectionSelector, field) {
+            const viewRoot = app.genomeSpy.viewRoot;
+            if (!viewRoot) {
+                return;
+            }
+
+            const view = resolveCoreViewSelector(viewRoot, viewSelector);
+            if (!view) {
+                return;
+            }
+
+            return collectSelectionFeatureFieldValues(
+                /** @type {import("@genome-spy/core/view/unitView.js").default} */ (
+                    view
+                ),
+                selectionSelector,
+                field
+            );
         },
 
         getActionHistory() {

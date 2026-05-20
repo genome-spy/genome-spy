@@ -119,6 +119,30 @@
     "strict": true
   },
   {
+    "toolName": "getSelectionFeatureFieldSummary",
+    "description": "Summarize one raw feature field inside a selected interval before per-sample aggregation.",
+    "inputType": "GetSelectionFeatureFieldSummaryToolInput",
+    "inputFields": [
+      {
+        "name": "candidateId",
+        "type": "string",
+        "description": "Exact candidate id copied from `selectionAggregation.fields`.",
+        "required": true
+      },
+      {
+        "name": "field",
+        "type": "string",
+        "description": "Raw feature field copied from the selected candidate's `filterableFields`.",
+        "required": true
+      }
+    ],
+    "exampleInput": {
+      "candidateId": "brush@mutations:VAF",
+      "field": "functionalCategory"
+    },
+    "strict": true
+  },
+  {
     "toolName": "resolveMetadataAttributeValues",
     "description": "Resolve a free-text metadata value against current visible categorical sample metadata values.",
     "inputType": "ResolveMetadataAttributeValuesToolInput",

@@ -1,7 +1,7 @@
-import { isChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createDatumAtAccessor } from "../datumLookup.js";
 import { resolveIntervalReference } from "../intervalReferenceResolver.js";
+import { createFeatureFilterPredicate } from "../../utils/predicates/featureFilter.js";
 import {
     aggregateCount,
     aggregateMax,
@@ -9,27 +9,7 @@ import {
     aggregateVariance,
     aggregateWeightedMean,
 } from "./attributeAggregation.js";
-
-/**
- * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
- * @param {import("@genome-spy/core/spec/channel.js").Scalar | import("@genome-spy/core/spec/genome.js").ChromosomalLocus} value
- * @returns {import("@genome-spy/core/spec/channel.js").Scalar}
- */
-function toScalar(scaleResolution, value) {
-    if (!isChromosomalLocus(value)) {
-        return value;
-    }
-
-    const scale = scaleResolution.getScale();
-    const genome = "genome" in scale ? scale.genome() : undefined;
-    if (!genome) {
-        throw new Error(
-            "Encountered a chromosomal locus but no genome is available!"
-        );
-    }
-
-    return genome.toContinuous(value.chrom, value.pos);
-}
+import { toScalar, visitIntervalFeatures } from "./intervalFeatureTraversal.js";
 
 /**
  * @param {import("@genome-spy/core/scales/scaleResolution.js").default} scaleResolution
@@ -53,11 +33,6 @@ function normalizeInterval(scaleResolution, specifier, root) {
 }
 
 /**
- * @param {import("@genome-spy/core/view/unitView.js").default} view
- * @param {import("../sampleViewTypes.js").ViewAttributeSpecifier} specifier
- * @returns {import("../types.js").AttributeInfo["accessor"]}
- */
-/**
  * Builds a per-sample accessor for point or interval-based view attributes.
  *
  * @param {import("@genome-spy/core/view/unitView.js").default} view
@@ -78,11 +53,8 @@ export function createViewAttributeAccessor(view, specifier) {
     const root = view.getLayoutAncestors().at(-1);
     const collector = view.getCollector();
     const xAccessor = view.getDataAccessor("x");
-    const x2Accessor = view.getDataAccessor("x2");
     const hitTestMode = view.mark?.defaultHitTestMode ?? "intersects";
-    // Missing x2 or equal accessors imply point features, so treat x and x2 as the same value.
-    const isPointFeature =
-        !x2Accessor || (xAccessor && xAccessor.equals(x2Accessor));
+    const x2Accessor = view.getDataAccessor("x2");
 
     if (!collector || !xAccessor) {
         return () => undefined;
@@ -111,6 +83,9 @@ export function createViewAttributeAccessor(view, specifier) {
     }
 
     const valueAccessor = (/** @type {any} */ datum) => datum[specifier.field];
+    const featureMatches = specifier.featureFilter
+        ? createFeatureFilterPredicate(specifier.featureFilter)
+        : () => true;
     /** @type {[number, number] | undefined} */
     let numericBounds;
     const getNumericBounds = () => {
@@ -134,67 +109,52 @@ export function createViewAttributeAccessor(view, specifier) {
     };
     const op = specifier.aggregation.op;
     const needsWeights = op === "weightedMean" || op === "variance";
+    const collectAggregationValue = (
+        /** @type {any} */ datum,
+        /** @type {number} */ weight,
+        /** @type {number[]} */ values,
+        /** @type {number[]} */ weights
+    ) => {
+        const value = valueAccessor(datum);
+        if (value != null) {
+            values.push(value);
+            if (needsWeights) {
+                weights.push(weight);
+            }
+        }
+    };
 
     return (sampleId) => {
         const [start, end] = getNumericBounds();
         const data = collector.facetBatches.get(asArray(sampleId));
         if (!data?.length) {
-            return op === "count" ? 0 : undefined;
+            return op === "count" || op === "itemCount" ? 0 : undefined;
         }
 
         /** @type {number[]} */
         const values = [];
         /** @type {number[]} */
         const weights = [];
+        let itemCount = 0;
 
-        if (isPointFeature) {
-            for (let i = 0; i < data.length; i++) {
-                const datum = data[i];
-                const x = /** @type {number} */ (xAccessor(datum));
-                if (x >= start && x <= end) {
-                    values.push(valueAccessor(datum));
-                    if (needsWeights) {
-                        weights.push(1);
-                    }
+        visitIntervalFeatures(
+            data,
+            xAccessor,
+            x2Accessor,
+            hitTestMode,
+            start,
+            end,
+            (datum, weight) => {
+                if (featureMatches(datum)) {
+                    itemCount += 1;
+                    collectAggregationValue(datum, weight, values, weights);
                 }
             }
-        } else {
-            for (let i = 0; i < data.length; i++) {
-                const datum = data[i];
-                const x = /** @type {number} */ (xAccessor(datum));
-                const x2 = /** @type {number} */ (x2Accessor(datum));
-                if (hitTestMode === "endpoints") {
-                    if (
-                        (x >= start && x <= end) ||
-                        (x2 >= start && x2 <= end)
-                    ) {
-                        values.push(valueAccessor(datum));
-                        if (needsWeights) {
-                            weights.push(1);
-                        }
-                    }
-                } else if (hitTestMode === "encloses") {
-                    if (x >= start && x2 <= end) {
-                        values.push(valueAccessor(datum));
-                        if (needsWeights) {
-                            weights.push(x2 - x);
-                        }
-                    }
-                } else {
-                    // intersects
-                    const overlapStart = Math.max(x, start);
-                    const overlapEnd = Math.min(x2, end);
-                    if (overlapEnd > overlapStart) {
-                        values.push(valueAccessor(datum));
-                        if (needsWeights) {
-                            weights.push(overlapEnd - overlapStart);
-                        }
-                    }
-                }
-            }
-        }
+        );
 
         switch (op) {
+            case "itemCount":
+                return itemCount;
             case "count":
                 return aggregateCount(values);
             case "min":

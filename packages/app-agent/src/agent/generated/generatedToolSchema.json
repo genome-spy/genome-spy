@@ -311,6 +311,9 @@
         "getIntentActionDocs": {
           "$ref": "#/definitions/GetIntentActionDocsToolInput"
         },
+        "getSelectionFeatureFieldSummary": {
+          "$ref": "#/definitions/GetSelectionFeatureFieldSummaryToolInput"
+        },
         "jumpToInitialProvenanceState": {
           "$ref": "#/definitions/JumpToInitialProvenanceStateToolInput"
         },
@@ -349,6 +352,7 @@
         "jumpToProvenanceState",
         "jumpToInitialProvenanceState",
         "getAttributeSummary",
+        "getSelectionFeatureFieldSummary",
         "resolveMetadataAttributeValues",
         "searchViewDatums",
         "getIntentActionDocs",
@@ -362,7 +366,7 @@
     },
     "AggregationOp": {
       "description": "Aggregation operators supported by interval-based attribute access.",
-      "enum": ["min", "max", "weightedMean", "variance", "count"],
+      "enum": ["itemCount", "min", "max", "weightedMean", "variance", "count"],
       "type": "string"
     },
     "AggregationSpec": {
@@ -580,6 +584,88 @@
       "required": ["expr"],
       "type": "object"
     },
+    "FeatureFilter": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "description": "Feature field to test.",
+              "type": "string"
+            },
+            "operator": {
+              "const": "eq",
+              "description": "Retain features where the field is exactly this value.",
+              "type": "string"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Scalar"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Matched value."
+            }
+          },
+          "required": ["field", "operator", "value"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "description": "Feature field to test.",
+              "type": "string"
+            },
+            "operator": {
+              "const": "in",
+              "description": "Retain features where the field is one of the listed values.",
+              "type": "string"
+            },
+            "values": {
+              "description": "Matched values.",
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Scalar"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          },
+          "required": ["field", "operator", "values"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "field": {
+              "description": "Feature field to test.",
+              "type": "string"
+            },
+            "operator": {
+              "description": "Numeric comparison operator.",
+              "enum": ["lt", "lte", "gt", "gte"],
+              "type": "string"
+            },
+            "value": {
+              "description": "Numeric threshold.",
+              "type": "number"
+            }
+          },
+          "required": ["field", "operator", "value"],
+          "type": "object"
+        }
+      ],
+      "description": "Predicate applied to raw view features before interval aggregation."
+    },
     "FilterByNominal": {
       "additionalProperties": false,
       "properties": {
@@ -676,6 +762,28 @@
         }
       },
       "required": ["actionType"],
+      "type": "object"
+    },
+    "GetSelectionFeatureFieldSummaryToolInput": {
+      "additionalProperties": false,
+      "description": "Summarize one raw feature field inside a selected interval before per-sample aggregation. Use this when choosing a `featureFilter` for a `SELECTION_AGGREGATION` candidate and the compact `selectionAggregation.fields[].filterableFields` metadata is not enough. The field must be copied from that candidate's `filterableFields`.",
+      "examples": [
+        {
+          "candidateId": "brush@mutations:VAF",
+          "field": "functionalCategory"
+        }
+      ],
+      "properties": {
+        "candidateId": {
+          "description": "Exact candidate id copied from `selectionAggregation.fields`.",
+          "type": "string"
+        },
+        "field": {
+          "description": "Raw feature field copied from the selected candidate's `filterableFields`.",
+          "type": "string"
+        }
+      },
+      "required": ["candidateId", "field"],
       "type": "object"
     },
     "GroupByNominal": {
@@ -824,6 +932,10 @@
             }
           ],
           "description": "The x-scale domain that was visible when the action was triggered."
+        },
+        "featureFilter": {
+          "$ref": "#/definitions/FeatureFilter",
+          "description": "Predicate applied to raw features before aggregation."
         },
         "field": {
           "description": "Attribute or field name used by the specifier.",
@@ -1779,6 +1891,10 @@
         "candidateId": {
           "description": "Exact candidate id copied from `selectionAggregation.fields`. Do not construct this from parameter, view, or field names.",
           "type": "string"
+        },
+        "featureFilter": {
+          "$ref": "#/definitions/FeatureFilter",
+          "description": "Optional raw-feature predicate applied inside the selected interval before per-sample aggregation. Use one field copied from the candidate's `filterableFields`; call `getSelectionFeatureFieldSummary` first if exact categorical values or numeric bounds are needed."
         },
         "type": {
           "const": "SELECTION_AGGREGATION",

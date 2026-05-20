@@ -6,16 +6,30 @@ import {
     getUniqueViewRefKeys,
     getViewRefKey,
 } from "./viewRef.js";
-import { aggregationOps } from "./attributeAggregation/aggregationOps.js";
 
 /** @type {import("./types.js").AggregationOp[]} */
 const DEFAULT_AGGREGATIONS = ["count"];
 /** @type {import("./types.js").AggregationOp[]} */
-const QUANTITATIVE_AGGREGATIONS = aggregationOps.map((entry) => entry.op);
+const ITEM_COUNT_AGGREGATIONS = ["itemCount"];
+/** @type {import("./types.js").AggregationOp[]} */
+const QUANTITATIVE_AGGREGATIONS = [
+    "count",
+    "min",
+    "max",
+    "weightedMean",
+    "variance",
+];
 
 /**
  * Candidate field summary used by the interval aggregation UI and agent
  * context.
+ */
+/**
+ * @typedef {Object} SelectionAggregationFilterFieldInfo
+ * @property {import("@genome-spy/core/spec/channel.js").Channel} channel
+ * @property {import("@genome-spy/core/spec/channel.js").Field} field
+ * @property {import("@genome-spy/core/spec/channel.js").Type} type
+ * @property {string | undefined} description
  */
 /**
  * @typedef {Object} SelectionAggregationFieldSeed
@@ -28,6 +42,7 @@ const QUANTITATIVE_AGGREGATIONS = aggregationOps.map((entry) => entry.op);
  * @property {string | undefined} [description]
  * @property {import("./types.js").AggregationOp[] | undefined} [supportedAggregations]
  * @property {string | undefined} [candidateId]
+ * @property {SelectionAggregationFilterFieldInfo[] | undefined} [filterableFields]
  */
 /**
  * @typedef {Object} SelectionAggregationFieldInfo
@@ -40,6 +55,7 @@ const QUANTITATIVE_AGGREGATIONS = aggregationOps.map((entry) => entry.op);
  * @property {string | undefined} description
  * @property {import("./types.js").AggregationOp[]} supportedAggregations
  * @property {string} candidateId
+ * @property {SelectionAggregationFilterFieldInfo[]} filterableFields
  */
 
 /**
@@ -97,7 +113,7 @@ export function getSelectionAggregationFieldInfos(
                         field: "Items",
                         type: "nominal",
                         description: undefined,
-                        supportedAggregations: DEFAULT_AGGREGATIONS,
+                        supportedAggregations: ITEM_COUNT_AGGREGATIONS,
                         candidateId: createSelectionAggregationCandidateId(
                             createViewRef(unitView),
                             "Items"
@@ -137,6 +153,8 @@ export function getSelectionAggregationFieldInfos(
                         viewSelector,
                         info.field
                     ),
+                filterableFields:
+                    info.filterableFields ?? getFilterableFieldInfos(info.view),
             };
         })
     );
@@ -146,6 +164,21 @@ export function getSelectionAggregationFieldInfos(
  * Backward-compatible alias for the current menu-driven field discovery helper.
  */
 export const getContextMenuFieldInfos = getSelectionAggregationFieldInfos;
+
+/**
+ * @param {import("@genome-spy/core/view/unitView.js").default} view
+ * @returns {SelectionAggregationFilterFieldInfo[]}
+ */
+function getFilterableFieldInfos(view) {
+    return deduplicateFilterFieldInfos(
+        getVisibleNonPositionalFieldInfos(view).map((info) => ({
+            channel: info.channel,
+            field: info.field,
+            type: info.type,
+            description: info.description,
+        }))
+    );
+}
 
 /**
  * Returns the visible views that do not expose point-queryable fields.
@@ -326,6 +359,18 @@ function deduplicateFieldInfos(fields) {
                 JSON.stringify([fieldInfo.viewSelector, fieldInfo.field]),
                 fieldInfo,
             ])
+        ).values()
+    );
+}
+
+/**
+ * @param {SelectionAggregationFilterFieldInfo[]} fields
+ * @returns {SelectionAggregationFilterFieldInfo[]}
+ */
+function deduplicateFilterFieldInfos(fields) {
+    return Array.from(
+        new Map(
+            fields.map((fieldInfo) => [fieldInfo.field, fieldInfo])
         ).values()
     );
 }

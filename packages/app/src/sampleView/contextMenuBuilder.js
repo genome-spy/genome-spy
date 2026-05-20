@@ -8,6 +8,7 @@ import { getAggregationOpInfo } from "./attributeAggregation/aggregationOps.js";
 import { formatInterval } from "./attributeAggregation/intervalFormatting.js";
 import { appendPlotMenuItems } from "./plotMenuItems.js";
 import { handleAddToMetadata } from "./metadata/deriveMetadataFlow.js";
+import { showFeatureFilteredAggregationDialog } from "./metadata/featureFilteredAggregationDialog.js";
 import {
     getContextMenuFieldInfos,
     getUnavailablePointQueryViews,
@@ -90,6 +91,7 @@ export function resolveIntervalSelection(selectionInfo, selectionPoint) {
 /**
  * @param {Object} params
  * @param {FieldInfo} params.fieldInfo
+ * @param {FieldInfo[]} params.aggregationFieldInfos
  * @param {import("./types.js").Interval} params.selectionIntervalComplex
  * @param {import("./sampleViewTypes.js").SelectionIntervalSource} [params.selectionIntervalSource]
  * @param {import("./state/sampleState.js").Sample} params.sample
@@ -101,6 +103,7 @@ export function resolveIntervalSelection(selectionInfo, selectionPoint) {
  */
 export function buildIntervalAggregationMenu({
     fieldInfo,
+    aggregationFieldInfos,
     selectionIntervalComplex,
     selectionIntervalSource,
     sample,
@@ -109,14 +112,42 @@ export function buildIntervalAggregationMenu({
     attributeType,
     sampleView,
 }) {
+    /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+    const filteredAggregationItems =
+        fieldInfo.filterableFields.length > 0
+            ? [
+                  {
+                      type: "divider",
+                  },
+                  {
+                      type: "header",
+                      label: "Advanced interval aggregation",
+                  },
+                  {
+                      label: "Filter features and aggregate...",
+                      callback: () => {
+                          void showFeatureFilteredAggregationDialog({
+                              fieldInfo,
+                              aggregationFieldInfos,
+                              selectionIntervalComplex,
+                              selectionIntervalSource,
+                              sampleHierarchy,
+                              attributeInfoSource,
+                              attributeType,
+                              sampleView,
+                          });
+                      },
+                  },
+              ]
+            : [];
+
     return [
         { label: "Interval aggregation", type: "header" },
         ...fieldInfo.supportedAggregations.map((op) => {
             const opInfo = getAggregationOpInfo(op);
-            const opLabel = op === "count" ? "Item count" : opInfo.label;
             const menuTitle =
-                op === "count"
-                    ? "Using item count over interval..."
+                op === "itemCount"
+                    ? html`Using ${opInfo.label.toLowerCase()} over interval...`
                     : html`Using ${opInfo.label.toLowerCase()}(<em
                               class="attribute"
                               >${fieldInfo.field}</em
@@ -159,10 +190,11 @@ export function buildIntervalAggregationMenu({
             );
 
             return {
-                label: opLabel,
+                label: opInfo.label,
                 submenu: submenuItems,
             };
         }),
+        ...filteredAggregationItems,
     ];
 }
 

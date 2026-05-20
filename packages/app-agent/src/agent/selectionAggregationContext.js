@@ -96,6 +96,13 @@ function buildFieldSummaries(rootView, selections) {
                 dataType: fieldInfo.type,
                 selectionSelector: selection.selector,
                 supportedAggregations: fieldInfo.supportedAggregations.slice(),
+                filterableFields: fieldInfo.filterableFields.map(
+                    (filterField) => ({
+                        field: filterField.field,
+                        dataType: filterField.type,
+                        description: filterField.description,
+                    })
+                ),
             });
         }
     }

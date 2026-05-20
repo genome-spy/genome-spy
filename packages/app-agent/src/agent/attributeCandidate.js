@@ -17,7 +17,7 @@ export function resolveAgentAttributeCandidate(runtime, candidate) {
 }
 
 /**
- * Resolves a compact agent-facing attribute candidate and records the input
+ * Resolves a compact agent-facing attribute candidate and features the input
  * basis for later turns.
  *
  * @param {{
@@ -51,7 +51,8 @@ export function resolveAgentAttributeCandidateRecord(runtime, candidate) {
         const resolution = buildSelectionAggregationAttribute(
             volatileContext,
             candidate.candidateId,
-            candidate.aggregation
+            candidate.aggregation,
+            candidate.featureFilter
         );
         const interval = findSelectionInterval(
             volatileContext,
