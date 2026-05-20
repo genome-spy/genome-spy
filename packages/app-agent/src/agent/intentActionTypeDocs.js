@@ -1,11 +1,11 @@
 // @ts-check
+import { getAgentActionSchemaDefinitions } from "./agentActionSchema.js";
 import {
     docsOnlyTypeSummaries,
-    getAgentActionSchemaDefinitions,
     resolveDisplayTypeExpression,
     typeExamples,
     typeNotes,
-} from "./agentActionSchema.js";
+} from "./intentActionDisplayTypes.js";
 
 const definitionRefPrefix = "#/definitions/";
 
