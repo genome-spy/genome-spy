@@ -27,24 +27,26 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
 
     const sortedEntries = groups
         ? groups
-              .map(
-                  (groupTerm) =>
-                      /** @type {[any, string[]]} */ ([
-                          groupTerm,
-                          grouped.get(groupTerm),
-                      ])
-              )
-              .filter((entry) => entry[1])
-        : [...grouped];
+              .map((groupTerm, i) => ({
+                  name: groupTerm,
+                  title: titles ? titles[i] : undefined,
+                  samples: grouped.get(groupTerm),
+              }))
+              .filter((entry) => entry.samples)
+        : [...grouped].map(([name, samples]) => ({
+              name,
+              title: undefined,
+              samples,
+          }));
 
     const tempGroup = /** @type {unknown} */ (sampleGroup);
     // Transform SampleGroup into GroupGroup
     const groupGroup = /** @type {GroupGroup} */ (tempGroup);
 
-    groupGroup.groups = sortedEntries.map(([name, samples], i) => ({
-        name: "" + name,
-        title: titles ? titles[i] : name,
-        samples,
+    groupGroup.groups = sortedEntries.map((entry) => ({
+        name: "" + entry.name,
+        title: entry.title ?? entry.name,
+        samples: /** @type {string[]} */ (entry.samples),
     }));
 
     delete sampleGroup.samples;

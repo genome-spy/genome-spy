@@ -70,6 +70,35 @@ describe("groupOperations", () => {
         expect(sampleGroup.groups[2].samples).toEqual(["1"]);
     });
 
+    it("keeps threshold group titles aligned when a group is empty", () => {
+        const sampleGroup = {
+            name: "root",
+            title: "Root",
+            samples: ["1", "3"],
+        };
+
+        groupSamplesByThresholds(sampleGroup, (value) => Number(value), [
+            { operator: "lt", operand: 2 },
+            { operator: "lt", operand: 4 },
+        ]);
+
+        // The highest interval is empty, so later titles must not shift upward.
+        expect(sampleGroup.groups.map((group) => group.name)).toEqual([
+            "Group 2",
+            "Group 1",
+        ]);
+        expect(sampleGroup.groups.map((group) => group.title)).toEqual([
+            formatThresholdInterval(
+                { operator: "lt", operand: 2 },
+                { operator: "lt", operand: 4 }
+            ),
+            formatThresholdInterval(
+                { operator: "lt", operand: -Infinity },
+                { operator: "lt", operand: 2 }
+            ),
+        ]);
+    });
+
     it("handles quartile grouping when all values are equal", () => {
         const sampleGroup = {
             name: "root",
