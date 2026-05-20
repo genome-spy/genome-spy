@@ -335,7 +335,7 @@ export const agentTools = {
 };
 
 /**
- * @param {import("./types.d.ts").AgentPayloadField[]} payloadFields
+ * @param {import("./types.d.ts").AgentActionPayloadField[]} payloadFields
  * @returns {string[]}
  */
 function getReferencedPayloadFieldTypes(payloadFields) {

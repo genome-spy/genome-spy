@@ -59,9 +59,7 @@ export type {
 export type AgentActionType = GeneratedAgentActionType;
 export type IntentSubmissionKind = "user" | "agent" | "bookmark";
 
-/**
- * Metadata for a single field in the generated agent action catalog.
- */
+/** Metadata for a single generated catalog field. */
 export interface AgentPayloadField {
     /** Field name in the payload object. */
     name: string;
@@ -69,6 +67,17 @@ export interface AgentPayloadField {
     /** Human-readable type description used in docs and schemas. */
     type: string;
 
+    /** Short description of the field's meaning. */
+    description: string;
+
+    /** Whether the field is required by the action. */
+    required: boolean;
+}
+
+/**
+ * Metadata for a single field in the generated agent action catalog.
+ */
+export interface AgentActionPayloadField extends AgentPayloadField {
     /**
      * Queryable type names referenced by `type`.
      *
@@ -76,12 +85,6 @@ export interface AgentPayloadField {
      * `[Threshold, ...Threshold[]]` reference their inner named types.
      */
     typeRefs: string[];
-
-    /** Short description of the field's meaning. */
-    description: string;
-
-    /** Whether the field is required by the action. */
-    required: boolean;
 }
 
 /**
@@ -101,7 +104,7 @@ export interface AgentActionCatalogEntry {
     payloadType: string;
 
     /** Field-level payload metadata. */
-    payloadFields: AgentPayloadField[];
+    payloadFields: AgentActionPayloadField[];
 
     /** Minimal example payload. */
     examplePayload: unknown;
