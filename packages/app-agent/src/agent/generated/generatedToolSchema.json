@@ -311,6 +311,9 @@
         "getIntentActionDocs": {
           "$ref": "#/definitions/GetIntentActionDocsToolInput"
         },
+        "getIntentActionTypeDocs": {
+          "$ref": "#/definitions/GetIntentActionTypeDocsToolInput"
+        },
         "getSelectionFeatureFieldSummary": {
           "$ref": "#/definitions/GetSelectionFeatureFieldSummaryToolInput"
         },
@@ -356,6 +359,7 @@
         "resolveMetadataAttributeValues",
         "searchViewDatums",
         "getIntentActionDocs",
+        "getIntentActionTypeDocs",
         "zoomToScale",
         "submitIntentAction",
         "showCategoryCountsPlot",
@@ -679,7 +683,9 @@
         },
         "values": {
           "description": "Attribute values matched by exact equality.",
-          "items": {},
+          "items": {
+            "$ref": "#/definitions/NominalFilterValue"
+          },
           "type": "array"
         }
       },
@@ -747,21 +753,39 @@
       "description": "Read documentation, fields, and examples for one intent action. Use this before constructing an unfamiliar action payload for `submitIntentAction`. This tool doesn't execute the action or mutate any state. Do not repeat the call if documentation is already available in the conversation history.",
       "examples": [
         {
-          "actionType": "sampleView/groupToQuartiles",
-          "includeSchema": false
+          "actionType": "sampleView/groupToQuartiles"
         }
       ],
       "properties": {
         "actionType": {
           "$ref": "#/definitions/IntentActionType",
           "description": "Intent action type whose docs should be read."
-        },
-        "includeSchema": {
-          "description": "Whether to include the raw payload schema. The default response is more compact and usually sufficient.",
-          "type": "boolean"
         }
       },
       "required": ["actionType"],
+      "type": "object"
+    },
+    "GetIntentActionTypeDocsToolInput": {
+      "additionalProperties": false,
+      "description": "Read schema and usage details for one intent action payload field type. Use this when `getIntentActionDocs` shows a complex `payloadFields[].type` that is not clear from examples alone. This tool does not execute actions or mutate state.",
+      "examples": [
+        {
+          "referenceDepth": 1,
+          "typeName": "AttributeIdentifier"
+        }
+      ],
+      "properties": {
+        "referenceDepth": {
+          "description": "How far to include referenced definitions. Use `0` for only the requested type and `1` for immediate referenced types.",
+          "enum": [0, 1],
+          "type": "number"
+        },
+        "typeName": {
+          "description": "Type copied from an action `payloadFields[].type` value or from a previous action type docs response's `referencedTypes`.",
+          "type": "string"
+        }
+      },
+      "required": ["typeName"],
       "type": "object"
     },
     "GetSelectionFeatureFieldSummaryToolInput": {
@@ -1050,6 +1074,17 @@
       },
       "required": ["or"],
       "type": "object"
+    },
+    "NominalFilterValue": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Scalar"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Exact categorical value used by nominal sample filters."
     },
     "NumericDomain": {
       "items": {

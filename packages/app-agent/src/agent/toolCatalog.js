@@ -108,12 +108,21 @@ export function formatToolCallRejection(toolName, errors) {
         expectedFields.length > 0
             ? `${tool.toolName} expects ${expectedFields}.`
             : `${tool.toolName} expects structured arguments that match the tool schema.`;
+    const schemaHint =
+        toolName === "submitIntentAction"
+            ? [
+                  "If an action payload field type is unclear, call " +
+                      "`getIntentActionTypeDocs` with the `payloadFields[].type` " +
+                      "reported by `getIntentActionDocs` before retrying.",
+              ]
+            : [];
 
     return [
         "Tool call was incorrect and rejected. Correct it before trying again.",
         fieldSummary,
         "Example input:",
         exampleInput,
+        ...schemaHint,
         validationText,
     ].join("\n");
 }

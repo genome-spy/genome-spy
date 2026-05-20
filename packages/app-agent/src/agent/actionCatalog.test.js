@@ -156,6 +156,19 @@ describe("actionCatalog", () => {
         expect(actionsWithSelectionAggregationExamples).toEqual([]);
     });
 
+    it("does not expose any-typed action payload fields to the agent", () => {
+        const anyTypedFields = generatedActionCatalog.flatMap((entry) =>
+            entry.payloadFields
+                .filter((field) => /\bany\b/.test(field.type))
+                .map(
+                    (field) =>
+                        entry.actionType + "." + field.name + ": " + field.type
+                )
+        );
+
+        expect(anyTypedFields).toEqual([]);
+    });
+
     it("summarizes batches using action titles", () => {
         const summaries = summarizeIntentBatch(createAppStub(), {
             schemaVersion: 1,

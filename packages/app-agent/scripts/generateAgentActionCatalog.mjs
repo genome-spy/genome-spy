@@ -159,6 +159,7 @@ function getReducerNodes(sourceFile, sliceName) {
  * @typedef {object} PayloadFieldDoc
  * @property {string} name
  * @property {string} type
+ * @property {string[]} typeRefs
  * @property {string} description
  * @property {boolean} required
  */
@@ -237,12 +238,92 @@ function collectInterfaceFields(name, interfaces, sourceFile, visited = new Set(
         fields.set(fieldName, {
             name: fieldName,
             type: member.type ? member.type.getText(sourceFile) : "any",
+            typeRefs: collectTypeRefs(member.type, sourceFile),
             description: summary,
             required: !member.questionToken,
         });
     }
 
     return Array.from(fields.values());
+}
+
+/**
+ * @param {ts.TypeNode | undefined} typeNode
+ * @param {ts.SourceFile} sourceFile
+ * @returns {string[]}
+ */
+function collectTypeRefs(typeNode, sourceFile) {
+    /** @type {Set<string>} */
+    const refs = new Set();
+    collectTypeRefsInto(typeNode, sourceFile, refs);
+    return Array.from(refs);
+}
+
+/**
+ * @param {ts.TypeNode | undefined} typeNode
+ * @param {ts.SourceFile} sourceFile
+ * @param {Set<string>} refs
+ */
+function collectTypeRefsInto(typeNode, sourceFile, refs) {
+    if (!typeNode) {
+        return;
+    }
+
+    if (ts.isTypeReferenceNode(typeNode)) {
+        const typeName = typeNode.typeName.getText(sourceFile);
+        if (typeName === "Record" && typeNode.typeArguments?.[1]) {
+            collectTypeRefsInto(typeNode.typeArguments[1], sourceFile, refs);
+        } else if (!isPrimitiveTypeRef(typeName)) {
+            refs.add(typeName);
+        }
+        return;
+    }
+
+    if (ts.isArrayTypeNode(typeNode)) {
+        collectTypeRefsInto(typeNode.elementType, sourceFile, refs);
+        return;
+    }
+
+    if (ts.isTupleTypeNode(typeNode)) {
+        for (const element of typeNode.elements) {
+            collectTypeRefsInto(element, sourceFile, refs);
+        }
+        return;
+    }
+
+    if (ts.isRestTypeNode(typeNode)) {
+        collectTypeRefsInto(typeNode.type, sourceFile, refs);
+        return;
+    }
+
+    if (ts.isUnionTypeNode(typeNode)) {
+        for (const type of typeNode.types) {
+            collectTypeRefsInto(type, sourceFile, refs);
+        }
+        return;
+    }
+
+    if (ts.isIndexedAccessTypeNode(typeNode)) {
+        const typeText = typeNode.getText(sourceFile);
+        if (typeText === 'SampleAttributeDef["scale"]') {
+            refs.add("Scale");
+        } else {
+            collectTypeRefsInto(typeNode.objectType, sourceFile, refs);
+        }
+        return;
+    }
+
+    if (ts.isParenthesizedTypeNode(typeNode)) {
+        collectTypeRefsInto(typeNode.type, sourceFile, refs);
+    }
+}
+
+/**
+ * @param {string} name
+ * @returns {boolean}
+ */
+function isPrimitiveTypeRef(name) {
+    return name === "string" || name === "number" || name === "boolean";
 }
 
 /**

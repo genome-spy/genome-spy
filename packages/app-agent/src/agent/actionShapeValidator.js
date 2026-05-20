@@ -3,6 +3,13 @@ import Ajv from "ajv";
 import generatedActionSchema from "./generated/generatedActionSchema.json" with { type: "json" };
 import { formatAjvErrors } from "./validationErrorFormatter.js";
 import { repairJsonEncodedObjects } from "./schemaJsonRepair.js";
+import {
+    createActionSchemaWrapper,
+    createAgentActionSchemaWrapper,
+    getActionPayloadSchema,
+    getAgentActionSchemaDefinitions,
+    stepVariants,
+} from "./agentActionSchema.js";
 
 const AjvClass = /** @type {any} */ (Ajv);
 
@@ -12,41 +19,9 @@ const ajv = new AjvClass({
     allowUnionTypes: true,
 });
 
-/**
- * @param {Record<string, any>} schema
- * @returns {Record<string, any>}
- */
-function createSchemaWrapper(schema) {
-    return {
-        $schema: generatedActionSchema.$schema,
-        definitions: generatedActionSchema.definitions,
-        ...schema,
-    };
-}
-
-/**
- * @param {Record<string, any>} schema
- * @returns {Record<string, any>}
- */
-function createAgentSchemaWrapper(schema) {
-    return {
-        $schema: generatedActionSchema.$schema,
-        definitions: {
-            ...generatedActionSchema.definitions,
-            AttributeIdentifier: {
-                anyOf: [
-                    { $ref: "#/definitions/SampleAttributeIdentifier" },
-                    { $ref: "#/definitions/SelectionAggregationCandidate" },
-                ],
-            },
-            SampleAttributeIdentifier: sampleAttributeIdentifierSchema,
-            SelectionAggregationCandidate: selectionAggregationCandidateSchema,
-        },
-        ...schema,
-    };
-}
-
-const intentBatchContainerSchema = createSchemaWrapper({
+// Validate the batch envelope separately from payload variants so errors stay
+// focused on the selected actionType instead of listing every union branch.
+const intentBatchContainerSchema = createActionSchemaWrapper({
     ...generatedActionSchema.definitions.AgentIntentBatch,
     properties: {
         ...generatedActionSchema.definitions.AgentIntentBatch.properties,
@@ -73,9 +48,6 @@ const validateIntentBatchContainerSchema = ajv.compile(
     intentBatchContainerSchema
 );
 
-const stepVariants =
-    generatedActionSchema.definitions.AgentIntentBatchStep.anyOf;
-
 /** @type {Set<string>} */
 const supportedActionTypes = new Set(
     stepVariants.map((entry) => entry.properties.actionType.const)
@@ -86,76 +58,43 @@ const payloadValidatorsByActionType = new Map(
     stepVariants.map((entry) => {
         const actionType = entry.properties.actionType.const;
         const payloadSchema = entry.properties.payload;
-        return [actionType, ajv.compile(createSchemaWrapper(payloadSchema))];
+        return [
+            actionType,
+            ajv.compile(createActionSchemaWrapper(payloadSchema)),
+        ];
     })
 );
 
-/** @type {Record<string, any>} */
-const selectionAggregationCandidateSchema = {
-    additionalProperties: false,
-    properties: {
-        aggregation: {
-            $ref: "#/definitions/AggregationOp",
-            description:
-                "Aggregation op applied within the current interval selection for each sample.",
-        },
-        candidateId: {
-            description:
-                "Exact candidate id copied from selectionAggregation.fields. Do not construct this from parameter, view, or field names.",
-            type: "string",
-        },
-        featureFilter: {
-            $ref: "#/definitions/FeatureFilter",
-            description:
-                "Optional raw-feature predicate applied inside the selected interval before per-sample aggregation.",
-        },
-        type: {
-            const: "SELECTION_AGGREGATION",
-            type: "string",
-        },
-    },
-    required: ["type", "candidateId", "aggregation"],
-    type: "object",
-};
-
-/** @type {Record<string, any>} */
-const sampleAttributeIdentifierSchema = {
-    additionalProperties: false,
-    properties: {
-        specifier: {
-            type: "string",
-        },
-        type: {
-            const: "SAMPLE_ATTRIBUTE",
-            type: "string",
-        },
-    },
-    required: ["type", "specifier"],
-    type: "object",
-};
-
+// Agent-submitted actions use the same payload types, but with an
+// agent-facing AttributeIdentifier overlay from `agentActionSchema.js`.
 /** @type {Map<string, import("ajv").ValidateFunction>} */
 const agentPayloadValidatorsByActionType = new Map(
     stepVariants.map((entry) => {
         const actionType = entry.properties.actionType.const;
         return [
             actionType,
-            ajv.compile(createAgentSchemaWrapper(entry.properties.payload)),
+            ajv.compile(
+                createAgentActionSchemaWrapper(entry.properties.payload)
+            ),
         ];
     })
 );
 
+// Param changes have deep discriminated unions in the generated schema. These
+// smaller validators support clearer, path-specific rejection messages below.
 const paramSelectorValidator = ajv.compile(
-    createSchemaWrapper(generatedActionSchema.definitions.ParamSelector)
+    createActionSchemaWrapper(generatedActionSchema.definitions.ParamSelector)
 );
 const paramOriginValidator = ajv.compile(
-    createSchemaWrapper(generatedActionSchema.definitions.ParamOrigin)
+    createActionSchemaWrapper(generatedActionSchema.definitions.ParamOrigin)
 );
 const paramValuePointValidator = ajv.compile(
-    createSchemaWrapper(generatedActionSchema.definitions.ParamValuePoint)
+    createActionSchemaWrapper(generatedActionSchema.definitions.ParamValuePoint)
 );
 const paramValuePointExpandValidator = ajv.compile(
-    createSchemaWrapper(generatedActionSchema.definitions.ParamValuePointExpand)
+    createActionSchemaWrapper(
+        generatedActionSchema.definitions.ParamValuePointExpand
+    )
 );
 
 /**
@@ -163,6 +102,8 @@ const paramValuePointExpandValidator = ajv.compile(
  * @returns {import("./types.js").ShapeValidationResult}
  */
 export function validateIntentBatchShape(batch) {
+    // Fail early on an unknown actionType before generic schema validation
+    // turns the mistake into noisy anyOf branch errors.
     if (batch && typeof batch === "object") {
         const candidate = /** @type {{ steps?: unknown[] }} */ (batch);
         if (Array.isArray(candidate.steps) && candidate.steps.length) {
@@ -194,6 +135,8 @@ export function validateIntentBatchShape(batch) {
         };
     }
 
+    // The envelope is valid enough to route by actionType. Validate each
+    // payload against only its matching action schema.
     if (batch && typeof batch === "object") {
         const candidate = /** @type {{ steps?: unknown[] }} */ (batch);
         if (Array.isArray(candidate.steps)) {
@@ -268,6 +211,8 @@ export function validateAgentActionPayloadShape(
     payload,
     prefix = "$"
 ) {
+    // Give the model direct guidance for the two mistakes it commonly makes
+    // before falling back to AJV's structural schema errors.
     const internalAttributePaths = findInternalValueAtLocusAttributes(
         payload,
         prefix
@@ -278,7 +223,7 @@ export function validateAgentActionPayloadShape(
             errors: internalAttributePaths.map(
                 (path) =>
                     path +
-                    " uses internal VALUE_AT_LOCUS syntax. Use a SAMPLE_ATTRIBUTE from context or a SELECTION_AGGREGATION candidate copied from selectionAggregation.fields."
+                    " uses internal VALUE_AT_LOCUS syntax. Use a SAMPLE_ATTRIBUTE from context or a SELECTION_AGGREGATION attribute with candidateId copied from selectionAggregation.fields."
             ),
         };
     }
@@ -297,17 +242,7 @@ export function validateAgentActionPayloadShape(
         payload,
         prefix,
         agentPayloadValidatorsByActionType,
-        {
-            ...generatedActionSchema.definitions,
-            AttributeIdentifier: {
-                anyOf: [
-                    { $ref: "#/definitions/SampleAttributeIdentifier" },
-                    { $ref: "#/definitions/SelectionAggregationCandidate" },
-                ],
-            },
-            SampleAttributeIdentifier: sampleAttributeIdentifierSchema,
-            SelectionAggregationCandidate: selectionAggregationCandidateSchema,
-        }
+        getAgentActionSchemaDefinitions()
     );
 }
 
@@ -326,10 +261,14 @@ function validateActionPayloadShapeWithSchemas(
     validatorsByActionType,
     definitions
 ) {
+    // Param provenance entries need targeted messages for interval and point
+    // values; AJV's raw union errors are too broad to be useful to the model.
     if (actionType === "paramProvenance/paramChange") {
         return validateParamProvenanceEntryShape(payload, prefix);
     }
 
+    // Some models send nested objects as JSON-encoded strings. Repair only
+    // where the selected schema says an object is expected.
     const payloadSchema = getActionPayloadSchema(actionType);
     if (payloadSchema) {
         repairJsonEncodedObjects(payload, payloadSchema, definitions);
@@ -440,17 +379,6 @@ function findInternalValueAtLocusAttributes(value, path) {
 }
 
 /**
- * @param {import("./types.js").AgentActionType} actionType
- * @returns {Record<string, any> | undefined}
- */
-function getActionPayloadSchema(actionType) {
-    const variant = stepVariants.find(
-        (entry) => entry.properties.actionType.const === actionType
-    );
-    return variant?.properties.payload;
-}
-
-/**
  * Validates param provenance entries without surfacing the raw union noise
  * from the generated schema.
  *
@@ -538,6 +466,8 @@ function validateParamValueShape(value, prefix) {
     }
 
     if (candidate.type === "value") {
+        // Literal parameter values can be any scalar/object accepted by the
+        // runtime, so only the envelope is checked here.
         if (!("value" in candidate)) {
             errors.push(prefix + ".value is required.");
         }

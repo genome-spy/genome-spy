@@ -139,7 +139,7 @@ describe("actionShapeValidator", () => {
             "uses internal VALUE_AT_LOCUS syntax"
         );
         expect(result.errors.join("\n")).toContain(
-            "SELECTION_AGGREGATION candidate copied from selectionAggregation.fields"
+            "SELECTION_AGGREGATION attribute with candidateId copied from selectionAggregation.fields"
         );
     });
 

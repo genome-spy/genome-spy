@@ -370,6 +370,9 @@ describe("agentTools", () => {
             })
         );
         expect(result.content).not.toHaveProperty("payloadType");
+        expect(result.content).not.toHaveProperty("schema");
+        expect(result.content.payloadFields[0]).not.toHaveProperty("typeRefs");
+        expect(result.content.referencedTypes).toEqual(["AttributeIdentifier"]);
     });
 
     it("rejects unknown intent action doc lookups", () => {
@@ -383,18 +386,21 @@ describe("agentTools", () => {
         ).toThrow(ToolCallRejectionError);
     });
 
-    it("optionally includes action payload schema in action docs", () => {
+    it("returns docs for an intent payload field type", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
-        const result = tools.getIntentActionDocs(runtime, {
-            actionType: "sampleView/sortBy",
-            includeSchema: true,
+        const result = tools.getIntentActionTypeDocs(runtime, {
+            typeName: "AttributeIdentifier",
+            referenceDepth: 1,
         });
 
-        expect(result.content.schema).toEqual({
-            $ref: "#/definitions/SortBy",
-        });
+        expect(result.text).toBe(
+            "Read docs for intent type AttributeIdentifier. No action was executed."
+        );
+        expect(result.content.definitions).toHaveProperty(
+            "SelectionAggregationCandidate"
+        );
     });
 
     it("shows relationship plots through the host API", async () => {

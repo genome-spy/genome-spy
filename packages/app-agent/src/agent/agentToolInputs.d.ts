@@ -279,8 +279,7 @@ export interface SearchViewDatumsToolInput {
  *
  * @example
  * {
- *   "actionType": "sampleView/groupToQuartiles",
- *   "includeSchema": false
+ *   "actionType": "sampleView/groupToQuartiles"
  * }
  */
 export interface GetIntentActionDocsToolInput {
@@ -288,12 +287,32 @@ export interface GetIntentActionDocsToolInput {
      * Intent action type whose docs should be read.
      */
     actionType: IntentActionType;
+}
+
+/**
+ * Read schema and usage details for one intent action payload field type. Use
+ * this when `getIntentActionDocs` shows a complex `payloadFields[].type` that
+ * is not clear from examples alone. This tool does not execute actions or
+ * mutate state.
+ *
+ * @example
+ * {
+ *   "typeName": "AttributeIdentifier",
+ *   "referenceDepth": 1
+ * }
+ */
+export interface GetIntentActionTypeDocsToolInput {
+    /**
+     * Type copied from an action `payloadFields[].type` value or from a
+     * previous action type docs response's `referencedTypes`.
+     */
+    typeName: string;
 
     /**
-     * Whether to include the raw payload schema. The default response is more
-     * compact and usually sufficient.
+     * How far to include referenced definitions. Use `0` for only the
+     * requested type and `1` for immediate referenced types.
      */
-    includeSchema?: boolean;
+    referenceDepth?: 0 | 1;
 }
 
 /**
@@ -452,6 +471,7 @@ export interface AgentToolInputs {
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;
     getIntentActionDocs: GetIntentActionDocsToolInput;
+    getIntentActionTypeDocs: GetIntentActionTypeDocsToolInput;
     zoomToScale: ZoomToScaleToolInput;
     submitIntentAction: SubmitIntentActionToolInput;
     showCategoryCountsPlot: ShowCategoryCountsPlotToolInput;
