@@ -330,4 +330,5 @@ def test_default_system_prompt_is_markdown_text() -> None:
     assert "searchViewDatums" in prompt
     assert "intentActionSummaries" in prompt
     assert "getIntentActionDocs" in prompt
-    assert "Use `includeSchema: false` first" in prompt
+    assert "getIntentActionTypeDocs" in prompt
+    assert "includeSchema" not in prompt

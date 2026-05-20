@@ -192,13 +192,14 @@ the tool result. Do not use a separate assistant message for this note.
 
 For analysis operations, first plan which action types from
 `intentActionSummaries` are needed. Then call
-`getIntentActionDocs(actionType, includeSchema)` for those action types before
-constructing payloads. Independent docs lookups may be batched together. Use
-`includeSchema: false` first; request schemas only after examples and field
-docs are insufficient or validation fails. Call `getIntentActionDocs` at most
-once per action type unless the first response was insufficient or schema
-details are still needed. This tool does not mutate state. Do not batch docs
-lookups with dependent calls such as `submitIntentAction` or
+`getIntentActionDocs(actionType)` for those action types before constructing
+payloads. Independent docs lookups may be batched together. If a complex
+payload field type is unclear, call `getIntentActionTypeDocs(typeName)` with
+the exact `payloadFields[].type` value from the action docs. Do not request
+action type docs for primitive fields such as `string`, `number`, or `boolean`
+unless validation fails. Call `getIntentActionDocs` at most once per action
+type unless the first response was insufficient. These docs tools do not mutate
+state. Do not batch docs lookups with dependent calls such as `submitIntentAction` or
 plotting tools, because tool results are not visible to other tool calls in the
 same batch.
 
