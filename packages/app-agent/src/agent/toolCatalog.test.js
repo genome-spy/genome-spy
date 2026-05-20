@@ -33,6 +33,9 @@ describe("toolCatalog", () => {
         const getIntentActionDocs = toolDefinitions.find(
             (tool) => tool.name === "getIntentActionDocs"
         );
+        const getIntentActionTypeDocs = toolDefinitions.find(
+            (tool) => tool.name === "getIntentActionTypeDocs"
+        );
         const showAttributeRelationshipPlot = toolDefinitions.find(
             (tool) => tool.name === "showAttributeRelationshipPlot"
         );
@@ -56,7 +59,14 @@ describe("toolCatalog", () => {
             name: "getIntentActionDocs",
             strict: true,
             parameters: {
-                required: ["actionType", "includeSchema"],
+                required: ["actionType"],
+            },
+        });
+        expect(getIntentActionTypeDocs).toMatchObject({
+            name: "getIntentActionTypeDocs",
+            strict: true,
+            parameters: {
+                required: ["referenceDepth", "typeName"],
             },
         });
         expect(showAttributeRelationshipPlot).toMatchObject({
@@ -252,13 +262,14 @@ describe("toolCatalog", () => {
         );
     });
 
-    it("suggests schema docs after malformed submitIntentAction arguments", () => {
+    it("suggests action type docs after malformed submitIntentAction arguments", () => {
         const message = formatToolCallRejection("submitIntentAction", [
             "$.action.payload.attribute.type must be equal to one of the allowed values.",
         ]);
 
-        expect(message).toContain("getIntentActionDocs");
-        expect(message).toContain("includeSchema: true");
+        expect(message).toContain("getIntentActionTypeDocs");
+        expect(message).toContain("payload field type");
+        expect(message).not.toContain("includeSchema");
     });
 
     it("keeps string values as strings when a tool schema expects a string", () => {

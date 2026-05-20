@@ -111,9 +111,9 @@ export function formatToolCallRejection(toolName, errors) {
     const schemaHint =
         toolName === "submitIntentAction"
             ? [
-                  "If the action payload field shapes are unclear, call " +
-                      "`getIntentActionDocs` for the actionType with " +
-                      "`includeSchema: true` before retrying.",
+                  "If an action payload field type is unclear, call " +
+                      "`getIntentActionTypeDocs` with the `payloadFields[].type` " +
+                      "reported by `getIntentActionDocs` before retrying.",
               ]
             : [];
 
