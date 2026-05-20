@@ -6,6 +6,7 @@ import { repairJsonEncodedObjects } from "./schemaJsonRepair.js";
 import {
     createActionSchemaWrapper,
     createAgentActionSchemaWrapper,
+    getAgentActionPayloadSchema,
     getActionPayloadSchema,
     getAgentActionSchemaDefinitions,
     stepVariants,
@@ -70,11 +71,16 @@ const payloadValidatorsByActionType = new Map(
 /** @type {Map<string, import("ajv").ValidateFunction>} */
 const agentPayloadValidatorsByActionType = new Map(
     stepVariants.map((entry) => {
-        const actionType = entry.properties.actionType.const;
+        const actionType = /** @type {import("./types.js").AgentActionType} */ (
+            entry.properties.actionType.const
+        );
         return [
             actionType,
             ajv.compile(
-                createAgentActionSchemaWrapper(entry.properties.payload)
+                createAgentActionSchemaWrapper(
+                    getAgentActionPayloadSchema(actionType) ??
+                        entry.properties.payload
+                )
             ),
         ];
     })
@@ -237,6 +243,20 @@ export function validateAgentActionPayloadShape(
         };
     }
 
+    const unsupportedFeatureFilterPaths =
+        actionType === "sampleView/deriveMetadata"
+            ? []
+            : findSelectionAggregationFeatureFilters(payload, prefix);
+    if (unsupportedFeatureFilterPaths.length > 0) {
+        return {
+            ok: false,
+            errors: unsupportedFeatureFilterPaths.map(
+                (path) =>
+                    path + " is only supported by sampleView/deriveMetadata."
+            ),
+        };
+    }
+
     return validateActionPayloadShapeWithSchemas(
         actionType,
         payload,
@@ -350,6 +370,37 @@ function validateSelectionAggregationCandidate(value, path) {
     }
 
     return errors;
+}
+
+/**
+ * @param {unknown} value
+ * @param {string} path
+ * @returns {string[]}
+ */
+function findSelectionAggregationFeatureFilters(value, path) {
+    if (Array.isArray(value)) {
+        return value.flatMap((item, index) =>
+            findSelectionAggregationFeatureFilters(
+                item,
+                path + "[" + index + "]"
+            )
+        );
+    }
+
+    if (!isObject(value)) {
+        return [];
+    }
+
+    const paths =
+        value.type === "SELECTION_AGGREGATION" && "featureFilter" in value
+            ? [path + ".featureFilter"]
+            : [];
+
+    return paths.concat(
+        Object.entries(value).flatMap(([key, child]) =>
+            findSelectionAggregationFeatureFilters(child, path + "." + key)
+        )
+    );
 }
 
 /**

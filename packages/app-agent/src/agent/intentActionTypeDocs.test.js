@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import generatedActionCatalog from "./generated/generatedActionCatalog.json" with { type: "json" };
+import { getActionCatalogEntry } from "./actionCatalog.js";
 import { getIntentActionTypeDocs } from "./intentActionTypeDocs.js";
 
 describe("intentActionTypeDocs", () => {
@@ -19,7 +20,30 @@ describe("intentActionTypeDocs", () => {
         expect(docs.definitions).toHaveProperty(
             "SelectionAggregationCandidate"
         );
+        expect(
+            JSON.stringify(docs.definitions.SelectionAggregationCandidate)
+        ).not.toContain("featureFilter");
         expect(docs.notes.join(" ")).toContain("selectionAggregation.fields");
+    });
+
+    it("returns filtered attribute docs only for deriveMetadata attributes", () => {
+        const deriveMetadata = getActionCatalogEntry(
+            "sampleView/deriveMetadata"
+        );
+        const attributeField = deriveMetadata.payloadFields.find(
+            (field) => field.name === "attribute"
+        );
+        const docs = getIntentActionTypeDocs({
+            typeName: attributeField.type,
+            referenceDepth: 1,
+        });
+
+        expect(attributeField.type).toBe("DeriveMetadataAttributeIdentifier");
+        expect(
+            JSON.stringify(
+                docs.definitions.DeriveMetadataSelectionAggregationCandidate
+            )
+        ).toContain("featureFilter");
     });
 
     it("returns enum docs for ComparisonOperatorType", () => {

@@ -14,10 +14,23 @@ import generatedToolSchema from "./generated/generatedToolSchema.json" with { ty
 
 /** @type {Record<string, any>} */
 export const agentSchemaOverrides = {
+    // Default agent-visible action attributes intentionally omit
+    // featureFilter. Filtered interval aggregations materialize a new metadata
+    // column and should not be advertised for transient plotting or grouping.
     AttributeIdentifier: {
         anyOf: [
             { $ref: "#/definitions/SampleAttributeIdentifier" },
             { $ref: "#/definitions/SelectionAggregationCandidate" },
+        ],
+    },
+    // deriveMetadata is the one public action where filtered raw features are
+    // useful: the filter becomes part of the materialized metadata definition.
+    DeriveMetadataAttributeIdentifier: {
+        anyOf: [
+            { $ref: "#/definitions/SampleAttributeIdentifier" },
+            {
+                $ref: "#/definitions/DeriveMetadataSelectionAggregationCandidate",
+            },
         ],
     },
 };
@@ -40,6 +53,30 @@ export function getAgentActionSchemaDefinitions() {
             generatedToolSchema.definitions.SampleAttributeIdentifier,
         SelectionAggregationCandidate:
             generatedToolSchema.definitions.SelectionAggregationCandidate,
+        DeriveMetadataSelectionAggregationCandidate:
+            createDeriveMetadataSelectionAggregationCandidateSchema(),
+    };
+}
+
+/**
+ * @returns {Record<string, any>}
+ */
+function createDeriveMetadataSelectionAggregationCandidateSchema() {
+    const base = generatedToolSchema.definitions.SelectionAggregationCandidate;
+    return {
+        ...base,
+        properties: {
+            ...base.properties,
+            // Keep the base generated SelectionAggregationCandidate unfiltered
+            // so strict tool schemas for plots do not make featureFilter
+            // required. This derive-only schema adds it back for action docs
+            // and submitIntentAction validation.
+            featureFilter: {
+                $ref: "#/definitions/FeatureFilter",
+                description:
+                    "Optional raw-feature predicate applied inside the selected interval before per-sample aggregation. Use one field copied from the candidate's `filterableFields`; call `getSelectionFeatureFieldSummary` first if exact categorical values or numeric bounds are needed.",
+            },
+        },
     };
 }
 
@@ -68,6 +105,35 @@ export function createAgentActionSchemaWrapper(schema) {
         $schema: generatedActionSchema.$schema,
         definitions: getAgentActionSchemaDefinitions(),
         ...schema,
+    };
+}
+
+/**
+ * Returns the agent-facing payload schema for one action type.
+ *
+ * @param {import("./types.js").AgentActionType} actionType
+ * @returns {Record<string, any> | undefined}
+ */
+export function getAgentActionPayloadSchema(actionType) {
+    const schema = getActionPayloadSchema(actionType);
+    if (actionType !== "sampleView/deriveMetadata" || !schema) {
+        return schema;
+    }
+
+    const deriveMetadataSchema =
+        generatedActionSchema.definitions.DeriveMetadata;
+    return {
+        ...deriveMetadataSchema,
+        properties: {
+            ...deriveMetadataSchema.properties,
+            // The canonical app payload type uses AttributeIdentifier here.
+            // Project only this field to the derive-only agent-facing type so
+            // other action attributes keep the narrower unfiltered contract.
+            attribute: {
+                ...deriveMetadataSchema.properties.attribute,
+                $ref: "#/definitions/DeriveMetadataAttributeIdentifier",
+            },
+        },
     };
 }
 

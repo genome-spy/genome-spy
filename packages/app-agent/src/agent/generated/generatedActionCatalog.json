@@ -50,8 +50,8 @@
     "payloadFields": [
       {
         "name": "attribute",
-        "type": "AttributeIdentifier",
-        "typeRefs": ["AttributeIdentifier"],
+        "type": "DeriveMetadataAttributeIdentifier",
+        "typeRefs": ["DeriveMetadataAttributeIdentifier"],
         "description": "Attribute operated on by the action. Its current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation.",
         "required": true
       },

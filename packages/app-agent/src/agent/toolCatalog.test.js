@@ -304,6 +304,21 @@ describe("toolCatalog", () => {
         ).not.toContain("domainAtActionTime");
     });
 
+    it("does not expose feature filters in plotting tool attribute schemas", () => {
+        const plottingToolNames = new Set([
+            "showCategoryCountsPlot",
+            "showAttributeDistributionPlot",
+            "showAttributeRelationshipPlot",
+        ]);
+        const plottingToolDefinitions = buildResponsesToolDefinitions().filter(
+            (tool) => plottingToolNames.has(tool.name)
+        );
+
+        expect(JSON.stringify(plottingToolDefinitions)).not.toContain(
+            "featureFilter"
+        );
+    });
+
     it("explains when an actionType is mistakenly called as a tool", () => {
         const message = formatToolCallRejection("paramProvenance/paramChange", [
             "Unsupported agent tool paramProvenance/paramChange.",

@@ -105,7 +105,7 @@ describe("actionShapeValidator", () => {
         expect(agentFacing.ok).toBe(true);
     });
 
-    it("accepts flat feature filters on selection aggregation candidates", () => {
+    it("rejects feature filters outside deriveMetadata action attributes", () => {
         const result = validateAgentActionPayloadShape("sampleView/sortBy", {
             attribute: {
                 type: "SELECTION_AGGREGATION",
@@ -118,6 +118,30 @@ describe("actionShapeValidator", () => {
                 },
             },
         });
+
+        expect(result.ok).toBe(false);
+        expect(result.errors).toContain(
+            "$.attribute.featureFilter is only supported by sampleView/deriveMetadata."
+        );
+    });
+
+    it("accepts feature filters on deriveMetadata selection aggregation attributes", () => {
+        const result = validateAgentActionPayloadShape(
+            "sampleView/deriveMetadata",
+            {
+                attribute: {
+                    type: "SELECTION_AGGREGATION",
+                    candidateId: "brush@mutations:VAF",
+                    aggregation: "max",
+                    featureFilter: {
+                        field: "functionalCategory",
+                        operator: "in",
+                        values: ["frameshift"],
+                    },
+                },
+                name: "frameshift_vaf",
+            }
+        );
 
         expect(result.ok).toBe(true);
     });

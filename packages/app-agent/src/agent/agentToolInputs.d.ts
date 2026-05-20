@@ -33,15 +33,23 @@ type SelectionAggregationCandidate = {
      * sample. This cannot be used to aggregate across samples or groups.
      */
     aggregation: AggregationOp;
-
-    /**
-     * Optional raw-feature predicate applied inside the selected interval before
-     * per-sample aggregation. Use one field copied from the candidate's
-     * `filterableFields`; call `getSelectionFeatureFieldSummary` first if exact
-     * categorical values or numeric bounds are needed.
-     */
-    featureFilter?: FeatureFilter;
 };
+
+type DeriveMetadataSelectionAggregationCandidate =
+    SelectionAggregationCandidate & {
+        /**
+         * Optional raw-feature predicate applied inside the selected interval
+         * before per-sample aggregation. Use one field copied from the
+         * candidate's `filterableFields`; call
+         * `getSelectionFeatureFieldSummary` first if exact categorical values
+         * or numeric bounds are needed.
+         */
+        featureFilter?: FeatureFilter;
+    };
+
+export type DeriveMetadataAttributeIdentifier =
+    | SampleAttributeIdentifier
+    | DeriveMetadataSelectionAggregationCandidate;
 
 export type AgentAttributeCandidate =
     | SampleAttributeIdentifier
