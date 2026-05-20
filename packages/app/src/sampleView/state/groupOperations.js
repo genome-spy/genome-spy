@@ -25,6 +25,7 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
         group(sampleGroup.samples, accessor)
     );
 
+    /** @type {{ name: any, title: string | undefined, samples: string[] | undefined }[]} */
     const sortedEntries = groups
         ? groups
               .map((groupTerm, i) => ({
@@ -35,7 +36,7 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
               .filter((entry) => entry.samples)
         : [...grouped].map(([name, samples]) => ({
               name,
-              title: undefined,
+              title: /** @type {string | undefined} */ (undefined),
               samples,
           }));
 
