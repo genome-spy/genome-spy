@@ -31,11 +31,11 @@ const verboseOps = {
  * @returns {import("lit").TemplateResult}
  */
 export function formatSet(values, braces = true) {
-    const joined = html`${map(
+    const joined = Array.from(
         values,
         (value, i) => html`${i > 0 ? ", " : ""}<strong>${value}</strong>`
-    )}`;
-    return braces ? html`{${joined}}` : joined;
+    );
+    return braces ? html`{${joined}}` : html`${joined}`;
 }
 
 /**

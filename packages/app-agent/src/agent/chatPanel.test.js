@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { html } from "lit";
+import { templateResultToString } from "@genome-spy/app/agentShared";
+import { formatSet } from "../../../app/src/sampleView/state/actionInfo.js";
 import "./chatPanel.js";
 import "./chatStream.js";
 
@@ -50,6 +53,48 @@ function createController(snapshot) {
 }
 
 describe("gs-agent-chat-panel", () => {
+    it("renders result summary sets as reusable rich content", async () => {
+        const content = html`Group by thresholds ${formatSet(["> 0"])} as
+        ${formatSet(["Loss", "Gain"])} on stopgain_12q14_3`;
+        const text = templateResultToString(content);
+        const panel = document.createElement("gs-agent-chat-panel");
+        const controller = createController(
+            createSnapshot([
+                {
+                    id: 1,
+                    kind: "result",
+                    text: "Completed 1 action.",
+                    lines: [
+                        {
+                            content,
+                            text,
+                        },
+                    ],
+                },
+            ])
+        );
+
+        panel.controller = controller;
+        document.body.append(panel);
+        await panel.updateComplete;
+        await Promise.resolve();
+
+        const message = panel.shadowRoot.querySelector("gs-chat-message");
+        await message.updateComplete;
+
+        const line = message.shadowRoot.querySelector(".message-lines li");
+        expect(line.textContent.replace(/\s+/g, " ").trim()).toBe(
+            "Group by thresholds {> 0} as {Loss, Gain} on stopgain_12q14_3"
+        );
+        expect(
+            Array.from(line.querySelectorAll("strong"), (element) =>
+                element.textContent?.trim()
+            )
+        ).toEqual(["> 0", "Loss", "Gain"]);
+
+        panel.remove();
+    });
+
     it("keeps the transcript pinned only while the user is at the bottom", async () => {
         const panel = document.createElement("gs-agent-chat-panel");
         const controller = createController(
