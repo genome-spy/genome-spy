@@ -272,9 +272,8 @@ export const sampleSlice = createSlice({
          * Use this when an existing attribute should be materialized as sample
          * metadata under a new column name. For selection-derived values, use
          * a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`.
-         * Call `getIntentActionTypeDocs` for `AttributeIdentifier` if raw
-         * features inside the selected interval should be filtered before
-         * aggregation.
+         * If raw feature values inside the selected interval should be filtered before
+         * aggregation, use `featureFilter` in `AttributeIdentifier`.
          *
          * @agent.payloadType DeriveMetadata
          * @agent.category metadata

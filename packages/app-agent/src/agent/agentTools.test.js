@@ -1386,6 +1386,57 @@ describe("agentTools", () => {
         );
     });
 
+    it("returns a clear-selection note after deriving selection-based metadata", async () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = await tools.submitIntentAction(runtime, {
+            action: {
+                actionType: "sampleView/deriveMetadata",
+                payload: {
+                    attribute: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "brush@track:beta",
+                        aggregation: "max",
+                    },
+                    name: "max_beta",
+                },
+            },
+        });
+
+        expect(result.text).toBe("Executed 1 action.");
+        expect(result.content).toHaveProperty("agentNotes", [
+            {
+                selector: {
+                    scope: [],
+                    param: "brush",
+                },
+                message:
+                    "This derived metadata was based on the current interval selection. If that selection was only needed to derive this metadata, clear it before subsequent actions that should not depend on it.",
+            },
+        ]);
+    });
+
+    it("does not return a clear-selection note for metadata-backed derivation", async () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        const result = await tools.submitIntentAction(runtime, {
+            action: {
+                actionType: "sampleView/deriveMetadata",
+                payload: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "age",
+                    },
+                    name: "copied_age",
+                },
+            },
+        });
+
+        expect(result.content).not.toHaveProperty("agentNotes");
+    });
+
     it("submits logical selection aggregation attributes without reusing frozen context selectors", async () => {
         const runtime = createRuntimeStub();
         const selectionSelector = Object.freeze({

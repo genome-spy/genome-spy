@@ -51,6 +51,7 @@ export type {
     AgentSelectionParameterDeclaration,
     AgentVariableParameterDeclaration,
     IntentBatchExecutionContent,
+    IntentBatchExecutionNote,
     IntentBatchExecutionSampleViewSummary,
     IntentBatchSummaryLine,
     SelectionAggregationResolution,

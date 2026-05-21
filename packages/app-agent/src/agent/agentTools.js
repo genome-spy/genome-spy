@@ -301,6 +301,10 @@ export const agentTools = {
                         input.action,
                     ])
                 );
+            const agentNotes = getSubmitIntentActionNotes(
+                runtime.getAgentVolatileContext(),
+                input.action
+            );
             const result = await runtime.submitIntentActions(
                 {
                     schemaVersion: 1,
@@ -313,7 +317,10 @@ export const agentTools = {
             );
             return {
                 text: runtime.summarizeExecutionResult(result),
-                content: result.content,
+                content:
+                    agentNotes.length > 0
+                        ? { ...result.content, agentNotes }
+                        : result.content,
                 summaries: result.summaries,
             };
         } catch (error) {
@@ -328,6 +335,51 @@ export const agentTools = {
         }
     },
 };
+
+/**
+ * @param {import("./types.d.ts").AgentVolatileContext} volatileContext
+ * @param {import("./types.d.ts").AgentIntentBatchStep} action
+ * @returns {import("./types.d.ts").IntentBatchExecutionNote[]}
+ */
+function getSubmitIntentActionNotes(volatileContext, action) {
+    if (
+        action.actionType === "sampleView/deriveMetadata" &&
+        isSelectionAggregationAttribute(action.payload.attribute)
+    ) {
+        const candidate = volatileContext.selectionAggregation.fields.find(
+            (field) =>
+                field.candidateId === action.payload.attribute.candidateId
+        );
+        const selector = candidate?.selectionSelector;
+        if (!selector) {
+            return [];
+        }
+
+        return [
+            {
+                selector: structuredClone(selector),
+                message:
+                    "This derived metadata was based on the current interval selection. If that selection was only needed to derive this metadata, clear it before subsequent actions that should not depend on it.",
+            },
+        ];
+    }
+
+    return [];
+}
+
+/**
+ * @param {unknown} attribute
+ * @returns {attribute is import("./agentToolInputs.d.ts").SelectionAggregationCandidate}
+ */
+function isSelectionAggregationAttribute(attribute) {
+    return (
+        !!attribute &&
+        typeof attribute === "object" &&
+        !Array.isArray(attribute) &&
+        /** @type {{ type?: unknown }} */ (attribute).type ===
+            "SELECTION_AGGREGATION"
+    );
+}
 
 /**
  * @param {AgentToolRuntime} runtime

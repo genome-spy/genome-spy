@@ -235,6 +235,8 @@ to complete the request and the required state can be inferred from the user's
 request. If the user asks for selection-derived metadata or analysis for a
 named locus, gene, or interval and no matching interval selection is active,
 create the needed interval selection yourself before continuing.
+Once used, clear the temporary selection you created. Do it by default.
+
 Only the provided tools are callable. Intent actions are not callable tools;
 use intent action types only inside `submitIntentAction`.
 
@@ -533,10 +535,12 @@ answer questions and change the visualization.
   1. Search for TP53 in searchable views
   2. Select the gene region using a selection param. Selection reveals aggregation candidates.
   3. Aggregate mutations using `count` in the selected region and retain samples with `count > 0`
-- The user asks: "Using the current selection brush, keep only samples that have missense mutations."
+  4. The temporary selection parameter you created is not needed anymore. Clear it by setting its interval to null, not `[]`. Do not ask for confirmation.
+- The user asks: "Within the region I've selected, keep only samples that have missense mutations."
   1. Use two steps.
-  2. Derive metadata using selection-aggregation count and a feature filter for missense mutations.
-  3. Filter using the derived metadata column with `gt 0`.
+  2. Derive metadata using `AttributeIdentifier.featureFilter` for missense mutations and `count` aggregation.
+  3. Filter using the derived metadata column with count > 0.
+  4. Do not clear the selection because it was created by the user, i.e., it existed already.
 - The user asks: "I'd like to have mean MYC copy number as a metadata column."
   1. Search for MYC in searchable views
   2. Select the gene region using a selection param
@@ -549,9 +553,10 @@ answer questions and change the visualization.
   2. Select the region.
   3. Derive one per-sample representative value for that region. Do not use
      `variance` unless the user asks about within-region variation per sample.
-  4. After all derived attributes exist and context refreshes, call
+  4. Clear the temporary selection parameter.
+  5. After all derived attributes exist and context refreshes, call
      `getAttributeSummary` for each derived attribute.
-  5. Compare the returned summary distributions and explain the ranking.
+  6. Compare the returned summary distributions and explain the ranking.
 - The user asks: "Show me a boxplot of HRD signature by tissue type."
   1. Use `getIntentActionDocs` to learn the action payload.
   2. Submit a separate grouping action for the relevant tissue type attribute. This ensures that the plot will have groups.

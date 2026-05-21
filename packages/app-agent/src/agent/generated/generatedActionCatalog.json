@@ -45,7 +45,7 @@
   {
     "actionType": "sampleView/deriveMetadata",
     "description": "Add a derived metadata column from a selected or aggregated attribute.",
-    "usage": "Use this when an existing attribute should be materialized as sample metadata under a new column name. For selection-derived values, use a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`. Call `getIntentActionTypeDocs` for `AttributeIdentifier` if raw features inside the selected interval should be filtered before aggregation.",
+    "usage": "Use this when an existing attribute should be materialized as sample metadata under a new column name. For selection-derived values, use a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`. If raw feature values inside the selected interval should be filtered before aggregation, use `featureFilter` in `AttributeIdentifier`.",
     "payloadType": "DeriveMetadata",
     "payloadFields": [
       {
@@ -653,7 +653,7 @@
   {
     "actionType": "paramProvenance/paramChange",
     "description": "Create or update a reactive selection or parameter value, including point selections, interval selections, and genomic-region selections.",
-    "usage": "Use this for point selections, interval selections, genomic-region selections, and other replayable parameter changes.",
+    "usage": "Use this for point selections, interval selections, genomic-region selections, and other replayable parameter changes. If you create a temporary selection for an ephemeral purpose (e.g. to compute a one-off metadata column), clear it out with a subsequent `paramChange` that sets the interval to null.",
     "payloadType": "ParamProvenanceEntry",
     "payloadFields": [
       {

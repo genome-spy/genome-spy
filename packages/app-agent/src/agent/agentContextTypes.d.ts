@@ -359,10 +359,19 @@ export interface IntentBatchExecutionSampleViewSummary {
 }
 
 /**
+ * Machine-readable note returned with a successful intent action execution.
+ */
+export interface IntentBatchExecutionNote {
+    selector: ParamSelector;
+    message: string;
+}
+
+/**
  * Structured content returned when an intent batch executes.
  */
 export interface IntentBatchExecutionContent {
     kind: "intent_batch_result";
     sampleView?: IntentBatchExecutionSampleViewSummary;
     provenanceIds?: string[];
+    agentNotes?: IntentBatchExecutionNote[];
 }

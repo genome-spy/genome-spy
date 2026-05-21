@@ -21,7 +21,10 @@ export const paramProvenanceSlice = createSlice({
          * point selections, interval selections, and genomic-region selections.
          *
          * Use this for point selections, interval selections, genomic-region
-         * selections, and other replayable parameter changes.
+         * selections, and other replayable parameter changes. If you create a
+         * temporary selection for an ephemeral purpose (e.g. to compute a one-off
+         * metadata column), clear it out with a subsequent `paramChange` that
+         * sets the interval to null.
          *
          * @agent.payloadType ParamProvenanceEntry
          * @agent.category provenance

@@ -366,6 +366,7 @@ export interface ZoomToScaleToolInput {
  * but differently, think if an earlier state should be restored first.
  * In addition, before constructing the action, ensure that every `attribute`
  * (AttributeIdentifier) is presented to you in the context or tool results.
+ * The tool response may include `agentNotes` that guide you in the workflow.
  *
  * @example
  * {
