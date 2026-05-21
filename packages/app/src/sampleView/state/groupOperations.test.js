@@ -99,6 +99,85 @@ describe("groupOperations", () => {
         ]);
     });
 
+    it("uses custom threshold group titles while preserving interval titles", () => {
+        const sampleGroup = {
+            name: "root",
+            title: "Root",
+            samples: ["1", "2", "3", "4"],
+        };
+
+        groupSamplesByThresholds(
+            sampleGroup,
+            (value) => Number(value),
+            [
+                { operator: "lt", operand: 2 },
+                { operator: "lt", operand: 4 },
+            ],
+            ["Low", "Medium", "High"]
+        );
+
+        expect(sampleGroup.groups.map((group) => group.name)).toEqual([
+            "Group 3",
+            "Group 2",
+            "Group 1",
+        ]);
+        expect(sampleGroup.groups.map((group) => group.title)).toEqual([
+            "High",
+            "Medium",
+            "Low",
+        ]);
+        expect(sampleGroup.groups.map((group) => group.generatedTitle)).toEqual(
+            [
+                formatThresholdInterval(
+                    { operator: "lt", operand: 4 },
+                    { operator: "lte", operand: Infinity }
+                ),
+                formatThresholdInterval(
+                    { operator: "lt", operand: 2 },
+                    { operator: "lt", operand: 4 }
+                ),
+                formatThresholdInterval(
+                    { operator: "lt", operand: -Infinity },
+                    { operator: "lt", operand: 2 }
+                ),
+            ]
+        );
+    });
+
+    it("rejects threshold group titles with the wrong count", () => {
+        const sampleGroup = {
+            name: "root",
+            title: "Root",
+            samples: ["1", "2"],
+        };
+
+        expect(() =>
+            groupSamplesByThresholds(
+                sampleGroup,
+                (value) => Number(value),
+                [{ operator: "lt", operand: 2 }],
+                ["Low"]
+            )
+        ).toThrow("Expected 2 threshold group titles, got 1.");
+    });
+
+    it("rejects duplicate threshold group titles", () => {
+        const sampleGroup = {
+            name: "root",
+            title: "Root",
+            samples: ["1", "2"],
+        };
+
+        expect(() =>
+            groupSamplesByThresholds(
+                sampleGroup,
+                (value) => Number(value),
+                [{ operator: "lt", operand: 2 }],
+                ["Low", " Low "]
+            )
+        ).toThrow('Duplicate threshold group title: "Low".');
+    });
+
     it("handles quartile grouping when all values are equal", () => {
         const sampleGroup = {
             name: "root",

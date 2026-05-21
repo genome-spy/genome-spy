@@ -641,6 +641,13 @@
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
         },
+        "groupTitles": {
+          "description": "Optional display titles for the generated groups.\n\nWhen provided, the array must contain one title for each output interval: exactly `thresholds.length + 1` titles. Titles are ordered from the lowest interval to the highest interval, matching the ascending threshold order. For thresholds `[10, 20]`, titles correspond to values below `10`, values from `10` to `20`, and values above `20`.\n\nTitles must be non-empty and unique. The original interval labels are still preserved for each group.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "thresholds": {
           "description": "Thresholds used to stratify the samples.\n\nSupply these in ascending operand order. Adjacent thresholds define the output intervals.",
           "items": {
@@ -1799,7 +1806,7 @@
         },
         "operator": {
           "$ref": "#/definitions/ThresholdOperator",
-          "description": "Upper-bound comparison used for this threshold.\n\n`lt` creates an open upper bound and `lte` creates a closed upper bound."
+          "description": "Upper-bound comparison used for the interval ending at this threshold.\n\n`lt` makes the upper endpoint exclusive (`<`). `lte` makes the upper endpoint inclusive (`<=`)."
         }
       },
       "required": ["operator", "operand"],

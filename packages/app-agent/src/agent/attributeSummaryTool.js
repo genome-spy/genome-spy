@@ -87,12 +87,20 @@ function buildGroupedAttributeSummary(runtime, attribute) {
     }
 
     const visibleGroups = source.groups.slice(0, DEFAULT_MAX_GROUPS);
+    const groupBase = (
+        /** @type {import("./types.d.ts").AgentVisibleSampleGroupSource} */ group
+    ) => ({
+        path: group.path,
+        titles: group.titles,
+        ...(group.generatedTitles
+            ? { generatedTitles: group.generatedTitles }
+            : {}),
+        title: group.title,
+    });
     const groups =
         source.dataType === "quantitative"
             ? visibleGroups.map((group) => ({
-                  path: group.path,
-                  titles: group.titles,
-                  title: group.title,
+                  ...groupBase(group),
                   ...buildQuantitativeAgentSummary(
                       group.sampleIds.map(
                           (sampleId) => source.valuesBySampleId[sampleId]
@@ -100,9 +108,7 @@ function buildGroupedAttributeSummary(runtime, attribute) {
                   ),
               }))
             : visibleGroups.map((group) => ({
-                  path: group.path,
-                  titles: group.titles,
-                  title: group.title,
+                  ...groupBase(group),
                   ...buildCategoricalFieldSummary(
                       group.sampleIds.map(
                           (sampleId) => source.valuesBySampleId[sampleId]

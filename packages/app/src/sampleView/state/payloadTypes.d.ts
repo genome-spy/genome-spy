@@ -160,9 +160,10 @@ export type NominalFilterValue = Scalar | null;
  */
 export interface Threshold {
     /**
-     * Upper-bound comparison used for this threshold.
+     * Upper-bound comparison used for the interval ending at this threshold.
      *
-     * `lt` creates an open upper bound and `lte` creates a closed upper bound.
+     * `lt` makes the upper endpoint exclusive (`<`). `lte` makes the upper
+     * endpoint inclusive (`<=`).
      */
     operator: ThresholdOperator;
 
@@ -305,6 +306,20 @@ export interface GroupByThresholds extends PayloadWithAttribute {
      * output intervals.
      */
     thresholds: [Threshold, ...Threshold[]];
+
+    /**
+     * Optional display titles for the generated groups.
+     *
+     * When provided, the array must contain one title for each output interval:
+     * exactly `thresholds.length + 1` titles. Titles are ordered from the
+     * lowest interval to the highest interval, matching the ascending threshold
+     * order. For thresholds `[10, 20]`, titles correspond to values below `10`,
+     * values from `10` to `20`, and values above `20`.
+     *
+     * Titles must be non-empty and unique. The original interval labels are
+     * still preserved for each group.
+     */
+    groupTitles?: string[];
 }
 
 export interface RemoveGroup {

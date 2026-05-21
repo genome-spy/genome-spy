@@ -15,8 +15,15 @@ import { isGroupGroup } from "./sampleSlice.js";
  * @param {function(any):any} accessor
  * @param {any[]} [groups] Explicitly specify the groups and their order
  * @param {string[]} [titles] Custom titles for the groups
+ * @param {string[]} [generatedTitles] Original generated titles for the groups
  */
-export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
+export function groupSamplesByAccessor(
+    sampleGroup,
+    accessor,
+    groups,
+    titles,
+    generatedTitles
+) {
     if (titles && !groups) {
         throw new Error("Custom labels need explicit group order!");
     }
@@ -25,18 +32,22 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
         group(sampleGroup.samples, accessor)
     );
 
-    /** @type {{ name: any, title: string | undefined, samples: string[] | undefined }[]} */
+    /** @type {{ name: any, title: string | undefined, generatedTitle: string | undefined, samples: string[] | undefined }[]} */
     const sortedEntries = groups
         ? groups
               .map((groupTerm, i) => ({
                   name: groupTerm,
                   title: titles ? titles[i] : undefined,
+                  generatedTitle: generatedTitles
+                      ? generatedTitles[i]
+                      : undefined,
                   samples: grouped.get(groupTerm),
               }))
               .filter((entry) => entry.samples)
         : [...grouped].map(([name, samples]) => ({
               name,
               title: /** @type {string | undefined} */ (undefined),
+              generatedTitle: /** @type {string | undefined} */ (undefined),
               samples,
           }));
 
@@ -47,6 +58,9 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
     groupGroup.groups = sortedEntries.map((entry) => ({
         name: "" + entry.name,
         title: entry.title ?? entry.name,
+        ...(entry.generatedTitle
+            ? { generatedTitle: entry.generatedTitle }
+            : {}),
         samples: /** @type {string[]} */ (entry.samples),
     }));
 
@@ -54,18 +68,62 @@ export function groupSamplesByAccessor(sampleGroup, accessor, groups, titles) {
 }
 
 /**
+ * @param {string[] | undefined} groupTitles
+ * @param {number} expectedCount
+ * @returns {string[] | undefined}
+ */
+function normalizeThresholdGroupTitles(groupTitles, expectedCount) {
+    if (!groupTitles) {
+        return undefined;
+    }
+
+    if (groupTitles.length !== expectedCount) {
+        throw new Error(
+            `Expected ${expectedCount} threshold group titles, got ${groupTitles.length}.`
+        );
+    }
+
+    const titles = groupTitles.map((title) => title.trim());
+    const seen = new Set();
+    for (const title of titles) {
+        if (!title) {
+            throw new Error("Threshold group titles must be non-empty.");
+        }
+        if (seen.has(title)) {
+            throw new Error(`Duplicate threshold group title: "${title}".`);
+        }
+        seen.add(title);
+    }
+
+    return titles;
+}
+
+/**
  *
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
  * @param {import("./payloadTypes.js").Threshold[]} thresholds
+ * @param {string[]} [groupTitles]
  */
-function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
+function groupSamplesByRawThresholds(
+    sampleGroup,
+    accessor,
+    thresholds,
+    groupTitles
+) {
     const groupName = (/** @type {number} */ groupIndex) =>
         `Group ${groupIndex + 1}`;
 
     // TODO: Group ids should indicate if multiple identical thresholds were merged
     // Groups are ordered from highest to lowest to keep the largest values first.
     const groupIds = range(thresholds.length - 1).reverse();
+    const intervalTitles = range(thresholds.length - 1).map((i) =>
+        formatThresholdInterval(thresholds[i], thresholds[i + 1])
+    );
+    const titles = normalizeThresholdGroupTitles(
+        groupTitles,
+        intervalTitles.length
+    );
 
     const ta = createThresholdGroupAccessor(
         accessor,
@@ -76,9 +134,8 @@ function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
         sampleGroup,
         (sample) => groupName(ta(sample)),
         groupIds.map(groupName),
-        groupIds.map((i) =>
-            formatThresholdInterval(thresholds[i], thresholds[i + 1])
-        )
+        groupIds.map((i) => titles?.[i] ?? intervalTitles[i]),
+        groupIds.map((i) => intervalTitles[i])
     );
 }
 
@@ -87,13 +144,24 @@ function groupSamplesByRawThresholds(sampleGroup, accessor, thresholds) {
  * @param {SampleGroup} sampleGroup
  * @param {function(any):any} accessor
  * @param {import("./payloadTypes.js").Threshold[]} thresholds
+ * @param {string[]} [groupTitles]
  */
-export function groupSamplesByThresholds(sampleGroup, accessor, thresholds) {
-    groupSamplesByRawThresholds(sampleGroup, accessor, [
-        { operator: "lt", operand: -Infinity },
-        ...thresholds,
-        { operator: "lte", operand: Infinity },
-    ]);
+export function groupSamplesByThresholds(
+    sampleGroup,
+    accessor,
+    thresholds,
+    groupTitles
+) {
+    groupSamplesByRawThresholds(
+        sampleGroup,
+        accessor,
+        [
+            { operator: "lt", operand: -Infinity },
+            ...thresholds,
+            { operator: "lte", operand: Infinity },
+        ],
+        groupTitles
+    );
 }
 
 /**

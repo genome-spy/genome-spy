@@ -225,6 +225,44 @@ describe("getActionInfo", () => {
         expect(provenanceTitle).toContain("MDS");
     });
 
+    it("includes explicitly provided threshold group titles in provenance titles", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/groupByThresholds`,
+            payload: {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "age",
+                },
+                thresholds: [{ operator: "lt", operand: 2 }],
+                groupTitles: ["Low", "High"],
+            },
+        };
+
+        const info = getActionInfo(action, () => makeAttributeInfo());
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(provenanceTitle).toContain("Low");
+        expect(provenanceTitle).toContain("High");
+    });
+
+    it("omits threshold group titles from provenance titles when none are provided", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/groupByThresholds`,
+            payload: {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "age",
+                },
+                thresholds: [{ operator: "lt", operand: 2 }],
+            },
+        };
+
+        const info = getActionInfo(action, () => makeAttributeInfo());
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(provenanceTitle).not.toContain(" as ");
+    });
+
     it("returns undefined for non-sample actions", () => {
         const info = getActionInfo(
             { type: "other/action", payload: {} },

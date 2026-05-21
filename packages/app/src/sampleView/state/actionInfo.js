@@ -282,6 +282,12 @@ const actionHandlers = {
                         `${verboseOps[t.operator]} ${t.operand}`
                 )
             )}
+            ${
+                /** @type {any} */ (payload).groupTitles
+                    ? html` as
+                      ${formatSet(/** @type {any} */ (payload).groupTitles)}`
+                    : ""
+            }
             on ${attributeTitle}
         `,
         icon: faObjectGroup,

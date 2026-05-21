@@ -210,7 +210,8 @@ programming language and Excel.
 The _group by thresholds_ action allows stratifying the samples using custom
 thresholds on a quantitative attribute. Upon selecting this action, you are
 shown a dialog with a histogram, where you can add any number of thresholds and
-specify which side of the threshold should be open or closed.
+specify which side of the threshold should be open or closed. You can also
+provide custom group titles.
 
 #### Retain matched
 

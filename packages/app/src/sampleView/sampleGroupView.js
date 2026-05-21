@@ -250,6 +250,9 @@ export default class SampleGroupView extends LayerView {
             ...(g.key.group.name != g.key.group.title
                 ? { title: g.key.group.title }
                 : {}),
+            ...(g.key.group.generatedTitle
+                ? { interval: g.key.group.generatedTitle }
+                : {}),
             n: g.key.n,
         }));
 

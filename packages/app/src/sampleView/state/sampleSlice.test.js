@@ -404,6 +404,54 @@ describe("sampleSlice reducers", () => {
         ).toThrow("Cannot remove sample groups before grouping.");
     });
 
+    it("fails when threshold group title count is wrong", () => {
+        const state = createSampleHierarchy();
+
+        expect(() =>
+            sampleSlice.reducer(
+                state,
+                sampleSlice.actions.groupByThresholds({
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "purity",
+                    },
+                    thresholds: [{ operator: "lt", operand: 2 }],
+                    groupTitles: ["Low"],
+                    [AUGMENTED_KEY]: {
+                        values: {
+                            s1: 1,
+                            s2: 3,
+                        },
+                    },
+                })
+            )
+        ).toThrow("Expected 2 threshold group titles, got 1.");
+    });
+
+    it("fails when threshold group titles contain duplicates", () => {
+        const state = createSampleHierarchy();
+
+        expect(() =>
+            sampleSlice.reducer(
+                state,
+                sampleSlice.actions.groupByThresholds({
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "purity",
+                    },
+                    thresholds: [{ operator: "lt", operand: 2 }],
+                    groupTitles: ["Low", " Low "],
+                    [AUGMENTED_KEY]: {
+                        values: {
+                            s1: 1,
+                            s2: 3,
+                        },
+                    },
+                })
+            )
+        ).toThrow('Duplicate threshold group title: "Low".');
+    });
+
     it("adds metadata payload for addMetadataFromSource actions", () => {
         let state = sampleSlice.reducer(
             undefined,

@@ -687,10 +687,9 @@ export const sampleSlice = createSlice({
          * intervals of a quantitative attribute.
          *
          * Use this when quantitative bins should follow explicit thresholds
-         * instead of quartiles. The resulting groups are ordered from the
-         * highest interval to the lowest. The attribute may be metadata or a
-         * selection-derived aggregation candidate from
-         * `selectionAggregation.fields`.
+         * instead of quartiles. The attribute may be metadata or a selection-derived
+         * aggregation candidate from `selectionAggregation.fields`.
+         * The number of resulting groups is thresholds + 1.
          *
          * @agent.payloadType GroupByThresholds
          * @agent.category grouping
@@ -714,7 +713,8 @@ export const sampleSlice = createSlice({
                 groupSamplesByThresholds(
                     sampleGroup,
                     createObjectAccessor(action),
-                    action.payload.thresholds
+                    action.payload.thresholds,
+                    action.payload.groupTitles
                 )
             );
             state.groupMetadata.push({

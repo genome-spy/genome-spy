@@ -1,5 +1,9 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faObjectGroup, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+    faExclamationCircle,
+    faObjectGroup,
+    faTrash,
+} from "@fortawesome/free-solid-svg-icons";
 import { css, html, nothing } from "lit";
 import { defaultScheme } from "../../components/generic/histogram.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
@@ -25,6 +29,8 @@ class GroupByThresholdsDialog extends BaseDialog {
         attributeInfo: {},
         sampleView: {},
         thresholds: {},
+        groupTitles: {},
+        validationError: {},
         values: {},
     };
 
@@ -32,7 +38,7 @@ class GroupByThresholdsDialog extends BaseDialog {
         ...super.styles,
         css`
             .group-by-thresholds-form {
-                width: 25em;
+                width: 27em;
             }
 
             .group-color {
@@ -54,6 +60,13 @@ class GroupByThresholdsDialog extends BaseDialog {
                         min-width: 9em;
                     }
                 }
+
+                input[type="text"] {
+                    width: 12em;
+                    margin-bottom: 0;
+                    padding-top: 0.2em;
+                    padding-bottom: 0.2em;
+                }
             }
 
             gs-histogram {
@@ -67,6 +80,10 @@ class GroupByThresholdsDialog extends BaseDialog {
         super();
         /** @type {import("../state/payloadTypes.js").Threshold[]} */
         this.thresholds = [];
+        /** @type {string[]} */
+        this.groupTitles = [];
+        /** @type {string | undefined} */
+        this.validationError = undefined;
         /** @type {import("../types.js").AttributeInfo} */
         this.attributeInfo = null;
         /** @type {import("../sampleView.js").default} */
@@ -93,6 +110,33 @@ class GroupByThresholdsDialog extends BaseDialog {
         return value;
     }
 
+    #ensureGroupTitles() {
+        const expectedLength = this.thresholds.length + 1;
+        while (this.groupTitles.length < expectedLength) {
+            this.groupTitles.push("");
+        }
+        if (this.groupTitles.length > expectedLength) {
+            this.groupTitles.length = expectedLength;
+        }
+    }
+
+    /**
+     * @param {number} index
+     * @returns {string}
+     */
+    #getGroupTitle(index) {
+        return this.groupTitles[index] ?? "";
+    }
+
+    /**
+     * @returns {string[]}
+     */
+    #getGroupTitles() {
+        return Array.from({ length: this.thresholds.length + 1 }, (_, i) =>
+            this.#getGroupTitle(i)
+        );
+    }
+
     /**
      * @param {Event} e
      * @param {number} index
@@ -103,6 +147,7 @@ class GroupByThresholdsDialog extends BaseDialog {
             /** @type {import("../state/payloadTypes.js").ThresholdOperator} */ (
                 value
             );
+        this.validationError = undefined;
         this.requestUpdate();
     }
 
@@ -117,8 +162,21 @@ class GroupByThresholdsDialog extends BaseDialog {
                 +value,
                 index
             );
+            this.validationError = undefined;
             this.requestUpdate();
         }
+    }
+
+    /**
+     * @param {Event} e
+     * @param {number} index
+     */
+    #groupTitleChanged(e, index) {
+        this.groupTitles[index] = /** @type {HTMLInputElement} */ (
+            e.target
+        ).value;
+        this.validationError = undefined;
+        this.requestUpdate();
     }
 
     /**
@@ -126,13 +184,17 @@ class GroupByThresholdsDialog extends BaseDialog {
      */
     #thresholdAdded(e) {
         const index = this.thresholds.findIndex((t) => t.operand > e.value);
-        this.thresholds.splice(index < 0 ? this.thresholds.length : index, 0, {
+        const insertionIndex = index < 0 ? this.thresholds.length : index;
+        this.#ensureGroupTitles();
+        this.thresholds.splice(insertionIndex, 0, {
             operand: e.value,
             operator:
                 /** @type {import("../state/payloadTypes.js").ThresholdOperator} */ (
                     "lt"
                 ),
         });
+        this.groupTitles.splice(insertionIndex + 1, 0, "");
+        this.validationError = undefined;
         this.requestUpdate();
     }
 
@@ -144,6 +206,7 @@ class GroupByThresholdsDialog extends BaseDialog {
             e.value,
             e.index
         );
+        this.validationError = undefined;
         this.requestUpdate();
     }
 
@@ -151,8 +214,35 @@ class GroupByThresholdsDialog extends BaseDialog {
      * @param {number} index
      */
     #removeThreshold(index) {
+        this.#ensureGroupTitles();
         this.thresholds.splice(index, 1);
+        this.groupTitles.splice(index + 1, 1);
+        this.validationError = undefined;
         this.requestUpdate();
+    }
+
+    /**
+     * @returns {string[] | undefined}
+     */
+    #getGroupTitlesForDispatch() {
+        const titles = this.#getGroupTitles().map((title) => title.trim());
+        if (titles.every((title) => !title)) {
+            return undefined;
+        }
+        const missingTitleIndex = titles.findIndex((title) => !title);
+        if (missingTitleIndex >= 0) {
+            throw new Error(
+                `Group ${missingTitleIndex + 1} is missing a title.`
+            );
+        }
+        const seen = new Set();
+        for (const title of titles) {
+            if (seen.has(title)) {
+                throw new Error(`Duplicate group title: "${title}".`);
+            }
+            seen.add(title);
+        }
+        return titles;
     }
 
     renderBody() {
@@ -185,6 +275,7 @@ class GroupByThresholdsDialog extends BaseDialog {
                         <th>Group</th>
                         <th>Interval</th>
                         <th>n</th>
+                        <th>Custom title</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -202,6 +293,20 @@ class GroupByThresholdsDialog extends BaseDialog {
                                 </td>
                                 <td>${g.interval}</td>
                                 <td>${g.n}</td>
+                                <td>
+                                    <input
+                                        .value=${this.#getGroupTitle(g.index)}
+                                        type="text"
+                                        placeholder="Defaults to interval"
+                                        @input=${(
+                                            /** @type {InputEvent} */ event
+                                        ) =>
+                                            this.#groupTitleChanged(
+                                                event,
+                                                g.index
+                                            )}
+                                    />
+                                </td>
                             </tr>
                         `
                     )}
@@ -210,6 +315,13 @@ class GroupByThresholdsDialog extends BaseDialog {
         };
 
         return html`<div class="gs-form-group group-by-thresholds-form">
+            ${this.validationError
+                ? html`<div class="gs-alert danger">
+                      ${icon(faExclamationCircle).node[0]}
+                      <span>${this.validationError}</span>
+                  </div>`
+                : nothing}
+
             <label>Split into groups using the thresholds:</label>
 
             <gs-histogram
@@ -281,6 +393,16 @@ class GroupByThresholdsDialog extends BaseDialog {
             throw new Error("At least one threshold is required.");
         }
 
+        /** @type {string[] | undefined} */
+        let groupTitles;
+        try {
+            groupTitles = this.#getGroupTitlesForDispatch();
+        } catch (error) {
+            this.validationError = /** @type {Error} */ (error).message;
+            this.requestUpdate();
+            return true;
+        }
+
         this.sampleView.dispatchAttributeAction(
             this.sampleView.actions.groupByThresholds({
                 attribute: this.attributeInfo.attribute,
@@ -288,6 +410,7 @@ class GroupByThresholdsDialog extends BaseDialog {
                     /** @type {[import("../state/payloadTypes.js").Threshold, ...import("../state/payloadTypes.js").Threshold[]]} */ (
                         this.thresholds
                     ),
+                ...(groupTitles ? { groupTitles } : {}),
             })
         );
         this.finish({ ok: true });
@@ -306,6 +429,8 @@ export function showGroupByThresholdsDialog(attributeInfo, sampleView) {
         (/** @type {any} */ el) => {
             el.thresholds =
                 /** @type {import("../state/payloadTypes.js").Threshold[]} */ ([]);
+            el.groupTitles = [""];
+            el.validationError = undefined;
             el.attributeInfo = attributeInfo;
             el.sampleView = sampleView;
             el.values = extractAttributeValues(

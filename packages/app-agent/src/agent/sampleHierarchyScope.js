@@ -38,31 +38,37 @@ export function collectVisibleSampleIds(rootGroup) {
  * Collects the visible leaf groups from the current analysis hierarchy.
  *
  * @param {import("@genome-spy/app/agentShared").Group | undefined} rootGroup
- * @returns {Array<{
- *     path: string[];
- *     titles: string[];
- *     title: string;
- *     sampleIds: string[];
- * }>}
+ * @returns {import("./agentContextTypes.js").AgentVisibleSampleGroupSource[]}
  */
 export function collectVisibleSampleGroups(rootGroup) {
     if (!rootGroup) {
         return [];
     }
 
-    /** @type {Array<{ path: string[]; titles: string[]; title: string; sampleIds: string[] }>} */
+    /** @type {import("./agentContextTypes.js").AgentVisibleSampleGroupSource[]} */
     const groups = [];
 
     /**
      * @param {import("@genome-spy/app/agentShared").Group} group
      * @param {string[]} path
      * @param {string[]} titles
+     * @param {(string | undefined)[]} generatedTitles
      */
-    const visit = (group, path, titles) => {
+    const visit = (group, path, titles, generatedTitles) => {
         if ("samples" in group) {
+            const hasGeneratedTitle = generatedTitles.some(
+                (title) => title !== undefined
+            );
             groups.push({
                 path,
                 titles,
+                ...(hasGeneratedTitle
+                    ? {
+                          generatedTitles: generatedTitles.map(
+                              (title, i) => title ?? titles[i]
+                          ),
+                      }
+                    : {}),
                 title: group.title,
                 sampleIds: [...group.samples],
             });
@@ -70,15 +76,20 @@ export function collectVisibleSampleGroups(rootGroup) {
         }
 
         for (const child of group.groups) {
-            visit(child, [...path, child.name], [...titles, child.title]);
+            visit(
+                child,
+                [...path, child.name],
+                [...titles, child.title],
+                [...generatedTitles, child.generatedTitle]
+            );
         }
     };
 
     if ("samples" in rootGroup) {
-        visit(rootGroup, [], []);
+        visit(rootGroup, [], [], []);
     } else {
         for (const child of rootGroup.groups) {
-            visit(child, [child.name], [child.title]);
+            visit(child, [child.name], [child.title], [child.generatedTitle]);
         }
     }
 

@@ -45,6 +45,7 @@ describe("actionShapeValidator", () => {
                             { operator: "lte", operand: 0.2 },
                             { operator: "lt", operand: 0.8 },
                         ],
+                        groupTitles: ["Low", "Intermediate", "High"],
                     },
                 },
             ],

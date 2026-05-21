@@ -536,7 +536,7 @@
   {
     "actionType": "sampleView/groupByThresholds",
     "description": "Add a grouping level to the sample hierarchy using threshold-defined numeric intervals of a quantitative attribute.",
-    "usage": "Use this when quantitative bins should follow explicit thresholds instead of quartiles. The resulting groups are ordered from the highest interval to the lowest. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`.",
+    "usage": "Use this when quantitative bins should follow explicit thresholds instead of quartiles. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`. The number of resulting groups is thresholds + 1.",
     "payloadType": "GroupByThresholds",
     "payloadFields": [
       {
@@ -552,6 +552,13 @@
         "typeRefs": ["Threshold"],
         "description": "Thresholds used to stratify the samples. Supply these in ascending operand order. Adjacent thresholds define the output intervals.",
         "required": true
+      },
+      {
+        "name": "groupTitles",
+        "type": "string[]",
+        "typeRefs": [],
+        "description": "Optional display titles for the generated groups. When provided, the array must contain one title for each output interval: exactly `thresholds.length + 1` titles. Titles are ordered from the lowest interval to the highest interval, matching the ascending threshold order. For thresholds `[10, 20]`, titles correspond to values below `10`, values from `10` to `20`, and values above `20`. Titles must be non-empty and unique. The original interval labels are still preserved for each group.",
+        "required": false
       }
     ],
     "attributeKinds": ["quantitative"],

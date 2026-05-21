@@ -26,6 +26,9 @@ export interface BaseGroup {
 
     /** A descriptive title for the group. May contain quantile intervals, etc. */
     title: string;
+
+    /** Original generated title for derived groups, such as threshold intervals. */
+    generatedTitle?: string;
 }
 
 export interface SampleGroup extends BaseGroup {

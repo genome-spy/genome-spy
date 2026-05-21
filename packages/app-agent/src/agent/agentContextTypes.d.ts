@@ -25,6 +25,7 @@ export interface AgentAttributeSummarySource {
 export interface AgentVisibleSampleGroupSource {
     path: string[];
     titles: string[];
+    generatedTitles?: string[];
     title: string;
     sampleIds: string[];
 }
