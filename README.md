@@ -86,6 +86,13 @@ Johanna Hynninen, Anni Virtanen, Sampsa Hautaniemi, Deciphering cancer genomes
 with GenomeSpy: a grammar-based visualization toolkit, _GigaScience_, Volume 13,
 2024, giae040, https://doi.org/10.1093/gigascience/giae040
 
+## Use of AI assistance
+
+Since the beginning of 2026, most of the code in this repository has been
+written with the assistance of AI tools, mostly OpenAI's Codex. The architecture
+of the code and the overall design of the system are the result of careful human
+decisions. All non-trivial code has been reviewed by a human developer.
+
 ## About
 
 Copyright (c) 2019-2026 Kari Lavikka. See [LICENSE](LICENSE) for details.
