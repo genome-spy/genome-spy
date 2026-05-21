@@ -93,7 +93,10 @@ export const agentTools = {
             actionHistory,
             input.provenanceId
         );
-        const provenanceAction = actionHistory[targetIndex];
+        const provenanceAction =
+            /** @type {import("@genome-spy/app/agentShared").ProvenanceAction & { summary?: string }} */ (
+                actionHistory[targetIndex]
+            );
         const undoneActionCount = actionHistory.length - targetIndex - 1;
         const changed = runtime.agentApi.jumpToProvenanceState(
             input.provenanceId
@@ -433,6 +436,9 @@ function createPlotAttributeResultRecord(record) {
     const resultRecord = {
         .../** @type {Record<string, unknown>} */ (record),
     };
+    if ("plotAttribute" in resultRecord) {
+        resultRecord.normalized = resultRecord.plotAttribute;
+    }
     delete resultRecord.plotAttribute;
     return resultRecord;
 }
@@ -530,9 +536,10 @@ function createViewStateChange(domain, field, selector, before, after) {
 
 /**
  * @param {string | undefined} provenanceId
- * @param {import("./agentContextTypes.d.ts").AgentProvenanceAction | undefined} action
+ * @param {(import("@genome-spy/app/agentShared").ProvenanceAction & { summary?: string }) | undefined} action
  * @param {boolean} initial
  * @param {boolean} changed
+ * @param {number} undoneActionCount
  * @returns {{
  *     kind: "provenance_state_activation";
  *     provenanceId?: string;
@@ -566,7 +573,7 @@ function createProvenanceStateActivation(
 }
 
 /**
- * @param {import("./agentContextTypes.d.ts").AgentProvenanceAction[]} actionHistory
+ * @param {import("@genome-spy/app/agentShared").ProvenanceAction[]} actionHistory
  * @param {string} provenanceId
  * @returns {number}
  */

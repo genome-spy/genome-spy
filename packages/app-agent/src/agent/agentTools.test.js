@@ -34,6 +34,7 @@ vi.mock("@genome-spy/app/agentShared", async (importOriginal) => {
 });
 
 import { agentTools } from "./agentTools.js";
+import { validateIntentBatchShape } from "./actionShapeValidator.js";
 
 function createRuntimeStub() {
     let expanded = false;
@@ -1364,10 +1365,13 @@ describe("agentTools", () => {
                                         view: "track",
                                     },
                                     field: "beta",
-                                    interval: [
-                                        { chrom: "chr17", pos: 7565097 },
-                                        { chrom: "chr17", pos: 7590856 },
-                                    ],
+                                    interval: {
+                                        type: "selection",
+                                        selector: {
+                                            scope: [],
+                                            param: "brush",
+                                        },
+                                    },
                                     aggregation: { op: "max" },
                                 },
                             },
@@ -1380,6 +1384,55 @@ describe("agentTools", () => {
                 submissionKind: "agent",
             })
         );
+    });
+
+    it("submits logical selection aggregation attributes without reusing frozen context selectors", async () => {
+        const runtime = createRuntimeStub();
+        const selectionSelector = Object.freeze({
+            scope: Object.freeze([]),
+            param: "brush",
+        });
+        runtime.getAgentVolatileContext.mockReturnValueOnce({
+            selectionAggregation: {
+                fields: [
+                    {
+                        candidateId: "brush@track:beta",
+                        viewSelector: {
+                            scope: [],
+                            view: "track",
+                        },
+                        selectionSelector,
+                        field: "beta",
+                        supportedAggregations: ["max"],
+                    },
+                ],
+            },
+        });
+        runtime.submitIntentActions.mockImplementationOnce(async (batch) => {
+            expect(() => validateIntentBatchShape(batch)).not.toThrow();
+            return {
+                executedActions: 1,
+                content: {
+                    kind: "intent_batch_result",
+                },
+                summaries: [],
+            };
+        });
+        const tools = agentTools;
+
+        await tools.submitIntentAction(runtime, {
+            action: {
+                actionType: "sampleView/deriveMetadata",
+                payload: {
+                    attribute: {
+                        type: "SELECTION_AGGREGATION",
+                        candidateId: "brush@track:beta",
+                        aggregation: "max",
+                    },
+                    name: "max_beta",
+                },
+            },
+        });
     });
 
     it("rethrows intent action failures as rejected tool calls", async () => {

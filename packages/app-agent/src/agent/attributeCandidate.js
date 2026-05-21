@@ -54,17 +54,11 @@ export function resolveAgentAttributeCandidateRecord(runtime, candidate) {
             candidate.aggregation,
             "featureFilter" in candidate ? candidate.featureFilter : undefined
         );
-        const interval = findSelectionInterval(
-            volatileContext,
-            resolution.selectionSelector
-        );
         const plotAttribute = materializeAttributeIdentifier(
             runtime,
             resolution.attribute
         );
-        const normalized = interval
-            ? replaceAttributeInterval(plotAttribute, interval)
-            : plotAttribute;
+        const normalized = structuredClone(resolution.attribute);
 
         return {
             input: candidate,
@@ -74,30 +68,6 @@ export function resolveAgentAttributeCandidateRecord(runtime, candidate) {
     }
 
     throw new ToolCallRejectionError("Unsupported attribute candidate type.");
-}
-
-/**
- * @param {import("@genome-spy/app/agentShared").AttributeIdentifier} attribute
- * @param {[AgentChromosomalLocus, AgentChromosomalLocus]} interval
- * @returns {import("@genome-spy/app/agentShared").AttributeIdentifier}
- */
-function replaceAttributeInterval(attribute, interval) {
-    if (
-        attribute.type !== "VALUE_AT_LOCUS" ||
-        typeof attribute.specifier !== "object" ||
-        attribute.specifier === null ||
-        !("interval" in attribute.specifier)
-    ) {
-        return attribute;
-    }
-
-    return {
-        ...attribute,
-        specifier: {
-            ...attribute.specifier,
-            interval,
-        },
-    };
 }
 
 /**
@@ -111,82 +81,4 @@ function materializeAttributeIdentifier(runtime, attribute) {
     return runtime.agentApi?.materializeAttributeIdentifier
         ? runtime.agentApi.materializeAttributeIdentifier(attribute)
         : attribute;
-}
-
-/**
- * @typedef {{ chrom: string; pos: number }} AgentChromosomalLocus
- */
-
-/**
- * @param {import("./types.d.ts").AgentVolatileContext} volatileContext
- * @param {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} selector
- * @returns {[AgentChromosomalLocus, AgentChromosomalLocus] | undefined}
- */
-function findSelectionInterval(volatileContext, selector) {
-    const parameterValue = (volatileContext.parameterValues ?? []).find(
-        (entry) => isSameParamSelector(entry.selector, selector)
-    );
-    const interval = extractXInterval(parameterValue?.value);
-    if (!interval) {
-        return undefined;
-    }
-
-    const start = toAgentChromosomalLocus(interval[0]);
-    const end = toAgentChromosomalLocus(interval[1]);
-    return start && end ? [start, end] : undefined;
-}
-
-/**
- * @param {unknown} value
- * @returns {unknown[] | undefined}
- */
-function extractXInterval(value) {
-    if (
-        value &&
-        typeof value === "object" &&
-        "intervals" in value &&
-        value.intervals &&
-        typeof value.intervals === "object"
-    ) {
-        const intervals = /** @type {any} */ (value.intervals);
-        if (Array.isArray(intervals.x) && intervals.x.length === 2) {
-            return intervals.x;
-        }
-    }
-
-    return undefined;
-}
-
-/**
- * @param {unknown} value
- * @returns {AgentChromosomalLocus | undefined}
- */
-function toAgentChromosomalLocus(value) {
-    if (
-        value &&
-        typeof value === "object" &&
-        "chrom" in value &&
-        typeof value.chrom === "string" &&
-        "pos" in value &&
-        typeof value.pos === "number"
-    ) {
-        return {
-            chrom: value.chrom,
-            pos: value.pos,
-        };
-    }
-
-    return undefined;
-}
-
-/**
- * @param {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} a
- * @param {import("@genome-spy/core/view/viewSelectors.js").ParamSelector} b
- * @returns {boolean}
- */
-function isSameParamSelector(a, b) {
-    return (
-        a.param === b.param &&
-        JSON.stringify(a.scope) === JSON.stringify(b.scope)
-    );
 }
