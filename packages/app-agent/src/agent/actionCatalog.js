@@ -13,6 +13,7 @@ import generatedActionSummaries from "./generated/generatedActionSummaries.json"
  * @property {string | undefined} [usage]
  * @property {string} payloadType
  * @property {import("./types.js").AgentActionPayloadField[]} payloadFields
+ * @property {string[] | undefined} [attributeKinds]
  * @property {unknown} examplePayload
  * @property {unknown[]} examples
  */

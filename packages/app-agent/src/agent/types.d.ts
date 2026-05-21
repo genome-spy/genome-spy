@@ -106,6 +106,9 @@ export interface AgentActionCatalogEntry {
     /** Field-level payload metadata. */
     payloadFields: AgentActionPayloadField[];
 
+    /** Attribute data types accepted by actions that operate on an attribute. */
+    attributeKinds?: string[];
+
     /** Minimal example payload. */
     examplePayload: unknown;
 

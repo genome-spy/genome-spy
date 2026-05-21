@@ -152,6 +152,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["quantitative", "ordinal"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -181,6 +182,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["nominal", "ordinal"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -217,6 +219,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["nominal", "ordinal"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -262,6 +265,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["quantitative"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -302,6 +306,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["nominal", "ordinal"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -376,6 +381,7 @@
         "required": false
       }
     ],
+    "attributeKinds": ["nominal", "ordinal"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -443,6 +449,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["nominal", "ordinal"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -480,6 +487,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["nominal", "ordinal"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -509,6 +517,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["quantitative"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -545,6 +554,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["quantitative"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",
@@ -617,6 +627,7 @@
         "required": true
       }
     ],
+    "attributeKinds": ["nominal", "ordinal"],
     "examplePayload": {
       "attribute": {
         "type": "SAMPLE_ATTRIBUTE",

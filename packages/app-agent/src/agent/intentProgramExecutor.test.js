@@ -6,15 +6,24 @@ import {
 } from "./intentProgramExecutor.js";
 
 function createAgentApiStub() {
-    const getAttributeInfo = (attribute) => ({
-        name: String(attribute.specifier),
-        attribute,
-        title: String(attribute.specifier),
-        emphasizedName: String(attribute.specifier),
-        accessor: () => undefined,
-        valuesProvider: () => [],
-        type: "nominal",
-    });
+    const attributeTypes = new Map([
+        ["age", "quantitative"],
+        ["diagnosis", "nominal"],
+        ["patient", "nominal"],
+    ]);
+
+    const getAttributeInfo = (attribute) => {
+        const name = String(attribute.specifier);
+        return {
+            name,
+            attribute,
+            title: name,
+            emphasizedName: name,
+            accessor: () => undefined,
+            valuesProvider: () => [],
+            type: attributeTypes.get(name),
+        };
+    };
 
     return {
         getSampleHierarchy: () => ({

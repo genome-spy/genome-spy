@@ -12,21 +12,41 @@ vi.mock("@genome-spy/core/view/viewSelectors.js", () => ({
 import { validateIntentBatch } from "./intentProgramValidator.js";
 
 function createAgentApiStub() {
+    const attributeTypes = new Map([
+        ["diagnosis", "nominal"],
+        ["age", "quantitative"],
+        ["known", "nominal"],
+    ]);
+
     return {
         getViewRoot: () => ({}),
         getSampleHierarchy: () => ({ id: "sample-hierarchy" }),
-        getAttributeInfo: (attribute) =>
-            attribute.specifier === "known"
+        getAttributeInfo: (attribute) => {
+            if (attribute.type === "VALUE_AT_LOCUS") {
+                return {
+                    name: "selection aggregation",
+                    attribute,
+                    title: "selection aggregation",
+                    emphasizedName: "selection aggregation",
+                    accessor: () => undefined,
+                    valuesProvider: () => [],
+                    type: "quantitative",
+                };
+            }
+
+            const type = attributeTypes.get(attribute.specifier);
+            return type
                 ? {
-                      name: "known",
+                      name: attribute.specifier,
                       attribute,
-                      title: "Known",
-                      emphasizedName: "Known",
+                      title: attribute.specifier,
+                      emphasizedName: attribute.specifier,
                       accessor: () => undefined,
                       valuesProvider: () => [],
-                      type: "nominal",
+                      type,
                   }
-                : undefined,
+                : undefined;
+        },
     };
 }
 
@@ -71,7 +91,7 @@ describe("validateIntentBatch", () => {
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
-                            specifier: "known",
+                            specifier: "age",
                         },
                     },
                 },
@@ -90,7 +110,7 @@ describe("validateIntentBatch", () => {
                     payload: {
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
-                            specifier: "known",
+                            specifier: "age",
                         },
                     },
                 },
@@ -98,6 +118,95 @@ describe("validateIntentBatch", () => {
         });
 
         expect(result.ok).toBe(true);
+    });
+
+    it("rejects nominal grouping for a quantitative attribute", () => {
+        const result = validateIntentBatch(createAgentApiStub(), {
+            schemaVersion: 1,
+            steps: [
+                {
+                    actionType: "sampleView/groupByNominal",
+                    payload: {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "age",
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(result.ok).toBe(false);
+        expect(result.errors.join("\n")).toContain(
+            "sampleView/groupByNominal requires nominal or ordinal attributes"
+        );
+        expect(result.errors.join("\n")).toContain(
+            '"age" has type quantitative'
+        );
+    });
+
+    it("rejects quantitative grouping for a nominal attribute", () => {
+        const result = validateIntentBatch(createAgentApiStub(), {
+            schemaVersion: 1,
+            steps: [
+                {
+                    actionType: "sampleView/groupToQuartiles",
+                    payload: {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "diagnosis",
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(result.ok).toBe(false);
+        expect(result.errors.join("\n")).toContain(
+            "sampleView/groupToQuartiles requires quantitative attributes"
+        );
+        expect(result.errors.join("\n")).toContain(
+            '"diagnosis" has type nominal'
+        );
+    });
+
+    it("rejects nominal grouping for a quantitative selection-derived attribute", () => {
+        const result = validateIntentBatch(createAgentApiStub(), {
+            schemaVersion: 1,
+            steps: [
+                {
+                    actionType: "sampleView/groupByNominal",
+                    payload: {
+                        attribute: {
+                            type: "VALUE_AT_LOCUS",
+                            specifier: {
+                                view: {
+                                    scope: [],
+                                    view: "track",
+                                },
+                                field: "beta",
+                                interval: {
+                                    type: "selection",
+                                    selector: {
+                                        scope: [],
+                                        param: "brush",
+                                    },
+                                },
+                                aggregation: {
+                                    op: "max",
+                                },
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(result.ok).toBe(false);
+        expect(result.errors.join("\n")).toContain(
+            "sampleView/groupByNominal requires nominal or ordinal attributes"
+        );
+        expect(result.errors.join("\n")).toContain("has type quantitative");
     });
 
     it("accepts sample actions with selection-derived aggregation attributes", () => {

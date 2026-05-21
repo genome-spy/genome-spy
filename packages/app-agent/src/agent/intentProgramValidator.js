@@ -1,4 +1,5 @@
 import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
+import { getActionCatalogEntry } from "./actionCatalog.js";
 import { validateIntentBatchShape } from "./actionShapeValidator.js";
 
 /**
@@ -40,6 +41,7 @@ export function validateIntentBatch(agentApi, batch) {
             stepObject.actionType
         );
         const payload = stepObject.payload;
+        const entry = getActionCatalogEntry(actionType);
 
         normalizedSteps.push({
             actionType,
@@ -50,18 +52,40 @@ export function validateIntentBatch(agentApi, batch) {
             /** @type {{ type?: string; specifier?: unknown } | undefined} */ (
                 payload?.attribute
             );
-        if (
-            attribute?.type === "SAMPLE_ATTRIBUTE" &&
-            typeof attribute.specifier === "string" &&
-            !agentApi.getAttributeInfo(
-                /** @type {import("@genome-spy/app/agentShared").AttributeIdentifier} */ (
-                    attribute
-                )
-            )
-        ) {
+        const attributeInfo = attribute?.type
+            ? agentApi.getAttributeInfo(
+                  /** @type {import("@genome-spy/app/agentShared").AttributeIdentifier} */ (
+                      attribute
+                  )
+              )
+            : undefined;
+        if (attribute?.type === "SAMPLE_ATTRIBUTE" && !attributeInfo) {
             errors.push(
-                `$.steps[${normalizedSteps.length - 1}].payload.attribute references unknown attribute ${attribute.specifier}.`
+                "$.steps[" +
+                    index +
+                    "].payload.attribute references unknown attribute " +
+                    attribute.specifier +
+                    "."
             );
+        }
+
+        const attributeKinds = entry.attributeKinds;
+        if (attributeInfo && attributeKinds) {
+            if (!attributeKinds.includes(attributeInfo.type)) {
+                errors.push(
+                    "$.steps[" +
+                        index +
+                        "].payload.attribute: " +
+                        actionType +
+                        " requires " +
+                        formatAttributeKinds(attributeKinds) +
+                        ' attributes, but "' +
+                        formatAttributeName(attribute) +
+                        '" has type ' +
+                        attributeInfo.type +
+                        "."
+                );
+            }
         }
 
         if (
@@ -127,4 +151,25 @@ export function validateIntentBatch(agentApi, batch) {
             steps: normalizedSteps,
         },
     };
+}
+
+/**
+ * @param {string[]} attributeKinds
+ */
+function formatAttributeKinds(attributeKinds) {
+    if (attributeKinds.length === 1) {
+        return attributeKinds[0];
+    }
+
+    const initialKinds = attributeKinds.slice(0, -1).join(", ");
+    return initialKinds + " or " + attributeKinds.at(-1);
+}
+
+/**
+ * @param {{ specifier?: unknown }} attribute
+ */
+function formatAttributeName(attribute) {
+    return typeof attribute.specifier === "string"
+        ? attribute.specifier
+        : JSON.stringify(attribute);
 }

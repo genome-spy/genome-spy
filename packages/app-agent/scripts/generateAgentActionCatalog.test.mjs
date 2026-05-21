@@ -64,4 +64,18 @@ describe("generateAgentActionCatalog", () => {
             })
         );
     });
+
+    it("generates attribute kind constraints for attribute actions", async () => {
+        const catalog = await createGeneratedActionCatalog();
+
+        const groupByNominal = catalog.find(
+            (entry) => entry.actionType === "sampleView/groupByNominal"
+        );
+        expect(groupByNominal.attributeKinds).toEqual(["nominal", "ordinal"]);
+
+        const groupToQuartiles = catalog.find(
+            (entry) => entry.actionType === "sampleView/groupToQuartiles"
+        );
+        expect(groupToQuartiles.attributeKinds).toEqual(["quantitative"]);
+    });
 });

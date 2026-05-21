@@ -407,6 +407,14 @@ function buildEntry(actionType, localActionName, node, payloadTypeDocs) {
         usage: normalizeActionUsage(summary),
         payloadType,
         payloadFields: payloadTypeDoc.fields,
+        ...(agentTags.attributeKinds
+            ? {
+                  attributeKinds: agentTags.attributeKinds
+                      .split(",")
+                      .map((kind) => kind.trim())
+                      .filter(Boolean),
+              }
+            : {}),
         examplePayload,
         examples,
     };
