@@ -307,9 +307,6 @@
         "getSelectionFeatureFieldSummary": {
           "$ref": "#/definitions/GetSelectionFeatureFieldSummaryToolInput"
         },
-        "jumpToInitialProvenanceState": {
-          "$ref": "#/definitions/JumpToInitialProvenanceStateToolInput"
-        },
         "jumpToProvenanceState": {
           "$ref": "#/definitions/JumpToProvenanceStateToolInput"
         },
@@ -343,7 +340,6 @@
         "collapseViewNode",
         "setViewVisibility",
         "jumpToProvenanceState",
-        "jumpToInitialProvenanceState",
         "getAttributeSummary",
         "getSelectionFeatureFieldSummary",
         "resolveMetadataAttributeValues",
@@ -970,25 +966,21 @@
       "required": ["aggregation", "field", "interval", "view"],
       "type": "object"
     },
-    "JumpToInitialProvenanceStateToolInput": {
-      "additionalProperties": {
-        "not": {}
-      },
-      "description": "Jump to the initial provenance state before any actions were dispatched.",
-      "type": "object"
-    },
     "JumpToProvenanceStateToolInput": {
       "additionalProperties": false,
-      "description": "Jump to a prior provenance state identified by the given provenance id. Consult provenance history first when a request should continue from an earlier analysis state, even if the user did not explicitly ask to jump back.",
+      "description": "Jump to a prior provenance state identified by the given provenance id, or to the initial state before any actions when the provenance id is null. Consult provenance history first when a request should continue from an earlier analysis state, even if the user did not explicitly ask to jump back.",
       "examples": [
         {
           "provenanceId": "provenance-12"
+        },
+        {
+          "provenanceId": null
         }
       ],
       "properties": {
         "provenanceId": {
-          "description": "Provenance id to jump to.",
-          "type": "string"
+          "description": "Provenance id to jump to, or null to jump to the initial state. The visualization state is defined by the action identified by the provenance id and all preceding actions in provenance.",
+          "type": ["string", "null"]
         }
       },
       "required": ["provenanceId"],
@@ -2196,7 +2188,7 @@
     },
     "SubmitIntentActionToolInput": {
       "additionalProperties": false,
-      "description": "Execute one provenance-changing action. Actions are additive. Before submitting a new action, always consult the current provenance state that defines the state of the analysis. Does it make sense to add this action on top of the actions already in provenance? Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. In addition, before constructing the action, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results.",
+      "description": "Execute one provenance-changing action. Actions are additive. Before submitting a new action, always consult the current provenance state that defines the state of the analysis. Does it make sense to add this action on top of the actions already in provenance? Jump to a prior provenance state if necessary to continue from an earlier point in the analysis. Also, if the user requests an alternative analysis or doing something \"again\" but differently, think if an earlier state should be restored first. In addition, before constructing the action, ensure that every `attribute` (AttributeIdentifier) is presented to you in the context or tool results.",
       "examples": [
         {
           "action": {

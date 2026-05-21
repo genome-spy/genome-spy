@@ -1164,7 +1164,7 @@ describe("agentTools", () => {
 
     it("activates provenance states through the runtime", () => {
         const runtime = createRuntimeStub();
-        runtime.agentApi.getActionHistory.mockReturnValueOnce([
+        runtime.agentApi.getActionHistory.mockReturnValue([
             {
                 provenanceId: "provenance-1",
                 summary: "Sort by purity",
@@ -1193,6 +1193,7 @@ describe("agentTools", () => {
                     summary: "Sort by purity",
                     initial: false,
                     changed: true,
+                    undoneActionCount: 0,
                 }),
             })
         );
@@ -1202,10 +1203,45 @@ describe("agentTools", () => {
         );
     });
 
+    it("returns the number of actions undone by provenance activation", () => {
+        const runtime = createRuntimeStub();
+        runtime.agentApi.getActionHistory.mockReturnValue([
+            {
+                provenanceId: "provenance-1",
+                summary: "Sort by purity",
+                type: "sampleView/sortBy",
+            },
+            {
+                provenanceId: "provenance-2",
+                summary: "Group by diagnosis",
+                type: "sampleView/groupByNominal",
+            },
+            {
+                provenanceId: "provenance-3",
+                summary: "Sort by age",
+                type: "sampleView/sortBy",
+            },
+        ]);
+        const tools = agentTools;
+
+        expect(
+            tools.jumpToProvenanceState(runtime, {
+                provenanceId: "provenance-1",
+            })
+        ).toEqual(
+            expect.objectContaining({
+                content: expect.objectContaining({
+                    provenanceId: "provenance-1",
+                    undoneActionCount: 2,
+                }),
+            })
+        );
+    });
+
     it("explains when the requested provenance state is already active", () => {
         const runtime = createRuntimeStub();
         runtime.agentApi.jumpToProvenanceState.mockReturnValueOnce(false);
-        runtime.agentApi.getActionHistory.mockReturnValueOnce([
+        runtime.agentApi.getActionHistory.mockReturnValue([
             {
                 provenanceId: "provenance-1",
                 summary: "Sort by purity",
@@ -1226,9 +1262,46 @@ describe("agentTools", () => {
                 content: expect.objectContaining({
                     provenanceId: "provenance-1",
                     changed: false,
+                    undoneActionCount: 0,
                 }),
             })
         );
+    });
+
+    it("activates the initial provenance state when the provenance id is null", () => {
+        const runtime = createRuntimeStub();
+        runtime.agentApi.getActionHistory.mockReturnValue([
+            {
+                provenanceId: "provenance-1",
+                summary: "Sort by purity",
+                type: "sampleView/sortBy",
+            },
+            {
+                provenanceId: "provenance-2",
+                summary: "Group by diagnosis",
+                type: "sampleView/groupByNominal",
+            },
+        ]);
+        const tools = agentTools;
+
+        expect(
+            tools.jumpToProvenanceState(runtime, {
+                provenanceId: null,
+            })
+        ).toEqual(
+            expect.objectContaining({
+                text: "Jumped to the initial provenance state.",
+                content: expect.objectContaining({
+                    kind: "provenance_state_activation",
+                    initial: true,
+                    changed: true,
+                    undoneActionCount: 2,
+                }),
+            })
+        );
+
+        expect(runtime.jumpToInitialProvenanceState).toHaveBeenCalledTimes(1);
+        expect(runtime.jumpToProvenanceState).not.toHaveBeenCalled();
     });
 
     it("summarizes intent action execution through the runtime", async () => {

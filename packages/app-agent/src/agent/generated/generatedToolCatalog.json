@@ -68,27 +68,19 @@
   },
   {
     "toolName": "jumpToProvenanceState",
-    "description": "Jump to a prior provenance state identified by the given provenance id.",
+    "description": "Jump to a prior provenance state identified by the given provenance id, or to the initial state before any actions when the provenance id is null.",
     "inputType": "JumpToProvenanceStateToolInput",
     "inputFields": [
       {
         "name": "provenanceId",
-        "type": "string",
-        "description": "Provenance id to jump to.",
+        "type": "string | null",
+        "description": "Provenance id to jump to, or null to jump to the initial state. The visualization state is defined by the action identified by the provenance id and all preceding actions in provenance.",
         "required": true
       }
     ],
     "exampleInput": {
       "provenanceId": "provenance-12"
     },
-    "strict": true
-  },
-  {
-    "toolName": "jumpToInitialProvenanceState",
-    "description": "Jump to the initial provenance state before any actions were dispatched.",
-    "inputType": "JumpToInitialProvenanceStateToolInput",
-    "inputFields": [],
-    "exampleInput": {},
     "strict": true
   },
   {

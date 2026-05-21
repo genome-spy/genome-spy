@@ -12,7 +12,8 @@ describe("toolCatalog", () => {
         const toolNames = tools.map((entry) => entry.toolName);
 
         expect(new Set(toolNames).size).toBe(toolNames.length);
-        expect(toolNames).toContain("jumpToInitialProvenanceState");
+        expect(toolNames).toContain("jumpToProvenanceState");
+        expect(toolNames).not.toContain("jumpToInitialProvenanceState");
         expect(toolNames).toContain("resolveMetadataAttributeValues");
         expect(toolNames).toContain("showCategoryCountsPlot");
         expect(toolNames).toContain("showAttributeDistributionPlot");
@@ -24,8 +25,8 @@ describe("toolCatalog", () => {
 
     it("builds Responses API function tool definitions", () => {
         const toolDefinitions = buildResponsesToolDefinitions();
-        const jumpToInitialProvenanceState = toolDefinitions.find(
-            (tool) => tool.name === "jumpToInitialProvenanceState"
+        const jumpToProvenanceState = toolDefinitions.find(
+            (tool) => tool.name === "jumpToProvenanceState"
         );
         const submitIntentAction = toolDefinitions.find(
             (tool) => tool.name === "submitIntentAction"
@@ -43,11 +44,16 @@ describe("toolCatalog", () => {
             (tool) => tool.name === "zoomToScale"
         );
 
-        expect(jumpToInitialProvenanceState).toMatchObject({
-            name: "jumpToInitialProvenanceState",
+        expect(jumpToProvenanceState).toMatchObject({
+            name: "jumpToProvenanceState",
             parameters: {
                 type: "object",
-                properties: {},
+                required: ["provenanceId"],
+                properties: {
+                    provenanceId: {
+                        type: ["string", "null"],
+                    },
+                },
                 additionalProperties: false,
             },
         });

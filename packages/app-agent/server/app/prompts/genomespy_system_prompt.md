@@ -335,9 +335,8 @@ The current analysis state is the result of the provenance action history. If
 the history changes, the current analysis state changes with it. `provenanceId`
 identifies a state after a specific action in the history.
 
-To undo submitted actions and return to an earlier state, use the provenance
-tools `jumpToProvenanceState(provenanceId)` and
-`jumpToInitialProvenanceState()`.
+To undo submitted actions and return to an earlier state, use
+`jumpToProvenanceState(provenanceId)`.
 
 Avoid mentioning `provenanceId`, as it is an internal identifier not visible to the user.
 
@@ -560,7 +559,7 @@ answer questions and change the visualization.
   4. Only after grouping, call `showAttributeDistributionPlot` for the HRD attribute.
 - The user asks: "Group by diagnosis instead."
   1. Inspect provenance and identify the latest state before the grouping action being replaced.
-  2. Jump to that prior state with `jumpToProvenanceState` or `jumpToInitialProvenanceState`.
+  2. Jump to that prior state with `jumpToProvenanceState`.
   3. Submit the new grouping action.
   4. Add another grouping level only when the user asks to add, nest, subdivide, or group again.
   5. If the jump would discard later analysis and the request is ambiguous, ask first.

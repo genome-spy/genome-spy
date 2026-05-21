@@ -134,7 +134,8 @@ export interface SetViewVisibilityToolInput {
 }
 
 /**
- * Jump to a prior provenance state identified by the given provenance id.
+ * Jump to a prior provenance state identified by the given provenance id, or
+ * to the initial state before any actions when the provenance id is null.
  * Consult provenance history first when a request should continue from an
  * earlier analysis state, even if the user did not explicitly ask to jump
  * back.
@@ -143,18 +144,20 @@ export interface SetViewVisibilityToolInput {
  * {
  *   "provenanceId": "provenance-12"
  * }
+ *
+ * @example
+ * {
+ *   "provenanceId": null
+ * }
  */
 export interface JumpToProvenanceStateToolInput {
     /**
-     * Provenance id to jump to.
+     * Provenance id to jump to, or null to jump to the initial state.
+     * The visualization state is defined by the action identified by the
+     * provenance id and all preceding actions in provenance.
      */
-    provenanceId: string;
+    provenanceId: string | null;
 }
-
-/**
- * Jump to the initial provenance state before any actions were dispatched.
- */
-export type JumpToInitialProvenanceStateToolInput = Record<string, never>;
 
 /**
  * Return a compact summary of one attribute (metadata or selection-derived)
@@ -359,6 +362,8 @@ export interface ZoomToScaleToolInput {
  * defines the state of the analysis. Does it make sense to add this action
  * on top of the actions already in provenance? Jump to a prior provenance
  * state if necessary to continue from an earlier point in the analysis.
+ * Also, if the user requests an alternative analysis or doing something "again"
+ * but differently, think if an earlier state should be restored first.
  * In addition, before constructing the action, ensure that every `attribute`
  * (AttributeIdentifier) is presented to you in the context or tool results.
  *
@@ -476,7 +481,6 @@ export interface AgentToolInputs {
     collapseViewNode: CollapseViewNodeToolInput;
     setViewVisibility: SetViewVisibilityToolInput;
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
-    jumpToInitialProvenanceState: JumpToInitialProvenanceStateToolInput;
     getAttributeSummary: GetAttributeSummaryToolInput;
     getSelectionFeatureFieldSummary: GetSelectionFeatureFieldSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;

@@ -81,10 +81,20 @@ export const agentTools = {
      * @param {import("./agentToolInputs.d.ts").JumpToProvenanceStateToolInput} input
      */
     jumpToProvenanceState(runtime, input) {
-        const provenanceAction = findProvenanceAction(
-            runtime,
+        const actionHistory = runtime.agentApi.getActionHistory();
+        if (input.provenanceId === null) {
+            return activateInitialProvenanceState(
+                runtime,
+                actionHistory.length
+            );
+        }
+
+        const targetIndex = findProvenanceActionIndex(
+            actionHistory,
             input.provenanceId
         );
+        const provenanceAction = actionHistory[targetIndex];
+        const undoneActionCount = actionHistory.length - targetIndex - 1;
         const changed = runtime.agentApi.jumpToProvenanceState(
             input.provenanceId
         );
@@ -101,26 +111,8 @@ export const agentTools = {
                 input.provenanceId,
                 provenanceAction,
                 false,
-                changed
-            ),
-        };
-    },
-
-    /**
-     * @param {AgentToolRuntime} runtime
-     */
-    jumpToInitialProvenanceState(runtime) {
-        const changed = runtime.agentApi.jumpToInitialProvenanceState();
-
-        return {
-            text: changed
-                ? "Jumped to the initial provenance state."
-                : "The initial provenance state was already active. This did not undo or change the analysis. Continue from the active state or choose a different provenance state.",
-            content: createProvenanceStateActivation(
-                undefined,
-                undefined,
-                true,
-                changed
+                changed,
+                undoneActionCount
             ),
         };
     },
@@ -335,6 +327,28 @@ export const agentTools = {
 };
 
 /**
+ * @param {AgentToolRuntime} runtime
+ * @param {number} undoneActionCount
+ * @returns {AgentToolExecutionResult}
+ */
+function activateInitialProvenanceState(runtime, undoneActionCount) {
+    const changed = runtime.agentApi.jumpToInitialProvenanceState();
+
+    return {
+        text: changed
+            ? "Jumped to the initial provenance state."
+            : "The initial provenance state was already active. This did not undo or change the analysis. Continue from the active state or choose a different provenance state.",
+        content: createProvenanceStateActivation(
+            undefined,
+            undefined,
+            true,
+            changed,
+            undoneActionCount
+        ),
+    };
+}
+
+/**
  * @param {import("./types.d.ts").AgentActionPayloadField[]} payloadFields
  * @returns {string[]}
  */
@@ -526,13 +540,15 @@ function createViewStateChange(domain, field, selector, before, after) {
  *     summary?: string;
  *     initial: boolean;
  *     changed: boolean;
+ *     undoneActionCount: number;
  * }}
  */
 function createProvenanceStateActivation(
     provenanceId,
     action,
     initial,
-    changed
+    changed,
+    undoneActionCount
 ) {
     return {
         kind: "provenance_state_activation",
@@ -545,23 +561,24 @@ function createProvenanceStateActivation(
             : {}),
         initial,
         changed,
+        undoneActionCount,
     };
 }
 
 /**
- * @param {AgentToolRuntime} runtime
+ * @param {import("./agentContextTypes.d.ts").AgentProvenanceAction[]} actionHistory
  * @param {string} provenanceId
- * @returns {import("./agentContextTypes.d.ts").AgentProvenanceAction}
+ * @returns {number}
  */
-function findProvenanceAction(runtime, provenanceId) {
-    const action = runtime.agentApi
-        .getActionHistory()
-        .find((entry) => entry.provenanceId === provenanceId);
-    if (!action) {
+function findProvenanceActionIndex(actionHistory, provenanceId) {
+    const index = actionHistory.findIndex(
+        (entry) => entry.provenanceId === provenanceId
+    );
+    if (index < 0) {
         throw new ToolCallRejectionError(
             "Unknown provenance id " + provenanceId + "."
         );
     }
 
-    return action;
+    return index;
 }
