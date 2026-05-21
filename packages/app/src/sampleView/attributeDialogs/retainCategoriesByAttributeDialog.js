@@ -2,8 +2,8 @@ import { faFilter } from "@fortawesome/free-solid-svg-icons";
 import { css, html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
-import "../../components/generic/comparisonOperatorButtons.js";
 import "../../components/generic/searchableCheckboxList.js";
+import { isFiniteNumber } from "../../components/generic/thresholdComparisonInput.js";
 import { extractAttributeValues } from "../attributeValues.js";
 
 class RetainCategoriesByAttributeDialog extends BaseDialog {
@@ -26,13 +26,6 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
             }
 
             .gs-form-group {
-                .condition-row {
-                    display: grid;
-                    grid-template-columns: auto 1fr;
-                    gap: var(--gs-basic-spacing);
-                    align-items: center;
-                }
-
                 .requirement-row {
                     margin-top: var(--gs-basic-spacing);
                     display: grid;
@@ -56,7 +49,8 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
         this.sampleView = null;
         /** @type {import("../state/payloadTypes.js").ComparisonOperatorType} */
         this.operator = "gt";
-        this.operand = 0;
+        /** @type {number | undefined} */
+        this.operand = undefined;
         /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */
         this.values = [];
         /** @type {"any" | "all"} */
@@ -73,19 +67,10 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
         }
     }
 
-    /** @param {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} event */
-    #operatorChanged(event) {
-        this.operator = event.value;
-    }
-
-    /** @param {Event} event */
-    #operandChanged(event) {
-        const value = Number(
-            /** @type {HTMLInputElement} */ (event.target).value
-        );
-        if (Number.isFinite(value)) {
-            this.operand = value;
-        }
+    /** @param {import("../../components/generic/thresholdComparisonInput.js").ThresholdComparisonInputChangeEvent} event */
+    #thresholdComparisonChanged(event) {
+        this.operator = event.operator;
+        this.operand = event.operand;
     }
 
     renderBody() {
@@ -104,20 +89,21 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
     }
 
     #renderQuantitativeCondition() {
-        return html`<div class="condition-row">
-            <gs-comparison-operator-buttons
-                .value=${this.operator}
-                @change=${(
-                    /** @type {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} */ event
-                ) => this.#operatorChanged(event)}
-            ></gs-comparison-operator-buttons>
-            <input
-                type="number"
-                .value=${String(this.operand)}
-                @input=${(/** @type {Event} */ event) =>
-                    this.#operandChanged(event)}
-            />
-        </div>`;
+        const values = extractAttributeValues(
+            this.conditionAttributeInfo,
+            this.sampleView.leafSamples,
+            this.sampleView.sampleHierarchy
+        );
+
+        return html`<gs-threshold-comparison-input
+            autofocus
+            .values=${values}
+            .operator=${this.operator}
+            .operand=${this.operand}
+            @change=${(
+                /** @type {import("../../components/generic/thresholdComparisonInput.js").ThresholdComparisonInputChangeEvent} */ event
+            ) => this.#thresholdComparisonChanged(event)}
+        ></gs-threshold-comparison-input>`;
     }
 
     #renderCategoricalCondition() {
@@ -169,17 +155,29 @@ class RetainCategoriesByAttributeDialog extends BaseDialog {
             this.makeButton("Retain", () => this.#onRetain(), {
                 iconDef: faFilter,
                 isPrimary: true,
-                disabled:
-                    this.conditionAttributeInfo?.type !== "quantitative" &&
-                    this.values.length === 0,
+                disabled: this.#isRetainDisabled(),
             }),
         ];
+    }
+
+    #isRetainDisabled() {
+        if (this.conditionAttributeInfo?.type === "quantitative") {
+            return !isFiniteNumber(this.operand);
+        }
+
+        return this.values.length === 0;
     }
 
     #onRetain() {
         /** @type {import("../state/payloadTypes.js").AttributeCondition} */
         let condition;
         if (this.conditionAttributeInfo.type === "quantitative") {
+            if (!isFiniteNumber(this.operand)) {
+                throw new Error(
+                    "Quantitative category condition is missing a value."
+                );
+            }
+
             condition = {
                 attribute: this.conditionAttributeInfo.attribute,
                 operator: this.operator,
@@ -258,7 +256,7 @@ export function showRetainCategoriesByAttributeDialog(
             el.conditionAttributeInfo = conditionAttributeInfo;
             el.sampleView = sampleView;
             el.operator = "gt";
-            el.operand = 0;
+            el.operand = undefined;
             el.values = [];
             el.required = "any";
         }

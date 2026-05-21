@@ -3,11 +3,9 @@ import { html, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
-import "../../components/generic/comparisonOperatorButtons.js";
-import "../../components/generic/histogram.js";
 import "../../components/generic/searchableCheckboxList.js";
+import "../../components/generic/thresholdComparisonInput.js";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
-import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 import { extractAttributeValues } from "../attributeValues.js";
 
 class DiscreteAttributeFilterDialog extends BaseDialog {
@@ -116,28 +114,10 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
         }
     }
 
-    /** @param {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} event */
-    #operatorChanged(event) {
-        this.operator = event.value;
-    }
-
-    /** @param {HTMLInputElement} input */
-    #operandChanged(input) {
-        const value = input.value;
-        if (/^\d+(\.(\d+)?)?$/.test(value)) {
-            this.operand = +value;
-        }
-    }
-
-    /** @param {import("../../components/generic/histogram.js").ThresholdEvent} e */
-    #thresholdAdded(e) {
-        const val = /** @type {any} */ (e).detail?.value ?? e.value;
-        if (typeof this.operand !== "number") this.operand = val;
-    }
-
-    /** @param {import("../../components/generic/histogram.js").ThresholdEvent} e */
-    #thresholdAdjusted(e) {
-        this.operand = /** @type {any} */ (e).detail?.value ?? e.value;
+    /** @param {import("../../components/generic/thresholdComparisonInput.js").ThresholdComparisonInputChangeEvent} event */
+    #thresholdComparisonChanged(event) {
+        this.operator = event.operator;
+        this.operand = event.operand;
     }
 
     renderBody() {
@@ -152,40 +132,15 @@ class QuantitativeAttributeFilterDialog extends BaseDialog {
                 >Retain samples where
                 <em>${this.attributeInfo.name}</em> is</label
             >
-            <gs-comparison-operator-buttons
-                style="margin-bottom: 1em;"
-                .value=${this.operator}
-                @change=${(
-                    /** @type {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} */ event
-                ) => this.#operatorChanged(event)}
-            ></gs-comparison-operator-buttons>
-
-            <gs-histogram
-                .values=${values}
-                .thresholds=${[this.operand].filter((o) => o !== undefined)}
-                .operators=${[this.operator]}
-                .colors=${["#1f77b4", "#ddd"]}
-                .showThresholdNumbers=${false}
-                @add=${(
-                    /** @type {import("../../components/generic/histogram.js").ThresholdEvent} */ e
-                ) => this.#thresholdAdded(e)}
-                @adjust=${(
-                    /** @type {import("../../components/generic/histogram.js").ThresholdEvent} */ e
-                ) => this.#thresholdAdjusted(e)}
-            ></gs-histogram>
-
-            <input
+            <gs-threshold-comparison-input
                 autofocus
-                type="text"
-                placeholder="... or enter a numeric value here"
-                style="margin-top: 0.5em"
-                .value=${typeof this.operand == "number"
-                    ? "" + this.operand
-                    : ""}
-                @input=${createInputListener((input) =>
-                    this.#operandChanged(input)
-                )}
-            />
+                .values=${values}
+                .operator=${this.operator}
+                .operand=${this.operand}
+                @change=${(
+                    /** @type {import("../../components/generic/thresholdComparisonInput.js").ThresholdComparisonInputChangeEvent} */ event
+                ) => this.#thresholdComparisonChanged(event)}
+            ></gs-threshold-comparison-input>
         </div>`;
     }
 

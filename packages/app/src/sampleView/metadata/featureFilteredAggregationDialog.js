@@ -20,8 +20,8 @@ import {
 } from "./deriveMetadataUtils.js";
 import { collectIntervalFeatureFieldValues } from "../selectionFeatureFieldValues.js";
 import "./derivedMetadataConfigurator.js";
-import "../../components/generic/comparisonOperatorButtons.js";
 import "../../components/generic/searchableCheckboxList.js";
+import { isFiniteNumber } from "../../components/generic/thresholdComparisonInput.js";
 
 class FeatureFilteredAggregationDialog extends BaseDialog {
     static properties = {
@@ -34,8 +34,9 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         aggregationField: { state: true },
         filterField: { state: true },
         operator: { state: true },
-        valueText: { state: true },
+        operand: { state: true },
         selectedValues: { state: true },
+        _filterFieldValues: { state: true },
         _page: { state: true },
         _attributeInfo: { state: true },
         _values: { state: true },
@@ -95,11 +96,14 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         /** @type {import("../sampleViewTypes.js").FeatureFilter["operator"]} */
         this.operator = "in";
 
-        /** @type {string} */
-        this.valueText = "";
+        /** @type {number | undefined} */
+        this.operand = undefined;
 
         /** @type {import("@genome-spy/core/spec/channel.js").Scalar[]} */
         this.selectedValues = [];
+
+        /** @type {unknown[]} */
+        this._filterFieldValues = [];
 
         /** @type {import("../state/sampleState.js").SampleHierarchy | null} */
         this.sampleHierarchy = null;
@@ -151,7 +155,17 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             this.#normalizeAggregationForField();
             this.filterField = this.fieldInfo.filterableFields[0]?.field ?? "";
             this.operator = this.#isQuantitativeFilter() ? "gt" : "in";
+            this.operand = undefined;
             this.selectedValues = [];
+        }
+
+        if (
+            changed.has("fieldInfo") ||
+            changed.has("filterField") ||
+            changed.has("selectionIntervalComplex") ||
+            changed.has("selectionIntervalSource")
+        ) {
+            this._filterFieldValues = this.#collectFilterFieldValues();
         }
     }
 
@@ -298,32 +312,28 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             event.target
         ).value;
         this.operator = this.#isQuantitativeFilter() ? "gt" : "in";
-        this.valueText = "";
+        this.operand = undefined;
         this.selectedValues = [];
+        this._filterFieldValues = this.#collectFilterFieldValues();
+    }
+
+    /** @param {import("../../components/generic/thresholdComparisonInput.js").ThresholdComparisonInputChangeEvent} event */
+    #thresholdComparisonChanged(event) {
+        this.operator = event.operator;
+        this.operand = event.operand;
     }
 
     #renderQuantitativePredicate() {
-        return html`<div class="input-group">
-            <gs-comparison-operator-buttons
-                .value=${this.operator}
-                @change=${(
-                    /** @type {import("../../components/generic/comparisonOperatorButtons.js").ComparisonOperatorChangeEvent} */ event
-                ) => {
-                    this.operator = event.value;
-                }}
-            ></gs-comparison-operator-buttons>
-            <input
-                autofocus
-                type="number"
-                .value=${this.valueText}
-                placeholder="value"
-                @input=${(/** @type {Event} */ event) => {
-                    this.valueText = /** @type {HTMLInputElement} */ (
-                        event.target
-                    ).value;
-                }}
-            />
-        </div>`;
+        return html`<gs-threshold-comparison-input
+            autofocus
+            placeholder="value"
+            .values=${this._filterFieldValues}
+            .operator=${this.operator}
+            .operand=${this.operand}
+            @change=${(
+                /** @type {import("../../components/generic/thresholdComparisonInput.js").ThresholdComparisonInputChangeEvent} */ event
+            ) => this.#thresholdComparisonChanged(event)}
+        ></gs-threshold-comparison-input>`;
     }
 
     #renderCategoricalPredicate() {
@@ -402,7 +412,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
                 " " +
                 formatFeatureFilterOperator(this.operator) +
                 " " +
-                (this.valueText.trim() || "...")
+                (isFiniteNumber(this.operand) ? String(this.operand) : "...")
             );
         }
 
@@ -470,10 +480,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         }
 
         if (this.#isQuantitativeFilter()) {
-            return (
-                this.valueText.trim().length > 0 &&
-                Number.isFinite(+this.valueText)
-            );
+            return isFiniteNumber(this.operand);
         }
 
         return this.selectedValues.length > 0;
@@ -491,12 +498,16 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             };
         }
 
+        if (!isFiniteNumber(this.operand)) {
+            throw new Error("Quantitative feature filter is missing a value.");
+        }
+
         return {
             field: this.filterField,
             operator: /** @type {"eq" | "lt" | "lte" | "gt" | "gte"} */ (
                 this.operator
             ),
-            value: +this.valueText,
+            value: this.operand,
         };
     }
 
@@ -592,12 +603,7 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
             return [];
         }
 
-        const values =
-            collectIntervalFeatureFieldValues(
-                this.fieldInfo.view,
-                this.selectionIntervalSource ?? this.selectionIntervalComplex,
-                this.filterField
-            ) ?? [];
+        const values = this._filterFieldValues;
 
         return Array.from(new Set(values.filter(isScalar))).map((value) => ({
             value,
@@ -612,6 +618,23 @@ class FeatureFilteredAggregationDialog extends BaseDialog {
         this._values = null;
         this._attributeName = "";
         this._metadataConfigHasErrors = false;
+    }
+
+    /**
+     * @returns {unknown[]}
+     */
+    #collectFilterFieldValues() {
+        if (!this.fieldInfo || !this.selectionIntervalComplex) {
+            return [];
+        }
+
+        return (
+            collectIntervalFeatureFieldValues(
+                this.fieldInfo.view,
+                this.selectionIntervalSource ?? this.selectionIntervalComplex,
+                this.filterField
+            ) ?? []
+        );
     }
 }
 
@@ -652,7 +675,7 @@ export async function showFeatureFilteredAggregationDialog({
             dialog.attributeInfoSource = attributeInfoSource;
             dialog.attributeType = attributeType;
             dialog.sampleView = sampleView;
-            dialog.valueText = "";
+            dialog.operand = undefined;
             dialog.selectedValues = [];
             dialog.resetWizard();
         }
