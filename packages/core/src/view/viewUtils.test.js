@@ -88,6 +88,32 @@ describe("finalizeSubtreeGraphics", () => {
 });
 
 describe("findEncodedFields", () => {
+    test("treats semanticScore fields as quantitative", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: {
+                values: [{ x: 1, score: 2 }],
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                semanticScore: { field: "score" },
+            },
+        };
+
+        const view = await createAndInitialize(spec, UnitView);
+
+        expect(findEncodedFields(view)).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    channel: "semanticScore",
+                    field: "score",
+                    type: "quantitative",
+                }),
+            ])
+        );
+    });
+
     test("includes conditional field branches", async () => {
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {

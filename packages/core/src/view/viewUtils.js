@@ -149,6 +149,16 @@ export function findEncodedFields(view) {
                             definition.type
                         ),
                     });
+                } else if (
+                    isFieldDef(definition) &&
+                    channel === "semanticScore"
+                ) {
+                    fieldInfos.push({
+                        view,
+                        channel,
+                        field: definition.field,
+                        type: "quantitative",
+                    });
                 }
 
                 if ("condition" in definition) {
