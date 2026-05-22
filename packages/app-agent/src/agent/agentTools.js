@@ -342,13 +342,17 @@ export const agentTools = {
  * @returns {import("./types.d.ts").IntentBatchExecutionNote[]}
  */
 function getSubmitIntentActionNotes(volatileContext, action) {
+    const attribute =
+        action.actionType === "sampleView/deriveMetadata"
+            ? /** @type {unknown} */ (action.payload.attribute)
+            : undefined;
+
     if (
         action.actionType === "sampleView/deriveMetadata" &&
-        isSelectionAggregationAttribute(action.payload.attribute)
+        isSelectionAggregationAttribute(attribute)
     ) {
         const candidate = volatileContext.selectionAggregation.fields.find(
-            (field) =>
-                field.candidateId === action.payload.attribute.candidateId
+            (field) => field.candidateId === attribute.candidateId
         );
         const selector = candidate?.selectionSelector;
         if (!selector) {
