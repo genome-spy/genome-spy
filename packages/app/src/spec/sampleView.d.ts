@@ -293,8 +293,9 @@ export interface MetadataSourceDef {
     /**
      * Column ids that must never be imported from this source.
      *
-     * Useful for excluding identity/helper columns such as `sample` and
-     * `displayName`.
+     * The data backend always excludes its `sampleIdField` automatically, so
+     * this property is only needed for other helper columns such as display
+     * labels.
      */
     excludeColumns?: string[];
 

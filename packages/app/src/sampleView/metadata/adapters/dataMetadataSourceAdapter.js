@@ -41,7 +41,10 @@ export default class DataMetadataSourceAdapter {
             /** @type {DataBackendDef} */
             (source.backend);
         this.#baseUrl = options.baseUrl;
-        this.#excludedColumns = new Set(source.excludeColumns ?? []);
+        this.#excludedColumns = new Set([
+            this.#backend.sampleIdField ?? "sample",
+            ...(source.excludeColumns ?? []),
+        ]);
     }
 
     /**
