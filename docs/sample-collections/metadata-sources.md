@@ -291,17 +291,17 @@ group and `attributeGroupSeparator` defines how grouped names are interpreted.
 
 ## Schema reference
 
-### `samples` configuration
-
-APP_SCHEMA SampleDef identity
-
 ### `metadata` configuration
+
+These properties are nested under `metadata`. Sample identity and sample label
+configuration are documented in
+[Visualizing Sample Collections](visualizing.md).
 
 APP_SCHEMA MetadataDef sources attributeWidth spacing labelFont labelFontSize labelFontWeight labelFontStyle labelAngle
 
 ### Metadata source definitions
 
-`metadata.sources` accepts entries that are either inline metadata source
+The `metadata.sources` array accepts entries that are either inline metadata source
 definitions or import wrappers. `MetadataSourceEntry` describes this allowed
 array entry shape, while `MetadataSourceDef` describes an inline source object.
 
