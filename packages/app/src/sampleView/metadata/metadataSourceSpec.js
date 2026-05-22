@@ -1,5 +1,4 @@
 /**
- * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleDef} SampleDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
  * @typedef {import("@genome-spy/core/spec/data.js").Data} Data
  * @typedef {import("@genome-spy/core/spec/data.js").InlineData} InlineData
@@ -10,7 +9,7 @@ export const LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING =
     "The samples.data, samples.attributeGroupSeparator, and samples.attributes properties are deprecated. Use samples.metadataSources instead.";
 
 /**
- * @param {SampleDef} sampleDef
+ * @param {Record<string, unknown>} sampleDef
  * @returns {boolean}
  */
 function hasLegacyMetadataFields(sampleDef) {
@@ -36,8 +35,8 @@ function isUrlOrInlineData(data) {
 /**
  * Normalizes sample metadata source configuration and preserves legacy behavior.
  *
- * @param {SampleDef} sampleDef
- * @returns {{ sampleDef: SampleDef; usesLegacyMetadata: boolean }}
+ * @param {Record<string, unknown>} sampleDef
+ * @returns {{ sampleDef: Record<string, unknown>; usesLegacyMetadata: boolean }}
  */
 export function normalizeSampleDefMetadataSources(sampleDef) {
     const usesLegacyMetadata = hasLegacyMetadataFields(sampleDef);
@@ -52,7 +51,8 @@ export function normalizeSampleDefMetadataSources(sampleDef) {
         return { sampleDef, usesLegacyMetadata };
     }
 
-    if (!isUrlOrInlineData(sampleDef.data)) {
+    const data = /** @type {Data} */ (sampleDef.data);
+    if (!isUrlOrInlineData(data)) {
         throw new Error(
             "Legacy samples.data must be UrlData or InlineData when mapping to metadataSources."
         );
@@ -64,25 +64,29 @@ export function normalizeSampleDefMetadataSources(sampleDef) {
         excludeColumns: ["displayName"],
         backend: {
             backend: "data",
-            data: sampleDef.data,
+            data,
             sampleIdField: "sample",
         },
     };
 
     if (sampleDef.attributeGroupSeparator !== undefined) {
-        metadataSource.attributeGroupSeparator =
-            sampleDef.attributeGroupSeparator;
+        metadataSource.attributeGroupSeparator = /** @type {string} */ (
+            sampleDef.attributeGroupSeparator
+        );
     }
 
     if (sampleDef.attributes !== undefined) {
-        metadataSource.attributes = sampleDef.attributes;
+        metadataSource.attributes =
+            /** @type {Record<string, import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef>} */ (
+                sampleDef.attributes
+            );
     }
 
     return {
         sampleDef: {
             ...sampleDef,
             identity: sampleDef.identity ?? {
-                data: sampleDef.data,
+                data,
                 idField: "sample",
                 displayNameField: "displayName",
             },

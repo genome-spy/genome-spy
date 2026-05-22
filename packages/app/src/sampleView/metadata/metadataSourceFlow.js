@@ -31,7 +31,7 @@ export async function augmentAddMetadataFromSourceAction(
     }
 
     const source = await resolveMetadataSource(
-        sampleView.spec.samples,
+        sampleView.spec.metadata,
         payload.sourceId,
         {
             baseUrl: sampleView.getBaseUrl(),

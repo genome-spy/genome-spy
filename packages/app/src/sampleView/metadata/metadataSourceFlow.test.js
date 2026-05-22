@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 /**
- * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef["metadataSources"]} [metadataSources]
+ * @param {import("@genome-spy/app/spec/sampleView.js").MetadataDef["sources"]} [metadataSources]
  * @param {string | undefined} [baseUrl]
  * @returns {import("../sampleView.js").default}
  */
@@ -42,9 +42,8 @@ function createSampleViewStub(metadataSources, baseUrl) {
         /** @type {unknown} */ ({
             actions: sampleSlice.actions,
             spec: {
-                samples: {
-                    metadataSources: sources,
-                },
+                samples: {},
+                metadata: { sources },
             },
             sampleHierarchy: {
                 sampleData: {

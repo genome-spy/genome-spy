@@ -56,10 +56,7 @@ import {
     isActiveIntervalSelection,
     isIntervalSelectionConfig,
 } from "@genome-spy/core/selection/selection.js";
-import {
-    LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING,
-    normalizeSampleDefMetadataSources,
-} from "./metadata/metadataSourceSpec.js";
+import { normalizeSampleViewSpec } from "./sampleViewSpecNormalizer.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { getViewVisibilityKey } from "../viewSettingsUtils.js";
 import { resolveViewRef } from "./viewRef.js";
@@ -159,17 +156,12 @@ export default class SampleView extends ContainerView {
 
         this.provenance = provenance;
 
-        const normalizedSampleDef = normalizeSampleDefMetadataSources(
-            spec.samples
-        );
-        if (normalizedSampleDef.usesLegacyMetadata) {
-            console.warn(LEGACY_SAMPLE_METADATA_DEPRECATION_WARNING);
+        const normalized = normalizeSampleViewSpec(spec);
+        for (const warning of normalized.warnings) {
+            console.warn(warning);
         }
 
-        this.spec = {
-            ...spec,
-            samples: normalizedSampleDef.sampleDef,
-        };
+        this.spec = normalized.spec;
         this.#stickySummaries = spec.stickySummaries ?? true;
 
         this.#initViewHelpers();

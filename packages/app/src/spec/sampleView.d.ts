@@ -27,6 +27,11 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     samples: SampleDef;
 
     /**
+     * Metadata source and metadata matrix layout configuration.
+     */
+    metadata?: MetadataDef;
+
+    /**
      * An object defining the view background and outline. The background is
      * repeated for each group.
      */
@@ -349,41 +354,70 @@ export type MetadataSourceEntry =
     | MetadataSourceDef
     | { import: MetadataSourceImportDef };
 
+export interface MetadataDef {
+    /**
+     * Metadata source definitions used for startup and on-demand imports.
+     *
+     * Source order is significant for startup loading: eager startup imports
+     * are applied in declaration order.
+     */
+    sources?: MetadataSourceEntry[];
+
+    /**
+     * Default width of metadata attribute columns in pixels.
+     *
+     * __Default value:__ `10`
+     */
+    attributeWidth?: number;
+
+    /**
+     * Spacing between metadata attribute columns in pixels.
+     *
+     * __Default value:__ `1`
+     */
+    spacing?: number;
+
+    /**
+     * Font typeface for metadata attribute labels.
+     *
+     * __Default value:__ `"Lato"`
+     */
+    labelFont?: string;
+
+    /**
+     * Font style for metadata attribute labels.
+     *
+     * __Default value:__ `"normal"`
+     */
+    labelFontStyle?: FontStyle;
+
+    /**
+     * Font weight for metadata attribute labels.
+     *
+     * __Default value:__ `"regular"`
+     */
+    labelFontWeight?: FontWeight;
+
+    /**
+     * Font size for metadata attribute labels in pixels.
+     *
+     * __Default value:__ `11`
+     */
+    labelFontSize?: number;
+
+    /**
+     * Angle of metadata attribute labels in degrees.
+     *
+     * __Default value:__ `-90`
+     */
+    labelAngle?: number;
+}
+
 export interface SampleDef {
     /**
      * Optional explicit sample identity definition.
      */
     identity?: SampleIdentityDef;
-
-    /**
-     * Metadata source definitions used for startup and on-demand imports.
-     *
-     * Source order is significant for startup loading: eager startup imports are
-     * applied in declaration order.
-     */
-    metadataSources?: MetadataSourceEntry[];
-
-    /**
-     * Optional metadata about the samples.
-     *
-     * @deprecated Use `metadataSources` with `backend: "data"` instead.
-     */
-    data?: Data;
-
-    /**
-     * If attributes form a hierarchy, specify the separator character to
-     * split the attribute names into paths.
-     *
-     * @deprecated Configure per-source `attributeGroupSeparator` in `metadataSources`.
-     */
-    attributeGroupSeparator?: string;
-
-    /**
-     * Explicitly specify the sample attributes.
-     *
-     * @deprecated Configure per-source `attributes` in `metadataSources`.
-     */
-    attributes?: Record<string, SampleAttributeDef>;
 
     /**
      * Text in the label title.
@@ -392,13 +426,6 @@ export interface SampleDef {
      *
      */
     labelTitle?: string | null;
-
-    /**
-     * Legacy alias for `labelTitle`.
-     *
-     * @deprecated Use `labelTitle` instead.
-     */
-    labelTitleText?: string | null;
 
     /**
      * How much space in pixels to reserve for the labels.
@@ -448,61 +475,4 @@ export interface SampleDef {
      * **Default value:** `"left"`
      */
     labelAlign?: Align;
-
-    /**
-     * Default size (width) of the metadata attribute columns.
-     * Can be configured per attribute using the `attributes` property.
-     *
-     * **Default value:** `10`
-     */
-    attributeSize?: number;
-
-    /**
-     * The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen)
-     * versions of [Google Fonts](https://fonts.google.com/). Check their
-     * availability at the [A-Frame
-     * Fonts](https://github.com/etiennepinchon/aframe-fonts/tree/master/fonts)
-     * repository. System fonts are **not** supported.
-     *
-     * **Default value:** `"Lato"`
-     */
-    attributeLabelFont?: string;
-
-    /**
-     * The font style. Valid values: `"normal"` and `"italic"`.
-     *
-     * **Default value:** `"normal"`
-     */
-    attributeLabelFontStyle?: FontStyle;
-
-    /**
-     * The font weight. The following strings and numbers are valid values:
-     * `"thin"` (`100`), `"light"` (`300`), `"regular"` (`400`),
-     * `"normal"` (`400`), `"medium"` (`500`), `"bold"` (`700`),
-     * `"black"` (`900`)
-     *
-     * **Default value:** `"regular"`
-     */
-    attributeLabelFontWeight?: FontWeight;
-
-    /**
-     * The font size in pixels.
-     *
-     * **Default value:** `11`
-     */
-    attributeLabelFontSize?: number;
-
-    /**
-     * Angle to be added to the default label angle (-90).
-     *
-     * **Default value:** `0`
-     */
-    attributeLabelAngle?: number;
-
-    /**
-     * Spacing between attribute columns in pixels.
-     *
-     * **Default value:** `1`
-     */
-    attributeSpacing?: number;
 }

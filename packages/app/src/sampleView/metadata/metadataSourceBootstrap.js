@@ -63,7 +63,7 @@ export async function bootstrapInitialMetadataSources(
     sampleView,
     intentPipeline
 ) {
-    const sources = await resolveMetadataSources(sampleView.spec.samples, {
+    const sources = await resolveMetadataSources(sampleView.spec.metadata, {
         baseUrl: sampleView.getBaseUrl(),
     });
     if (sources.length === 0) {

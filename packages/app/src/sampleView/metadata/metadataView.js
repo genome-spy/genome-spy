@@ -73,6 +73,8 @@ export class MetadataView extends ConcatView {
      * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
      */
     constructor(sampleView, sidebarView) {
+        const metadataDef = sampleView.spec.metadata ?? {};
+
         /** @type {import("../../spec/view.js").AppHConcatSpec} */
         const spec = {
             name: "sample-metadata",
@@ -80,7 +82,7 @@ export class MetadataView extends ConcatView {
             configurableVisibility: true,
             data: { name: null },
             hconcat: [], // Contents are added dynamically
-            spacing: sampleView.spec.samples.attributeSpacing ?? 1,
+            spacing: metadataDef.spacing ?? 1,
             resolve: {
                 scale: { default: "independent" },
                 axis: { default: "independent" },
@@ -519,7 +521,7 @@ export class MetadataView extends ConcatView {
                         createAttributeSpec(
                             attributeName,
                             attributeDef,
-                            this.#sampleView.spec.samples
+                            this.#sampleView.spec.metadata
                         ),
                         this.context,
                         container,
@@ -543,8 +545,7 @@ export class MetadataView extends ConcatView {
                         configurableVisibility: true,
                         title: attributeDef.title ?? node.part,
                         visible: attributeDef.visible ?? true,
-                        spacing:
-                            this.#sampleView.spec.samples.attributeSpacing ?? 1,
+                        spacing: this.#sampleView.spec.metadata?.spacing ?? 1,
                         resolve: {
                             // TODO: scale could be shared within groups
                             scale: { default: "independent" },
@@ -793,9 +794,9 @@ export class MetadataView extends ConcatView {
 /**
  * @param {string} attributeName
  * @param {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} attributeDef
- * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef} sampleDef
+ * @param {import("@genome-spy/app/spec/sampleView.js").MetadataDef} [metadataDef]
  */
-function createAttributeSpec(attributeName, attributeDef, sampleDef) {
+function createAttributeSpec(attributeName, attributeDef, metadataDef) {
     if (!attributeDef) {
         throw new Error("No attribute definition for " + attributeName);
     }
@@ -812,17 +813,17 @@ function createAttributeSpec(attributeName, attributeDef, sampleDef) {
             align: "right",
             baseline: "middle",
             offset: 5,
-            angle: -90 + (sampleDef.attributeLabelAngle ?? 0),
+            angle: metadataDef?.labelAngle ?? -90,
             dy: -0.5,
 
-            font: sampleDef.attributeLabelFont,
-            fontSize: sampleDef.attributeLabelFontSize ?? 11,
-            fontStyle: sampleDef.attributeLabelFontStyle,
-            fontWeight: sampleDef.attributeLabelFontWeight,
+            font: metadataDef?.labelFont,
+            fontSize: metadataDef?.labelFontSize ?? 11,
+            fontStyle: metadataDef?.labelFontStyle,
+            fontWeight: metadataDef?.labelFontWeight,
         },
         description: attributeDef.description,
         visible: attributeDef.visible ?? true,
-        width: attributeDef.width ?? sampleDef.attributeSize ?? 10,
+        width: attributeDef.width ?? metadataDef?.attributeWidth ?? 10,
         transform: [{ type: "filter", expr: `${escapedField} != null` }],
         mark: {
             type: "rect",
