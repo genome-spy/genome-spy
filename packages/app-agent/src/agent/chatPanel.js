@@ -782,11 +782,8 @@ export async function toggleAgentChatPanel(app) {
         host = document.createElement("div");
         host.dataset.agentChatPanelHost = "true";
         host.hidden = false;
-        host.style.position = "absolute";
-        host.style.top = "calc(var(--gs-basic-spacing, 10px) + 38px)";
-        host.style.right = "var(--gs-basic-spacing, 10px)";
-        host.style.bottom = "var(--gs-basic-spacing, 10px)";
-        host.style.width = "min(70vw, 600px)";
+        host.style.height = "100%";
+        host.style.minHeight = "0";
 
         const panel = /** @type {AgentChatPanel} */ (
             document.createElement("gs-agent-chat-panel")
@@ -798,7 +795,19 @@ export async function toggleAgentChatPanel(app) {
         panel.devMode = true;
         host.append(panel);
 
-        if (app.ui.registerDockedPanel) {
+        if (app.ui.registerSidePanel) {
+            agentState.agentChatPanelHandle = app.ui.registerSidePanel({
+                id: "agent-chat",
+                element: host,
+                preferredWidth: "min(36vw, 600px)",
+            });
+            agentState.agentChatPanelHandle.show();
+        } else if (app.ui.registerDockedPanel) {
+            host.style.position = "absolute";
+            host.style.top = "calc(var(--gs-basic-spacing, 10px) + 38px)";
+            host.style.right = "var(--gs-basic-spacing, 10px)";
+            host.style.bottom = "var(--gs-basic-spacing, 10px)";
+            host.style.width = "min(70vw, 600px)";
             app.ui.registerDockedPanel(host);
         } else {
             app.appContainer.append(host);
@@ -810,8 +819,15 @@ export async function toggleAgentChatPanel(app) {
         return;
     }
 
-    host.hidden = !host.hidden;
-    if (!host.hidden) {
+    let isVisible;
+    if (agentState.agentChatPanelHandle) {
+        isVisible = agentState.agentChatPanelHandle.toggle();
+    } else {
+        host.hidden = !host.hidden;
+        isVisible = !host.hidden;
+    }
+
+    if (isVisible) {
         const panel = /** @type {AgentChatPanel | null} */ (
             host.querySelector("gs-agent-chat-panel")
         );

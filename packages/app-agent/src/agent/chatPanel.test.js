@@ -3,8 +3,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { html } from "lit";
 import { templateResultToString } from "@genome-spy/app/agentShared";
 import { formatSet } from "../../../app/src/sampleView/state/actionInfo.js";
+import { getAgentState } from "./agentState.js";
 import "./chatPanel.js";
 import "./chatStream.js";
+import { toggleAgentChatPanel } from "./chatPanel.js";
 
 const originalScrollTo = HTMLElement.prototype.scrollTo;
 
@@ -53,6 +55,44 @@ function createController(snapshot) {
 }
 
 describe("gs-agent-chat-panel", () => {
+    it("registers the chat panel as an app side panel when available", async () => {
+        const sidePanelHandle = {
+            show: vi.fn(),
+            hide: vi.fn(),
+            toggle: vi.fn(),
+            dispose: vi.fn(),
+        };
+        const app = {
+            ui: {
+                registerSidePanel: vi.fn((panel) => {
+                    document.body.append(panel.element);
+                    return sidePanelHandle;
+                }),
+                registerDockedPanel: vi.fn(),
+            },
+            appContainer: document.body,
+        };
+
+        getAgentState(app).agentAdapter = {
+            requestAgentTurn: vi.fn(),
+            getAgentContext: vi.fn(() => ({})),
+            getAgentVolatileContext: vi.fn(() => ({})),
+            executeActions: vi.fn(),
+        };
+
+        await toggleAgentChatPanel(app);
+
+        expect(app.ui.registerSidePanel).toHaveBeenCalledTimes(1);
+        expect(app.ui.registerSidePanel).toHaveBeenCalledWith(
+            expect.objectContaining({
+                id: "agent-chat",
+                element: expect.any(HTMLElement),
+            })
+        );
+        expect(app.ui.registerDockedPanel).not.toHaveBeenCalled();
+        expect(sidePanelHandle.show).toHaveBeenCalledTimes(1);
+    });
+
     it("renders result summary sets as reusable rich content", async () => {
         const content = html`Group by thresholds ${formatSet(["> 0"])} as
         ${formatSet(["Loss", "Gain"])} on stopgain_12q14_3`;

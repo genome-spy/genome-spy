@@ -27,10 +27,30 @@ $basic-spacing: generic.$basic-spacing;
 
     font-size: 14px;
 
+    .genome-spy-workspace {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+    }
+
     .genome-spy-container {
         position: relative;
-        flex-grow: 1;
+        min-width: 0;
+        min-height: 0;
         overflow: hidden;
+    }
+
+    .genome-spy-side-panel-host {
+        min-height: 0;
+        border-left: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+        background: white;
+        overflow: hidden;
+    }
+
+    .genome-spy-side-panel-host[hidden] {
+        display: none;
     }
 }
 

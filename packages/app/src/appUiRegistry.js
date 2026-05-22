@@ -13,6 +13,12 @@ export default class AppUiRegistry extends EventTarget {
 
         /** @type {HTMLElement | undefined} */
         this.#appShell = undefined;
+
+        /** @type {HTMLElement | undefined} */
+        this.#sidePanelHost = undefined;
+
+        /** @type {ResizeObserver | undefined} */
+        this.#sidePanelResizeObserver = undefined;
     }
 
     /**
@@ -31,9 +37,29 @@ export default class AppUiRegistry extends EventTarget {
     #dockedPanels = new Set();
 
     /**
+     * @type {Map<string, import("./appTypes.js").SidePanelSpec>}
+     */
+    #sidePanels = new Map();
+
+    /**
+     * @type {string | undefined}
+     */
+    #activeSidePanelId = undefined;
+
+    /**
      * @type {HTMLElement | undefined}
      */
     #appShell;
+
+    /**
+     * @type {HTMLElement | undefined}
+     */
+    #sidePanelHost;
+
+    /**
+     * @type {ResizeObserver | undefined}
+     */
+    #sidePanelResizeObserver;
 
     /**
      * @param {HTMLElement} appShell
@@ -42,9 +68,22 @@ export default class AppUiRegistry extends EventTarget {
         // Panels can be registered before the app shell exists, so keep the
         // shell reference and attach any queued panels here.
         this.#appShell = appShell;
+        this.#sidePanelHost =
+            appShell.querySelector(".genome-spy-side-panel-host") ??
+            this.#createSidePanelHost(appShell);
+        if (typeof ResizeObserver === "function") {
+            this.#sidePanelResizeObserver?.disconnect();
+            this.#sidePanelResizeObserver = new ResizeObserver(() => {
+                if (this.#activeSidePanelId) {
+                    this.#renderActiveSidePanel();
+                }
+            });
+            this.#sidePanelResizeObserver.observe(appShell);
+        }
         for (const panel of this.#dockedPanels) {
             appShell.append(panel);
         }
+        this.#renderActiveSidePanel();
     }
 
     /**
@@ -96,6 +135,102 @@ export default class AppUiRegistry extends EventTarget {
                 this.#emitChange();
             }
         };
+    }
+
+    /**
+     * @param {import("./appTypes.js").SidePanelSpec} panel
+     * @returns {import("./appTypes.js").SidePanelHandle}
+     */
+    registerSidePanel(panel) {
+        this.#sidePanels.set(panel.id, panel);
+        this.#renderActiveSidePanel();
+
+        return {
+            show: () => {
+                this.#activeSidePanelId = panel.id;
+                this.#renderActiveSidePanel();
+            },
+            hide: () => {
+                if (this.#activeSidePanelId === panel.id) {
+                    this.#activeSidePanelId = undefined;
+                    this.#renderActiveSidePanel();
+                }
+            },
+            toggle: () => {
+                if (this.#activeSidePanelId === panel.id) {
+                    this.#activeSidePanelId = undefined;
+                    this.#renderActiveSidePanel();
+                    return false;
+                }
+
+                this.#activeSidePanelId = panel.id;
+                this.#renderActiveSidePanel();
+                return true;
+            },
+            isVisible: () => this.#activeSidePanelId === panel.id,
+            dispose: () => {
+                if (this.#sidePanels.delete(panel.id)) {
+                    if (this.#activeSidePanelId === panel.id) {
+                        this.#activeSidePanelId = undefined;
+                    }
+                    panel.element.remove();
+                    this.#renderActiveSidePanel();
+                }
+            },
+        };
+    }
+
+    /**
+     * @param {HTMLElement} appShell
+     * @returns {HTMLElement}
+     */
+    #createSidePanelHost(appShell) {
+        const host = document.createElement("div");
+        host.className = "genome-spy-side-panel-host";
+        host.hidden = true;
+        appShell.append(host);
+        return host;
+    }
+
+    #renderActiveSidePanel() {
+        if (!this.#sidePanelHost) {
+            return;
+        }
+
+        const activePanel = this.#activeSidePanelId
+            ? this.#sidePanels.get(this.#activeSidePanelId)
+            : undefined;
+
+        for (const panel of this.#sidePanels.values()) {
+            if (panel.element.parentElement !== this.#sidePanelHost) {
+                this.#sidePanelHost.append(panel.element);
+            }
+            panel.element.hidden = panel !== activePanel;
+        }
+
+        if (!activePanel) {
+            this.#sidePanelHost.hidden = true;
+            this.#sidePanelHost.style.removeProperty("width");
+            this.#emitChange();
+            return;
+        }
+
+        this.#sidePanelHost.hidden = false;
+        this.#sidePanelHost.style.width =
+            activePanel.preferredWidth ?? "min(36vw, 600px)";
+        this.#snapSidePanelWidth();
+        this.#emitChange();
+    }
+
+    #snapSidePanelWidth() {
+        if (!this.#sidePanelHost) {
+            return;
+        }
+
+        const width = Math.round(
+            this.#sidePanelHost.getBoundingClientRect().width
+        );
+        this.#sidePanelHost.style.width = width + "px";
     }
 
     #emitChange() {
