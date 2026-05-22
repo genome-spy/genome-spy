@@ -31,7 +31,6 @@ describe("appAgent", () => {
             ui: {
                 registerToolbarButton: vi.fn(),
                 registerToolbarMenuItem: vi.fn(),
-                registerDockedPanel: vi.fn(),
             },
             getAgentApi: vi.fn(async () => ({})),
         };

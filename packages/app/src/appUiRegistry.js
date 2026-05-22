@@ -12,7 +12,10 @@ export default class AppUiRegistry extends EventTarget {
         this.toolbarMenuItems = new Set();
 
         /** @type {HTMLElement | undefined} */
-        this.#appShell = undefined;
+        this.#sidePanelHost = undefined;
+
+        /** @type {ResizeObserver | undefined} */
+        this.#sidePanelResizeObserver = undefined;
     }
 
     /**
@@ -26,25 +29,42 @@ export default class AppUiRegistry extends EventTarget {
     toolbarMenuItems;
 
     /**
-     * @type {Set<HTMLElement>}
+     * @type {Map<string, import("./appTypes.js").SidePanelSpec>}
      */
-    #dockedPanels = new Set();
+    #sidePanels = new Map();
+
+    /**
+     * @type {string | undefined}
+     */
+    #activeSidePanelId = undefined;
 
     /**
      * @type {HTMLElement | undefined}
      */
-    #appShell;
+    #sidePanelHost;
+
+    /**
+     * @type {ResizeObserver | undefined}
+     */
+    #sidePanelResizeObserver;
 
     /**
      * @param {HTMLElement} appShell
      */
     attachAppShell(appShell) {
-        // Panels can be registered before the app shell exists, so keep the
-        // shell reference and attach any queued panels here.
-        this.#appShell = appShell;
-        for (const panel of this.#dockedPanels) {
-            appShell.append(panel);
+        this.#sidePanelHost =
+            appShell.querySelector(".genome-spy-side-panel-host") ??
+            this.#createSidePanelHost(appShell);
+        if (typeof ResizeObserver === "function") {
+            this.#sidePanelResizeObserver?.disconnect();
+            this.#sidePanelResizeObserver = new ResizeObserver(() => {
+                if (this.#activeSidePanelId) {
+                    this.#renderActiveSidePanel();
+                }
+            });
+            this.#sidePanelResizeObserver.observe(appShell);
         }
+        this.#renderActiveSidePanel();
     }
 
     /**
@@ -78,24 +98,98 @@ export default class AppUiRegistry extends EventTarget {
     }
 
     /**
-     * @param {HTMLElement} panel
-     * @returns {() => void}
+     * @param {import("./appTypes.js").SidePanelSpec} panel
+     * @returns {import("./appTypes.js").SidePanelHandle}
      */
-    registerDockedPanel(panel) {
-        this.#dockedPanels.add(panel);
-        // If the shell is already attached, mount immediately; otherwise the
-        // panel will be replayed from attachAppShell().
-        if (this.#appShell) {
-            this.#appShell.append(panel);
-        }
-        this.#emitChange();
+    registerSidePanel(panel) {
+        this.#sidePanels.set(panel.id, panel);
+        this.#renderActiveSidePanel();
 
-        return () => {
-            if (this.#dockedPanels.delete(panel)) {
-                panel.remove();
-                this.#emitChange();
-            }
+        return {
+            show: () => {
+                this.#activeSidePanelId = panel.id;
+                this.#renderActiveSidePanel();
+            },
+            hide: () => {
+                if (this.#activeSidePanelId === panel.id) {
+                    this.#activeSidePanelId = undefined;
+                    this.#renderActiveSidePanel();
+                }
+            },
+            toggle: () => {
+                if (this.#activeSidePanelId === panel.id) {
+                    this.#activeSidePanelId = undefined;
+                    this.#renderActiveSidePanel();
+                    return false;
+                }
+
+                this.#activeSidePanelId = panel.id;
+                this.#renderActiveSidePanel();
+                return true;
+            },
+            isVisible: () => this.#activeSidePanelId === panel.id,
+            dispose: () => {
+                if (this.#sidePanels.delete(panel.id)) {
+                    if (this.#activeSidePanelId === panel.id) {
+                        this.#activeSidePanelId = undefined;
+                    }
+                    panel.element.remove();
+                    this.#renderActiveSidePanel();
+                }
+            },
         };
+    }
+
+    /**
+     * @param {HTMLElement} appShell
+     * @returns {HTMLElement}
+     */
+    #createSidePanelHost(appShell) {
+        const host = document.createElement("div");
+        host.className = "genome-spy-side-panel-host";
+        appShell.append(host);
+        return host;
+    }
+
+    #renderActiveSidePanel() {
+        if (!this.#sidePanelHost) {
+            return;
+        }
+
+        const activePanel = this.#activeSidePanelId
+            ? this.#sidePanels.get(this.#activeSidePanelId)
+            : undefined;
+
+        for (const panel of this.#sidePanels.values()) {
+            if (panel.element.parentElement !== this.#sidePanelHost) {
+                this.#sidePanelHost.append(panel.element);
+            }
+            panel.element.hidden = panel !== activePanel;
+        }
+
+        if (!activePanel) {
+            this.#sidePanelHost.classList.remove("is-open");
+            this.#sidePanelHost.style.removeProperty("width");
+            this.#emitChange();
+            return;
+        }
+
+        this.#sidePanelHost.classList.add("is-open");
+        this.#sidePanelHost.style.width =
+            activePanel.preferredWidth ?? "min(36vw, 600px)";
+        this.#snapSidePanelWidth();
+        this.#emitChange();
+    }
+
+    #snapSidePanelWidth() {
+        if (!this.#sidePanelHost) {
+            return;
+        }
+
+        const width = Math.round(
+            this.#sidePanelHost.getBoundingClientRect().width
+        );
+        this.#sidePanelHost.style.width = width + "px";
     }
 
     #emitChange() {

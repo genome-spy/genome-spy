@@ -21,7 +21,21 @@ export interface AppUiHost {
     registerToolbarMenuItem(
         item: import("./utils/ui/contextMenu.js").MenuItem
     ): () => void;
-    registerDockedPanel?(panel: HTMLElement): () => void;
+    registerSidePanel?(panel: SidePanelSpec): SidePanelHandle;
+}
+
+export interface SidePanelSpec {
+    id: string;
+    element: HTMLElement;
+    preferredWidth?: string;
+}
+
+export interface SidePanelHandle {
+    show(): void;
+    hide(): void;
+    toggle(): boolean;
+    isVisible(): boolean;
+    dispose(): void;
 }
 
 export interface AppPluginHost {
@@ -42,7 +56,7 @@ export interface AppUiRegistry extends AppUiHost, EventTarget {
         import("./utils/ui/contextMenu.js").MenuItem
     >;
     attachAppShell(appShell: HTMLElement): void;
-    registerDockedPanel(panel: HTMLElement): () => void;
+    registerSidePanel(panel: SidePanelSpec): SidePanelHandle;
 }
 
 export type AppEmbedFunction = (

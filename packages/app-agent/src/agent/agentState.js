@@ -6,6 +6,13 @@
  *     agentAdapter?: import("./types.js").AgentAdapter;
  *     agentSessionController?: import("./agentSessionController.js").AgentSessionController;
  *     agentChatPanelHost?: HTMLElement;
+ *     agentChatPanelHandle?: {
+ *         show(): void;
+ *         hide(): void;
+ *         toggle(): boolean;
+ *         isVisible(): boolean;
+ *         dispose(): void;
+ *     };
  * }} AgentState
  */
 

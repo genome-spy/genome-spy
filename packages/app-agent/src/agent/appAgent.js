@@ -30,6 +30,8 @@ export function appAgent(options) {
                 state.agentSessionController = undefined;
                 state.agentAdapter = undefined;
                 state.agentBaseUrl = undefined;
+                state.agentChatPanelHandle?.dispose();
+                state.agentChatPanelHandle = undefined;
                 state.agentChatPanelHost?.remove();
                 state.agentChatPanelHost = undefined;
                 disposeUi();

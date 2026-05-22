@@ -1,5 +1,10 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faChevronDown, faRobot } from "@fortawesome/free-solid-svg-icons";
+import {
+    faChevronDown,
+    faPaperPlane,
+    faRobot,
+    faStop,
+} from "@fortawesome/free-solid-svg-icons";
 import { css, html, LitElement, nothing } from "lit";
 import { faStyles, formStyles } from "@genome-spy/app/agentShared";
 import { createAgentSessionController } from "./agentSessionController.js";
@@ -96,7 +101,6 @@ export default class AgentChatPanel extends LitElement {
                 display: block;
                 box-sizing: border-box;
                 height: 100%;
-                min-height: 640px;
                 color: #222;
                 font-family: var(--gs-font-family, sans-serif);
             }
@@ -105,11 +109,6 @@ export default class AgentChatPanel extends LitElement {
                 display: flex;
                 flex-direction: column;
                 height: 100%;
-                min-height: 640px;
-                overflow: hidden;
-                border-top: 3px solid var(--gs-theme-primary, #6c82ab);
-                border-radius: 4px;
-                box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
             }
 
             header {
@@ -119,7 +118,6 @@ export default class AgentChatPanel extends LitElement {
                 gap: var(--gs-basic-spacing, 10px);
                 padding: var(--gs-basic-spacing, 10px);
                 border-bottom: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
-                background: white;
             }
 
             .header-main {
@@ -179,6 +177,17 @@ export default class AgentChatPanel extends LitElement {
                 flex: 1 1 auto;
             }
 
+            .transcript-shell {
+                --fade-size: var(--gs-basic-spacing, 10px);
+
+                mask-image: linear-gradient(
+                    to bottom,
+                    black 0,
+                    black calc(100% - var(--fade-size)),
+                    transparent 100%
+                );
+            }
+
             .transcript {
                 display: flex;
                 flex-direction: column;
@@ -187,7 +196,7 @@ export default class AgentChatPanel extends LitElement {
                 min-height: 0;
                 overflow: auto;
                 padding: var(--gs-basic-spacing, 10px);
-                background: #fafafa;
+                padding-bottom: 0;
             }
 
             .jump-to-latest {
@@ -266,62 +275,72 @@ export default class AgentChatPanel extends LitElement {
                 flex: 0 0 auto;
                 gap: 0.35rem;
                 padding: var(--gs-basic-spacing, 10px);
-                border-top: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
-                background: white;
+                padding-top: 0;
             }
 
-            .composer-row {
-                display: flex;
-                align-items: flex-end;
-                gap: 0.65rem;
+            .composer-input {
+                position: relative;
             }
 
             .composer textarea {
-                flex: 1 1 auto;
-                min-height: 4.75rem;
-                resize: vertical;
-                padding: 0.375em 0.75em;
+                display: block;
+                width: 100%;
+                min-height: 2.75rem;
+                max-height: 12rem;
+                field-sizing: content;
+                padding: 0.65rem 3rem 0.65rem 0.75rem;
                 border: var(--form-control-border);
-                border-radius: var(--form-control-border-radius);
+                border-radius: calc(var(--form-control-border-radius) * 1.5);
                 font: inherit;
+                line-height: 1.35;
                 color: var(--form-control-color);
                 background: #fff;
                 box-sizing: border-box;
+                resize: none;
+                box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.1);
             }
 
             .composer textarea:focus {
-                border-color: var(--gs-theme-primary, #6c82ab);
-                box-shadow: 0 0 0 0.2rem rgb(108 130 171 / 25%);
+                outline: none;
             }
 
-            .composer .btn.btn-primary {
-                background-color: var(--gs-theme-primary, #6c82ab);
-                background-image: linear-gradient(
-                    to bottom,
-                    oklch(
-                        from var(--gs-theme-primary, #6c82ab) calc(l + 0.07) c h
-                    ),
-                    oklch(
-                        from var(--gs-theme-primary, #6c82ab) calc(l - 0.07) c h
-                    )
-                );
-                border-color: oklch(
+            .composer-action {
+                position: absolute;
+                right: calc(0.325rem + 1px);
+                bottom: calc(0.325rem + 1px);
+                align-items: center;
+                justify-content: center;
+                width: 2rem;
+                height: 2rem;
+                padding: 0;
+                border: 1px solid transparent;
+                border-radius: var(--form-control-border-radius);
+                color: white;
+                background: var(--gs-theme-primary, #6c82ab);
+                transition:
+                    opacity 140ms ease,
+                    background-color 120ms ease,
+                    transform 120ms ease;
+            }
+
+            .composer-action.is-hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .composer-action:hover:not(:disabled):not(.is-hidden) {
+                background: oklch(
                     from var(--gs-theme-primary, #6c82ab) calc(l - 0.08) c h
                 );
-                color: var(--gs-theme-on-primary, #ffffff);
-                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
             }
 
-            .composer .btn.btn-primary:hover:not(:disabled) {
-                background-image: linear-gradient(
-                    to bottom,
-                    oklch(
-                        from var(--gs-theme-primary, #6c82ab) calc(l + 0.1) c h
-                    ),
-                    oklch(
-                        from var(--gs-theme-primary, #6c82ab) calc(l - 0.04) c h
-                    )
-                );
+            .composer-action:active:not(:disabled):not(.is-hidden) {
+                transform: scale(0.96);
+            }
+
+            .composer-action svg {
+                width: 0.9rem;
+                height: 0.9rem;
             }
 
             .composer-footer {
@@ -345,7 +364,7 @@ export default class AgentChatPanel extends LitElement {
 
         /** @type {AgentChatController | undefined} */
         this.controller = undefined;
-        this.panelTitle = "Agent Chat";
+        this.panelTitle = "GenomeSpy Agent";
         this.draft = "";
         /** @type {ChatSessionSnapshot} */
         this.snapshot = EMPTY_SNAPSHOT;
@@ -488,7 +507,7 @@ export default class AgentChatPanel extends LitElement {
                     </div>
 
                     <form class="composer" @submit=${this.#handleSubmit}>
-                        <div class="composer-row">
+                        <div class="composer-input">
                             <textarea
                                 .value=${this.draft}
                                 placeholder="Ask the agent about the current visualization or request an action."
@@ -496,15 +515,42 @@ export default class AgentChatPanel extends LitElement {
                                 @input=${this.#handleDraftInput}
                                 @keydown=${this.#handleComposerKeyDown}
                             ></textarea>
-                            <button
-                                type="submit"
-                                ?disabled=${!this.controller ||
-                                (!this.#hasActiveLoop() &&
-                                    this.draft.trim().length === 0)}
-                                class="btn btn-primary"
-                            >
-                                ${this.#hasActiveLoop() ? "Stop" : "Send"}
-                            </button>
+                            ${this.#hasActiveLoop()
+                                ? html`
+                                      <button
+                                          type="button"
+                                          class="composer-action"
+                                          title="Stop"
+                                          aria-label="Stop"
+                                          @click=${() =>
+                                              this.controller?.stopCurrentTurn?.()}
+                                      >
+                                          ${icon(faStop).node[0]}
+                                      </button>
+                                  `
+                                : html`
+                                      <button
+                                          type="submit"
+                                          class="composer-action ${this.draft.trim()
+                                              .length > 0
+                                              ? ""
+                                              : "is-hidden"}"
+                                          title="Send"
+                                          aria-label="Send"
+                                          aria-hidden=${this.draft.trim()
+                                              .length > 0
+                                              ? "false"
+                                              : "true"}
+                                          tabindex=${this.draft.trim().length >
+                                          0
+                                              ? 0
+                                              : -1}
+                                          ?disabled=${!this.controller ||
+                                          this.draft.trim().length === 0}
+                                      >
+                                          ${icon(faPaperPlane).node[0]}
+                                      </button>
+                                  `}
                         </div>
                     </form>
                 </div>
@@ -765,7 +811,7 @@ export default class AgentChatPanel extends LitElement {
 customElements.define("gs-agent-chat-panel", AgentChatPanel);
 
 /**
- * Toggle the docked agent chat panel in the app shell.
+ * Toggle the agent chat side panel in the app shell.
  *
  * @param {any} app
  * @returns {Promise<void>}
@@ -781,12 +827,8 @@ export async function toggleAgentChatPanel(app) {
     if (!host) {
         host = document.createElement("div");
         host.dataset.agentChatPanelHost = "true";
-        host.hidden = false;
-        host.style.position = "absolute";
-        host.style.top = "calc(var(--gs-basic-spacing, 10px) + 38px)";
-        host.style.right = "var(--gs-basic-spacing, 10px)";
-        host.style.bottom = "var(--gs-basic-spacing, 10px)";
-        host.style.width = "min(70vw, 600px)";
+        host.style.height = "100%";
+        host.style.minHeight = "0";
 
         const panel = /** @type {AgentChatPanel} */ (
             document.createElement("gs-agent-chat-panel")
@@ -798,11 +840,12 @@ export async function toggleAgentChatPanel(app) {
         panel.devMode = true;
         host.append(panel);
 
-        if (app.ui.registerDockedPanel) {
-            app.ui.registerDockedPanel(host);
-        } else {
-            app.appContainer.append(host);
-        }
+        agentState.agentChatPanelHandle = app.ui.registerSidePanel({
+            id: "agent-chat",
+            element: host,
+            preferredWidth: "min(36vw, 600px)",
+        });
+        agentState.agentChatPanelHandle.show();
         agentState.agentChatPanelHost = host;
         await panel.updateComplete;
         const textarea = panel.renderRoot.querySelector("textarea");
@@ -810,8 +853,7 @@ export async function toggleAgentChatPanel(app) {
         return;
     }
 
-    host.hidden = !host.hidden;
-    if (!host.hidden) {
+    if (agentState.agentChatPanelHandle.toggle()) {
         const panel = /** @type {AgentChatPanel | null} */ (
             host.querySelector("gs-agent-chat-panel")
         );
