@@ -135,6 +135,38 @@ describe("DataMetadataSourceAdapter", () => {
         );
     });
 
+    it("excludes sampleIdField from imported metadata implicitly", async () => {
+        const adapter = new DataMetadataSourceAdapter({
+            backend: {
+                backend: "data",
+                data: {
+                    values: [
+                        { sid: "s1", displayName: "Sample 1", purity: 0.8 },
+                        { sid: "s2", displayName: "Sample 2", purity: 0.6 },
+                    ],
+                },
+                sampleIdField: "sid",
+            },
+            excludeColumns: ["displayName"],
+        });
+
+        const columns = await adapter.listColumns();
+        expect(columns.map((column) => column.id)).toEqual(["purity"]);
+
+        const resolved = await adapter.resolveColumns(["sid", "purity"]);
+        expect(resolved.columnIds).toEqual(["purity"]);
+        expect(resolved.missing).toEqual(["sid"]);
+
+        await expect(
+            adapter.fetchColumns({
+                columnIds: ["sid"],
+                sampleIds: ["s1"],
+            })
+        ).rejects.toThrow(
+            'Column "sid" is excluded by metadata source configuration.'
+        );
+    });
+
     it("applies hierarchy-aware column defs with attributeGroupSeparator", async () => {
         const adapter = new DataMetadataSourceAdapter({
             id: "clinical",
