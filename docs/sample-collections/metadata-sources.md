@@ -301,6 +301,10 @@ APP_SCHEMA MetadataDef sources attributeWidth spacing labelFont labelFontSize la
 
 ### Metadata source definitions
 
+`metadata.sources` accepts entries that are either inline metadata source
+definitions or import wrappers. `MetadataSourceEntry` describes this allowed
+array entry shape, while `MetadataSourceDef` describes an inline source object.
+
 APP_SCHEMA MetadataSourceEntry
 
 APP_SCHEMA MetadataSourceDef
