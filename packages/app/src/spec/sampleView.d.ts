@@ -416,7 +416,10 @@ export interface MetadataDef {
 
 export interface SampleDef {
     /**
-     * Optional explicit sample identity definition.
+     * Defines the sample ids and optional display names for the sample view.
+     *
+     * If omitted, sample ids are inferred from the `sample` channel in the view
+     * data.
      */
     identity?: SampleIdentityDef;
 
