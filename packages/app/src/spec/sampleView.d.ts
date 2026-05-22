@@ -297,7 +297,8 @@ export interface MetadataSourceDef {
      * - `"*"`: load all columns allowed by this source
      * - `string[]`: resolve and load only the listed columns
      *
-     * Omitted value uses backend defaults.
+     * If omitted, data backends load all columns and other backends do not
+     * load columns at startup.
      */
     initialLoad?: false | "*" | string[];
 
