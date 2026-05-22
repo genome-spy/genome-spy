@@ -97,7 +97,7 @@ export default class ChatMessageElement extends LitElement {
 
             .message.user {
                 border: none;
-                background: #ececec;
+                background: #f0f0f0;
                 border-radius: 14px 14px 2px 14px;
             }
 
@@ -106,6 +106,8 @@ export default class ChatMessageElement extends LitElement {
                 border: none;
                 background: transparent;
                 border-left-width: 0;
+                color: #222;
+                line-height: 1.3;
             }
 
             .assistant-body {

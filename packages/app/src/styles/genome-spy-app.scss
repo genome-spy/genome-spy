@@ -84,6 +84,8 @@ $basic-spacing: generic.$basic-spacing;
     --gs-toolbar-bg-lo: oklch(from var(--gs-toolbar-bg) calc(l - 0.06) c h);
     --gs-toolbar-bg-dim: oklch(from var(--gs-toolbar-bg) calc(l - 0.05) c h);
 
+    z-index: 1;
+
     height: 38px;
 
     background-color: var(--gs-toolbar-bg);

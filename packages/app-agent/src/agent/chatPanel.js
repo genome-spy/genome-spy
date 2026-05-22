@@ -101,7 +101,6 @@ export default class AgentChatPanel extends LitElement {
                 display: block;
                 box-sizing: border-box;
                 height: 100%;
-                min-height: 640px;
                 color: #222;
                 font-family: var(--gs-font-family, sans-serif);
             }
@@ -178,6 +177,17 @@ export default class AgentChatPanel extends LitElement {
                 flex: 1 1 auto;
             }
 
+            .transcript-shell {
+                --fade-size: var(--gs-basic-spacing, 10px);
+
+                mask-image: linear-gradient(
+                    to bottom,
+                    black 0,
+                    black calc(100% - var(--fade-size)),
+                    transparent 100%
+                );
+            }
+
             .transcript {
                 display: flex;
                 flex-direction: column;
@@ -186,7 +196,7 @@ export default class AgentChatPanel extends LitElement {
                 min-height: 0;
                 overflow: auto;
                 padding: var(--gs-basic-spacing, 10px);
-                background: #fafafa;
+                padding-bottom: 0;
             }
 
             .jump-to-latest {
@@ -265,8 +275,7 @@ export default class AgentChatPanel extends LitElement {
                 flex: 0 0 auto;
                 gap: 0.35rem;
                 padding: var(--gs-basic-spacing, 10px);
-                border-top: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
-                background: white;
+                padding-top: 0;
             }
 
             .composer-input {
@@ -274,6 +283,7 @@ export default class AgentChatPanel extends LitElement {
             }
 
             .composer textarea {
+                display: block;
                 width: 100%;
                 min-height: 2.75rem;
                 max-height: 12rem;
@@ -287,6 +297,7 @@ export default class AgentChatPanel extends LitElement {
                 background: #fff;
                 box-sizing: border-box;
                 resize: none;
+                box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.1);
             }
 
             .composer textarea:focus {
@@ -295,16 +306,15 @@ export default class AgentChatPanel extends LitElement {
 
             .composer-action {
                 position: absolute;
-                right: 0.45rem;
-                bottom: 0.45rem;
-                display: inline-flex;
+                right: calc(0.325rem + 1px);
+                bottom: calc(0.325rem + 1px);
                 align-items: center;
                 justify-content: center;
                 width: 2rem;
                 height: 2rem;
                 padding: 0;
                 border: 1px solid transparent;
-                border-radius: 50%;
+                border-radius: var(--form-control-border-radius);
                 color: white;
                 background: var(--gs-theme-primary, #6c82ab);
                 transition:
@@ -354,7 +364,7 @@ export default class AgentChatPanel extends LitElement {
 
         /** @type {AgentChatController | undefined} */
         this.controller = undefined;
-        this.panelTitle = "Agent Chat";
+        this.panelTitle = "GenomeSpy Agent";
         this.draft = "";
         /** @type {ChatSessionSnapshot} */
         this.snapshot = EMPTY_SNAPSHOT;
