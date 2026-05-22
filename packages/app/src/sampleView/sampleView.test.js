@@ -91,8 +91,9 @@ describe("SampleView", () => {
                     { sample: "B", x: 2 },
                 ],
             },
-            samples: {
-                metadataSources: [
+            samples: {},
+            metadata: {
+                sources: [
                     {
                         backend: {
                             backend: "data",
@@ -264,7 +265,7 @@ describe("SampleView", () => {
 
     test("keeps the legacy labelTitleText alias working", async () => {
         const { view } = await createSampleViewForTest({
-            spec: {
+            spec: /** @type {any} */ ({
                 data: {
                     values: [{ sample: "A", x: 1 }],
                 },
@@ -278,7 +279,7 @@ describe("SampleView", () => {
                         x: { field: "x", type: "quantitative" },
                     },
                 },
-            },
+            }),
         });
 
         expect(view.sampleLabelView.spec.title).toMatchObject({

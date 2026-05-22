@@ -21,10 +21,16 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     configurableVisibility?: AppConfigurableVisibilitySpec["configurableVisibility"];
 
     /**
-     * Sample metadata definition.
-     * If the object is empty, the sample identifiers will be inferred from the data.
+     * Sample identity and label configuration.
+     *
+     * If `identity` is omitted, sample identifiers are inferred from the data.
      */
     samples: SampleDef;
+
+    /**
+     * Metadata sources and metadata matrix layout.
+     */
+    metadata?: MetadataDef;
 
     /**
      * An object defining the view background and outline. The background is
@@ -41,6 +47,11 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     // This keeps SampleView as a top-level/sibling concept instead of nestable.
     templates?: Record<string, AppNestedViewSpec>;
 
+    /**
+     * Keep summary tracks visible while scrolling samples.
+     *
+     * __Default value:__ `true`
+     */
     stickySummaries?: boolean;
 }
 
@@ -55,8 +66,7 @@ export type SampleAttributeSemanticType =
 
 export interface SampleAttributeDef {
     /**
-     * A description of the metadata attribute. Can be used for documentation
-     * and to explain the meaning of the column.
+     * User-facing description of the metadata attribute.
      */
     description?: string;
 
@@ -66,18 +76,17 @@ export interface SampleAttributeDef {
     type?: SampleAttributeType;
 
     /**
-     * Optional domain-specific semantics for agent guidance and specialized UI.
+     * Domain-specific meaning of the metadata attribute.
      */
     semanticType?: SampleAttributeSemanticType;
 
     /**
-     * Scale definition for the (default) color channel
+     * Color scale for metadata cells.
      */
     scale?: Scale;
 
     /**
-     * An optional scale definition for mapping the attribute to
-     * the width of a metadata rectangle.
+     * Scale for mapping quantitative values to metadata cell width.
      */
     barScale?: Scale;
 
@@ -87,22 +96,24 @@ export interface SampleAttributeDef {
     width?: number;
 
     /**
-     * Whether the attribute is visible by default.
+     * Whether the attribute is visible when the view opens.
      */
     visible?: boolean;
 
     /**
-     * The title of the attribute. Defaults to attribute name.
+     * Attribute label shown in the metadata header.
+     *
+     * If omitted, the attribute name is used.
      */
     title?: string;
 }
 
 export interface SampleIdentityDef {
     /**
-     * Data source that defines the canonical sample set for the view.
+     * Data source that defines the sample set for the view.
      *
-     * The source must contain one row per sample and is used to resolve sample
-     * ids and optional display names before metadata imports are applied.
+     * The source must contain one row per sample. Metadata imports are matched
+     * against these sample ids.
      */
     data: Data;
 
@@ -123,14 +134,14 @@ export interface SampleIdentityDef {
 
 export interface ColumnIdentifierField {
     /**
-     * Logical identifier name shown in UI and diagnostics.
+     * Name of the identifier field shown in UI and diagnostics.
      *
      * Example values: `"symbol"`, `"ensembl"`, `"entrez"`.
      */
     name: string;
 
     /**
-     * Backend path that provides identifier values aligned to matrix columns.
+     * Backend path to identifier values aligned to matrix columns.
      *
      * The array length must equal the number of columns in the matrix.
      */
@@ -159,7 +170,7 @@ export interface DataBackendDef {
     backend: "data";
 
     /**
-     * Eager tabular metadata source using the standard data contract.
+     * Eager tabular metadata source.
      *
      * Supports `UrlData` and `InlineData`.
      */
@@ -175,7 +186,7 @@ export interface DataBackendDef {
 
 export interface ZarrMatrixLayoutDef {
     /**
-     * Path to matrix values (sample rows x metadata columns).
+     * Path to matrix values, arranged as sample rows by metadata columns.
      *
      * __Default value:__ `"X"`
      */
@@ -205,12 +216,12 @@ export interface ZarrBackendDef {
     url: string;
 
     /**
-     * Optional path overrides for the expression-style matrix layout.
+     * Path overrides for the matrix layout.
      */
     matrix?: ZarrMatrixLayoutDef;
 
     /**
-     * Optional identifier arrays used to resolve user queries to columns.
+     * Identifier arrays used to resolve user queries to columns.
      *
      * If omitted, only primary column ids are used for lookup.
      */
@@ -221,7 +232,7 @@ export interface ParquetBackendDef {
     backend: "parquet";
 
     /**
-     * URL to a Parquet data source.
+     * URL to a Parquet metadata source.
      *
      * Reserved for future use.
      */
@@ -237,7 +248,7 @@ export interface ArrowBackendDef {
     backend: "arrow";
 
     /**
-     * URL to an Arrow data source.
+     * URL to an Arrow metadata source.
      *
      * Reserved for future use.
      */
@@ -257,7 +268,7 @@ export type MetadataBackendDef =
 
 export interface MetadataSourceDef {
     /**
-     * Stable source identifier used in actions, provenance, and configuration.
+     * Stable source identifier.
      *
      * Should remain stable across spec revisions if bookmarks/provenance replay
      * must keep working.
@@ -265,14 +276,14 @@ export interface MetadataSourceDef {
     id?: string;
 
     /**
-     * Optional user-facing label shown in menus and dialogs.
+     * User-facing label shown in menus and dialogs.
      *
      * If omitted, UI falls back to `id`.
      */
     name?: string;
 
     /**
-     * Optional short description of what this source contains.
+     * User-facing description of what this source contains.
      *
      * Can be shown in UI and can help automated agents choose the correct
      * source.
@@ -286,15 +297,17 @@ export interface MetadataSourceDef {
      * - `"*"`: load all columns allowed by this source
      * - `string[]`: resolve and load only the listed columns
      *
-     * Omitted value uses backend defaults.
+     * If omitted, data backends load all columns and other backends do not
+     * load columns at startup.
      */
     initialLoad?: false | "*" | string[];
 
     /**
      * Column ids that must never be imported from this source.
      *
-     * Useful for excluding identity/helper columns such as `sample` and
-     * `displayName`.
+     * The data backend always excludes its `sampleIdField` automatically, so
+     * this property is only needed for other helper columns such as display
+     * labels.
      */
     excludeColumns?: string[];
 
@@ -329,7 +342,7 @@ export interface MetadataSourceDef {
     attributes?: Record<string, SampleAttributeDef>;
 
     /**
-     * Backend-specific source configuration.
+     * Source backend configuration.
      */
     backend: MetadataBackendDef;
 }
@@ -348,61 +361,85 @@ export type MetadataSourceEntry =
     | MetadataSourceDef
     | { import: MetadataSourceImportDef };
 
+export interface MetadataDef {
+    /**
+     * Metadata source definitions used for startup and on-demand imports.
+     *
+     * Source order is significant for startup loading: eager startup imports
+     * are applied in declaration order.
+     */
+    sources?: MetadataSourceEntry[];
+
+    /**
+     * Default width of metadata columns in pixels.
+     *
+     * __Default value:__ `10`
+     */
+    attributeWidth?: number;
+
+    /**
+     * Spacing between metadata columns in pixels.
+     *
+     * __Default value:__ `1`
+     */
+    spacing?: number;
+
+    /**
+     * Font typeface for metadata attribute labels.
+     *
+     * __Default value:__ `"Lato"`
+     */
+    labelFont?: string;
+
+    /**
+     * Font style for metadata attribute labels.
+     *
+     * __Default value:__ `"normal"`
+     */
+    labelFontStyle?: FontStyle;
+
+    /**
+     * Font weight for metadata attribute labels.
+     *
+     * __Default value:__ `"regular"`
+     */
+    labelFontWeight?: FontWeight;
+
+    /**
+     * Font size for metadata attribute labels in pixels.
+     *
+     * __Default value:__ `11`
+     */
+    labelFontSize?: number;
+
+    /**
+     * Angle of metadata attribute labels in degrees.
+     *
+     * __Default value:__ `-90`
+     */
+    labelAngle?: number;
+}
+
 export interface SampleDef {
     /**
-     * Optional explicit sample identity definition.
+     * Defines the sample ids and optional display names for the sample view.
+     *
+     * If omitted, sample ids are inferred from the `sample` channel in the view
+     * data.
      */
     identity?: SampleIdentityDef;
 
     /**
-     * Metadata source definitions used for startup and on-demand imports.
-     *
-     * Source order is significant for startup loading: eager startup imports are
-     * applied in declaration order.
-     */
-    metadataSources?: MetadataSourceEntry[];
-
-    /**
-     * Optional metadata about the samples.
-     *
-     * @deprecated Use `metadataSources` with `backend: "data"` instead.
-     */
-    data?: Data;
-
-    /**
-     * If attributes form a hierarchy, specify the separator character to
-     * split the attribute names into paths.
-     *
-     * @deprecated Configure per-source `attributeGroupSeparator` in `metadataSources`.
-     */
-    attributeGroupSeparator?: string;
-
-    /**
-     * Explicitly specify the sample attributes.
-     *
-     * @deprecated Configure per-source `attributes` in `metadataSources`.
-     */
-    attributes?: Record<string, SampleAttributeDef>;
-
-    /**
-     * Text in the label title.
+     * Title shown above sample labels.
      * If omitted, the title defaults to `"Sample"`.
      * Set to `null` to hide the title.
-     *
      */
     labelTitle?: string | null;
 
     /**
-     * Legacy alias for `labelTitle`.
+     * Width reserved for sample labels in pixels.
      *
-     * @deprecated Use `labelTitle` instead.
-     */
-    labelTitleText?: string | null;
-
-    /**
-     * How much space in pixels to reserve for the labels.
      * If omitted, the width is inferred from the sample labels.
-     *
      */
     labelLength?: number;
 
@@ -447,61 +484,4 @@ export interface SampleDef {
      * **Default value:** `"left"`
      */
     labelAlign?: Align;
-
-    /**
-     * Default size (width) of the metadata attribute columns.
-     * Can be configured per attribute using the `attributes` property.
-     *
-     * **Default value:** `10`
-     */
-    attributeSize?: number;
-
-    /**
-     * The font typeface. GenomeSpy uses [SDF](https://github.com/Chlumsky/msdfgen)
-     * versions of [Google Fonts](https://fonts.google.com/). Check their
-     * availability at the [A-Frame
-     * Fonts](https://github.com/etiennepinchon/aframe-fonts/tree/master/fonts)
-     * repository. System fonts are **not** supported.
-     *
-     * **Default value:** `"Lato"`
-     */
-    attributeLabelFont?: string;
-
-    /**
-     * The font style. Valid values: `"normal"` and `"italic"`.
-     *
-     * **Default value:** `"normal"`
-     */
-    attributeLabelFontStyle?: FontStyle;
-
-    /**
-     * The font weight. The following strings and numbers are valid values:
-     * `"thin"` (`100`), `"light"` (`300`), `"regular"` (`400`),
-     * `"normal"` (`400`), `"medium"` (`500`), `"bold"` (`700`),
-     * `"black"` (`900`)
-     *
-     * **Default value:** `"regular"`
-     */
-    attributeLabelFontWeight?: FontWeight;
-
-    /**
-     * The font size in pixels.
-     *
-     * **Default value:** `11`
-     */
-    attributeLabelFontSize?: number;
-
-    /**
-     * Angle to be added to the default label angle (-90).
-     *
-     * **Default value:** `0`
-     */
-    attributeLabelAngle?: number;
-
-    /**
-     * Spacing between attribute columns in pixels.
-     *
-     * **Default value:** `1`
-     */
-    attributeSpacing?: number;
 }

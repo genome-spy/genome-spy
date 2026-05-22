@@ -9,16 +9,15 @@ const bootstrapInitialMetadataSourcesAny = /** @type {any} */ (
 );
 
 /**
- * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef["metadataSources"]} metadataSources
+ * @param {import("@genome-spy/app/spec/sampleView.js").MetadataDef["sources"]} metadataSources
  * @returns {import("../sampleView.js").default}
  */
 function createSampleViewStub(metadataSources) {
     return /** @type {import("../sampleView.js").default} */ (
         /** @type {unknown} */ ({
             spec: {
-                samples: {
-                    metadataSources,
-                },
+                samples: {},
+                metadata: { sources: metadataSources },
             },
             sampleHierarchy: {
                 sampleData: {

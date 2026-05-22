@@ -116,7 +116,7 @@ export class MetadataSourceMenuController {
 
         this.#cachedSourcesPromise = (async () => {
             const sources = await resolveMetadataSources(
-                sampleView.spec.samples,
+                sampleView.spec.metadata,
                 {
                     baseUrl: sampleView.getBaseUrl(),
                 }

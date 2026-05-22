@@ -4,7 +4,6 @@ import generateAttributeContextMenu from "./attributeContextMenu.js";
 import { html } from "lit";
 import { subscribeTo } from "../state/subscribeTo.js";
 import { createDefaultValuesProvider } from "./attributeValues.js";
-import coalesce from "@genome-spy/core/utils/coalesce.js";
 
 /** @type {import("./types.js").AttributeIdentifierType} */
 const SAMPLE_NAME = "SAMPLE_NAME";
@@ -48,7 +47,10 @@ export class SampleLabelView extends UnitView {
      */
     constructor(sampleView, sidebarView) {
         super(
-            createLabelViewSpec(sampleView.spec.samples),
+            createLabelViewSpec(
+                sampleView.spec.samples,
+                sampleView.spec.metadata
+            ),
             sampleView.context,
             sidebarView,
             sidebarView,
@@ -179,8 +181,9 @@ export class SampleLabelView extends UnitView {
 /**
  *
  * @param {import("@genome-spy/app/spec/sampleView.js").SampleDef} sampleDef
+ * @param {import("@genome-spy/app/spec/sampleView.js").MetadataDef} [metadataDef]
  */
-function createLabelViewSpec(sampleDef) {
+function createLabelViewSpec(sampleDef, metadataDef) {
     const labelTitle = getLabelTitle(sampleDef);
 
     /** @type {import("../spec/view.js").AppUnitSpec} */
@@ -203,10 +206,10 @@ function createLabelViewSpec(sampleDef) {
                 type: "measureText",
                 field: LABEL_TITLE_FIELD,
                 as: LABEL_TITLE_WIDTH_FIELD,
-                fontSize: sampleDef.attributeLabelFontSize ?? 11,
-                font: sampleDef.attributeLabelFont,
-                fontStyle: sampleDef.attributeLabelFontStyle,
-                fontWeight: sampleDef.attributeLabelFontWeight,
+                fontSize: metadataDef?.labelFontSize ?? 11,
+                font: metadataDef?.labelFont,
+                fontStyle: metadataDef?.labelFontStyle,
+                fontWeight: metadataDef?.labelFontWeight,
             },
         ],
         mark: {
@@ -235,10 +238,10 @@ function createLabelViewSpec(sampleDef) {
             orient: "bottom",
             anchor: "start",
             offset: 5,
-            font: sampleDef.attributeLabelFont,
-            fontSize: sampleDef.attributeLabelFontSize ?? 11,
-            fontStyle: sampleDef.attributeLabelFontStyle,
-            fontWeight: sampleDef.attributeLabelFontWeight,
+            font: metadataDef?.labelFont,
+            fontSize: metadataDef?.labelFontSize ?? 11,
+            fontStyle: metadataDef?.labelFontStyle,
+            fontWeight: metadataDef?.labelFontWeight,
         };
     }
 
@@ -267,5 +270,5 @@ function getLabelWidth(collector) {
  * @returns {string | null}
  */
 function getLabelTitle(sampleDef) {
-    return coalesce(sampleDef.labelTitle, sampleDef.labelTitleText, "Sample");
+    return sampleDef.labelTitle !== undefined ? sampleDef.labelTitle : "Sample";
 }

@@ -7,7 +7,7 @@ import DataMetadataSourceAdapter from "./adapters/dataMetadataSourceAdapter.js";
 import ZarrMetadataSourceAdapter from "./adapters/zarrMetadataSourceAdapter.js";
 
 /**
- * @typedef {import("@genome-spy/app/spec/sampleView.js").SampleDef} SampleDef
+ * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataDef} MetadataDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceEntry} MetadataSourceEntry
  */
@@ -147,13 +147,13 @@ function resolveImportedBackendUrls(source, importUrl) {
 }
 
 /**
- * @param {SampleDef} sampleDef
+ * @param {MetadataDef | undefined} metadataDef
  * @param {MetadataSourceResolveOptions} [options]
  * @returns {Promise<MetadataSourceDef[]>}
  */
-export async function resolveMetadataSources(sampleDef, options = {}) {
+export async function resolveMetadataSources(metadataDef, options = {}) {
     const entries = /** @type {MetadataSourceEntry[]} */ (
-        sampleDef.metadataSources ?? []
+        metadataDef?.sources ?? []
     );
     const loadJson = options.loadJson ?? defaultLoadJson;
 
@@ -178,13 +178,13 @@ export async function resolveMetadataSources(sampleDef, options = {}) {
 }
 
 /**
- * @param {SampleDef} sampleDef
+ * @param {MetadataDef | undefined} metadataDef
  * @param {string | undefined} sourceId
  * @param {MetadataSourceResolveOptions} [options]
  * @returns {Promise<MetadataSourceDef>}
  */
-export async function resolveMetadataSource(sampleDef, sourceId, options) {
-    const sources = await resolveMetadataSources(sampleDef, options);
+export async function resolveMetadataSource(metadataDef, sourceId, options) {
+    const sources = await resolveMetadataSources(metadataDef, options);
 
     if (sources.length === 0) {
         throw new Error("No metadata sources are configured.");

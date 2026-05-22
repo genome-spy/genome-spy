@@ -39,7 +39,11 @@ while the top layer might show single-nucleotide variants.
 ```json
 {
   "samples": {
-    // Optional sample identifiers and metadata
+    // Optional sample identifiers and label settings
+    ...
+  },
+  "metadata": {
+    // Optional metadata sources and metadata matrix layout
     ...
   },
   "spec": {
@@ -76,59 +80,42 @@ while the top layer might show single-nucleotide variants.
 By default, the identifiers of the samples are extracted from the
 data, and each sample gets its own track.
 
-### Defining samples (minimal example)
+### Defining sample identity
 
-For most sample-collection visualizations, define:
+Use `samples.identity` when you want to define the sample order, display names,
+or the complete sample set independently from the visualized data.
 
-1. sample identity (`identity`)
-2. one or more metadata sources (`metadataSources`)
-
-```json title="Minimal sample definition"
+```json title="Explicit sample identity"
 {
   "samples": {
     "identity": {
       "data": { "url": "samples.tsv" },
       "idField": "sample",
       "displayNameField": "displayName"
-    },
-    "metadataSources": [
-      {
-        "id": "clinical",
-        "name": "Clinical metadata",
-        "initialLoad": "*",
-        "excludeColumns": ["sample", "displayName"],
-        "backend": {
-          "backend": "data",
-          "data": { "url": "samples.tsv" },
-          "sampleIdField": "sample"
-        }
-      }
-    ]
+    }
   },
   ...
 }
 ```
 
-This configuration reads sample ids and display names from `samples.tsv`, then
-loads metadata columns from the same file at startup. The `sample` and
-`displayName` columns are excluded from metadata import, so only actual metadata
-attributes are shown in the metadata panel.
+This configuration reads sample ids and display names from `samples.tsv`.
+Configure metadata sources and metadata matrix layout in
+[`metadata`](metadata-sources.md).
 
-For advanced metadata-source configuration (for example, lazy Zarr-backed
-imports), see [Configuring Metadata Sources](metadata-sources.md).
+The following properties configure `samples.identity`:
 
-### Adjusting font sizes, etc.
+APP_SCHEMA SampleIdentityDef
 
-The `samples` object can also be used to adjust the font sizes, etc. of the
-metadata attributes. For example, to increase the font sizes of the sample and
-attribute labels, use the following configuration:
+### Adjusting sample labels
+
+The `samples` object controls sample labels. For example, to increase the
+sample label font size, use the following configuration:
 
 ```json title="Adjusting font sizes"
 {
   "samples": {
     ...,
-    "labelFontSize": 12,
-    "attributeLabelFontSize": 10
+    "labelFontSize": 12
   },
   ...
 }
@@ -136,11 +123,14 @@ attribute labels, use the following configuration:
 
 The following properties allow for fine-grained control of the font styles:
 
-APP_SCHEMA SampleDef labelFont labelFontSize labelFontWeight labelFontStyle labelAlign attributeLabelFont attributeLabelFontSize attributeLabelFontWeight attributeLabelFontStyle
+APP_SCHEMA SampleDef labelFont labelFontSize labelFontWeight labelFontStyle labelAlign
 
 In addition, the following properties are supported:
 
-APP_SCHEMA SampleDef labelTitleText labelLength attributeSize attributeLabelAngle attributeSpacing
+APP_SCHEMA SampleDef labelTitle labelLength
+
+Metadata attribute label and matrix layout properties are documented in
+[Configuring Metadata Sources](metadata-sources.md#metadata-configuration).
 
 ### Handling variable sample heights
 
