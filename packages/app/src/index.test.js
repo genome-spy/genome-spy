@@ -10,7 +10,6 @@ const { AppMock } = vi.hoisted(() => ({
             toolbarMenuItems: new Set(),
             registerToolbarButton: vi.fn(),
             registerToolbarMenuItem: vi.fn(),
-            registerDockedPanel: vi.fn(),
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
         };

@@ -21,7 +21,6 @@ export interface AppUiHost {
     registerToolbarMenuItem(
         item: import("./utils/ui/contextMenu.js").MenuItem
     ): () => void;
-    registerDockedPanel?(panel: HTMLElement): () => void;
     registerSidePanel?(panel: SidePanelSpec): SidePanelHandle;
 }
 
@@ -57,7 +56,6 @@ export interface AppUiRegistry extends AppUiHost, EventTarget {
         import("./utils/ui/contextMenu.js").MenuItem
     >;
     attachAppShell(appShell: HTMLElement): void;
-    registerDockedPanel(panel: HTMLElement): () => void;
     registerSidePanel(panel: SidePanelSpec): SidePanelHandle;
 }
 

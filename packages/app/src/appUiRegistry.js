@@ -12,9 +12,6 @@ export default class AppUiRegistry extends EventTarget {
         this.toolbarMenuItems = new Set();
 
         /** @type {HTMLElement | undefined} */
-        this.#appShell = undefined;
-
-        /** @type {HTMLElement | undefined} */
         this.#sidePanelHost = undefined;
 
         /** @type {ResizeObserver | undefined} */
@@ -32,11 +29,6 @@ export default class AppUiRegistry extends EventTarget {
     toolbarMenuItems;
 
     /**
-     * @type {Set<HTMLElement>}
-     */
-    #dockedPanels = new Set();
-
-    /**
      * @type {Map<string, import("./appTypes.js").SidePanelSpec>}
      */
     #sidePanels = new Map();
@@ -45,11 +37,6 @@ export default class AppUiRegistry extends EventTarget {
      * @type {string | undefined}
      */
     #activeSidePanelId = undefined;
-
-    /**
-     * @type {HTMLElement | undefined}
-     */
-    #appShell;
 
     /**
      * @type {HTMLElement | undefined}
@@ -65,9 +52,6 @@ export default class AppUiRegistry extends EventTarget {
      * @param {HTMLElement} appShell
      */
     attachAppShell(appShell) {
-        // Panels can be registered before the app shell exists, so keep the
-        // shell reference and attach any queued panels here.
-        this.#appShell = appShell;
         this.#sidePanelHost =
             appShell.querySelector(".genome-spy-side-panel-host") ??
             this.#createSidePanelHost(appShell);
@@ -79,9 +63,6 @@ export default class AppUiRegistry extends EventTarget {
                 }
             });
             this.#sidePanelResizeObserver.observe(appShell);
-        }
-        for (const panel of this.#dockedPanels) {
-            appShell.append(panel);
         }
         this.#renderActiveSidePanel();
     }
@@ -111,27 +92,6 @@ export default class AppUiRegistry extends EventTarget {
 
         return () => {
             if (this.toolbarMenuItems.delete(item)) {
-                this.#emitChange();
-            }
-        };
-    }
-
-    /**
-     * @param {HTMLElement} panel
-     * @returns {() => void}
-     */
-    registerDockedPanel(panel) {
-        this.#dockedPanels.add(panel);
-        // If the shell is already attached, mount immediately; otherwise the
-        // panel will be replayed from attachAppShell().
-        if (this.#appShell) {
-            this.#appShell.append(panel);
-        }
-        this.#emitChange();
-
-        return () => {
-            if (this.#dockedPanels.delete(panel)) {
-                panel.remove();
                 this.#emitChange();
             }
         };

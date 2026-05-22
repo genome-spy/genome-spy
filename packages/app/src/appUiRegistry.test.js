@@ -4,6 +4,12 @@ import { describe, expect, it } from "vitest";
 import AppUiRegistry from "./appUiRegistry.js";
 
 describe("AppUiRegistry", () => {
+    it("does not expose the obsolete docked panel API", () => {
+        const registry = new AppUiRegistry();
+
+        expect("registerDockedPanel" in registry).toBe(false);
+    });
+
     it("shows one side panel at a time in the app shell", () => {
         const registry = new AppUiRegistry();
         const appShell = document.createElement("div");
