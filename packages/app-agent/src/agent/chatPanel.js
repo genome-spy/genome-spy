@@ -110,11 +110,6 @@ export default class AgentChatPanel extends LitElement {
                 display: flex;
                 flex-direction: column;
                 height: 100%;
-                min-height: 640px;
-                overflow: hidden;
-                border-top: 3px solid var(--gs-theme-primary, #6c82ab);
-                border-radius: 4px;
-                box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
             }
 
             header {
@@ -124,7 +119,6 @@ export default class AgentChatPanel extends LitElement {
                 gap: var(--gs-basic-spacing, 10px);
                 padding: var(--gs-basic-spacing, 10px);
                 border-bottom: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
-                background: white;
             }
 
             .header-main {
