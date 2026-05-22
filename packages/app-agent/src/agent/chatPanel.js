@@ -1,5 +1,10 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faChevronDown, faRobot } from "@fortawesome/free-solid-svg-icons";
+import {
+    faChevronDown,
+    faPaperPlane,
+    faRobot,
+    faStop,
+} from "@fortawesome/free-solid-svg-icons";
 import { css, html, LitElement, nothing } from "lit";
 import { faStyles, formStyles } from "@genome-spy/app/agentShared";
 import { createAgentSessionController } from "./agentSessionController.js";
@@ -270,58 +275,68 @@ export default class AgentChatPanel extends LitElement {
                 background: white;
             }
 
-            .composer-row {
-                display: flex;
-                align-items: flex-end;
-                gap: 0.65rem;
+            .composer-input {
+                position: relative;
             }
 
             .composer textarea {
-                flex: 1 1 auto;
-                min-height: 4.75rem;
-                resize: vertical;
-                padding: 0.375em 0.75em;
+                width: 100%;
+                min-height: 2.75rem;
+                max-height: 12rem;
+                field-sizing: content;
+                padding: 0.65rem 3rem 0.65rem 0.75rem;
                 border: var(--form-control-border);
-                border-radius: var(--form-control-border-radius);
+                border-radius: calc(var(--form-control-border-radius) * 1.5);
                 font: inherit;
+                line-height: 1.35;
                 color: var(--form-control-color);
                 background: #fff;
                 box-sizing: border-box;
+                resize: none;
             }
 
             .composer textarea:focus {
-                border-color: var(--gs-theme-primary, #6c82ab);
-                box-shadow: 0 0 0 0.2rem rgb(108 130 171 / 25%);
+                outline: none;
             }
 
-            .composer .btn.btn-primary {
-                background-color: var(--gs-theme-primary, #6c82ab);
-                background-image: linear-gradient(
-                    to bottom,
-                    oklch(
-                        from var(--gs-theme-primary, #6c82ab) calc(l + 0.07) c h
-                    ),
-                    oklch(
-                        from var(--gs-theme-primary, #6c82ab) calc(l - 0.07) c h
-                    )
-                );
-                border-color: oklch(
+            .composer-action {
+                position: absolute;
+                right: 0.45rem;
+                bottom: 0.45rem;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 2rem;
+                height: 2rem;
+                padding: 0;
+                border: 1px solid transparent;
+                border-radius: 50%;
+                color: white;
+                background: var(--gs-theme-primary, #6c82ab);
+                transition:
+                    opacity 140ms ease,
+                    background-color 120ms ease,
+                    transform 120ms ease;
+            }
+
+            .composer-action.is-hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .composer-action:hover:not(:disabled):not(.is-hidden) {
+                background: oklch(
                     from var(--gs-theme-primary, #6c82ab) calc(l - 0.08) c h
                 );
-                color: var(--gs-theme-on-primary, #ffffff);
-                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
             }
 
-            .composer .btn.btn-primary:hover:not(:disabled) {
-                background-image: linear-gradient(
-                    to bottom,
-                    oklch(
-                        from var(--gs-theme-primary, #6c82ab) calc(l + 0.1) c h
-                    ),
-                    oklch(
-                        from var(--gs-theme-primary, #6c82ab) calc(l - 0.04) c h
-                    )
-                );
+            .composer-action:active:not(:disabled):not(.is-hidden) {
+                transform: scale(0.96);
+            }
+
+            .composer-action svg {
+                width: 0.9rem;
+                height: 0.9rem;
             }
 
             .composer-footer {
@@ -488,7 +503,7 @@ export default class AgentChatPanel extends LitElement {
                     </div>
 
                     <form class="composer" @submit=${this.#handleSubmit}>
-                        <div class="composer-row">
+                        <div class="composer-input">
                             <textarea
                                 .value=${this.draft}
                                 placeholder="Ask the agent about the current visualization or request an action."
@@ -496,15 +511,42 @@ export default class AgentChatPanel extends LitElement {
                                 @input=${this.#handleDraftInput}
                                 @keydown=${this.#handleComposerKeyDown}
                             ></textarea>
-                            <button
-                                type="submit"
-                                ?disabled=${!this.controller ||
-                                (!this.#hasActiveLoop() &&
-                                    this.draft.trim().length === 0)}
-                                class="btn btn-primary"
-                            >
-                                ${this.#hasActiveLoop() ? "Stop" : "Send"}
-                            </button>
+                            ${this.#hasActiveLoop()
+                                ? html`
+                                      <button
+                                          type="button"
+                                          class="composer-action"
+                                          title="Stop"
+                                          aria-label="Stop"
+                                          @click=${() =>
+                                              this.controller?.stopCurrentTurn?.()}
+                                      >
+                                          ${icon(faStop).node[0]}
+                                      </button>
+                                  `
+                                : html`
+                                      <button
+                                          type="submit"
+                                          class="composer-action ${this.draft.trim()
+                                              .length > 0
+                                              ? ""
+                                              : "is-hidden"}"
+                                          title="Send"
+                                          aria-label="Send"
+                                          aria-hidden=${this.draft.trim()
+                                              .length > 0
+                                              ? "false"
+                                              : "true"}
+                                          tabindex=${this.draft.trim().length >
+                                          0
+                                              ? 0
+                                              : -1}
+                                          ?disabled=${!this.controller ||
+                                          this.draft.trim().length === 0}
+                                      >
+                                          ${icon(faPaperPlane).node[0]}
+                                      </button>
+                                  `}
                         </div>
                     </form>
                 </div>

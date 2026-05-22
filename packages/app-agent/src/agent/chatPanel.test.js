@@ -132,6 +132,48 @@ describe("gs-agent-chat-panel", () => {
         panel.remove();
     });
 
+    it("sends with Enter and shows a contextual send button only for a draft", async () => {
+        const panel = document.createElement("gs-agent-chat-panel");
+        const controller = createController(createSnapshot([]));
+
+        panel.controller = controller;
+        document.body.append(panel);
+        await panel.updateComplete;
+        await Promise.resolve();
+
+        const composer = panel.shadowRoot.querySelector(".composer");
+        const textarea = composer.querySelector("textarea");
+        const initialSendButton = composer.querySelector(
+            "button[type='submit']"
+        );
+
+        expect(initialSendButton?.classList.contains("is-hidden")).toBe(true);
+        expect(initialSendButton?.disabled).toBe(true);
+
+        textarea.value = "Summarize this view";
+        textarea.dispatchEvent(new Event("input"));
+        await panel.updateComplete;
+
+        const sendButton = composer.querySelector("button[type='submit']");
+        expect(sendButton?.getAttribute("aria-label")).toBe("Send");
+        expect(sendButton?.classList.contains("is-hidden")).toBe(false);
+        expect(sendButton?.disabled).toBe(false);
+
+        textarea.dispatchEvent(
+            new KeyboardEvent("keydown", {
+                key: "Enter",
+                bubbles: true,
+            })
+        );
+        await panel.updateComplete;
+
+        expect(controller.sendMessage).toHaveBeenCalledWith(
+            "Summarize this view"
+        );
+
+        panel.remove();
+    });
+
     it("keeps the transcript pinned only while the user is at the bottom", async () => {
         const panel = document.createElement("gs-agent-chat-panel");
         const controller = createController(
