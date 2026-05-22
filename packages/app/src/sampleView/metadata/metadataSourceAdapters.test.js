@@ -25,16 +25,16 @@ describe("resolveMetadataSource", () => {
                 data: { values: [{ sample: "s1", age: 1 }] },
             },
         };
-        const sampleDef = { metadataSources: [source] };
+        const metadataDef = { sources: [source] };
 
         await expect(
-            resolveMetadataSourceAny(sampleDef, undefined)
+            resolveMetadataSourceAny(metadataDef, undefined)
         ).resolves.toBe(source);
     });
 
     it("throws when sourceId is omitted and multiple sources are configured", async () => {
-        const sampleDef = {
-            metadataSources: [
+        const metadataDef = {
+            sources: [
                 {
                     id: "a",
                     backend: {
@@ -53,19 +53,19 @@ describe("resolveMetadataSource", () => {
         };
 
         await expect(
-            resolveMetadataSourceAny(sampleDef, undefined)
+            resolveMetadataSourceAny(metadataDef, undefined)
         ).rejects.toThrow(
             "Metadata source id is required when multiple sources are configured."
         );
     });
 
     it("resolves imported metadata sources", async () => {
-        const sampleDef = {
-            metadataSources: [{ import: { url: "metadata/source.json" } }],
+        const metadataDef = {
+            sources: [{ import: { url: "metadata/source.json" } }],
         };
 
         await expect(
-            resolveMetadataSourceAny(sampleDef, undefined, {
+            resolveMetadataSourceAny(metadataDef, undefined, {
                 baseUrl: "https://example.org/spec/",
                 loadJson: async (url) => ({
                     id: "clinical",
@@ -91,12 +91,12 @@ describe("resolveMetadataSource", () => {
 
 describe("resolveMetadataSources", () => {
     it("rewrites imported backend urls relative to the import file", async () => {
-        const sampleDef = {
-            metadataSources: [{ import: { url: "metadata/source.json" } }],
+        const metadataDef = {
+            sources: [{ import: { url: "metadata/source.json" } }],
         };
 
         await expect(
-            resolveMetadataSourcesAny(sampleDef, {
+            resolveMetadataSourcesAny(metadataDef, {
                 baseUrl: "https://example.org/spec/",
                 loadJson: async () => ({
                     id: "clinical",
@@ -132,12 +132,12 @@ describe("resolveMetadataSources", () => {
             )
         );
 
-        const sampleDef = {
-            metadataSources: [{ import: { url: "metadata/source.json" } }],
+        const metadataDef = {
+            sources: [{ import: { url: "metadata/source.json" } }],
         };
 
         await expect(
-            resolveMetadataSourcesAny(sampleDef, {
+            resolveMetadataSourcesAny(metadataDef, {
                 baseUrl: "private/decider_set2-19/",
                 loadJson: async () => ({
                     id: "clinical",
@@ -162,12 +162,12 @@ describe("resolveMetadataSources", () => {
     });
 
     it("rejects nested imports", async () => {
-        const sampleDef = {
-            metadataSources: [{ import: { url: "metadata/source.json" } }],
+        const metadataDef = {
+            sources: [{ import: { url: "metadata/source.json" } }],
         };
 
         await expect(
-            resolveMetadataSourcesAny(sampleDef, {
+            resolveMetadataSourcesAny(metadataDef, {
                 loadJson: async () => ({
                     import: { url: "nested.json" },
                 }),
@@ -176,8 +176,8 @@ describe("resolveMetadataSources", () => {
     });
 
     it('rejects removed "columnDefs" property', async () => {
-        const sampleDef = {
-            metadataSources: [
+        const metadataDef = {
+            sources: [
                 {
                     id: "clinical",
                     columnDefs: {
@@ -191,14 +191,14 @@ describe("resolveMetadataSources", () => {
             ],
         };
 
-        await expect(resolveMetadataSourcesAny(sampleDef)).rejects.toThrow(
+        await expect(resolveMetadataSourcesAny(metadataDef)).rejects.toThrow(
             'uses removed property "columnDefs". Use "attributes" instead.'
         );
     });
 
     it('rejects removed "backend.synonymIndex" property', async () => {
-        const sampleDef = {
-            metadataSources: [
+        const metadataDef = {
+            sources: [
                 {
                     id: "expression",
                     backend: {
@@ -213,7 +213,7 @@ describe("resolveMetadataSources", () => {
             ],
         };
 
-        await expect(resolveMetadataSourcesAny(sampleDef)).rejects.toThrow(
+        await expect(resolveMetadataSourcesAny(metadataDef)).rejects.toThrow(
             'uses removed property "backend.synonymIndex". Use "backend.identifiers" instead.'
         );
     });
