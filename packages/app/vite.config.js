@@ -4,6 +4,7 @@ import replace from "@rollup/plugin-replace";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createAppDevServerPlugin } from "../../devServerRoutes.mjs";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const process = globalThis.process;
 const packageDir = dirname(fileURLToPath(import.meta.url));
@@ -35,6 +36,7 @@ export default defineConfig(({ command }) => ({
                 fileRegex: /\.glsl$/,
             }),
         },
+        visualizer(),
     ],
     define: {
         // A hack needed by events package

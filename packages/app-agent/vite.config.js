@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import rawPlugin from "vite-raw-plugin";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { visualizer } from "rollup-plugin-visualizer";
 
 const process = globalThis.process;
 const packageDir = dirname(fileURLToPath(import.meta.url));
@@ -26,6 +27,7 @@ export default defineConfig(({ command }) => ({
                 fileRegex: /\.glsl$/,
             }),
         },
+        visualizer(),
     ],
     build: {
         outDir: "../dist",

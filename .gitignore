@@ -30,5 +30,6 @@ build/
 dist/
 /coverage/
 /site/
+/packages/*/stats.html
 
 lerna-debug.log
