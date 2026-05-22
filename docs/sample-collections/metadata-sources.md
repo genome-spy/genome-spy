@@ -291,9 +291,11 @@ group and `attributeGroupSeparator` defines how grouped names are interpreted.
 
 ## Schema reference
 
-### Sample and metadata entry points
+### `samples` configuration
 
 APP_SCHEMA SampleDef identity
+
+### `metadata` configuration
 
 APP_SCHEMA MetadataDef sources attributeWidth spacing labelFont labelFontSize labelFontWeight labelFontStyle labelAngle
 
