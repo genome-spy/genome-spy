@@ -765,7 +765,7 @@ export default class AgentChatPanel extends LitElement {
 customElements.define("gs-agent-chat-panel", AgentChatPanel);
 
 /**
- * Toggle the docked agent chat panel in the app shell.
+ * Toggle the agent chat side panel in the app shell.
  *
  * @param {any} app
  * @returns {Promise<void>}
@@ -781,7 +781,6 @@ export async function toggleAgentChatPanel(app) {
     if (!host) {
         host = document.createElement("div");
         host.dataset.agentChatPanelHost = "true";
-        host.hidden = false;
         host.style.height = "100%";
         host.style.minHeight = "0";
 
@@ -795,23 +794,12 @@ export async function toggleAgentChatPanel(app) {
         panel.devMode = true;
         host.append(panel);
 
-        if (app.ui.registerSidePanel) {
-            agentState.agentChatPanelHandle = app.ui.registerSidePanel({
-                id: "agent-chat",
-                element: host,
-                preferredWidth: "min(36vw, 600px)",
-            });
-            agentState.agentChatPanelHandle.show();
-        } else if (app.ui.registerDockedPanel) {
-            host.style.position = "absolute";
-            host.style.top = "calc(var(--gs-basic-spacing, 10px) + 38px)";
-            host.style.right = "var(--gs-basic-spacing, 10px)";
-            host.style.bottom = "var(--gs-basic-spacing, 10px)";
-            host.style.width = "min(70vw, 600px)";
-            app.ui.registerDockedPanel(host);
-        } else {
-            app.appContainer.append(host);
-        }
+        agentState.agentChatPanelHandle = app.ui.registerSidePanel({
+            id: "agent-chat",
+            element: host,
+            preferredWidth: "min(36vw, 600px)",
+        });
+        agentState.agentChatPanelHandle.show();
         agentState.agentChatPanelHost = host;
         await panel.updateComplete;
         const textarea = panel.renderRoot.querySelector("textarea");
@@ -819,15 +807,7 @@ export async function toggleAgentChatPanel(app) {
         return;
     }
 
-    let isVisible;
-    if (agentState.agentChatPanelHandle) {
-        isVisible = agentState.agentChatPanelHandle.toggle();
-    } else {
-        host.hidden = !host.hidden;
-        isVisible = !host.hidden;
-    }
-
-    if (isVisible) {
+    if (agentState.agentChatPanelHandle.toggle()) {
         const panel = /** @type {AgentChatPanel | null} */ (
             host.querySelector("gs-agent-chat-panel")
         );

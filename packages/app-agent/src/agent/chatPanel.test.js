@@ -68,9 +68,7 @@ describe("gs-agent-chat-panel", () => {
                     document.body.append(panel.element);
                     return sidePanelHandle;
                 }),
-                registerDockedPanel: vi.fn(),
             },
-            appContainer: document.body,
         };
 
         getAgentState(app).agentAdapter = {
@@ -89,7 +87,6 @@ describe("gs-agent-chat-panel", () => {
                 element: expect.any(HTMLElement),
             })
         );
-        expect(app.ui.registerDockedPanel).not.toHaveBeenCalled();
         expect(sidePanelHandle.show).toHaveBeenCalledTimes(1);
     });
 
