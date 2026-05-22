@@ -3,7 +3,7 @@
 !!! note "Developer Documentation"
 
     This page is intended for visualization authors configuring metadata
-    sources in `samples`.
+    sources in `metadata`.
 
 ## Overview
 
@@ -16,9 +16,9 @@ of one monolithic metadata table. This enables:
 
 !!! warning "Legacy compatibility"
 
-    The legacy `samples.data` and `samples.attributes` configuration remains
-    supported for backward compatibility, but new configurations should use
-    `samples.metadataSources`.
+    The legacy `samples.data`, `samples.attributes`, and
+    `samples.metadataSources` configuration remains supported for backward
+    compatibility, but new configurations should use `metadata.sources`.
 
 ## Quick example
 
@@ -29,13 +29,15 @@ of one monolithic metadata table. This enables:
       "data": { "url": "samples.tsv" },
       "idField": "sample",
       "displayNameField": "displayName"
-    },
-    "metadataSources": [
+    }
+  },
+  "metadata": {
+    "sources": [
       {
         "id": "clinical",
         "name": "Clinical",
         "initialLoad": "*",
-        "excludeColumns": ["sample", "displayName"],
+        "excludeColumns": ["displayName"],
         "backend": {
           "backend": "data",
           "data": { "url": "samples.tsv" },
@@ -71,12 +73,13 @@ second source (`expression`) points to a Zarr matrix, is lazy by default
 expression columns under the `Expression` group.
 
 If you omit `initialLoad`, backend defaults apply. For `backend: "data"`, that
-means load all columns by default; use `excludeColumns` to keep helper fields
-such as `sample` and `displayName` out of metadata attributes.
+means load all columns by default. The backend excludes `sampleIdField`
+automatically; use `excludeColumns` for other helper fields such as
+`displayName`.
 
 ## Splitting configuration into files
 
-When source definitions become long, you can keep `samples.metadataSources`
+When source definitions become long, you can keep `metadata.sources`
 compact by importing each source from a separate JSON file.
 
 Example in the main spec:
@@ -88,8 +91,10 @@ Example in the main spec:
       "data": { "url": "samples.tsv" },
       "idField": "sample",
       "displayNameField": "displayName"
-    },
-    "metadataSources": [
+    }
+  },
+  "metadata": {
+    "sources": [
       { "import": { "url": "metadata-sources/clinical-source.json" } },
       { "import": { "url": "metadata-sources/expression-source.json" } }
     ]
@@ -105,7 +110,7 @@ Example imported source file (`metadata-sources/clinical-source.json`):
   "id": "clinical",
   "name": "Clinical",
   "initialLoad": "*",
-  "excludeColumns": ["sample", "displayName"],
+  "excludeColumns": ["displayName"],
   "backend": {
     "backend": "data",
     "data": { "url": "../samples.tsv" },
@@ -137,7 +142,7 @@ Example:
   "name": "Clinical",
   "groupPath": "Clinical",
   "initialLoad": "*",
-  "excludeColumns": ["sample", "displayName"],
+  "excludeColumns": ["displayName"],
   "attributes": {
     "purity": {
       "type": "quantitative",
@@ -286,9 +291,11 @@ group and `attributeGroupSeparator` defines how grouped names are interpreted.
 
 ## Schema reference
 
-### `samples` entry points
+### Sample and metadata entry points
 
-APP_SCHEMA SampleDef identity metadataSources
+APP_SCHEMA SampleDef identity
+
+APP_SCHEMA MetadataDef sources attributeWidth spacing labelFont labelFontSize labelFontWeight labelFontStyle labelAngle
 
 ### Metadata source definitions
 

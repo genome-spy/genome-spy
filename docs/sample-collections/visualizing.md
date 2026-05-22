@@ -80,8 +80,8 @@ data, and each sample gets its own track.
 
 For most sample-collection visualizations, define:
 
-1. sample identity (`identity`)
-2. one or more metadata sources (`metadataSources`)
+1. sample identity (`samples.identity`)
+2. one or more metadata sources (`metadata.sources`)
 
 ```json title="Minimal sample definition"
 {
@@ -90,13 +90,15 @@ For most sample-collection visualizations, define:
       "data": { "url": "samples.tsv" },
       "idField": "sample",
       "displayNameField": "displayName"
-    },
-    "metadataSources": [
+    }
+  },
+  "metadata": {
+    "sources": [
       {
         "id": "clinical",
         "name": "Clinical metadata",
         "initialLoad": "*",
-        "excludeColumns": ["sample", "displayName"],
+        "excludeColumns": ["displayName"],
         "backend": {
           "backend": "data",
           "data": { "url": "samples.tsv" },
@@ -110,25 +112,29 @@ For most sample-collection visualizations, define:
 ```
 
 This configuration reads sample ids and display names from `samples.tsv`, then
-loads metadata columns from the same file at startup. The `sample` and
-`displayName` columns are excluded from metadata import, so only actual metadata
-attributes are shown in the metadata panel.
+loads metadata columns from the same file at startup. The data backend excludes
+the `sampleIdField` automatically. The `displayName` column is excluded
+explicitly so only actual metadata attributes are shown in the metadata panel.
 
 For advanced metadata-source configuration (for example, lazy Zarr-backed
 imports), see [Configuring Metadata Sources](metadata-sources.md).
 
-### Adjusting font sizes, etc.
+### Adjusting sample and metadata labels
 
-The `samples` object can also be used to adjust the font sizes, etc. of the
-metadata attributes. For example, to increase the font sizes of the sample and
-attribute labels, use the following configuration:
+The `samples` object controls sample labels. The `metadata` object controls
+metadata attribute labels and metadata column layout. For example, to increase
+the font sizes of the sample and attribute labels, use the following
+configuration:
 
 ```json title="Adjusting font sizes"
 {
   "samples": {
     ...,
-    "labelFontSize": 12,
-    "attributeLabelFontSize": 10
+    "labelFontSize": 12
+  },
+  "metadata": {
+    ...,
+    "labelFontSize": 10
   },
   ...
 }
@@ -136,11 +142,15 @@ attribute labels, use the following configuration:
 
 The following properties allow for fine-grained control of the font styles:
 
-APP_SCHEMA SampleDef labelFont labelFontSize labelFontWeight labelFontStyle labelAlign attributeLabelFont attributeLabelFontSize attributeLabelFontWeight attributeLabelFontStyle
+APP_SCHEMA SampleDef labelFont labelFontSize labelFontWeight labelFontStyle labelAlign
 
 In addition, the following properties are supported:
 
-APP_SCHEMA SampleDef labelTitleText labelLength attributeSize attributeLabelAngle attributeSpacing
+APP_SCHEMA SampleDef labelTitle labelLength
+
+Metadata layout and attribute label properties:
+
+APP_SCHEMA MetadataDef attributeWidth spacing labelFont labelFontSize labelFontWeight labelFontStyle labelAngle
 
 ### Handling variable sample heights
 
