@@ -21,8 +21,9 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     configurableVisibility?: AppConfigurableVisibilitySpec["configurableVisibility"];
 
     /**
-     * Sample metadata definition.
-     * If the object is empty, the sample identifiers will be inferred from the data.
+     * Sample identity and label configuration.
+     *
+     * If `identity` is omitted, sample identifiers are inferred from the data.
      */
     samples: SampleDef;
 
