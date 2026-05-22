@@ -252,7 +252,7 @@
       }
     ],
     "exampleInput": {
-      "scaleName": "x",
+      "scaleName": "x-scale",
       "domain": [
         {
           "chrom": "chr1",

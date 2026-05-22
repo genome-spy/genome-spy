@@ -267,13 +267,18 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Add a derived metadata column from a selected or aggregated attribute.
+         * Add a derived metadata column by copying sample attributes or
+         * aggregating features from a genomic interval.
          *
-         * Use this when an existing attribute should be materialized as sample
-         * metadata under a new column name. For selection-derived values, use
-         * a `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`.
-         * If raw feature values inside the selected interval should be filtered before
-         * aggregation, use `featureFilter` in `AttributeIdentifier`.
+         * Use this action to derive one per-sample value aggregated from
+         * features in an active interval selection. If the user names a gene,
+         * locus, or interval and no matching selection aggregation candidate
+         * exists yet, proactively create or update the interval selection using
+         * the `paramChange` action and wait for a refreshed context,
+         * which reveals selection aggregation candidates.
+         * Then use the matching `SELECTION_AGGREGATION` candidate from
+         * `selectionAggregation.fields`. To aggregate only specific features,
+         * e.g., deleterious variants, use `AttributeIdentifier.featureFilter`.
          *
          * @agent.payloadType DeriveMetadata
          * @agent.category metadata
@@ -283,7 +288,22 @@ export const sampleSlice = createSlice({
          *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "purity" },
          *   "name": "purity_copy"
          * }
+         * @example
+         * {
+         *   "attribute": {
+         *     "type": "SELECTION_AGGREGATION",
+         *     "candidateId": "genomeSelection@variants:VAF",
+         *     "aggregation": "count",
+         *     "featureFilter": {
+         *       "field": "CADD_phred",
+         *       "operator": "gt",
+         *       "value": 28.5
+         *     }
+         *   },
+         *   "name": "highCADDVariants"
+         * }
          */
+        // NOTE: SELECTION_AGGREGATION is an agent-only attribute type.
         deriveMetadata: (
             state,
             /** @type {PayloadAction<import("./payloadTypes.js").DeriveMetadata>} */ action

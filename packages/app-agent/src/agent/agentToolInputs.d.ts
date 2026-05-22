@@ -333,10 +333,12 @@ export interface GetIntentActionTypeDocsToolInput {
  * Animate one named zoomable scale to an exact domain. Scale names come from
  * `scaleDomains` in the volatile context and from `domainRef` fields in the
  * view tree. Scales are not addressed with view selectors.
+ * Zooming only changes the user-visible viewport. You cannot use it for
+ * analysis purposes.
  *
  * @example
  * {
- *   "scaleName": "x",
+ *   "scaleName": "x-scale",
  *   "domain": [
  *     { "chrom": "chr1", "pos": 1000 },
  *     { "chrom": "chr1", "pos": 3000 }

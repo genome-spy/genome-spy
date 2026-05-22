@@ -7,7 +7,7 @@
   {
     "actionType": "sampleView/deriveMetadata",
     "title": "Add derived metadata",
-    "description": "Add a derived metadata column from a selected or aggregated attribute."
+    "description": "Add a derived metadata column by copying sample attributes or aggregating features from a genomic interval."
   },
   {
     "actionType": "sampleView/addMetadataFromSource",
