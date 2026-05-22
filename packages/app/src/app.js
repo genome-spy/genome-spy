@@ -91,7 +91,7 @@ export default class App {
                 <genome-spy-toolbar .app=${this}></genome-spy-toolbar>
                 <div class="genome-spy-workspace">
                     <div class="genome-spy-container"></div>
-                    <div class="genome-spy-side-panel-host" hidden></div>
+                    <div class="genome-spy-side-panel-host"></div>
                 </div>
             </div>`,
             this.appContainer

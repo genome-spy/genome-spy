@@ -26,7 +26,7 @@ describe("AppUiRegistry", () => {
         const sidePanelHost = appShell.querySelector(
             ".genome-spy-side-panel-host"
         );
-        expect(sidePanelHost.hidden).toBe(false);
+        expect(sidePanelHost.classList.contains("is-open")).toBe(true);
         expect(sidePanelHost.firstElementChild).toBe(firstPanel);
 
         secondHandle.show();
@@ -36,7 +36,7 @@ describe("AppUiRegistry", () => {
 
         secondHandle.hide();
 
-        expect(sidePanelHost.hidden).toBe(true);
+        expect(sidePanelHost.classList.contains("is-open")).toBe(false);
         expect(secondPanel.parentElement).toBe(sidePanelHost);
     });
 

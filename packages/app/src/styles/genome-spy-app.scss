@@ -43,14 +43,31 @@ $basic-spacing: generic.$basic-spacing;
     }
 
     .genome-spy-side-panel-host {
+        display: none;
         min-height: 0;
         border-left: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
         background: white;
         overflow: hidden;
     }
 
-    .genome-spy-side-panel-host[hidden] {
-        display: none;
+    .genome-spy-side-panel-host.is-open {
+        display: block;
+        opacity: 1;
+        transform: translateX(0);
+        transition:
+            opacity 260ms ease,
+            transform 280ms ease;
+
+        @starting-style {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .genome-spy-side-panel-host.is-open {
+            transition: none;
+        }
     }
 }
 

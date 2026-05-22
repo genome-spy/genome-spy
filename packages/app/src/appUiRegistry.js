@@ -187,7 +187,6 @@ export default class AppUiRegistry extends EventTarget {
     #createSidePanelHost(appShell) {
         const host = document.createElement("div");
         host.className = "genome-spy-side-panel-host";
-        host.hidden = true;
         appShell.append(host);
         return host;
     }
@@ -209,13 +208,13 @@ export default class AppUiRegistry extends EventTarget {
         }
 
         if (!activePanel) {
-            this.#sidePanelHost.hidden = true;
+            this.#sidePanelHost.classList.remove("is-open");
             this.#sidePanelHost.style.removeProperty("width");
             this.#emitChange();
             return;
         }
 
-        this.#sidePanelHost.hidden = false;
+        this.#sidePanelHost.classList.add("is-open");
         this.#sidePanelHost.style.width =
             activePanel.preferredWidth ?? "min(36vw, 600px)";
         this.#snapSidePanelWidth();
