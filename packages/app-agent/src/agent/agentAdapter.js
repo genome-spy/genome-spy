@@ -4,7 +4,10 @@ import {
     summarizeExecutionResult,
 } from "./intentProgramExecutor.js";
 import { summarizeProvenanceActions } from "./actionCatalog.js";
-import { templateResultToString } from "@genome-spy/app/agentShared";
+import {
+    getConcreteColorScale,
+    templateResultToString,
+} from "@genome-spy/app/agentShared";
 import {
     collectVisibleSampleGroups,
     collectVisibleSampleIds,
@@ -101,6 +104,7 @@ export function createAgentAdapter(app, agentApi) {
             values: sampleIds.map((sampleId) =>
                 info.accessor(sampleId, sampleHierarchy)
             ),
+            ...buildColorScaleMetadata(info),
         };
     }
 
@@ -119,21 +123,25 @@ export function createAgentAdapter(app, agentApi) {
             return undefined;
         }
 
+        const groupInfos = sampleHierarchy.groupMetadata.map((entry) => {
+            const groupInfo = agentApi.getAttributeInfo(entry.attribute);
+            if (!groupInfo) {
+                throw new Error("Grouped attribute info is missing.");
+            }
+            return groupInfo;
+        });
+
         return {
             attribute,
             title: templateResultToString(info.title),
             description: info.description,
             dataType: info.type,
             scope: "visible_groups",
-            groupLevels: sampleHierarchy.groupMetadata.map((entry, level) => {
-                const groupInfo = agentApi.getAttributeInfo(entry.attribute);
-
-                return {
-                    level,
-                    attribute: entry.attribute,
-                    title: templateResultToString(groupInfo.title),
-                };
-            }),
+            groupLevels: sampleHierarchy.groupMetadata.map((entry, level) => ({
+                level,
+                attribute: entry.attribute,
+                title: templateResultToString(groupInfos[level].title),
+            })),
             groups: collectVisibleSampleGroups(sampleHierarchy.rootGroup),
             valuesBySampleId: Object.fromEntries(
                 collectVisibleSampleIds(sampleHierarchy.rootGroup).map(
@@ -143,6 +151,10 @@ export function createAgentAdapter(app, agentApi) {
                     ]
                 )
             ),
+            ...buildColorScaleMetadata(info),
+            ...(groupInfos.length === 1
+                ? buildGroupColorScaleMetadata(groupInfos[0])
+                : {}),
         };
     }
 
@@ -326,6 +338,24 @@ export function createAgentAdapter(app, agentApi) {
         summarizeExecutionResult,
         requestAgentTurn,
     };
+}
+
+/**
+ * @param {import("@genome-spy/app/agentShared").AttributeInfo} info
+ * @returns {{ colorScale?: import("./agentContextTypes.d.ts").AgentConcreteColorScale }}
+ */
+function buildColorScaleMetadata(info) {
+    const colorScale = getConcreteColorScale(info.scale);
+    return colorScale ? { colorScale } : {};
+}
+
+/**
+ * @param {import("@genome-spy/app/agentShared").AttributeInfo} groupInfo
+ * @returns {{ groupColorScale?: import("./agentContextTypes.d.ts").AgentConcreteColorScale }}
+ */
+function buildGroupColorScaleMetadata(groupInfo) {
+    const groupColorScale = getConcreteColorScale(groupInfo.scale);
+    return groupColorScale ? { groupColorScale } : {};
 }
 
 /**

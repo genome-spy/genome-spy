@@ -1,3 +1,5 @@
+import { getConcreteColorScale } from "../utils/colorScaleSummary.js";
+
 /**
  * Resolves the color scale used for grouped sample scatterplots.
  *
@@ -24,22 +26,11 @@ export function getGroupColorScale(sampleView) {
         return;
     }
 
-    const scale = attributeInfo.scale;
-    if (
-        !scale ||
-        typeof scale.domain !== "function" ||
-        typeof scale.range !== "function"
-    ) {
-        return;
-    }
-
-    const domain = scale.domain();
-    const range = scale.range();
-    if (
-        Array.isArray(domain) &&
-        Array.isArray(range) &&
-        range.every((value) => typeof value === "string")
-    ) {
-        return { domain: domain.map(String), range };
+    const colorScale = getConcreteColorScale(attributeInfo.scale);
+    if (colorScale) {
+        return {
+            domain: colorScale.domain.map(String),
+            range: colorScale.range,
+        };
     }
 }

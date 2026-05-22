@@ -1,5 +1,6 @@
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 import {
+    addValueColors,
     buildCategoricalFieldSummary,
     buildQuantitativeFieldSummary,
 } from "@genome-spy/app/agentShared";
@@ -99,22 +100,41 @@ function buildGroupedAttributeSummary(runtime, attribute) {
     });
     const groups =
         source.dataType === "quantitative"
-            ? visibleGroups.map((group) => ({
-                  ...groupBase(group),
-                  ...buildQuantitativeAgentSummary(
-                      group.sampleIds.map(
-                          (sampleId) => source.valuesBySampleId[sampleId]
-                      )
-                  ),
-              }))
-            : visibleGroups.map((group) => ({
-                  ...groupBase(group),
-                  ...buildCategoricalFieldSummary(
-                      group.sampleIds.map(
-                          (sampleId) => source.valuesBySampleId[sampleId]
-                      )
-                  ),
-              }));
+            ? addValueColors(
+                  visibleGroups.map((group) => ({
+                      ...groupBase(group),
+                      ...buildQuantitativeAgentSummary(
+                          group.sampleIds.map(
+                              (sampleId) => source.valuesBySampleId[sampleId]
+                          )
+                      ),
+                  })),
+                  (group) => group.title,
+                  source.groupColorScale?.domain,
+                  source.groupColorScale?.range
+              )
+            : addValueColors(
+                  visibleGroups.map((group) => {
+                      const summary = buildCategoricalFieldSummary(
+                          group.sampleIds.map(
+                              (sampleId) => source.valuesBySampleId[sampleId]
+                          )
+                      );
+                      return {
+                          ...groupBase(group),
+                          ...summary,
+                          categories: addValueColors(
+                              summary.categories,
+                              (category) => category.value,
+                              source.colorScale?.domain,
+                              source.colorScale?.range
+                          ),
+                      };
+                  }),
+                  (group) => group.title,
+                  source.groupColorScale?.domain,
+                  source.groupColorScale?.range
+              );
 
     const content = {
         kind: "grouped_attribute_summary",
@@ -123,6 +143,7 @@ function buildGroupedAttributeSummary(runtime, attribute) {
         ...(source.description ? { description: source.description } : {}),
         dataType: source.dataType,
         scope: source.scope,
+        ...buildColorScaleContent(source),
         ...buildSelectionAggregationMetadata(source.attribute, source.scope),
         groupLevels: source.groupLevels,
         groupCount: source.groups.length,
@@ -147,6 +168,7 @@ function buildQuantitativeSummary(source) {
         ...(source.description ? { description: source.description } : {}),
         dataType: source.dataType,
         scope: source.scope,
+        ...buildColorScaleContent(source),
         ...buildSelectionAggregationMetadata(source.attribute, source.scope),
         sampleCount: source.sampleIds.length,
         ...buildQuantitativeAgentSummary(source.values),
@@ -157,6 +179,8 @@ function buildQuantitativeSummary(source) {
  * @param {AgentAttributeSummarySource} source
  */
 function buildCategoricalSummary(source) {
+    const summary = buildCategoricalFieldSummary(source.values);
+
     return {
         kind: "attribute_summary",
         attribute: source.attribute,
@@ -165,8 +189,23 @@ function buildCategoricalSummary(source) {
         dataType: source.dataType,
         scope: source.scope,
         sampleCount: source.sampleIds.length,
-        ...buildCategoricalFieldSummary(source.values),
+        ...summary,
+        categories: addValueColors(
+            summary.categories,
+            (category) => category.value,
+            source.colorScale?.domain,
+            source.colorScale?.range
+        ),
     };
+}
+
+/**
+ * @param {AgentAttributeSummarySource | AgentGroupedAttributeSummarySource} source
+ */
+function buildColorScaleContent(source) {
+    return source.dataType === "quantitative" && source.colorScale
+        ? { colorScale: source.colorScale }
+        : {};
 }
 
 /**

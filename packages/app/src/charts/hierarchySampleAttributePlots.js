@@ -8,6 +8,7 @@ import {
     buildCategoricalCountsSummary,
     buildTopCategorySummary,
 } from "../utils/statistics/fieldSummary.js";
+import { addValueColors } from "../utils/colorScaleSummary.js";
 
 const BARPLOT_DATA_NAME = "hierarchy_barplot";
 const BOXPLOT_STATS_NAME = "hierarchy_boxplot_stats";
@@ -353,8 +354,9 @@ function buildCategoryCountsCharacterization(params) {
         params.nonMissingCount,
         params.missingCount
     );
-    const categories = addCategoryColors(
+    const categories = addValueColors(
         summary.categories,
+        (category) => category.value,
         params.colorScale.domain,
         params.colorScale.range
     );
@@ -395,49 +397,6 @@ function buildCategoryCountsCharacterization(params) {
               }
             : {}),
     };
-}
-
-/**
- * @param {Array<{ value: unknown; count: number; share: number }>} categories
- * @param {unknown} domain
- * @param {unknown} range
- * @returns {Array<{ value: unknown; count: number; share: number; color?: string }>}
- */
-function addCategoryColors(categories, domain, range) {
-    const colorsByCategory = createColorMap(domain, range);
-    if (!colorsByCategory) {
-        return categories;
-    }
-
-    return categories.map((category) => {
-        const color = colorsByCategory.get(category.value);
-        return color !== undefined ? { ...category, color } : category;
-    });
-}
-
-/**
- * @param {unknown} domain
- * @param {unknown} range
- * @returns {Map<unknown, string> | undefined}
- */
-function createColorMap(domain, range) {
-    if (
-        !Array.isArray(domain) ||
-        !Array.isArray(range) ||
-        !range.every((color) => typeof color === "string")
-    ) {
-        return;
-    }
-
-    /** @type {Map<unknown, string>} */
-    const colorsByValue = new Map();
-    domain.forEach((value, index) => {
-        const color = range[index];
-        if (typeof color === "string") {
-            colorsByValue.set(value, color);
-        }
-    });
-    return colorsByValue;
 }
 
 /**
@@ -517,33 +476,15 @@ function buildAttributeRelationshipCharacterization(params) {
             : {}),
         ...(params.groupSummaries.length > 1
             ? {
-                  groups: addGroupColors(
+                  groups: addValueColors(
                       params.groupSummaries,
+                      (group) => group.title,
                       params.colorScaleDomain,
                       params.colorScaleRange
                   ),
               }
             : {}),
     };
-}
-
-/**
- * @template {{ title: string }} T
- * @param {T[]} groups
- * @param {string[] | undefined} domain
- * @param {string[] | undefined} range
- * @returns {Array<T & { color?: string }>}
- */
-function addGroupColors(groups, domain, range) {
-    const colorsByGroup = createColorMap(domain, range);
-    if (!colorsByGroup) {
-        return groups;
-    }
-
-    return groups.map((group) => {
-        const color = colorsByGroup.get(group.title);
-        return color !== undefined ? { ...group, color } : group;
-    });
 }
 
 /**

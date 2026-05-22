@@ -93,6 +93,10 @@ function createRuntimeStub() {
                     scope: "visible_samples",
                     sampleIds: ["sampleA", "sampleB", "sampleC"],
                     values: ["F", "M", "F"],
+                    colorScale: {
+                        domain: ["F", "M"],
+                        range: ["#ffb6c1", "#87ceeb"],
+                    },
                 };
             }
 
@@ -167,6 +171,14 @@ function createRuntimeStub() {
                     sampleA: "blood",
                     sampleB: "blood",
                     sampleC: "bone marrow",
+                },
+                colorScale: {
+                    domain: ["bone marrow", "blood"],
+                    range: ["#663399", "#b22222"],
+                },
+                groupColorScale: {
+                    domain: ["A", "B"],
+                    range: ["#aa0000", "#0000aa"],
                 },
             };
         }),
@@ -329,8 +341,8 @@ describe("attributeSummaryTool", () => {
             missingCount: 0,
             distinctCount: 2,
             categories: [
-                { value: "F", count: 2, share: 2 / 3 },
-                { value: "M", count: 1, share: 1 / 3 },
+                { value: "F", count: 2, share: 2 / 3, color: "#ffb6c1" },
+                { value: "M", count: 1, share: 1 / 3, color: "#87ceeb" },
             ],
             truncated: false,
         });
@@ -450,20 +462,36 @@ describe("attributeSummaryTool", () => {
                     path: ["A"],
                     titles: ["A"],
                     title: "A",
+                    color: "#aa0000",
                     nonMissingCount: 2,
                     missingCount: 0,
                     distinctCount: 1,
-                    categories: [{ value: "blood", count: 2, share: 1 }],
+                    categories: [
+                        {
+                            value: "blood",
+                            count: 2,
+                            share: 1,
+                            color: "#b22222",
+                        },
+                    ],
                     truncated: false,
                 },
                 {
                     path: ["B"],
                     titles: ["B"],
                     title: "B",
+                    color: "#0000aa",
                     nonMissingCount: 1,
                     missingCount: 0,
                     distinctCount: 1,
-                    categories: [{ value: "bone marrow", count: 1, share: 1 }],
+                    categories: [
+                        {
+                            value: "bone marrow",
+                            count: 1,
+                            share: 1,
+                            color: "#663399",
+                        },
+                    ],
                     truncated: false,
                 },
             ],

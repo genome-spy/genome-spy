@@ -17,6 +17,7 @@ export interface AgentAttributeSummarySource {
     scope: "visible_samples";
     sampleIds: string[];
     values: unknown[];
+    colorScale?: AgentConcreteColorScale;
 }
 
 /**
@@ -42,6 +43,16 @@ export interface AgentGroupedAttributeSummarySource {
     groupLevels: AgentSampleGroupLevel[];
     groups: AgentVisibleSampleGroupSource[];
     valuesBySampleId: Record<string, unknown>;
+    colorScale?: AgentConcreteColorScale;
+    groupColorScale?: AgentConcreteColorScale;
+}
+
+/**
+ * Concrete color scale values exposed to the agent.
+ */
+export interface AgentConcreteColorScale {
+    domain: unknown[];
+    range: string[];
 }
 
 /**

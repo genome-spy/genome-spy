@@ -172,6 +172,18 @@ function createAppStub(encoding = undefined) {
                     attribute?.specifier === "diagnosis"
                         ? "nominal"
                         : "quantitative",
+                scale:
+                    attribute?.specifier === "sex"
+                        ? {
+                              domain: () => ["F", "M"],
+                              range: () => ["#ffb6c1", "#87ceeb"],
+                          }
+                        : attribute?.specifier === "diagnosis"
+                          ? {
+                                domain: () => ["A", "B"],
+                                range: () => ["#aa0000", "#0000aa"],
+                            }
+                          : undefined,
                 title: attribute?.specifier ?? "",
                 description: undefined,
             }),
@@ -340,6 +352,10 @@ describe("agentAdapter", () => {
             scope: "visible_samples",
             sampleIds: ["sampleA", "sampleB"],
             values: ["F", "M"],
+            colorScale: {
+                domain: ["F", "M"],
+                range: ["#ffb6c1", "#87ceeb"],
+            },
         });
     });
 
@@ -413,6 +429,14 @@ describe("agentAdapter", () => {
             valuesBySampleId: {
                 sampleA: "F",
                 sampleB: "M",
+            },
+            colorScale: {
+                domain: ["F", "M"],
+                range: ["#ffb6c1", "#87ceeb"],
+            },
+            groupColorScale: {
+                domain: ["A", "B"],
+                range: ["#aa0000", "#0000aa"],
             },
         });
     });

@@ -20,6 +20,10 @@ export { faStyles, formStyles } from "../components/generic/componentStyles.js";
 import templateResultToString from "../utils/templateResultToString.js";
 export { default as safeMarkdown } from "../utils/safeMarkdown.js";
 export {
+    addValueColors,
+    getConcreteColorScale,
+} from "../utils/colorScaleSummary.js";
+export {
     buildCategoricalCountsSummary,
     buildCategoricalFieldSummary,
     buildQuantitativeFieldSummary,
