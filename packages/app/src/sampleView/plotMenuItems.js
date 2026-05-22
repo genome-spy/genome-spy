@@ -5,7 +5,7 @@ import {
     buildHierarchyBoxplot,
     buildHierarchyScatterplot,
 } from "../charts/hierarchySampleAttributePlots.js";
-import { getGroupColorRange } from "../charts/sampleAttributePlotUtils.js";
+import { getGroupColorScale } from "../charts/sampleAttributePlotUtils.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -63,7 +63,7 @@ export function appendPlotMenuItems(
                 })
             )
             .filter((info) => info.type === "quantitative");
-    const groupColorRange = getGroupColorRange(sampleView);
+    const groupColorScale = getGroupColorScale(sampleView);
 
     items.push({
         label: "Show boxplot...",
@@ -96,7 +96,8 @@ export function appendPlotMenuItems(
                             sampleHierarchy: sampleView.sampleHierarchy,
                             attributeInfoSource:
                                 sampleView.compositeAttributeInfoSource,
-                            colorScaleRange: groupColorRange,
+                            colorScaleDomain: groupColorScale?.domain,
+                            colorScaleRange: groupColorScale?.range,
                         })
                     ),
             })),

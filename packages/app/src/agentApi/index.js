@@ -9,7 +9,7 @@ import {
     buildHierarchyBoxplot,
     buildHierarchyScatterplot,
 } from "../charts/hierarchySampleAttributePlots.js";
-import { getGroupColorRange } from "../charts/sampleAttributePlotUtils.js";
+import { getGroupColorScale } from "../charts/sampleAttributePlotUtils.js";
 export { embedRenderablePlot } from "../charts/chartDialogUtils.js";
 
 // `agentApi` exposes App internals to the agent and plugin surfaces only.
@@ -259,12 +259,15 @@ export function createAgentApi(app) {
                     );
                 }
 
+                const colorScale = getGroupColorScale(sampleView);
+
                 return buildHierarchyScatterplot({
                     xAttributeInfo,
                     yAttributeInfo,
                     sampleHierarchy: sampleView.sampleHierarchy,
                     attributeInfoSource,
-                    colorScaleRange: getGroupColorRange(sampleView),
+                    colorScaleDomain: colorScale?.domain,
+                    colorScaleRange: colorScale?.range,
                 });
             }
 

@@ -82,9 +82,10 @@ function createAttributeInfo(name) {
 }
 
 /**
+ * @param {Record<string, import("../sampleView/types.js").AttributeInfo>} [overrides]
  * @returns {import("../sampleView/compositeAttributeInfoSource.js").default}
  */
-function createAttributeInfoSource() {
+function createAttributeInfoSource(overrides = {}) {
     const attributeInfos = {
         status: createAttributeInfo("status"),
         score: createAttributeInfo("score"),
@@ -98,6 +99,7 @@ function createAttributeInfoSource() {
             valuesProvider: () => [],
             type: "nominal",
         },
+        ...overrides,
     };
 
     return /** @type {any} */ ({
@@ -153,9 +155,9 @@ describe("sample attribute plot builders", () => {
             missingCount: 0,
             distinctCount: 3,
             categories: [
-                { value: "A", count: 2, share: 0.5 },
-                { value: "B", count: 1, share: 0.25 },
-                { value: "C", count: 1, share: 0.25 },
+                { value: "A", count: 2, share: 0.5, color: "#111111" },
+                { value: "B", count: 1, share: 0.25, color: "#222222" },
+                { value: "C", count: 1, share: 0.25, color: "#333333" },
             ],
             groups: [
                 {
@@ -188,6 +190,61 @@ describe("sample attribute plot builders", () => {
             },
         ]);
         expect(plot.spec.data).toEqual({ name: "hierarchy_barplot" });
+    });
+
+    it("omits category colors when the scale range is not explicit", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const attributeInfo = createAttributeInfo("status");
+        attributeInfo.scale = {
+            domain: () => ["A", "B", "C"],
+        };
+        const attributeInfoSource = createAttributeInfoSource({
+            status: attributeInfo,
+        });
+
+        const plot = buildHierarchyBarplot({
+            attributeInfo,
+            sampleHierarchy,
+            attributeInfoSource,
+        });
+
+        expect(plot.characterization.kind).toBe("category_counts");
+        if (plot.characterization.kind !== "category_counts") {
+            throw new Error("Expected category counts characterization.");
+        }
+        expect(plot.characterization.categories).toEqual([
+            { value: "A", count: 2, share: 0.5 },
+            { value: "B", count: 1, share: 0.25 },
+            { value: "C", count: 1, share: 0.25 },
+        ]);
+    });
+
+    it("maps category colors using the plot color scale domain", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const attributeInfo = createAttributeInfo("status");
+        attributeInfo.scale = {
+            domain: () => ["C", "B", "A"],
+            range: () => ["#333333", "#222222", "#111111"],
+        };
+        const attributeInfoSource = createAttributeInfoSource({
+            status: attributeInfo,
+        });
+
+        const plot = buildHierarchyBarplot({
+            attributeInfo,
+            sampleHierarchy,
+            attributeInfoSource,
+        });
+
+        expect(plot.characterization.kind).toBe("category_counts");
+        if (plot.characterization.kind !== "category_counts") {
+            throw new Error("Expected category counts characterization.");
+        }
+        expect(plot.characterization.categories).toEqual([
+            { value: "A", count: 2, share: 0.5, color: "#111111" },
+            { value: "B", count: 1, share: 0.25, color: "#222222" },
+            { value: "C", count: 1, share: 0.25, color: "#333333" },
+        ]);
     });
 
     it("builds a boxplot renderable plot", () => {
@@ -253,6 +310,7 @@ describe("sample attribute plot builders", () => {
             yAttributeInfo: createAttributeInfo("size"),
             sampleHierarchy,
             attributeInfoSource,
+            colorScaleDomain: ["Group 1", "Group 2"],
             colorScaleRange: ["#f00", "#0f0", "#00f"],
         });
 
@@ -303,5 +361,57 @@ describe("sample attribute plot builders", () => {
                 range: ["#f00", "#0f0", "#00f"],
             },
         });
+    });
+
+    it("maps scatterplot group colors using the explicit color scale domain", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const attributeInfoSource = createAttributeInfoSource();
+        const plot = buildHierarchyScatterplot({
+            xAttributeInfo: createAttributeInfo("score"),
+            yAttributeInfo: createAttributeInfo("size"),
+            sampleHierarchy,
+            attributeInfoSource,
+            colorScaleDomain: ["Group 2", "Group 1"],
+            colorScaleRange: ["#0f0", "#f00"],
+        });
+
+        expect(plot.characterization.kind).toBe("quantitative_relationship");
+        if (plot.characterization.kind !== "quantitative_relationship") {
+            throw new Error("Expected relationship characterization.");
+        }
+        expect(plot.characterization.groups).toEqual([
+            { title: "Group 1", plottedPointCount: 2, color: "#f00" },
+            { title: "Group 2", plottedPointCount: 2, color: "#0f0" },
+        ]);
+        expect(plot.spec.encoding.color).toEqual({
+            field: "Group",
+            type: "nominal",
+            title: "Group",
+            scale: {
+                domain: ["Group 2", "Group 1"],
+                range: ["#0f0", "#f00"],
+            },
+        });
+    });
+
+    it("maps scatterplot group colors using the generated group domain", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const attributeInfoSource = createAttributeInfoSource();
+        const plot = buildHierarchyScatterplot({
+            xAttributeInfo: createAttributeInfo("score"),
+            yAttributeInfo: createAttributeInfo("size"),
+            sampleHierarchy,
+            attributeInfoSource,
+            colorScaleRange: ["#f00", "#0f0"],
+        });
+
+        expect(plot.characterization.kind).toBe("quantitative_relationship");
+        if (plot.characterization.kind !== "quantitative_relationship") {
+            throw new Error("Expected relationship characterization.");
+        }
+        expect(plot.characterization.groups).toEqual([
+            { title: "Group 1", plottedPointCount: 2, color: "#f00" },
+            { title: "Group 2", plottedPointCount: 2, color: "#0f0" },
+        ]);
     });
 });

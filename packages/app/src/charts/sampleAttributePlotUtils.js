@@ -1,14 +1,14 @@
 /**
- * Resolves the color range used for grouped sample scatterplots.
+ * Resolves the color scale used for grouped sample scatterplots.
  *
  * The grouped color palette is only useful when there is exactly one
  * categorical group attribute and that attribute already defines a non-
- * quantitative scale.
+ * quantitative scale with a concrete domain and string range.
  *
  * @param {import("../sampleView/sampleView.js").default} sampleView
- * @returns {string[] | undefined}
+ * @returns {{ domain: string[], range: string[] } | undefined}
  */
-export function getGroupColorRange(sampleView) {
+export function getGroupColorScale(sampleView) {
     if (sampleView.sampleHierarchy.groupMetadata.length !== 1) {
         return;
     }
@@ -25,9 +25,21 @@ export function getGroupColorRange(sampleView) {
     }
 
     const scale = attributeInfo.scale;
-    if (!scale || typeof scale.range !== "function") {
+    if (
+        !scale ||
+        typeof scale.domain !== "function" ||
+        typeof scale.range !== "function"
+    ) {
         return;
     }
 
-    return scale.range();
+    const domain = scale.domain();
+    const range = scale.range();
+    if (
+        Array.isArray(domain) &&
+        Array.isArray(range) &&
+        range.every((value) => typeof value === "string")
+    ) {
+        return { domain: domain.map(String), range };
+    }
 }

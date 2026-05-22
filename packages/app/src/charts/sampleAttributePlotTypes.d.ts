@@ -36,7 +36,12 @@ export interface CategoryCountsPlotCharacterization {
     nonMissingCount: number;
     missingCount: number;
     distinctCount: number;
-    categories: Array<{ value: unknown; count: number; share: number }>;
+    categories: Array<{
+        value: unknown;
+        count: number;
+        share: number;
+        color?: string;
+    }>;
     groups?: Array<{
         title: string;
         sampleCount: number;
@@ -120,6 +125,7 @@ export interface HierarchyScatterplotRequest {
     yAttributeInfo: AttributeInfo;
     sampleHierarchy: SampleHierarchy;
     attributeInfoSource: CompositeAttributeInfoSource;
+    colorScaleDomain?: string[];
     colorScaleRange?: string[];
 }
 

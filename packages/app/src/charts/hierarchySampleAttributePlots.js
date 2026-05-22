@@ -140,7 +140,7 @@ export function buildHierarchyBarplot(request) {
             xTitle,
             colorTitle: grouped ? categoryTitle : undefined,
             countFieldName,
-            categoryDomain,
+            colorScale,
             nonMissingCount,
             missingCount,
             groupSummaries,
@@ -267,10 +267,12 @@ export function buildHierarchyScatterplot(request) {
         },
     };
 
+    const colorScaleDomain = request.colorScaleDomain ?? groupDomain;
     const colorEncoding = buildColorEncoding(
         groupDomain,
         groupFieldName,
         groupTitle ?? "Group",
+        colorScaleDomain,
         request.colorScaleRange
     );
 
@@ -309,6 +311,7 @@ export function buildHierarchyScatterplot(request) {
             yAxisTitle,
             missingPairCount,
             groupSummaries,
+            colorScaleDomain,
             colorScaleRange: request.colorScaleRange,
         }),
     };
@@ -321,7 +324,7 @@ export function buildHierarchyScatterplot(request) {
  * @param {string} params.xTitle
  * @param {string | undefined} params.colorTitle
  * @param {string} params.countFieldName
- * @param {import("@genome-spy/core/spec/channel.js").Scalar[]} params.categoryDomain
+ * @param {import("@genome-spy/core/spec/scale.js").Scale} params.colorScale
  * @param {number} params.nonMissingCount
  * @param {number} params.missingCount
  * @param {Array<{
@@ -350,6 +353,11 @@ function buildCategoryCountsCharacterization(params) {
         params.nonMissingCount,
         params.missingCount
     );
+    const categories = addCategoryColors(
+        summary.categories,
+        params.colorScale.domain,
+        params.colorScale.range
+    );
 
     return {
         kind: "category_counts",
@@ -374,6 +382,7 @@ function buildCategoryCountsCharacterization(params) {
                 : {}),
         },
         ...summary,
+        categories,
         ...(params.grouped
             ? {
                   groups: params.groupSummaries.map((group) => ({
@@ -386,6 +395,49 @@ function buildCategoryCountsCharacterization(params) {
               }
             : {}),
     };
+}
+
+/**
+ * @param {Array<{ value: unknown; count: number; share: number }>} categories
+ * @param {unknown} domain
+ * @param {unknown} range
+ * @returns {Array<{ value: unknown; count: number; share: number; color?: string }>}
+ */
+function addCategoryColors(categories, domain, range) {
+    const colorsByCategory = createColorMap(domain, range);
+    if (!colorsByCategory) {
+        return categories;
+    }
+
+    return categories.map((category) => {
+        const color = colorsByCategory.get(category.value);
+        return color !== undefined ? { ...category, color } : category;
+    });
+}
+
+/**
+ * @param {unknown} domain
+ * @param {unknown} range
+ * @returns {Map<unknown, string> | undefined}
+ */
+function createColorMap(domain, range) {
+    if (
+        !Array.isArray(domain) ||
+        !Array.isArray(range) ||
+        !range.every((color) => typeof color === "string")
+    ) {
+        return;
+    }
+
+    /** @type {Map<unknown, string>} */
+    const colorsByValue = new Map();
+    domain.forEach((value, index) => {
+        const color = range[index];
+        if (typeof color === "string") {
+            colorsByValue.set(value, color);
+        }
+    });
+    return colorsByValue;
 }
 
 /**
@@ -442,6 +494,7 @@ function buildAttributeDistributionCharacterization(groupSummaries) {
  * @param {string} params.yAxisTitle
  * @param {number} params.missingPairCount
  * @param {Array<{ title: string, plottedPointCount: number }>} params.groupSummaries
+ * @param {string[] | undefined} params.colorScaleDomain
  * @param {string[] | undefined} params.colorScaleRange
  * @returns {import("./sampleAttributePlotTypes.d.ts").AttributeRelationshipPlotCharacterization}
  */
@@ -464,15 +517,33 @@ function buildAttributeRelationshipCharacterization(params) {
             : {}),
         ...(params.groupSummaries.length > 1
             ? {
-                  groups: params.groupSummaries.map((group, index) => ({
-                      ...group,
-                      ...(params.colorScaleRange?.[index]
-                          ? { color: params.colorScaleRange[index] }
-                          : {}),
-                  })),
+                  groups: addGroupColors(
+                      params.groupSummaries,
+                      params.colorScaleDomain,
+                      params.colorScaleRange
+                  ),
               }
             : {}),
     };
+}
+
+/**
+ * @template {{ title: string }} T
+ * @param {T[]} groups
+ * @param {string[] | undefined} domain
+ * @param {string[] | undefined} range
+ * @returns {Array<T & { color?: string }>}
+ */
+function addGroupColors(groups, domain, range) {
+    const colorsByGroup = createColorMap(domain, range);
+    if (!colorsByGroup) {
+        return groups;
+    }
+
+    return groups.map((group) => {
+        const color = colorsByGroup.get(group.title);
+        return color !== undefined ? { ...group, color } : group;
+    });
 }
 
 /**
@@ -570,6 +641,7 @@ function resolveCategoryScale(attributeInfo, categoryDomain) {
  * @param {string[]} groupDomain
  * @param {string} groupField
  * @param {string} groupTitle
+ * @param {string[] | undefined} colorScaleDomain
  * @param {string[] | undefined} colorScaleRange
  * @returns {import("@genome-spy/core/spec/channel.js").ColorDef | undefined}
  */
@@ -577,6 +649,7 @@ function buildColorEncoding(
     groupDomain,
     groupField,
     groupTitle,
+    colorScaleDomain,
     colorScaleRange
 ) {
     if (groupDomain.length === 0) {
@@ -588,7 +661,7 @@ function buildColorEncoding(
         type: "nominal",
         title: groupTitle,
         scale: {
-            domain: groupDomain,
+            domain: colorScaleDomain ?? groupDomain,
             ...(colorScaleRange ? { range: colorScaleRange } : {}),
         },
     };

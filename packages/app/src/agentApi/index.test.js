@@ -266,6 +266,7 @@ describe("createAgentApi", () => {
                             emphasizedName: "Diagnosis",
                             type: "nominal",
                             scale: {
+                                domain: () => ["AML", "ALL"],
                                 range: () => ["#ff0000", "#00ff00"],
                             },
                         };
@@ -350,6 +351,7 @@ describe("createAgentApi", () => {
         );
         expect(buildHierarchyScatterplot).toHaveBeenCalledWith(
             expect.objectContaining({
+                colorScaleDomain: ["AML", "ALL"],
                 colorScaleRange: ["#ff0000", "#00ff00"],
             })
         );
