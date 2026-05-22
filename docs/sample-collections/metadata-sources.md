@@ -305,7 +305,11 @@ APP_SCHEMA MetadataDef sources attributeWidth spacing labelFont labelFontSize la
 definitions or import wrappers. `MetadataSourceEntry` describes this allowed
 array entry shape, while `MetadataSourceDef` describes an inline source object.
 
+#### Source entries
+
 APP_SCHEMA MetadataSourceEntry
+
+#### Inline source objects
 
 APP_SCHEMA MetadataSourceDef
 
