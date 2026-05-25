@@ -3,6 +3,54 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
+
+### Bug Fixes
+
+* **app-agent:** explain missing selection aggregation op ([a7043df](https://github.com/genome-spy/genome-spy/commit/a7043df806ccbd81366418e59ac60a7b5bcb0fb5)) by @tuner
+* **app-agent:** include metadata colors in attribute summaries ([ee71984](https://github.com/genome-spy/genome-spy/commit/ee719846c0d44c6eb09ebacc40486e76f2c3d1c1)) by @tuner
+* **app-agent:** keep rejected tool output after volatile context ([91597a9](https://github.com/genome-spy/genome-spy/commit/91597a97569da855acf0a662183e7df98a7fa089)) by @tuner
+* **app-agent:** keep volatile context after history ([b3034c4](https://github.com/genome-spy/genome-spy/commit/b3034c48e10f61b5acb3f815eec005de3d39e06c)) by @tuner
+* **app-agent:** materialize chat summary set entries ([af4e28e](https://github.com/genome-spy/genome-spy/commit/af4e28e2d744ca84f3dbd4dac9b1039c6419831e)) by @tuner
+* **app-agent:** normalize local provider tool output ([e84bb50](https://github.com/genome-spy/genome-spy/commit/e84bb505b3e9f6e381e996e627386cd04ac47c1e)) by @tuner
+* **app-agent:** preserve logical brush attributes ([ca8e19d](https://github.com/genome-spy/genome-spy/commit/ca8e19d087f0c302b2dd35756466a3e1e4f135e4)) by @tuner
+* **app-agent:** remove clarification support ([e635540](https://github.com/genome-spy/genome-spy/commit/e635540282086fcfa204172943215f72550c8ee0)) by @tuner
+* **app-agent:** scope feature filters to derive metadata ([afa206f](https://github.com/genome-spy/genome-spy/commit/afa206ff5b3b06ec66fc03e1a9682144f0f79e12)) by @tuner
+* **app-agent:** split app agent subpath bundles ([ab374c0](https://github.com/genome-spy/genome-spy/commit/ab374c0f936006d646e4de671c7994b9bcf517bc)) by @tuner
+* **app-agent:** type narrow selection aggregation notes ([8f8480f](https://github.com/genome-spy/genome-spy/commit/8f8480f6c1cceb2d8f64acc73ba39f0e96434b77)) by @tuner
+* **app:** apply derived metadata scale defaults in actions ([ef27a7e](https://github.com/genome-spy/genome-spy/commit/ef27a7eb0da95ec2afa9335d7a6c647e403f58b3)) by @tuner
+* **app:** avoid materializing inferred metadata scales ([db6ae89](https://github.com/genome-spy/genome-spy/commit/db6ae8946389e2e45e5fe862a0724e911b18e6f7)) by @tuner
+* **app:** block sidebar zoom and pan interactions ([6b0a2be](https://github.com/genome-spy/genome-spy/commit/6b0a2be9be76438eb3ba3a050ab9c672d3b4b2f8)) by @tuner
+* **app:** include sample pane axes in zoom hit testing ([5d603c0](https://github.com/genome-spy/genome-spy/commit/5d603c0c20c1db080c65b34144fa9ea44d63f3fe)) by @tuner
+* **app:** keep threshold group titles aligned ([3648568](https://github.com/genome-spy/genome-spy/commit/3648568c9c11bfcaf002aa9b91309449623a6fb2)) by @tuner
+* **app:** tidy sample sidebar spacing ([9a3a568](https://github.com/genome-spy/genome-spy/commit/9a3a5683fce05db1b174e776de84e40da988d217)) by @tuner
+* **core:** adjust vertex placement in `link` mark for smoother curves ([2945b13](https://github.com/genome-spy/genome-spy/commit/2945b13f0d2ba7ba31804a5e64a1beb256eac978)) by @tuner
+* **core:** include semanticScore in encoded fields ([94cc799](https://github.com/genome-spy/genome-spy/commit/94cc799fcc95313f7b7924036d9358fe13127e0a)) by @tuner
+* **core:** keep axis lazy sources in minimal entrypoint ([03a91e5](https://github.com/genome-spy/genome-spy/commit/03a91e590de287550d4f77e399ce962dea920882)) by @tuner
+* **core:** make shared mark defaults fallback-only ([4a5a76a](https://github.com/genome-spy/genome-spy/commit/4a5a76a340df24be5605a1db8903186d16a0058a)) by @tuner
+* **core:** match Vega heatmap color scheme ([c6aad4e](https://github.com/genome-spy/genome-spy/commit/c6aad4e555a6d9e9abcfe0ffc7c72d5525b40cae)) by @tuner
+* **core:** repaint after physical canvas resize ([98ff4e5](https://github.com/genome-spy/genome-spy/commit/98ff4e54f8503f46cff48f79d925c7faa07822fa)) by @tuner
+* **core:** support scheme parameter objects ([a4fa58e](https://github.com/genome-spy/genome-spy/commit/a4fa58e44ed9e089a4cae0cd5556e290eba79155)) by @tuner
+* **core:** tolerate temporarily empty linked selections ([4e2e028](https://github.com/genome-spy/genome-spy/commit/4e2e028b55b2f308cdf5c70602cee9e10670da32)) by @tuner
+
+### Features
+
+* **app-agent:** add intent action type docs tool ([#376](https://github.com/genome-spy/genome-spy/issues/376)) ([10943f8](https://github.com/genome-spy/genome-spy/commit/10943f8afbde25935fdf2c703624154dbb14c91c)) by @tuner
+* **app-agent:** characterize sample attribute plots ([#371](https://github.com/genome-spy/genome-spy/issues/371)) ([ba35669](https://github.com/genome-spy/genome-spy/commit/ba3566955641ccceeb028423107741e3c91b2002)) by @tuner
+* **app-agent:** clarify selection aggregation summaries ([#373](https://github.com/genome-spy/genome-spy/issues/373)) ([f2c4d2c](https://github.com/genome-spy/genome-spy/commit/f2c4d2c980f5dc74bf04751cf452950b192dc506)) by @tuner
+* **app-agent:** dock agent chat panel ([#379](https://github.com/genome-spy/genome-spy/issues/379)) ([479b120](https://github.com/genome-spy/genome-spy/commit/479b120f74c66f4558f8ad679c7a32422e7abc33)) by @tuner
+* **app:** add histogram threshold comparison input ([703d69c](https://github.com/genome-spy/genome-spy/commit/703d69c2825b0f8aecbc8496421f616d5b5ecccf)) by @tuner
+* **app:** add metadata semantic types ([a05dee1](https://github.com/genome-spy/genome-spy/commit/a05dee16a010f8865f4351cb0905ca289dd5d34d)) by @tuner
+* **app:** derive metadata from feature-filtered interval aggregation ([#375](https://github.com/genome-spy/genome-spy/issues/375)) ([e778f4c](https://github.com/genome-spy/genome-spy/commit/e778f4cba92b68e9920a9f55519db78eced58e1d)) by @tuner
+* **app:** introduce experimental app-agent ([#368](https://github.com/genome-spy/genome-spy/issues/368)) ([429acd7](https://github.com/genome-spy/genome-spy/commit/429acd717ab35881231f9bd3d034bccbba4c9eaa)) by @tuner
+* **app:** retain categories by attribute condition ([#374](https://github.com/genome-spy/genome-spy/issues/374)) ([8446168](https://github.com/genome-spy/genome-spy/commit/844616822fb05f56d10f374a160365fabbf43f3a)) by @tuner
+* **app:** support custom threshold group titles ([93884c8](https://github.com/genome-spy/genome-spy/commit/93884c8dbc1e7d269551f7659805844406702c37)) by @tuner
+* **core:** add semantic descriptions to core specs ([df53c51](https://github.com/genome-spy/genome-spy/commit/df53c517b5f0c66dc74ae45405646eb5596b34d0)) by @tuner
+* **core:** add tabix TSV source ([6663f15](https://github.com/genome-spy/genome-spy/commit/6663f1510b0a28f7593485e69722162cf7347d28)) by @tuner
+* **core:** describe transform steps ([bdf601f](https://github.com/genome-spy/genome-spy/commit/bdf601ff6edab69774912beeb6453ad3f0089e8e)) by @tuner
+* **core:** handle concat gaps during zoom and pan ([b9c587b](https://github.com/genome-spy/genome-spy/commit/b9c587bf8f6af3b8b4c2077ad93dca79bdfc7177)) by @tuner
+* surface metadata descriptions ([82ed12f](https://github.com/genome-spy/genome-spy/commit/82ed12f52410de42b26b01124a810c37ef900955)) by @tuner
+
 # [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
 
 ### Bug Fixes

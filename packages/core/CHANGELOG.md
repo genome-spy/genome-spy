@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
+
+### Bug Fixes
+
+* **core:** adjust vertex placement in `link` mark for smoother curves ([2945b13](https://github.com/genome-spy/genome-spy/commit/2945b13f0d2ba7ba31804a5e64a1beb256eac978)) by @tuner
+* **core:** include semanticScore in encoded fields ([94cc799](https://github.com/genome-spy/genome-spy/commit/94cc799fcc95313f7b7924036d9358fe13127e0a)) by @tuner
+* **core:** keep axis lazy sources in minimal entrypoint ([03a91e5](https://github.com/genome-spy/genome-spy/commit/03a91e590de287550d4f77e399ce962dea920882)) by @tuner
+* **core:** make shared mark defaults fallback-only ([4a5a76a](https://github.com/genome-spy/genome-spy/commit/4a5a76a340df24be5605a1db8903186d16a0058a)) by @tuner
+* **core:** match Vega heatmap color scheme ([c6aad4e](https://github.com/genome-spy/genome-spy/commit/c6aad4e555a6d9e9abcfe0ffc7c72d5525b40cae)) by @tuner
+* **core:** repaint after physical canvas resize ([98ff4e5](https://github.com/genome-spy/genome-spy/commit/98ff4e54f8503f46cff48f79d925c7faa07822fa)) by @tuner
+* **core:** support scheme parameter objects ([a4fa58e](https://github.com/genome-spy/genome-spy/commit/a4fa58e44ed9e089a4cae0cd5556e290eba79155)) by @tuner
+* **core:** tolerate temporarily empty linked selections ([4e2e028](https://github.com/genome-spy/genome-spy/commit/4e2e028b55b2f308cdf5c70602cee9e10670da32)) by @tuner
+
+### Features
+
+* **core:** add semantic descriptions to core specs ([df53c51](https://github.com/genome-spy/genome-spy/commit/df53c517b5f0c66dc74ae45405646eb5596b34d0)) by @tuner
+* **core:** add tabix TSV source ([6663f15](https://github.com/genome-spy/genome-spy/commit/6663f1510b0a28f7593485e69722162cf7347d28)) by @tuner
+* **core:** describe transform steps ([bdf601f](https://github.com/genome-spy/genome-spy/commit/bdf601ff6edab69774912beeb6453ad3f0089e8e)) by @tuner
+* **core:** handle concat gaps during zoom and pan ([b9c587b](https://github.com/genome-spy/genome-spy/commit/b9c587bf8f6af3b8b4c2077ad93dca79bdfc7177)) by @tuner
+* surface metadata descriptions ([82ed12f](https://github.com/genome-spy/genome-spy/commit/82ed12f52410de42b26b01124a810c37ef900955)) by @tuner
+
 # [0.75.0](https://github.com/genome-spy/genome-spy/compare/v0.74.0...v0.75.0) (2026-03-27)
 
 ### Bug Fixes

@@ -9,7 +9,7 @@
   "contributors": [],
   "license": "MIT",
   "homepage": "https://genomespy.app/",
-  "version": "0.75.0",
+  "version": "0.76.0",
   "main": "dist/index.es.js",
   "module": "dist/index.es.js",
   "type": "module",
@@ -47,11 +47,12 @@
     "@fortawesome/fontawesome-free": "^6.4.2",
     "@fortawesome/fontawesome-svg-core": "^6.4.2",
     "@fortawesome/free-solid-svg-icons": "^6.4.2",
-    "@genome-spy/core": "^0.75.0",
+    "@genome-spy/core": "^0.76.0",
     "ajv": "^8.18.0",
     "lit": "^3.3.0"
   },
   "devDependencies": {
+    "@genome-spy/app": "^0.76.0",
     "@reduxjs/toolkit": "^2.11.0"
   },
   "peerDependencies": {
