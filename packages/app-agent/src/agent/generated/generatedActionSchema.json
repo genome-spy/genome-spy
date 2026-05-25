@@ -464,7 +464,7 @@
           "anyOf": [
             {
               "$ref": "#/definitions/Scale",
-              "description": "Scale definition for the (default) color channel"
+              "description": "Color scale for metadata cells."
             },
             {
               "type": "null"
@@ -1272,22 +1272,22 @@
       "properties": {
         "barScale": {
           "$ref": "#/definitions/Scale",
-          "description": "An optional scale definition for mapping the attribute to the width of a metadata rectangle."
+          "description": "Scale for mapping quantitative values to metadata cell width."
         },
         "description": {
-          "description": "A description of the metadata attribute. Can be used for documentation and to explain the meaning of the column.",
+          "description": "User-facing description of the metadata attribute.",
           "type": "string"
         },
         "scale": {
           "$ref": "#/definitions/Scale",
-          "description": "Scale definition for the (default) color channel"
+          "description": "Color scale for metadata cells."
         },
         "semanticType": {
           "$ref": "#/definitions/SampleAttributeSemanticType",
-          "description": "Optional domain-specific semantics for agent guidance and specialized UI."
+          "description": "Domain-specific meaning of the metadata attribute."
         },
         "title": {
-          "description": "The title of the attribute. Defaults to attribute name.",
+          "description": "Attribute label shown in the metadata header.\n\nIf omitted, the attribute name is used.",
           "type": "string"
         },
         "type": {
@@ -1295,7 +1295,7 @@
           "description": "The attribute type. One of `\"nominal\"`, `\"ordinal\"`, or `\"quantitative\"`."
         },
         "visible": {
-          "description": "Whether the attribute is visible by default.",
+          "description": "Whether the attribute is visible when the view opens.",
           "type": "boolean"
         },
         "width": {
