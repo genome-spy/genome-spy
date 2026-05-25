@@ -33,7 +33,7 @@ def _parse_responses_response(payload: dict[str, Any]) -> ProviderResponse:
     tool_calls = _extract_function_calls(output)
     if tool_calls:
         text = _extract_output_text(output, allow_missing=True)
-        if _looks_like_structured_response(text):
+        if _looks_like_structured_response(text) or _looks_like_tool_markup(text):
             text = ""
         logger.debug(
             "Provider extracted tool calls from Responses API: %r",
@@ -170,11 +170,36 @@ def _parse_tool_arguments(arguments: Any) -> Any:
     """Decode stringified tool arguments when possible."""
     if isinstance(arguments, str):
         try:
-            return json.loads(arguments)
+            return _parse_nested_tool_argument_json(json.loads(arguments))
         except Exception:
             return arguments
 
-    return arguments
+    return _parse_nested_tool_argument_json(arguments)
+
+
+def _parse_nested_tool_argument_json(value: Any) -> Any:
+    """Decode nested JSON object or array strings in tool arguments."""
+    if isinstance(value, dict):
+        return {
+            key: _parse_nested_tool_argument_json(item) for key, item in value.items()
+        }
+
+    if isinstance(value, list):
+        return [_parse_nested_tool_argument_json(item) for item in value]
+
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped.startswith(("{", "[")):
+            return value
+
+        # oMLX/Qwen may serialize one structured parameter, such as a domain
+        # array, as a JSON string inside an otherwise valid arguments object.
+        try:
+            return _parse_nested_tool_argument_json(json.loads(stripped))
+        except Exception:
+            return value
+
+    return value
 
 
 def _load_json_content(content: str, allow_repair: bool = False) -> Any:
@@ -308,6 +333,18 @@ def _looks_like_structured_response(text: str) -> bool:
         or stripped.startswith("[")
         or stripped.startswith("```")
         or re.match(r'^"[^"]+"\s*:', stripped) is not None
+    )
+
+
+def _looks_like_tool_markup(text: str) -> bool:
+    """Return whether text appears to be XML-style tool-call markup."""
+    stripped = text.lstrip()
+    # oMLX/Qwen can surface its chat-template tool-call markup as text in
+    # addition to structured function-call items. Treat it as internal.
+    return bool(stripped) and (
+        stripped.startswith("<tool_call")
+        or stripped.startswith("<function=")
+        or "</tool_call>" in stripped
     )
 
 

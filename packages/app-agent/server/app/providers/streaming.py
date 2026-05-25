@@ -10,6 +10,7 @@ from app.models import ProviderResponse, ProviderStreamEvent, ToolCall
 from app.providers.parsing import (
     _classify_stream_text,
     _looks_like_structured_response,
+    _looks_like_tool_markup,
     _parse_tool_arguments,
 )
 
@@ -155,10 +156,10 @@ def _extract_stream_text(payload: Any, event_name: str) -> str:
         return ""
 
     if isinstance(payload.get("delta"), str):
-        return payload["delta"]
+        return _normalize_stream_text_delta(payload["delta"])
 
     if isinstance(payload.get("text"), str):
-        return payload["text"]
+        return _normalize_stream_text_delta(payload["text"])
 
     choices = payload.get("choices")
     if isinstance(choices, list) and choices:
@@ -167,22 +168,30 @@ def _extract_stream_text(payload: Any, event_name: str) -> str:
             delta = first_choice.get("delta")
             if isinstance(delta, dict):
                 if isinstance(delta.get("content"), str):
-                    return delta["content"]
+                    return _normalize_stream_text_delta(delta["content"])
                 if isinstance(delta.get("text"), str):
-                    return delta["text"]
+                    return _normalize_stream_text_delta(delta["text"])
 
             if event_name.startswith("response.output_text"):
                 message = first_choice.get("message")
                 if isinstance(message, dict):
                     content = message.get("content")
                     if isinstance(content, str):
-                        return content
+                        return _normalize_stream_text_delta(content)
 
     content = payload.get("content")
     if isinstance(content, str):
-        return content
+        return _normalize_stream_text_delta(content)
 
     return ""
+
+
+def _normalize_stream_text_delta(text: str) -> str:
+    """Suppress provider-internal text formats from streamed prose."""
+    if _looks_like_tool_markup(text):
+        return ""
+
+    return text
 
 
 def _extract_stream_reasoning(payload: Any, event_name: str) -> str:
@@ -198,9 +207,6 @@ def _extract_stream_reasoning(payload: Any, event_name: str) -> str:
 
     if isinstance(payload.get("reasoning_summary"), str):
         return payload["reasoning_summary"]
-
-    if "reasoning" in event_name and isinstance(payload.get("delta"), str):
-        return payload["delta"]
 
     choices = payload.get("choices")
     if isinstance(choices, list) and choices:
