@@ -35,6 +35,8 @@ export default class ChatStreamElement extends LitElement {
             border: none;
             background: transparent;
             border-left-width: 0;
+
+            margin-bottom: 0.5em;
         }
 
         .assistant-body {

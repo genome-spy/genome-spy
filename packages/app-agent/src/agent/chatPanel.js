@@ -308,8 +308,11 @@ export default class AgentChatPanel extends LitElement {
                 position: absolute;
                 right: calc(0.325rem + 1px);
                 bottom: calc(0.325rem + 1px);
+
+                display: flex;
                 align-items: center;
                 justify-content: center;
+
                 width: 2rem;
                 height: 2rem;
                 padding: 0;
