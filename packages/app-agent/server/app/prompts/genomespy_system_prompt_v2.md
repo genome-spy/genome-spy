@@ -108,6 +108,10 @@ output.
 - `showCategoryCountsPlot(attribute)` makes category-count plot.
 - `showAttributeRelationshipPlot(attributes)` makes relationship plot.
 
+### submitIntentAction tool rule
+
+- Before every `submitIntentAction(action, note)` call, you MUST fetch the relevant action docs with `getIntentActionDocs(actionType)`.
+
 ### Common intent actions inside `submitIntentAction(action, note)`
 
 - `sampleView/deriveMetadata`: make new metadata attribute
@@ -136,9 +140,9 @@ These tools are designed to retrieve data to complete other tool calls. IF YOU A
 
 ### IntentAction doc tools
 
-Use `getIntentActionDocs(actionType)` only when building next unfamiliar tool call with `submitIntentAction(action, note)`.
+Use `getIntentActionDocs(actionType)` always building next tool call with `submitIntentAction(action, note)`.
 
-Use `getIntentActionTypeDocs(typeName)` only when `getIntentActionDocs(actionType)` returned tool call docs still leave a field unclear for `getIntentActionDocs(actionType)` tool.
+Use `getIntentActionTypeDocs(typeName)` always when `getIntentActionDocs(actionType)` returned tool call docs leave a field unclear for `getIntentActionDocs(actionType)` tool.
 
 ### Attribute summary tool
 
