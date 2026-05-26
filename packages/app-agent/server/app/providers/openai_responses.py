@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +25,10 @@ from app.providers.parsing import (
 from app.providers.streaming import iter_provider_stream_events
 
 logger = logging.getLogger(__name__)
+EMPTY_FINAL_ANSWER_RETRY_DELAY_SECONDS = 1.0
+EMPTY_FINAL_ANSWER_MAX_RETRIES = 1
+RATE_LIMIT_RETRY_FALLBACK_DELAY_SECONDS = 2.0
+RATE_LIMIT_MAX_RETRIES = 1
 PREFLIGHT_LOG_PATH = Path(
     os.environ.get(
         "GENOMESPY_AGENT_PREFLIGHT_LOG_PATH",
@@ -87,19 +93,72 @@ class OpenAIResponsesProvider(BaseProvider):
                 is invalid.
         """
         payload = self._build_payload(request)
-        response = await self._post_response(payload)
-        response_json = _load_response_json(response)
+        total_attempts = max(
+            EMPTY_FINAL_ANSWER_MAX_RETRIES,
+            RATE_LIMIT_MAX_RETRIES,
+        )
+        for attempt in range(total_attempts + 1):
+            try:
+                response = await self._post_response(payload)
+                response_json = _load_response_json(response)
 
-        logger.debug(
-            "Provider raw outer response from Responses API: %r",
-            response.text,
-        )
-        response_payload = _parse_responses_response(response_json)
-        logger.debug(
-            "Provider parsed response from Responses API: %r",
-            response_payload.model_dump(),
-        )
-        return response_payload
+                logger.debug(
+                    "Provider raw outer response from Responses API: %r",
+                    response.text,
+                )
+                try:
+                    response_payload = _parse_responses_response(response_json)
+                except ProviderError as exc:
+                    if _is_empty_final_answer_error(exc):
+                        logger.warning(
+                            "Provider returned an empty final answer from non-streaming Responses API payload: output_text=%r output=%r",
+                            _truncate_logged_content(
+                                response_json.get("output_text", "")
+                                if isinstance(
+                                    response_json.get("output_text"), str
+                                )
+                                else ""
+                            ),
+                            _truncate_logged_content(
+                                json.dumps(
+                                    response_json.get("output", []),
+                                    ensure_ascii=False,
+                                )
+                            ),
+                        )
+                        if attempt < EMPTY_FINAL_ANSWER_MAX_RETRIES:
+                            logger.warning(
+                                "Retrying non-streaming provider request after empty final answer (attempt %d/%d).",
+                                attempt + 1,
+                                EMPTY_FINAL_ANSWER_MAX_RETRIES + 1,
+                            )
+                            await asyncio.sleep(
+                                EMPTY_FINAL_ANSWER_RETRY_DELAY_SECONDS
+                            )
+                            continue
+                    raise
+                logger.debug(
+                    "Provider parsed response from Responses API: %r",
+                    response_payload.model_dump(),
+                )
+                return response_payload
+            except ProviderError as exc:
+                retry_delay_seconds = _get_rate_limit_retry_delay_seconds(exc)
+                if (
+                    retry_delay_seconds is not None
+                    and attempt < RATE_LIMIT_MAX_RETRIES
+                ):
+                    logger.warning(
+                        "Retrying non-streaming provider request after rate limit (attempt %d/%d, delay %.3fs).",
+                        attempt + 1,
+                        RATE_LIMIT_MAX_RETRIES + 1,
+                        retry_delay_seconds,
+                    )
+                    await asyncio.sleep(retry_delay_seconds)
+                    continue
+                raise
+
+        raise AssertionError("Unreachable provider retry state.")
 
     async def generate_stream(
         self, request: ProviderRequest
@@ -117,30 +176,76 @@ class OpenAIResponsesProvider(BaseProvider):
                 is invalid.
         """
         payload = self._build_payload(request, stream=True)
-        async with httpx.AsyncClient(timeout=self._settings.timeout_seconds) as client:
-            try:
-                async with client.stream(
-                    "POST",
-                    self._endpoint,
-                    json=payload,
-                    headers=_build_auth_headers(self._settings),
-                ) as response:
-                    await _raise_for_error_response(
-                        response, self._settings, self._endpoint
+        total_attempts = max(
+            EMPTY_FINAL_ANSWER_MAX_RETRIES,
+            RATE_LIMIT_MAX_RETRIES,
+        )
+        for attempt in range(total_attempts + 1):
+            yielded_substantive_event = False
+            async with httpx.AsyncClient(
+                timeout=self._settings.timeout_seconds
+            ) as client:
+                try:
+                    async with client.stream(
+                        "POST",
+                        self._endpoint,
+                        json=payload,
+                        headers=_build_auth_headers(self._settings),
+                    ) as response:
+                        await _raise_for_error_response(
+                            response, self._settings, self._endpoint
+                        )
+                        async for event in iter_provider_stream_events(
+                            response,
+                            parse_provider_response_text=_parse_provider_response_text,
+                            normalize_provider_text=_normalize_provider_text,
+                            truncate_logged_content=_truncate_logged_content,
+                        ):
+                            if event.type != "heartbeat":
+                                yielded_substantive_event = True
+                            yield event
+                    return
+                except httpx.ReadTimeout as exc:
+                    raise _provider_request_failed(self._settings, exc) from exc
+                except Exception as exc:
+                    retry_delay_seconds = (
+                        _get_rate_limit_retry_delay_seconds(exc)
+                        if isinstance(exc, ProviderError)
+                        else None
                     )
-                    async for event in iter_provider_stream_events(
-                        response,
-                        parse_provider_response_text=_parse_provider_response_text,
-                        normalize_provider_text=_normalize_provider_text,
-                        truncate_logged_content=_truncate_logged_content,
+                    if (
+                        retry_delay_seconds is not None
+                        and not yielded_substantive_event
+                        and attempt < RATE_LIMIT_MAX_RETRIES
                     ):
-                        yield event
-            except httpx.ReadTimeout as exc:
-                raise _provider_request_failed(self._settings, exc) from exc
-            except Exception as exc:
-                if isinstance(exc, ProviderError):
-                    raise
-                raise _provider_request_failed(self._settings, exc) from exc
+                        logger.warning(
+                            "Retrying streaming provider request after rate limit (attempt %d/%d, delay %.3fs).",
+                            attempt + 1,
+                            RATE_LIMIT_MAX_RETRIES + 1,
+                            retry_delay_seconds,
+                        )
+                        await asyncio.sleep(retry_delay_seconds)
+                        continue
+                    if (
+                        isinstance(exc, ProviderError)
+                        and _is_empty_final_answer_error(exc)
+                        and not yielded_substantive_event
+                        and attempt < EMPTY_FINAL_ANSWER_MAX_RETRIES
+                    ):
+                        logger.warning(
+                            "Retrying streaming provider request after empty final answer (attempt %d/%d).",
+                            attempt + 1,
+                            EMPTY_FINAL_ANSWER_MAX_RETRIES + 1,
+                        )
+                        await asyncio.sleep(
+                            EMPTY_FINAL_ANSWER_RETRY_DELAY_SECONDS
+                        )
+                        continue
+                    if isinstance(exc, ProviderError):
+                        raise
+                    raise _provider_request_failed(self._settings, exc) from exc
+
+        raise AssertionError("Unreachable provider retry state.")
 
     @property
     def _endpoint(self) -> str:
@@ -234,6 +339,38 @@ def _build_auth_headers(settings: Settings) -> dict[str, str]:
         "authorization": "Bearer " + settings.api_key,
         "content-type": "application/json",
     }
+
+
+def _is_empty_final_answer_error(error: ProviderError) -> bool:
+    """Detect relay errors caused by an upstream empty final answer."""
+    return "empty final answer" in str(error)
+
+
+def _get_rate_limit_retry_delay_seconds(
+    error: ProviderError,
+) -> float | None:
+    """Parse a safe retry delay from a provider rate-limit error."""
+    message = str(error)
+    if "HTTP 429" not in message and "rate limit" not in message.lower():
+        return None
+
+    seconds_match = re.search(
+        r"Please try again in\s+([0-9]+(?:\.[0-9]+)?)s",
+        message,
+        re.IGNORECASE,
+    )
+    if seconds_match:
+        return float(seconds_match.group(1))
+
+    milliseconds_match = re.search(
+        r"Please try again in\s+([0-9]+(?:\.[0-9]+)?)ms",
+        message,
+        re.IGNORECASE,
+    )
+    if milliseconds_match:
+        return float(milliseconds_match.group(1)) / 1000.0
+
+    return RATE_LIMIT_RETRY_FALLBACK_DELAY_SECONDS
 
 
 def _provider_request_failed(settings: Settings, exc: Exception) -> ProviderError:

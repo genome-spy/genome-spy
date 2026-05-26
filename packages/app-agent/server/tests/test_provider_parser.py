@@ -1,4 +1,7 @@
+import pytest
+
 from app.models import ProviderResponse, ToolCall
+from app.providers import ProviderError
 from app.providers.parsing import (
     _classify_stream_text,
     _parse_provider_response_text,
@@ -51,6 +54,26 @@ def test_parse_responses_response_falls_back_to_raw_text() -> None:
     response = _parse_responses_response(payload)
 
     assert response == ProviderResponse(type="answer", message="not json")
+
+
+def test_parse_responses_response_rejects_empty_answer_payload() -> None:
+    payload = {
+        "output": [
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": '{"type":"answer","message":""}',
+                    }
+                ],
+            }
+        ]
+    }
+
+    with pytest.raises(ProviderError, match="empty final answer"):
+        _parse_responses_response(payload)
 
 
 def test_parse_responses_response_accepts_answer_json_code_fence() -> None:
@@ -369,6 +392,16 @@ def test_parse_provider_response_text_uses_last_fenced_json_block() -> None:
         type="answer",
         message="The parsed copy should win.",
     )
+
+
+def test_parse_provider_response_text_rejects_empty_plain_answer() -> None:
+    with pytest.raises(ProviderError, match="empty final answer"):
+        _parse_provider_response_text("   ")
+
+
+def test_parse_provider_response_text_rejects_empty_structured_fallback() -> None:
+    with pytest.raises(ProviderError, match="empty final answer"):
+        _parse_provider_response_text('{"type": ', allow_repair=True)
 
 
 def test_extract_stream_text_returns_text_deltas() -> None:

@@ -58,7 +58,13 @@ def _parse_provider_response_text(
 ) -> ProviderResponse:
     """Parse provider text as structured output or plain prose."""
     if not _looks_like_structured_response(text):
-        return ProviderResponse(type="answer", message=_normalize_provider_text(text))
+        return ProviderResponse(
+            type="answer",
+            message=_require_non_empty_answer_message(
+                _normalize_provider_text(text),
+                _truncate_logged_content(text),
+            ),
+        )
 
     try:
         return _parse_provider_response_payload(
@@ -68,7 +74,13 @@ def _parse_provider_response_text(
         # Some local OpenAI-compatible models ignore structured-output hints.
         # Treat plain prose as a usable read-only answer instead of failing
         # the entire chat turn.
-        return ProviderResponse(type="answer", message=_normalize_provider_text(text))
+        return ProviderResponse(
+            type="answer",
+            message=_require_non_empty_answer_message(
+                _normalize_provider_text(text),
+                _truncate_logged_content(text),
+            ),
+        )
 
 
 def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderResponse:
@@ -78,15 +90,33 @@ def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderRespons
     except Exception as exc:
         raise ProviderError("Provider response did not match the PoC schema.") from exc
 
+    normalized_message = (
+        _normalize_provider_text(response.message)
+        if response.message is not None
+        else None
+    )
+    if response.type == "answer":
+        normalized_message = _require_non_empty_answer_message(
+            normalized_message,
+            _truncate_logged_content(json.dumps(payload, ensure_ascii=False)),
+        )
+
     return ProviderResponse(
         type=response.type,
-        message=(
-            _normalize_provider_text(response.message)
-            if response.message is not None
-            else None
-        ),
+        message=normalized_message,
         tool_calls=response.tool_calls,
     )
+
+
+def _require_non_empty_answer_message(
+    message: str | None, logged_source: str
+) -> str:
+    """Require answer responses to carry non-empty text."""
+    if isinstance(message, str) and message:
+        return message
+
+    logger.warning("Provider returned an empty final answer: %r", logged_source)
+    raise ProviderError("Provider returned an empty final answer.")
 
 
 def _ensure_object_payload(payload: Any) -> dict[str, Any]:
