@@ -2,7 +2,7 @@
  * Maximum number of rejected tool-call rounds allowed per user turn when the
  * agent keeps varying the payload.
  */
-export const MAX_REJECTED_TOOL_CALL_RETRIES = 4;
+export const MAX_REJECTED_TOOL_CALL_RETRIES = 8;
 
 /**
  * Maximum number of consecutive repeats of the exact same successful tool-call
@@ -15,7 +15,7 @@ export const MAX_REPEATED_SUCCESS_TOOL_CALL_REPEATS = 2;
  * Maximum number of consecutive repeats of the exact same rejected tool-call
  * signature before the loop is stopped early.
  */
-export const MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS = 1;
+export const MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS = 2;
 
 /**
  * @typedef {import("./types.d.ts").AgentToolCall} AgentToolCall
