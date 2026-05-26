@@ -75,6 +75,8 @@ type ZoomToScaleDomain = NumericDomain | AgentChromosomalLocus[];
 /**
  * Expand a collapsed view branch in the agent context. The result is only
  * visible in the context and not observable by the user.
+ * @toolKind do
+ * @toolSubkind context
  *
  * @example
  * {
@@ -93,6 +95,8 @@ export interface ExpandViewNodeToolInput {
 
 /**
  * Collapse a previously expanded view branch in the agent context.
+ * @toolKind do
+ * @toolSubkind context
  *
  * @example
  * {
@@ -111,6 +115,8 @@ export interface CollapseViewNodeToolInput {
 
 /**
  * Set the visibility of a view. This is a user-facing change that will be reflected in the UI.
+ * @toolKind do
+ * @toolSubkind state_change
  *
  * @example
  * {
@@ -139,6 +145,8 @@ export interface SetViewVisibilityToolInput {
  * Consult provenance history first when a request should continue from an
  * earlier analysis state, even if the user did not explicitly ask to jump
  * back.
+ * @toolKind do
+ * @toolSubkind state_change
  *
  * @example
  * {
@@ -176,6 +184,8 @@ export interface JumpToProvenanceStateToolInput {
  * this tool with `scope: "visible_groups"` for the attribute to report.
  * In the response, `categories` are always sorted by size and do not reflect
  * metadata order.
+ * @toolKind know
+ * @toolSubkind study
  *
  * @example
  * {
@@ -206,6 +216,8 @@ export interface GetAttributeSummaryToolInput {
  * List compact current sample groups by level or parent path. Use before
  * group-specific actions such as `removeGroup`. The response includes an
  * interpretation guide.
+ * @toolKind know
+ * @toolSubkind study
  *
  * @example
  * {
@@ -248,6 +260,8 @@ export interface GetSampleGroupsToolInput {
  * `featureFilter` for a `SELECTION_AGGREGATION` candidate and the compact
  * `selectionAggregation.fields[].filterableFields` metadata is not enough.
  * The field must be copied from that candidate's `filterableFields`.
+ * @toolKind know
+ * @toolSubkind study
  *
  * @example
  * {
@@ -276,6 +290,8 @@ export interface GetSelectionFeatureFieldSummaryToolInput {
  * similarity alone. Exact case-insensitive matches are preferred. A bounded
  * Levenshtein fallback may return typo-tolerant matches when exact matching
  * finds nothing. This does not query metadata sources.
+ * @toolKind know
+ * @toolSubkind find
  *
  * @example
  * {
@@ -293,6 +309,8 @@ export interface ResolveMetadataAttributeValuesToolInput {
 /**
  * Search datum objects in the view identified by the selector. Carefully choose
  * the most relevant view from `searchableViews` or if unsure, query them all.
+ * @toolKind know
+ * @toolSubkind find
  *
  * @example
  * {
@@ -333,6 +351,8 @@ export interface SearchViewDatumsToolInput {
  * before constructing an unfamiliar action payload for `submitIntentAction`.
  * This tool doesn't execute the action or mutate any state. Do not repeat
  * the call if documentation is already available in the conversation history.
+ * @toolKind know
+ * @toolSubkind learn
  *
  * @example
  * {
@@ -351,6 +371,8 @@ export interface GetIntentActionDocsToolInput {
  * this when `getIntentActionDocs` shows a complex `payloadFields[].type` that
  * is not clear from examples alone. This tool does not execute actions or
  * mutate state.
+ * @toolKind know
+ * @toolSubkind learn
  *
  * @example
  * {
@@ -378,6 +400,8 @@ export interface GetIntentActionTypeDocsToolInput {
  * view tree. Scales are not addressed with view selectors.
  * Zooming only changes the user-visible viewport. You cannot use it for
  * analysis purposes.
+ * @toolKind do
+ * @toolSubkind state_change
  *
  * @example
  * {
@@ -412,6 +436,8 @@ export interface ZoomToScaleToolInput {
  * In addition, before constructing the action, ensure that every `attribute`
  * (AttributeIdentifier) is presented to you in the context or tool results.
  * The tool response may include `agentNotes` that guide you in the workflow.
+ * @toolKind do
+ * @toolSubkind state_change
  *
  * @example
  * {
@@ -444,6 +470,8 @@ export interface SubmitIntentActionToolInput {
  * Use this tool when the user asks for a bar plot, counts, or category
  * distribution. When current sample groups are present, the x-axis shows
  * those groups and colors show the counted attribute categories.
+ * @toolKind do
+ * @toolSubkind plot
  *
  * @example
  * {
@@ -464,6 +492,8 @@ export interface ShowCategoryCountsPlotToolInput {
  * Show a quantitative distribution plot in the chat transcript.
  * Current sample groups are shown on the x-axis and the quantitative
  * attribute is shown on the y-axis.
+ * @toolKind do
+ * @toolSubkind plot
  *
  * @example
  * {
@@ -489,6 +519,8 @@ export interface ShowAttributeDistributionPlotToolInput {
 /**
  * Show a scatterplot comparing two quantitative sample attributes. When
  * sample groups are present, point colors show those groups.
+ * @toolKind do
+ * @toolSubkind plot
  *
  * @example
  * {

@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
     buildResponsesToolDefinitions,
@@ -5,11 +8,30 @@ import {
     listAgentTools,
     validateToolArgumentsShape,
 } from "./toolCatalog.js";
+import { TOOL_KINDS, TOOL_SUBKINDS } from "./toolCategories.js";
+
+const agentDir = path.dirname(fileURLToPath(import.meta.url));
+const systemPromptPath = path.resolve(
+    agentDir,
+    "../../server/app/prompts/genomespy_system_prompt.md"
+);
 
 describe("toolCatalog", () => {
     it("exposes the generated agent tools", () => {
         const tools = listAgentTools();
         const toolNames = tools.map((entry) => entry.toolName);
+        const submitIntentAction = tools.find(
+            (entry) => entry.toolName === "submitIntentAction"
+        );
+        const searchViewDatums = tools.find(
+            (entry) => entry.toolName === "searchViewDatums"
+        );
+        const getIntentActionDocs = tools.find(
+            (entry) => entry.toolName === "getIntentActionDocs"
+        );
+        const expandViewNode = tools.find(
+            (entry) => entry.toolName === "expandViewNode"
+        );
 
         expect(new Set(toolNames).size).toBe(toolNames.length);
         expect(toolNames).toContain("jumpToProvenanceState");
@@ -22,6 +44,22 @@ describe("toolCatalog", () => {
         expect(toolNames).toContain("submitIntentAction");
         expect(toolNames).not.toContain("submitIntentActions");
         expect(toolNames).not.toContain("buildSelectionAggregationAttribute");
+        expect(submitIntentAction).toMatchObject({
+            kind: "do",
+            subkind: "state_change",
+        });
+        expect(searchViewDatums).toMatchObject({
+            kind: "know",
+            subkind: "find",
+        });
+        expect(getIntentActionDocs).toMatchObject({
+            kind: "know",
+            subkind: "learn",
+        });
+        expect(expandViewNode).toMatchObject({
+            kind: "do",
+            subkind: "context",
+        });
     });
 
     it("builds Responses API function tool definitions", () => {
@@ -126,12 +164,30 @@ describe("toolCatalog", () => {
                 },
             },
         });
+        expect(submitIntentAction?.description).toBe(
+            "Execute one provenance-changing action. Category: Do tool, subkind: state change."
+        );
+        expect(getIntentActionDocs?.description).toBe(
+            "Read documentation, fields, and examples for one intent action. Category: Know tool, subkind: learn."
+        );
         expect(
             JSON.stringify(showAttributeRelationshipPlot.parameters)
         ).toContain("Do not treat either attribute as a grouping variable.");
         expect(JSON.stringify(toolDefinitions)).not.toContain(
             "AgentIntentBatchStep"
         );
+    });
+
+    it("keeps prompt category names aligned with tool metadata", () => {
+        const prompt = readFileSync(systemPromptPath, "utf8");
+
+        for (const kind of TOOL_KINDS) {
+            expect(prompt).toContain("`" + kind + "`");
+        }
+
+        for (const subkind of TOOL_SUBKINDS) {
+            expect(prompt).toContain("`" + subkind + "`");
+        }
     });
 
     it("validates tool arguments against the generated schema", () => {

@@ -38,6 +38,11 @@ Know tools have three kinds:
 2. Learn tools: learn how to call tool or action right way.
 3. Study tools: summarize data or make plot to ground answer.
 
+Exact tool category names in tool definitions use:
+
+- `kind`: `do` or `know`
+- `subkind`: `context`, `state_change`, `plot`, `find`, `learn`, or `study`
+
 ## Workflow plan step clarification
 
 1. One step = one atomic unit = one Do tool call (Learn tools excluded!!).
@@ -97,6 +102,11 @@ describe the meaning of the view.
 
 These tools do something visible. They change state or make visible analysis
 output.
+
+### Context do tools
+
+- `expandViewNode(selector)` changes only agent context.
+- `collapseViewNode(selector)` changes only agent context.
 
 ### State-change do tools
 

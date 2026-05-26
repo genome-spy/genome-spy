@@ -6,6 +6,10 @@ import generatedActionCatalog from "./generated/generatedActionCatalog.json" wit
 import { validateSubmitIntentActionToolShape } from "./submitIntentActionValidator.js";
 import { formatAjvErrors } from "./validationErrorFormatter.js";
 import { repairJsonEncodedObjects } from "./schemaJsonRepair.js";
+import {
+    formatToolKindLabel,
+    formatToolSubkindLabel,
+} from "./toolCategories.js";
 
 // These generated artifacts are derived from agentToolInputs.d.ts and are the
 // runtime source for tool descriptions, validation, and Responses API shapes.
@@ -193,7 +197,11 @@ function getToolParameters(inputType) {
  * @returns {string}
  */
 function formatToolDescription(entry) {
-    return entry.description;
+    return (
+        entry.description +
+        ` Category: ${formatToolKindLabel(entry.kind)}, ` +
+        `subkind: ${formatToolSubkindLabel(entry.subkind)}.`
+    );
 }
 
 /**

@@ -63,6 +63,14 @@ export type {
 
 export type AgentActionType = GeneratedAgentActionType;
 export type IntentSubmissionKind = "user" | "agent" | "bookmark";
+export type AgentToolKind = "do" | "know";
+export type AgentToolSubkind =
+    | "context"
+    | "state_change"
+    | "plot"
+    | "find"
+    | "learn"
+    | "study";
 
 /** Metadata for a single generated catalog field. */
 export interface AgentPayloadField {
@@ -127,6 +135,12 @@ export interface AgentActionCatalogEntry {
 export interface AgentToolCatalogEntry {
     /** Stable tool name. */
     toolName: string;
+
+    /** Canonical top-level tool kind used in prompts and tool listings. */
+    kind: AgentToolKind;
+
+    /** Canonical tool subkind used in prompts and tool listings. */
+    subkind: AgentToolSubkind;
 
     /** User-facing tool description. */
     description: string;

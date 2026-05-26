@@ -9,6 +9,10 @@ import {
     parseExamples,
     readJsDoc,
 } from "./generateAgentCatalogDocHelpers.mjs";
+import {
+    isToolKind,
+    isToolSubkind,
+} from "../src/agent/toolCategories.js";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const packageDir = path.resolve(scriptDir, "..");
@@ -143,6 +147,31 @@ function getToolInputsInterface(sourceFile) {
 }
 
 /**
+ * @param {Array<{ name: string, comment: string }>} tags
+ * @returns {{ kind: import("../src/agent/toolCategories.js").ToolKind, subkind: import("../src/agent/toolCategories.js").ToolSubkind }}
+ */
+function parseToolCategoryTags(tags) {
+    const kindTag = tags.find((tag) => tag.name === "toolKind");
+    const subkindTag = tags.find((tag) => tag.name === "toolSubkind");
+    const kind = kindTag?.comment.trim() ?? "";
+    const subkind = subkindTag?.comment.trim() ?? "";
+
+    if (!isToolKind(kind)) {
+        throw new Error(
+            "Each agent tool input must define a valid @toolKind tag."
+        );
+    }
+
+    if (!isToolSubkind(subkind)) {
+        throw new Error(
+            "Each agent tool input must define a valid @toolSubkind tag."
+        );
+    }
+
+    return { kind, subkind };
+}
+
+/**
  * @param {ts.SourceFile} sourceFile
  * @returns {Promise<import("../src/agent/types.js").AgentToolCatalogEntry[]>}
  */
@@ -173,10 +202,13 @@ export async function createGeneratedToolCatalog() {
         }
 
         const { summary, tags } = readJsDoc(inputNode);
+        const { kind, subkind } = parseToolCategoryTags(tags);
         const exampleInput = parseExamples(tags)[0] ?? {};
 
         generatedToolCatalog.push({
             toolName,
+            kind,
+            subkind,
             description: firstSentence(summary) || summary,
             inputType,
             inputFields: ts.isInterfaceDeclaration(inputNode)
