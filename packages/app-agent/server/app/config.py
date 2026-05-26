@@ -42,7 +42,7 @@ def load_default_system_prompt() -> str:
     trims surrounding whitespace before returning it.
     """
     return resources.files(__package__).joinpath(
-        "prompts/genomespy_system_prompt.md"
+        "prompts/genomespy_system_prompt_v2.md"
     ).read_text(encoding="utf-8").strip()
 
 
