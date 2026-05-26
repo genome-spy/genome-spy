@@ -115,7 +115,7 @@ function selectSearchAccessors(view, field) {
         );
     }
 
-    if (field === undefined || field === "") {
+    if (field === undefined || field === "*") {
         return accessors;
     }
 

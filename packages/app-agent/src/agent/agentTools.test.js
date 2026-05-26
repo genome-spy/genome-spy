@@ -974,7 +974,7 @@ describe("agentTools", () => {
         });
     });
 
-    it("searches all configured fields when field is empty", () => {
+    it("searches all configured fields when field is a wildcard", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
 
@@ -984,7 +984,7 @@ describe("agentTools", () => {
                 view: "gene-track",
             },
             query: "breast cancer 1",
-            field: "",
+            field: "*",
             mode: "exact",
         });
 
@@ -1073,7 +1073,7 @@ describe("agentTools", () => {
                 view: "gene-track",
             },
             query: "breast",
-            field: "",
+            field: "*",
             mode: "prefix",
         });
 
@@ -1108,7 +1108,7 @@ describe("agentTools", () => {
                     view: "track",
                 },
                 query: "TP53",
-                field: "",
+                field: "*",
                 mode: "exact",
             })
         ).toThrow(ToolCallRejectionError);

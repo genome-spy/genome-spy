@@ -1874,10 +1874,10 @@
     },
     "SearchViewDatumsToolInput": {
       "additionalProperties": false,
-      "description": "Search datum objects in one specific searchable view.",
+      "description": "Search datum objects in the view identified by the selector. Carefully choose the most relevant view from `searchableViews` or if unsure, query them all.",
       "examples": [
         {
-          "field": "",
+          "field": "*",
           "mode": "exact",
           "query": "TP53",
           "selector": {
@@ -1888,7 +1888,7 @@
       ],
       "properties": {
         "field": {
-          "description": "Search field name. Use an empty string to search all configured fields.",
+          "description": "Search field name. Use `*` to search all configured fields.",
           "type": "string"
         },
         "mode": {

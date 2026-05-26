@@ -249,7 +249,8 @@ export interface ResolveMetadataAttributeValuesToolInput {
 }
 
 /**
- * Search datum objects in one specific searchable view.
+ * Search datum objects in the view identified by the selector. Carefully choose
+ * the most relevant view from `searchableViews` or if unsure, query them all.
  *
  * @example
  * {
@@ -258,7 +259,7 @@ export interface ResolveMetadataAttributeValuesToolInput {
  *     "view": "gene-track"
  *   },
  *   "query": "TP53",
- *   "field": "",
+ *   "field": "*",
  *   "mode": "exact"
  * }
  */
@@ -274,7 +275,7 @@ export interface SearchViewDatumsToolInput {
     query: string;
 
     /**
-     * Search field name. Use an empty string to search all configured fields.
+     * Search field name. Use `*` to search all configured fields.
      */
     field: string;
 
