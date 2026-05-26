@@ -87,6 +87,8 @@ async function main() {
             ? await startAppServer(options.agentUrl)
             : undefined;
     const appUrl = options.appUrl ?? defaultAppUrl;
+    const resolvedModelName =
+        (await fetchAgentServerModelName(options.agentUrl)) ?? options.modelName;
     const agentModuleBaseUrl = new URL(
         "/@fs" + path.join(repoRoot, "packages", "app-agent", "src") + "/",
         appUrl
@@ -139,7 +141,7 @@ async function main() {
                         turnMode: options.turnMode,
                         autoContinueText: options.autoContinueText,
                         maxFollowups: options.maxFollowups,
-                        modelName: options.modelName,
+                        modelName: resolvedModelName,
                     });
                     results.push(result);
                     caseResults.push(result);
@@ -172,7 +174,7 @@ async function main() {
                     {
                         suite: suite.visualizationId ?? path.basename(options.caseFile),
                         caseFile: path.relative(repoRoot, options.caseFile),
-                        model: options.modelName,
+                        model: resolvedModelName,
                         generatedAt: new Date().toISOString(),
                         results,
                         summary: suiteResult,
@@ -188,7 +190,7 @@ async function main() {
                 suiteSummaryPath,
                 renderSuiteSummaryMarkdown(
                     suite,
-                    options,
+                    { ...options, modelName: resolvedModelName },
                     results,
                     suiteResult
                 )
@@ -3808,6 +3810,24 @@ async function waitForHttpOk(url, child) {
     }
 
     throw new Error(`Timed out while waiting for ${url}`);
+}
+
+/**
+ * @param {string} agentUrl
+ * @returns {Promise<string | null>}
+ */
+async function fetchAgentServerModelName(agentUrl) {
+    try {
+        const response = await fetch(agentUrl + "/v1/server-info");
+        if (!response.ok) {
+            return null;
+        }
+
+        const payload = await response.json();
+        return typeof payload?.model === "string" ? payload.model : null;
+    } catch {
+        return null;
+    }
 }
 
 /**

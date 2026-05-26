@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 
 from app.config import Settings, describe_api_key_for_logs, load_settings
 from app.models import (
+    AgentServerInfoResponse,
     AgentTurnRequest,
     AgentTurnResponse,
     ProviderRequest,
@@ -95,6 +96,18 @@ def get_provider() -> BaseProvider:
 async def health() -> dict[str, str]:
     """Return the relay health status."""
     return {"status": "ok"}
+
+
+@app.get("/v1/server-info", response_model=AgentServerInfoResponse)
+async def server_info() -> AgentServerInfoResponse:
+    """Return the relay's active model configuration for diagnostics."""
+    settings = get_settings()
+    return AgentServerInfoResponse(
+        status="ok",
+        model=settings.model,
+        base_url=settings.base_url,
+        streamingEnabled=settings.enable_streaming,
+    )
 
 
 @app.post(
@@ -301,4 +314,3 @@ def _encode_sse_event(event_name: str, payload: dict[str, object]) -> str:
         + json.dumps(payload, ensure_ascii=False)
         + "\n\n"
     )
-

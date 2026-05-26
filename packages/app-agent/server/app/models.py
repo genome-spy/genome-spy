@@ -69,6 +69,17 @@ class AgentTurnResponse(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list, alias="toolCalls")
 
 
+class AgentServerInfoResponse(BaseModel):
+    """Describe the relay's current runtime configuration for diagnostics."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    status: Literal["ok"]
+    model: str
+    base_url: str
+    streaming_enabled: bool = Field(alias="streamingEnabled")
+
+
 class ProviderResponse(BaseModel):
     """Represent the normalized provider response used inside the relay."""
 
