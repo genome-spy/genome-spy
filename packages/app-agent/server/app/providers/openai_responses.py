@@ -29,6 +29,12 @@ EMPTY_FINAL_ANSWER_RETRY_DELAY_SECONDS = 1.0
 EMPTY_FINAL_ANSWER_MAX_RETRIES = 1
 RATE_LIMIT_RETRY_FALLBACK_DELAY_SECONDS = 2.0
 RATE_LIMIT_MAX_RETRIES = 1
+PROVIDER_ERROR_PAYLOAD_LOG_PATH = Path(
+    os.environ.get(
+        "GENOMESPY_AGENT_PROVIDER_ERROR_PAYLOAD_LOG_PATH",
+        "/tmp/genomespy-agent-provider-error-payload.log",
+    )
+)
 PREFLIGHT_LOG_PATH = Path(
     os.environ.get(
         "GENOMESPY_AGENT_PREFLIGHT_LOG_PATH",
@@ -401,6 +407,18 @@ async def _raise_for_error_response(
         response.status_code,
         body_preview,
     )
+    if response.status_code >= 500:
+        _append_provider_error_payload_log(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "endpoint": endpoint,
+                "status": response.status_code,
+                "model": settings.model,
+                "baseUrl": settings.base_url,
+                "responseBody": body_preview,
+                "requestBody": _safe_json_loads(response.request.content),
+            }
+        )
     raise ProviderError(
         "Provider returned HTTP "
         + str(response.status_code)
@@ -449,3 +467,29 @@ def _log_provider_auth_diagnostic(
         describe_api_key_for_logs(settings.api_key),
         settings.api_key != settings.api_key.strip(),
     )
+
+
+def _append_provider_error_payload_log(payload: dict[str, Any]) -> None:
+    """Append one upstream-500 payload snapshot for later debugging."""
+    PROVIDER_ERROR_PAYLOAD_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with PROVIDER_ERROR_PAYLOAD_LOG_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False, indent=2))
+        handle.write("\n")
+        handle.write("=" * 80)
+        handle.write("\n")
+
+
+def _safe_json_loads(value: bytes | str | None) -> Any:
+    """Best-effort decode of request content for provider error logging."""
+    if value is None:
+        return None
+
+    text = (
+        value.decode("utf-8", errors="replace")
+        if isinstance(value, bytes)
+        else value
+    )
+    try:
+        return json.loads(text)
+    except Exception:
+        return _truncate_logged_content(text)
