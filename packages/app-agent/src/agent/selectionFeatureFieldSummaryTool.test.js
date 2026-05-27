@@ -23,11 +23,19 @@ describe("getSelectionFeatureFieldSummaryTool", () => {
             candidateId: "brush@track:VAF",
             field: "CADD",
             dataType: "quantitative",
+            valueLevel: "raw_feature",
+            grouping: "pooled_across_samples",
+            interpretation:
+                "Values are raw feature values pooled across samples in the selected interval. Counts describe features, not samples.",
             featureCount: 3,
             min: 2,
             max: 6,
             mean: 4,
         });
+        expect(result.content).not.toHaveProperty("featuresPerSample");
+        expect(result.content).not.toHaveProperty("featureCoordinates");
+        expect(result.text).toContain("pooled raw feature values");
+        expect(result.text).toContain("3 features");
     });
 
     it("rejects fields outside the candidate filterableFields", () => {

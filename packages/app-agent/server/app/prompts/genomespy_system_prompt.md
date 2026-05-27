@@ -159,12 +159,12 @@ answer it.
 
 ### Selection feature field summary tool
 
-Use `getSelectionFeatureFieldSummary(candidateId, field)` to know what data from the selected interval can be aggregated per sample, which aggregations are supported, or which raw fields can be filtered/sorted/grouped.
+Use `getSelectionFeatureFieldSummary(candidateId, field)` to inspect raw feature values inside the selected interval before per-sample aggregation. Its value summary is pooled across samples, so category counts and numeric distributions describe features, not samples.
 
 This tool fetches the raw values existing inside selected interval before
 you build filtered `SELECTION_AGGREGATION` for `submitIntentAction(action, note)`.
 
-DO NOT EXPECT THAT THE FIELD MATCHES EXACTLY WHAT WAS DEFINED IN USER PROPMT. CHOOSE BEST MATCHING AVAILABLE FIELD FOR USER MEANING. DO NOT STOP BECAUSE NAMES DIFFER!
+DO NOT EXPECT THAT THE FIELD MATCHES EXACTLY WHAT WAS DEFINED IN USER PROMPT. CHOOSE BEST MATCHING AVAILABLE FIELD FOR USER MEANING. DO NOT STOP BECAUSE NAMES DIFFER!
 
 ### Attribute value resolution tool
 

@@ -76,6 +76,10 @@ export function getSelectionFeatureFieldSummaryTool(runtime, input) {
         candidateId: input.candidateId,
         field: input.field,
         dataType: filterField.dataType,
+        valueLevel: "raw_feature",
+        grouping: "pooled_across_samples",
+        interpretation:
+            "Values are raw feature values pooled across samples in the selected interval. Counts describe features, not samples.",
         ...(filterField.description
             ? { description: filterField.description }
             : {}),
@@ -87,11 +91,13 @@ export function getSelectionFeatureFieldSummaryTool(runtime, input) {
 
     return {
         text:
-            "Summarized raw feature field " +
+            "Summarized pooled raw feature values for field " +
             input.field +
-            " for selection aggregation candidate " +
+            " from " +
+            values.length +
+            " features for selection aggregation candidate " +
             input.candidateId +
-            ".",
+            ". Counts describe features, not samples.",
         content,
     };
 }

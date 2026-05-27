@@ -201,9 +201,10 @@ export interface GetAttributeSummaryToolInput {
 }
 
 /**
- * Summarize one raw feature field inside a selected interval before per-sample
- * aggregation. Use this when choosing a `featureFilter` for a
- * `SELECTION_AGGREGATION` candidate and the compact
+ * Summarize one raw feature field inside a selected interval before
+ * per-sample aggregation. Values are pooled across samples, and counts are
+ * raw feature counts rather than sample counts. Use this when choosing a
+ * `featureFilter` for a `SELECTION_AGGREGATION` candidate and the compact
  * `selectionAggregation.fields[].filterableFields` metadata is not enough.
  * The field must be copied from that candidate's `filterableFields`.
  *
