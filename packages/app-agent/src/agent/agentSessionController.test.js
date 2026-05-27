@@ -1311,7 +1311,7 @@ describe("createAgentSessionController", () => {
         consoleError.mockRestore();
     });
 
-    it("stops promptly when the same rejected tool call repeats", async () => {
+    it("pauses when the same rejected tool call repeats", async () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
         const observedHistories = [];
@@ -1356,9 +1356,15 @@ describe("createAgentSessionController", () => {
         controller.subscribe(() => {});
 
         await controller.open();
-        await controller.sendMessage(
+        const sendPromise = controller.sendMessage(
             "I cannot see the reference sequence in the visualization."
         );
+        await vi.waitFor(() => {
+            expect(controller.getSnapshot().loopRecovery).toEqual({
+                message:
+                    "The agent repeated the same rejected tool call after validation failure.",
+            });
+        });
 
         const snapshot = controller.getSnapshot();
         expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(3);
@@ -1372,21 +1378,20 @@ describe("createAgentSessionController", () => {
                         message.rejected === true
                 )
         ).toBe(true);
-        expect(snapshot.status).toBe("error");
-        expect(snapshot.lastError).toBe(
-            "The agent repeated the same rejected tool call after validation failure."
+        expect(snapshot.status).toBe("awaiting_user_decision");
+        expect(snapshot.pendingRequest?.message).toBe(
+            "I cannot see the reference sequence in the visualization."
         );
+        expect(snapshot.lastError).toBe("");
         expect(
-            snapshot.messages.some(
-                (message) =>
-                    message.kind === "error" &&
-                    message.text ===
-                        "The agent repeated the same rejected tool call after validation failure."
-            )
-        ).toBe(true);
+            snapshot.messages.some((message) => message.kind === "error")
+        ).toBe(false);
+
+        controller.stopCurrentTurn();
+        await sendPromise;
     });
 
-    it("stops promptly when the same successful tool call repeats", async () => {
+    it("lets the agent recover from an initial repeated successful tool call", async () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
         const observedHistories = [];
@@ -1482,6 +1487,67 @@ describe("createAgentSessionController", () => {
         ).toBe(true);
     });
 
+    it("pauses before processing a repeated successful tool call that exceeds the loop guard", async () => {
+        const runtime = createRuntimeMock();
+        let agentTurnCallCount = 0;
+        runtime.requestAgentTurn.mockImplementation((message) => {
+            agentTurnCallCount += 1;
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 9,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: `call-${agentTurnCallCount}`,
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector: {
+                                    scope: [],
+                                    view: "reference-sequence",
+                                },
+                                visibility: true,
+                            },
+                        },
+                    ],
+                },
+                trace: {
+                    totalMs: 10,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        const sendPromise = controller.sendMessage(
+            "Make the reference sequence visible."
+        );
+        await vi.waitFor(() => {
+            expect(controller.getSnapshot().loopRecovery).toEqual({
+                message:
+                    "The agent repeated the same tool call without converging.",
+            });
+        });
+
+        expect(controller.getSnapshot().status).toBe("awaiting_user_decision");
+
+        controller.stopCurrentTurn();
+        await sendPromise;
+    });
+
     it("allows several varied rejected tool calls before stopping on budget", async () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;
@@ -1525,23 +1591,190 @@ describe("createAgentSessionController", () => {
         controller.subscribe(() => {});
 
         await controller.open();
-        await controller.sendMessage(
+        const sendPromise = controller.sendMessage(
             "I cannot see the reference sequence in the visualization."
         );
+        await vi.waitFor(() => {
+            expect(controller.getSnapshot().loopRecovery).toEqual({
+                message:
+                    "The agent produced too many rejected tool calls without converging.",
+            });
+        });
 
         const snapshot = controller.getSnapshot();
         expect(runtime.requestAgentTurn).toHaveBeenCalledTimes(6);
-        expect(snapshot.status).toBe("error");
-        expect(snapshot.lastError).toBe(
-            "The agent produced too many rejected tool calls without converging."
+        expect(snapshot.status).toBe("awaiting_user_decision");
+        expect(snapshot.lastError).toBe("");
+        expect(
+            snapshot.messages.some((message) => message.kind === "error")
+        ).toBe(false);
+
+        controller.stopCurrentTurn();
+        await sendPromise;
+    });
+
+    it("continues by processing the interrupted tool call", async () => {
+        const runtime = createRuntimeMock();
+        let agentTurnCallCount = 0;
+        runtime.requestAgentTurn.mockImplementation((message) => {
+            agentTurnCallCount += 1;
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 9,
+                    },
+                });
+            }
+
+            if (agentTurnCallCount <= 4) {
+                return Promise.resolve({
+                    response: {
+                        type: "tool_call",
+                        message: "I will update visibility.",
+                        toolCalls: [
+                            {
+                                callId: `call-${agentTurnCallCount}`,
+                                name: "setViewVisibility",
+                                arguments: {
+                                    selector: {
+                                        scope: [],
+                                        view: "reference-sequence",
+                                    },
+                                    visibility: true,
+                                },
+                            },
+                        ],
+                    },
+                    trace: {
+                        totalMs: 10,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "answer",
+                    message: "Done after continuing.",
+                },
+                trace: {
+                    totalMs: 10,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        const sendPromise = controller.sendMessage(
+            "Make the reference sequence visible."
         );
+        await vi.waitFor(() => {
+            expect(controller.getSnapshot().loopRecovery).not.toBeNull();
+        });
+
+        expect(runtime.setViewVisibility).toHaveBeenCalledTimes(1);
+
+        controller.continueCurrentTurn();
+        await sendPromise;
+
+        expect(runtime.setViewVisibility).toHaveBeenCalledTimes(2);
+        const snapshot = controller.getSnapshot();
+        expect(snapshot.status).toBe("ready");
+        expect(snapshot.pendingRequest).toBeNull();
+        expect(snapshot.loopRecovery).toBeNull();
         expect(
             snapshot.messages.some(
                 (message) =>
-                    message.kind === "error" &&
-                    message.text ===
-                        "The agent produced too many rejected tool calls without converging."
+                    message.kind === "assistant" &&
+                    message.text === "Done after continuing."
             )
+        ).toBe(true);
+    });
+
+    it("stops a paused loop and allows a later user message", async () => {
+        const runtime = createRuntimeMock();
+        let agentTurnCallCount = 0;
+        runtime.requestAgentTurn.mockImplementation((message) => {
+            agentTurnCallCount += 1;
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 9,
+                    },
+                });
+            }
+
+            if (message === "Start over.") {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "New message accepted.",
+                    },
+                    trace: {
+                        totalMs: 10,
+                    },
+                });
+            }
+
+            return Promise.resolve({
+                response: {
+                    type: "tool_call",
+                    message: "I will update visibility.",
+                    toolCalls: [
+                        {
+                            callId: `call-${agentTurnCallCount}`,
+                            name: "setViewVisibility",
+                            arguments: {
+                                selector:
+                                    '{"scope":[],"view":"reference-sequence"}',
+                                visibility: "true",
+                            },
+                        },
+                    ],
+                },
+                trace: {
+                    totalMs: 10,
+                },
+            });
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        const firstSendPromise = controller.sendMessage(
+            "I cannot see the reference sequence in the visualization."
+        );
+        await vi.waitFor(() => {
+            expect(controller.getSnapshot().loopRecovery).not.toBeNull();
+        });
+
+        controller.stopCurrentTurn();
+        await firstSendPromise;
+
+        expect(controller.getSnapshot().status).toBe("ready");
+        expect(controller.getSnapshot().pendingRequest).toBeNull();
+        expect(controller.getSnapshot().loopRecovery).toBeNull();
+
+        await controller.sendMessage("Start over.");
+
+        expect(
+            controller
+                .getSnapshot()
+                .messages.some(
+                    (message) =>
+                        message.kind === "assistant" &&
+                        message.text === "New message accepted."
+                )
         ).toBe(true);
     });
 

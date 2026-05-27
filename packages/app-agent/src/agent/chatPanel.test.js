@@ -37,6 +37,7 @@ function createSnapshot(messages) {
         pendingResponsePlaceholder: "",
         queuedMessageCount: 0,
         lastError: "",
+        loopRecovery: null,
         lastResponseDurationMs: null,
         expandedViewNodeKeys: [],
     };
@@ -51,6 +52,8 @@ function createController(snapshot) {
         sendMessage: vi.fn(),
         queueMessage: vi.fn(),
         refreshPreflight: vi.fn(),
+        continueCurrentTurn: vi.fn(),
+        stopCurrentTurn: vi.fn(),
     };
 }
 
@@ -170,6 +173,53 @@ describe("gs-agent-chat-panel", () => {
         expect(controller.sendMessage).toHaveBeenCalledWith(
             "Summarize this view"
         );
+
+        panel.remove();
+    });
+
+    it("renders agent loop recovery controls", async () => {
+        const panel = document.createElement("gs-agent-chat-panel");
+        const snapshot = {
+            ...createSnapshot([{ id: 1, kind: "user", text: "Do the thing" }]),
+            status: "awaiting_user_decision",
+            pendingRequest: {
+                message: "Do the thing",
+            },
+            loopRecovery: {
+                message:
+                    "The agent produced too many rejected tool calls without converging.",
+            },
+        };
+        const controller = createController(snapshot);
+
+        panel.controller = controller;
+        document.body.append(panel);
+        await panel.updateComplete;
+
+        const transcriptRecovery = panel.shadowRoot.querySelector(
+            ".transcript .loop-recovery"
+        );
+        const recovery = panel.shadowRoot.querySelector(
+            ".composer .loop-recovery"
+        );
+        const textarea = panel.shadowRoot.querySelector(".composer textarea");
+
+        expect(transcriptRecovery).toBeNull();
+        expect(recovery).toBeTruthy();
+        expect(textarea).toBeNull();
+        expect(recovery.textContent).toContain("The agent appears to be stuck");
+        expect(recovery.textContent).toContain(
+            "The agent produced too many rejected tool calls without converging."
+        );
+
+        const buttons = Array.from(recovery.querySelectorAll("button"));
+        buttons
+            .find((button) => button.textContent.trim() === "Continue")
+            .click();
+        buttons.find((button) => button.textContent.trim() === "Stop").click();
+
+        expect(controller.continueCurrentTurn).toHaveBeenCalledTimes(1);
+        expect(controller.stopCurrentTurn).toHaveBeenCalledTimes(1);
 
         panel.remove();
     });

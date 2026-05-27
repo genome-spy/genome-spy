@@ -76,13 +76,14 @@ import { agentTools } from "./agentTools.js";
  * }} AgentChatMessage
  *
  * @typedef {{
- *     status: "ready" | "preflighting" | "thinking" | "executing" | "unavailable" | "error";
+ *     status: "ready" | "preflighting" | "thinking" | "executing" | "unavailable" | "error" | "awaiting_user_decision";
  *     preflightState: "idle" | "running" | "ready" | "failed";
  *     messages: AgentChatMessage[];
  *     pendingRequest: { message: string, messageId: number } | null;
  *     pendingResponsePlaceholder: string;
  *     queuedMessageCount: number;
  *     lastError: string;
+ *     loopRecovery: { message: string } | null;
  *     lastResponseDurationMs: number | null;
  *     expandedViewNodeKeys: string[];
  * }} AgentSessionSnapshot
@@ -206,6 +207,7 @@ export class AgentSessionController {
             pendingResponsePlaceholder: "",
             queuedMessageCount: 0,
             lastError: "",
+            loopRecovery: null,
             lastResponseDurationMs: null,
             expandedViewNodeKeys: [],
         };
@@ -228,6 +230,8 @@ export class AgentSessionController {
         this.#activeRequestAbortController = null;
         /** @type {Set<number>} */
         this.#cancelledTurnIds = new Set();
+        /** @type {((decision: "continue" | "stop") => void) | null} */
+        this.#loopRecoveryDecision = null;
         this.#runtime.expandViewNode = (selector) =>
             this.expandViewNode(selector);
         this.#runtime.collapseViewNode = (selector) =>
@@ -272,6 +276,9 @@ export class AgentSessionController {
 
     /** @type {Set<number>} */
     #cancelledTurnIds;
+
+    /** @type {((decision: "continue" | "stop") => void) | null} */
+    #loopRecoveryDecision;
 
     /**
      * @param {(snapshot: AgentSessionSnapshot) => void} listener
@@ -332,6 +339,7 @@ export class AgentSessionController {
         this.#preflightPromise = null;
         this.#state.preflightState = "idle";
         this.#state.status = "ready";
+        this.#state.loopRecovery = null;
         this.#notify();
         await this.#ensurePreflight(true);
     }
@@ -430,6 +438,7 @@ export class AgentSessionController {
             this.#queuedMessages = [];
             this.#state.queuedMessageCount = 0;
             this.#state.pendingResponsePlaceholder = "";
+            this.#state.loopRecovery = null;
             this.#notify();
             return;
         }
@@ -439,6 +448,9 @@ export class AgentSessionController {
             this.#cancelledTurnIds.add(turnId);
         }
 
+        const resolveDecision = this.#loopRecoveryDecision;
+        this.#loopRecoveryDecision = null;
+        resolveDecision?.("stop");
         this.#activeRequestAbortController?.abort();
         this.#activeRequestAbortController = null;
         this.#queuedMessages = [];
@@ -447,10 +459,28 @@ export class AgentSessionController {
         this.#state.pendingResponsePlaceholder = "";
         this.#state.status = "ready";
         this.#state.lastError = "";
+        this.#state.loopRecovery = null;
         this.#resetActiveTurnDraft(turnId ?? -1);
         this.#clearActiveTurn(turnId ?? -1);
         this.#notify();
         void this.#drainQueue();
+    }
+
+    /**
+     * Continues a paused loop by processing the interrupted tool call.
+     */
+    continueCurrentTurn() {
+        if (!this.#state.loopRecovery || !this.#loopRecoveryDecision) {
+            return;
+        }
+
+        const resolveDecision = this.#loopRecoveryDecision;
+        this.#loopRecoveryDecision = null;
+        this.#state.loopRecovery = null;
+        this.#state.pendingResponsePlaceholder = "Working...";
+        this.#state.status = "executing";
+        this.#notify();
+        resolveDecision("continue");
     }
 
     /**
@@ -528,6 +558,7 @@ export class AgentSessionController {
         this.#state.preflightState = "running";
         this.#state.status = "preflighting";
         this.#state.lastError = "";
+        this.#state.loopRecovery = null;
         this.#notify();
 
         const preflightPromise = this.#runPreflight();
@@ -610,6 +641,7 @@ export class AgentSessionController {
         this.#state.pendingResponsePlaceholder = "Working...";
         this.#state.status = "thinking";
         this.#state.lastError = "";
+        this.#state.loopRecovery = null;
         this.#state.lastResponseDurationMs = null;
         this.#notify();
 
@@ -686,15 +718,22 @@ export class AgentSessionController {
                     ) {
                         const errorMessage =
                             "The agent repeated the same rejected tool call after validation failure.";
-                        this.#markActiveTurnError(turnId);
-                        this.#appendMessage({
-                            kind: "error",
-                            text: errorMessage,
-                        });
-                        this.#state.status = "error";
-                        this.#state.lastError = errorMessage;
-                        this.#notify();
-                        return;
+                        const decision =
+                            await this.#waitForLoopRecoveryDecision(
+                                turnId,
+                                errorMessage
+                            );
+                        if (
+                            decision === "stop" ||
+                            this.#isTurnCancelled(turnId)
+                        ) {
+                            return;
+                        }
+
+                        rejectedToolCallRounds = 0;
+                        lastToolCallSignature = "";
+                        lastToolCallWasRejected = false;
+                        repeatedToolCallRounds = 0;
                     }
                 } else if (isRepeatedToolCall) {
                     if (
@@ -712,15 +751,22 @@ export class AgentSessionController {
                     } else {
                         const errorMessage =
                             "The agent repeated the same tool call without converging.";
-                        this.#markActiveTurnError(turnId);
-                        this.#appendMessage({
-                            kind: "error",
-                            text: errorMessage,
-                        });
-                        this.#state.status = "error";
-                        this.#state.lastError = errorMessage;
-                        this.#notify();
-                        return;
+                        const decision =
+                            await this.#waitForLoopRecoveryDecision(
+                                turnId,
+                                errorMessage
+                            );
+                        if (
+                            decision === "stop" ||
+                            this.#isTurnCancelled(turnId)
+                        ) {
+                            return;
+                        }
+
+                        rejectedToolCallRounds = 0;
+                        lastToolCallSignature = "";
+                        lastToolCallWasRejected = false;
+                        repeatedToolCallRounds = 0;
                     }
                 }
 
@@ -755,15 +801,22 @@ export class AgentSessionController {
                     ) {
                         const errorMessage =
                             "The agent produced too many rejected tool calls without converging.";
-                        this.#markActiveTurnError(turnId);
-                        this.#appendMessage({
-                            kind: "error",
-                            text: errorMessage,
-                        });
-                        this.#state.status = "error";
-                        this.#state.lastError = errorMessage;
-                        this.#notify();
-                        return;
+                        const decision =
+                            await this.#waitForLoopRecoveryDecision(
+                                turnId,
+                                errorMessage
+                            );
+                        if (
+                            decision === "stop" ||
+                            this.#isTurnCancelled(turnId)
+                        ) {
+                            return;
+                        }
+
+                        rejectedToolCallRounds = 0;
+                        lastToolCallSignature = "";
+                        lastToolCallWasRejected = false;
+                        repeatedToolCallRounds = 0;
                     }
                 }
                 this.#resetActiveTurnDraft(turnId);
@@ -794,6 +847,7 @@ export class AgentSessionController {
             this.#state.pendingRequest = null;
             this.#state.pendingResponsePlaceholder = "";
             this.#activeRequestAbortController = null;
+            this.#loopRecoveryDecision = null;
             this.#cancelledTurnIds.delete(turnId);
             this.#clearActiveTurn(turnId);
             this.#notify();
@@ -1068,6 +1122,24 @@ export class AgentSessionController {
             durationMs,
         });
         this.#notify();
+    }
+
+    /**
+     * Pauses before processing a tool call that exceeded a loop guard.
+     *
+     * @param {number} turnId
+     * @param {string} message
+     * @returns {Promise<"continue" | "stop">}
+     */
+    #waitForLoopRecoveryDecision(turnId, message) {
+        this.#state.status = "awaiting_user_decision";
+        this.#state.pendingResponsePlaceholder = "";
+        this.#state.loopRecovery = { message };
+        this.#notify();
+
+        return new Promise((resolve) => {
+            this.#loopRecoveryDecision = resolve;
+        });
     }
 
     /**

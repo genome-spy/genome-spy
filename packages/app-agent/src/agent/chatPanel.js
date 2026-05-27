@@ -20,13 +20,15 @@ import "./chatStream.js";
  *         | "thinking"
  *         | "executing"
  *         | "unavailable"
- *         | "error";
+ *         | "error"
+ *         | "awaiting_user_decision";
  *     preflightState: "idle" | "running" | "ready" | "failed";
  *     messages: Array<import("./chatMessage.js").ChatMessage>;
  *     pendingRequest: { message: string } | null;
  *     pendingResponsePlaceholder: string;
  *     queuedMessageCount: number;
  *     lastError: string;
+ *     loopRecovery: { message: string } | null;
  *     lastResponseDurationMs: number | null;
  *     expandedViewNodeKeys: string[];
  * }} ChatSessionSnapshot
@@ -59,6 +61,7 @@ import "./chatStream.js";
  *     refreshPreflight(): Promise<void>;
  *     expandViewNode?(selector: any): void;
  *     collapseViewNode?(selector: any): void;
+ *     continueCurrentTurn?(): void;
  *     stopCurrentTurn?(): void;
  *     executeToolCalls?(
  *         toolCalls: import("./types.d.ts").AgentToolCall[]
@@ -74,6 +77,7 @@ const EMPTY_SNAPSHOT = {
     pendingResponsePlaceholder: "",
     queuedMessageCount: 0,
     lastError: "",
+    loopRecovery: null,
     lastResponseDurationMs: null,
     expandedViewNodeKeys: [],
 };
@@ -268,6 +272,26 @@ export default class AgentChatPanel extends LitElement {
                 gap: 0.35rem;
                 margin: 0;
                 padding-left: 1.1rem;
+            }
+
+            .loop-recovery {
+                display: grid;
+                gap: 0.65rem;
+                padding: var(--gs-basic-spacing, 10px);
+                border: 1px solid color-mix(in oklab, #b7791f 45%, white);
+                border-radius: 4px;
+                background: color-mix(in oklab, #f6ad55 12%, white);
+                color: #3b2f1c;
+            }
+
+            .loop-recovery strong {
+                color: #1f1a12;
+            }
+
+            .loop-recovery-actions {
+                display: flex;
+                gap: 0.5rem;
+                flex-wrap: wrap;
             }
 
             .composer {
@@ -485,12 +509,18 @@ export default class AgentChatPanel extends LitElement {
                                           ></gs-chat-message>
                                       `
                                   )}
-                            <gs-chat-stream
-                                .streamStatus=${this.streamStatus}
-                                .pendingResponsePlaceholder=${snapshot.pendingResponsePlaceholder}
-                                .streamDraftText=${this.streamDraftText}
-                                .streamReasoningText=${this.streamReasoningText}
-                            ></gs-chat-stream>
+                            ${snapshot.loopRecovery
+                                ? nothing
+                                : html`
+                                      <gs-chat-stream
+                                          .streamStatus=${this.streamStatus}
+                                          .pendingResponsePlaceholder=${snapshot.pendingResponsePlaceholder}
+                                          .streamDraftText=${this
+                                              .streamDraftText}
+                                          .streamReasoningText=${this
+                                              .streamReasoningText}
+                                      ></gs-chat-stream>
+                                  `}
                         </section>
 
                         <button
@@ -510,51 +540,9 @@ export default class AgentChatPanel extends LitElement {
                     </div>
 
                     <form class="composer" @submit=${this.#handleSubmit}>
-                        <div class="composer-input">
-                            <textarea
-                                .value=${this.draft}
-                                placeholder="Ask the agent about the current visualization or request an action."
-                                ?disabled=${!this.controller}
-                                @input=${this.#handleDraftInput}
-                                @keydown=${this.#handleComposerKeyDown}
-                            ></textarea>
-                            ${this.#hasActiveLoop()
-                                ? html`
-                                      <button
-                                          type="button"
-                                          class="composer-action"
-                                          title="Stop"
-                                          aria-label="Stop"
-                                          @click=${() =>
-                                              this.controller?.stopCurrentTurn?.()}
-                                      >
-                                          ${icon(faStop).node[0]}
-                                      </button>
-                                  `
-                                : html`
-                                      <button
-                                          type="submit"
-                                          class="composer-action ${this.draft.trim()
-                                              .length > 0
-                                              ? ""
-                                              : "is-hidden"}"
-                                          title="Send"
-                                          aria-label="Send"
-                                          aria-hidden=${this.draft.trim()
-                                              .length > 0
-                                              ? "false"
-                                              : "true"}
-                                          tabindex=${this.draft.trim().length >
-                                          0
-                                              ? 0
-                                              : -1}
-                                          ?disabled=${!this.controller ||
-                                          this.draft.trim().length === 0}
-                                      >
-                                          ${icon(faPaperPlane).node[0]}
-                                      </button>
-                                  `}
-                        </div>
+                        ${snapshot.loopRecovery
+                            ? this.#renderLoopRecovery(snapshot.loopRecovery)
+                            : this.#renderComposerInput()}
                     </form>
                 </div>
             </section>
@@ -592,6 +580,84 @@ export default class AgentChatPanel extends LitElement {
                     <li>What does this view show?</li>
                 </ul>
             </article>
+        `;
+    }
+
+    /**
+     * @param {{ message: string }} loopRecovery
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderLoopRecovery(loopRecovery) {
+        return html`
+            <article class="loop-recovery">
+                <strong>The agent appears to be stuck</strong>
+                <div>${loopRecovery.message}</div>
+                <div class="loop-recovery-actions">
+                    <button
+                        type="button"
+                        class="btn"
+                        @click=${() => this.controller?.continueCurrentTurn?.()}
+                    >
+                        Continue
+                    </button>
+                    <button
+                        type="button"
+                        class="btn"
+                        @click=${() => this.controller?.stopCurrentTurn?.()}
+                    >
+                        Stop
+                    </button>
+                </div>
+            </article>
+        `;
+    }
+
+    /**
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderComposerInput() {
+        return html`
+            <div class="composer-input">
+                <textarea
+                    .value=${this.draft}
+                    placeholder="Ask the agent about the current visualization or request an action."
+                    ?disabled=${!this.controller}
+                    @input=${this.#handleDraftInput}
+                    @keydown=${this.#handleComposerKeyDown}
+                ></textarea>
+                ${this.#hasActiveLoop()
+                    ? html`
+                          <button
+                              type="button"
+                              class="composer-action"
+                              title="Stop"
+                              aria-label="Stop"
+                              @click=${() =>
+                                  this.controller?.stopCurrentTurn?.()}
+                          >
+                              ${icon(faStop).node[0]}
+                          </button>
+                      `
+                    : html`
+                          <button
+                              type="submit"
+                              class="composer-action ${this.draft.trim()
+                                  .length > 0
+                                  ? ""
+                                  : "is-hidden"}"
+                              title="Send"
+                              aria-label="Send"
+                              aria-hidden=${this.draft.trim().length > 0
+                                  ? "false"
+                                  : "true"}
+                              tabindex=${this.draft.trim().length > 0 ? 0 : -1}
+                              ?disabled=${!this.controller ||
+                              this.draft.trim().length === 0}
+                          >
+                              ${icon(faPaperPlane).node[0]}
+                          </button>
+                      `}
+            </div>
         `;
     }
 
@@ -742,6 +808,8 @@ export default class AgentChatPanel extends LitElement {
                 return "Agent unavailable";
             case "error":
                 return "Error";
+            case "awaiting_user_decision":
+                return "Waiting for decision";
             default:
                 return status;
         }

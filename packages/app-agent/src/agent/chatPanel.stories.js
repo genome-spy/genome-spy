@@ -11,6 +11,18 @@ const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
 /** @type {Map<string, ReturnType<typeof createAgentSessionController>>} */
 const controllerCache = new Map();
 
+/**
+ * @typedef {{
+ *     getSnapshot: () => any;
+ *     subscribe: (listener: (snapshot: any) => void) => () => void;
+ *     subscribeToActiveTurn: (listener: (snapshot: any) => void) => () => void;
+ *     open: () => Promise<void>;
+ *     close: () => void;
+ *     continueCurrentTurn: () => void;
+ *     stopCurrentTurn: () => void;
+ * }} StoryController
+ */
+
 export default {
     title: "Agent/ChatPanel",
     tags: ["autodocs"],
@@ -364,6 +376,28 @@ function createMockAgentController(scenario, options = {}) {
 }
 
 /**
+ * @param {ReturnType<StoryController["getSnapshot"]>} snapshot
+ * @returns {StoryController}
+ */
+function createStaticAgentController(snapshot) {
+    return /** @type {StoryController} */ ({
+        getSnapshot: () => snapshot,
+        subscribe: (listener) => {
+            listener(snapshot);
+            return () => {};
+        },
+        subscribeToActiveTurn: (listener) => {
+            listener(null);
+            return () => {};
+        },
+        open: async () => {},
+        close: () => {},
+        continueCurrentTurn: () => {},
+        stopCurrentTurn: () => {},
+    });
+}
+
+/**
  * @param {number} ms
  * @returns {Promise<void>}
  */
@@ -580,6 +614,63 @@ function renderChatPanel(args) {
     `;
 }
 
+/**
+ * @returns {import("lit").TemplateResult}
+ */
+function renderAwaitingUserDecision() {
+    const controller = createStaticAgentController({
+        status: "awaiting_user_decision",
+        preflightState: "ready",
+        messages: [
+            {
+                id: 1,
+                kind: "user",
+                text: "Make the reference sequence visible.",
+            },
+            {
+                id: 2,
+                kind: "tool_call",
+                text: "I will update visibility.",
+                toolCalls: [
+                    {
+                        callId: "call_set_visibility",
+                        name: "setViewVisibility",
+                        arguments: {
+                            selector: {
+                                scope: [],
+                                view: "reference-sequence",
+                            },
+                            visibility: true,
+                        },
+                    },
+                ],
+                durationMs: 18,
+            },
+        ],
+        pendingRequest: {
+            message: "Make the reference sequence visible.",
+            messageId: 1,
+        },
+        pendingResponsePlaceholder: "",
+        queuedMessageCount: 0,
+        lastError: "",
+        loopRecovery: {
+            message:
+                "The agent repeated the same tool call without converging.",
+        },
+        lastResponseDurationMs: null,
+        expandedViewNodeKeys: [],
+    });
+
+    return html`
+        <div style="width: min(100%, 520px); height: 760px;">
+            <gs-agent-chat-panel
+                .controller=${controller}
+            ></gs-agent-chat-panel>
+        </div>
+    `;
+}
+
 export const Playground = {
     render: renderChatPanel,
 };
@@ -618,6 +709,10 @@ export const ToolCall = {
         scenario: "tool_call",
     },
     render: renderChatPanel,
+};
+
+export const AwaitingUserDecision = {
+    render: renderAwaitingUserDecision,
 };
 
 export const PreflightPending = {
