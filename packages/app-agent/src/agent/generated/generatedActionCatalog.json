@@ -1,51 +1,8 @@
 [
   {
-    "actionType": "sampleView/addMetadata",
-    "description": "Add sample metadata columns from a columnar payload.",
-    "usage": "Use this to attach new metadata columns to the current samples or replace the current metadata set with uploaded values.",
-    "payloadType": "SetMetadata",
-    "payloadFields": [
-      {
-        "name": "columnarMetadata",
-        "type": "ColumnarMetadata",
-        "typeRefs": ["ColumnarMetadata"],
-        "description": "Metadata encoded in columnar form, aligned to the sample order.",
-        "required": true
-      },
-      {
-        "name": "attributeDefs",
-        "type": "Record<AttributeName, SampleAttributeDef>",
-        "typeRefs": ["SampleAttributeDef"],
-        "description": "Optional attribute definitions for the incoming metadata columns. Use this to preserve attribute types, titles, scales, or other metadata settings instead of relying on inference.",
-        "required": false
-      },
-      {
-        "name": "replace",
-        "type": "boolean",
-        "typeRefs": [],
-        "description": "Whether to replace the current metadata set. If `true`, only the provided columns remain. If omitted or `false`, the provided columns are merged into the existing metadata.",
-        "required": false
-      }
-    ],
-    "examplePayload": {
-      "columnarMetadata": {
-        "sample": ["s1", "s2"],
-        "diagnosis": ["AML", "ALL"]
-      }
-    },
-    "examples": [
-      {
-        "columnarMetadata": {
-          "sample": ["s1", "s2"],
-          "diagnosis": ["AML", "ALL"]
-        }
-      }
-    ]
-  },
-  {
     "actionType": "sampleView/deriveMetadata",
     "description": "Add a derived metadata column by copying sample attributes or aggregating features from a genomic interval.",
-    "usage": "Use this action to derive one per-sample value aggregated from features in an active interval selection. If the user names a gene, locus, or interval and no matching selection aggregation candidate exists yet, proactively create or update the interval selection using the `paramChange` action and wait for a refreshed context, which reveals selection aggregation candidates. Then use the matching `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`. To aggregate only specific features, e.g., deleterious variants, use `AttributeIdentifier.featureFilter`.",
+    "usage": "Use this action to derive one per-sample value aggregated from features in an active interval selection. If the user names a gene, locus, or interval and no matching selection aggregation candidate exists yet, proactively create or update the interval selection using the `paramChange` action and wait for a refreshed context, which reveals selection aggregation candidates. Then use the matching `SELECTION_AGGREGATION` candidate from `selectionAggregation.fields`. To aggregate only specific features, e.g., deleterious variants, use `AttributeIdentifier.featureFilter`. This action does not import from a source.",
     "payloadType": "DeriveMetadata",
     "payloadFields": [
       {
@@ -109,8 +66,8 @@
   },
   {
     "actionType": "sampleView/addMetadataFromSource",
-    "description": "Import metadata columns from a configured source.",
-    "usage": "Use this when one or more source-backed metadata columns should be added to the current sample collection.",
+    "description": "Import (missing) metadata columns from a metadata source.",
+    "usage": "Use this to dynamically add new metadata columns from a configured source.",
     "payloadType": "AddMetadataFromSource",
     "payloadFields": [
       {
@@ -143,11 +100,11 @@
       }
     ],
     "examplePayload": {
-      "columnIds": ["diagnosis", "stage"]
+      "columnIds": ["diagnosis", "stage", "MYC"]
     },
     "examples": [
       {
-        "columnIds": ["diagnosis", "stage"]
+        "columnIds": ["diagnosis", "stage", "MYC"]
       }
     ]
   },

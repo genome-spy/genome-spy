@@ -173,7 +173,10 @@ export function createAgentAdapter(app, agentApi) {
         const baseUrl = agentState.agentBaseUrl ?? DEFAULT_AGENT_BASE_URL;
         const startedAt = now();
         const contextStartedAt = now();
-        const context = buildAgentContext(agentApi, options.contextOptions);
+        const context = await buildAgentContext(
+            agentApi,
+            options.contextOptions
+        );
         const volatileContext = getAgentVolatileContext();
         const contextBuildMs = elapsedMilliseconds(contextStartedAt);
         const history = normalizeConversationHistory(options.history ?? []);

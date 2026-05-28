@@ -67,6 +67,27 @@ export interface AgentAttributeSummary {
     visible?: boolean;
 }
 
+/** Summary of a configured metadata source that can import attributes. */
+export interface AgentMetadataSourceSummary {
+    sourceId?: string;
+    name?: string;
+    description?: string;
+    attributeDefaults?: {
+        dataType?: string;
+        description?: string;
+    };
+    identifiers: AgentMetadataSourceIdentifierSummary[];
+}
+
+/** Summary of identifiers accepted when importing columns from a source. */
+export interface AgentMetadataSourceIdentifierSummary {
+    name: string;
+    primary?: boolean;
+    caseInsensitive?: boolean;
+    stripVersionSuffix?: boolean;
+    examples: string[];
+}
+
 /**
  * Compact summary of the loaded sample collection.
  */

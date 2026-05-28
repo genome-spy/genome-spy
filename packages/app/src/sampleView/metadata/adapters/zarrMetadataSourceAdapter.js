@@ -9,6 +9,7 @@ import {
 import { validateMetadata } from "../metadataValidation.js";
 import { wrangleMetadata } from "../metadataUtils.js";
 import { resolveMetadataSourceAttributes } from "../metadataSourceAttributes.js";
+import { collectExampleValues } from "../exampleValues.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
@@ -136,6 +137,39 @@ export default class ZarrMetadataSourceAdapter {
      */
     async listSampleIds(signal) {
         return this.#getRowIds(signal);
+    }
+
+    /**
+     * @param {number} maxExamples
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ name: string; primary?: boolean; caseInsensitive?: boolean; stripVersionSuffix?: boolean; examples: string[] }[]>}
+     */
+    async listIdentifierExamples(maxExamples, signal) {
+        const identifiers = this.#backend.identifiers ?? [
+            {
+                name: "column",
+                path: this.#backend.matrix?.columnIdsPath ?? "var_names",
+                primary: true,
+            },
+        ];
+
+        return Promise.all(
+            identifiers.map(async (identifier) => {
+                const values = await this.#readStringArray(
+                    identifier.path,
+                    signal
+                );
+                const examples = collectExampleValues(values, maxExamples);
+
+                return compactObject({
+                    name: identifier.name,
+                    primary: identifier.primary,
+                    caseInsensitive: identifier.caseInsensitive,
+                    stripVersionSuffix: identifier.stripVersionSuffix,
+                    examples,
+                });
+            })
+        );
     }
 
     /**
@@ -411,4 +445,17 @@ export default class ZarrMetadataSourceAdapter {
     #isExcludedColumn(columnId) {
         return this.#excludedColumns.has(columnId);
     }
+}
+
+/**
+ * @template {Record<string, any>} T
+ * @param {T} object
+ * @returns {T}
+ */
+function compactObject(object) {
+    return /** @type {T} */ (
+        Object.fromEntries(
+            Object.entries(object).filter(([, value]) => value !== undefined)
+        )
+    );
 }

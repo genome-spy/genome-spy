@@ -92,7 +92,7 @@ customElements.define(
  * @returns {Promise<void>}
  */
 export async function showAgentContextDialog(app) {
-    const context = getAgentState(app).agentAdapter?.getAgentContext?.();
+    const context = await getAgentState(app).agentAdapter?.getAgentContext?.();
     if (!context) {
         await showMessageDialog("No agent context is available yet.", {
             title: "Agent Context",

@@ -251,6 +251,7 @@ export const sampleSlice = createSlice({
          *
          * @agent.payloadType SetMetadata
          * @agent.category metadata
+         * @agent.ignore true
          * @example
          * {
          *   "columnarMetadata": {
@@ -279,6 +280,7 @@ export const sampleSlice = createSlice({
          * Then use the matching `SELECTION_AGGREGATION` candidate from
          * `selectionAggregation.fields`. To aggregate only specific features,
          * e.g., deleterious variants, use `AttributeIdentifier.featureFilter`.
+         * This action does not import from a source.
          *
          * @agent.payloadType DeriveMetadata
          * @agent.category metadata
@@ -319,16 +321,15 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Import metadata columns from a configured source.
+         * Import (missing) metadata columns from a metadata source.
          *
-         * Use this when one or more source-backed metadata columns should be
-         * added to the current sample collection.
+         * Use this to dynamically add new metadata columns from a configured source.
          *
          * @agent.payloadType AddMetadataFromSource
          * @agent.category metadata
          * @example
          * {
-         *   "columnIds": ["diagnosis", "stage"]
+         *   "columnIds": ["diagnosis", "stage", "MYC"]
          * }
          */
         addMetadataFromSource: (

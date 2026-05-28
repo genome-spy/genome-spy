@@ -1,10 +1,5 @@
 [
   {
-    "actionType": "sampleView/addMetadata",
-    "title": "Add metadata",
-    "description": "Add sample metadata columns from a columnar payload."
-  },
-  {
     "actionType": "sampleView/deriveMetadata",
     "title": "Add derived metadata",
     "description": "Add a derived metadata column by copying sample attributes or aggregating features from a genomic interval."
@@ -12,7 +7,7 @@
   {
     "actionType": "sampleView/addMetadataFromSource",
     "title": "Import metadata from source",
-    "description": "Import metadata columns from a configured source."
+    "description": "Import (missing) metadata columns from a metadata source."
   },
   {
     "actionType": "sampleView/sortBy",

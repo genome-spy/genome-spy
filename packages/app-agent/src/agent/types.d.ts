@@ -6,6 +6,7 @@ import type {
     AgentAttributeSummary,
     AgentGroupedAttributeSummarySource,
     AgentAttributeSummarySource,
+    AgentMetadataSourceSummary,
     AgentProvenanceAction,
     AgentSampleGroupLevel,
     AgentSampleSummary,
@@ -26,6 +27,8 @@ export type {
     AgentAttributeSummary,
     AgentGroupedAttributeSummarySource,
     AgentAttributeSummarySource,
+    AgentMetadataSourceIdentifierSummary,
+    AgentMetadataSourceSummary,
     AgentRootConfigSummary,
     AgentSampleGroupLevel,
     AgentSampleSummary,
@@ -200,7 +203,9 @@ export interface AgentIntentActionSummary {
 export interface AgentAdapter {
     agentApi: import("@genome-spy/app/agentApi").AgentApi;
 
-    getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
+    getAgentContext(
+        contextOptions?: AgentContextOptions
+    ): Promise<AgentContext>;
     getAgentVolatileContext(): AgentVolatileContext;
     submitIntentActions(
         batch: IntentBatch,
@@ -237,6 +242,7 @@ export interface AgentStreamCallbacks {
 export interface AgentContext {
     schemaVersion: 1;
     intentActionSummaries: AgentIntentActionSummary[];
+    metadataSources: AgentMetadataSourceSummary[];
     attributes: AgentAttributeSummary[];
     searchableViews: AgentSearchableViewSummary[];
     viewRoot: AgentViewNode;

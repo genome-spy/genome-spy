@@ -313,9 +313,33 @@ function createAgentApiStub(app) {
 }
 
 describe("getAgentContext", () => {
-    it("builds a compact agent context from app state", () => {
+    it("builds a compact agent context from app state", async () => {
         const app = createAppStub();
-        const context = getAgentContext(createAgentApiStub(app));
+        const agentApi = createAgentApiStub(app);
+        agentApi.getMetadataSourceSummaries = vi.fn(async () => [
+            {
+                sourceId: "transcriptome",
+                name: "Transcriptome",
+                description: "Gene-wise z-scores.",
+                attributeDefaults: {
+                    dataType: "quantitative",
+                    description: "Expression z-score.",
+                },
+                identifiers: [
+                    {
+                        name: "symbol",
+                        primary: true,
+                        examples: ["Tp53", "Myc"],
+                    },
+                    {
+                        name: "ensembl",
+                        stripVersionSuffix: true,
+                        examples: ["ENSMUSG00000059552"],
+                    },
+                ],
+            },
+        ]);
+        const context = await getAgentContext(agentApi);
 
         expect(context.schemaVersion).toBe(1);
         expect(() => JSON.stringify(context)).not.toThrow();
@@ -349,6 +373,29 @@ describe("getAgentContext", () => {
             expect(declaration).not.toHaveProperty("value");
         }
         expect(context.attributes).toHaveLength(2);
+        expect(context.metadataSources).toEqual([
+            {
+                sourceId: "transcriptome",
+                name: "Transcriptome",
+                description: "Gene-wise z-scores.",
+                attributeDefaults: {
+                    dataType: "quantitative",
+                    description: "Expression z-score.",
+                },
+                identifiers: [
+                    {
+                        name: "symbol",
+                        primary: true,
+                        examples: ["Tp53", "Myc"],
+                    },
+                    {
+                        name: "ensembl",
+                        stripVersionSuffix: true,
+                        examples: ["ENSMUSG00000059552"],
+                    },
+                ],
+            },
+        ]);
         expect(context.attributes[0].id).toEqual({
             type: "SAMPLE_ATTRIBUTE",
             specifier: "diagnosis",
@@ -385,11 +432,11 @@ describe("getAgentContext", () => {
         expect(context).not.toHaveProperty("provenance");
     });
 
-    it("caches searchable view examples across context rebuilds", () => {
+    it("caches searchable view examples across context rebuilds", async () => {
         const app = createAppStub();
 
-        const firstContext = getAgentContext(createAgentApiStub(app));
-        const secondContext = getAgentContext(createAgentApiStub(app));
+        const firstContext = await getAgentContext(createAgentApiStub(app));
+        const secondContext = await getAgentContext(createAgentApiStub(app));
 
         expect(firstContext.searchableViews).toEqual(
             secondContext.searchableViews
@@ -399,7 +446,7 @@ describe("getAgentContext", () => {
         expect(app.searchCollector.getData).toHaveBeenCalledTimes(1);
     });
 
-    it("caps searchable view examples per field", () => {
+    it("caps searchable view examples per field", async () => {
         const app = createAppStub({
             geneSearchData: [
                 {
@@ -425,7 +472,7 @@ describe("getAgentContext", () => {
             ],
         });
 
-        const context = getAgentContext(createAgentApiStub(app));
+        const context = await getAgentContext(createAgentApiStub(app));
 
         expect(context.searchableViews[0].searchFields[0].examples).toEqual([
             "TP53",

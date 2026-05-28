@@ -106,6 +106,80 @@ describe("createAgentApi", () => {
                 },
             ],
         ]);
+        const sampleView = {
+            spec: {
+                metadata: {
+                    sources: [
+                        {
+                            id: "clinical",
+                            name: "Clinical",
+                            description: "Clinical annotations.",
+                            initialLoad: false,
+                            attributes: {
+                                "": {
+                                    type: "nominal",
+                                    description: "Clinical value.",
+                                },
+                            },
+                            backend: {
+                                backend: "data",
+                                data: {
+                                    values: [
+                                        {
+                                            sample: "s1",
+                                            diagnosis: "AML",
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                        {
+                            id: "eager-default",
+                            name: "Eager default",
+                            description: "Loaded at startup by default.",
+                            backend: {
+                                backend: "data",
+                                data: {
+                                    values: [
+                                        {
+                                            sample: "s1",
+                                            stage: "I",
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                        {
+                            id: "eager-explicit",
+                            name: "Eager explicit",
+                            description: "Loaded at startup explicitly.",
+                            initialLoad: ["score"],
+                            backend: {
+                                backend: "data",
+                                data: {
+                                    values: [
+                                        {
+                                            sample: "s1",
+                                            score: 1,
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                    ],
+                },
+            },
+            sampleHierarchy: { id: "sample-hierarchy" },
+            compositeAttributeInfoSource: {
+                getAttributeInfo: vi.fn(() => sampleAttributeInfo),
+            },
+            getBaseUrl: vi.fn(() => "https://example.org/spec.json"),
+            paramRuntime: {
+                paramConfigs: new Map([
+                    ["selection", { description: "Selection" }],
+                ]),
+            },
+        };
 
         app = {
             rootSpec: {
@@ -119,17 +193,7 @@ describe("createAgentApi", () => {
                 getSearchableViews: vi.fn(() => ["searchable-view"]),
                 getNamedScaleResolutions: vi.fn(() => namedScaleResolutions),
             },
-            getSampleView: vi.fn(() => ({
-                sampleHierarchy: { id: "sample-hierarchy" },
-                compositeAttributeInfoSource: {
-                    getAttributeInfo: vi.fn(() => sampleAttributeInfo),
-                },
-                paramRuntime: {
-                    paramConfigs: new Map([
-                        ["selection", { description: "Selection" }],
-                    ]),
-                },
-            })),
+            getSampleView: vi.fn(() => sampleView),
             provenance: {
                 getActionHistory: vi.fn(() => [{ provenanceId: "p1" }]),
                 getActionInfo: vi.fn(() => ({
@@ -225,6 +289,33 @@ describe("createAgentApi", () => {
             submissionKind: "agent",
         });
         expect(agentApi.getPresentProvenanceState()).toEqual({ present: true });
+    });
+
+    it("exposes cached agent-facing metadata source summaries", async () => {
+        const agentApi = createAgentApi(app);
+
+        const first = await agentApi.getMetadataSourceSummaries();
+        const second = await agentApi.getMetadataSourceSummaries();
+
+        expect(first).toBe(second);
+        expect(first).toEqual([
+            {
+                sourceId: "clinical",
+                name: "Clinical",
+                description: "Clinical annotations.",
+                attributeDefaults: {
+                    dataType: "nominal",
+                    description: "Clinical value.",
+                },
+                identifiers: [
+                    {
+                        name: "column",
+                        primary: true,
+                        examples: ["diagnosis"],
+                    },
+                ],
+            },
+        ]);
     });
 
     it("forwards mutation and UI hooks to the app shell", () => {

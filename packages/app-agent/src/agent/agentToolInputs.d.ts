@@ -234,7 +234,7 @@ export interface GetSelectionFeatureFieldSummaryToolInput {
  * contains it. Prefer this tool over guessing the attribute from title
  * similarity alone. Exact case-insensitive matches are preferred. A bounded
  * Levenshtein fallback may return typo-tolerant matches when exact matching
- * finds nothing.
+ * finds nothing. This does not query metadata sources.
  *
  * @example
  * {

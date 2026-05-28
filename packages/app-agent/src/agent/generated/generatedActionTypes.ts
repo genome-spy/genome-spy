@@ -17,15 +17,10 @@ import type {
     RetainFirstNCategories,
     RetainFirstOfEach,
     RetainMatched,
-    SetMetadata,
     SortBy,
 } from "@genome-spy/app";
 
 export type AgentIntentBatchStep =
-    | {
-          actionType: "sampleView/addMetadata";
-          payload: SetMetadata;
-      }
     | {
           actionType: "sampleView/deriveMetadata";
           payload: DeriveMetadata;

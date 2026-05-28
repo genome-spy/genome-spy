@@ -104,6 +104,54 @@ describe("ZarrMetadataSourceAdapter", () => {
         expect(resolved.missing).toEqual(["missing"]);
     });
 
+    it("lists stable sampled identifier examples for agent context", async () => {
+        mockArrays.var_names = ["ENSG1", "ENSG2", "ENSG3", "ENSG4", "ENSG5"];
+        mockArrays["var/symbol"] = ["TP53", "MYC", "EGFR", "PTEN", "KRAS"];
+        mockArrays["var/ensembl_id"] = [
+            "ENSG1.1",
+            "ENSG2.3",
+            "ENSG3.7",
+            "ENSG4.2",
+            "ENSG5.5",
+        ];
+        const adapter = new ZarrMetadataSourceAdapter({
+            backend: {
+                backend: "zarr",
+                url: "https://example.org/expression.zarr",
+                identifiers: [
+                    {
+                        name: "symbol",
+                        path: "var/symbol",
+                        primary: true,
+                        caseInsensitive: true,
+                    },
+                    {
+                        name: "ensembl",
+                        path: "var/ensembl_id",
+                        stripVersionSuffix: true,
+                    },
+                ],
+            },
+        });
+
+        const examples = await adapter.listIdentifierExamples(2);
+        const secondExamples = await adapter.listIdentifierExamples(2);
+
+        expect(secondExamples).toEqual(examples);
+        expect(examples[0]).toEqual(
+            expect.objectContaining({
+                name: "symbol",
+                primary: true,
+                caseInsensitive: true,
+                examples: expect.arrayContaining([]),
+            })
+        );
+        expect(examples[0].examples).toHaveLength(2);
+        expect(examples[0].examples).not.toEqual(["TP53", "MYC"]);
+        expect(examples[1].examples).toHaveLength(2);
+        expect(examples[1].examples).not.toEqual(["ENSG1.1", "ENSG2.3"]);
+    });
+
     it("fetches selected matrix columns and applies configured column defs", async () => {
         const adapter = new ZarrMetadataSourceAdapter({
             groupPath: "expression",

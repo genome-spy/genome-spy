@@ -49,20 +49,6 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
-              "const": "sampleView/addMetadata",
-              "type": "string"
-            },
-            "payload": {
-              "$ref": "#/definitions/SetMetadata"
-            }
-          },
-          "required": ["actionType", "payload"],
-          "type": "object"
-        },
-        {
-          "additionalProperties": false,
-          "properties": {
-            "actionType": {
               "const": "sampleView/deriveMetadata",
               "type": "string"
             },
@@ -458,27 +444,6 @@
         }
       },
       "required": ["selector"],
-      "type": "object"
-    },
-    "ColumnarMetadata": {
-      "additionalProperties": {
-        "description": "Metadata columns keyed by attribute name.",
-        "items": {
-          "$ref": "#/definitions/Scalar"
-        },
-        "type": "array"
-      },
-      "description": "Columnar metadata representation Keys are attribute names, values are arrays of attribute values for each sample, in the same order as the samples array.\n\nColumnar format is more efficient for storage in bookmarked actions.",
-      "properties": {
-        "sample": {
-          "description": "Sample ids for the rows in this payload.\n\nEvery other column must follow this same order.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        }
-      },
-      "required": ["sample"],
       "type": "object"
     },
     "ComparisonOperatorType": {
@@ -883,7 +848,6 @@
     },
     "IntentActionType": {
       "enum": [
-        "sampleView/addMetadata",
         "sampleView/deriveMetadata",
         "sampleView/addMetadataFromSource",
         "sampleView/sortBy",
@@ -1437,7 +1401,7 @@
     },
     "ResolveMetadataAttributeValuesToolInput": {
       "additionalProperties": false,
-      "description": "Resolve a free-text metadata value against current visible categorical sample metadata values. Use this when the user names a category value such as `relapse`, `AML`, or `female` but does not name the metadata attribute that contains it. Prefer this tool over guessing the attribute from title similarity alone. Exact case-insensitive matches are preferred. A bounded Levenshtein fallback may return typo-tolerant matches when exact matching finds nothing.",
+      "description": "Resolve a free-text metadata value against current visible categorical sample metadata values. Use this when the user names a category value such as `relapse`, `AML`, or `female` but does not name the metadata attribute that contains it. Prefer this tool over guessing the attribute from title similarity alone. Exact case-insensitive matches are preferred. A bounded Levenshtein fallback may return typo-tolerant matches when exact matching finds nothing. This does not query metadata sources.",
       "examples": [
         {
           "query": "relapse"
@@ -1506,44 +1470,6 @@
       "required": ["attribute"],
       "type": "object"
     },
-    "SampleAttributeDef": {
-      "additionalProperties": false,
-      "properties": {
-        "barScale": {
-          "$ref": "#/definitions/Scale",
-          "description": "Scale for mapping quantitative values to metadata cell width."
-        },
-        "description": {
-          "description": "User-facing description of the metadata attribute.",
-          "type": "string"
-        },
-        "scale": {
-          "$ref": "#/definitions/Scale",
-          "description": "Color scale for metadata cells."
-        },
-        "semanticType": {
-          "$ref": "#/definitions/SampleAttributeSemanticType",
-          "description": "Domain-specific meaning of the metadata attribute."
-        },
-        "title": {
-          "description": "Attribute label shown in the metadata header.\n\nIf omitted, the attribute name is used.",
-          "type": "string"
-        },
-        "type": {
-          "$ref": "#/definitions/SampleAttributeType",
-          "description": "The attribute type. One of `\"nominal\"`, `\"ordinal\"`, or `\"quantitative\"`."
-        },
-        "visible": {
-          "description": "Whether the attribute is visible when the view opens.",
-          "type": "boolean"
-        },
-        "width": {
-          "description": "Width of the column in pixels.",
-          "type": "number"
-        }
-      },
-      "type": "object"
-    },
     "SampleAttributeIdentifier": {
       "additionalProperties": false,
       "properties": {
@@ -1557,20 +1483,6 @@
       },
       "required": ["type", "specifier"],
       "type": "object"
-    },
-    "SampleAttributeSemanticType": {
-      "enum": [
-        "subjectId",
-        "modelSystemId",
-        "timeToEvent",
-        "eventStatus",
-        "category"
-      ],
-      "type": "string"
-    },
-    "SampleAttributeType": {
-      "enum": ["nominal", "ordinal", "quantitative"],
-      "type": "string"
     },
     "Scalar": {
       "type": ["string", "number", "boolean"]
@@ -2047,31 +1959,6 @@
           "type": "null"
         }
       ]
-    },
-    "SetMetadata": {
-      "additionalProperties": false,
-      "properties": {
-        "attributeDefs": {
-          "additionalProperties": {
-            "$ref": "#/definitions/SampleAttributeDef"
-          },
-          "description": "Optional attribute definitions for the incoming metadata columns.\n\nUse this to preserve attribute types, titles, scales, or other metadata settings instead of relying on inference.",
-          "propertyNames": {
-            "description": "An identifier or name for a sample attribute.\n\nAs the identifiers may represent paths in a hierarchy, they are strings where path segments are separated by a forward slash ('/'). Separators in path segments are always escaped to avoid ambiguity."
-          },
-          "type": "object"
-        },
-        "columnarMetadata": {
-          "$ref": "#/definitions/ColumnarMetadata",
-          "description": "Metadata encoded in columnar form, aligned to the sample order."
-        },
-        "replace": {
-          "description": "Whether to replace the current metadata set.\n\nIf `true`, only the provided columns remain. If omitted or `false`, the provided columns are merged into the existing metadata.",
-          "type": "boolean"
-        }
-      },
-      "required": ["columnarMetadata"],
-      "type": "object"
     },
     "SetViewVisibilityToolInput": {
       "additionalProperties": false,

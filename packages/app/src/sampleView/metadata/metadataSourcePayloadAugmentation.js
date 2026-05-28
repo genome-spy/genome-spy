@@ -19,7 +19,7 @@ import {
  *   baseUrl?: string;
  *   signal?: AbortSignal;
  *   adapter?: {
- *     resolveColumns: (queries: string[], signal?: AbortSignal) => Promise<{ columnIds: string[] }>;
+ *     resolveColumns: (queries: string[], signal?: AbortSignal) => Promise<{ columnIds: string[]; missing?: string[]; ambiguous?: string[] }>;
  *     fetchColumns: (request: { columnIds: string[]; sampleIds: string[]; groupPath?: string; replace?: boolean }, signal?: AbortSignal) => Promise<import("../state/payloadTypes.js").SetMetadata>;
  *   };
  *   resolveColumns?: boolean;
@@ -63,7 +63,7 @@ export async function augmentMetadataSourcePayload(params) {
     if (resolveColumns) {
         const resolved = await sourceAdapter.resolveColumns(columnIds, signal);
         if (resolved.columnIds.length === 0) {
-            throw new Error("No resolvable metadata columns were found.");
+            throw new Error(formatUnresolvedColumnsError(source, resolved));
         }
         columnIds = resolved.columnIds;
     }
@@ -84,4 +84,27 @@ export async function augmentMetadataSourcePayload(params) {
             metadata,
         },
     };
+}
+
+/**
+ * @param {MetadataSourceDef} source
+ * @param {{ missing?: string[]; ambiguous?: string[] }} resolved
+ * @returns {string}
+ */
+function formatUnresolvedColumnsError(source, resolved) {
+    const sourceLabel = source.id ?? source.name ?? "(unnamed source)";
+    const unresolved = [
+        ...(resolved.missing ?? []),
+        ...(resolved.ambiguous ?? []),
+    ];
+    const detail =
+        unresolved.length > 0 ? ": " + unresolved.join(", ") + "." : ".";
+
+    return (
+        "None of the requested metadata columns could be resolved from source " +
+        '"' +
+        sourceLabel +
+        '"' +
+        detail
+    );
 }

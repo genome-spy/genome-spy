@@ -108,6 +108,20 @@ describe("augmentAddMetadataFromSourceAction", () => {
         });
     });
 
+    it("reports the source and requested columns when none resolve", async () => {
+        const sampleView = createSampleViewStub();
+        const action = sampleSlice.actions.addMetadataFromSource({
+            sourceId: "clinical",
+            columnIds: ["MISSING", "ABSENT"],
+        });
+
+        await expect(
+            augmentAddMetadataFromSourceActionAny(action, sampleView)
+        ).rejects.toThrow(
+            'None of the requested metadata columns could be resolved from source "clinical": MISSING, ABSENT.'
+        );
+    });
+
     it("throws when import size exceeds the limit", async () => {
         const sampleView = createSampleViewStub();
         const action = sampleSlice.actions.addMetadataFromSource({

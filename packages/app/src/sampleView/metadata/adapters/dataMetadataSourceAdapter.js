@@ -9,6 +9,7 @@ import { concatUrl } from "@genome-spy/core/utils/url.js";
 import { validateMetadata } from "../metadataValidation.js";
 import { wrangleMetadata } from "../metadataUtils.js";
 import { resolveMetadataSourceAttributes } from "../metadataSourceAttributes.js";
+import { collectExampleValues } from "../exampleValues.js";
 
 /**
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
@@ -80,6 +81,25 @@ export default class DataMetadataSourceAdapter {
         const rows = await this.#loadRows(signal);
         const sampleIdField = this.#backend.sampleIdField ?? "sample";
         return rows.map((row) => String(row[sampleIdField] ?? ""));
+    }
+
+    /**
+     * @param {number} maxExamples
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ name: string; primary?: boolean; examples: string[] }[]>}
+     */
+    async listIdentifierExamples(maxExamples, signal) {
+        const columns = await this.listColumns(signal);
+        return [
+            {
+                name: "column",
+                primary: true,
+                examples: collectExampleValues(
+                    columns.map((column) => column.id),
+                    maxExamples
+                ),
+            },
+        ];
     }
 
     /**

@@ -102,7 +102,7 @@ import { agentTools } from "./agentTools.js";
  *         options?: { submissionKind?: "agent" | "bookmark" | "user" }
  *     ): Promise<IntentBatchExecutionResult>;
  *     agentApi: import("@genome-spy/app/agentApi").AgentApi;
- *     getAgentContext(contextOptions?: AgentContextOptions): AgentContext;
+ *     getAgentContext(contextOptions?: AgentContextOptions): Promise<AgentContext>;
  *     getAgentVolatileContext(): AgentVolatileContext;
  *     summarizeProvenanceActionsSince(
  *         startIndex: number

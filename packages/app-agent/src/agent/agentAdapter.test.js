@@ -12,7 +12,7 @@ const viewSettingsSlice = {
 };
 
 const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
-    getAgentContext: vi.fn(() => ({ schemaVersion: 1 })),
+    getAgentContext: vi.fn(async () => ({ schemaVersion: 1 })),
     getAgentVolatileContext: vi.fn(() => ({
         sampleSummary: {
             totalSampleCount: 61,
@@ -305,7 +305,7 @@ describe("agentAdapter", () => {
         });
     });
 
-    it("uses the agent session controller expansion state for agent context snapshots", () => {
+    it("uses the agent session controller expansion state for agent context snapshots", async () => {
         const app = createAppStub();
         getAgentState(app).agentSessionController = {
             getSnapshot: () => ({
@@ -314,10 +314,10 @@ describe("agentAdapter", () => {
                 ],
             }),
         };
-        getAgentContext.mockReturnValue(createMockPlannerContext());
+        getAgentContext.mockResolvedValue(createMockPlannerContext());
 
         const adapter = createAgentAdapter(app, createAgentApiStub(app));
-        adapter.getAgentContext();
+        await adapter.getAgentContext();
 
         expect(getAgentContext).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -557,7 +557,7 @@ describe("agentAdapter", () => {
     it("uses the configured base URL for agent turns", async () => {
         const app = createAppStub();
         getAgentState(app).agentBaseUrl = "http://example.test";
-        getAgentContext.mockReturnValue(createMockPlannerContext());
+        getAgentContext.mockResolvedValue(createMockPlannerContext());
         const adapter = createAgentAdapter(app, createAgentApiStub(app));
         globalThis.fetch.mockResolvedValueOnce(
             createResponse({

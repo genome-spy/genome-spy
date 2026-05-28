@@ -112,6 +112,41 @@ describe("DataMetadataSourceAdapter", () => {
         ]);
     });
 
+    it("lists stable sampled column examples for agent context", async () => {
+        const adapter = new DataMetadataSourceAdapter({
+            backend: {
+                backend: "data",
+                data: {
+                    values: [
+                        {
+                            sample: "s1",
+                            TP53: 1,
+                            MYC: 2,
+                            EGFR: 3,
+                            PTEN: 4,
+                            KRAS: 5,
+                        },
+                    ],
+                },
+                sampleIdField: "sample",
+            },
+        });
+
+        const examples = await adapter.listIdentifierExamples(2);
+        const secondExamples = await adapter.listIdentifierExamples(2);
+
+        expect(secondExamples).toEqual(examples);
+        expect(examples).toEqual([
+            {
+                name: "column",
+                primary: true,
+                examples: expect.any(Array),
+            },
+        ]);
+        expect(examples[0].examples).toHaveLength(2);
+        expect(examples[0].examples).not.toEqual(["TP53", "MYC"]);
+    });
+
     it("excludes configured columns from listing and importing", async () => {
         const adapter = new DataMetadataSourceAdapter({
             ...createSourceDef(),

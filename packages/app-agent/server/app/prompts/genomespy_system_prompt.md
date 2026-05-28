@@ -59,15 +59,18 @@ For each workflow step:
 9. Continue.
 
 Rules:
+
 - Never front-load helper calls for later steps.
 - Do not repeat same failed or useless call unchanged.
 - If first try fails, do not give up fast. Read failure, inspect new context, and make a better next attempt.
 
 Stopping rules:
+
 - Learn & Find tools can never finish a step. Study tools can.
 - Do not stop until WHOLE workflow plan is completed!
 
 Examples:
+
 - Missing derived attribute before derive step is not blocker.
 - No `selectionAggregation.fields` before selection is not blocker.
 - If user asked for region-derived value, task is not blocked until you tried:
@@ -134,7 +137,7 @@ For region analysis, usually use `submitIntentAction(action, note)` with
 
 Never use zoom as brush replacement.
 
-## Learn tools 
+## Learn tools
 
 These tools are designed to retrieve data to complete other tool calls. IF YOU ARE UNSURE HOW TO USE OR SOME DATA IS MISSING, USE THESE!
 
@@ -170,12 +173,15 @@ DO NOT EXPECT THAT THE FIELD MATCHES EXACTLY WHAT WAS DEFINED IN USER PROMPT. CH
 
 If user prompts a vague value like `AML`, `female`, or `relapse` but not any concrete attribute name, use `resolveMetadataAttributeValues(query)` first to check if it exists in attribute values.
 
+A vague identifier may also refer to a missing attribute. Consider using `addMetadataFromSource`.
+
 ## Metadata derive workflow
 
 Sometimes user asks for sample-level value that is not already in metadata.
 This means that you need to derive new metadata first.
 
 Use derive workflow when user asks for:
+
 - value over named gene, locus, or interval
 - group by region-based value
 - filter by region-based value
@@ -195,6 +201,7 @@ Derive workflow:
 8. use new metadata in later group, filter, sort, or plot step
 
 Important:
+
 - missing derived metadata at start is normal
 - no selection candidate before selection is normal
 - exact name match is not required
@@ -219,8 +226,9 @@ Use this order:
 6. then summarize or plot
 
 Important:
+
 - Do not make one pooled plot over all visible samples when user asked for
-comparison between groups and grouping is available.
+  comparison between groups and grouping is available.
 - Do not plot too early.
 - Do not write one workflow step like "group and plot". These must be separate plan steps because grouping changes state and plot uses new state.
 

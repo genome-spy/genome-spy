@@ -21,23 +21,37 @@ const searchableViewSummaryCache = new WeakMap();
 /**
  * @param {AgentApi} agentApi
  * @param {import("./types.js").AgentContextOptions} [options]
- * @returns {import("./types.js").AgentContext}
+ * @returns {Promise<import("./types.js").AgentContext>}
  */
-export function getAgentContext(agentApi, options = {}) {
+export async function getAgentContext(agentApi, options = {}) {
     const sampleHierarchy = agentApi.getSampleHierarchy();
     const { root: viewRoot } = buildViewTree(agentApi, options);
     const intentActionSummaries = listAgentIntentActionSummaries();
     const searchableViews = buildSearchableViews(agentApi);
+    const metadataSources = await buildMetadataSources(agentApi);
 
     return {
         schemaVersion: 1,
         intentActionSummaries,
+        metadataSources,
         attributes: sampleHierarchy
             ? buildAttributeSummary(agentApi, sampleHierarchy)
             : [],
         searchableViews,
         viewRoot,
     };
+}
+
+/**
+ * @param {AgentApi} agentApi
+ * @returns {Promise<import("./types.js").AgentMetadataSourceSummary[]>}
+ */
+async function buildMetadataSources(agentApi) {
+    if (typeof agentApi.getMetadataSourceSummaries !== "function") {
+        return [];
+    }
+
+    return agentApi.getMetadataSourceSummaries();
 }
 
 /**

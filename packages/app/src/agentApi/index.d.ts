@@ -23,11 +23,35 @@ import type {
 } from "../charts/sampleAttributePlotTypes.d.ts";
 import type { ScaleResolutionApi } from "@genome-spy/core/types/scaleResolutionApi.js";
 import type UnitView from "@genome-spy/core/view/unitView.js";
+
+export interface AgentMetadataSourceIdentifierSummary {
+    name: string;
+    primary?: boolean;
+    caseInsensitive?: boolean;
+    stripVersionSuffix?: boolean;
+    examples: string[];
+}
+
+export interface AgentMetadataSourceSummary {
+    sourceId?: string;
+    name?: string;
+    description?: string;
+    attributeDefaults?: {
+        dataType?: string;
+        description?: string;
+    };
+    identifiers: AgentMetadataSourceIdentifierSummary[];
+}
+
 export interface AgentApi {
     /**
      * Returns the current sample hierarchy used by the agent context.
      */
     getSampleHierarchy(): SampleHierarchy | undefined;
+
+    getMetadataSourceSummaries(
+        signal?: AbortSignal
+    ): Promise<AgentMetadataSourceSummary[]>;
 
     getAttributeInfo(attribute: AttributeIdentifier): AttributeInfo | undefined;
 
