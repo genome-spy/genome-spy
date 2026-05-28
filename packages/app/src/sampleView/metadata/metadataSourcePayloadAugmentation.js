@@ -21,7 +21,7 @@ import {
  *   adapter?: {
  *     resolveColumns: (queries: string[], signal?: AbortSignal) => Promise<{ columnIds: string[]; missing?: string[]; ambiguous?: string[] }>;
  *     fetchColumns: (request: { columnIds: string[]; sampleIds: string[]; groupPath?: string; replace?: boolean }, signal?: AbortSignal) => Promise<import("../state/payloadTypes.js").SetMetadata>;
- *   };
+ *   } | import("./metadataSourceAdapters.js").MetadataSourceAdapter;
  *   resolveColumns?: boolean;
  * }} params
  * @returns {Promise<AddMetadataFromSource>}

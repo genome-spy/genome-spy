@@ -2,14 +2,11 @@ import { subscribeTo } from "../../state/subscribeTo.js";
 import { sampleSlice } from "../state/sampleSlice.js";
 import { resetProvenanceHistory } from "../../state/provenanceBaseline.js";
 import {
-    createMetadataSourceAdapter,
-    resolveMetadataSources,
-} from "./metadataSourceAdapters.js";
-import {
     chunkInitialLoadColumns,
     resolveInitialLoadColumnIds,
 } from "./metadataSourceInitialLoad.js";
 import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
+import { getMetadataSourceRuntime } from "./metadataSourceRuntimeState.js";
 
 /**
  * @param {import("../sampleView.js").default} sampleView
@@ -63,9 +60,8 @@ export async function bootstrapInitialMetadataSources(
     sampleView,
     intentPipeline
 ) {
-    const sources = await resolveMetadataSources(sampleView.spec.metadata, {
-        baseUrl: sampleView.getBaseUrl(),
-    });
+    const runtime = getMetadataSourceRuntime(sampleView);
+    const sources = await runtime.getSources();
     if (sources.length === 0) {
         return;
     }
@@ -80,9 +76,7 @@ export async function bootstrapInitialMetadataSources(
     let replace = true;
 
     for (const source of sources) {
-        const adapter = createMetadataSourceAdapter(source, {
-            baseUrl: sampleView.getBaseUrl(),
-        });
+        const adapter = runtime.getAdapter(source);
         const columnIds = await resolveInitialLoadColumnIds(source, adapter);
         if (columnIds.length === 0) {
             continue;

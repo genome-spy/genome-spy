@@ -1,33 +1,23 @@
-import {
-    createMetadataSourceAdapter,
-    resolveMetadataSources,
-} from "./metadataSourceAdapters.js";
 import { getEffectiveInitialLoad } from "./metadataSourceInitialLoad.js";
 
 const DEFAULT_MAX_EXAMPLES = 3;
 
 /**
- * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataDef} MetadataDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
  * @typedef {import("@genome-spy/app/agentApi").AgentMetadataSourceSummary} AgentMetadataSourceSummary
  * @typedef {import("@genome-spy/app/agentApi").AgentMetadataSourceIdentifierSummary} AgentMetadataSourceIdentifierSummary
  */
 
 /**
- * @param {MetadataDef | undefined} metadataDef
+ * @param {MetadataSourceDef[]} sources
  * @param {{
- *   baseUrl?: string;
  *   signal?: AbortSignal;
  *   maxExamples?: number;
+ *   getAdapter?: (source: MetadataSourceDef) => import("./metadataSourceAdapters.js").MetadataSourceAdapter;
  * }} [options]
  * @returns {Promise<AgentMetadataSourceSummary[]>}
  */
-export async function buildMetadataSourceSummaries(metadataDef, options = {}) {
-    const sources = await resolveMetadataSources(metadataDef, {
-        baseUrl: options.baseUrl,
-        signal: options.signal,
-    });
-
+export async function buildMetadataSourceSummaries(sources, options = {}) {
     const lazySources = sources.filter(
         (source) => getEffectiveInitialLoad(source) === false
     );
@@ -40,16 +30,18 @@ export async function buildMetadataSourceSummaries(metadataDef, options = {}) {
 /**
  * @param {MetadataSourceDef} source
  * @param {{
- *   baseUrl?: string;
  *   signal?: AbortSignal;
  *   maxExamples?: number;
+ *   getAdapter?: (source: MetadataSourceDef) => import("./metadataSourceAdapters.js").MetadataSourceAdapter;
  * }} options
  * @returns {Promise<AgentMetadataSourceSummary>}
  */
 async function summarizeMetadataSource(source, options) {
-    const adapter = createMetadataSourceAdapter(source, {
-        baseUrl: options.baseUrl,
-    });
+    if (!options.getAdapter) {
+        throw new Error("Metadata source summary adapter is required.");
+    }
+
+    const adapter = options.getAdapter(source);
     const identifiers = await adapter.listIdentifierExamples(
         options.maxExamples ?? DEFAULT_MAX_EXAMPLES,
         options.signal

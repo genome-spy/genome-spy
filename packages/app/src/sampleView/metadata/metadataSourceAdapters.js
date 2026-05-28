@@ -10,6 +10,7 @@ import ZarrMetadataSourceAdapter from "./adapters/zarrMetadataSourceAdapter.js";
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataDef} MetadataDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceDef} MetadataSourceDef
  * @typedef {import("@genome-spy/app/spec/sampleView.js").MetadataSourceEntry} MetadataSourceEntry
+ * @typedef {DataMetadataSourceAdapter | ZarrMetadataSourceAdapter} MetadataSourceAdapter
  */
 
 export const MAX_METADATA_SOURCE_COLUMNS = 100;
@@ -185,7 +186,15 @@ export async function resolveMetadataSources(metadataDef, options = {}) {
  */
 export async function resolveMetadataSource(metadataDef, sourceId, options) {
     const sources = await resolveMetadataSources(metadataDef, options);
+    return resolveMetadataSourceFromSources(sources, sourceId);
+}
 
+/**
+ * @param {MetadataSourceDef[]} sources
+ * @param {string | undefined} sourceId
+ * @returns {MetadataSourceDef}
+ */
+export function resolveMetadataSourceFromSources(sources, sourceId) {
     if (sources.length === 0) {
         throw new Error("No metadata sources are configured.");
     }
@@ -212,6 +221,7 @@ export async function resolveMetadataSource(metadataDef, sourceId, options) {
 /**
  * @param {MetadataSourceDef} source
  * @param {{ baseUrl?: string }} [options]
+ * @returns {MetadataSourceAdapter}
  */
 export function createMetadataSourceAdapter(source, options = {}) {
     if (source.backend.backend === "data") {

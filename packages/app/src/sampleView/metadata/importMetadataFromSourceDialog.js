@@ -15,7 +15,7 @@ import {
     parseColumnQueries,
 } from "./metadataSourceImportUtils.js";
 import ObjectSearchIndex from "../../utils/objectSearchIndex.js";
-import { createMetadataSourceAdapter } from "./metadataSourceAdapters.js";
+import { getMetadataSourceRuntime } from "./metadataSourceRuntimeState.js";
 import { validateMetadata } from "./metadataValidation.js";
 
 const DEFAULT_COLUMN_PLACEHOLDER = "Type to search or paste one id per line";
@@ -172,7 +172,7 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
         this._alignmentIssue = null;
         this._showAlignmentDetails = false;
         this._columnValidationEnabled = false;
-        /** @type {ReturnType<typeof createMetadataSourceAdapter> | null} */
+        /** @type {import("./metadataSourceAdapters.js").MetadataSourceAdapter | null} */
         this._adapter = null;
 
         /** @type {FormController} */
@@ -362,9 +362,9 @@ export class ImportMetadataFromSourceDialog extends BaseDialog {
             return this._adapter;
         }
 
-        this._adapter = createMetadataSourceAdapter(this.source, {
-            baseUrl: this.sampleView.getBaseUrl(),
-        });
+        this._adapter = getMetadataSourceRuntime(this.sampleView).getAdapter(
+            this.source
+        );
         return this._adapter;
     }
 

@@ -2,8 +2,8 @@ import { html } from "lit";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { showMessageDialog } from "../../components/generic/messageDialog.js";
 import { showImportMetadataFromSourceDialog } from "./importMetadataFromSourceDialog.js";
-import { resolveMetadataSources } from "./metadataSourceAdapters.js";
 import { getEffectiveInitialLoad } from "./metadataSourceInitialLoad.js";
+import { getMetadataSourceRuntime } from "./metadataSourceRuntimeState.js";
 
 /**
  * @typedef {{
@@ -16,15 +16,6 @@ import { getEffectiveInitialLoad } from "./metadataSourceInitialLoad.js";
  * Builds the metadata-source import menu item and encapsulates source loading.
  */
 export class MetadataSourceMenuController {
-    /** @type {ImportableMetadataSource[] | null} */
-    #cachedSources = null;
-
-    /** @type {Promise<ImportableMetadataSource[]> | null} */
-    #cachedSourcesPromise = null;
-
-    /** @type {import("../sampleView.js").default | null} */
-    #cachedSampleView = null;
-
     /**
      * @param {import("../sampleView.js").default | null} sampleView
      * @param {import("../../state/intentPipeline.js").default | null} intentPipeline
@@ -103,50 +94,20 @@ export class MetadataSourceMenuController {
      * @returns {Promise<ImportableMetadataSource[]>}
      */
     async #getImportableSources(sampleView) {
-        if (
-            this.#cachedSampleView === sampleView &&
-            this.#cachedSources !== null
-        ) {
-            return this.#cachedSources;
-        }
+        const sources = await getMetadataSourceRuntime(sampleView).getSources();
 
-        if (this.#cachedSourcesPromise) {
-            return this.#cachedSourcesPromise;
-        }
-
-        this.#cachedSourcesPromise = (async () => {
-            const sources = await resolveMetadataSources(
-                sampleView.spec.metadata,
-                {
-                    baseUrl: sampleView.getBaseUrl(),
-                }
-            );
-
-            const importableSources = sources
-                .filter(
-                    (source) =>
-                        !(
-                            source.backend.backend === "data" &&
-                            getEffectiveInitialLoad(source) === "*"
-                        )
-                )
-                .map((source, index) => ({
-                    source,
-                    label:
-                        source.name ??
-                        source.id ??
-                        "Source " + String(index + 1),
-                }));
-
-            this.#cachedSampleView = sampleView;
-            this.#cachedSources = importableSources;
-            return importableSources;
-        })();
-
-        try {
-            return await this.#cachedSourcesPromise;
-        } finally {
-            this.#cachedSourcesPromise = null;
-        }
+        return sources
+            .filter(
+                (source) =>
+                    !(
+                        source.backend.backend === "data" &&
+                        getEffectiveInitialLoad(source) === "*"
+                    )
+            )
+            .map((source, index) => ({
+                source,
+                label:
+                    source.name ?? source.id ?? "Source " + String(index + 1),
+            }));
     }
 }

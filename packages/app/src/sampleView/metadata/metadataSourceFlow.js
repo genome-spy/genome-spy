@@ -1,5 +1,5 @@
-import { resolveMetadataSource } from "./metadataSourceAdapters.js";
 import { augmentMetadataSourcePayload } from "./metadataSourcePayloadAugmentation.js";
+import { getMetadataSourceRuntime } from "./metadataSourceRuntimeState.js";
 
 /**
  * @param {import("@reduxjs/toolkit").Action} action
@@ -30,19 +30,13 @@ export async function augmentAddMetadataFromSourceAction(
         throw new Error("Sample data has not been initialized.");
     }
 
-    const source = await resolveMetadataSource(
-        sampleView.spec.metadata,
-        payload.sourceId,
-        {
-            baseUrl: sampleView.getBaseUrl(),
-            signal,
-        }
-    );
+    const runtime = getMetadataSourceRuntime(sampleView);
+    const source = await runtime.getSource(payload.sourceId);
     const augmentedPayload = await augmentMetadataSourcePayload({
         source,
         payload,
         sampleIds,
-        baseUrl: sampleView.getBaseUrl(),
+        adapter: runtime.getAdapter(source),
         signal,
     });
 

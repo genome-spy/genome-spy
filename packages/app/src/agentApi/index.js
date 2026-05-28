@@ -10,7 +10,7 @@ import {
     buildHierarchyScatterplot,
 } from "../charts/hierarchySampleAttributePlots.js";
 import { getGroupColorScale } from "../charts/sampleAttributePlotUtils.js";
-import { buildMetadataSourceSummaries } from "../sampleView/metadata/metadataSourceSummaries.js";
+import { getMetadataSourceRuntime } from "../sampleView/metadata/metadataSourceRuntimeState.js";
 export { embedRenderablePlot } from "../charts/chartDialogUtils.js";
 
 // `agentApi` exposes App internals to the agent and plugin surfaces only.
@@ -20,11 +20,6 @@ export { embedRenderablePlot } from "../charts/chartDialogUtils.js";
  * @typedef {import("./index.js").AgentApi} AgentApi
  * @typedef {import("../charts/sampleAttributePlotTypes.d.ts").SampleAttributePlotRequest} SampleAttributePlotRequest
  */
-
-/**
- * @type {WeakMap<object, Promise<import("./index.js").AgentMetadataSourceSummary[]>>}
- */
-const metadataSourceSummaryCache = new WeakMap();
 
 /**
  * Creates the app-bound handle surface used by the extracted agent package.
@@ -50,22 +45,9 @@ export function createAgentApi(app) {
                 return Promise.resolve([]);
             }
 
-            let promise = metadataSourceSummaryCache.get(sampleView);
-            if (!promise) {
-                promise = buildMetadataSourceSummaries(
-                    sampleView.spec?.metadata,
-                    {
-                        baseUrl: sampleView.getBaseUrl?.(),
-                        signal,
-                    }
-                ).catch((error) => {
-                    metadataSourceSummaryCache.delete(sampleView);
-                    throw error;
-                });
-                metadataSourceSummaryCache.set(sampleView, promise);
-            }
-
-            return promise;
+            return getMetadataSourceRuntime(sampleView).getAgentSummaries(
+                signal
+            );
         },
 
         /**
