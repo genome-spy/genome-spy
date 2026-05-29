@@ -262,4 +262,38 @@ describe("submitIntentActions", () => {
             }),
         ]);
     });
+
+    it("rejects parameter value type changes before submitting actions", async () => {
+        const view = {
+            getDataAncestors: () => [],
+            getScaleResolution: () => ({ type: "linear" }),
+            paramRuntime: {
+                paramConfigs: new Map([
+                    ["brush", { name: "brush", select: { type: "interval" } }],
+                ]),
+            },
+            visit: (visitor) => visitor(view),
+        };
+        const agentApi = {
+            ...createAgentApiStub(),
+            getViewRoot: () => view,
+        };
+
+        await expect(
+            submitIntentActions(agentApi, {
+                schemaVersion: 1,
+                steps: [
+                    {
+                        actionType: "paramProvenance/paramChange",
+                        payload: {
+                            selector: { scope: [], param: "brush" },
+                            value: { type: "value", value: null },
+                        },
+                    },
+                ],
+            })
+        ).rejects.toThrow('payload.value.type must be "interval"');
+
+        expect(agentApi.submitIntentActions).not.toHaveBeenCalled();
+    });
 });

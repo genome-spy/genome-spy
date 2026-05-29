@@ -52,6 +52,10 @@ function createAgentApiStub() {
 
 function mockParamScale(type) {
     resolveParamSelectorMock.mockReturnValue({
+        param: {
+            name: "brush",
+            select: { type: "interval" },
+        },
         view: {
             getScaleResolution: (channel) =>
                 channel === "x" ? { type } : undefined,
@@ -367,5 +371,27 @@ describe("validateIntentBatch", () => {
         );
 
         expect(result.ok).toBe(true);
+    });
+
+    it("rejects param changes that change an interval selection to a literal value", () => {
+        mockParamScale("linear");
+
+        const result = validateIntentBatch(createAgentApiStub(), {
+            schemaVersion: 1,
+            steps: [
+                {
+                    actionType: "paramProvenance/paramChange",
+                    payload: {
+                        selector: { scope: [], param: "brush" },
+                        value: { type: "value", value: null },
+                    },
+                },
+            ],
+        });
+
+        expect(result.ok).toBe(false);
+        expect(result.errors.join("\n")).toContain(
+            '$.steps[0].payload.value.type must be "interval"'
+        );
     });
 });

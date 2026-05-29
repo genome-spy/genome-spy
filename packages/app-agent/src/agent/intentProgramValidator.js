@@ -1,4 +1,9 @@
 import { resolveParamSelector } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    asSelectionConfig,
+    isIntervalSelectionConfig,
+    isPointSelectionConfig,
+} from "@genome-spy/core/selection/selection.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
 import { validateIntentBatchShape } from "./actionShapeValidator.js";
 
@@ -78,7 +83,7 @@ export function validateIntentBatch(agentApi, batch) {
                         "].payload.attribute: " +
                         actionType +
                         " requires " +
-                        formatAttributeKinds(attributeKinds) +
+                        formatOrList(attributeKinds) +
                         ' attributes, but "' +
                         formatAttributeName(attribute) +
                         '" has type ' +
@@ -88,10 +93,7 @@ export function validateIntentBatch(agentApi, batch) {
             }
         }
 
-        if (
-            actionType === "paramProvenance/paramChange" &&
-            payload.value.type === "interval"
-        ) {
+        if (actionType === "paramProvenance/paramChange") {
             const resolved = resolveParamSelector(
                 agentApi.getViewRoot(),
                 payload.selector
@@ -103,6 +105,25 @@ export function validateIntentBatch(agentApi, batch) {
                         "].payload.selector does not resolve to a parameter."
                 );
             } else {
+                const expectedTypes = getParamValueTypes(resolved.param);
+                if (!expectedTypes.includes(payload.value.type)) {
+                    errors.push(
+                        "$.steps[" +
+                            index +
+                            "].payload.value.type must be " +
+                            formatOrList(expectedTypes, quoteString) +
+                            ' for parameter "' +
+                            payload.selector.param +
+                            '", but got "' +
+                            payload.value.type +
+                            '".'
+                    );
+                }
+
+                if (payload.value.type !== "interval") {
+                    continue;
+                }
+
                 for (const [channel, interval] of Object.entries(
                     payload.value.intervals
                 )) {
@@ -154,15 +175,41 @@ export function validateIntentBatch(agentApi, batch) {
 }
 
 /**
- * @param {string[]} attributeKinds
+ * @param {import("@genome-spy/core/spec/parameter.js").Parameter} param
+ * @returns {string[]}
  */
-function formatAttributeKinds(attributeKinds) {
-    if (attributeKinds.length === 1) {
-        return attributeKinds[0];
+function getParamValueTypes(param) {
+    if ("select" in param) {
+        const select = asSelectionConfig(param.select);
+        if (isIntervalSelectionConfig(select)) {
+            return ["interval"];
+        }
+        if (isPointSelectionConfig(select)) {
+            return ["point", "pointExpand"];
+        }
     }
 
-    const initialKinds = attributeKinds.slice(0, -1).join(", ");
-    return initialKinds + " or " + attributeKinds.at(-1);
+    return ["value"];
+}
+
+/**
+ * @param {string} value
+ */
+function quoteString(value) {
+    return '"' + value + '"';
+}
+
+/**
+ * @param {string[]} values
+ * @param {(value: string) => string} [formatter]
+ */
+function formatOrList(values, formatter = (value) => value) {
+    if (values.length === 1) {
+        return formatter(values[0]);
+    }
+
+    const formatted = values.map(formatter);
+    return formatted.slice(0, -1).join(", ") + " or " + formatted.at(-1);
 }
 
 /**
