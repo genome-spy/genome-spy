@@ -34,6 +34,9 @@ vi.mock("../../utils/ui/contextMenu.js", async (importOriginal) => {
 function assertFlowMatchesSubtree(metadataView, dataFlow) {
     const descendants = metadataView.getDescendants();
     const unitViews = descendants.filter((view) => view instanceof UnitView);
+    const collectingUnitViews = unitViews.filter(
+        (view) => view.flowHandle?.collector
+    );
     const dataSources = new Set(
         descendants
             .map((view) => view.flowHandle?.dataSource)
@@ -51,7 +54,18 @@ function assertFlowMatchesSubtree(metadataView, dataFlow) {
 
     expect(dataFlow.dataSources.length).toBe(dataSources.size);
     expect(dataFlow.collectors.length).toBe(collectors.size);
-    expect(observerCount).toBe(unitViews.length);
+    expect(observerCount).toBe(collectingUnitViews.length);
+}
+
+/**
+ * @param {import("@genome-spy/core/view/view.js").default} view
+ */
+function isMetadataValueUnitView(view) {
+    return (
+        view instanceof UnitView &&
+        !!view.spec.encoding?.color &&
+        view.name.endsWith("-value")
+    );
 }
 
 /**
@@ -68,7 +82,18 @@ async function waitForCondition(condition) {
     throw new Error("Condition was not met in time.");
 }
 
-async function createInteractiveMetadataViewTestHarness() {
+/**
+ * @param {{
+ *   metadataDef?: Record<string, any>,
+ *   sampleMetadata?: {
+ *     attributeNames: string[],
+ *     attributeDefs: Record<string, any>,
+ *     entities: Record<string, any>,
+ *   },
+ *   sampleDataEntities?: Record<string, { indexNumber: number }>,
+ * }} [options]
+ */
+async function createMetadataViewTestHarness(options = {}) {
     const { MetadataView } = await import("./metadataView.js");
     const transition = vi.fn(() => Promise.resolve());
     const requestRender = vi.fn();
@@ -100,15 +125,22 @@ async function createInteractiveMetadataViewTestHarness() {
         },
     });
 
+    const sampleMetadata = options.sampleMetadata ?? {
+        attributeNames: ["foo", "bar"],
+        attributeDefs: {
+            foo: { type: "nominal" },
+            bar: { type: "nominal" },
+        },
+        entities: {
+            s1: { foo: "A", bar: "B" },
+        },
+    };
+
     /** @type {SampleHierarchyStub} */
     const sampleHierarchy = {
-        sampleMetadata: {
-            attributeNames: [],
-            attributeDefs: {},
-            entities: {},
-        },
+        sampleMetadata,
         sampleData: {
-            entities: {
+            entities: options.sampleDataEntities ?? {
                 s1: { indexNumber: 0 },
             },
         },
@@ -119,23 +151,13 @@ async function createInteractiveMetadataViewTestHarness() {
         store,
         sampleHierarchy,
     });
+    /** @type {any} */ (sampleView.spec).metadata = options.metadataDef ?? {};
     sampleView.findSampleForMouseEvent = () => undefined;
 
     const metadataView = new MetadataView(
         /** @type {any} */ (sampleView),
         /** @type {any} */ (sampleView)
     );
-
-    const sampleMetadata = {
-        attributeNames: ["foo", "bar"],
-        attributeDefs: {
-            foo: { type: "nominal" },
-            bar: { type: "nominal" },
-        },
-        entities: {
-            s1: { foo: "A", bar: "B" },
-        },
-    };
 
     sampleView.sampleHierarchy.sampleMetadata = sampleMetadata;
     await store.setState({
@@ -149,7 +171,7 @@ async function createInteractiveMetadataViewTestHarness() {
     });
 
     await waitForCondition(() =>
-        ["foo", "bar"].every((attribute) =>
+        sampleMetadata.attributeNames.every((attribute) =>
             metadataView
                 .getDescendants()
                 .some((view) => view.name === `attribute-${attribute}`)
@@ -173,6 +195,64 @@ async function createInteractiveMetadataViewTestHarness() {
         transition,
         attributeViews,
     };
+}
+
+/**
+ * @param {import("./metadataView.js").MetadataView} metadataView
+ * @param {string} attribute
+ */
+function getAttributeLayerSpec(metadataView, attribute) {
+    const view = metadataView
+        .getDescendants()
+        .find((view) => view.name === `attribute-${attribute}`);
+    expect(view).toBeDefined();
+    return /** @type {{ layer: any[] }} */ (view.spec);
+}
+
+/**
+ * @param {import("./metadataView.js").MetadataView} metadataView
+ * @param {string} attribute
+ */
+function getBackgroundLayerSpec(metadataView, attribute) {
+    return getAttributeLayerSpec(metadataView, attribute).layer.find((layer) =>
+        layer.name.endsWith("-missing-background")
+    );
+}
+
+/**
+ * @param {import("./metadataView.js").MetadataView} metadataView
+ * @param {string} attribute
+ */
+function getBackgroundUnitView(metadataView, attribute) {
+    return metadataView
+        .getDescendants()
+        .find(
+            (view) =>
+                view instanceof UnitView &&
+                view.name === `attribute-${attribute}-missing-background`
+        );
+}
+
+/**
+ * @param {{
+ *   metadataDef?: Record<string, any>,
+ *   attributeDefs: Record<string, any>,
+ * }} options
+ */
+function createMissingColorTestHarness(options) {
+    const attributeNames = Object.keys(options.attributeDefs);
+    return createMetadataViewTestHarness({
+        metadataDef: options.metadataDef,
+        sampleMetadata: {
+            attributeNames,
+            attributeDefs: options.attributeDefs,
+            entities: {
+                s1: Object.fromEntries(
+                    attributeNames.map((attribute) => [attribute, "A"])
+                ),
+            },
+        },
+    });
 }
 
 describe("MetadataView", () => {
@@ -246,7 +326,7 @@ describe("MetadataView", () => {
             const unitViews = metadataView
                 .getDescendants()
                 .filter((view) => view instanceof UnitView);
-            const firstUnitView = unitViews[0];
+            const firstUnitView = unitViews.find(isMetadataValueUnitView);
 
             const hasCollector =
                 !!firstUnitView &&
@@ -265,7 +345,7 @@ describe("MetadataView", () => {
                         sum + (view.flowHandle?.collector?.observers.size ?? 0),
                     0
                 ),
-                unitViews: unitViews.length,
+                unitViews: unitViews.filter(isMetadataValueUnitView).length,
                 hasCollector,
                 hasDataSource,
             };
@@ -295,13 +375,14 @@ describe("MetadataView", () => {
                     },
                 },
             });
+            await metadataView.awaitMetadataReady();
             await waitForCondition(() => {
-                const unitViews = metadataView
+                const valueViews = metadataView
                     .getDescendants()
-                    .filter((view) => view instanceof UnitView);
+                    .filter(isMetadataValueUnitView);
                 return (
-                    unitViews.length > 0 &&
-                    unitViews.every((view) => view.flowHandle?.collector)
+                    valueViews.length > 0 &&
+                    valueViews.every((view) => view.flowHandle?.collector)
                 );
             });
         };
@@ -432,14 +513,15 @@ describe("MetadataView", () => {
                 },
             },
         });
+        await metadataView.awaitMetadataReady();
 
         await waitForCondition(() => {
-            const unitViews = metadataView
+            const valueViews = metadataView
                 .getDescendants()
-                .filter((view) => view instanceof UnitView);
+                .filter(isMetadataValueUnitView);
             return (
-                unitViews.length > 0 &&
-                unitViews.every((view) => view.flowHandle?.collector)
+                valueViews.length > 0 &&
+                valueViews.every((view) => view.flowHandle?.collector)
             );
         });
 
@@ -460,6 +542,119 @@ describe("MetadataView", () => {
             return color && /** @type {any} */ (color).field === "plain";
         });
         expect(plainView).toBeDefined();
+
+        metadataView.dispose();
+    });
+
+    it("uses the configured global metadata missing-value color", async () => {
+        const { metadataView } = await createMissingColorTestHarness({
+            metadataDef: {
+                missingValueColor: "#dddddd",
+            },
+            attributeDefs: {
+                status: { type: "nominal" },
+            },
+        });
+
+        const backgroundLayer = getBackgroundLayerSpec(metadataView, "status");
+
+        expect(backgroundLayer?.encoding.fill).toEqual({ value: "#dddddd" });
+        expect(backgroundLayer?.encoding.fillOpacity).toEqual({ value: 1 });
+
+        metadataView.dispose();
+    });
+
+    it("lets an attribute override the global missing-value color", async () => {
+        const { metadataView } = await createMissingColorTestHarness({
+            metadataDef: {
+                missingValueColor: "#dddddd",
+            },
+            attributeDefs: {
+                status: {
+                    type: "nominal",
+                    missingValueColor: "#cccccc",
+                },
+            },
+        });
+
+        const backgroundLayer = getBackgroundLayerSpec(metadataView, "status");
+
+        expect(backgroundLayer?.encoding.fill).toEqual({ value: "#cccccc" });
+
+        metadataView.dispose();
+    });
+
+    it("uses an opaque default missing-value color", async () => {
+        const { metadataView } = await createMissingColorTestHarness({
+            attributeDefs: {
+                status: { type: "nominal" },
+            },
+        });
+
+        const backgroundLayer = getBackgroundLayerSpec(metadataView, "status");
+
+        expect(backgroundLayer?.encoding.fill).toEqual({ value: "#f0f0f0" });
+        expect(backgroundLayer?.encoding.fillOpacity).toEqual({ value: 1 });
+
+        metadataView.dispose();
+    });
+
+    it("omits the missing-value background layer when configured as null", async () => {
+        const { metadataView } = await createMissingColorTestHarness({
+            metadataDef: {
+                missingValueColor: null,
+            },
+            attributeDefs: {
+                status: { type: "nominal" },
+            },
+        });
+
+        expect(getBackgroundLayerSpec(metadataView, "status")).toBeUndefined();
+        expect(getBackgroundUnitView(metadataView, "status")).toBeUndefined();
+        expect(
+            getAttributeLayerSpec(metadataView, "status").layer
+        ).toHaveLength(1);
+
+        metadataView.dispose();
+    });
+
+    it("lets an attribute disable a configured global missing-value color", async () => {
+        const { metadataView } = await createMissingColorTestHarness({
+            metadataDef: {
+                missingValueColor: "#dddddd",
+            },
+            attributeDefs: {
+                status: {
+                    type: "nominal",
+                    missingValueColor: null,
+                },
+            },
+        });
+
+        expect(getBackgroundLayerSpec(metadataView, "status")).toBeUndefined();
+        expect(getBackgroundUnitView(metadataView, "status")).toBeUndefined();
+        expect(
+            getAttributeLayerSpec(metadataView, "status").layer
+        ).toHaveLength(1);
+
+        metadataView.dispose();
+    });
+
+    it("omits the default missing-value background layer for bar-scale attributes", async () => {
+        const { metadataView } = await createMissingColorTestHarness({
+            attributeDefs: {
+                score: {
+                    type: "quantitative",
+                    barScale: {},
+                },
+            },
+        });
+
+        expect(getBackgroundLayerSpec(metadataView, "score")).toBeUndefined();
+        expect(getBackgroundUnitView(metadataView, "score")).toBeUndefined();
+        expect(getAttributeLayerSpec(metadataView, "score").layer).toHaveLength(
+            1
+        );
 
         metadataView.dispose();
     });
@@ -561,7 +756,7 @@ describe("MetadataView", () => {
 
     it("switches highlighted attributes without restarting the dimming transition", async () => {
         const { metadataView, requestRender, transition, attributeViews } =
-            await createInteractiveMetadataViewTestHarness();
+            await createMetadataViewTestHarness();
 
         metadataView.handleInteraction(
             /** @type {any} */ ({
@@ -605,7 +800,7 @@ describe("MetadataView", () => {
 
     it("keeps the current highlight when the pointer moves over gaps between attributes", async () => {
         const { metadataView, requestRender, transition, attributeViews } =
-            await createInteractiveMetadataViewTestHarness();
+            await createMetadataViewTestHarness();
 
         metadataView.handleInteraction(
             /** @type {any} */ ({
@@ -637,7 +832,7 @@ describe("MetadataView", () => {
 
     it("does not update tooltip while a mouse button is pressed", async () => {
         const { context, sampleView, metadataView, attributeViews } =
-            await createInteractiveMetadataViewTestHarness();
+            await createMetadataViewTestHarness();
 
         const updateTooltip = vi.fn();
         context.updateTooltip = updateTooltip;
@@ -659,7 +854,7 @@ describe("MetadataView", () => {
 
     it("ignores synthesized mouseleave while the pointer is still inside the metadata view", async () => {
         const { metadataView, requestRender, transition, attributeViews } =
-            await createInteractiveMetadataViewTestHarness();
+            await createMetadataViewTestHarness();
 
         Object.defineProperty(metadataView, "coords", {
             value: {
@@ -698,7 +893,7 @@ describe("MetadataView", () => {
 
     it("clears attribute highlight on mouseleave without an exit delay", async () => {
         const { metadataView, requestRender, transition, attributeViews } =
-            await createInteractiveMetadataViewTestHarness();
+            await createMetadataViewTestHarness();
 
         metadataView.handleInteraction(
             /** @type {any} */ ({

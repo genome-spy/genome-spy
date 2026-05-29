@@ -91,6 +91,16 @@ export interface SampleAttributeDef {
     barScale?: Scale;
 
     /**
+     * Color used for metadata cells whose value is missing.
+     *
+     * If `null`, no background is drawn for missing values in this attribute.
+     * If omitted, `metadata.missingValueColor` is used. If both are
+     * omitted, the default is `null` when `barScale` is configured and
+     * `"#f0f0f0"` otherwise.
+     */
+    missingValueColor?: string | null;
+
+    /**
      * Width of the column in pixels.
      */
     width?: number;
@@ -376,6 +386,16 @@ export interface MetadataDef {
      * __Default value:__ `10`
      */
     attributeWidth?: number;
+
+    /**
+     * Default color for metadata cells whose value is missing.
+     *
+     * If `null`, missing-value colors are disabled unless overridden by an
+     * attribute definition.
+     *
+     * __Default value:__ `"#f0f0f0"`
+     */
+    missingValueColor?: string | null;
 
     /**
      * Spacing between metadata columns in pixels.

@@ -2,6 +2,7 @@ import { html } from "lit";
 import { classMap } from "lit/directives/class-map.js";
 
 import ConcatView from "@genome-spy/core/view/concatView.js";
+import LayerView from "@genome-spy/core/view/layerView.js";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import generateAttributeContextMenu from "../attributeContextMenu.js";
 import formatObject from "@genome-spy/core/utils/formatObject.js";
@@ -28,8 +29,6 @@ import { UnknownAttributeInfoError } from "../unknownAttributeInfoError.js";
 import { ReadyGate, createFinalizeOnce } from "../../utils/readyGate.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
-
-const attributeViewRegex = /^attribute-(.*)$/;
 
 /**
  * This special-purpose class takes care of rendering sample labels and metadata.
@@ -327,7 +326,7 @@ export class MetadataView extends ConcatView {
         // without double-resolving when stale generations bail out.
 
         try {
-            this.#createViews();
+            await this.#createViews();
             await this.createAxes();
             if (this.#isMetadataStale(metadataGeneration)) {
                 finalizeReady();
@@ -480,7 +479,7 @@ export class MetadataView extends ConcatView {
         return this.#metadataReady.wait(signal);
     }
 
-    #createViews() {
+    async #createViews() {
         this.setChildren([]);
         this.#attributeViews.clear();
 
@@ -500,7 +499,7 @@ export class MetadataView extends ConcatView {
          * @param {ConcatView} container
          * @param {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} inheritedAttributeDef
          */
-        const createAttributeViews = (
+        const createAttributeViews = async (
             attributeNode,
             container,
             inheritedAttributeDef
@@ -518,7 +517,7 @@ export class MetadataView extends ConcatView {
                         ...(attributeDefs?.[attributeName] ?? {}),
                     };
 
-                    const view = new UnitView(
+                    const layerView = new LayerView(
                         createAttributeSpec(
                             attributeName,
                             attributeDef,
@@ -529,13 +528,29 @@ export class MetadataView extends ConcatView {
                         container,
                         `attribute-${attributeName}`
                     );
-                    view.opacityFunction = (parentOpacity) =>
+                    await layerView.initializeChildren();
+
+                    const foregroundView = /** @type {UnitView} */ (
+                        layerView.findDescendantByName(
+                            getAttributeForegroundViewName(attributeName)
+                        )
+                    );
+                    if (!(foregroundView instanceof UnitView)) {
+                        throw new Error(
+                            "Cannot find metadata foreground view for " +
+                                attributeName
+                        );
+                    }
+
+                    layerView.opacityFunction = (parentOpacity) =>
                         parentOpacity *
                         this.#getAttributeOpacity(attributeName);
 
-                    container.appendChild(view);
-                    this.#attributeViews.set(attributeName, view);
-                    this.#viewToAttribute.set(view, attributeName);
+                    container.appendChild(layerView);
+                    this.#attributeViews.set(attributeName, foregroundView);
+                    for (const view of layerView.getDescendants()) {
+                        this.#viewToAttribute.set(view, attributeName);
+                    }
                 } else {
                     const attributeDef = attributeDefs?.[node.path] ?? {};
                     const groupViewName = `attributeGroup-${node.path}`;
@@ -563,7 +578,7 @@ export class MetadataView extends ConcatView {
                     );
                     container.appendChild(view);
 
-                    createAttributeViews(node, view, {
+                    await createAttributeViews(node, view, {
                         ...inheritedAttributeDef,
                         ...attributeDef,
                         visible: undefined,
@@ -573,7 +588,7 @@ export class MetadataView extends ConcatView {
             }
         };
 
-        createAttributeViews(nestedAttributes, this, {});
+        await createAttributeViews(nestedAttributes, this, {});
 
         // This is a hack to ensure that the title views are not clipped.
         // TODO: Clipping should only be applied to the unit views inside GridChilds
@@ -656,11 +671,7 @@ export class MetadataView extends ConcatView {
      * @param {string} attribute
      */
     #sampleToTooltip(sampleId, attribute) {
-        const attributeViews = new Map(
-            this.#attributeViews
-                .values()
-                .map((view) => [view.name.match(attributeViewRegex)[1], view])
-        );
+        const attributeViews = this.#attributeViews;
 
         /**
          * @param {string} attribute
@@ -808,6 +819,34 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
     const escapedField = `datum[${JSON.stringify(attributeName)}]`;
 
     /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
+    const foregroundSpec = {
+        name: getAttributeForegroundViewName(attributeName),
+        transform: [{ type: "filter", expr: `${escapedField} != null` }],
+        mark: {
+            type: "rect",
+            xOffset: -0.5,
+        },
+        encoding: {
+            facetIndex: { field: "indexNumber" },
+            color: {
+                field: escapedEncodingField,
+                type: attributeDef.type,
+                scale: attributeDef.scale,
+            },
+        },
+        opacity: 1,
+    };
+
+    if (attributeDef.barScale && attributeDef.type == "quantitative") {
+        foregroundSpec.encoding.x = {
+            field: escapedEncodingField,
+            type: attributeDef.type,
+            scale: attributeDef.barScale,
+            axis: null,
+        };
+    }
+
+    /** @type {import("@genome-spy/core/spec/view.js").LayerSpec} */
     const attributeSpec = {
         name: `attribute-${attributeName}`,
         title: {
@@ -827,32 +866,63 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
         description: attributeDef.description,
         visible: attributeDef.visible ?? true,
         width: attributeDef.width ?? metadataDef?.attributeWidth ?? 10,
-        transform: [{ type: "filter", expr: `${escapedField} != null` }],
-        mark: {
-            type: "rect",
-            xOffset: -0.5,
-        },
-        encoding: {
-            facetIndex: { field: "indexNumber" },
-            color: {
-                field: escapedEncodingField,
-                type: attributeDef.type,
-                scale: attributeDef.scale,
-            },
-        },
-        opacity: 1,
+        layer: [foregroundSpec],
     };
 
-    if (attributeDef.barScale && attributeDef.type == "quantitative") {
-        attributeSpec.encoding.x = {
-            field: escapedEncodingField,
-            type: attributeDef.type,
-            scale: attributeDef.barScale,
-            axis: null,
-        };
+    const missingValueColor = resolveMissingValueColor(
+        attributeDef,
+        metadataDef
+    );
+    if (missingValueColor !== null) {
+        attributeSpec.layer.unshift({
+            name: getAttributeBackgroundViewName(attributeName),
+            mark: {
+                type: "rect",
+                xOffset: -0.5,
+            },
+            encoding: {
+                facetIndex: { field: "indexNumber" },
+                fill: { value: missingValueColor },
+                fillOpacity: { value: 1 },
+                stroke: { value: null },
+            },
+        });
     }
 
     return attributeSpec;
+}
+
+/**
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleAttributeDef} attributeDef
+ * @param {import("@genome-spy/app/spec/sampleView.js").MetadataDef} [metadataDef]
+ * @returns {string | null}
+ */
+function resolveMissingValueColor(attributeDef, metadataDef) {
+    if (attributeDef.missingValueColor !== undefined) {
+        return attributeDef.missingValueColor;
+    } else if (metadataDef?.missingValueColor !== undefined) {
+        return metadataDef.missingValueColor;
+    } else if (attributeDef.barScale) {
+        return null;
+    } else {
+        return "#f0f0f0";
+    }
+}
+
+/**
+ * @param {string} attributeName
+ * @returns {string}
+ */
+function getAttributeBackgroundViewName(attributeName) {
+    return `attribute-${attributeName}-missing-background`;
+}
+
+/**
+ * @param {string} attributeName
+ * @returns {string}
+ */
+function getAttributeForegroundViewName(attributeName) {
+    return `attribute-${attributeName}-value`;
 }
 
 /**

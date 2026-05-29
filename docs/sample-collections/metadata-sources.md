@@ -297,7 +297,7 @@ These properties are nested under `metadata`. Sample identity and sample label
 configuration are documented in
 [Visualizing Sample Collections](visualizing.md).
 
-APP_SCHEMA MetadataDef sources attributeWidth spacing labelFont labelFontSize labelFontWeight labelFontStyle labelAngle
+APP_SCHEMA MetadataDef sources attributeWidth missingValueColor spacing labelFont labelFontSize labelFontWeight labelFontStyle labelAngle
 
 ### Metadata source definitions
 
