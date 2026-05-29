@@ -1,3 +1,5 @@
+import { collectVisibleSampleIds } from "./sampleHierarchyScope.js";
+
 const DEFAULT_MAX_RESULTS = 10;
 const exactCollator = new Intl.Collator("en", {
     usage: "search",
@@ -174,34 +176,6 @@ function collectVisibleAttributeValueSummaries(
     }
 
     return Array.from(countsByValueKey.values());
-}
-
-/**
- * @param {import("@genome-spy/app/agentShared").Group} rootGroup
- * @returns {string[]}
- */
-function collectVisibleSampleIds(rootGroup) {
-    /** @type {Set<string>} */
-    const sampleIds = new Set();
-
-    /**
-     * @param {import("@genome-spy/app/agentShared").Group} group
-     */
-    const visit = (group) => {
-        if ("samples" in group) {
-            for (const sampleId of group.samples) {
-                sampleIds.add(sampleId);
-            }
-            return;
-        }
-
-        for (const child of group.groups) {
-            visit(child);
-        }
-    };
-
-    visit(rootGroup);
-    return Array.from(sampleIds);
 }
 
 /**

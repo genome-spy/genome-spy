@@ -10,6 +10,7 @@ import {
     serializeBookmarkableParamValue,
     templateResultToString,
 } from "@genome-spy/app/agentShared";
+import { collectVisibleSampleIds } from "./sampleHierarchyScope.js";
 import { VISIT_SKIP } from "@genome-spy/core/view/view.js";
 
 /**
@@ -140,7 +141,8 @@ function buildSampleSummary(sampleHierarchy) {
     return {
         totalSampleCount: sampleHierarchy.sampleData.ids.length,
         groupCount: sampleHierarchy.groupMetadata.length,
-        visibleSampleCount: countVisibleSamples(sampleHierarchy.rootGroup),
+        visibleSampleCount: collectVisibleSampleIds(sampleHierarchy.rootGroup)
+            .length,
     };
 }
 
@@ -159,31 +161,6 @@ function buildSampleGroupLevels(agentApi, sampleHierarchy) {
             title: templateResultToString(info.title),
         };
     });
-}
-
-/**
- * @param {any} group
- * @param {Set<string>} [sampleIds]
- * @returns {number}
- */
-function countVisibleSamples(group, sampleIds = new Set()) {
-    if (!group) {
-        return 0;
-    }
-
-    if ("samples" in group) {
-        for (const sampleId of group.samples) {
-            sampleIds.add(sampleId);
-        }
-
-        return sampleIds.size;
-    }
-
-    for (const child of group.groups) {
-        countVisibleSamples(child, sampleIds);
-    }
-
-    return sampleIds.size;
 }
 
 /**

@@ -2,6 +2,7 @@ import {
     getActionCatalogEntry,
     summarizeIntentBatch,
 } from "./actionCatalog.js";
+import { collectVisibleSampleIds } from "./sampleHierarchyScope.js";
 import { validateIntentBatch } from "./intentProgramValidator.js";
 
 /**
@@ -30,7 +31,7 @@ export async function submitIntentActions(agentApi, batch, options = {}) {
         step.actionType.startsWith("sampleView/")
     );
     const beforeVisibleSampleCount = hasSampleViewMutation
-        ? countVisibleSamples(sampleHierarchy.rootGroup)
+        ? collectVisibleSampleIds(sampleHierarchy.rootGroup).length
         : undefined;
     const beforeGroupLevelCount = hasSampleViewMutation
         ? (sampleHierarchy.groupMetadata?.length ?? 0)
@@ -55,9 +56,9 @@ export async function submitIntentActions(agentApi, batch, options = {}) {
         provenanceIds,
     };
     if (hasSampleViewMutation) {
-        const afterVisibleSampleCount = countVisibleSamples(
+        const afterVisibleSampleCount = collectVisibleSampleIds(
             updatedSampleHierarchy.rootGroup
-        );
+        ).length;
         const afterGroupLevelCount =
             updatedSampleHierarchy.groupMetadata?.length ?? 0;
         content.sampleView = {
@@ -111,28 +112,6 @@ export function summarizeExecutionResult(result) {
     }
 
     return lines.join("\n");
-}
-
-/**
- * Counts the distinct samples currently present in the visible hierarchy.
- *
- * @param {import("@genome-spy/app/agentShared").Group} group
- * @param {Set<string>} [sampleIds]
- * @returns {number}
- */
-function countVisibleSamples(group, sampleIds = new Set()) {
-    if ("samples" in group) {
-        for (const sampleId of group.samples) {
-            sampleIds.add(sampleId);
-        }
-        return sampleIds.size;
-    }
-
-    for (const child of group.groups) {
-        countVisibleSamples(child, sampleIds);
-    }
-
-    return sampleIds.size;
 }
 
 /**
