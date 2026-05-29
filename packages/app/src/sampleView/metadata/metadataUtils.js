@@ -38,6 +38,16 @@ export const METADATA_PATH_SEPARATOR = "/";
 export const ROOT_PATH_NODE_PART = "(Root)";
 
 /**
+ * Returns the display leaf of an internal metadata attribute path.
+ *
+ * @param {string} attributeName
+ * @returns {string}
+ */
+export function getMetadataPathLeaf(attributeName) {
+    return splitPath(attributeName, METADATA_PATH_SEPARATOR).at(-1) ?? "";
+}
+
+/**
  * Build a tree from path-like keys. Each node receives a `parent` pointer.
  *
  * @param {string[]} items

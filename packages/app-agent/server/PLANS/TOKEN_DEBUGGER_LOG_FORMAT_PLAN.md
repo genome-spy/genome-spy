@@ -57,7 +57,7 @@ breakdown. A representative format:
 - `  context keys:`
 - `    viewRoot = 3120 (67.3% of context, 41.4% of total)`
 - `    provenance = 820 (17.7% of context, 10.9% of total)`
-- `    attributes = 510 (11.0% of context, 6.8% of total)`
+- `    sampleAttributes = 510 (11.0% of context, 6.8% of total)`
 
 If the number of keys exceeds the display limit, aggregate the remainder into
 an `other` line instead of dumping every small key.

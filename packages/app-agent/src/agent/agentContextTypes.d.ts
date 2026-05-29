@@ -56,10 +56,10 @@ export interface AgentConcreteColorScale {
 }
 
 /**
- * Summary of an attribute in the agent context.
+ * Summary of a loaded sample attribute in the agent context.
  */
-export interface AgentAttributeSummary {
-    id: AttributeIdentifier;
+export interface AgentSampleAttributeSummary {
+    specifier: string;
     title: string;
     description?: string;
     dataType: string;

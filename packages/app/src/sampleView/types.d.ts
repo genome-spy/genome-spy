@@ -82,6 +82,9 @@ export interface AttributeInfo {
     /** More detailed name with optional formatting */
     title: string | import("lit").TemplateResult;
 
+    /** Plain short label for compact contexts and summaries. */
+    shortTitle?: string;
+
     /** Formatted attribute name for context menus (e.g., with selective emphasis). */
     emphasizedName: string | import("lit").TemplateResult;
 

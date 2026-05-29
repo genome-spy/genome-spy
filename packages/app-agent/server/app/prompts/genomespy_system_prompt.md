@@ -220,7 +220,7 @@ Use this order:
 
 1. find measure
 2. find grouping dimension
-3. if grouping attribute unclear, inspect attributes or use helper tool
+3. if grouping attribute unclear, inspect sampleAttributes or use helper tool
 4. group by that attribute
 5. wait for refreshed context
 6. then summarize or plot

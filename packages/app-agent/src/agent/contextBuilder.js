@@ -34,8 +34,8 @@ export async function getAgentContext(agentApi, options = {}) {
         schemaVersion: 1,
         intentActionSummaries,
         metadataSources,
-        attributes: sampleHierarchy
-            ? buildAttributeSummary(agentApi, sampleHierarchy)
+        sampleAttributes: sampleHierarchy
+            ? buildSampleAttributeSummary(agentApi, sampleHierarchy)
             : [],
         searchableViews,
         viewRoot,
@@ -57,9 +57,9 @@ async function buildMetadataSources(agentApi) {
 /**
  * @param {AgentApi} agentApi
  * @param {import("@genome-spy/app/agentShared").SampleHierarchy} sampleHierarchy
- * @returns {import("./types.js").AgentAttributeSummary[]}
+ * @returns {import("./types.js").AgentSampleAttributeSummary[]}
  */
-function buildAttributeSummary(agentApi, sampleHierarchy) {
+function buildSampleAttributeSummary(agentApi, sampleHierarchy) {
     const { attributeNames, attributeDefs } = sampleHierarchy.sampleMetadata;
 
     return attributeNames.map((/** @type {string} */ name) => {
@@ -71,14 +71,21 @@ function buildAttributeSummary(agentApi, sampleHierarchy) {
         const def = attributeDefs[name] ?? {};
 
         return {
-            id: info.attribute,
-            title: templateResultToString(info.title),
+            specifier: name,
+            title: getSampleAttributeTitle(info),
             description: info.description,
             dataType: info.type,
             semanticType: def.semanticType,
             visible: def.visible === false ? false : undefined,
         };
     });
+}
+
+/**
+ * @param {import("@genome-spy/app/agentShared").AttributeInfo} info
+ */
+function getSampleAttributeTitle(info) {
+    return info.shortTitle ?? templateResultToString(info.title);
 }
 
 /**

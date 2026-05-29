@@ -283,11 +283,13 @@ function createMockPlannerContext() {
                 },
             ],
         },
-        attributes: [
+        sampleAttributes: [
             {
+                specifier: "age",
                 title: "Age",
             },
             {
+                specifier: "diagnosis",
                 title: "Diagnosis",
             },
         ],

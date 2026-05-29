@@ -344,7 +344,7 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
         context={
             "schemaVersion": 1,
             "actionCatalog": [],
-            "attributes": [],
+            "sampleAttributes": [],
             "viewWorkflows": {"workflows": []},
             "lifecycle": {"appInitialized": True},
             "viewRoot": {"title": "Example"},
@@ -371,7 +371,7 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
     assert list(context_json) == [
         "schemaVersion",
         "actionCatalog",
-        "attributes",
+        "sampleAttributes",
         "viewWorkflows",
         "lifecycle",
         "viewRoot",

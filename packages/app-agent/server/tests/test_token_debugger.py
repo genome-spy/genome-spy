@@ -63,7 +63,7 @@ def test_summarize_prompt_tokens_breaks_context_down_by_key() -> None:
         system_prompt="system prompt",
         context={
             "schemaVersion": 1,
-            "attributes": [{"name": "sample_id"}],
+            "sampleAttributes": [{"specifier": "sample_id"}],
             "viewRoot": {"title": "Example"},
         },
         history=[],
@@ -73,7 +73,7 @@ def test_summarize_prompt_tokens_breaks_context_down_by_key() -> None:
     summary = summarize_prompt_tokens(request, "gpt-4.1-mini")
 
     assert "schemaVersion" in summary.context_by_key
-    assert "attributes" in summary.context_by_key
+    assert "sampleAttributes" in summary.context_by_key
     assert "viewRoot" in summary.context_by_key
     assert summary.context_by_key["viewRoot"] > 0
 
@@ -170,7 +170,7 @@ def test_format_token_summary_lists_ranked_context_keys() -> None:
         context={
             "schemaVersion": 1,
             "sampleSummary": {"sampleCount": 2},
-            "attributes": [{"name": "sample_id"}],
+            "sampleAttributes": [{"specifier": "sample_id"}],
             "viewRoot": {
                 "title": "Example",
                 "tracks": [{"mark": "rect", "encoding": {"x": "pos"}}],

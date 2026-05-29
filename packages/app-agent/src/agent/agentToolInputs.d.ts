@@ -186,8 +186,8 @@ export interface JumpToProvenanceStateToolInput {
  */
 export interface GetAttributeSummaryToolInput {
     /**
-     * Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for sample
-     * metadata attributes from context. Use `SELECTION_AGGREGATION` for
+     * Attribute candidate to summarize. Use `SAMPLE_ATTRIBUTE` for entries
+     * from `sampleAttributes`. Use `SELECTION_AGGREGATION` for
      * selection-derived candidates from `selectionAggregation.fields`.
      */
     attribute: AttributeSummaryCandidate;

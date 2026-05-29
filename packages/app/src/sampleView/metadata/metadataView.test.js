@@ -260,6 +260,37 @@ describe("MetadataView", () => {
         contextMenuMocks.contextMenu.mockReset();
     });
 
+    it("provides short attribute titles from metadata leaf labels", async () => {
+        const { metadataView } = await createMetadataViewTestHarness({
+            sampleMetadata: {
+                attributeNames: [
+                    "Annotations/MouseID",
+                    "Annotations/CustomTitle",
+                ],
+                attributeDefs: {
+                    "Annotations/MouseID": { type: "nominal" },
+                    "Annotations/CustomTitle": {
+                        type: "nominal",
+                        title: "Custom",
+                    },
+                },
+                entities: {
+                    s1: {
+                        "Annotations/MouseID": "M1",
+                        "Annotations/CustomTitle": "C1",
+                    },
+                },
+            },
+        });
+
+        expect(
+            metadataView.getAttributeInfo("Annotations/MouseID").shortTitle
+        ).toBe("MouseID");
+        expect(
+            metadataView.getAttributeInfo("Annotations/CustomTitle").shortTitle
+        ).toBe("Custom");
+    });
+
     it("removes dataflow hosts when metadata is rebuilt", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();

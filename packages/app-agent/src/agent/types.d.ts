@@ -3,12 +3,12 @@ import type {
     ViewSelector,
 } from "@genome-spy/app/agentShared";
 import type {
-    AgentAttributeSummary,
     AgentGroupedAttributeSummarySource,
     AgentAttributeSummarySource,
     AgentMetadataSourceSummary,
     AgentProvenanceAction,
     AgentSampleGroupLevel,
+    AgentSampleAttributeSummary,
     AgentSampleSummary,
     AgentScaleDomainSummary,
     AgentSearchableViewSummary,
@@ -24,12 +24,12 @@ import type {
 } from "./generated/generatedActionTypes.js";
 
 export type {
-    AgentAttributeSummary,
     AgentGroupedAttributeSummarySource,
     AgentAttributeSummarySource,
     AgentMetadataSourceIdentifierSummary,
     AgentMetadataSourceSummary,
     AgentRootConfigSummary,
+    AgentSampleAttributeSummary,
     AgentSampleGroupLevel,
     AgentSampleSummary,
     AgentScaleDomainSummary,
@@ -243,7 +243,7 @@ export interface AgentContext {
     schemaVersion: 1;
     intentActionSummaries: AgentIntentActionSummary[];
     metadataSources: AgentMetadataSourceSummary[];
-    attributes: AgentAttributeSummary[];
+    sampleAttributes: AgentSampleAttributeSummary[];
     searchableViews: AgentSearchableViewSummary[];
     viewRoot: AgentViewNode;
 }

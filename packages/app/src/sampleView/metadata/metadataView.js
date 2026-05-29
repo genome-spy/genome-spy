@@ -22,7 +22,11 @@ import {
     loadViewSubtreeData,
 } from "@genome-spy/core/data/flowInit.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
-import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
+import {
+    buildPathTree,
+    getMetadataPathLeaf,
+    METADATA_PATH_SEPARATOR,
+} from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
 import { createDefaultValuesProvider } from "../attributeValues.js";
 import { UnknownAttributeInfoError } from "../unknownAttributeInfoError.js";
@@ -638,6 +642,10 @@ export class MetadataView extends ConcatView {
                 "No such attribute: " + attributeName
             );
         }
+        const attributeDef =
+            this.#sampleView.sampleHierarchy.sampleMetadata.attributeDefs[
+                attributeName
+            ] ?? {};
 
         // Assume that color is always used for encoding.
         const resolution = view.getScaleResolution("color");
@@ -658,6 +666,8 @@ export class MetadataView extends ConcatView {
             type: resolution.type,
             scale: resolution.getScale(),
             title: html`<em class="attribute">${attributeName}</em>`,
+            shortTitle:
+                attributeDef.title ?? getMetadataPathLeaf(attributeName),
             emphasizedName: attributeName,
             description: /** @type {string | undefined} */ (
                 view.spec.description

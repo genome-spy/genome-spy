@@ -80,7 +80,7 @@ export const typeExamples = {
 /** @type {Record<string, string[]>} */
 export const typeNotes = {
     AttributeIdentifier: [
-        "Use SAMPLE_ATTRIBUTE for metadata attributes from context.",
+        "Use SAMPLE_ATTRIBUTE for entries from sampleAttributes.",
         "Use SELECTION_AGGREGATION by copying candidateId from selectionAggregation.fields, choosing one of that field's supportedAggregations, and using filterableFields for optional featureFilter values.",
         "featureFilter is executable only through deriveMetadata. For other actions, first derive filtered metadata, then use the derived SAMPLE_ATTRIBUTE.",
     ],

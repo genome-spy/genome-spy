@@ -70,7 +70,12 @@ function createAppStub(options = {}) {
     const getAttributeInfo = (attribute) => ({
         name: String(attribute.specifier),
         attribute,
-        title: "Title " + String(attribute.specifier),
+        title: String(attribute.specifier).includes("/")
+            ? String(attribute.specifier)
+            : "Title " + String(attribute.specifier),
+        shortTitle: String(attribute.specifier).includes("/")
+            ? String(attribute.specifier).split("/").at(-1)
+            : undefined,
         description: "Description " + String(attribute.specifier),
         emphasizedName: String(attribute.specifier),
         accessor: () => undefined,
@@ -247,13 +252,18 @@ function createAppStub(options = {}) {
                         ids: ["s1", "s2"],
                     },
                     sampleMetadata: {
-                        attributeNames: ["diagnosis", "purity"],
+                        attributeNames: [
+                            "diagnosis",
+                            "purity",
+                            "Annotations/MouseID",
+                        ],
                         attributeDefs: {
                             diagnosis: {
                                 visible: true,
                                 semanticType: "category",
                             },
                             purity: { visible: false },
+                            "Annotations/MouseID": { visible: false },
                         },
                     },
                     groupMetadata: [
@@ -372,7 +382,8 @@ describe("getAgentContext", () => {
         for (const declaration of context.viewRoot.parameterDeclarations) {
             expect(declaration).not.toHaveProperty("value");
         }
-        expect(context.attributes).toHaveLength(2);
+        expect(context).not.toHaveProperty("attributes");
+        expect(context.sampleAttributes).toHaveLength(3);
         expect(context.metadataSources).toEqual([
             {
                 sourceId: "transcriptome",
@@ -396,12 +407,21 @@ describe("getAgentContext", () => {
                 ],
             },
         ]);
-        expect(context.attributes[0].id).toEqual({
-            type: "SAMPLE_ATTRIBUTE",
-            specifier: "diagnosis",
-        });
-        expect(context.attributes[0].description).toBe("Description diagnosis");
-        expect(context.attributes[0].semanticType).toBe("category");
+        expect(context.sampleAttributes[0]).toEqual(
+            expect.objectContaining({
+                specifier: "diagnosis",
+                title: "Title diagnosis",
+                description: "Description diagnosis",
+                semanticType: "category",
+            })
+        );
+        expect(context.sampleAttributes[2]).toEqual(
+            expect.objectContaining({
+                specifier: "Annotations/MouseID",
+                title: "MouseID",
+                visible: false,
+            })
+        );
         expect(context.searchableViews).toEqual([
             expect.objectContaining({
                 selector: {

@@ -140,22 +140,16 @@ function createMockAgentController(scenario, options = {}) {
             ],
             children: [],
         },
-        attributes: [
+        sampleAttributes: [
             {
-                id: { type: "SAMPLE_ATTRIBUTE", specifier: "age" },
-                name: "age",
+                specifier: "age",
                 title: "Age",
                 dataType: "quantitative",
-                source: "SAMPLE_ATTRIBUTE",
-                visible: true,
             },
             {
-                id: { type: "SAMPLE_ATTRIBUTE", specifier: "diagnosis" },
-                name: "diagnosis",
+                specifier: "diagnosis",
                 title: "Diagnosis",
                 dataType: "nominal",
-                source: "SAMPLE_ATTRIBUTE",
-                visible: true,
             },
         ],
         intentActionSummaries: [],

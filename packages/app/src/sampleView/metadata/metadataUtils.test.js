@@ -4,6 +4,7 @@ import {
     buildPathTree,
     computeAttributeDefs,
     combineSampleMetadata,
+    getMetadataPathLeaf,
     placeMetadataUnderGroup,
     replacePathSeparatorInKeys,
     METADATA_PATH_SEPARATOR,
@@ -90,6 +91,19 @@ describe("buildPathTree", () => {
         expect(node).toBeDefined();
         expect(node.path).toBe("A\\/B");
         expect(node.children.size).toBe(0);
+    });
+});
+
+describe("getMetadataPathLeaf", () => {
+    it("returns the last internal metadata path part", () => {
+        expect(getMetadataPathLeaf("Annotations/MouseID")).toBe("MouseID");
+        expect(getMetadataPathLeaf("plain")).toBe("plain");
+    });
+
+    it("respects escaped metadata path separators", () => {
+        expect(getMetadataPathLeaf("Group/Name\\/WithSlash")).toBe(
+            "Name/WithSlash"
+        );
     });
 });
 
