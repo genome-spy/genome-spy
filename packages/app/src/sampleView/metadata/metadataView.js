@@ -24,6 +24,7 @@ import { subscribeTo } from "../../state/subscribeTo.js";
 import { buildPathTree, METADATA_PATH_SEPARATOR } from "./metadataUtils.js";
 import { splitPath } from "../../utils/escapeSeparator.js";
 import { createDefaultValuesProvider } from "../attributeValues.js";
+import { UnknownAttributeInfoError } from "../unknownAttributeInfoError.js";
 import { ReadyGate, createFinalizeOnce } from "../../utils/readyGate.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
@@ -618,7 +619,9 @@ export class MetadataView extends ConcatView {
     getAttributeInfo(attributeName) {
         const view = this.#attributeViews.get(attributeName);
         if (!view) {
-            throw new Error("No such attribute: " + attributeName);
+            throw new UnknownAttributeInfoError(
+                "No such attribute: " + attributeName
+            );
         }
 
         // Assume that color is always used for encoding.

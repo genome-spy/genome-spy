@@ -7,6 +7,7 @@ import { getActionCatalogEntry } from "./actionCatalog.js";
 import { getIntentActionTypeDocs as getIntentActionTypeDocsContent } from "./intentActionTypeDocs.js";
 import { resolveAgentAttributeCandidateRecord } from "./attributeCandidate.js";
 import { normalizeAgentIntentActionAttributes } from "./agentIntentActionAttributes.js";
+import { formatAgentToolErrorMessage } from "./missingAttributeGuidance.js";
 
 /*
  * Tool behavior lives here. The input shapes and user-facing descriptions are
@@ -474,9 +475,7 @@ async function executeSampleAttributePlot(runtime, options) {
             },
         };
     } catch (error) {
-        throw new ToolCallRejectionError(
-            error instanceof Error ? error.message : String(error)
-        );
+        throw new ToolCallRejectionError(formatAgentToolErrorMessage(error));
     }
 }
 

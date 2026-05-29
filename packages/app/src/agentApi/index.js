@@ -11,6 +11,7 @@ import {
 } from "../charts/hierarchySampleAttributePlots.js";
 import { getGroupColorScale } from "../charts/sampleAttributePlotUtils.js";
 import { getMetadataSourceRuntime } from "../sampleView/metadata/metadataSourceRuntimeState.js";
+import { UnknownAttributeInfoError } from "../sampleView/unknownAttributeInfoError.js";
 export { embedRenderablePlot } from "../charts/chartDialogUtils.js";
 
 // `agentApi` exposes App internals to the agent and plugin surfaces only.
@@ -60,9 +61,17 @@ export function createAgentApi(app) {
                 return;
             }
 
-            return sampleView.compositeAttributeInfoSource.getAttributeInfo(
-                attribute
-            );
+            try {
+                return sampleView.compositeAttributeInfoSource.getAttributeInfo(
+                    attribute
+                );
+            } catch (error) {
+                if (error instanceof UnknownAttributeInfoError) {
+                    return;
+                }
+
+                throw error;
+            }
         },
 
         /**
@@ -332,7 +341,17 @@ export function createAgentApi(app) {
  * @returns {Promise<import("../sampleView/types.d.ts").AttributeInfo | undefined>}
  */
 async function resolvePlotAttributeInfo(attributeInfoSource, attribute, label) {
-    const attributeInfo = attributeInfoSource.getAttributeInfo(attribute);
+    let attributeInfo;
+    try {
+        attributeInfo = attributeInfoSource.getAttributeInfo(attribute);
+    } catch (error) {
+        if (error instanceof UnknownAttributeInfoError) {
+            return undefined;
+        }
+
+        throw error;
+    }
+
     if (!attributeInfo) {
         return undefined;
     }

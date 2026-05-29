@@ -5,6 +5,7 @@ import {
     buildQuantitativeFieldSummary,
 } from "@genome-spy/app/agentShared";
 import { resolveAgentAttributeCandidate } from "./attributeCandidate.js";
+import { MISSING_SAMPLE_ATTRIBUTE_MESSAGE } from "./missingAttributeGuidance.js";
 
 const DEFAULT_MAX_GROUPS = 20;
 const DEFAULT_MAX_EXACT_VALUE_COUNTS = 20;
@@ -52,9 +53,7 @@ export function getAttributeSummaryTool(runtime, input) {
 
     const source = runtime.getAttributeSummarySource(attribute);
     if (!source) {
-        throw new ToolCallRejectionError(
-            "The requested attribute was not found in the current sample view."
-        );
+        throw new ToolCallRejectionError(MISSING_SAMPLE_ATTRIBUTE_MESSAGE);
     }
 
     const content =
@@ -76,9 +75,7 @@ export function getAttributeSummaryTool(runtime, input) {
 function buildGroupedAttributeSummary(runtime, attribute) {
     const source = runtime.getGroupedAttributeSummarySource(attribute);
     if (!source) {
-        throw new ToolCallRejectionError(
-            "The requested attribute was not found in the current sample view."
-        );
+        throw new ToolCallRejectionError(MISSING_SAMPLE_ATTRIBUTE_MESSAGE);
     }
 
     if (source.groupLevels.length === 0 || source.groups.length === 0) {

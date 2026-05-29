@@ -1,3 +1,5 @@
+import { UnknownAttributeInfoError } from "./unknownAttributeInfoError.js";
+
 /**
  * @typedef {import("./types.js").AttributeIdentifier} AttributeIdentifier
  * @typedef {((identifier: AttributeIdentifier) => import("./types.js").AttributeInfo)} AttributeInfoSource
@@ -45,7 +47,7 @@ export default class CompositeAttributeInfoSource {
     getAttributeInfo(attribute) {
         const source = this.attributeInfoSourcesByType[attribute.type];
         if (!source) {
-            throw new Error(
+            throw new UnknownAttributeInfoError(
                 "Cannot find attribute info source for: " +
                     JSON.stringify(attribute)
             );
@@ -56,6 +58,8 @@ export default class CompositeAttributeInfoSource {
             return info;
         }
 
-        throw new Error("Unknown attribute: " + JSON.stringify(attribute));
+        throw new UnknownAttributeInfoError(
+            "Unknown attribute: " + JSON.stringify(attribute)
+        );
     }
 }

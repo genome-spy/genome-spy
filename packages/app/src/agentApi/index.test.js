@@ -75,6 +75,7 @@ import {
     buildHierarchyScatterplot,
 } from "../charts/hierarchySampleAttributePlots.js";
 import { createAgentApi } from "./index.js";
+import { UnknownAttributeInfoError } from "../sampleView/unknownAttributeInfoError.js";
 import { viewSettingsSlice } from "../viewSettingsSlice.js";
 import { makeViewSelectorKey } from "../viewSettingsUtils.js";
 import { createIntervalSelection } from "@genome-spy/core/selection/selection.js";
@@ -318,6 +319,31 @@ describe("createAgentApi", () => {
         ]);
     });
 
+    it("returns undefined for unknown attributes without suppressing unexpected errors", () => {
+        const sampleView = app.getSampleView();
+        sampleView.compositeAttributeInfoSource.getAttributeInfo
+            .mockImplementationOnce(() => {
+                throw new UnknownAttributeInfoError("No such attribute: foo");
+            })
+            .mockImplementationOnce(() => {
+                throw new Error("broken accessor");
+            });
+        const agentApi = createAgentApi(app);
+
+        expect(
+            agentApi.getAttributeInfo({
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "foo",
+            })
+        ).toBeUndefined();
+        expect(() =>
+            agentApi.getAttributeInfo({
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "foo",
+            })
+        ).toThrow("broken accessor");
+    });
+
     it("forwards mutation and UI hooks to the app shell", () => {
         const agentApi = createAgentApi(app);
         const selector = { view: ["root"], type: "unit" };
@@ -446,6 +472,47 @@ describe("createAgentApi", () => {
                 colorScaleRange: ["#ff0000", "#00ff00"],
             })
         );
+    });
+
+    it("handles unknown plot attributes without suppressing unexpected plot lookup errors", async () => {
+        const sampleView = {
+            sampleHierarchy: {
+                groupMetadata: [],
+            },
+            compositeAttributeInfoSource: {
+                getAttributeInfo: vi
+                    .fn()
+                    .mockImplementationOnce(() => {
+                        throw new UnknownAttributeInfoError(
+                            "No such attribute: foo"
+                        );
+                    })
+                    .mockImplementationOnce(() => {
+                        throw new Error("broken plot lookup");
+                    }),
+            },
+        };
+        app.getSampleView.mockReturnValue(sampleView);
+        const agentApi = createAgentApi(app);
+
+        await expect(
+            agentApi.buildSampleAttributePlot({
+                plotType: "boxplot",
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "foo",
+                },
+            })
+        ).rejects.toThrow("Could not resolve the requested sample attribute.");
+        await expect(
+            agentApi.buildSampleAttributePlot({
+                plotType: "boxplot",
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "foo",
+                },
+            })
+        ).rejects.toThrow("broken plot lookup");
     });
 
     it("awaits plot attribute availability and applies plot-local labels", async () => {

@@ -588,6 +588,34 @@ describe("agentTools", () => {
         ).rejects.toThrow(ToolCallRejectionError);
     });
 
+    it("adds metadata source guidance to unresolved plot attributes", async () => {
+        const runtime = createRuntimeStub();
+        runtime.agentApi.buildSampleAttributePlot.mockRejectedValueOnce(
+            new Error(
+                "Could not resolve one of the requested sample attributes."
+            )
+        );
+        const tools = agentTools;
+
+        await expect(
+            tools.showAttributeRelationshipPlot(runtime, {
+                kind: "scatterplot",
+                attributes: [
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "Pten",
+                    },
+                    {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "Sox2",
+                    },
+                ],
+            })
+        ).rejects.toThrow(
+            "One or more requested sample attributes are not loaded in the current view. Use exact loaded attribute specifiers from context or prior tool results. If the current context contains matching metadataSources, import the needed identifiers first with addMetadataFromSource, then use the returned sample attributes. If no suitable metadata source exists, the attributes are unavailable."
+        );
+    });
+
     it("rejects relationship plots with identical axes", async () => {
         const runtime = createRuntimeStub();
 
@@ -777,6 +805,23 @@ describe("agentTools", () => {
                 q3: 42,
                 iqr: 0,
             })
+        );
+    });
+
+    it("rejects missing attribute summaries with metadata source guidance", () => {
+        const runtime = createRuntimeStub();
+        const tools = agentTools;
+
+        expect(() =>
+            tools.getAttributeSummary(runtime, {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "transcriptome",
+                },
+                scope: "visible_samples",
+            })
+        ).toThrow(
+            "One or more requested sample attributes are not loaded in the current view. Use exact loaded attribute specifiers from context or prior tool results. If the current context contains matching metadataSources, import the needed identifiers first with addMetadataFromSource, then use the returned sample attributes. If no suitable metadata source exists, the attributes are unavailable."
         );
     });
 

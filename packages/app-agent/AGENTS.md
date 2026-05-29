@@ -20,6 +20,23 @@
   duplicate app-owned code or types, go through public app APIs first, and
   expand those APIs deliberately only when necessary.
 
+## Agent Guidance
+
+- Additions to system prompts and tool docs must be considered carefully and
+  optimized for size because both end up in provider-facing context. Prefer
+  concise tool-result guidance when it can carry context-specific instructions
+  at the point of failure.
+- Intent action docs may be more elaborate when needed because they are loaded
+  on demand with `getIntentActionDocs` / `getIntentActionTypeDocs`, rather than
+  always included in the base context.
+- Prefer actionable, failure-local guidance in rejected tool results when it
+  helps the model recover from a specific wrong assumption. Keep it conditional
+  and concise: state what failed, what context/tool result to check next, and
+  when the alternative path is unavailable.
+- Optimize provider-facing guidance for local models and a 32k token context
+  window. Assume prompt, tool docs, context summaries, history, and tool results
+  must all fit inside that budget.
+
 ## Fast Start
 
 If you are starting from scratch, read these files in order:
