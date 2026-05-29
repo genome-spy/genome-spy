@@ -651,7 +651,7 @@
     "examplePayload": {
       "selector": {
         "scope": [],
-        "param": "brush"
+        "param": "sel-brush"
       },
       "value": {
         "type": "interval",
@@ -673,7 +673,7 @@
       {
         "selector": {
           "scope": [],
-          "param": "brush"
+          "param": "sel-brush"
         },
         "value": {
           "type": "interval",
@@ -689,6 +689,16 @@
               }
             ]
           }
+        }
+      },
+      {
+        "selector": {
+          "scope": [],
+          "param": "sel-brush"
+        },
+        "value": {
+          "type": "interval",
+          "intervals": {}
         }
       },
       {
