@@ -584,4 +584,32 @@ describe("agentAdapter", () => {
             })
         );
     });
+
+    it("forwards abort signals to the agent-turn request", async () => {
+        const app = createAppStub();
+        const adapter = createAgentAdapter(app, createAgentApiStub(app));
+        const abortController = new AbortController();
+        globalThis.fetch.mockResolvedValueOnce(
+            createResponse({
+                type: "answer",
+                message: "OK",
+            })
+        );
+
+        await adapter.requestAgentTurn(
+            "What is in this visualization?",
+            [],
+            {},
+            true,
+            {},
+            abortController.signal
+        );
+
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            "http://127.0.0.1:8000/v1/agent-turn",
+            expect.objectContaining({
+                signal: abortController.signal,
+            })
+        );
+    });
 });

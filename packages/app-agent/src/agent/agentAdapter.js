@@ -312,6 +312,7 @@ export function createAgentAdapter(app, agentApi) {
      * @param {import("./agentSessionController.js").AgentStreamCallbacks} [streamCallbacks]
      * @param {boolean} [allowStreaming]
      * @param {AgentContextOptions} [contextOptions]
+     * @param {AbortSignal} [signal]
      * @returns {Promise<{ response: import("./types.js").AgentTurnResponse, trace: Record<string, any> }>}
      */
     function requestAgentTurn(
@@ -319,7 +320,8 @@ export function createAgentAdapter(app, agentApi) {
         history = [],
         streamCallbacks = {},
         allowStreaming = true,
-        contextOptions = {}
+        contextOptions = {},
+        signal = undefined
     ) {
         return requestAgentTurnImpl({
             message,
@@ -327,6 +329,7 @@ export function createAgentAdapter(app, agentApi) {
             streamCallbacks,
             allowStreaming,
             contextOptions,
+            signal,
         });
     }
 
