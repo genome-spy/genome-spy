@@ -1118,12 +1118,6 @@ export default class Mark {
         }
 
         if (this.bufferInfo) {
-            // A hack to prevent WebGL: INVALID_OPERATION: drawArrays: no buffer is bound to enabled attribute
-            // TODO: Consider using bufferSubData or DYNAMIC_DRAW etc...
-            for (let i = 0; i < 8; i++) {
-                gl.disableVertexAttribArray(i);
-            }
-
             Object.values(this.bufferInfo.attribs).forEach((attribInfo) =>
                 this.gl.deleteBuffer(attribInfo.buffer)
             );
