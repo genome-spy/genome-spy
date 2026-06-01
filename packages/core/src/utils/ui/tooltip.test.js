@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
 import Tooltip from "./tooltip.js";
+import { html } from "lit";
 
 describe("Tooltip async updates", () => {
     it("ignores stale async result after clear", async () => {
@@ -61,5 +62,41 @@ describe("Tooltip async updates", () => {
 
         expect(setContentSpy).toHaveBeenCalledWith("B");
         expect(setContentSpy).not.toHaveBeenCalledWith("A");
+    });
+});
+
+describe("Tooltip autoscroll containers", () => {
+    it("scrolls the hovered row into view after content is rendered", async () => {
+        const container = document.createElement("div");
+        const tooltip = new Tooltip(container);
+        tooltip.mouseCoords = [0, 0];
+
+        const scrollIntoView = vi.fn();
+        const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+        HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+        try {
+            tooltip.setContent(html`
+                <div class="autoscroll-container">
+                    <table>
+                        <tr>
+                            <th>foo</th>
+                        </tr>
+                        <tr class="hovered">
+                            <th>bar</th>
+                        </tr>
+                    </table>
+                </div>
+            `);
+
+            await Promise.resolve();
+
+            expect(scrollIntoView).toHaveBeenCalledWith({
+                block: "nearest",
+                inline: "nearest",
+            });
+        } finally {
+            HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+        }
     });
 });

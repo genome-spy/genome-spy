@@ -178,6 +178,14 @@ background-color: #e0e0e0;
 }
 }
 
+.autoscroll-container {
+max-height: min(40em, 50vh);
+overflow-x: hidden;
+overflow-y: auto;
+padding-right: var(--genome-spy-basic-spacing);
+margin-right: calc(-1 * var(--genome-spy-basic-spacing));
+}
+
 .na {
 color: #aaa;
 font-style: italic;

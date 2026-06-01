@@ -1,7 +1,9 @@
+// @vitest-environment jsdom
 // @ts-check
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import UnitView from "@genome-spy/core/view/unitView.js";
+import Tooltip from "@genome-spy/core/utils/ui/tooltip.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import {
     createSampleViewStub,
@@ -881,6 +883,69 @@ describe("MetadataView", () => {
         expect(updateTooltip).not.toHaveBeenCalled();
 
         metadataView.dispose();
+    });
+
+    it("keeps the hovered metadata tooltip row visible", async () => {
+        const { context, sampleView, metadataView, attributeViews } =
+            await createMetadataViewTestHarness();
+
+        const scrollIntoView = vi.fn();
+        const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+        HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+        try {
+            /** @type {(id: string) => Promise<import("lit").TemplateResult>} */
+            let tooltipConverter;
+            context.updateTooltip = vi.fn((_id, converter) => {
+                tooltipConverter = converter;
+            });
+            sampleView.findSampleForMouseEvent = () => ({ id: "s1" });
+            const tooltipContainer = document.createElement("div");
+            const tooltip = new Tooltip(tooltipContainer);
+            tooltip.mouseCoords = [0, 0];
+
+            metadataView.handleInteraction(
+                /** @type {any} */ ({
+                    type: "mousemove",
+                    target: attributeViews.bar,
+                    mouseEvent: { buttons: 0 },
+                }),
+                false
+            );
+
+            tooltip.setContent(
+                await tooltipConverter(JSON.stringify(["s1", "bar"]))
+            );
+
+            const scroller = tooltipContainer.querySelector(
+                ".autoscroll-container"
+            );
+            expect(scroller).not.toBeNull();
+            expect(scroller?.querySelector("tr.hovered th")?.textContent).toBe(
+                "bar"
+            );
+            await Promise.resolve();
+            expect(scrollIntoView).toHaveBeenCalledWith({
+                block: "nearest",
+                inline: "nearest",
+            });
+
+            tooltip.setContent(
+                await tooltipConverter(JSON.stringify(["s1", "foo"]))
+            );
+
+            const updatedScroller = tooltipContainer.querySelector(
+                ".autoscroll-container"
+            );
+            expect(
+                updatedScroller?.querySelector("tr.hovered th")?.textContent
+            ).toBe("foo");
+            await Promise.resolve();
+            expect(scrollIntoView).toHaveBeenCalledTimes(2);
+        } finally {
+            HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+            metadataView.dispose();
+        }
     });
 
     it("ignores synthesized mouseleave while the pointer is still inside the metadata view", async () => {

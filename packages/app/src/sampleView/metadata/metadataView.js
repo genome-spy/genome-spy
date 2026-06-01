@@ -695,27 +695,31 @@ export class MetadataView extends ConcatView {
         const metadatum = this.#metadata[sampleId];
 
         const table = html`
-            <table class="attributes">
-                ${Object.entries(metadatum)
-                    .filter(([key]) => attributeViews.get(key).isVisible())
-                    .map(
-                        ([key, value]) => html`
-                            <tr
-                                class=${classMap({ hovered: key == attribute })}
-                            >
-                                <th>${formatAttributeName(key)}</th>
-                                <td>${formatObject(value)}</td>
-                                <td
-                                    class="color"
-                                    style="background-color: ${getColor(
-                                        key,
-                                        value
-                                    )}"
-                                ></td>
-                            </tr>
-                        `
-                    )}
-            </table>
+            <div class="autoscroll-container">
+                <table class="attributes">
+                    ${Object.entries(metadatum)
+                        .filter(([key]) => attributeViews.get(key).isVisible())
+                        .map(
+                            ([key, value]) => html`
+                                <tr
+                                    class=${classMap({
+                                        hovered: key == attribute,
+                                    })}
+                                >
+                                    <th>${formatAttributeName(key)}</th>
+                                    <td>${formatObject(value)}</td>
+                                    <td
+                                        class="color"
+                                        style="background-color: ${getColor(
+                                            key,
+                                            value
+                                        )}"
+                                    ></td>
+                                </tr>
+                            `
+                        )}
+                </table>
+            </div>
         `;
 
         // TODO: Show displayName instead

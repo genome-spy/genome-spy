@@ -165,6 +165,9 @@ export default class Tooltip {
         }
 
         render(content, this.#element);
+        this.#element
+            .querySelectorAll(".autoscroll-container")
+            .forEach(scrollHoveredTooltipRow);
 
         this.visible = true;
 
@@ -211,6 +214,25 @@ export default class Tooltip {
     _isPenalty() {
         return this.#penaltyUntil && this.#penaltyUntil > performance.now();
     }
+}
+
+/**
+ * Scrolls the highlighted tooltip row into view after Lit has committed the
+ * current render.
+ *
+ * @param {Element | undefined} element
+ */
+function scrollHoveredTooltipRow(element) {
+    if (!element) {
+        return;
+    }
+
+    queueMicrotask(() => {
+        element.querySelector("tr.hovered")?.scrollIntoView({
+            block: "nearest",
+            inline: "nearest",
+        });
+    });
 }
 
 /**
