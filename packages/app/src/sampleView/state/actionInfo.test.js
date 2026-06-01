@@ -157,6 +157,72 @@ describe("getActionInfo", () => {
         expect(provenanceTitle).toContain("0");
     });
 
+    it("uses short titles for menu labels and full titles for provenance", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/filterByNominal`,
+            payload: {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "Annotations/CellLineDistributor",
+                },
+                values: ["Sebastian"],
+            },
+        };
+
+        const info = getActionInfo(action, () => ({
+            ...makeAttributeInfo(),
+            name: "Annotations/CellLineDistributor",
+            title: "Annotations/CellLineDistributor",
+            shortTitle: "CellLineDistributor",
+            emphasizedName: "Annotations/CellLineDistributor",
+        }));
+        const menuTitle = templateResultToString(info.title);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(menuTitle).toContain("CellLineDistributor");
+        expect(menuTitle).not.toContain("Annotations/");
+        expect(provenanceTitle).toContain("Annotations/CellLineDistributor");
+    });
+
+    it("uses short titles for retain-categories menu labels", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/retainCategoriesByAttribute`,
+            payload: {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "Annotations/CellLineDistributor",
+                },
+                condition: {
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "Annotations/PublicationStatus",
+                    },
+                    operator: "in",
+                    values: ["Published"],
+                },
+            },
+        };
+
+        const info = getActionInfo(action, (attribute) => ({
+            ...makeAttributeInfo(),
+            name: /** @type {string} */ (attribute.specifier),
+            title: /** @type {string} */ (attribute.specifier),
+            shortTitle:
+                attribute.specifier === "Annotations/CellLineDistributor"
+                    ? "CellLineDistributor"
+                    : "PublicationStatus",
+            emphasizedName: /** @type {string} */ (attribute.specifier),
+        }));
+        const menuTitle = templateResultToString(info.title);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(menuTitle).toContain("CellLineDistributor");
+        expect(menuTitle).toContain("PublicationStatus");
+        expect(menuTitle).not.toContain("Annotations/");
+        expect(provenanceTitle).toContain("Annotations/CellLineDistributor");
+        expect(provenanceTitle).toContain("Annotations/PublicationStatus");
+    });
+
     it("describes category retention by categorical condition", () => {
         const action = {
             type: `${SAMPLE_SLICE_NAME}/retainCategoriesByAttribute`,

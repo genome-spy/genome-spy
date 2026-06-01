@@ -20,6 +20,7 @@ import {
     METADATA_PATH_SEPARATOR,
 } from "./metadata/metadataUtils.js";
 import { html } from "lit";
+import { formatShortAttributeName } from "./attributeFormatting.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 const MAX_CATEGORICAL_QUICK_CONDITIONS = 20;
@@ -126,8 +127,9 @@ export default function generateAttributeContextMenu(
             if (retainCategoriesSubmenu.length) {
                 items.push({
                     icon: faFilter,
-                    label: html`Retain ${attributeInfo.emphasizedName} values
-                    based on another attribute`,
+                    label: html`Retain
+                    ${formatShortAttributeName(attributeInfo)} values based on
+                    another attribute`,
                     submenu: retainCategoriesSubmenu,
                 });
             }
@@ -335,8 +337,9 @@ function buildRetainCategoriesConditionSubmenu(
 ) {
     return [
         {
-            label: html`Retain ${categoryAttributeInfo.emphasizedName} values
-            where any sample has ${conditionAttributeInfo.emphasizedName}
+            label: html`Retain
+            ${formatShortAttributeName(categoryAttributeInfo)} values where any
+            sample has ${formatShortAttributeName(conditionAttributeInfo)}
             matching:`,
             type: "header",
         },

@@ -13,6 +13,7 @@ import {
     faTable,
 } from "@fortawesome/free-solid-svg-icons";
 import { SAMPLE_SLICE_NAME } from "./sampleSlice.js";
+import { formatShortAttributeName } from "../attributeFormatting.js";
 
 const attributeNumberFormat = d3format(".4");
 
@@ -59,6 +60,7 @@ function formatColumnNameList(columnIds) {
  * @property {Object} template
  * @property {string | import("lit").TemplateResult} attributeName
  * @property {string | import("lit").TemplateResult} attributeTitle
+ * @property {string | import("lit").TemplateResult} conditionAttributeName
  * @property {string | import("lit").TemplateResult} conditionAttributeTitle
  */
 
@@ -197,7 +199,9 @@ const actionHandlers = {
     retainCategoriesByAttribute: ({
         payload,
         template,
+        attributeName,
         attributeTitle,
+        conditionAttributeName,
         conditionAttributeTitle,
     }) => {
         const condition =
@@ -205,26 +209,24 @@ const actionHandlers = {
                 payload.condition
             );
 
-        /** @type {(attr: string | import("lit").TemplateResult) => import("lit").TemplateResult} */
+        /** @type {(attr: string | import("lit").TemplateResult, conditionAttr: string | import("lit").TemplateResult) => import("lit").TemplateResult} */
         let makeTitle;
         if (condition.operator === "in" && condition.required === "all") {
-            makeTitle = (attr) => html`
-                Retain ${attr} values where samples include all
-                ${conditionAttributeTitle} values in
-                ${formatSet(condition.values)}
+            makeTitle = (attr, conditionAttr) => html`
+                Retain ${attr} values where samples include all ${conditionAttr}
+                values in ${formatSet(condition.values)}
             `;
         } else {
-            makeTitle = (attr) => html`
-                Retain ${attr} values where any sample has
-                ${conditionAttributeTitle}
+            makeTitle = (attr, conditionAttr) => html`
+                Retain ${attr} values where any sample has ${conditionAttr}
                 ${formatConditionPredicate(condition)}
             `;
         }
 
         return {
             ...template,
-            title: makeTitle(attributeTitle),
-            provenanceTitle: makeTitle(attributeTitle),
+            title: makeTitle(attributeName, conditionAttributeName),
+            provenanceTitle: makeTitle(attributeTitle, conditionAttributeTitle),
             icon: faFilter,
         };
     },
@@ -364,11 +366,9 @@ export function getActionInfo(action, getAttributeInfo) {
                 typeof attribute.specifier === "string"
                     ? html` <em>${attribute.specifier}</em> `
                     : undefined;
-            const attributeName =
-                attributeInfo?.emphasizedName ??
-                (attributeInfo?.name
-                    ? html` <em>${attributeInfo.name}</em> `
-                    : fallbackAttributeName);
+            const attributeName = attributeInfo
+                ? formatShortAttributeName(attributeInfo)
+                : fallbackAttributeName;
             const attributeTitle = attributeInfo?.title ?? attributeName;
 
             return { attributeInfo, attributeName, attributeTitle };
@@ -392,7 +392,10 @@ export function getActionInfo(action, getAttributeInfo) {
     const attribute =
         "attribute" in payload && payload.attribute ? payload.attribute : null;
     const { attributeName, attributeTitle } = resolveAttributeInfo(attribute);
-    const { attributeTitle: conditionAttributeTitle } = resolveAttributeInfo(
+    const {
+        attributeName: conditionAttributeName,
+        attributeTitle: conditionAttributeTitle,
+    } = resolveAttributeInfo(
         "condition" in payload &&
             payload.condition &&
             typeof payload.condition === "object" &&
@@ -417,6 +420,7 @@ export function getActionInfo(action, getAttributeInfo) {
             template,
             attributeName,
             attributeTitle,
+            conditionAttributeName,
             conditionAttributeTitle,
         });
     }

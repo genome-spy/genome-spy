@@ -6,6 +6,7 @@ import {
     buildHierarchyScatterplot,
 } from "../charts/hierarchySampleAttributePlots.js";
 import { getGroupColorScale } from "../charts/sampleAttributePlotUtils.js";
+import { formatShortAttributeName } from "./attributeFormatting.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 
@@ -87,7 +88,7 @@ export function appendPlotMenuItems(
         submenu: [
             { label: "Choose the secondary attribute", type: "header" },
             ...metadataAttributeInfos.map((info) => ({
-                label: info.emphasizedName,
+                label: formatShortAttributeName(info),
                 callback: () =>
                     showPlotDialog(
                         buildHierarchyScatterplot({
