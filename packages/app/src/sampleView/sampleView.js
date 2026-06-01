@@ -3,7 +3,6 @@ import { html } from "lit";
 import {
     FlexDimensions,
     mapToPixelCoords,
-    sumSizeDefs,
 } from "@genome-spy/core/view/layout/flexLayout.js";
 import { MetadataView } from "./metadata/metadataView.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
@@ -696,9 +695,9 @@ export default class SampleView extends ContainerView {
      * @override
      */
     getOverhang() {
-        let peripherySize = this.#getSidebarWidth().px ?? 0;
+        const sidebarWidth = this.#getSidebarWidth().px ?? 0;
 
-        return new Padding(0, 0, 0, peripherySize).add(
+        return new Padding(0, 0, 0, sidebarWidth).add(
             this.#gridChild.getOverhang()
         );
     }
@@ -732,11 +731,7 @@ export default class SampleView extends ContainerView {
                     .addPadding(view.getOverhang())
                     .addPadding(view.getPadding());
 
-            const width = sumSizeDefs(
-                [this.#sidebarView, this.#gridChild.view].map(
-                    (view) => total(view).width
-                )
-            );
+            const width = total(this.#gridChild.view).width;
 
             return new FlexDimensions(width, superSize.height);
         });

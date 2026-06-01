@@ -420,6 +420,35 @@ describe("SampleView", () => {
         expect(view.sidebarCoords.width).toBe(view.getOverhang().left);
     });
 
+    test("counts sidebar width once in the minimum layout size", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        // GridView combines content size and overhang when reserving space.
+        expect((view.getSize().width.px ?? 0) + view.getOverhang().left).toBe(
+            view.sidebarCoords.width
+        );
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
     test("sample group column separates levels without outer padding", async () => {
         const { view } = await createSampleViewForTest({
             spec: {
