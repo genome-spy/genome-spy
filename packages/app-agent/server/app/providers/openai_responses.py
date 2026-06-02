@@ -84,6 +84,7 @@ class OpenAIResponsesProvider(BaseProvider):
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
+        self._prefer_role_compat_payload = settings.prefer_responses_role_compat
 
     async def generate(self, request: ProviderRequest) -> ProviderResponse:
         """Generate one complete response through the Responses API.
@@ -149,6 +150,14 @@ class OpenAIResponsesProvider(BaseProvider):
                 )
                 return response_payload
             except ProviderError as exc:
+                fallback_payload = _build_unexpected_role_fallback_payload(payload, exc)
+                if fallback_payload is not None:
+                    self._prefer_role_compat_payload = True
+                    logger.warning(
+                        "Retrying provider request with developer-role fallback after upstream role validation error."
+                    )
+                    payload = fallback_payload
+                    continue
                 retry_delay_seconds = _get_rate_limit_retry_delay_seconds(exc)
                 if (
                     retry_delay_seconds is not None
@@ -188,6 +197,7 @@ class OpenAIResponsesProvider(BaseProvider):
         )
         for attempt in range(total_attempts + 1):
             yielded_substantive_event = False
+            request_payload = payload
             async with httpx.AsyncClient(
                 timeout=self._settings.timeout_seconds
             ) as client:
@@ -195,7 +205,7 @@ class OpenAIResponsesProvider(BaseProvider):
                     async with client.stream(
                         "POST",
                         self._endpoint,
-                        json=payload,
+                        json=request_payload,
                         headers=_build_auth_headers(self._settings),
                     ) as response:
                         await _raise_for_error_response(
@@ -214,6 +224,20 @@ class OpenAIResponsesProvider(BaseProvider):
                 except httpx.ReadTimeout as exc:
                     raise _provider_request_failed(self._settings, exc) from exc
                 except Exception as exc:
+                    if isinstance(exc, ProviderError):
+                        fallback_payload = _build_unexpected_role_fallback_payload(
+                            request_payload, exc
+                        )
+                        if (
+                            fallback_payload is not None
+                            and not yielded_substantive_event
+                        ):
+                            self._prefer_role_compat_payload = True
+                            logger.warning(
+                                "Retrying streaming provider request with developer-role fallback after upstream role validation error."
+                            )
+                            payload = fallback_payload
+                            continue
                     retry_delay_seconds = (
                         _get_rate_limit_retry_delay_seconds(exc)
                         if isinstance(exc, ProviderError)
@@ -274,6 +298,10 @@ class OpenAIResponsesProvider(BaseProvider):
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
+        if self._prefer_role_compat_payload:
+            compat_payload = _build_role_compat_payload(payload)
+            if compat_payload is not None:
+                payload = compat_payload
         _log_model_request(
             prompt.instructions,
             prompt.context_text,
@@ -344,6 +372,67 @@ def _build_auth_headers(settings: Settings) -> dict[str, str]:
     return {
         "authorization": "Bearer " + settings.api_key,
         "content-type": "application/json",
+    }
+
+
+def _build_unexpected_role_fallback_payload(
+    payload: dict[str, Any], error: ProviderError
+) -> dict[str, Any] | None:
+    """Build a compatibility fallback for stricter Responses implementations.
+
+    Keeps the default OpenAI-style payload untouched for providers that accept
+    `developer` messages. Some OpenAI-compatible servers reject `developer`
+    roles entirely, and others allow `system` only at the start of the
+    conversation. In those cases, fold relay-owned context blocks into the
+    top-level instructions field and remove the `developer` messages from
+    `input`.
+    """
+    message = str(error)
+    if (
+        "Unexpected message role." not in message
+        and "System message must be at the beginning." not in message
+    ):
+        return None
+
+    return _build_role_compat_payload(payload)
+
+
+def _build_role_compat_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Fold developer context into instructions for strict Responses servers."""
+    input_items = payload.get("input")
+    if not isinstance(input_items, list):
+        return None
+
+    developer_texts: list[str] = []
+    rewritten_items: list[Any] = []
+    for item in input_items:
+        if not (isinstance(item, dict) and item.get("role") == "developer"):
+            rewritten_items.append(item)
+            continue
+
+        content = item.get("content")
+        if isinstance(content, list):
+            for part in content:
+                if (
+                    isinstance(part, dict)
+                    and part.get("type") == "input_text"
+                    and isinstance(part.get("text"), str)
+                ):
+                    developer_texts.append(part["text"])
+
+    if not developer_texts:
+        return None
+
+    existing_instructions = payload.get("instructions")
+    instruction_parts = []
+    if isinstance(existing_instructions, str) and existing_instructions.strip():
+        instruction_parts.append(existing_instructions.strip())
+    instruction_parts.extend(text.strip() for text in developer_texts if text.strip())
+
+    return {
+        **payload,
+        "instructions": "\n\n".join(instruction_parts),
+        "input": rewritten_items,
     }
 
 

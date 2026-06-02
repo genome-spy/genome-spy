@@ -17,6 +17,7 @@ class Settings:
     timeout_seconds: float
     system_prompt: str
     enable_streaming: bool
+    prefer_responses_role_compat: bool
 
 
 def describe_api_key_for_logs(api_key: str) -> str:
@@ -73,19 +74,23 @@ def load_settings() -> Settings:
             "GENOMESPY_AGENT_SYSTEM_PROMPT", load_default_system_prompt()
         ),
         enable_streaming=_load_bool_env("GENOMESPY_AGENT_ENABLE_STREAMING", True),
+        prefer_responses_role_compat=_load_bool_env(
+            "GENOMESPY_AGENT_PREFER_RESPONSES_ROLE_COMPAT", False
+        ),
     )
 
     logger.info(
         (
             "Loaded GenomeSpy agent settings: "
             "base_url=%s model=%s api_key_source=%s api_key=%s "
-            "streaming=%s timeout_seconds=%s"
+            "streaming=%s responses_role_compat=%s timeout_seconds=%s"
         ),
         settings.base_url,
         settings.model,
         "GENOMESPY_AGENT_API_KEY" if api_key_env is not None else "default",
         describe_api_key_for_logs(settings.api_key),
         settings.enable_streaming,
+        settings.prefer_responses_role_compat,
         settings.timeout_seconds,
     )
 

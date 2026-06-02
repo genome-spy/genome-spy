@@ -46,7 +46,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         (
             "GenomeSpy agent server startup: provider=%s base_url=%s "
             "model=%s api_key_source=%s api_key=%s "
-            "streaming=%s timeout_seconds=%s"
+            "streaming=%s responses_role_compat=%s timeout_seconds=%s"
         ),
         provider.__class__.__name__,
         settings.base_url,
@@ -54,6 +54,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         api_key_source,
         describe_api_key_for_logs(settings.api_key),
         settings.enable_streaming,
+        settings.prefer_responses_role_compat,
         settings.timeout_seconds,
     )
     yield
