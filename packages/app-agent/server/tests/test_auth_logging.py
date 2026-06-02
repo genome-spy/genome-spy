@@ -23,8 +23,12 @@ def test_load_settings_logs_masked_api_key(
         settings = load_settings()
 
     assert settings.api_key == "sk-test-1234567890"
+    assert settings.enable_token_debug_logs is True
+    assert settings.enable_throughput_debug_logs is True
     assert "api_key_source=GENOMESPY_AGENT_API_KEY" in caplog.text
     assert "api_key=len=18 sha256=" in caplog.text
+    assert "token_debug_logs=True" in caplog.text
+    assert "throughput_debug_logs=True" in caplog.text
     assert "sk-test-1234567890" not in caplog.text
 
 
@@ -39,6 +43,8 @@ def test_provider_auth_diagnostic_logs_masked_api_key(
         system_prompt="system prompt",
         enable_streaming=True,
         prefer_responses_role_compat=False,
+        enable_token_debug_logs=True,
+        enable_throughput_debug_logs=True,
     )
 
     with caplog.at_level(logging.WARNING):
