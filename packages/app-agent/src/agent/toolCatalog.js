@@ -123,6 +123,8 @@ export function formatToolCallRejection(toolName, errors) {
 
     return [
         "Tool call was incorrect and rejected. Correct it before trying again.",
+        "Return only one complete JSON object for tool arguments.",
+        "Use double quotes and close every quote, brace, and bracket.",
         fieldSummary,
         "Example input:",
         exampleInput,
