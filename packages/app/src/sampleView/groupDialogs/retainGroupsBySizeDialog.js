@@ -26,7 +26,10 @@ class RetainGroupsBySizeDialog extends BaseDialog {
 
     firstUpdated() {
         super.firstUpdated?.();
-        this.dialogTitle = `Retain groups by size at level ${this.level}`;
+        this.dialogTitle =
+            this.sampleView.sampleHierarchy.groupMetadata.length > 1
+                ? "Retain groups by size at this level"
+                : "Retain groups by size";
     }
 
     /** @param {import("../../components/generic/thresholdComparisonInput.js").ThresholdComparisonInputChangeEvent} event */

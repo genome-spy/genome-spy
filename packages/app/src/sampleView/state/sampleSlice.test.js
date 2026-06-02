@@ -871,6 +871,69 @@ describe("sampleSlice reducers", () => {
         });
     });
 
+    it("ungroups through the reducer and removes collapsed metadata levels", () => {
+        const state =
+            /** @type {import("./sampleState.js").SampleHierarchy} */ ({
+                ...createSampleHierarchy(),
+                groupMetadata: [
+                    {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "diagnosis",
+                        },
+                    },
+                    {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "patient",
+                        },
+                    },
+                ],
+                rootGroup: {
+                    name: "ROOT",
+                    title: "Root",
+                    groups: [
+                        {
+                            name: "A",
+                            title: "A",
+                            groups: [
+                                { name: "A1", title: "A1", samples: ["s1"] },
+                            ],
+                        },
+                        {
+                            name: "B",
+                            title: "B",
+                            groups: [
+                                { name: "B1", title: "B1", samples: ["s2"] },
+                            ],
+                        },
+                    ],
+                },
+            });
+
+        const nextState = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.ungroup({ level: 2 })
+        );
+
+        expect(nextState.groupMetadata).toEqual([
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+            },
+        ]);
+        expect(nextState.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                { name: "A", title: "A", samples: ["s1"] },
+                { name: "B", title: "B", samples: ["s2"] },
+            ],
+        });
+    });
+
     it("fails when retaining groups by rank before samples have been grouped", () => {
         const state = createSampleHierarchy();
 

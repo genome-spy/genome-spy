@@ -24,7 +24,10 @@ class RetainGroupsByRankDialog extends BaseDialog {
 
     firstUpdated() {
         super.firstUpdated?.();
-        this.dialogTitle = `Retain ranked groups by size at level ${this.level}`;
+        this.dialogTitle =
+            this.sampleView.sampleHierarchy.groupMetadata.length > 1
+                ? "Retain ranked groups by size at this level"
+                : "Retain ranked groups by size";
     }
 
     renderBody() {

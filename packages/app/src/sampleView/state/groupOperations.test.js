@@ -10,6 +10,7 @@ import {
     groupSamplesByThresholds,
     makeCustomGroupAccessor,
     removeGroup,
+    ungroup,
 } from "./groupOperations.js";
 
 describe("groupOperations", () => {
@@ -395,6 +396,73 @@ describe("groupOperations", () => {
         ]);
         expect(root.groups[1].groups.map((group) => group.name)).toEqual([
             "B1",
+        ]);
+    });
+
+    it("ungroups the top level into the current root samples", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                { name: "A", title: "A", samples: ["s1", "s2"] },
+                {
+                    name: "C",
+                    title: "C",
+                    groups: [
+                        { name: "C1", title: "C1", samples: ["s4"] },
+                        { name: "C2", title: "C2", samples: ["s5", "s6"] },
+                    ],
+                },
+            ],
+        };
+
+        ungroup(root, 0);
+
+        expect(root).toEqual({
+            name: "ROOT",
+            title: "Root",
+            samples: ["s1", "s2", "s4", "s5", "s6"],
+        });
+    });
+
+    it("ungroups nested levels while preserving ancestor groups", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                {
+                    name: "A",
+                    title: "A",
+                    groups: [
+                        { name: "A1", title: "A1", samples: ["s1"] },
+                        {
+                            name: "A2",
+                            title: "A2",
+                            samples: ["s2", "s3"],
+                        },
+                    ],
+                },
+                {
+                    name: "B",
+                    title: "B",
+                    groups: [
+                        {
+                            name: "B1",
+                            title: "B1",
+                            groups: [
+                                { name: "B1a", title: "B1a", samples: ["s4"] },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        };
+
+        ungroup(root, 1);
+
+        expect(root.groups).toEqual([
+            { name: "A", title: "A", samples: ["s1", "s2", "s3"] },
+            { name: "B", title: "B", samples: ["s4"] },
         ]);
     });
 

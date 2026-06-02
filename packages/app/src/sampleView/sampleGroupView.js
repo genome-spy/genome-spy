@@ -6,7 +6,7 @@ import { isString } from "vega-util";
 import { render } from "lit";
 import { showRetainGroupsByRankDialog } from "./groupDialogs/retainGroupsByRankDialog.js";
 import { showRetainGroupsBySizeDialog } from "./groupDialogs/retainGroupsBySizeDialog.js";
-import { faFilter } from "@fortawesome/free-solid-svg-icons";
+import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
 const GROUP_COLUMN_WIDTH = { step: 24 };
 
@@ -172,16 +172,20 @@ export default class SampleGroupView extends LayerView {
             const action = sampleView.actions.removeGroup({
                 path: foundPath.map((group) => group.name),
             });
+            const ungroupAction = sampleView.actions.ungroup({ level });
             const store = sampleView.provenance.store;
+            const hasMultipleGroupLevels =
+                sampleView.sampleHierarchy.groupMetadata.length > 1;
 
             /**
              * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
+             * @param {string} [label]
              * @returns {import("../utils/ui/contextMenu.js").MenuItem}
              */
-            const actionToItem = (action) => {
+            const actionToItem = (action, label) => {
                 const info = sampleView.provenance.getActionInfo(action);
                 return {
-                    label: info.title,
+                    label: label ?? info.title,
                     icon: info.icon,
                     callback: () => store.dispatch(action),
                 };
@@ -198,11 +202,15 @@ export default class SampleGroupView extends LayerView {
                         DIVIDER,
                         {
                             icon: faFilter,
-                            label: "Retain groups at this level",
+                            label: hasMultipleGroupLevels
+                                ? "Retain groups at this level"
+                                : "Retain groups",
                             submenu: [
                                 {
                                     icon: faFilter,
-                                    label: "Ranked groups by size...",
+                                    label: hasMultipleGroupLevels
+                                        ? "Ranked groups by size at this level..."
+                                        : "Ranked groups by size...",
                                     callback: () =>
                                         showRetainGroupsByRankDialog(
                                             sampleView,
@@ -211,7 +219,9 @@ export default class SampleGroupView extends LayerView {
                                 },
                                 {
                                     icon: faFilter,
-                                    label: "Groups by size threshold...",
+                                    label: hasMultipleGroupLevels
+                                        ? "Groups by size threshold at this level..."
+                                        : "Groups by size threshold...",
                                     callback: () =>
                                         showRetainGroupsBySizeDialog(
                                             sampleView,
@@ -219,6 +229,16 @@ export default class SampleGroupView extends LayerView {
                                         ),
                                 },
                             ],
+                        },
+                        DIVIDER,
+                        {
+                            ...actionToItem(
+                                ungroupAction,
+                                hasMultipleGroupLevels
+                                    ? "Ungroup from this level"
+                                    : "Ungroup"
+                            ),
+                            icon: faObjectGroup,
                         },
                     ],
                 },

@@ -279,6 +279,20 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
+              "const": "sampleView/ungroup",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/Ungroup"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
               "const": "sampleView/retainMatched",
               "type": "string"
             },
@@ -1783,6 +1797,18 @@
     "ThresholdOperator": {
       "enum": ["lt", "lte"],
       "type": "string"
+    },
+    "Ungroup": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "description": "One-based grouping level to collapse.\n\n`1` collapses top-level groups under ROOT and all deeper levels into one flat ROOT sample group. `2` keeps level-1 groups but collapses their children and all deeper levels into sample lists.",
+          "minimum": 1,
+          "type": "number"
+        }
+      },
+      "required": ["level"],
+      "type": "object"
     },
     "UrlGenomeDefinition": {
       "additionalProperties": false,

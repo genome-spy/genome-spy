@@ -13,6 +13,7 @@ import {
     removeGroup,
     retainGroupsByRank,
     retainGroupsBySize,
+    ungroup as ungroupGroups,
 } from "./groupOperations.js";
 import {
     filterNominal,
@@ -885,6 +886,42 @@ export const sampleSlice = createSlice({
                 );
             } else {
                 throw new Error("Cannot retain sample groups before grouping.");
+            }
+        },
+
+        /**
+         * Collapse a grouping level and all deeper levels.
+         *
+         * Use this after group-retention actions when the user wants to keep
+         * the retained samples but remove grouping structure. This keeps only
+         * samples currently present in the hierarchy; it does not restore
+         * samples removed by previous actions. If the user only wants to
+         * reverse a previous grouping action and restore the prior state, use
+         * provenance/undo instead.
+         *
+         * Use `level: 1` to collapse top-level groups under ROOT into one flat
+         * sample list. Use `level: 2` to keep level-1 groups but collapse
+         * their children and all deeper levels into sample lists.
+         *
+         * @agent.payloadType Ungroup
+         * @agent.category grouping
+         * @example
+         * {
+         *   "level": 1
+         * }
+         */
+        ungroup: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").Ungroup>} */
+            action
+        ) => {
+            const root = state.rootGroup;
+            if (isGroupGroup(root)) {
+                const level = toInternalGroupLevel(action.payload.level);
+                ungroupGroups(root, level);
+                state.groupMetadata.splice(level);
+            } else {
+                throw new Error("Cannot ungroup samples before grouping.");
             }
         },
 

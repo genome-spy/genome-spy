@@ -339,6 +339,15 @@ const actionHandlers = {
         icon: faFilter,
     }),
 
+    ungroup: ({ payload }) => ({
+        title: "Ungroup",
+        provenanceTitle: html`
+            Ungroup from level
+            <strong>${payload.level}</strong>
+        `,
+        icon: faObjectGroup,
+    }),
+
     retainMatched: ({ template, attributeName, attributeTitle }) => ({
         ...template,
         title: html` Retain group-wise matched samples using ${attributeName} `,

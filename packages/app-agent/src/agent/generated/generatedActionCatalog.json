@@ -697,6 +697,29 @@
     ]
   },
   {
+    "actionType": "sampleView/ungroup",
+    "description": "Collapse a grouping level and all deeper levels.",
+    "usage": "Use this after group-retention actions when the user wants to keep the retained samples but remove grouping structure. This keeps only samples currently present in the hierarchy; it does not restore samples removed by previous actions. If the user only wants to reverse a previous grouping action and restore the prior state, use provenance/undo instead. Use `level: 1` to collapse top-level groups under ROOT into one flat sample list. Use `level: 2` to keep level-1 groups but collapse their children and all deeper levels into sample lists.",
+    "payloadType": "Ungroup",
+    "payloadFields": [
+      {
+        "name": "level",
+        "type": "number",
+        "typeRefs": [],
+        "description": "One-based grouping level to collapse. `1` collapses top-level groups under ROOT and all deeper levels into one flat ROOT sample group. `2` keeps level-1 groups but collapses their children and all deeper levels into sample lists.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "level": 1
+    },
+    "examples": [
+      {
+        "level": 1
+      }
+    ]
+  },
+  {
     "actionType": "sampleView/retainMatched",
     "description": "Retain samples whose selected value appears in every current non-empty group.",
     "usage": "Use this for intersection-style cohort refinement after samples have already been split into groups. A value is kept only if it appears in every current non-empty group.",

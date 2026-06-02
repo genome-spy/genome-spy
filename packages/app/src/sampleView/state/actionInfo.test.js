@@ -370,6 +370,22 @@ describe("getActionInfo", () => {
         expect(provenanceTitle).toContain("10");
     });
 
+    it("describes ungrouping", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/ungroup`,
+            payload: {
+                level: 2,
+            },
+        };
+
+        const info = getActionInfo(action, () => undefined);
+        const title = templateResultToString(info.title);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(title).toContain("Ungroup");
+        expect(provenanceTitle).toContain("level 2");
+    });
+
     it("returns undefined for non-sample actions", () => {
         const info = getActionInfo(
             { type: "other/action", payload: {} },

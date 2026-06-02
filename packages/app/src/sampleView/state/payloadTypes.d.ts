@@ -400,6 +400,19 @@ export interface RetainGroupsBySize {
     operand: number;
 }
 
+export interface Ungroup {
+    /**
+     * One-based grouping level to collapse.
+     *
+     * `1` collapses top-level groups under ROOT and all deeper levels into one
+     * flat ROOT sample group. `2` keeps level-1 groups but collapses their
+     * children and all deeper levels into sample lists.
+     *
+     * @minimum 1
+     */
+    level: number;
+}
+
 /**
  * Payload for filtering samples by comparing a quantitative attribute
  * against a numeric operand.

@@ -80,6 +80,11 @@
     "description": "Retain groups at a grouping level by size threshold."
   },
   {
+    "actionType": "sampleView/ungroup",
+    "title": "Ungroup",
+    "description": "Collapse a grouping level and all deeper levels."
+  },
+  {
     "actionType": "sampleView/retainMatched",
     "title": "Retain group-wise matched samples using patient_id",
     "description": "Retain samples whose selected value appears in every current non-empty group."

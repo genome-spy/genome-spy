@@ -291,6 +291,36 @@ export function retainGroupsBySize(
 }
 
 /**
+ * Collapses the requested grouping level and all deeper levels into sample
+ * lists on the parent level.
+ *
+ * @param {GroupGroup} rootGroup
+ * @param {number} level Zero-based grouping level
+ */
+export function ungroup(rootGroup, level) {
+    applyToGroupParentsAtLevel(rootGroup, level, (parent) => {
+        const tempGroup = /** @type {unknown} */ (parent);
+        const sampleGroup = /** @type {SampleGroup} */ (tempGroup);
+        sampleGroup.samples = parent.groups.flatMap((group) =>
+            collectGroupSamples(group)
+        );
+        delete parent.groups;
+    });
+}
+
+/**
+ * @param {Group} group
+ * @returns {string[]}
+ */
+function collectGroupSamples(group) {
+    if (isGroupGroup(group)) {
+        return group.groups.flatMap((child) => collectGroupSamples(child));
+    }
+
+    return group.samples;
+}
+
+/**
  * @param {Group} group
  * @returns {number}
  */
