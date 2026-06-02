@@ -267,6 +267,40 @@ def test_build_responses_input_serializes_tool_turns() -> None:
     }
 
 
+def test_build_responses_input_sanitizes_invalid_tool_argument_history() -> None:
+    request = ProviderRequest(
+        system_prompt="system prompt",
+        context={"schemaVersion": 1},
+        history=[
+            HistoryMessage(
+                id="1",
+                role="assistant",
+                text="I will call a tool.",
+                tool_calls=[
+                    ToolCall(
+                        call_id="call_bad",
+                        name="expandViewNode",
+                        arguments="{selector: bad json}",
+                    )
+                ],
+            ),
+            HistoryMessage(
+                id="2",
+                role="tool",
+                text="Tool call was incorrect and rejected. Correct it before trying again.",
+                tool_call_id="call_bad",
+                rejected=True,
+            ),
+        ],
+        message="",
+    )
+
+    prompt = build_prompt_ir(request)
+    messages = build_responses_input(prompt)
+
+    assert messages[2]["arguments"] == "{}"
+
+
 def test_build_responses_input_includes_tool_text_with_structured_content() -> None:
     request = ProviderRequest(
         system_prompt="system prompt",
