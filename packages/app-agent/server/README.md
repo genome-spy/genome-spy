@@ -69,6 +69,26 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
   --app-dir packages/app-agent/server
 ```
 
+Optional debug-log flags:
+
+- `GENOMESPY_AGENT_ENABLE_TOKEN_DEBUG_LOGS=true` logs estimated prompt-token
+  breakdowns before each provider request.
+- `GENOMESPY_AGENT_ENABLE_THROUGHPUT_DEBUG_LOGS=true` logs estimated
+  client-observed output throughput after each completed provider response.
+
+Both are enabled by default. To disable them, set either flag to `false` in the
+launch command, for example:
+
+```bash
+GENOMESPY_AGENT_ENABLE_TOKEN_DEBUG_LOGS=false \
+GENOMESPY_AGENT_ENABLE_THROUGHPUT_DEBUG_LOGS=false \
+UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
+  python -m uvicorn app.main:app \
+  --host 127.0.0.1 \
+  --port 8001 \
+  --app-dir packages/app-agent/server
+```
+
 **Set VITE configs to point to the relay server and start the GenomeSpy server**
 ```bash
 VITE_AGENT_BASE_URL=http://127.0.0.1:8001 npm start

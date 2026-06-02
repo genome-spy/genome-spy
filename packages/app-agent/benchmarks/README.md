@@ -16,6 +16,9 @@ and avoid benchmark-only copies of validation, execution, or summary logic.
 
 The default agent server URL is `http://127.0.0.1:8000`.
 
+In the common local relay workflow, the benchmark should point to the local
+relay on `http://127.0.0.1:8001`.
+
 ## Common Local Workflow
 
 If you already have the relay server and the GenomeSpy app dev server running in
@@ -27,7 +30,7 @@ node packages/app-agent/benchmarks/run.mjs \
   --interactive \
   --case-mode action \
   --app-url http://127.0.0.1:8080 \
-  --agent-url http://127.0.0.1:8000 \
+  --agent-url http://127.0.0.1:8001 \
   --case-delay-ms 1000 \
   --quiet-browser-warnings
 ```
@@ -41,7 +44,7 @@ node packages/app-agent/benchmarks/run.mjs \
   --interactive \
   --case-mode action \
   --app-url http://127.0.0.1:8080 \
-  --agent-url http://127.0.0.1:8000 \
+  --agent-url http://127.0.0.1:8001 \
   --quiet-browser-warnings
 ```
 
@@ -52,7 +55,7 @@ node packages/app-agent/benchmarks/run.mjs \
   --case-file packages/app-agent/benchmarks/cases/fuse-encode.json \
   --case-mode description \
   --app-url http://127.0.0.1:8080 \
-  --agent-url http://127.0.0.1:8000 \
+  --agent-url http://127.0.0.1:8001 \
   --quiet-browser-warnings
 ```
 
