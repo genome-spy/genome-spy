@@ -174,6 +174,8 @@ export interface JumpToProvenanceStateToolInput {
  * by one attribute and then compare or report another attribute by group, first
  * submit the grouping action, wait for the refreshed context, and then call
  * this tool with `scope: "visible_groups"` for the attribute to report.
+ * In the response, `categories` are always sorted by size and do not reflect
+ * metadata order.
  *
  * @example
  * {
