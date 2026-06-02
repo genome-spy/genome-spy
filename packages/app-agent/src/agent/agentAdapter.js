@@ -138,7 +138,7 @@ export function createAgentAdapter(app, agentApi) {
             dataType: info.type,
             scope: "visible_groups",
             groupLevels: sampleHierarchy.groupMetadata.map((entry, level) => ({
-                level,
+                level: level + 1,
                 attribute: entry.attribute,
                 title: templateResultToString(groupInfos[level].title),
             })),

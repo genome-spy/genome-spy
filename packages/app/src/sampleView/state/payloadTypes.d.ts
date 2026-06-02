@@ -331,13 +331,13 @@ export interface RemoveGroup {
 
 export interface RetainGroupsByRank {
     /**
-     * Zero-based grouping level to filter.
+     * One-based grouping level to filter.
      *
-     * `0` targets top-level groups under ROOT. `1` targets direct children of
-     * top-level groups, and so on. For top-level categories such as cancer
-     * type, use `0`.
+     * `1` targets top-level groups under ROOT. `2` targets direct children of
+     * level-1 groups, and so on. For top-level categories such as cancer type,
+     * use `1`.
      *
-     * @minimum 0
+     * @minimum 1
      */
     level: number;
 
@@ -371,13 +371,13 @@ export interface RetainGroupsByRank {
 
 export interface RetainGroupsBySize {
     /**
-     * Zero-based grouping level to filter.
+     * One-based grouping level to filter.
      *
-     * `0` targets top-level groups under ROOT. `1` targets direct children of
-     * top-level groups, and so on. For top-level categories such as cancer
-     * type, use `0`.
+     * `1` targets top-level groups under ROOT. `2` targets direct children of
+     * level-1 groups, and so on. For top-level categories such as cancer type,
+     * use `1`.
      *
-     * @minimum 0
+     * @minimum 1
      */
     level: number;
 

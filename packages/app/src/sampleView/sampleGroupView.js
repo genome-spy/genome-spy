@@ -168,7 +168,7 @@ export default class SampleGroupView extends LayerView {
                 return;
             }
 
-            const level = foundPath.length - 1;
+            const level = foundPath.length;
             const action = sampleView.actions.removeGroup({
                 path: foundPath.map((group) => group.name),
             });

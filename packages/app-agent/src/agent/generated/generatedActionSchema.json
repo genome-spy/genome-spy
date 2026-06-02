@@ -1253,8 +1253,8 @@
       "additionalProperties": false,
       "properties": {
         "level": {
-          "description": "Zero-based grouping level to filter.\n\n`0` targets top-level groups under ROOT. `1` targets direct children of top-level groups, and so on. For top-level categories such as cancer type, use `0`.",
-          "minimum": 0,
+          "description": "One-based grouping level to filter.\n\n`1` targets top-level groups under ROOT. `2` targets direct children of level-1 groups, and so on. For top-level categories such as cancer type, use `1`.",
+          "minimum": 1,
           "type": "number"
         },
         "limit": {
@@ -1280,8 +1280,8 @@
       "additionalProperties": false,
       "properties": {
         "level": {
-          "description": "Zero-based grouping level to filter.\n\n`0` targets top-level groups under ROOT. `1` targets direct children of top-level groups, and so on. For top-level categories such as cancer type, use `0`.",
-          "minimum": 0,
+          "description": "One-based grouping level to filter.\n\n`1` targets top-level groups under ROOT. `2` targets direct children of level-1 groups, and so on. For top-level categories such as cancer type, use `1`.",
+          "minimum": 1,
           "type": "number"
         },
         "measure": {

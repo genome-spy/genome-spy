@@ -593,14 +593,14 @@
   {
     "actionType": "sampleView/retainGroupsByRank",
     "description": "Retain top-k or bottom-k groups by size at a grouping level.",
-    "usage": "Use this for requests such as \"keep the five most abundant groups\", \"retain the top 5 cancer types\", or \"keep the 10 smallest groups\". Set `limit` to k. Set `order: \"descending\"` for top-k, highest values, largest groups by size, or most abundant groups. Set `order: \"ascending\"` for bottom-k, lowest values, smallest groups by size, or least abundant groups. Ranked retention is applied separately within each ancestor partition. For example, with `level: 1` and `limit: 3`, each top-level group keeps its own three largest or smallest child groups. Use `level: 0` for top-level groups under ROOT. Only `measure: \"size\"` is currently supported. Size means the number of descendant visible samples in the group. Ties preserve current group order.",
+    "usage": "Use this for requests such as \"keep the five most abundant groups\", \"retain the top 5 cancer types\", or \"keep the 10 smallest groups\". Set `limit` to k. Set `order: \"descending\"` for top-k, highest values, largest groups by size, or most abundant groups. Set `order: \"ascending\"` for bottom-k, lowest values, smallest groups by size, or least abundant groups. Ranked retention is applied separately within each ancestor partition. For example, with `level: 2` and `limit: 3`, each level-1 group keeps its own three largest or smallest child groups. Use `level: 1` for top-level groups under ROOT. Only `measure: \"size\"` is currently supported. Size means the number of descendant visible samples in the group. Ties preserve current group order.",
     "payloadType": "RetainGroupsByRank",
     "payloadFields": [
       {
         "name": "level",
         "type": "number",
         "typeRefs": [],
-        "description": "Zero-based grouping level to filter. `0` targets top-level groups under ROOT. `1` targets direct children of top-level groups, and so on. For top-level categories such as cancer type, use `0`.",
+        "description": "One-based grouping level to filter. `1` targets top-level groups under ROOT. `2` targets direct children of level-1 groups, and so on. For top-level categories such as cancer type, use `1`.",
         "required": true
       },
       {
@@ -626,20 +626,20 @@
       }
     ],
     "examplePayload": {
-      "level": 0,
+      "level": 1,
       "measure": "size",
       "limit": 5,
       "order": "descending"
     },
     "examples": [
       {
-        "level": 0,
+        "level": 1,
         "measure": "size",
         "limit": 5,
         "order": "descending"
       },
       {
-        "level": 1,
+        "level": 2,
         "measure": "size",
         "limit": 3,
         "order": "descending"
@@ -649,14 +649,14 @@
   {
     "actionType": "sampleView/retainGroupsBySize",
     "description": "Retain groups at a grouping level by size threshold.",
-    "usage": "Use this for threshold requests such as \"retain groups with at least 10 samples\". This is different from top-k retention: it keeps every group at the selected level whose size satisfies `operator` and `operand`, regardless of rank. Use `level: 0` for top-level groups under ROOT. Only `measure: \"size\"` is currently supported. Size means the number of descendant visible samples in the group.",
+    "usage": "Use this for threshold requests such as \"retain groups with at least 10 samples\". This is different from top-k retention: it keeps every group at the selected level whose size satisfies `operator` and `operand`, regardless of rank. Use `level: 1` for top-level groups under ROOT. Only `measure: \"size\"` is currently supported. Size means the number of descendant visible samples in the group.",
     "payloadType": "RetainGroupsBySize",
     "payloadFields": [
       {
         "name": "level",
         "type": "number",
         "typeRefs": [],
-        "description": "Zero-based grouping level to filter. `0` targets top-level groups under ROOT. `1` targets direct children of top-level groups, and so on. For top-level categories such as cancer type, use `0`.",
+        "description": "One-based grouping level to filter. `1` targets top-level groups under ROOT. `2` targets direct children of level-1 groups, and so on. For top-level categories such as cancer type, use `1`.",
         "required": true
       },
       {
@@ -682,14 +682,14 @@
       }
     ],
     "examplePayload": {
-      "level": 0,
+      "level": 1,
       "measure": "size",
       "operator": "gte",
       "operand": 10
     },
     "examples": [
       {
-        "level": 0,
+        "level": 1,
         "measure": "size",
         "operator": "gte",
         "operand": 10

@@ -817,7 +817,7 @@ describe("sampleSlice reducers", () => {
         const nextState = sampleSlice.reducer(
             state,
             sampleSlice.actions.retainGroupsByRank({
-                level: 0,
+                level: 1,
                 measure: "size",
                 limit: 1,
                 order: "descending",
@@ -857,7 +857,7 @@ describe("sampleSlice reducers", () => {
         const nextState = sampleSlice.reducer(
             state,
             sampleSlice.actions.retainGroupsBySize({
-                level: 0,
+                level: 1,
                 measure: "size",
                 operator: "gte",
                 operand: 2,
@@ -878,7 +878,7 @@ describe("sampleSlice reducers", () => {
             sampleSlice.reducer(
                 state,
                 sampleSlice.actions.retainGroupsByRank({
-                    level: 0,
+                    level: 1,
                     measure: "size",
                     limit: 1,
                     order: "descending",

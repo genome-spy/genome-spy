@@ -37,19 +37,19 @@ as retaining top groups by mean value of another attribute.
 
 Use level-based actions, not parent-path actions.
 
-- `level: 0` targets top-level groups under `ROOT`.
-- `level: 1` targets direct children of every top-level group.
+- `level: 1` targets top-level groups under `ROOT`.
+- `level: 2` targets direct children of every top-level group.
 - `level: 2` targets direct children of every level-1 group.
 - The initial group-level measure is `size`, the number of descendant visible
   samples.
 
 For ranked retention, apply ranking separately within each ancestor partition.
-For example, with `level: 1` and `limit: 3`, each top-level group keeps its own
+For example, with `level: 2` and `limit: 3`, each top-level group keeps its own
 three largest or smallest child groups.
 
 For threshold retention, apply the predicate to every group at the selected
-level. For example, with `level: 1`, `operator: "gte"`, and `operand: 10`, every
-level-1 group with size at least 10 is kept.
+level. For example, with `level: 2`, `operator: "gte"`, and `operand: 10`, every
+level-2 group with size at least 10 is kept.
 
 Ties in ranked retention preserve current group order.
 
@@ -60,10 +60,10 @@ Add two reducer-facing actions.
 ```ts
 interface RetainGroupsByRank {
     /**
-     * Zero-based grouping level to filter.
+     * One-based grouping level to filter.
      *
-     * `0` targets top-level groups under ROOT. `1` targets direct children of
-     * top-level groups, and so on.
+     * `1` targets top-level groups under ROOT. `2` targets direct children of
+     * level-1 groups, and so on.
      */
     level: number;
 
@@ -95,10 +95,10 @@ interface RetainGroupsByRank {
 ```ts
 interface RetainGroupsBySize {
     /**
-     * Zero-based grouping level to filter.
+     * One-based grouping level to filter.
      *
-     * `0` targets top-level groups under ROOT. `1` targets direct children of
-     * top-level groups, and so on.
+     * `1` targets top-level groups under ROOT. `2` targets direct children of
+     * level-1 groups, and so on.
      */
     level: number;
 
@@ -130,8 +130,8 @@ agent action catalog and schema are generated from those sources.
 
 Use direct wording:
 
-- "Zero-based grouping level."
-- "Use `level: 0` for top-level groups under ROOT."
+- "One-based grouping level."
+- "Use `level: 1` for top-level groups under ROOT."
 - "Ranked retention is applied separately within each ancestor partition."
 - "`measure: \"size\"` means the number of descendant visible samples in the group."
 - "Threshold filtering applies to every group at the selected level."
@@ -158,7 +158,7 @@ In `packages/app/src/sampleView/sampleGroupView.js`, derive the clicked group's
 level from its path:
 
 ```js
-const level = foundPath.length - 1;
+const level = foundPath.length;
 ```
 
 Suggested context menu layout:
@@ -172,7 +172,7 @@ Retain groups at this level
   Groups by size threshold...
 ```
 
-For `level: 0`, labels may be simplified because the only parent is `ROOT`:
+For `level: 1`, labels may be simplified because the only parent is `ROOT`:
 
 ```text
 Ranked groups by size...
@@ -229,11 +229,11 @@ Keep groups where size is >= 10.
 Add or extend tests in:
 
 - `packages/app/src/sampleView/state/groupOperations.test.js`
-  - Ranked retention at level 0.
+  - Ranked retention at level 1.
   - Ranked retention at nested levels, applied separately per ancestor partition.
   - Smallest-ranked retention.
   - Tie behavior preserving current order.
-  - Threshold retention at level 0 and nested levels.
+  - Threshold retention at level 1 and nested levels.
   - Invalid level errors.
 
 - `packages/app/src/sampleView/state/sampleSlice.test.js`

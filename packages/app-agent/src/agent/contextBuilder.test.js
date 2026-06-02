@@ -533,7 +533,7 @@ describe("getAgentVolatileContext", () => {
         });
         expect(volatileContext.sampleGroupLevels[0]).toEqual(
             expect.objectContaining({
-                level: 0,
+                level: 1,
                 title: "Title diagnosis",
             })
         );

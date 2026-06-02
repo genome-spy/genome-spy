@@ -16,7 +16,7 @@ class RetainGroupsByRankDialog extends BaseDialog {
         super();
         /** @type {import("../sampleView.js").default} */
         this.sampleView = null;
-        this.level = 0;
+        this.level = 1;
         this.limit = 5;
         /** @type {"descending" | "ascending"} */
         this.order = "descending";

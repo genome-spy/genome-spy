@@ -156,7 +156,7 @@ function buildSampleGroupLevels(agentApi, sampleHierarchy) {
         const info = agentApi.getAttributeInfo(entry.attribute);
 
         return {
-            level,
+            level: level + 1,
             attribute: entry.attribute,
             title: templateResultToString(info.title),
         };

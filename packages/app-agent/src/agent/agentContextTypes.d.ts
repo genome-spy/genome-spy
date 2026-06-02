@@ -101,6 +101,9 @@ export interface AgentSampleSummary {
  * One level in the current sample grouping hierarchy.
  */
 export interface AgentSampleGroupLevel {
+    /**
+     * One-based grouping level. `1` is the top-level grouping under ROOT.
+     */
     level: number;
     attribute: AttributeIdentifier;
     title: string;

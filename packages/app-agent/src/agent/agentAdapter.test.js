@@ -406,7 +406,7 @@ describe("agentAdapter", () => {
             scope: "visible_groups",
             groupLevels: [
                 {
-                    level: 0,
+                    level: 1,
                     attribute: {
                         type: "SAMPLE_ATTRIBUTE",
                         specifier: "diagnosis",

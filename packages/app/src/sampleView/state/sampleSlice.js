@@ -114,6 +114,20 @@ function createRetainCategoriesAccessors(action) {
 }
 
 /**
+ * Converts user-facing one-based grouping levels to internal zero-based levels.
+ *
+ * @param {number} level
+ * @returns {number}
+ */
+function toInternalGroupLevel(level) {
+    if (!Number.isInteger(level) || level < 1) {
+        throw new Error("Grouping level must be a positive integer.");
+    }
+
+    return level - 1;
+}
+
+/**
  * @param {SampleHierarchy} sampleHierarchy
  * @param {function(string):any} accessor
  * @returns {Record<string, any>}
@@ -789,9 +803,9 @@ export const sampleSlice = createSlice({
          * by size, or least abundant groups.
          *
          * Ranked retention is applied separately within each ancestor
-         * partition. For example, with `level: 1` and `limit: 3`, each
-         * top-level group keeps its own three largest or smallest child groups.
-         * Use `level: 0` for top-level groups under ROOT.
+         * partition. For example, with `level: 2` and `limit: 3`, each
+         * level-1 group keeps its own three largest or smallest child groups.
+         * Use `level: 1` for top-level groups under ROOT.
          *
          * Only `measure: "size"` is currently supported. Size means the number
          * of descendant visible samples in the group. Ties preserve current
@@ -801,14 +815,14 @@ export const sampleSlice = createSlice({
          * @agent.category grouping
          * @example
          * {
-         *   "level": 0,
+         *   "level": 1,
          *   "measure": "size",
          *   "limit": 5,
          *   "order": "descending"
          * }
          * @example
          * {
-         *   "level": 1,
+         *   "level": 2,
          *   "measure": "size",
          *   "limit": 3,
          *   "order": "descending"
@@ -823,7 +837,7 @@ export const sampleSlice = createSlice({
             if (isGroupGroup(root)) {
                 retainGroupsByRank(
                     root,
-                    action.payload.level,
+                    toInternalGroupLevel(action.payload.level),
                     action.payload.measure,
                     action.payload.limit,
                     action.payload.order
@@ -839,7 +853,7 @@ export const sampleSlice = createSlice({
          * Use this for threshold requests such as "retain groups with at least
          * 10 samples". This is different from top-k retention: it keeps every
          * group at the selected level whose size satisfies `operator` and
-         * `operand`, regardless of rank. Use `level: 0` for top-level groups
+         * `operand`, regardless of rank. Use `level: 1` for top-level groups
          * under ROOT.
          *
          * Only `measure: "size"` is currently supported. Size means the number
@@ -849,7 +863,7 @@ export const sampleSlice = createSlice({
          * @agent.category grouping
          * @example
          * {
-         *   "level": 0,
+         *   "level": 1,
          *   "measure": "size",
          *   "operator": "gte",
          *   "operand": 10
@@ -864,7 +878,7 @@ export const sampleSlice = createSlice({
             if (isGroupGroup(root)) {
                 retainGroupsBySize(
                     root,
-                    action.payload.level,
+                    toInternalGroupLevel(action.payload.level),
                     action.payload.measure,
                     action.payload.operator,
                     action.payload.operand

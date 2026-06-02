@@ -17,7 +17,7 @@ class RetainGroupsBySizeDialog extends BaseDialog {
         super();
         /** @type {import("../sampleView.js").default} */
         this.sampleView = null;
-        this.level = 0;
+        this.level = 1;
         /** @type {import("../state/payloadTypes.js").ComparisonOperatorType} */
         this.operator = "gte";
         /** @type {number | undefined} */

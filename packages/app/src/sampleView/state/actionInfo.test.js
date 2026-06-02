@@ -353,7 +353,7 @@ describe("getActionInfo", () => {
         const action = {
             type: `${SAMPLE_SLICE_NAME}/retainGroupsBySize`,
             payload: {
-                level: 0,
+                level: 1,
                 measure: "size",
                 operator: "gte",
                 operand: 10,
@@ -365,7 +365,7 @@ describe("getActionInfo", () => {
         const provenanceTitle = templateResultToString(info.provenanceTitle);
 
         expect(title).toContain("Retain groups by size threshold");
-        expect(provenanceTitle).toContain("level 0");
+        expect(provenanceTitle).toContain("level 1");
         expect(provenanceTitle).toContain("\u2265");
         expect(provenanceTitle).toContain("10");
     });
