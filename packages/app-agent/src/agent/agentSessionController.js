@@ -793,7 +793,6 @@ export class AgentSessionController {
                 );
                 lastToolCallSignature = toolCallSignature;
                 lastToolCallWasRejected = hadRejectedToolCalls;
-                repeatedToolCallRounds = 0;
                 if (hadRejectedToolCalls) {
                     rejectedToolCallRounds += 1;
                     if (
