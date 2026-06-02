@@ -133,14 +133,12 @@ function buildSampleSummary(sampleHierarchy) {
     if (!sampleHierarchy) {
         return {
             totalSampleCount: 0,
-            groupCount: 0,
             visibleSampleCount: 0,
         };
     }
 
     return {
         totalSampleCount: sampleHierarchy.sampleData.ids.length,
-        groupCount: sampleHierarchy.groupMetadata.length,
         visibleSampleCount: collectVisibleSampleIds(sampleHierarchy.rootGroup)
             .length,
     };

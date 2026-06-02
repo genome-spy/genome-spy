@@ -528,7 +528,6 @@ describe("getAgentVolatileContext", () => {
 
         expect(volatileContext.sampleSummary).toEqual({
             totalSampleCount: 2,
-            groupCount: 1,
             visibleSampleCount: 2,
         });
         expect(volatileContext.sampleGroupLevels[0]).toEqual(

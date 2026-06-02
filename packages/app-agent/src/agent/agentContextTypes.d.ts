@@ -93,7 +93,6 @@ export interface AgentMetadataSourceIdentifierSummary {
  */
 export interface AgentSampleSummary {
     totalSampleCount: number;
-    groupCount: number;
     visibleSampleCount: number;
 }
 

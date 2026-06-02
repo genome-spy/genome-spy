@@ -16,7 +16,6 @@ const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
     getAgentVolatileContext: vi.fn(() => ({
         sampleSummary: {
             totalSampleCount: 61,
-            groupCount: 1,
             visibleSampleCount: 61,
         },
         sampleGroupLevels: [],
@@ -485,7 +484,6 @@ describe("agentAdapter", () => {
         expect(requestBody.context).not.toHaveProperty("provenance");
         expect(requestBody.volatileContext.sampleSummary).toEqual({
             totalSampleCount: 61,
-            groupCount: 1,
             visibleSampleCount: 61,
         });
         expect(requestBody.volatileContext.sampleGroupLevels).toEqual([]);

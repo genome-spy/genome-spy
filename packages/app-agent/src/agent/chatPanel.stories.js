@@ -88,7 +88,6 @@ function createMockAgentController(scenario, options = {}) {
         schemaVersion: 1,
         sampleSummary: {
             sampleCount: 124,
-            groupCount: 3,
             visibleSampleCount: 124,
         },
         sampleGroupLevels: [
