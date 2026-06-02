@@ -170,8 +170,8 @@
   },
   {
     "actionType": "sampleView/retainFirstNCategories",
-    "description": "Retain samples whose value falls in the first n distinct categories in the current ordering.",
-    "usage": "Use this when samples are already ordered by a ranking attribute and all samples belonging to the first n encountered categories should be kept within each current group.",
+    "description": "Retain categories by first occurrence in the current sample order; do not use for top-k category sizes.",
+    "usage": "Iterate over samples in current order, pick first n distinct values, and filter by those values. Use this after first ordering samples by a ranking attribute, for example to keep all samples from the first n patients after sorting by mutational burden. Do not use category order from `getAttributeSummary`; it is not the current sample order. For top-k groups by size, use `retainGroupsByRank`. For group-size thresholds, use `retainGroupsBySize`.",
     "payloadType": "RetainFirstNCategories",
     "payloadFields": [
       {
@@ -587,6 +587,112 @@
     "examples": [
       {
         "path": ["Group 1"]
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/retainGroupsByRank",
+    "description": "Retain top-k or bottom-k groups by size at a grouping level.",
+    "usage": "Use this for requests such as \"keep the five most abundant groups\", \"retain the top 5 cancer types\", or \"keep the 10 smallest groups\". Set `limit` to k. Set `order: \"descending\"` for top-k, highest values, largest groups by size, or most abundant groups. Set `order: \"ascending\"` for bottom-k, lowest values, smallest groups by size, or least abundant groups. Ranked retention is applied separately within each ancestor partition. For example, with `level: 1` and `limit: 3`, each top-level group keeps its own three largest or smallest child groups. Use `level: 0` for top-level groups under ROOT. Only `measure: \"size\"` is currently supported. Size means the number of descendant visible samples in the group. Ties preserve current group order.",
+    "payloadType": "RetainGroupsByRank",
+    "payloadFields": [
+      {
+        "name": "level",
+        "type": "number",
+        "typeRefs": [],
+        "description": "Zero-based grouping level to filter. `0` targets top-level groups under ROOT. `1` targets direct children of top-level groups, and so on. For top-level categories such as cancer type, use `0`.",
+        "required": true
+      },
+      {
+        "name": "measure",
+        "type": "\"size\"",
+        "typeRefs": [],
+        "description": "Group-level measure used for ranking. Only `\"size\"` is supported. Size means group abundance: the number of descendant visible samples in the group.",
+        "required": true
+      },
+      {
+        "name": "limit",
+        "type": "number",
+        "typeRefs": [],
+        "description": "Number of ranked groups to retain within each ancestor partition. This is k in top-k or bottom-k requests. For example, use `5` to keep the five largest or five smallest groups.",
+        "required": true
+      },
+      {
+        "name": "order",
+        "type": "\"descending\" | \"ascending\"",
+        "typeRefs": [],
+        "description": "Ranking direction. Use `\"descending\"` for top-k, highest values, largest groups by size, or most abundant groups. Use `\"ascending\"` for bottom-k, lowest values, smallest groups by size, or least abundant groups.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "level": 0,
+      "measure": "size",
+      "limit": 5,
+      "order": "descending"
+    },
+    "examples": [
+      {
+        "level": 0,
+        "measure": "size",
+        "limit": 5,
+        "order": "descending"
+      },
+      {
+        "level": 1,
+        "measure": "size",
+        "limit": 3,
+        "order": "descending"
+      }
+    ]
+  },
+  {
+    "actionType": "sampleView/retainGroupsBySize",
+    "description": "Retain groups at a grouping level by size threshold.",
+    "usage": "Use this for threshold requests such as \"retain groups with at least 10 samples\". This is different from top-k retention: it keeps every group at the selected level whose size satisfies `operator` and `operand`, regardless of rank. Use `level: 0` for top-level groups under ROOT. Only `measure: \"size\"` is currently supported. Size means the number of descendant visible samples in the group.",
+    "payloadType": "RetainGroupsBySize",
+    "payloadFields": [
+      {
+        "name": "level",
+        "type": "number",
+        "typeRefs": [],
+        "description": "Zero-based grouping level to filter. `0` targets top-level groups under ROOT. `1` targets direct children of top-level groups, and so on. For top-level categories such as cancer type, use `0`.",
+        "required": true
+      },
+      {
+        "name": "measure",
+        "type": "\"size\"",
+        "typeRefs": [],
+        "description": "Group-level measure used for thresholding. Only `\"size\"` is supported. Size means group abundance: the number of descendant visible samples in the group.",
+        "required": true
+      },
+      {
+        "name": "operator",
+        "type": "ComparisonOperatorType",
+        "typeRefs": ["ComparisonOperatorType"],
+        "description": "Threshold comparison applied as `measure operator operand`.",
+        "required": true
+      },
+      {
+        "name": "operand",
+        "type": "number",
+        "typeRefs": [],
+        "description": "Numeric group-size threshold.",
+        "required": true
+      }
+    ],
+    "examplePayload": {
+      "level": 0,
+      "measure": "size",
+      "operator": "gte",
+      "operand": 10
+    },
+    "examples": [
+      {
+        "level": 0,
+        "measure": "size",
+        "operator": "gte",
+        "operand": 10
       }
     ]
   },

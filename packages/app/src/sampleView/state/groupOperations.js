@@ -2,6 +2,7 @@ import { group, quantileSorted, range, sort as d3sort } from "d3-array";
 import { format as d3format } from "d3-format";
 import { isNumber } from "vega-util";
 import { isGroupGroup } from "./sampleSlice.js";
+import { createComparisonPredicate } from "../../utils/predicates/comparison.js";
 
 /**
  * @typedef {import("./sampleState.js").Group} Group
@@ -216,6 +217,127 @@ export function removeGroup(rootGroup, path) {
                     path.join(" / ")
             );
         }
+    }
+}
+
+/**
+ * Retains ranked groups at the requested grouping level. Ranking is applied
+ * independently within each ancestor partition.
+ *
+ * @param {GroupGroup} rootGroup
+ * @param {number} level Zero-based grouping level
+ * @param {"size"} measure Group-level measure
+ * @param {number} limit Number of groups to retain per ancestor partition
+ * @param {"descending" | "ascending"} order Ranking order
+ */
+export function retainGroupsByRank(rootGroup, level, measure, limit, order) {
+    if (measure !== "size") {
+        throw new Error("Unsupported group measure: " + measure);
+    }
+
+    applyToGroupParentsAtLevel(rootGroup, level, (parent) => {
+        const rankedGroups = parent.groups
+            .map((group, index) => ({
+                group,
+                index,
+                size: getGroupSize(group),
+            }))
+            .sort((a, b) => {
+                if (a.size !== b.size) {
+                    return order === "descending"
+                        ? b.size - a.size
+                        : a.size - b.size;
+                }
+
+                return a.index - b.index;
+            })
+            .slice(0, limit);
+
+        const retainedGroups = new Set(
+            rankedGroups.map((entry) => entry.group)
+        );
+        parent.groups = parent.groups.filter((group) =>
+            retainedGroups.has(group)
+        );
+    });
+}
+
+/**
+ * Retains groups at the requested grouping level using a group-size predicate.
+ *
+ * @param {GroupGroup} rootGroup
+ * @param {number} level Zero-based grouping level
+ * @param {"size"} measure Group-level measure
+ * @param {import("./payloadTypes.js").ComparisonOperatorType} operator
+ * @param {number} operand
+ */
+export function retainGroupsBySize(
+    rootGroup,
+    level,
+    measure,
+    operator,
+    operand
+) {
+    if (measure !== "size") {
+        throw new Error("Unsupported group measure: " + measure);
+    }
+
+    const predicate = createComparisonPredicate(operator, operand);
+    applyToGroupParentsAtLevel(rootGroup, level, (parent) => {
+        parent.groups = parent.groups.filter((group) =>
+            predicate(getGroupSize(group))
+        );
+    });
+}
+
+/**
+ * @param {Group} group
+ * @returns {number}
+ */
+function getGroupSize(group) {
+    if (isGroupGroup(group)) {
+        return group.groups.reduce(
+            (sum, child) => sum + getGroupSize(child),
+            0
+        );
+    }
+
+    return group.samples.length;
+}
+
+/**
+ * @param {GroupGroup} rootGroup
+ * @param {number} level Zero-based grouping level
+ * @param {(parent: GroupGroup) => void} operation
+ */
+function applyToGroupParentsAtLevel(rootGroup, level, operation) {
+    if (!Number.isInteger(level) || level < 0) {
+        throw new Error("Grouping level must be a non-negative integer.");
+    }
+
+    let foundLevel = false;
+
+    /**
+     * @param {GroupGroup} parent
+     * @param {number} childLevel
+     */
+    const visitParent = (parent, childLevel) => {
+        if (childLevel === level) {
+            foundLevel = true;
+            operation(parent);
+        } else {
+            for (const child of parent.groups) {
+                if (isGroupGroup(child)) {
+                    visitParent(child, childLevel + 1);
+                }
+            }
+        }
+    };
+
+    visitParent(rootGroup, 0);
+
+    if (!foundLevel) {
+        throw new Error("Grouping level not found: " + level);
     }
 }
 

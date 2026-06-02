@@ -329,6 +329,47 @@ describe("getActionInfo", () => {
         expect(provenanceTitle).not.toContain(" as ");
     });
 
+    it("describes ranked group retention", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/retainGroupsByRank`,
+            payload: {
+                level: 1,
+                measure: "size",
+                limit: 5,
+                order: "descending",
+            },
+        };
+
+        const info = getActionInfo(action, () => undefined);
+        const title = templateResultToString(info.title);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(title).toContain("Retain top/bottom-k groups by size");
+        expect(provenanceTitle).toContain("5 largest");
+        expect(provenanceTitle).toContain("level 1");
+    });
+
+    it("describes group retention by size threshold", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/retainGroupsBySize`,
+            payload: {
+                level: 0,
+                measure: "size",
+                operator: "gte",
+                operand: 10,
+            },
+        };
+
+        const info = getActionInfo(action, () => undefined);
+        const title = templateResultToString(info.title);
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(title).toContain("Retain groups by size threshold");
+        expect(provenanceTitle).toContain("level 0");
+        expect(provenanceTitle).toContain("\u2265");
+        expect(provenanceTitle).toContain("10");
+    });
+
     it("returns undefined for non-sample actions", () => {
         const info = getActionInfo(
             { type: "other/action", payload: {} },

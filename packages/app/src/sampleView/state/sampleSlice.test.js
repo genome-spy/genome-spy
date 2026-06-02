@@ -790,4 +790,100 @@ describe("sampleSlice reducers", () => {
             "No accessed category and condition values provided. Did you remember to use SampleView.dispatchAttributeAction()?"
         );
     });
+
+    it("retains ranked groups through the reducer", () => {
+        const state =
+            /** @type {import("./sampleState.js").SampleHierarchy} */ ({
+                ...createSampleHierarchy(),
+                groupMetadata: [
+                    {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "diagnosis",
+                        },
+                    },
+                ],
+                rootGroup: {
+                    name: "ROOT",
+                    title: "Root",
+                    groups: [
+                        { name: "A", title: "A", samples: ["s1"] },
+                        { name: "B", title: "B", samples: ["s2", "s3"] },
+                        { name: "C", title: "C", samples: ["s4"] },
+                    ],
+                },
+            });
+
+        const nextState = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.retainGroupsByRank({
+                level: 0,
+                measure: "size",
+                limit: 1,
+                order: "descending",
+            })
+        );
+
+        expect(nextState.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            groups: [{ name: "B", title: "B", samples: ["s2", "s3"] }],
+        });
+    });
+
+    it("retains groups by size through the reducer", () => {
+        const state =
+            /** @type {import("./sampleState.js").SampleHierarchy} */ ({
+                ...createSampleHierarchy(),
+                groupMetadata: [
+                    {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "diagnosis",
+                        },
+                    },
+                ],
+                rootGroup: {
+                    name: "ROOT",
+                    title: "Root",
+                    groups: [
+                        { name: "A", title: "A", samples: ["s1"] },
+                        { name: "B", title: "B", samples: ["s2", "s3"] },
+                        { name: "C", title: "C", samples: ["s4"] },
+                    ],
+                },
+            });
+
+        const nextState = sampleSlice.reducer(
+            state,
+            sampleSlice.actions.retainGroupsBySize({
+                level: 0,
+                measure: "size",
+                operator: "gte",
+                operand: 2,
+            })
+        );
+
+        expect(nextState.rootGroup).toEqual({
+            name: "ROOT",
+            title: "Root",
+            groups: [{ name: "B", title: "B", samples: ["s2", "s3"] }],
+        });
+    });
+
+    it("fails when retaining groups by rank before samples have been grouped", () => {
+        const state = createSampleHierarchy();
+
+        expect(() =>
+            sampleSlice.reducer(
+                state,
+                sampleSlice.actions.retainGroupsByRank({
+                    level: 0,
+                    measure: "size",
+                    limit: 1,
+                    order: "descending",
+                })
+            )
+        ).toThrow("Cannot retain sample groups before grouping.");
+    });
 });

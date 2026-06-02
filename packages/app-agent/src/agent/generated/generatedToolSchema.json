@@ -245,6 +245,34 @@
           "additionalProperties": false,
           "properties": {
             "actionType": {
+              "const": "sampleView/retainGroupsByRank",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/RetainGroupsByRank"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
+              "const": "sampleView/retainGroupsBySize",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/definitions/RetainGroupsBySize"
+            }
+          },
+          "required": ["actionType", "payload"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "actionType": {
               "const": "sampleView/retainMatched",
               "type": "string"
             },
@@ -679,7 +707,7 @@
     },
     "GetAttributeSummaryToolInput": {
       "additionalProperties": false,
-      "description": "Return a compact summary of one attribute (metadata or selection-derived) across visible samples or within each current visible group. When summarizing a `SELECTION_AGGREGATION`, the candidate aggregation is resolved first per sample, and this tool summarizes those per-sample values across visible samples or groups. For quantitative summaries, use `nonZeroCount`/`positiveCount` for selected item presence when the selection aggregation is `count`. Use `valueDistribution` for exact value frequencies or bounded histogram bins. Use `visible_samples` for pooled metadata facts such as available category values or numeric ranges. Use `visible_groups` only after the sample view is already grouped and the user needs per-group facts. If the user asks to group by one attribute and then compare or report another attribute by group, first submit the grouping action, wait for the refreshed context, and then call this tool with `scope: \"visible_groups\"` for the attribute to report.",
+      "description": "Return a compact summary of one attribute (metadata or selection-derived) across visible samples or within each current visible group. When summarizing a `SELECTION_AGGREGATION`, the candidate aggregation is resolved first per sample, and this tool summarizes those per-sample values across visible samples or groups. For quantitative summaries, use `nonZeroCount`/`positiveCount` for selected item presence when the selection aggregation is `count`. Use `valueDistribution` for exact value frequencies or bounded histogram bins. Use `visible_samples` for pooled metadata facts such as available category values or numeric ranges. Use `visible_groups` only after the sample view is already grouped and the user needs per-group facts. If the user asks to group by one attribute and then compare or report another attribute by group, first submit the grouping action, wait for the refreshed context, and then call this tool with `scope: \"visible_groups\"` for the attribute to report. In the response, `categories` are always sorted by size and does not reflect the the order in the metadata.",
       "examples": [
         {
           "attribute": {
@@ -862,6 +890,8 @@
         "sampleView/groupToQuartiles",
         "sampleView/groupByThresholds",
         "sampleView/removeGroup",
+        "sampleView/retainGroupsByRank",
+        "sampleView/retainGroupsBySize",
         "sampleView/retainMatched",
         "paramProvenance/paramChange"
       ],
@@ -1457,6 +1487,58 @@
         }
       },
       "required": ["attribute"],
+      "type": "object"
+    },
+    "RetainGroupsByRank": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "description": "Zero-based grouping level to filter.\n\n`0` targets top-level groups under ROOT. `1` targets direct children of top-level groups, and so on. For top-level categories such as cancer type, use `0`.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "limit": {
+          "description": "Number of ranked groups to retain within each ancestor partition.\n\nThis is k in top-k or bottom-k requests. For example, use `5` to keep the five largest or five smallest groups.",
+          "minimum": 1,
+          "type": "number"
+        },
+        "measure": {
+          "const": "size",
+          "description": "Group-level measure used for ranking.\n\nOnly `\"size\"` is supported. Size means group abundance: the number of descendant visible samples in the group.",
+          "type": "string"
+        },
+        "order": {
+          "description": "Ranking direction.\n\nUse `\"descending\"` for top-k, highest values, largest groups by size, or most abundant groups. Use `\"ascending\"` for bottom-k, lowest values, smallest groups by size, or least abundant groups.",
+          "enum": ["descending", "ascending"],
+          "type": "string"
+        }
+      },
+      "required": ["level", "measure", "limit", "order"],
+      "type": "object"
+    },
+    "RetainGroupsBySize": {
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "description": "Zero-based grouping level to filter.\n\n`0` targets top-level groups under ROOT. `1` targets direct children of top-level groups, and so on. For top-level categories such as cancer type, use `0`.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "measure": {
+          "const": "size",
+          "description": "Group-level measure used for thresholding.\n\nOnly `\"size\"` is supported. Size means group abundance: the number of descendant visible samples in the group.",
+          "type": "string"
+        },
+        "operand": {
+          "description": "Numeric group-size threshold.",
+          "type": "number"
+        },
+        "operator": {
+          "$ref": "#/definitions/ComparisonOperatorType",
+          "description": "Threshold comparison applied as `measure operator operand`."
+        }
+      },
+      "required": ["level", "measure", "operator", "operand"],
       "type": "object"
     },
     "RetainMatched": {

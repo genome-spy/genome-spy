@@ -11,6 +11,8 @@ import {
     groupSamplesByThresholds,
     makeCustomGroupAccessor,
     removeGroup,
+    retainGroupsByRank,
+    retainGroupsBySize,
 } from "./groupOperations.js";
 import {
     filterNominal,
@@ -399,11 +401,18 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain samples whose value falls in the first n distinct categories in the current ordering.
+         * Retain categories by first occurrence in the current sample order;
+         * do not use for top-k category sizes.
          *
-         * Use this when samples are already ordered by a ranking attribute and
-         * all samples belonging to the first n encountered categories should
-         * be kept within each current group.
+         * Iterate over samples in current order, pick first n distinct values,
+         * and filter by those values.
+         *
+         * Use this after first ordering samples by a ranking attribute, for
+         * example to keep all samples from the first n patients after sorting
+         * by mutational burden. Do not use category order from
+         * `getAttributeSummary`; it is not the current sample order. For
+         * top-k groups by size, use `retainGroupsByRank`. For group-size
+         * thresholds, use `retainGroupsBySize`.
          *
          * @agent.payloadType RetainFirstNCategories
          * @agent.category grouping
@@ -766,6 +775,102 @@ export const sampleSlice = createSlice({
                 removeGroup(root, action.payload.path);
             } else {
                 throw new Error("Cannot remove sample groups before grouping.");
+            }
+        },
+
+        /**
+         * Retain top-k or bottom-k groups by size at a grouping level.
+         *
+         * Use this for requests such as "keep the five most abundant groups",
+         * "retain the top 5 cancer types", or "keep the 10 smallest groups".
+         * Set `limit` to k. Set `order: "descending"` for top-k, highest
+         * values, largest groups by size, or most abundant groups. Set
+         * `order: "ascending"` for bottom-k, lowest values, smallest groups
+         * by size, or least abundant groups.
+         *
+         * Ranked retention is applied separately within each ancestor
+         * partition. For example, with `level: 1` and `limit: 3`, each
+         * top-level group keeps its own three largest or smallest child groups.
+         * Use `level: 0` for top-level groups under ROOT.
+         *
+         * Only `measure: "size"` is currently supported. Size means the number
+         * of descendant visible samples in the group. Ties preserve current
+         * group order.
+         *
+         * @agent.payloadType RetainGroupsByRank
+         * @agent.category grouping
+         * @example
+         * {
+         *   "level": 0,
+         *   "measure": "size",
+         *   "limit": 5,
+         *   "order": "descending"
+         * }
+         * @example
+         * {
+         *   "level": 1,
+         *   "measure": "size",
+         *   "limit": 3,
+         *   "order": "descending"
+         * }
+         */
+        retainGroupsByRank: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainGroupsByRank>} */
+            action
+        ) => {
+            const root = state.rootGroup;
+            if (isGroupGroup(root)) {
+                retainGroupsByRank(
+                    root,
+                    action.payload.level,
+                    action.payload.measure,
+                    action.payload.limit,
+                    action.payload.order
+                );
+            } else {
+                throw new Error("Cannot retain sample groups before grouping.");
+            }
+        },
+
+        /**
+         * Retain groups at a grouping level by size threshold.
+         *
+         * Use this for threshold requests such as "retain groups with at least
+         * 10 samples". This is different from top-k retention: it keeps every
+         * group at the selected level whose size satisfies `operator` and
+         * `operand`, regardless of rank. Use `level: 0` for top-level groups
+         * under ROOT.
+         *
+         * Only `measure: "size"` is currently supported. Size means the number
+         * of descendant visible samples in the group.
+         *
+         * @agent.payloadType RetainGroupsBySize
+         * @agent.category grouping
+         * @example
+         * {
+         *   "level": 0,
+         *   "measure": "size",
+         *   "operator": "gte",
+         *   "operand": 10
+         * }
+         */
+        retainGroupsBySize: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainGroupsBySize>} */
+            action
+        ) => {
+            const root = state.rootGroup;
+            if (isGroupGroup(root)) {
+                retainGroupsBySize(
+                    root,
+                    action.payload.level,
+                    action.payload.measure,
+                    action.payload.operator,
+                    action.payload.operand
+                );
+            } else {
+                throw new Error("Cannot retain sample groups before grouping.");
             }
         },
 

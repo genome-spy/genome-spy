@@ -1,9 +1,12 @@
 import { range } from "d3-array";
 import LayerView from "@genome-spy/core/view/layerView.js";
-import { contextMenu } from "../utils/ui/contextMenu.js";
+import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
 import { iterateGroupHierarchy } from "./state/sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
+import { showRetainGroupsByRankDialog } from "./groupDialogs/retainGroupsByRankDialog.js";
+import { showRetainGroupsBySizeDialog } from "./groupDialogs/retainGroupsBySizeDialog.js";
+import { faFilter } from "@fortawesome/free-solid-svg-icons";
 
 const GROUP_COLUMN_WIDTH = { step: 24 };
 
@@ -161,20 +164,61 @@ export default class SampleGroupView extends LayerView {
                 }
             }
 
+            if (!foundPath) {
+                return;
+            }
+
+            const level = foundPath.length - 1;
             const action = sampleView.actions.removeGroup({
                 path: foundPath.map((group) => group.name),
             });
-            const info = sampleView.provenance.getActionInfo(action);
             const store = sampleView.provenance.store;
+
+            /**
+             * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
+             * @returns {import("../utils/ui/contextMenu.js").MenuItem}
+             */
+            const actionToItem = (action) => {
+                const info = sampleView.provenance.getActionInfo(action);
+                return {
+                    label: info.title,
+                    icon: info.icon,
+                    callback: () => store.dispatch(action),
+                };
+            };
 
             contextMenu(
                 {
                     items: [
-                        // TODO: Use actionToItem from attributeContextMenu.js
                         {
-                            label: info.title,
-                            icon: info.icon,
-                            callback: () => store.dispatch(action),
+                            label: group.title ?? group.name,
+                            type: "header",
+                        },
+                        actionToItem(action),
+                        DIVIDER,
+                        {
+                            icon: faFilter,
+                            label: "Retain groups at this level",
+                            submenu: [
+                                {
+                                    icon: faFilter,
+                                    label: "Ranked groups by size...",
+                                    callback: () =>
+                                        showRetainGroupsByRankDialog(
+                                            sampleView,
+                                            level
+                                        ),
+                                },
+                                {
+                                    icon: faFilter,
+                                    label: "Groups by size threshold...",
+                                    callback: () =>
+                                        showRetainGroupsBySizeDialog(
+                                            sampleView,
+                                            level
+                                        ),
+                                },
+                            ],
                         },
                     ],
                 },

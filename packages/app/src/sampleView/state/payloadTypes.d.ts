@@ -329,6 +329,77 @@ export interface RemoveGroup {
     path: string[];
 }
 
+export interface RetainGroupsByRank {
+    /**
+     * Zero-based grouping level to filter.
+     *
+     * `0` targets top-level groups under ROOT. `1` targets direct children of
+     * top-level groups, and so on. For top-level categories such as cancer
+     * type, use `0`.
+     *
+     * @minimum 0
+     */
+    level: number;
+
+    /**
+     * Group-level measure used for ranking.
+     *
+     * Only `"size"` is supported. Size means group abundance: the number of
+     * descendant visible samples in the group.
+     */
+    measure: "size";
+
+    /**
+     * Number of ranked groups to retain within each ancestor partition.
+     *
+     * This is k in top-k or bottom-k requests. For example, use `5` to keep
+     * the five largest or five smallest groups.
+     *
+     * @minimum 1
+     */
+    limit: number;
+
+    /**
+     * Ranking direction.
+     *
+     * Use `"descending"` for top-k, highest values, largest groups by size, or
+     * most abundant groups. Use `"ascending"` for bottom-k, lowest values,
+     * smallest groups by size, or least abundant groups.
+     */
+    order: "descending" | "ascending";
+}
+
+export interface RetainGroupsBySize {
+    /**
+     * Zero-based grouping level to filter.
+     *
+     * `0` targets top-level groups under ROOT. `1` targets direct children of
+     * top-level groups, and so on. For top-level categories such as cancer
+     * type, use `0`.
+     *
+     * @minimum 0
+     */
+    level: number;
+
+    /**
+     * Group-level measure used for thresholding.
+     *
+     * Only `"size"` is supported. Size means group abundance: the number of
+     * descendant visible samples in the group.
+     */
+    measure: "size";
+
+    /**
+     * Threshold comparison applied as `measure operator operand`.
+     */
+    operator: ComparisonOperatorType;
+
+    /**
+     * Numeric group-size threshold.
+     */
+    operand: number;
+}
+
 /**
  * Payload for filtering samples by comparing a quantitative attribute
  * against a numeric operand.
