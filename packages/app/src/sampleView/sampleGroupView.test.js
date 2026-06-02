@@ -1,6 +1,11 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
-import { getGroupLevelAtPosition } from "./sampleGroupView.js";
+import {
+    formatGroupLevelHeader,
+    formatRemoveGroupLabel,
+    formatUngroupLabel,
+    getGroupLevelAtPosition,
+} from "./sampleGroupView.js";
 
 describe("SampleGroupView helpers", () => {
     it("resolves group levels from horizontal level regions", () => {
@@ -17,5 +22,17 @@ describe("SampleGroupView helpers", () => {
         expect(getGroupLevelAtPosition(72, 72, 3)).toBeUndefined();
         expect(getGroupLevelAtPosition(0, 72, 0)).toBeUndefined();
         expect(getGroupLevelAtPosition(0, 0, 3)).toBeUndefined();
+    });
+
+    it("formats level-specific context menu labels", () => {
+        expect(formatGroupLevelHeader("Diagnosis", 1, 1)).toBe("Diagnosis");
+        expect(formatGroupLevelHeader("Diagnosis", 1, 2)).toBe(
+            "Diagnosis (level 1)"
+        );
+        expect(formatRemoveGroupLabel("Adenocarcinoma")).toBe(
+            "Remove group Adenocarcinoma"
+        );
+        expect(formatUngroupLabel(1)).toBe("Ungroup");
+        expect(formatUngroupLabel(2)).toBe("Ungroup from this level");
     });
 });

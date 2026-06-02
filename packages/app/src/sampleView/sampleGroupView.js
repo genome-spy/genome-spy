@@ -1,6 +1,6 @@
 import { range } from "d3-array";
 import LayerView from "@genome-spy/core/view/layerView.js";
-import { contextMenu, DIVIDER } from "../utils/ui/contextMenu.js";
+import { contextMenu } from "../utils/ui/contextMenu.js";
 import { iterateGroupHierarchy } from "./state/sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
@@ -9,20 +9,6 @@ import { showRetainGroupsBySizeDialog } from "./groupDialogs/retainGroupsBySizeD
 import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
 const GROUP_COLUMN_WIDTH = { step: 24 };
-
-/**
- * @param {number} x Position relative to the group view's left edge
- * @param {number} width Group view width
- * @param {number} levelCount Number of visible grouping levels
- * @returns {number | undefined}
- */
-export function getGroupLevelAtPosition(x, width, levelCount) {
-    if (levelCount < 1 || width <= 0 || x < 0 || x >= width) {
-        return undefined;
-    }
-
-    return Math.floor((x / width) * levelCount) + 1;
-}
 
 /**
  * @extends {LayerView<import("../spec/view.js").AppLayerSpec>}
@@ -228,8 +214,8 @@ export default class SampleGroupView extends LayerView {
     #buildContextMenuItems(level, foundPath) {
         const sampleView = this.sampleView;
         const store = sampleView.provenance.store;
-        const hasMultipleGroupLevels =
-            sampleView.sampleHierarchy.groupMetadata.length > 1;
+        const levelCount = sampleView.sampleHierarchy.groupMetadata.length;
+        const hasMultipleGroupLevels = levelCount > 1;
 
         /**
          * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
@@ -246,7 +232,16 @@ export default class SampleGroupView extends LayerView {
         };
 
         /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
-        const items = [];
+        const items = [
+            {
+                label: formatGroupLevelHeader(
+                    this.#getAttributeTitles()[level],
+                    level,
+                    levelCount
+                ),
+                type: "header",
+            },
+        ];
 
         if (foundPath) {
             const group = foundPath.at(-1);
@@ -254,21 +249,17 @@ export default class SampleGroupView extends LayerView {
                 path: foundPath.map((group) => group.name),
             });
             items.push(
-                {
-                    label: group.title ?? group.name,
-                    type: "header",
-                },
-                actionToItem(removeGroupAction),
-                DIVIDER
+                actionToItem(
+                    removeGroupAction,
+                    formatRemoveGroupLabel(group.title ?? group.name)
+                )
             );
         }
 
         items.push(
             {
                 icon: faFilter,
-                label: hasMultipleGroupLevels
-                    ? "Retain groups at this level"
-                    : "Retain groups",
+                label: "Retain groups",
                 submenu: [
                     {
                         icon: faFilter,
@@ -288,13 +279,10 @@ export default class SampleGroupView extends LayerView {
                     },
                 ],
             },
-            DIVIDER,
             {
                 ...actionToItem(
                     sampleView.actions.ungroup({ level }),
-                    hasMultipleGroupLevels
-                        ? "Ungroup from this level"
-                        : "Ungroup"
+                    formatUngroupLabel(levelCount)
                 ),
                 icon: faObjectGroup,
             }
@@ -420,4 +408,46 @@ export default class SampleGroupView extends LayerView {
             }
         );
     }
+}
+
+/**
+ * @param {number} x Position relative to the group view's left edge
+ * @param {number} width Group view width
+ * @param {number} levelCount Number of visible grouping levels
+ * @returns {number | undefined}
+ */
+export function getGroupLevelAtPosition(x, width, levelCount) {
+    if (levelCount < 1 || width <= 0 || x < 0 || x >= width) {
+        return undefined;
+    }
+
+    return Math.floor((x / width) * levelCount) + 1;
+}
+
+/**
+ * @param {string} attributeTitle
+ * @param {number} level
+ * @param {number} levelCount
+ * @returns {string}
+ */
+export function formatGroupLevelHeader(attributeTitle, level, levelCount) {
+    return levelCount > 1
+        ? `${attributeTitle} (level ${level})`
+        : attributeTitle;
+}
+
+/**
+ * @param {string} groupTitle
+ * @returns {string}
+ */
+export function formatRemoveGroupLabel(groupTitle) {
+    return `Remove group ${groupTitle}`;
+}
+
+/**
+ * @param {number} levelCount
+ * @returns {string}
+ */
+export function formatUngroupLabel(levelCount) {
+    return levelCount > 1 ? "Ungroup from this level" : "Ungroup";
 }
