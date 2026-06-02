@@ -109,6 +109,25 @@ export interface AgentSampleGroupLevel {
 }
 
 /**
+ * Compact count summary for one grouping level.
+ */
+export interface AgentSampleGroupLevelSummary extends AgentSampleGroupLevel {
+    groupCount: number;
+    visibleLeafGroupCount: number;
+    sampleCountMin: number;
+    sampleCountMax: number;
+}
+
+/**
+ * Compact summary of the current sample grouping hierarchy.
+ */
+export interface AgentSampleGroupSummary {
+    totalGroupCount: number;
+    visibleLeafGroupCount: number;
+    levels: AgentSampleGroupLevelSummary[];
+}
+
+/**
  * Summary of the visualization's root config.
  */
 export interface AgentRootConfigSummary {

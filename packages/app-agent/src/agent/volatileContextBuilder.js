@@ -26,6 +26,13 @@ export function getAgentVolatileContext(agentApi) {
         sampleGroupLevels: sampleHierarchy
             ? buildSampleGroupLevels(agentApi, sampleHierarchy)
             : [],
+        sampleGroupSummary: sampleHierarchy
+            ? buildSampleGroupSummary(agentApi, sampleHierarchy)
+            : {
+                  totalGroupCount: 0,
+                  visibleLeafGroupCount: 0,
+                  levels: [],
+              },
         parameterValues: buildParameterValues(agentApi),
         scaleDomains: buildScaleDomains(agentApi),
         selectionAggregation: getSelectionAggregationContext(agentApi),
@@ -159,6 +166,78 @@ function buildSampleGroupLevels(agentApi, sampleHierarchy) {
             title: templateResultToString(info.title),
         };
     });
+}
+
+/**
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
+ * @param {import("@genome-spy/app/agentShared").SampleHierarchy} sampleHierarchy
+ * @returns {import("./types.js").AgentSampleGroupSummary}
+ */
+function buildSampleGroupSummary(agentApi, sampleHierarchy) {
+    const levels = buildSampleGroupLevels(agentApi, sampleHierarchy).map(
+        (level) => ({
+            ...level,
+            groupCount: 0,
+            visibleLeafGroupCount: 0,
+            sampleCountMin: 0,
+            sampleCountMax: 0,
+        })
+    );
+
+    let totalGroupCount = 0;
+    let visibleLeafGroupCount = 0;
+
+    if ("samples" in sampleHierarchy.rootGroup) {
+        return {
+            totalGroupCount,
+            visibleLeafGroupCount,
+            levels,
+        };
+    }
+
+    /**
+     * @param {import("@genome-spy/app/agentShared").Group} group
+     * @param {number} depth
+     * @returns {number}
+     */
+    const visitGroup = (group, depth) => {
+        let sampleCount;
+        if ("samples" in group) {
+            sampleCount = group.samples.length;
+        } else {
+            sampleCount = group.groups.reduce(
+                (sum, child) => sum + visitGroup(child, depth + 1),
+                0
+            );
+        }
+
+        totalGroupCount += 1;
+        const level = levels[depth - 1];
+        level.groupCount += 1;
+        if ("samples" in group) {
+            level.visibleLeafGroupCount += 1;
+            visibleLeafGroupCount += 1;
+        }
+        if (level.groupCount === 1) {
+            level.sampleCountMin = sampleCount;
+            level.sampleCountMax = sampleCount;
+        } else {
+            level.sampleCountMin = Math.min(level.sampleCountMin, sampleCount);
+            level.sampleCountMax = Math.max(level.sampleCountMax, sampleCount);
+        }
+
+        return sampleCount;
+    };
+
+    for (const child of sampleHierarchy.rootGroup.groups) {
+        visitGroup(child, 1);
+    }
+
+    return {
+        totalGroupCount,
+        visibleLeafGroupCount,
+        levels,
+    };
 }
 
 /**

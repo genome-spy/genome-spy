@@ -19,6 +19,11 @@ const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
             visibleSampleCount: 61,
         },
         sampleGroupLevels: [],
+        sampleGroupSummary: {
+            totalGroupCount: 0,
+            visibleLeafGroupCount: 0,
+            levels: [],
+        },
         selectionAggregation: {
             fields: [{ candidateId: "candidate-1" }],
         },
@@ -487,6 +492,11 @@ describe("agentAdapter", () => {
             visibleSampleCount: 61,
         });
         expect(requestBody.volatileContext.sampleGroupLevels).toEqual([]);
+        expect(requestBody.volatileContext.sampleGroupSummary).toEqual({
+            totalGroupCount: 0,
+            visibleLeafGroupCount: 0,
+            levels: [],
+        });
         expect(
             requestBody.volatileContext.selectionAggregation.fields
         ).not.toEqual([]);

@@ -536,6 +536,24 @@ describe("getAgentVolatileContext", () => {
                 title: "Title diagnosis",
             })
         );
+        expect(volatileContext.sampleGroupSummary).toEqual({
+            totalGroupCount: 1,
+            visibleLeafGroupCount: 1,
+            levels: [
+                {
+                    level: 1,
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "diagnosis",
+                    },
+                    title: "Title diagnosis",
+                    groupCount: 1,
+                    visibleLeafGroupCount: 1,
+                    sampleCountMin: 2,
+                    sampleCountMax: 2,
+                },
+            ],
+        });
         expect(volatileContext.selectionAggregation.fields).toEqual([]);
         expect(volatileContext.parameterValues).toEqual([
             {
@@ -583,5 +601,80 @@ describe("getAgentVolatileContext", () => {
             summary: "Sort by min(purity) in selection brush",
             type: "sampleView/sortBy",
         });
+    });
+
+    it("summarizes nested sample groups compactly", () => {
+        const app = createAppStub();
+        const presentState = app.provenance.getPresentState();
+        app.provenance.getPresentState = () => presentState;
+        const sampleHierarchy = presentState.sampleView;
+        sampleHierarchy.groupMetadata = [
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "diagnosis",
+                },
+            },
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "patient",
+                },
+            },
+        ];
+        sampleHierarchy.rootGroup = {
+            name: "ROOT",
+            groups: [
+                {
+                    name: "A",
+                    title: "A",
+                    groups: [
+                        { name: "A1", title: "A1", samples: ["s1"] },
+                        { name: "A2", title: "A2", samples: ["s2", "s3"] },
+                    ],
+                },
+                {
+                    name: "B",
+                    title: "B",
+                    groups: [
+                        {
+                            name: "B1",
+                            title: "B1",
+                            samples: ["s4", "s5", "s6"],
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const volatileContext = getAgentVolatileContext(
+            createAgentApiStub(app)
+        );
+
+        expect(volatileContext.sampleGroupSummary).toEqual({
+            totalGroupCount: 5,
+            visibleLeafGroupCount: 3,
+            levels: [
+                expect.objectContaining({
+                    level: 1,
+                    title: "Title diagnosis",
+                    groupCount: 2,
+                    visibleLeafGroupCount: 0,
+                    sampleCountMin: 3,
+                    sampleCountMax: 3,
+                }),
+                expect.objectContaining({
+                    level: 2,
+                    title: "Title patient",
+                    groupCount: 3,
+                    visibleLeafGroupCount: 3,
+                    sampleCountMin: 1,
+                    sampleCountMax: 3,
+                }),
+            ],
+        });
+        expect(
+            JSON.stringify(volatileContext.sampleGroupSummary)
+        ).not.toContain("A1");
     });
 });
