@@ -18,6 +18,8 @@ class Settings:
     system_prompt: str
     enable_streaming: bool
     prefer_responses_role_compat: bool
+    enable_token_debug_logs: bool
+    enable_throughput_debug_logs: bool
 
 
 def describe_api_key_for_logs(api_key: str) -> str:
@@ -77,13 +79,20 @@ def load_settings() -> Settings:
         prefer_responses_role_compat=_load_bool_env(
             "GENOMESPY_AGENT_PREFER_RESPONSES_ROLE_COMPAT", False
         ),
+        enable_token_debug_logs=_load_bool_env(
+            "GENOMESPY_AGENT_ENABLE_TOKEN_DEBUG_LOGS", True
+        ),
+        enable_throughput_debug_logs=_load_bool_env(
+            "GENOMESPY_AGENT_ENABLE_THROUGHPUT_DEBUG_LOGS", True
+        ),
     )
 
     logger.info(
         (
             "Loaded GenomeSpy agent settings: "
             "base_url=%s model=%s api_key_source=%s api_key=%s "
-            "streaming=%s responses_role_compat=%s timeout_seconds=%s"
+            "streaming=%s responses_role_compat=%s timeout_seconds=%s "
+            "token_debug_logs=%s throughput_debug_logs=%s"
         ),
         settings.base_url,
         settings.model,
@@ -92,6 +101,8 @@ def load_settings() -> Settings:
         settings.enable_streaming,
         settings.prefer_responses_role_compat,
         settings.timeout_seconds,
+        settings.enable_token_debug_logs,
+        settings.enable_throughput_debug_logs,
     )
 
     return settings
