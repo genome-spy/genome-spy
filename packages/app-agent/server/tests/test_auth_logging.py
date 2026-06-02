@@ -38,6 +38,7 @@ def test_provider_auth_diagnostic_logs_masked_api_key(
         timeout_seconds=10,
         system_prompt="system prompt",
         enable_streaming=True,
+        prefer_responses_role_compat=False,
     )
 
     with caplog.at_level(logging.WARNING):
