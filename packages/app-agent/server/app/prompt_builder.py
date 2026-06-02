@@ -196,7 +196,7 @@ def _build_assistant_tool_messages(message: HistoryMessage) -> list[dict[str, An
             "type": "function_call",
             "call_id": tool_call.call_id,
             "name": tool_call.name,
-            "arguments": _stringify_content(tool_call.arguments, "{}"),
+            "arguments": _stringify_tool_arguments(tool_call.arguments),
         }
         for tool_call in message.tool_calls
     )
@@ -226,6 +226,26 @@ def _stringify_content(content: Any, fallback: str) -> str:
         return fallback
 
     return json.dumps(content, ensure_ascii=False, sort_keys=True)
+
+
+def _stringify_tool_arguments(arguments: Any) -> str:
+    """Return valid JSON for historical function-call arguments.
+
+    Some providers return malformed tool-call argument strings. Those may still
+    be useful for local validation and rejection handling in the browser, but
+    sending the malformed string back through a strict Responses API causes the
+    next turn to fail before the model can repair the call. For request history,
+    keep valid JSON as-is and fall back to `{}` when the original argument
+    string is not valid JSON.
+    """
+    if isinstance(arguments, str):
+        try:
+            parsed = json.loads(arguments)
+        except Exception:
+            return "{}"
+        return json.dumps(parsed, ensure_ascii=False, sort_keys=True)
+
+    return _stringify_content(arguments, "{}")
 
 
 def _stringify_tool_output(message: HistoryMessage) -> str:
