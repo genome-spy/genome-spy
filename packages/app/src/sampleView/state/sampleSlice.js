@@ -369,7 +369,8 @@ export const sampleSlice = createSlice({
          * Use this when samples should be ranked by one quantitative or
          * ordinal attribute before further filtering or grouping. The
          * attribute may be metadata or a selection-derived aggregation
-         * candidate from `selectionAggregation.fields`.
+         * candidate from `selectionAggregation.fields`. Sorting is stable,
+         * so ties preserve current sample order.
          *
          * @agent.payloadType SortBy
          * @agent.category sorting
@@ -390,11 +391,13 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain the first sample for each distinct value of a selected attribute.
+         * Retain representative samples by keeping the first sample for each
+         * distinct value of a selected attribute.
          *
-         * Use this when the current sample order already encodes the desired
-         * representative sample within each category and within each current
-         * group.
+         * Use this to reduce to one sample per category value, for example one
+         * sample per patient. Workflow: first sort by ranking attribute(s) if
+         * desired, then use this action to keep the top-ranked sample for
+         * each category value, e.g., patient or subjectId.
          *
          * @agent.payloadType RetainFirstOfEach
          * @agent.category grouping

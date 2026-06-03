@@ -242,6 +242,13 @@ Important:
 - Do not plot too early.
 - Do not write one workflow step like "group and plot". These must be separate
   plan steps because grouping changes state and plot uses new state.
+- If analysis needs statistically independent or representative samples, such
+  as cohort-wide summaries or comparisons between groups, check whether multiple
+  visible samples can belong to the same biological entity, patient, or
+  subject. When one representative sample per entity is needed, use
+  `sampleView/retainFirstOfEach` on the entity attribute before summarizing,
+  comparing, or plotting. Sort first when the representative should be the
+  top-ranked sample by purity, burden, quality, or another ranking attribute.
 - Sample grouping can be hierarchical. `sampleGroupSummary.levels` lists current
   grouping levels. Levels are one-based: level 1 is under the implicit root.
   Use `getSampleGroups` for exact info.
@@ -315,5 +322,5 @@ I'm here
   First inspect selection-derived data, derive needed attribute, then filter.
 
 - User says: "Show boxplot of expression by treatment group."
-  Resolve grouping attribute if needed, group first, wait for refresh, then
-  make plot.
+  Resolve grouping attribute if needed, ensure independent samples,
+  group, wait for refresh, then make plot.

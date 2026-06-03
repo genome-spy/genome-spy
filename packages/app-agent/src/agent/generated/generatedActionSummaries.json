@@ -17,7 +17,7 @@
   {
     "actionType": "sampleView/retainFirstOfEach",
     "title": "Retain the first sample of each patient_id",
-    "description": "Retain the first sample for each distinct value of a selected attribute."
+    "description": "Retain representative samples by keeping the first sample for each distinct value of a selected attribute."
   },
   {
     "actionType": "sampleView/retainFirstNCategories",
