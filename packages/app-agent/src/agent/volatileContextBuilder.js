@@ -12,6 +12,7 @@ import {
 } from "@genome-spy/app/agentShared";
 import { collectVisibleSampleIds } from "./sampleHierarchyScope.js";
 import { VISIT_SKIP } from "@genome-spy/core/view/view.js";
+import { listGroupEntries } from "./sampleGroupHierarchyUtils.js";
 
 /**
  * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
@@ -175,7 +176,6 @@ function buildSampleGroupSummary(agentApi, sampleHierarchy) {
         (level) => ({
             ...level,
             groupCount: 0,
-            visibleLeafGroupCount: 0,
             sampleCountMin: 0,
             sampleCountMax: 0,
         })
@@ -192,42 +192,26 @@ function buildSampleGroupSummary(agentApi, sampleHierarchy) {
         };
     }
 
-    /**
-     * @param {import("@genome-spy/app/agentShared").Group} group
-     * @param {number} depth
-     * @returns {number}
-     */
-    const visitGroup = (group, depth) => {
-        let sampleCount;
-        if ("samples" in group) {
-            sampleCount = group.samples.length;
-        } else {
-            sampleCount = group.groups.reduce(
-                (sum, child) => sum + visitGroup(child, depth + 1),
-                0
-            );
-        }
-
+    for (const entry of listGroupEntries(sampleHierarchy.rootGroup)) {
         totalGroupCount += 1;
-        const level = levels[depth - 1];
+        const level = levels[entry.level - 1];
         level.groupCount += 1;
-        if ("samples" in group) {
-            level.visibleLeafGroupCount += 1;
+        if ("samples" in entry.group) {
             visibleLeafGroupCount += 1;
         }
         if (level.groupCount === 1) {
-            level.sampleCountMin = sampleCount;
-            level.sampleCountMax = sampleCount;
+            level.sampleCountMin = entry.sampleCount;
+            level.sampleCountMax = entry.sampleCount;
         } else {
-            level.sampleCountMin = Math.min(level.sampleCountMin, sampleCount);
-            level.sampleCountMax = Math.max(level.sampleCountMax, sampleCount);
+            level.sampleCountMin = Math.min(
+                level.sampleCountMin,
+                entry.sampleCount
+            );
+            level.sampleCountMax = Math.max(
+                level.sampleCountMax,
+                entry.sampleCount
+            );
         }
-
-        return sampleCount;
-    };
-
-    for (const child of sampleHierarchy.rootGroup.groups) {
-        visitGroup(child, 1);
     }
 
     return {

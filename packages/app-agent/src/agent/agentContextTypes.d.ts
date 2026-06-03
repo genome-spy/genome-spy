@@ -113,7 +113,6 @@ export interface AgentSampleGroupLevel {
  */
 export interface AgentSampleGroupLevelSummary extends AgentSampleGroupLevel {
     groupCount: number;
-    visibleLeafGroupCount: number;
     sampleCountMin: number;
     sampleCountMax: number;
 }

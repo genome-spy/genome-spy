@@ -1,5 +1,9 @@
 import { templateResultToString } from "@genome-spy/app/agentShared";
 import { ToolCallRejectionError } from "./agentToolErrors.js";
+import {
+    listChildGroupEntries,
+    listGroupEntries,
+} from "./sampleGroupHierarchyUtils.js";
 
 const DEFAULT_MAX_GROUPS = 20;
 
@@ -38,8 +42,10 @@ export function getSampleGroupsTool(runtime, input) {
     }
 
     const matchingGroups = parentPath.length
-        ? listChildGroups(parentGroup, parentPath)
-        : listGroupsAtLevel(sampleHierarchy.rootGroup, level);
+        ? listChildGroupEntries(parentGroup, parentPath)
+        : listGroupEntries(sampleHierarchy.rootGroup).filter(
+              (entry) => entry.level === level
+          );
     const limit = input.limit ?? DEFAULT_MAX_GROUPS;
     const returnedGroups = matchingGroups.slice(0, limit);
     const includePath = parentPath.length === 0 && level > 1;
@@ -127,74 +133,21 @@ function findGroupByPath(rootGroup, path) {
 }
 
 /**
- * @param {import("@genome-spy/app/agentShared").GroupGroup} parentGroup
- * @param {string[]} parentPath
- */
-function listChildGroups(parentGroup, parentPath) {
-    return parentGroup.groups.map((group) => ({
-        group,
-        path: [...parentPath, group.name],
-    }));
-}
-
-/**
- * @param {import("@genome-spy/app/agentShared").GroupGroup} rootGroup
- * @param {number} level
- */
-function listGroupsAtLevel(rootGroup, level) {
-    /** @type {{ group: import("@genome-spy/app/agentShared").Group; path: string[] }[]} */
-    const groups = [];
-
-    /**
-     * @param {import("@genome-spy/app/agentShared").Group} group
-     * @param {string[]} path
-     * @param {number} currentLevel
-     */
-    const visit = (group, path, currentLevel) => {
-        if (currentLevel === level) {
-            groups.push({ group, path });
-        } else if ("groups" in group) {
-            for (const child of group.groups) {
-                visit(child, [...path, child.name], currentLevel + 1);
-            }
-        }
-    };
-
-    for (const child of rootGroup.groups) {
-        visit(child, [child.name], 1);
-    }
-
-    return groups;
-}
-
-/**
- * @param {{ group: import("@genome-spy/app/agentShared").Group; path: string[] }} entry
+ * @param {import("./sampleGroupHierarchyUtils.js").SampleGroupPathEntry} entry
  * @param {boolean} includePath
  */
 function formatGroupEntry(entry, includePath) {
-    const { group, path } = entry;
+    const { group, path, sampleCount } = entry;
     /** @type {{ path?: string[]; name?: string; title?: string; sampleCount?: number; childGroupCount?: number }} */
     const result = includePath ? { path } : { name: group.name };
     if (group.title !== group.name) {
         result.title = group.title;
     }
-    result.sampleCount = countSamples(group);
+    result.sampleCount = sampleCount;
     if ("groups" in group && group.groups.length) {
         result.childGroupCount = group.groups.length;
     }
     return result;
-}
-
-/**
- * @param {import("@genome-spy/app/agentShared").Group} group
- * @returns {number}
- */
-function countSamples(group) {
-    if ("samples" in group) {
-        return group.samples.length;
-    }
-
-    return group.groups.reduce((sum, child) => sum + countSamples(child), 0);
 }
 
 /**

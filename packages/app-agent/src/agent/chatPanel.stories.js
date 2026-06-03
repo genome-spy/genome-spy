@@ -102,7 +102,6 @@ function createMockAgentController(scenario, options = {}) {
                     },
                     title: "Diagnosis",
                     groupCount: 4,
-                    visibleLeafGroupCount: 4,
                     sampleCountMin: 12,
                     sampleCountMax: 48,
                 },
