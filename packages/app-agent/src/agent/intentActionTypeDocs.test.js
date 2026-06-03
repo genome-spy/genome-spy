@@ -83,6 +83,28 @@ describe("intentActionTypeDocs", () => {
         ]);
     });
 
+    it("resolves string literal display types", () => {
+        expect(
+            getIntentActionTypeDocs({ typeName: '"size"', referenceDepth: 0 })
+                .schema
+        ).toEqual({
+            const: "size",
+            type: "string",
+        });
+
+        expect(
+            getIntentActionTypeDocs({
+                typeName: '"descending" | "ascending"',
+                referenceDepth: 0,
+            }).schema
+        ).toEqual({
+            anyOf: [
+                { const: "descending", type: "string" },
+                { const: "ascending", type: "string" },
+            ],
+        });
+    });
+
     it("resolves non-empty Threshold tuple display type", () => {
         const docs = getIntentActionTypeDocs({
             typeName: "[Threshold, ...Threshold[]]",
