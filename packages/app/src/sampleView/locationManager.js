@@ -8,6 +8,11 @@ import transition from "@genome-spy/core/utils/transition.js";
 import { easeCubicOut, easeExpOut } from "d3-ease";
 import { getFlattenedGroupHierarchy } from "./state/sampleSlice.js";
 
+const DEFAULT_SAMPLE_HEIGHT = 35;
+const DEFAULT_GROUP_SPACING = 5;
+const DEFAULT_PEEK_GROUP_SPACING = 15;
+const DEFAULT_SAMPLE_SPACING_FACTOR = 0.2;
+
 export class LocationManager {
     /**
      * @typedef {import("@genome-spy/core/view/layout/flexLayout.js").LocSize} LocSize
@@ -443,16 +448,24 @@ export class LocationManager {
         const flattened = getFlattenedGroupHierarchy(sampleHierarchy);
 
         // Locations squeezed into the viewport height.
+        const sampleLayout = this.#locationContext.sampleLayout ?? {};
         const fittedLocations = calculateLocations(flattened, {
             viewHeight: height,
-            groupSpacing: 5, // TODO: Configurable
+            groupSpacing: sampleLayout.groupSpacing ?? DEFAULT_GROUP_SPACING,
+            sampleSpacingFactor:
+                sampleLayout.sampleSpacingFactor ??
+                DEFAULT_SAMPLE_SPACING_FACTOR,
             summaryHeight,
         });
 
         // Scrollable locations that are shown when "peek" activates.
         const scrollableLocations = calculateLocations(flattened, {
-            sampleHeight: 35, // TODO: Configurable
-            groupSpacing: 15, // TODO: Configurable
+            sampleHeight: sampleLayout.sampleHeight ?? DEFAULT_SAMPLE_HEIGHT,
+            groupSpacing:
+                sampleLayout.peekGroupSpacing ?? DEFAULT_PEEK_GROUP_SPACING,
+            sampleSpacingFactor:
+                sampleLayout.sampleSpacingFactor ??
+                DEFAULT_SAMPLE_SPACING_FACTOR,
             summaryHeight,
         });
 
@@ -659,12 +672,19 @@ function interpolateLocations(target, fitted, scrollable, ratio, offset) {
  * @param {number} [object.viewHeight] Height reserved for all the samples
  * @param {number} [object.sampleHeight] Height of single sample
  * @param {number} [object.groupSpacing] Space between groups
+ * @param {number} [object.sampleSpacingFactor] Fraction of sample height used as spacing between rendered samples
  * @param {number} [object.summaryHeight] Height of group summaries
  *
  */
 export function calculateLocations(
     flattenedGroupHierarchy,
-    { viewHeight = 0, sampleHeight = 0, groupSpacing = 5, summaryHeight = 0 }
+    {
+        viewHeight = 0,
+        sampleHeight = 0,
+        groupSpacing = 5,
+        sampleSpacingFactor = DEFAULT_SAMPLE_SPACING_FACTOR,
+        summaryHeight = 0,
+    }
 ) {
     /**
      * @typedef {import("./state/sampleState.js").Group} Group
@@ -729,8 +749,8 @@ export function calculateLocations(
         ).forEach((locSize, i) => {
             const { size, location } = locSize;
 
-            // TODO: Make padding configurable
-            const padding = size * 0.1 * smoothstep(15, 22, size);
+            const padding =
+                size * sampleSpacingFactor * 0.5 * smoothstep(15, 22, size);
 
             locSize.location = location + padding;
             locSize.size = size - 2 * padding;

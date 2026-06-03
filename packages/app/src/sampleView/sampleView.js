@@ -503,6 +503,7 @@ export default class SampleView extends ContainerView {
             },
             viewContext: this.context,
             isStickySummaries: () => this.#stickySummaries,
+            sampleLayout: this.spec.sampleLayout,
         });
     }
 

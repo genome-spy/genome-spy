@@ -629,6 +629,51 @@ describe("SampleView", () => {
         expect(gapY).toBeLessThan(second.location);
     });
 
+    test("uses sibling sampleLayout for peek sample height", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1 },
+                    { sample: "B", x: 2 },
+                    { sample: "C", x: 3 },
+                ],
+            },
+            samples: {},
+            sampleLayout: {
+                sampleHeight: 25,
+            },
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({
+            spec,
+        });
+
+        view.getScaleResolution = () =>
+            /** @type {any} */ ({
+                getDataDomain: () => ["A", "B", "C"],
+            });
+        view.handleBroadcast({
+            type: "subtreeDataReady",
+            payload: { subtreeRoot: view },
+        });
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(view.locationManager.getScrollableHeight()).toBe(75);
+    });
+
     test("sidebar wheel and drag do not start sample-pane zoom interactions", async () => {
         const originalMouseEvent = globalThis.MouseEvent;
 

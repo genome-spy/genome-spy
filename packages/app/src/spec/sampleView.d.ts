@@ -33,6 +33,11 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     metadata?: MetadataDef;
 
     /**
+     * Layout settings for sample rows and sample groups.
+     */
+    sampleLayout?: SampleLayoutDef;
+
+    /**
      * An object defining the view background and outline. The background is
      * repeated for each group.
      */
@@ -504,4 +509,37 @@ export interface SampleDef {
      * **Default value:** `"left"`
      */
     labelAlign?: Align;
+}
+
+export interface SampleLayoutDef {
+    /**
+     * Height of one sample row when the view is expanded for (close-up) inspection.
+     * In the birdseye overview, sample rows are automatically scaled to fit the available vertical space.
+     *
+     * __Default value:__ `35`
+     */
+    sampleHeight?: number;
+
+    /**
+     * Spacing between sample groups in the fitted layout.
+     *
+     * __Default value:__ `5`
+     */
+    groupSpacing?: number;
+
+    /**
+     * Spacing between sample groups in the expanded layout.
+     *
+     * __Default value:__ `15`
+     */
+    peekGroupSpacing?: number;
+
+    /**
+     * Fraction of each sample row reserved as spacing between rendered sample contents.
+     *
+     * Spacing is reduced when rows are too short to render cleanly.
+     *
+     * __Default value:__ `0.2`
+     */
+    sampleSpacingFactor?: number;
 }

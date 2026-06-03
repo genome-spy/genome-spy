@@ -125,9 +125,15 @@ The following properties allow for fine-grained control of the font styles:
 
 APP_SCHEMA SampleDef labelFont labelFontSize labelFontWeight labelFontStyle labelAlign
 
-In addition, the following properties are supported:
+In addition, the following sample label properties are supported:
 
 APP_SCHEMA SampleDef labelTitle labelLength
+
+Sample row and group layout can be adjusted with the `sampleLayout` property:
+
+APP_SCHEMA SampleSpec sampleLayout
+
+APP_SCHEMA SampleLayoutDef sampleHeight groupSpacing peekGroupSpacing sampleSpacingFactor
 
 Metadata attribute label and matrix layout properties are documented in
 [Configuring Metadata Sources](metadata-sources.md#metadata-configuration).

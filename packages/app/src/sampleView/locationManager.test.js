@@ -5,9 +5,67 @@ import {
     computeScrollMetrics,
     getClosestSampleLocationAt,
     getSampleLocationAt,
+    LocationManager,
 } from "./locationManager.js";
 
 describe("LocationManager layout helpers", () => {
+    test("LocationManager uses default sample layout values", () => {
+        // Exercise LocationManager defaults instead of calculateLocations inputs.
+        const root = createRootGroup();
+        const groupA = createSampleGroup("A", ["s1", "s2"]);
+        const groupB = createSampleGroup("B", ["s3"]);
+        root.groups = [groupA, groupB];
+
+        const manager = createLocationManager(root, { height: 100 });
+        const locations = manager.getLocations();
+
+        const summaryByName = new Map(
+            locations.summaries.map((summary) => [
+                summary.key.at(-1).name,
+                summary,
+            ])
+        );
+
+        expect(summaryByName.get("A").locSize.location).toBe(0);
+        expect(summaryByName.get("B").locSize.location).toBeCloseTo(
+            68.33333333333333
+        );
+
+        expect(manager.getScrollableHeight()).toBe(120);
+    });
+
+    test("LocationManager applies configured sample layout values", () => {
+        // Custom layout verifies that SampleView can control density constants.
+        const root = createRootGroup();
+        const groupA = createSampleGroup("A", ["s1", "s2"]);
+        const groupB = createSampleGroup("B", ["s3"]);
+        root.groups = [groupA, groupB];
+
+        const manager = createLocationManager(root, {
+            height: 100,
+            sampleLayout: {
+                sampleHeight: 20,
+                groupSpacing: 8,
+                peekGroupSpacing: 12,
+            },
+        });
+        const locations = manager.getLocations();
+
+        const summaryByName = new Map(
+            locations.summaries.map((summary) => [
+                summary.key.at(-1).name,
+                summary,
+            ])
+        );
+
+        expect(summaryByName.get("A").locSize.location).toBe(0);
+        expect(summaryByName.get("B").locSize.location).toBeCloseTo(
+            69.33333333333334
+        );
+
+        expect(manager.getScrollableHeight()).toBe(72);
+    });
+
     test("calculateLocations respects fixed sample height without padding", () => {
         // Build a minimal flattened hierarchy to control group/sample layout.
         /** @type {import("./state/sampleState.js").GroupGroup} */
@@ -201,6 +259,35 @@ describe("LocationManager layout helpers", () => {
         expect(s1.size).toBe(24);
         expect(s2.location).toBe(33);
         expect(s2.size).toBe(24);
+    });
+
+    test("calculateLocations applies configured spacing factor for large sample heights", () => {
+        // Use a large row to keep smoothstep fully active.
+        /** @type {import("./state/sampleState.js").GroupGroup} */
+        const root = {
+            name: "Root",
+            title: "Root",
+            groups: [],
+        };
+
+        /** @type {import("./state/sampleState.js").SampleGroup} */
+        const groupA = {
+            name: "A",
+            title: "Group A",
+            samples: ["s1"],
+        };
+
+        root.groups = [groupA];
+
+        const { samples } = calculateLocations([[root, groupA]], {
+            sampleHeight: 30,
+            sampleSpacingFactor: 0.4,
+            groupSpacing: 0,
+            summaryHeight: 0,
+        });
+
+        expect(samples[0].locSize.location).toBe(6);
+        expect(samples[0].locSize.size).toBe(18);
     });
 
     test("calculateLocations skips empty groups", () => {
@@ -427,3 +514,53 @@ describe("LocationManager layout helpers", () => {
         ).toBe("s2");
     });
 });
+
+/**
+ * @returns {import("./state/sampleState.js").GroupGroup}
+ */
+function createRootGroup() {
+    return {
+        name: "Root",
+        title: "Root",
+        groups: [],
+    };
+}
+
+/**
+ * @param {string} name
+ * @param {string[]} samples
+ * @returns {import("./state/sampleState.js").SampleGroup}
+ */
+function createSampleGroup(name, samples) {
+    return {
+        name,
+        title: "Group " + name,
+        samples,
+    };
+}
+
+/**
+ * @param {import("./state/sampleState.js").GroupGroup} rootGroup
+ * @param {object} options
+ * @param {number} options.height
+ * @param {import("@genome-spy/app/spec/sampleView.js").SampleLayoutDef} [options.sampleLayout]
+ */
+function createLocationManager(rootGroup, { height, sampleLayout }) {
+    return new LocationManager({
+        getSampleHierarchy: () =>
+            /** @type {import("./state/sampleState.js").SampleHierarchy} */ ({
+                rootGroup,
+            }),
+        getHeight: () => height,
+        getSummaryHeight: () => 0,
+        onLocationUpdate: () => {},
+        viewContext: /** @type {any} */ ({
+            animator: {
+                requestTransition: () => {},
+                requestRender: () => {},
+            },
+        }),
+        isStickySummaries: () => true,
+        sampleLayout,
+    });
+}

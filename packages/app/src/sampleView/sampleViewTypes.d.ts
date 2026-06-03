@@ -6,6 +6,7 @@ import { Scalar } from "@genome-spy/core/spec/channel.js";
 import { ComplexDomain, NumericDomain } from "@genome-spy/core/spec/scale.js";
 import { AggregationSpec, Interval } from "./types.js";
 import ViewContext from "@genome-spy/core/types/viewContext.js";
+import { SampleLayoutDef } from "@genome-spy/app/spec/sampleView.js";
 import type {
     ParamSelector,
     ViewSelector,
@@ -54,6 +55,7 @@ export interface LocationContext {
     onLocationUpdate: (arg: { sampleHeight: number }) => void;
     viewContext: ViewContext;
     isStickySummaries: () => boolean;
+    sampleLayout?: SampleLayoutDef;
 }
 
 export interface BaseSpecifier {
