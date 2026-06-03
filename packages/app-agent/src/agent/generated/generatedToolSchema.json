@@ -332,6 +332,9 @@
         "getIntentActionTypeDocs": {
           "$ref": "#/definitions/GetIntentActionTypeDocsToolInput"
         },
+        "getSampleGroups": {
+          "$ref": "#/definitions/GetSampleGroupsToolInput"
+        },
         "getSelectionFeatureFieldSummary": {
           "$ref": "#/definitions/GetSelectionFeatureFieldSummaryToolInput"
         },
@@ -369,6 +372,7 @@
         "setViewVisibility",
         "jumpToProvenanceState",
         "getAttributeSummary",
+        "getSampleGroups",
         "getSelectionFeatureFieldSummary",
         "resolveMetadataAttributeValues",
         "searchViewDatums",
@@ -782,6 +786,38 @@
         }
       },
       "required": ["typeName"],
+      "type": "object"
+    },
+    "GetSampleGroupsToolInput": {
+      "additionalProperties": false,
+      "description": "List compact current sample groups by level or parent path. Use before group-specific actions such as `removeGroup`. The response includes an interpretation guide.",
+      "examples": [
+        {
+          "parentPath": ["PDS"]
+        },
+        {
+          "level": 2
+        }
+      ],
+      "properties": {
+        "level": {
+          "description": "One-based grouping level to list. `1` lists top-level groups under ROOT. When `parentPath` is supplied, `level` must identify the direct children of that parent.",
+          "minimum": 1,
+          "type": "number"
+        },
+        "limit": {
+          "description": "Maximum number of groups to return. Defaults to 20.",
+          "minimum": 1,
+          "type": "number"
+        },
+        "parentPath": {
+          "description": "Parent group path. When supplied without `level`, the tool lists that parent group's direct child groups.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
       "type": "object"
     },
     "GetSelectionFeatureFieldSummaryToolInput": {

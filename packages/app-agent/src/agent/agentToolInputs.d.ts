@@ -203,6 +203,45 @@ export interface GetAttributeSummaryToolInput {
 }
 
 /**
+ * List compact current sample groups by level or parent path. Use before
+ * group-specific actions such as `removeGroup`. The response includes an
+ * interpretation guide.
+ *
+ * @example
+ * {
+ *   "parentPath": ["PDS"]
+ * }
+ *
+ * @example
+ * {
+ *   "level": 2
+ * }
+ */
+export interface GetSampleGroupsToolInput {
+    /**
+     * One-based grouping level to list. `1` lists top-level groups under ROOT.
+     * When `parentPath` is supplied, `level` must identify the direct children
+     * of that parent.
+     *
+     * @minimum 1
+     */
+    level?: number;
+
+    /**
+     * Parent group path. When supplied without `level`, the tool lists that
+     * parent group's direct child groups.
+     */
+    parentPath?: string[];
+
+    /**
+     * Maximum number of groups to return. Defaults to 20.
+     *
+     * @minimum 1
+     */
+    limit?: number;
+}
+
+/**
  * Summarize one raw feature field inside a selected interval before
  * per-sample aggregation. Values are pooled across samples, and counts are
  * raw feature counts rather than sample counts. Use this when choosing a
@@ -489,6 +528,7 @@ export interface AgentToolInputs {
     setViewVisibility: SetViewVisibilityToolInput;
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     getAttributeSummary: GetAttributeSummaryToolInput;
+    getSampleGroups: GetSampleGroupsToolInput;
     getSelectionFeatureFieldSummary: GetSelectionFeatureFieldSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;

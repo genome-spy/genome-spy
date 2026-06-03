@@ -111,6 +111,35 @@
     "strict": true
   },
   {
+    "toolName": "getSampleGroups",
+    "description": "List compact current sample groups by level or parent path.",
+    "inputType": "GetSampleGroupsToolInput",
+    "inputFields": [
+      {
+        "name": "level",
+        "type": "number",
+        "description": "One-based grouping level to list. `1` lists top-level groups under ROOT. When `parentPath` is supplied, `level` must identify the direct children of that parent.",
+        "required": false
+      },
+      {
+        "name": "parentPath",
+        "type": "string[]",
+        "description": "Parent group path. When supplied without `level`, the tool lists that parent group's direct child groups.",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "type": "number",
+        "description": "Maximum number of groups to return. Defaults to 20.",
+        "required": false
+      }
+    ],
+    "exampleInput": {
+      "parentPath": ["PDS"]
+    },
+    "strict": true
+  },
+  {
     "toolName": "getSelectionFeatureFieldSummary",
     "description": "Summarize one raw feature field inside a selected interval before per-sample aggregation.",
     "inputType": "GetSelectionFeatureFieldSummaryToolInput",
