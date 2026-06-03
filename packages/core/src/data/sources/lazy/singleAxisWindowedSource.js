@@ -3,6 +3,18 @@ import { debounce } from "../../../utils/debounce.js";
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 
 /**
+ * @template T
+ * @typedef {(discreteInterval: import("@genome-spy/core/genome/genome.js").DiscreteChromosomeInterval, signal: AbortSignal) => Promise<T>} DiscreteIntervalLoader
+ */
+
+/**
+ * @template T
+ * @typedef {object} DiscreteIntervalLoaders
+ * @prop {DiscreteIntervalLoader<T>} load
+ * @prop {(discreteIntervals: import("@genome-spy/core/genome/genome.js").DiscreteChromosomeInterval[], signal: AbortSignal) => Promise<T[]>} [loadBatch]
+ */
+
+/**
  * Divides the domain into windows and loads the data for one or two consecutive windows
  * that cover the visible interval.
  *
@@ -113,10 +125,11 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
 
     /**
      * Splits the interval into discrete chromosomal intervals – one for each chromosome –
-     * and loads the data for each of them. Handles abort signals and errors.
+     * and loads the data using a batched loader when available. Handles abort signals
+     * and errors.
      *
      * @param {number[]} interval
-     * @param {(discreteInteval: import("@genome-spy/core/genome/genome.js").DiscreteChromosomeInterval, signal: AbortSignal) => Promise<T>} loader
+     * @param {DiscreteIntervalLoader<T> | DiscreteIntervalLoaders<T>} loader
      * @return {Promise<T[]>}
      * @template T
      * @protected
@@ -130,21 +143,29 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
         this.#abortController = new AbortController();
         const signal = this.#abortController.signal;
 
-        // GMOD libraries expect a single chromosome/sequence for each request.
-        // Thus, we split the interval into discrete intervals representing
-        // individual chromosomes and load the data for each of them separately
-        // but in parallel.
+        // Lazy sources load data using chromosome coordinates. The continuous
+        // scale domain must be split before it can be passed to the source.
         const discreteChromosomeIntervals =
             this.genome.continuousToDiscreteChromosomeIntervals(interval);
 
+        const loaders = typeof loader == "function" ? { load: loader } : loader;
+
         try {
-            const resultByChrom = await Promise.all(
-                discreteChromosomeIntervals.map(
-                    async (
-                        /** @type {import("@genome-spy/core/genome/genome.js").DiscreteChromosomeInterval} */ d
-                    ) => loader(d, signal)
-                )
-            );
+            const resultByChrom = loaders.loadBatch
+                ? await loaders.loadBatch(discreteChromosomeIntervals, signal)
+                : await Promise.all(
+                      discreteChromosomeIntervals.map(
+                          async (
+                              /** @type {import("@genome-spy/core/genome/genome.js").DiscreteChromosomeInterval} */ d
+                          ) => loaders.load(d, signal)
+                      )
+                  );
+
+            if (resultByChrom.length !== discreteChromosomeIntervals.length) {
+                throw new Error(
+                    "Batched lazy loader must return one chunk per interval."
+                );
+            }
 
             if (!signal.aborted) {
                 this.setLoadingStatus("complete");

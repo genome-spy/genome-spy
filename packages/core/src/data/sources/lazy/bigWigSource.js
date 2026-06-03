@@ -142,23 +142,30 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     async loadInterval(interval, reductionLevel) {
         const scale =
             1 / 2 / reductionLevel / withoutExprRef(this.params.pixelsPerBin);
-        const featureChunks = await this.discretizeAndLoad(
-            interval,
-            (d, signal) =>
+        const featureChunks = await this.discretizeAndLoad(interval, {
+            load: (d, signal) =>
                 this.#bbi
                     .getFeatures(d.chrom, d.startPos, d.endPos, {
                         scale,
                         signal,
                     })
-                    .then((features) =>
-                        features.map((f) => ({
-                            chrom: d.chrom,
-                            start: f.start,
-                            end: f.end,
-                            score: f.score,
-                        }))
+                    .then((features) => mapFeatures(d.chrom, features)),
+            loadBatch: (intervals, signal) =>
+                this.#bbi
+                    .getFeaturesMulti(
+                        intervals.map((d) => ({
+                            refName: d.chrom,
+                            start: d.startPos,
+                            end: d.endPos,
+                        })),
+                        { scale, signal }
                     )
-        );
+                    .then((featureChunks) =>
+                        featureChunks.map((features, i) =>
+                            mapFeatures(intervals[i].chrom, features)
+                        )
+                    ),
+        });
 
         if (featureChunks) {
             this.publishData(featureChunks);
@@ -175,6 +182,19 @@ function isBigWigSource(params) {
 }
 
 registerBuiltInLazyDataSource(isBigWigSource, BigWigSource);
+
+/**
+ * @param {string} chrom
+ * @param {import("@gmod/bbi").Feature[]} features
+ */
+function mapFeatures(chrom, features) {
+    return features.map((f) => ({
+        chrom,
+        start: f.start,
+        end: f.end,
+        score: f.score,
+    }));
+}
 
 /**
  * @param {number[]} domain
