@@ -16,10 +16,13 @@ const { getAgentContext, getAgentVolatileContext } = vi.hoisted(() => ({
     getAgentVolatileContext: vi.fn(() => ({
         sampleSummary: {
             totalSampleCount: 61,
-            groupCount: 1,
             visibleSampleCount: 61,
         },
-        sampleGroupLevels: [],
+        sampleGroupSummary: {
+            totalGroupCount: 0,
+            visibleLeafGroupCount: 0,
+            levels: [],
+        },
         selectionAggregation: {
             fields: [{ candidateId: "candidate-1" }],
         },
@@ -406,7 +409,7 @@ describe("agentAdapter", () => {
             scope: "visible_groups",
             groupLevels: [
                 {
-                    level: 0,
+                    level: 1,
                     attribute: {
                         type: "SAMPLE_ATTRIBUTE",
                         specifier: "diagnosis",
@@ -485,10 +488,16 @@ describe("agentAdapter", () => {
         expect(requestBody.context).not.toHaveProperty("provenance");
         expect(requestBody.volatileContext.sampleSummary).toEqual({
             totalSampleCount: 61,
-            groupCount: 1,
             visibleSampleCount: 61,
         });
-        expect(requestBody.volatileContext.sampleGroupLevels).toEqual([]);
+        expect(requestBody.volatileContext).not.toHaveProperty(
+            "sampleGroupLevels"
+        );
+        expect(requestBody.volatileContext.sampleGroupSummary).toEqual({
+            totalGroupCount: 0,
+            visibleLeafGroupCount: 0,
+            levels: [],
+        });
         expect(
             requestBody.volatileContext.selectionAggregation.fields
         ).not.toEqual([]);

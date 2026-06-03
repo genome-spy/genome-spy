@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
     createThresholdGroupAccessor,
     formatThresholdInterval,
+    retainGroupsByRank,
+    retainGroupsBySize,
     groupSamplesByAccessor,
     groupSamplesByQuartiles,
     groupSamplesByThresholds,
     makeCustomGroupAccessor,
     removeGroup,
+    ungroup,
 } from "./groupOperations.js";
 
 describe("groupOperations", () => {
@@ -278,5 +281,200 @@ describe("groupOperations", () => {
         expect(() => removeGroup(root, ["A", "B"])).toThrow(
             "Sample group path does not refer to a nested group: A / B"
         );
+    });
+
+    it("retains ranked groups at the top level", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                { name: "A", title: "A", samples: ["s1", "s2"] },
+                { name: "B", title: "B", samples: ["s3"] },
+                { name: "C", title: "C", samples: ["s4", "s5", "s6"] },
+            ],
+        };
+
+        retainGroupsByRank(root, 0, "size", 2, "descending");
+
+        expect(root.groups.map((group) => group.name)).toEqual(["A", "C"]);
+    });
+
+    it("retains ranked groups separately within each ancestor partition", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                {
+                    name: "A",
+                    title: "A",
+                    groups: [
+                        { name: "A1", title: "A1", samples: ["s1"] },
+                        {
+                            name: "A2",
+                            title: "A2",
+                            samples: ["s2", "s3", "s4"],
+                        },
+                    ],
+                },
+                {
+                    name: "B",
+                    title: "B",
+                    groups: [
+                        {
+                            name: "B1",
+                            title: "B1",
+                            samples: ["s5", "s6"],
+                        },
+                        { name: "B2", title: "B2", samples: ["s7"] },
+                    ],
+                },
+            ],
+        };
+
+        retainGroupsByRank(root, 1, "size", 1, "descending");
+
+        expect(root.groups[0].groups.map((group) => group.name)).toEqual([
+            "A2",
+        ]);
+        expect(root.groups[1].groups.map((group) => group.name)).toEqual([
+            "B1",
+        ]);
+    });
+
+    it("retains ascending-ranked groups and preserves current order on ties", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                { name: "A", title: "A", samples: ["s1", "s2"] },
+                { name: "B", title: "B", samples: ["s3"] },
+                { name: "C", title: "C", samples: ["s4"] },
+            ],
+        };
+
+        retainGroupsByRank(root, 0, "size", 2, "ascending");
+
+        expect(root.groups.map((group) => group.name)).toEqual(["B", "C"]);
+    });
+
+    it("retains groups by size threshold at nested levels", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                {
+                    name: "A",
+                    title: "A",
+                    groups: [
+                        { name: "A1", title: "A1", samples: ["s1"] },
+                        {
+                            name: "A2",
+                            title: "A2",
+                            samples: ["s2", "s3"],
+                        },
+                    ],
+                },
+                {
+                    name: "B",
+                    title: "B",
+                    groups: [
+                        {
+                            name: "B1",
+                            title: "B1",
+                            samples: ["s4", "s5", "s6"],
+                        },
+                        { name: "B2", title: "B2", samples: ["s7"] },
+                    ],
+                },
+            ],
+        };
+
+        retainGroupsBySize(root, 1, "size", "gte", 2);
+
+        expect(root.groups[0].groups.map((group) => group.name)).toEqual([
+            "A2",
+        ]);
+        expect(root.groups[1].groups.map((group) => group.name)).toEqual([
+            "B1",
+        ]);
+    });
+
+    it("ungroups the top level into the current root samples", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                { name: "A", title: "A", samples: ["s1", "s2"] },
+                {
+                    name: "C",
+                    title: "C",
+                    groups: [
+                        { name: "C1", title: "C1", samples: ["s4"] },
+                        { name: "C2", title: "C2", samples: ["s5", "s6"] },
+                    ],
+                },
+            ],
+        };
+
+        ungroup(root, 0);
+
+        expect(root).toEqual({
+            name: "ROOT",
+            title: "Root",
+            samples: ["s1", "s2", "s4", "s5", "s6"],
+        });
+    });
+
+    it("ungroups nested levels while preserving ancestor groups", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [
+                {
+                    name: "A",
+                    title: "A",
+                    groups: [
+                        { name: "A1", title: "A1", samples: ["s1"] },
+                        {
+                            name: "A2",
+                            title: "A2",
+                            samples: ["s2", "s3"],
+                        },
+                    ],
+                },
+                {
+                    name: "B",
+                    title: "B",
+                    groups: [
+                        {
+                            name: "B1",
+                            title: "B1",
+                            groups: [
+                                { name: "B1a", title: "B1a", samples: ["s4"] },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        };
+
+        ungroup(root, 1);
+
+        expect(root.groups).toEqual([
+            { name: "A", title: "A", samples: ["s1", "s2", "s3"] },
+            { name: "B", title: "B", samples: ["s4"] },
+        ]);
+    });
+
+    it("fails when retaining groups at a missing level", () => {
+        const root = {
+            name: "ROOT",
+            title: "Root",
+            groups: [{ name: "A", title: "A", samples: ["s1"] }],
+        };
+
+        expect(() =>
+            retainGroupsByRank(root, 1, "size", 1, "descending")
+        ).toThrow("Grouping level not found: 1");
     });
 });

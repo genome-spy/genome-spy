@@ -174,6 +174,8 @@ export interface JumpToProvenanceStateToolInput {
  * by one attribute and then compare or report another attribute by group, first
  * submit the grouping action, wait for the refreshed context, and then call
  * this tool with `scope: "visible_groups"` for the attribute to report.
+ * In the response, `categories` are always sorted by size and do not reflect
+ * metadata order.
  *
  * @example
  * {
@@ -198,6 +200,45 @@ export interface GetAttributeSummaryToolInput {
      * current visible group after grouping has already been applied.
      */
     scope: AttributeSummaryScope;
+}
+
+/**
+ * List compact current sample groups by level or parent path. Use before
+ * group-specific actions such as `removeGroup`. The response includes an
+ * interpretation guide.
+ *
+ * @example
+ * {
+ *   "parentPath": ["PDS"]
+ * }
+ *
+ * @example
+ * {
+ *   "level": 2
+ * }
+ */
+export interface GetSampleGroupsToolInput {
+    /**
+     * One-based grouping level to list. `1` lists top-level groups under ROOT.
+     * When `parentPath` is supplied, `level` must identify the direct children
+     * of that parent.
+     *
+     * @minimum 1
+     */
+    level?: number;
+
+    /**
+     * Parent group path. When supplied without `level`, the tool lists that
+     * parent group's direct child groups.
+     */
+    parentPath?: string[];
+
+    /**
+     * Maximum number of groups to return. Defaults to 20.
+     *
+     * @minimum 1
+     */
+    limit?: number;
 }
 
 /**
@@ -487,6 +528,7 @@ export interface AgentToolInputs {
     setViewVisibility: SetViewVisibilityToolInput;
     jumpToProvenanceState: JumpToProvenanceStateToolInput;
     getAttributeSummary: GetAttributeSummaryToolInput;
+    getSampleGroups: GetSampleGroupsToolInput;
     getSelectionFeatureFieldSummary: GetSelectionFeatureFieldSummaryToolInput;
     resolveMetadataAttributeValues: ResolveMetadataAttributeValuesToolInput;
     searchViewDatums: SearchViewDatumsToolInput;

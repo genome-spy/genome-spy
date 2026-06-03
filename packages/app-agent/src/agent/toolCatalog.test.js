@@ -14,6 +14,7 @@ describe("toolCatalog", () => {
         expect(new Set(toolNames).size).toBe(toolNames.length);
         expect(toolNames).toContain("jumpToProvenanceState");
         expect(toolNames).not.toContain("jumpToInitialProvenanceState");
+        expect(toolNames).toContain("getSampleGroups");
         expect(toolNames).toContain("resolveMetadataAttributeValues");
         expect(toolNames).toContain("showCategoryCountsPlot");
         expect(toolNames).toContain("showAttributeDistributionPlot");

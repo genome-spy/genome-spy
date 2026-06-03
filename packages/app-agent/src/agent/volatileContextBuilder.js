@@ -12,6 +12,7 @@ import {
 } from "@genome-spy/app/agentShared";
 import { collectVisibleSampleIds } from "./sampleHierarchyScope.js";
 import { VISIT_SKIP } from "@genome-spy/core/view/view.js";
+import { listGroupEntries } from "./sampleGroupHierarchyUtils.js";
 
 /**
  * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
@@ -23,9 +24,13 @@ export function getAgentVolatileContext(agentApi) {
 
     return {
         sampleSummary: buildSampleSummary(sampleHierarchy),
-        sampleGroupLevels: sampleHierarchy
-            ? buildSampleGroupLevels(agentApi, sampleHierarchy)
-            : [],
+        sampleGroupSummary: sampleHierarchy
+            ? buildSampleGroupSummary(agentApi, sampleHierarchy)
+            : {
+                  totalGroupCount: 0,
+                  visibleLeafGroupCount: 0,
+                  levels: [],
+              },
         parameterValues: buildParameterValues(agentApi),
         scaleDomains: buildScaleDomains(agentApi),
         selectionAggregation: getSelectionAggregationContext(agentApi),
@@ -133,14 +138,12 @@ function buildSampleSummary(sampleHierarchy) {
     if (!sampleHierarchy) {
         return {
             totalSampleCount: 0,
-            groupCount: 0,
             visibleSampleCount: 0,
         };
     }
 
     return {
         totalSampleCount: sampleHierarchy.sampleData.ids.length,
-        groupCount: sampleHierarchy.groupMetadata.length,
         visibleSampleCount: collectVisibleSampleIds(sampleHierarchy.rootGroup)
             .length,
     };
@@ -156,11 +159,66 @@ function buildSampleGroupLevels(agentApi, sampleHierarchy) {
         const info = agentApi.getAttributeInfo(entry.attribute);
 
         return {
-            level,
+            level: level + 1,
             attribute: entry.attribute,
             title: templateResultToString(info.title),
         };
     });
+}
+
+/**
+ * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
+ * @param {import("@genome-spy/app/agentShared").SampleHierarchy} sampleHierarchy
+ * @returns {import("./types.js").AgentSampleGroupSummary}
+ */
+function buildSampleGroupSummary(agentApi, sampleHierarchy) {
+    const levels = buildSampleGroupLevels(agentApi, sampleHierarchy).map(
+        (level) => ({
+            ...level,
+            groupCount: 0,
+            sampleCountMin: 0,
+            sampleCountMax: 0,
+        })
+    );
+
+    let totalGroupCount = 0;
+    let visibleLeafGroupCount = 0;
+
+    if ("samples" in sampleHierarchy.rootGroup) {
+        return {
+            totalGroupCount,
+            visibleLeafGroupCount,
+            levels,
+        };
+    }
+
+    for (const entry of listGroupEntries(sampleHierarchy.rootGroup)) {
+        totalGroupCount += 1;
+        const level = levels[entry.level - 1];
+        level.groupCount += 1;
+        if ("samples" in entry.group) {
+            visibleLeafGroupCount += 1;
+        }
+        if (level.groupCount === 1) {
+            level.sampleCountMin = entry.sampleCount;
+            level.sampleCountMax = entry.sampleCount;
+        } else {
+            level.sampleCountMin = Math.min(
+                level.sampleCountMin,
+                entry.sampleCount
+            );
+            level.sampleCountMax = Math.max(
+                level.sampleCountMax,
+                entry.sampleCount
+            );
+        }
+    }
+
+    return {
+        totalGroupCount,
+        visibleLeafGroupCount,
+        levels,
+    };
 }
 
 /**

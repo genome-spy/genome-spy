@@ -4,6 +4,9 @@ import { contextMenu } from "../utils/ui/contextMenu.js";
 import { iterateGroupHierarchy } from "./state/sampleSlice.js";
 import { isString } from "vega-util";
 import { render } from "lit";
+import { showRetainGroupsByRankDialog } from "./groupDialogs/retainGroupsByRankDialog.js";
+import { showRetainGroupsBySizeDialog } from "./groupDialogs/retainGroupsBySizeDialog.js";
+import { faFilter, faObjectGroup } from "@fortawesome/free-solid-svg-icons";
 
 const GROUP_COLUMN_WIDTH = { step: 24 };
 
@@ -139,48 +142,153 @@ export default class SampleGroupView extends LayerView {
             this.updateRange();
         });
 
-        this.addInteractionListener("contextmenu", (event) => {
-            const hover = this.context.getCurrentHover();
+        this.addInteractionListener(
+            "contextmenu",
+            this.#handleContextMenu.bind(this)
+        );
+    }
 
-            if (!hover) {
-                return;
+    /**
+     * @param {import("@genome-spy/core/utils/interaction.js").default} event
+     */
+    #handleContextMenu(event) {
+        const foundPath = this.#findHoveredGroupPath();
+        const level =
+            foundPath?.length ?? this.#getGroupLevelAtPoint(event.point);
+
+        if (!level) {
+            event.mouseEvent.preventDefault();
+            return;
+        }
+
+        contextMenu(
+            {
+                items: this.#buildContextMenuItems(level, foundPath),
+            },
+            event.mouseEvent
+        );
+    }
+
+    /**
+     * @returns {import("./state/sampleState.js").Group[] | undefined}
+     */
+    #findHoveredGroupPath() {
+        const hover = this.context.getCurrentHover();
+
+        if (!hover?.datum._rawGroup) {
+            return undefined;
+        }
+
+        /** @type {import("./state/sampleState.js").Group} */
+        const group = hover.datum._rawGroup;
+
+        for (const path of iterateGroupHierarchy(
+            this.sampleView.sampleHierarchy.rootGroup
+        )) {
+            if (path.at(-1) === group) {
+                return path.slice(1);
             }
+        }
 
-            /** @type {import("./state/sampleState.js").Group} */
-            const group = hover.datum._rawGroup;
+        return undefined;
+    }
 
-            /** @type {import("./state/sampleState.js").Group[]} */
-            let foundPath;
-            for (const path of iterateGroupHierarchy(
-                this.sampleView.sampleHierarchy.rootGroup
-            )) {
-                if (path.at(-1) === group) {
-                    // Skip root
-                    foundPath = path.slice(1);
-                    break;
-                }
-            }
+    /**
+     * @param {{ x: number }} point
+     * @returns {number | undefined}
+     */
+    #getGroupLevelAtPoint(point) {
+        const levelCount = this.sampleView.sampleHierarchy.groupMetadata.length;
+        return getGroupLevelAtPosition(
+            point.x - this.coords.x,
+            this.coords.width,
+            levelCount
+        );
+    }
 
-            const action = sampleView.actions.removeGroup({
+    /**
+     * @param {number} level
+     * @param {import("./state/sampleState.js").Group[] | undefined} foundPath
+     * @returns {import("../utils/ui/contextMenu.js").MenuItem[]}
+     */
+    #buildContextMenuItems(level, foundPath) {
+        const sampleView = this.sampleView;
+        const store = sampleView.provenance.store;
+        const levelCount = sampleView.sampleHierarchy.groupMetadata.length;
+        const hasMultipleGroupLevels = levelCount > 1;
+
+        /**
+         * @param {import("@reduxjs/toolkit").PayloadAction<any>} action
+         * @param {string} [label]
+         * @returns {import("../utils/ui/contextMenu.js").MenuItem}
+         */
+        const actionToItem = (action, label) => {
+            const info = sampleView.provenance.getActionInfo(action);
+            return {
+                label: label ?? info.title,
+                icon: info.icon,
+                callback: () => store.dispatch(action),
+            };
+        };
+
+        /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */
+        const items = [
+            {
+                label: formatGroupLevelHeader(
+                    this.#getAttributeTitles()[level],
+                    level,
+                    levelCount
+                ),
+                type: "header",
+            },
+        ];
+
+        if (foundPath) {
+            const group = foundPath.at(-1);
+            const removeGroupAction = sampleView.actions.removeGroup({
                 path: foundPath.map((group) => group.name),
             });
-            const info = sampleView.provenance.getActionInfo(action);
-            const store = sampleView.provenance.store;
-
-            contextMenu(
-                {
-                    items: [
-                        // TODO: Use actionToItem from attributeContextMenu.js
-                        {
-                            label: info.title,
-                            icon: info.icon,
-                            callback: () => store.dispatch(action),
-                        },
-                    ],
-                },
-                event.mouseEvent
+            items.push(
+                actionToItem(
+                    removeGroupAction,
+                    formatRemoveGroupLabel(group.title ?? group.name)
+                )
             );
-        });
+        }
+
+        items.push(
+            {
+                icon: faFilter,
+                label: "Retain groups",
+                submenu: [
+                    {
+                        icon: faFilter,
+                        label: hasMultipleGroupLevels
+                            ? "Ranked groups by size at this level..."
+                            : "Ranked groups by size...",
+                        callback: () =>
+                            showRetainGroupsByRankDialog(sampleView, level),
+                    },
+                    {
+                        icon: faFilter,
+                        label: hasMultipleGroupLevels
+                            ? "Groups by size threshold at this level..."
+                            : "Groups by size threshold...",
+                        callback: () =>
+                            showRetainGroupsBySizeDialog(sampleView, level),
+                    },
+                ],
+            },
+            {
+                ...actionToItem(
+                    sampleView.actions.ungroup({ level }),
+                    formatUngroupLabel(levelCount)
+                ),
+                icon: faObjectGroup,
+            }
+        );
+
+        return items;
     }
 
     /**
@@ -300,4 +408,46 @@ export default class SampleGroupView extends LayerView {
             }
         );
     }
+}
+
+/**
+ * @param {number} x Position relative to the group view's left edge
+ * @param {number} width Group view width
+ * @param {number} levelCount Number of visible grouping levels
+ * @returns {number | undefined}
+ */
+export function getGroupLevelAtPosition(x, width, levelCount) {
+    if (levelCount < 1 || width <= 0 || x < 0 || x >= width) {
+        return undefined;
+    }
+
+    return Math.floor((x / width) * levelCount) + 1;
+}
+
+/**
+ * @param {string} attributeTitle
+ * @param {number} level
+ * @param {number} levelCount
+ * @returns {string}
+ */
+export function formatGroupLevelHeader(attributeTitle, level, levelCount) {
+    return levelCount > 1
+        ? `${attributeTitle} (level ${level})`
+        : attributeTitle;
+}
+
+/**
+ * @param {string} groupTitle
+ * @returns {string}
+ */
+export function formatRemoveGroupLabel(groupTitle) {
+    return `Remove group ${groupTitle}`;
+}
+
+/**
+ * @param {number} levelCount
+ * @returns {string}
+ */
+export function formatUngroupLabel(levelCount) {
+    return levelCount > 1 ? "Ungroup from this level" : "Ungroup";
 }

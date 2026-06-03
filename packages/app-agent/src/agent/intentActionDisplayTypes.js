@@ -119,6 +119,16 @@ export function resolveDisplayTypeExpression(typeText, definitions) {
         };
     }
 
+    const stringLiteralMatch = typeText.match(/^"([^"]*)"$/);
+    if (stringLiteralMatch) {
+        return {
+            schema: {
+                const: stringLiteralMatch[1],
+                type: "string",
+            },
+        };
+    }
+
     if (typeText.endsWith("[]")) {
         const itemType = typeText.slice(0, -2);
         const item = resolveDisplayTypeExpression(itemType, definitions);

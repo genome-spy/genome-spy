@@ -7,7 +7,7 @@ import type {
     AgentAttributeSummarySource,
     AgentMetadataSourceSummary,
     AgentProvenanceAction,
-    AgentSampleGroupLevel,
+    AgentSampleGroupSummary,
     AgentSampleAttributeSummary,
     AgentSampleSummary,
     AgentScaleDomainSummary,
@@ -31,6 +31,7 @@ export type {
     AgentRootConfigSummary,
     AgentSampleAttributeSummary,
     AgentSampleGroupLevel,
+    AgentSampleGroupSummary,
     AgentSampleSummary,
     AgentScaleDomainSummary,
     AgentSearchableFieldSummary,
@@ -251,7 +252,7 @@ export interface AgentContext {
 /** High-churn context sent late in the provider prompt for the current turn. */
 export interface AgentVolatileContext {
     sampleSummary: AgentSampleSummary;
-    sampleGroupLevels: AgentSampleGroupLevel[];
+    sampleGroupSummary: AgentSampleGroupSummary;
     parameterValues: AgentParameterValueSummary[];
     scaleDomains: AgentScaleDomainSummary[];
     selectionAggregation: AgentSelectionAggregationContext;

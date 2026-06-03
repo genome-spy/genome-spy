@@ -93,7 +93,6 @@ export interface AgentMetadataSourceIdentifierSummary {
  */
 export interface AgentSampleSummary {
     totalSampleCount: number;
-    groupCount: number;
     visibleSampleCount: number;
 }
 
@@ -101,9 +100,30 @@ export interface AgentSampleSummary {
  * One level in the current sample grouping hierarchy.
  */
 export interface AgentSampleGroupLevel {
+    /**
+     * One-based grouping level. `1` is the top-level grouping under ROOT.
+     */
     level: number;
     attribute: AttributeIdentifier;
     title: string;
+}
+
+/**
+ * Compact count summary for one grouping level.
+ */
+export interface AgentSampleGroupLevelSummary extends AgentSampleGroupLevel {
+    groupCount: number;
+    sampleCountMin: number;
+    sampleCountMax: number;
+}
+
+/**
+ * Compact summary of the current sample grouping hierarchy.
+ */
+export interface AgentSampleGroupSummary {
+    totalGroupCount: number;
+    visibleLeafGroupCount: number;
+    levels: AgentSampleGroupLevelSummary[];
 }
 
 /**

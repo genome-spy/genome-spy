@@ -1,6 +1,7 @@
 import { ToolCallRejectionError } from "./agentToolErrors.js";
 import { getAttributeSummaryTool } from "./attributeSummaryTool.js";
 import { getSelectionFeatureFieldSummaryTool } from "./selectionFeatureFieldSummaryTool.js";
+import { getSampleGroupsTool } from "./sampleGroupsTool.js";
 import { resolveMetadataAttributeValuesTool } from "./resolveMetadataAttributeValuesTool.js";
 import { searchViewDatumsTool } from "./searchViewDatumsTool.js";
 import { getActionCatalogEntry } from "./actionCatalog.js";
@@ -197,6 +198,7 @@ export const agentTools = {
     },
 
     getAttributeSummary: getAttributeSummaryTool,
+    getSampleGroups: getSampleGroupsTool,
     getSelectionFeatureFieldSummary: getSelectionFeatureFieldSummaryTool,
     resolveMetadataAttributeValues: resolveMetadataAttributeValuesTool,
     searchViewDatums: searchViewDatumsTool,

@@ -351,7 +351,11 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
         },
         volatile_context={
             "sampleSummary": {"totalSampleCount": 2, "groupCount": 1},
-            "sampleGroupLevels": [{"level": 0, "title": "Diagnosis"}],
+            "sampleGroupSummary": {
+                "totalGroupCount": 1,
+                "visibleLeafGroupCount": 1,
+                "levels": [{"level": 1, "title": "Diagnosis"}],
+            },
             "provenance": [{"summary": "Sort by purity"}],
         },
         history=[],
@@ -383,7 +387,7 @@ def test_build_prompt_ir_separates_instructions_and_context() -> None:
     )
     assert list(volatile_context_json) == [
         "sampleSummary",
-        "sampleGroupLevels",
+        "sampleGroupSummary",
         "provenance",
     ]
     assert prompt.context == request.context

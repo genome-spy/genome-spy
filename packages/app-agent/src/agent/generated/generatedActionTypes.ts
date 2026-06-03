@@ -16,8 +16,11 @@ import type {
     RetainCategoriesByAttribute,
     RetainFirstNCategories,
     RetainFirstOfEach,
+    RetainGroupsByRank,
+    RetainGroupsBySize,
     RetainMatched,
     SortBy,
+    Ungroup,
 } from "@genome-spy/app";
 
 export type AgentIntentBatchStep =
@@ -76,6 +79,18 @@ export type AgentIntentBatchStep =
     | {
           actionType: "sampleView/removeGroup";
           payload: RemoveGroup;
+      }
+    | {
+          actionType: "sampleView/retainGroupsByRank";
+          payload: RetainGroupsByRank;
+      }
+    | {
+          actionType: "sampleView/retainGroupsBySize";
+          payload: RetainGroupsBySize;
+      }
+    | {
+          actionType: "sampleView/ungroup";
+          payload: Ungroup;
       }
     | {
           actionType: "sampleView/retainMatched";

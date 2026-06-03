@@ -11,6 +11,9 @@ import {
     groupSamplesByThresholds,
     makeCustomGroupAccessor,
     removeGroup,
+    retainGroupsByRank,
+    retainGroupsBySize,
+    ungroup as ungroupGroups,
 } from "./groupOperations.js";
 import {
     filterNominal,
@@ -109,6 +112,20 @@ function createRetainCategoriesAccessors(action) {
         categoryAccessor: (sampleId) => values[sampleId],
         conditionAccessor: (sampleId) => conditionValues[sampleId],
     };
+}
+
+/**
+ * Converts user-facing one-based grouping levels to internal zero-based levels.
+ *
+ * @param {number} level
+ * @returns {number}
+ */
+function toInternalGroupLevel(level) {
+    if (!Number.isInteger(level) || level < 1) {
+        throw new Error("Grouping level must be a positive integer.");
+    }
+
+    return level - 1;
 }
 
 /**
@@ -399,11 +416,18 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Retain samples whose value falls in the first n distinct categories in the current ordering.
+         * Retain categories by first occurrence in the current sample order;
+         * do not use for top-k category sizes.
          *
-         * Use this when samples are already ordered by a ranking attribute and
-         * all samples belonging to the first n encountered categories should
-         * be kept within each current group.
+         * Iterate over samples in current order, pick first n distinct values,
+         * and filter by those values.
+         *
+         * Use this after first ordering samples by a ranking attribute, for
+         * example to keep all samples from the first n patients after sorting
+         * by mutational burden. Do not use category order from
+         * `getAttributeSummary`; it is not the current sample order. For
+         * top-k groups by size, use `retainGroupsByRank`. For group-size
+         * thresholds, use `retainGroupsBySize`.
          *
          * @agent.payloadType RetainFirstNCategories
          * @agent.category grouping
@@ -766,6 +790,138 @@ export const sampleSlice = createSlice({
                 removeGroup(root, action.payload.path);
             } else {
                 throw new Error("Cannot remove sample groups before grouping.");
+            }
+        },
+
+        /**
+         * Retain top-k or bottom-k groups by size at a grouping level.
+         *
+         * Use this for requests such as "keep the five most abundant groups",
+         * "retain the top 5 cancer types", or "keep the 10 smallest groups".
+         * Set `limit` to k. Set `order: "descending"` for top-k, highest
+         * values, largest groups by size, or most abundant groups. Set
+         * `order: "ascending"` for bottom-k, lowest values, smallest groups
+         * by size, or least abundant groups.
+         *
+         * Ranked retention is applied separately within each ancestor
+         * partition. For example, with `level: 2` and `limit: 3`, each
+         * level-1 group keeps its own three largest or smallest child groups.
+         * Use `level: 1` for top-level groups under ROOT.
+         *
+         * Only `measure: "size"` is currently supported. Size means the number
+         * of descendant visible samples in the group. Ties preserve current
+         * group order.
+         *
+         * @agent.payloadType RetainGroupsByRank
+         * @agent.category grouping
+         * @example
+         * {
+         *   "level": 1,
+         *   "measure": "size",
+         *   "limit": 5,
+         *   "order": "descending"
+         * }
+         * @example
+         * {
+         *   "level": 2,
+         *   "measure": "size",
+         *   "limit": 3,
+         *   "order": "descending"
+         * }
+         */
+        retainGroupsByRank: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainGroupsByRank>} */
+            action
+        ) => {
+            const root = state.rootGroup;
+            if (isGroupGroup(root)) {
+                retainGroupsByRank(
+                    root,
+                    toInternalGroupLevel(action.payload.level),
+                    action.payload.measure,
+                    action.payload.limit,
+                    action.payload.order
+                );
+            } else {
+                throw new Error("Cannot retain sample groups before grouping.");
+            }
+        },
+
+        /**
+         * Retain groups at a grouping level by size threshold.
+         *
+         * Use this for threshold requests such as "retain groups with at least
+         * 10 samples". This is different from top-k retention: it keeps every
+         * group at the selected level whose size satisfies `operator` and
+         * `operand`, regardless of rank. Use `level: 1` for top-level groups
+         * under ROOT.
+         *
+         * Only `measure: "size"` is currently supported. Size means the number
+         * of descendant visible samples in the group.
+         *
+         * @agent.payloadType RetainGroupsBySize
+         * @agent.category grouping
+         * @example
+         * {
+         *   "level": 1,
+         *   "measure": "size",
+         *   "operator": "gte",
+         *   "operand": 10
+         * }
+         */
+        retainGroupsBySize: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").RetainGroupsBySize>} */
+            action
+        ) => {
+            const root = state.rootGroup;
+            if (isGroupGroup(root)) {
+                retainGroupsBySize(
+                    root,
+                    toInternalGroupLevel(action.payload.level),
+                    action.payload.measure,
+                    action.payload.operator,
+                    action.payload.operand
+                );
+            } else {
+                throw new Error("Cannot retain sample groups before grouping.");
+            }
+        },
+
+        /**
+         * Collapse a grouping level and all deeper levels.
+         *
+         * Use this after group-retention actions when the user wants to keep
+         * the retained samples but remove grouping structure. This keeps only
+         * samples currently present in the hierarchy; it does not restore
+         * samples removed by previous actions. If the user only wants to
+         * reverse a previous grouping action and restore the prior state, use
+         * provenance/undo instead.
+         *
+         * Use `level: 1` to collapse top-level groups under ROOT into one flat
+         * sample list. Use `level: 2` to keep level-1 groups but collapse
+         * their children and all deeper levels into sample lists.
+         *
+         * @agent.payloadType Ungroup
+         * @agent.category grouping
+         * @example
+         * {
+         *   "level": 1
+         * }
+         */
+        ungroup: (
+            state,
+            /** @type {PayloadAction<import("./payloadTypes.js").Ungroup>} */
+            action
+        ) => {
+            const root = state.rootGroup;
+            if (isGroupGroup(root)) {
+                const level = toInternalGroupLevel(action.payload.level);
+                ungroupGroups(root, level);
+                state.groupMetadata.splice(level);
+            } else {
+                throw new Error("Cannot ungroup samples before grouping.");
             }
         },
 

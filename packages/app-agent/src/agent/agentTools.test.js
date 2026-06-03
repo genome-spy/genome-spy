@@ -74,7 +74,7 @@ function createRuntimeStub() {
             scope: "visible_groups",
             groupLevels: [
                 {
-                    level: 0,
+                    level: 1,
                     attribute: {
                         type: "SAMPLE_ATTRIBUTE",
                         specifier: "diagnosis",
@@ -331,6 +331,84 @@ function createRuntimeStub() {
         scaleResolutions: {
             x: xScaleResolution,
             color: colorScaleResolution,
+        },
+    };
+}
+
+function createTreatmentSurvivalHierarchy() {
+    const makeSamples = (prefix, count) =>
+        Array.from({ length: count }, (_, index) => `${prefix}${index + 1}`);
+
+    return {
+        sampleData: {
+            ids: [],
+            entities: {},
+        },
+        sampleMetadata: {
+            attributeNames: [],
+            entities: {},
+        },
+        groupMetadata: [
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "treatment",
+                },
+            },
+            {
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "survival",
+                },
+            },
+        ],
+        rootGroup: {
+            name: "ROOT",
+            title: "ROOT",
+            groups: [
+                {
+                    name: "PDS",
+                    title: "PDS",
+                    groups: [
+                        {
+                            name: "poor",
+                            title: "poor",
+                            samples: makeSamples("pdsPoor", 12),
+                        },
+                        {
+                            name: "middle",
+                            title: "middle",
+                            samples: makeSamples("pdsMiddle", 18),
+                        },
+                        {
+                            name: "good",
+                            title: "good",
+                            samples: makeSamples("pdsGood", 24),
+                        },
+                    ],
+                },
+                {
+                    name: "NACT",
+                    title: "NACT",
+                    groups: [
+                        {
+                            name: "poor",
+                            title: "poor",
+                            samples: makeSamples("nactPoor", 10),
+                        },
+                        {
+                            name: "middle",
+                            title: "middle",
+                            samples: makeSamples("nactMiddle", 16),
+                        },
+                        {
+                            name: "good",
+                            title: "good",
+                            samples: makeSamples("nactGood", 20),
+                        },
+                    ],
+                },
+            ],
         },
     };
 }
@@ -825,6 +903,73 @@ describe("agentTools", () => {
         );
     });
 
+    it("lists child sample groups under a parent path", () => {
+        const runtime = createRuntimeStub();
+        runtime.agentApi.getSampleHierarchy.mockReturnValue(
+            createTreatmentSurvivalHierarchy()
+        );
+
+        const result = agentTools.getSampleGroups(runtime, {
+            parentPath: ["PDS"],
+        });
+
+        expect(result).toEqual({
+            text: "Listed 3 sample groups at level 2.",
+            content: {
+                kind: "sample_group_listing",
+                level: 2,
+                levelTitle: "survival",
+                parentPath: ["PDS"],
+                totalGroupCount: 3,
+                groupCount: 3,
+                groups: [
+                    { name: "poor", sampleCount: 12 },
+                    { name: "middle", sampleCount: 18 },
+                    { name: "good", sampleCount: 24 },
+                ],
+                truncated: false,
+                guide: {
+                    levels: "Grouping levels are one-based. Level 1 is the first visible grouping under ROOT.",
+                    groups: "Each entry is a direct child of parentPath. Combine parentPath and name for the full group path.",
+                    order: "Groups are returned in current display order.",
+                },
+            },
+        });
+    });
+
+    it("lists sample groups at a level using paths when parents vary", () => {
+        const runtime = createRuntimeStub();
+        runtime.agentApi.getSampleHierarchy.mockReturnValue(
+            createTreatmentSurvivalHierarchy()
+        );
+
+        const result = agentTools.getSampleGroups(runtime, {
+            level: 2,
+        });
+
+        expect(result.content).toEqual({
+            kind: "sample_group_listing",
+            level: 2,
+            levelTitle: "survival",
+            totalGroupCount: 6,
+            groupCount: 6,
+            groups: [
+                { path: ["PDS", "poor"], sampleCount: 12 },
+                { path: ["PDS", "middle"], sampleCount: 18 },
+                { path: ["PDS", "good"], sampleCount: 24 },
+                { path: ["NACT", "poor"], sampleCount: 10 },
+                { path: ["NACT", "middle"], sampleCount: 16 },
+                { path: ["NACT", "good"], sampleCount: 20 },
+            ],
+            truncated: false,
+            guide: {
+                levels: "Grouping levels are one-based. Level 1 is the first visible grouping under ROOT.",
+                groups: "Each entry is a group at the requested level. Nested levels use full path because names may repeat under different parents.",
+                order: "Groups are returned in current display order.",
+            },
+        });
+    });
+
     it("summarizes attributes across visible groups", () => {
         const runtime = createRuntimeStub();
         const tools = agentTools;
@@ -848,7 +993,7 @@ describe("agentTools", () => {
                     truncatedGroups: false,
                     groupLevels: [
                         {
-                            level: 0,
+                            level: 1,
                             attribute: {
                                 type: "SAMPLE_ATTRIBUTE",
                                 specifier: "diagnosis",

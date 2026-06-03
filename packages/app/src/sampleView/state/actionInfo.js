@@ -309,6 +309,45 @@ const actionHandlers = {
         icon: faTrashAlt,
     }),
 
+    retainGroupsByRank: ({ payload }) => {
+        const orderLabel =
+            payload.order === "descending" ? "largest" : "smallest";
+        return {
+            title: "Retain top/bottom-k groups by size",
+            provenanceTitle: html`
+                Retain the
+                <strong>${payload.limit}</strong>
+                <strong>${orderLabel}</strong>
+                groups by size at level
+                <strong>${payload.level}</strong>
+            `,
+            icon: faFilter,
+        };
+    },
+
+    retainGroupsBySize: ({ payload }) => ({
+        title: "Retain groups by size threshold",
+        provenanceTitle: html`
+            Retain groups at level
+            <strong>${payload.level}</strong>
+            where size
+            <span class="operator"
+                >${verboseOps[/** @type {any} */ (payload).operator]}</span
+            >
+            <strong>${attributeNumberFormat(payload.operand)}</strong>
+        `,
+        icon: faFilter,
+    }),
+
+    ungroup: ({ payload }) => ({
+        title: "Ungroup",
+        provenanceTitle: html`
+            Ungroup from level
+            <strong>${payload.level}</strong>
+        `,
+        icon: faObjectGroup,
+    }),
+
     retainMatched: ({ template, attributeName, attributeTitle }) => ({
         ...template,
         title: html` Retain group-wise matched samples using ${attributeName} `,

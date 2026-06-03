@@ -329,6 +329,90 @@ export interface RemoveGroup {
     path: string[];
 }
 
+export interface RetainGroupsByRank {
+    /**
+     * One-based grouping level to filter.
+     *
+     * `1` targets top-level groups under ROOT. `2` targets direct children of
+     * level-1 groups, and so on. For top-level categories such as cancer type,
+     * use `1`.
+     *
+     * @minimum 1
+     */
+    level: number;
+
+    /**
+     * Group-level measure used for ranking.
+     *
+     * Only `"size"` is supported. Size means group abundance: the number of
+     * descendant visible samples in the group.
+     */
+    measure: "size";
+
+    /**
+     * Number of ranked groups to retain within each ancestor partition.
+     *
+     * This is k in top-k or bottom-k requests. For example, use `5` to keep
+     * the five largest or five smallest groups.
+     *
+     * @minimum 1
+     */
+    limit: number;
+
+    /**
+     * Ranking direction.
+     *
+     * Use `"descending"` for top-k, highest values, largest groups by size, or
+     * most abundant groups. Use `"ascending"` for bottom-k, lowest values,
+     * smallest groups by size, or least abundant groups.
+     */
+    order: "descending" | "ascending";
+}
+
+export interface RetainGroupsBySize {
+    /**
+     * One-based grouping level to filter.
+     *
+     * `1` targets top-level groups under ROOT. `2` targets direct children of
+     * level-1 groups, and so on. For top-level categories such as cancer type,
+     * use `1`.
+     *
+     * @minimum 1
+     */
+    level: number;
+
+    /**
+     * Group-level measure used for thresholding.
+     *
+     * Only `"size"` is supported. Size means group abundance: the number of
+     * descendant visible samples in the group.
+     */
+    measure: "size";
+
+    /**
+     * Threshold comparison applied as `measure operator operand`.
+     */
+    operator: ComparisonOperatorType;
+
+    /**
+     * Numeric group-size threshold.
+     */
+    operand: number;
+}
+
+export interface Ungroup {
+    /**
+     * One-based grouping level to collapse.
+     *
+     * `1` collapses top-level groups under ROOT and all deeper levels into one
+     * flat ROOT sample group. `2` keeps level-1 groups but collapses their
+     * children and all deeper levels into sample lists.
+     *
+     * @minimum 1
+     */
+    level: number;
+}
+
 /**
  * Payload for filtering samples by comparing a quantitative attribute
  * against a numeric operand.

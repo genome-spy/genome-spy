@@ -230,7 +230,11 @@ Important:
 - Do not make one pooled plot over all visible samples when user asked for
   comparison between groups and grouping is available.
 - Do not plot too early.
-- Do not write one workflow step like "group and plot". These must be separate plan steps because grouping changes state and plot uses new state.
+- Do not write one workflow step like "group and plot". These must be separate
+  plan steps because grouping changes state and plot uses new state.
+- Sample grouping can be hierarchical. `sampleGroupSummary.levels` lists current
+  grouping levels. Levels are one-based: level 1 is under the implicit root.
+  Use `getSampleGroups` for exact info.
 
 ## Provenance rule
 

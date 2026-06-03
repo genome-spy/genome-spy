@@ -22,7 +22,7 @@
   {
     "actionType": "sampleView/retainFirstNCategories",
     "title": "Retain first n categories of patient_id...",
-    "description": "Retain samples whose value falls in the first n distinct categories in the current ordering."
+    "description": "Retain categories by first occurrence in the current sample order; do not use for top-k category sizes."
   },
   {
     "actionType": "sampleView/filterByQuantitative",
@@ -68,6 +68,21 @@
     "actionType": "sampleView/removeGroup",
     "title": "Remove group",
     "description": "Remove a previously created sample group by path."
+  },
+  {
+    "actionType": "sampleView/retainGroupsByRank",
+    "title": "Retain top/bottom-k groups by size",
+    "description": "Retain top-k or bottom-k groups by size at a grouping level."
+  },
+  {
+    "actionType": "sampleView/retainGroupsBySize",
+    "title": "Retain groups by size threshold",
+    "description": "Retain groups at a grouping level by size threshold."
+  },
+  {
+    "actionType": "sampleView/ungroup",
+    "title": "Ungroup",
+    "description": "Collapse a grouping level and all deeper levels."
   },
   {
     "actionType": "sampleView/retainMatched",
