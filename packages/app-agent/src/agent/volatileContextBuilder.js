@@ -23,9 +23,6 @@ export function getAgentVolatileContext(agentApi) {
 
     return {
         sampleSummary: buildSampleSummary(sampleHierarchy),
-        sampleGroupLevels: sampleHierarchy
-            ? buildSampleGroupLevels(agentApi, sampleHierarchy)
-            : [],
         sampleGroupSummary: sampleHierarchy
             ? buildSampleGroupSummary(agentApi, sampleHierarchy)
             : {

@@ -7,7 +7,6 @@ import type {
     AgentAttributeSummarySource,
     AgentMetadataSourceSummary,
     AgentProvenanceAction,
-    AgentSampleGroupLevel,
     AgentSampleGroupSummary,
     AgentSampleAttributeSummary,
     AgentSampleSummary,
@@ -253,7 +252,6 @@ export interface AgentContext {
 /** High-churn context sent late in the provider prompt for the current turn. */
 export interface AgentVolatileContext {
     sampleSummary: AgentSampleSummary;
-    sampleGroupLevels: AgentSampleGroupLevel[];
     sampleGroupSummary: AgentSampleGroupSummary;
     parameterValues: AgentParameterValueSummary[];
     scaleDomains: AgentScaleDomainSummary[];

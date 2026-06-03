@@ -90,16 +90,6 @@ function createMockAgentController(scenario, options = {}) {
             sampleCount: 124,
             visibleSampleCount: 124,
         },
-        sampleGroupLevels: [
-            {
-                level: 1,
-                attribute: {
-                    type: "SAMPLE_ATTRIBUTE",
-                    specifier: "diagnosis",
-                },
-                title: "Diagnosis",
-            },
-        ],
         sampleGroupSummary: {
             totalGroupCount: 4,
             visibleLeafGroupCount: 4,

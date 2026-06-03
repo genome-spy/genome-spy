@@ -530,12 +530,7 @@ describe("getAgentVolatileContext", () => {
             totalSampleCount: 2,
             visibleSampleCount: 2,
         });
-        expect(volatileContext.sampleGroupLevels[0]).toEqual(
-            expect.objectContaining({
-                level: 1,
-                title: "Title diagnosis",
-            })
-        );
+        expect(volatileContext).not.toHaveProperty("sampleGroupLevels");
         expect(volatileContext.sampleGroupSummary).toEqual({
             totalGroupCount: 1,
             visibleLeafGroupCount: 1,
