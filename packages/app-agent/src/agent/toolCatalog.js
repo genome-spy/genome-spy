@@ -14,6 +14,10 @@ import {
 // These generated artifacts are derived from agentToolInputs.d.ts and are the
 // runtime source for tool descriptions, validation, and Responses API shapes.
 const AjvClass = /** @type {any} */ (Ajv);
+const toolCatalog =
+    /** @type {import("./types.d.ts").AgentToolCatalogEntry[]} */ (
+        generatedToolCatalog
+    );
 
 const ajv = new AjvClass({
     allErrors: true,
@@ -28,7 +32,7 @@ const validatorsByToolName = new Map();
  * @returns {import("./types.d.ts").AgentToolCatalogEntry[]}
  */
 export function listAgentTools() {
-    return generatedToolCatalog.map((entry) => ({
+    return toolCatalog.map((entry) => ({
         ...entry,
         inputFields: entry.inputFields.map((field) => ({
             ...field,
@@ -46,7 +50,7 @@ export function listAgentTools() {
  * }>}
  */
 export function buildResponsesToolDefinitions() {
-    return generatedToolCatalog.map((entry) => ({
+    return toolCatalog.map((entry) => ({
         type: "function",
         name: entry.toolName,
         description: formatToolDescription(entry),
@@ -63,9 +67,7 @@ export function buildResponsesToolDefinitions() {
  * @returns {string}
  */
 export function formatToolCallRejection(toolName, errors) {
-    const tool = generatedToolCatalog.find(
-        (entry) => entry.toolName === toolName
-    );
+    const tool = toolCatalog.find((entry) => entry.toolName === toolName);
     const action = generatedActionCatalog.find(
         (entry) => entry.actionType === toolName
     );
