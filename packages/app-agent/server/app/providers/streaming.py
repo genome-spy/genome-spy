@@ -99,9 +99,23 @@ async def iter_provider_stream_events(
         )
         return
 
+    try:
+        final_response = parse_provider_response_text(final_text, allow_repair=True)
+    except Exception as exc:
+        if "empty final answer" in str(exc):
+            logger.warning(
+                "Provider stream ended with an empty final answer: stream_mode=%r text_parts=%d reasoning_parts=%d final_snapshot=%r final_text=%r",
+                stream_mode,
+                len(text_parts),
+                len(reasoning_parts),
+                truncate_logged_content(final_snapshot_text),
+                truncate_logged_content(final_text),
+            )
+        raise
+
     yield ProviderStreamEvent(
         type="final",
-        response=parse_provider_response_text(final_text, allow_repair=True),
+        response=final_response,
     )
 
 

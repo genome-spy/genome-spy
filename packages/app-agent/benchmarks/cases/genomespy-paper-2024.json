@@ -1,0 +1,988 @@
+{
+  "visualizationId": "genomespy_paper_2024",
+  "setup": {
+    "route": "/",
+    "specPath": "private/genomespy-paper-2024-spec/spec.json",
+    "resetProvenance": true
+  },
+  "cases": [
+    {
+      "id": "paper-2024.add_nf1_mean_copy_number_metadata",
+      "prompt": "Add mean copy number of NF1 gene to metadata.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "copy-number",
+        "NF1"
+      ],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_nf1"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_nf1"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "materialize_nf1_copy_number_metadata"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "nf1_copy_number_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "nf1_selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "values": ["mean", "weightedMean"],
+              "label": "nf1_mean_aggregation"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "view",
+              "value": "CNV",
+              "label": "nf1_copy_number_candidate_view"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "dataType",
+              "value": "quantitative",
+              "label": "nf1_copy_number_candidate_type"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 8,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
+      "id": "paper-2024.group_nf1_copy_number_filter_high_breaks",
+      "prompt": "Group samples by NF1 average gene copy number. Show only samples with very high number of breaks.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "grouping",
+        "filtering",
+        "NF1",
+        "breaks"
+      ],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_nf1"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_nf1"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "materialize_nf1_copy_number_metadata"
+            },
+            {
+              "actionTypes": [
+                "sampleView/groupByNominal",
+                "sampleView/groupByThresholds",
+                "sampleView/groupCustomCategories",
+                "sampleView/groupToQuartiles"
+              ],
+              "label": "group_by_nf1_copy_number"
+            },
+            {
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "filter_high_breaks"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "nf1_selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "values": ["mean", "weightedMean"],
+              "label": "nf1_mean_aggregation"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "view",
+              "value": "CNV",
+              "label": "nf1_copy_number_candidate_view"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "dataType",
+              "value": "quantitative",
+              "label": "nf1_copy_number_candidate_type"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 4,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 7,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.4,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
+      "id": "paper-2024.group_patient_boxplot_mutation_counts",
+      "prompt": "Group by patient, then show boxplot of mutation counts.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "grouping", "patient", "boxplot", "mutations"],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["patient"]
+          },
+          "actions": [
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_patient"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.941,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
+      "id": "paper-2024.boxplot_erbb2_mean_copy_number_by_patient",
+      "prompt": "Show a box plot that compares mean copy number over the ERBB2 gene between patients.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "grouping",
+        "patient",
+        "boxplot",
+        "ERBB2"
+      ],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["patient"]
+          },
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_erbb2"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_erbb2"
+            },
+            {
+              "label": "materialize_erbb2_copy_number_metadata",
+              "actionType": "sampleView/deriveMetadata"
+            },
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_patient"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "erbb2_copy_number_metadata_present"
+            },
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "erbb2_selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "values": ["mean", "weightedMean"],
+              "label": "erbb2_mean_aggregation"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "view",
+              "value": "CNV",
+              "label": "erbb2_copy_number_candidate_view"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "dataType",
+              "value": "quantitative",
+              "label": "erbb2_copy_number_candidate_type"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.941,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
+      "id": "paper-2024.compare_erbb2_mean_copy_number_across_patients",
+      "prompt": "Show how mean copy number over the ERBB2 gene compares across patients. There are multiple samples per patient.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "representative-samples",
+        "patient",
+        "ERBB2"
+      ],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAll": ["erbb2", "patient"],
+          "mustContainComparisonSignal": true,
+          "mustContainNumberCountAtLeast": 2,
+          "requiredStateForAnswer": [
+            {
+              "kind": "toolCalled",
+              "name": "searchViewDatums",
+              "label": "find_erbb2"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_erbb2"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "label": "materialize_erbb2_copy_number_metadata",
+              "actionType": "sampleView/deriveMetadata"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "sampleView/retainFirstOfEach",
+              "label": "retain_one_per_patient"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "visibleSampleCount": {
+              "operator": "eq",
+              "value": 3
+            }
+          },
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_erbb2"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_erbb2"
+            },
+            {
+              "label": "materialize_erbb2_copy_number_metadata",
+              "actionType": "sampleView/deriveMetadata"
+            },
+            {
+              "actionType": "sampleView/retainFirstOfEach",
+              "label": "retain_one_per_patient"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "erbb2_copy_number_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "values": ["mean", "weightedMean"],
+              "label": "erbb2_mean_aggregation"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "view",
+              "value": "CNV",
+              "label": "erbb2_copy_number_candidate_view"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "dataType",
+              "value": "quantitative",
+              "label": "erbb2_copy_number_candidate_type"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.selection_copy_number_across_patients_plot",
+      "prompt": "Show a plot on how copy number compares across patients in the current selection.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "selection",
+        "derived-metadata",
+        "grouping",
+        "patient",
+        "copy-number",
+        "boxplot"
+      ],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["patient"]
+          },
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_region"
+            },
+            {
+              "label": "materialize_selection_copy_number_metadata",
+              "actionType": "sampleView/deriveMetadata"
+            },
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_patient"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "selection_copy_number_metadata_present"
+            },
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "values": ["mean", "weightedMean"],
+              "label": "selection_copy_number_mean_aggregation"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "view",
+              "value": "CNV",
+              "label": "selection_copy_number_candidate_view"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "dataType",
+              "value": "quantitative",
+              "label": "selection_copy_number_candidate_type"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.941,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
+      "id": "paper-2024.average_copy_number_chr6q",
+      "prompt": "What's the average copy number in the q arm of chromosome 6?",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "hybrid",
+      "outcomeType": "text_answer",
+      "tags": [
+        "workflow",
+        "selection",
+        "summary",
+        "copy-number",
+        "chromosome-6"
+      ],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["chromosome 6", "6q", "q arm"],
+          "mustContainNumberCountAtLeast": 1,
+          "requiredStateForAnswer": [
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_chr6q"
+            },
+            {
+              "kind": "contentKind",
+              "value": "selection_feature_field_summary",
+              "label": "summarize_selected_copy_number"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_chr6q"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "selectionSummary",
+              "label": "summarize_selected_copy_number"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "chr6q_selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.55,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.group_early_late_sampletime_categories",
+      "prompt": "Group the samples into early (primary + interval) and late (relapse) groups.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "grouping", "custom-categories", "sampleTime"],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "sampleView/groupCustomCategories",
+              "label": "group_early_late"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 1,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 4,
+          "softMaxIntentActions": 3,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.4,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
+      "id": "paper-2024.stopgain_chr12_filter_and_metadata",
+      "prompt": "Keep only samples with \"stopgain\" mutations within chr12:32,863,050-118,204,492. Using the current selection brush, add the number of \"stopgain\" mutations to metadata.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "selection",
+        "summary",
+        "derived-metadata",
+        "filtering",
+        "stopgain",
+        "chr12"
+      ],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_chr12_region"
+            },
+            {
+              "label": "materialize_stopgain_count_metadata",
+              "actionType": "sampleView/deriveMetadata"
+            },
+            {
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "keep_samples_with_stopgain"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "selectionSummary",
+              "label": "inspect_stopgain_selection_field"
+            },
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "stopgain_count_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "chr12_selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "value": "count",
+              "label": "stopgain_count_aggregation"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
+      "id": "paper-2024.group_stopgain_presence_12q14_3",
+      "prompt": "Group the samples into two groups based on the presence of stopgain mutations in the 12q14.3 locus.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "selection",
+        "derived-metadata",
+        "grouping",
+        "stopgain",
+        "12q14.3"
+      ],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_12q14_3"
+            },
+            {
+              "label": "materialize_stopgain_presence_metadata",
+              "actionType": "sampleView/deriveMetadata"
+            },
+            {
+              "actionTypes": [
+                "sampleView/groupCustomCategories",
+                "sampleView/groupByThresholds",
+                "sampleView/groupByNominal"
+              ],
+              "label": "group_by_stopgain_presence"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "stopgain_presence_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "locus_selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "value": "count",
+              "label": "stopgain_presence_count_aggregation"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
+      "id": "paper-2024.patients_stopgain_12q14_3_and_13q34_amplification",
+      "prompt": "Show only patients who have stopgain mutations in the 12q14.3 locus. There are multiple samples per patient. Keep only samples with amplifications within the current brush selection. Amplification is 2x current ploidy. Identify samples that have an amplification in the 13q34 locus.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": [
+        "workflow",
+        "selection",
+        "derived-metadata",
+        "retain-categories",
+        "filtering",
+        "stopgain",
+        "amplification",
+        "13q34",
+        "12q14.3"
+      ],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["13q34", "amplification", "sample"],
+          "mustContainNumberCountAtLeast": 1,
+          "requiredStateForAnswer": [
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "sampleView/retainCategoriesByAttribute",
+              "label": "retain_patients_with_stopgain"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "keep_samples_with_amplification"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_relevant_locus"
+            },
+            {
+              "label": "materialize_locus_metadata",
+              "actionType": "sampleView/deriveMetadata"
+            },
+            {
+              "actionType": "sampleView/retainCategoriesByAttribute",
+              "label": "retain_patients_with_stopgain"
+            },
+            {
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "keep_samples_with_amplification"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "locus_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "value": "count",
+              "label": "stopgain_locus_count_aggregation"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 5,
+          "minIntentActions": 4,
+          "softMaxToolCalls": 10,
+          "softMaxIntentActions": 8,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.55,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    }
+  ]
+}

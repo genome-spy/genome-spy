@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 
 from app.config import Settings, describe_api_key_for_logs, load_settings
 from app.models import (
+    AgentServerInfoResponse,
     AgentTurnRequest,
     AgentTurnResponse,
     ProviderRequest,
@@ -22,6 +23,10 @@ from app.models import (
 from app.providers import ProviderError
 from app.providers.openai_responses import BaseProvider, OpenAIResponsesProvider
 from app.token_debugger import log_token_summary, summarize_prompt_tokens
+from app.throughput_debugger import (
+    log_throughput_summary,
+    summarize_response_throughput,
+)
 
 logger = logging.getLogger(__name__)
 startup_logger = logging.getLogger("uvicorn.error")
@@ -45,7 +50,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         (
             "GenomeSpy agent server startup: provider=%s base_url=%s "
             "model=%s api_key_source=%s api_key=%s "
-            "streaming=%s timeout_seconds=%s"
+            "streaming=%s responses_role_compat=%s timeout_seconds=%s "
+            "token_debug_logs=%s throughput_debug_logs=%s"
         ),
         provider.__class__.__name__,
         settings.base_url,
@@ -53,7 +59,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         api_key_source,
         describe_api_key_for_logs(settings.api_key),
         settings.enable_streaming,
+        settings.prefer_responses_role_compat,
         settings.timeout_seconds,
+        settings.enable_token_debug_logs,
+        settings.enable_throughput_debug_logs,
     )
     yield
 
@@ -97,6 +106,18 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/v1/server-info", response_model=AgentServerInfoResponse)
+async def server_info() -> AgentServerInfoResponse:
+    """Return the relay's active model configuration for diagnostics."""
+    settings = get_settings()
+    return AgentServerInfoResponse(
+        status="ok",
+        model=settings.model,
+        base_url=settings.base_url,
+        streamingEnabled=settings.enable_streaming,
+    )
+
+
 @app.post(
     "/v1/agent-turn",
     response_model=AgentTurnResponse,
@@ -126,17 +147,43 @@ async def agent_turn(
     """
     settings = get_settings()
     provider_request = _build_provider_request(request, settings)
-    log_token_summary(
-        startup_logger,
-        summarize_prompt_tokens(provider_request, settings.model),
+    token_summary = (
+        summarize_prompt_tokens(provider_request, settings.model)
+        if (
+            settings.enable_token_debug_logs
+            or settings.enable_throughput_debug_logs
+        )
+        else None
     )
+    if settings.enable_token_debug_logs and token_summary is not None:
+        log_token_summary(startup_logger, token_summary)
 
     should_stream = _should_stream_response(settings, http_request, stream)
 
     if should_stream:
-        return _build_streaming_response(provider_request)
+        return _build_streaming_response(
+            provider_request,
+            settings,
+            estimated_input_tokens=(
+                token_summary.total if token_summary is not None else None
+            ),
+        )
 
+    started_at = time.perf_counter()
     response = await _generate_plan(provider_request)
+    duration_ms = round((time.perf_counter() - started_at) * 1000)
+    if settings.enable_throughput_debug_logs:
+        log_throughput_summary(
+            startup_logger,
+            summarize_response_throughput(
+                response,
+                duration_ms,
+                settings.model,
+                estimated_input_tokens=(
+                    token_summary.total if token_summary is not None else None
+                ),
+            ),
+        )
     return _build_agent_turn_response(response)
 
 
@@ -161,6 +208,9 @@ async def _generate_plan(provider_request: ProviderRequest) -> ProviderResponse:
 
 async def _stream_plan(
     provider_request: ProviderRequest,
+    settings: Settings,
+    *,
+    estimated_input_tokens: int | None,
 ) -> AsyncIterator[str]:
     """Yield SSE events for one streaming provider turn.
 
@@ -181,6 +231,16 @@ async def _stream_plan(
             elif event.type == "final":
                 response = _require_stream_response(event.response)
                 duration_ms = round((time.perf_counter() - started_at) * 1000)
+                if settings.enable_throughput_debug_logs:
+                    log_throughput_summary(
+                        startup_logger,
+                        summarize_response_throughput(
+                            response,
+                            duration_ms,
+                            settings.model,
+                            estimated_input_tokens=estimated_input_tokens,
+                        ),
+                    )
                 yield _encode_sse_event(
                     "final",
                     _build_final_stream_payload(
@@ -222,10 +282,17 @@ def _should_stream_response(
 
 def _build_streaming_response(
     provider_request: ProviderRequest,
+    settings: Settings,
+    *,
+    estimated_input_tokens: int | None,
 ) -> StreamingResponse:
     """Build the FastAPI streaming response wrapper."""
     return StreamingResponse(
-        _stream_plan(provider_request),
+        _stream_plan(
+            provider_request,
+            settings,
+            estimated_input_tokens=estimated_input_tokens,
+        ),
         media_type="text/event-stream",
         headers={
             "cache-control": "no-cache",
@@ -301,4 +368,3 @@ def _encode_sse_event(event_name: str, payload: dict[str, object]) -> str:
         + json.dumps(payload, ensure_ascii=False)
         + "\n\n"
     )
-

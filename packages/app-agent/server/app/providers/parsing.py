@@ -5,6 +5,7 @@ import logging
 import re
 from typing import Any
 
+from app.json_repair import load_json_with_repair
 from app.models import ProviderResponse, ToolCall
 from app.providers import ProviderError
 
@@ -58,17 +59,35 @@ def _parse_provider_response_text(
 ) -> ProviderResponse:
     """Parse provider text as structured output or plain prose."""
     if not _looks_like_structured_response(text):
-        return ProviderResponse(type="answer", message=_normalize_provider_text(text))
+        return ProviderResponse(
+            type="answer",
+            message=_require_non_empty_answer_message(
+                _normalize_provider_text(text),
+                _truncate_logged_content(text),
+            ),
+        )
 
     try:
-        return _parse_provider_response_payload(
-            _ensure_object_payload(_load_json_content(text, allow_repair))
-        )
-    except ProviderError:
+        payload = _ensure_object_payload(_load_json_content(text, allow_repair))
+    except ProviderError as exc:
         # Some local OpenAI-compatible models ignore structured-output hints.
         # Treat plain prose as a usable read-only answer instead of failing
         # the entire chat turn.
-        return ProviderResponse(type="answer", message=_normalize_provider_text(text))
+        normalized_text = _normalize_provider_text(text)
+        if _looks_like_structured_response(normalized_text) or _looks_like_tool_markup(
+            normalized_text
+        ):
+            raise ProviderError("Provider returned an empty final answer.") from exc
+
+        return ProviderResponse(
+            type="answer",
+            message=_require_non_empty_answer_message(
+                normalized_text,
+                _truncate_logged_content(text),
+            ),
+        )
+
+    return _parse_provider_response_payload(payload)
 
 
 def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderResponse:
@@ -78,15 +97,35 @@ def _parse_provider_response_payload(payload: dict[str, Any]) -> ProviderRespons
     except Exception as exc:
         raise ProviderError("Provider response did not match the PoC schema.") from exc
 
+    normalized_message = (
+        _normalize_provider_text(response.message)
+        if response.message is not None
+        else None
+    )
+    if response.type == "answer":
+        normalized_message = _require_non_empty_answer_message(
+            normalized_message,
+            _truncate_logged_content(json.dumps(payload, ensure_ascii=False)),
+        )
+
     return ProviderResponse(
         type=response.type,
-        message=(
-            _normalize_provider_text(response.message)
-            if response.message is not None
-            else None
-        ),
+        message=normalized_message,
         tool_calls=response.tool_calls,
     )
+
+
+def _require_non_empty_answer_message(
+    message: str | None, logged_source: str
+) -> str:
+    """Require answer responses to carry non-empty text."""
+    if isinstance(message, str):
+        normalized = message.strip()
+        if normalized:
+            return normalized
+
+    logger.warning("Provider returned an empty final answer: %r", logged_source)
+    raise ProviderError("Provider returned an empty final answer.")
 
 
 def _ensure_object_payload(payload: Any) -> dict[str, Any]:
@@ -170,7 +209,7 @@ def _parse_tool_arguments(arguments: Any) -> Any:
     """Decode stringified tool arguments when possible."""
     if isinstance(arguments, str):
         try:
-            return _parse_nested_tool_argument_json(json.loads(arguments))
+            return _parse_nested_tool_argument_json(load_json_with_repair(arguments))
         except Exception:
             return arguments
 
@@ -195,7 +234,7 @@ def _parse_nested_tool_argument_json(value: Any) -> Any:
         # oMLX/Qwen may serialize one structured parameter, such as a domain
         # array, as a JSON string inside an otherwise valid arguments object.
         try:
-            return _parse_nested_tool_argument_json(json.loads(stripped))
+            return _parse_nested_tool_argument_json(load_json_with_repair(stripped))
         except Exception:
             return value
 
@@ -213,12 +252,10 @@ def _load_json_content(content: str, allow_repair: bool = False) -> Any:
                 return json.loads(candidate)
             except json.JSONDecodeError:
                 if allow_repair:
-                    repaired = _repair_json_string_content(candidate)
-                    if repaired != candidate:
-                        try:
-                            return json.loads(repaired)
-                        except json.JSONDecodeError:
-                            pass
+                    try:
+                        return load_json_with_repair(candidate)
+                    except json.JSONDecodeError:
+                        pass
                 continue
 
         logger.warning(
@@ -286,44 +323,6 @@ def _extract_balanced_json_object(content: str) -> str | None:
                 return content[start_index : index + 1].strip()
 
     return None
-
-
-def _repair_json_string_content(content: str) -> str:
-    """Escape raw control characters inside JSON strings."""
-    repaired: list[str] = []
-    in_string = False
-    escape = False
-    for char in content:
-        if in_string:
-            if escape:
-                repaired.append(char)
-                escape = False
-            elif char == "\\":
-                repaired.append(char)
-                escape = True
-            elif char == '"':
-                repaired.append(char)
-                in_string = False
-            elif char == "\n":
-                repaired.append("\\n")
-            elif char == "\r":
-                repaired.append("\\r")
-            elif char == "\t":
-                repaired.append("\\t")
-            elif char == "\b":
-                repaired.append("\\b")
-            elif char == "\f":
-                repaired.append("\\f")
-            else:
-                repaired.append(char)
-        else:
-            repaired.append(char)
-            if char == '"':
-                in_string = True
-                escape = False
-
-    return "".join(repaired)
-
 
 def _looks_like_structured_response(text: str) -> bool:
     """Detect text that appears to be structured output."""

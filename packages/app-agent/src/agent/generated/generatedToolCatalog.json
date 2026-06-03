@@ -1,6 +1,8 @@
 [
   {
     "toolName": "expandViewNode",
+    "kind": "do",
+    "subkind": "context",
     "description": "Expand a collapsed view branch in the agent context.",
     "inputType": "ExpandViewNodeToolInput",
     "inputFields": [
@@ -21,6 +23,8 @@
   },
   {
     "toolName": "collapseViewNode",
+    "kind": "do",
+    "subkind": "context",
     "description": "Collapse a previously expanded view branch in the agent context.",
     "inputType": "CollapseViewNodeToolInput",
     "inputFields": [
@@ -41,6 +45,8 @@
   },
   {
     "toolName": "setViewVisibility",
+    "kind": "do",
+    "subkind": "state_change",
     "description": "Set the visibility of a view.",
     "inputType": "SetViewVisibilityToolInput",
     "inputFields": [
@@ -68,6 +74,8 @@
   },
   {
     "toolName": "jumpToProvenanceState",
+    "kind": "do",
+    "subkind": "state_change",
     "description": "Jump to a prior provenance state identified by the given provenance id, or to the initial state before any actions when the provenance id is null.",
     "inputType": "JumpToProvenanceStateToolInput",
     "inputFields": [
@@ -85,6 +93,8 @@
   },
   {
     "toolName": "getAttributeSummary",
+    "kind": "know",
+    "subkind": "study",
     "description": "Return a compact summary of one attribute (metadata or selection-derived) across visible samples or within each current visible group.",
     "inputType": "GetAttributeSummaryToolInput",
     "inputFields": [
@@ -112,6 +122,8 @@
   },
   {
     "toolName": "getSampleGroups",
+    "kind": "know",
+    "subkind": "study",
     "description": "List compact current sample groups by level or parent path.",
     "inputType": "GetSampleGroupsToolInput",
     "inputFields": [
@@ -141,6 +153,8 @@
   },
   {
     "toolName": "getSelectionFeatureFieldSummary",
+    "kind": "know",
+    "subkind": "study",
     "description": "Summarize one raw feature field inside a selected interval before per-sample aggregation.",
     "inputType": "GetSelectionFeatureFieldSummaryToolInput",
     "inputFields": [
@@ -165,6 +179,8 @@
   },
   {
     "toolName": "resolveMetadataAttributeValues",
+    "kind": "know",
+    "subkind": "find",
     "description": "Resolve a free-text metadata value against current visible categorical sample metadata values.",
     "inputType": "ResolveMetadataAttributeValuesToolInput",
     "inputFields": [
@@ -182,6 +198,8 @@
   },
   {
     "toolName": "searchViewDatums",
+    "kind": "know",
+    "subkind": "find",
     "description": "Search datum objects in the view identified by the selector.",
     "inputType": "SearchViewDatumsToolInput",
     "inputFields": [
@@ -223,6 +241,8 @@
   },
   {
     "toolName": "getIntentActionDocs",
+    "kind": "know",
+    "subkind": "learn",
     "description": "Read documentation, fields, and examples for one intent action.",
     "inputType": "GetIntentActionDocsToolInput",
     "inputFields": [
@@ -240,6 +260,8 @@
   },
   {
     "toolName": "getIntentActionTypeDocs",
+    "kind": "know",
+    "subkind": "learn",
     "description": "Read schema and usage details for one intent action payload field type.",
     "inputType": "GetIntentActionTypeDocsToolInput",
     "inputFields": [
@@ -264,6 +286,8 @@
   },
   {
     "toolName": "zoomToScale",
+    "kind": "do",
+    "subkind": "state_change",
     "description": "Animate one named zoomable scale to an exact domain.",
     "inputType": "ZoomToScaleToolInput",
     "inputFields": [
@@ -297,6 +321,8 @@
   },
   {
     "toolName": "submitIntentAction",
+    "kind": "do",
+    "subkind": "state_change",
     "description": "Execute one provenance-changing action.",
     "inputType": "SubmitIntentActionToolInput",
     "inputFields": [
@@ -329,6 +355,8 @@
   },
   {
     "toolName": "showCategoryCountsPlot",
+    "kind": "do",
+    "subkind": "plot",
     "description": "Show a bar plot of counts for one categorical sample attribute.",
     "inputType": "ShowCategoryCountsPlotToolInput",
     "inputFields": [
@@ -349,6 +377,8 @@
   },
   {
     "toolName": "showAttributeDistributionPlot",
+    "kind": "do",
+    "subkind": "plot",
     "description": "Show a quantitative distribution plot in the chat transcript.",
     "inputType": "ShowAttributeDistributionPlotToolInput",
     "inputFields": [
@@ -376,6 +406,8 @@
   },
   {
     "toolName": "showAttributeRelationshipPlot",
+    "kind": "do",
+    "subkind": "plot",
     "description": "Show a scatterplot comparing two quantitative sample attributes.",
     "inputType": "ShowAttributeRelationshipPlotToolInput",
     "inputFields": [

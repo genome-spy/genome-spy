@@ -1,4 +1,8 @@
+import pytest
+
+from app.json_repair import load_json_with_repair
 from app.models import ProviderResponse, ToolCall
+from app.providers import ProviderError
 from app.providers.parsing import (
     _classify_stream_text,
     _parse_provider_response_text,
@@ -51,6 +55,26 @@ def test_parse_responses_response_falls_back_to_raw_text() -> None:
     response = _parse_responses_response(payload)
 
     assert response == ProviderResponse(type="answer", message="not json")
+
+
+def test_parse_responses_response_rejects_empty_answer_payload() -> None:
+    payload = {
+        "output": [
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "output_text",
+                        "text": '{"type":"answer","message":""}',
+                    }
+                ],
+            }
+        ]
+    }
+
+    with pytest.raises(ProviderError, match="empty final answer"):
+        _parse_responses_response(payload)
 
 
 def test_parse_responses_response_accepts_answer_json_code_fence() -> None:
@@ -189,6 +213,29 @@ def test_parse_responses_response_decodes_nested_json_argument_strings() -> None
             {"chrom": "chr17", "pos": 43044294},
             {"chrom": "chr17", "pos": 43125364},
         ],
+    }
+
+
+def test_parse_responses_response_repairs_truncated_tool_arguments() -> None:
+    payload = {
+        "output": [
+            {
+                "type": "function_call",
+                "call_id": "call_123",
+                "name": "submitIntentAction",
+                "arguments": (
+                    '{"action":{"actionType":"sampleView/deriveMetadata"},'
+                    '"note":"Derive NF1 average gene copy number"'
+                ),
+            }
+        ]
+    }
+
+    response = _parse_responses_response(payload)
+
+    assert response.tool_calls[0].arguments == {
+        "action": {"actionType": "sampleView/deriveMetadata"},
+        "note": "Derive NF1 average gene copy number",
     }
 
 
@@ -353,6 +400,19 @@ def test_parse_provider_response_text_repairs_decoded_inner_json() -> None:
     )
 
 
+def test_parse_provider_response_text_repairs_truncated_answer_payload() -> None:
+    text = (
+        '{"type":"answer","message":"The top track shows copy-number segments."'
+    )
+
+    response = _parse_provider_response_text(text, allow_repair=True)
+
+    assert response == ProviderResponse(
+        type="answer",
+        message="The top track shows copy-number segments.",
+    )
+
+
 def test_parse_provider_response_text_uses_last_fenced_json_block() -> None:
     text = (
         "```json\n"
@@ -369,6 +429,16 @@ def test_parse_provider_response_text_uses_last_fenced_json_block() -> None:
         type="answer",
         message="The parsed copy should win.",
     )
+
+
+def test_parse_provider_response_text_rejects_empty_plain_answer() -> None:
+    with pytest.raises(ProviderError, match="empty final answer"):
+        _parse_provider_response_text("   ")
+
+
+def test_parse_provider_response_text_rejects_empty_structured_fallback() -> None:
+    with pytest.raises(ProviderError, match="empty final answer"):
+        _parse_provider_response_text('{"type": ', allow_repair=True)
 
 
 def test_extract_stream_text_returns_text_deltas() -> None:
@@ -423,3 +493,13 @@ def test_classify_stream_text_distinguishes_prose_and_structured_json() -> None:
         _classify_stream_text('"selector": {"scope": [], "view": "reference-sequence"}')
         == "structured"
     )
+
+
+def test_load_json_with_repair_closes_truncated_array_and_object() -> None:
+    payload = load_json_with_repair(
+        '{"employees":["John", "Anna", {"name":"Megan"'
+    )
+
+    assert payload == {
+        "employees": ["John", "Anna", {"name": "Megan"}],
+    }

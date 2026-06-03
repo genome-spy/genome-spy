@@ -164,6 +164,68 @@ def test_agent_turn_endpoint_logs_token_summary(
     assert "%" in caplog.text
 
 
+def test_agent_turn_endpoint_logs_estimated_throughput(
+    caplog: LogCaptureFixture, monkeypatch
+) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    reset_settings_cache()
+    monkeypatch.setattr("app.main.get_provider", lambda: StubProvider())
+    client = TestClient(app)
+
+    with caplog.at_level("INFO", logger="uvicorn.error"):
+        response = client.post(
+            "/v1/agent-turn",
+            json={
+                "message": "How are methylation levels encoded?",
+                "history": [
+                    {
+                        "id": "msg_001",
+                        "role": "user",
+                        "text": "What is in this visualization?",
+                    }
+                ],
+                "context": {"schemaVersion": 1},
+            },
+    )
+
+    assert response.status_code == 200
+    assert "Estimated client-observed throughput:" in caplog.text
+    assert "  estimated output tokens: " in caplog.text
+    assert "  estimated output tokens/s: " in caplog.text
+    assert "  estimated input tokens: " in caplog.text
+
+
+def test_agent_turn_endpoint_can_disable_debug_logs(
+    caplog: LogCaptureFixture, monkeypatch
+) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    monkeypatch.setenv("GENOMESPY_AGENT_ENABLE_TOKEN_DEBUG_LOGS", "false")
+    monkeypatch.setenv("GENOMESPY_AGENT_ENABLE_THROUGHPUT_DEBUG_LOGS", "false")
+    reset_settings_cache()
+    monkeypatch.setattr("app.main.get_provider", lambda: StubProvider())
+    client = TestClient(app)
+
+    with caplog.at_level("INFO", logger="uvicorn.error"):
+        response = client.post(
+            "/v1/agent-turn",
+            json={
+                "message": "How are methylation levels encoded?",
+                "history": [
+                    {
+                        "id": "msg_001",
+                        "role": "user",
+                        "text": "What is in this visualization?",
+                    }
+                ],
+                "context": {"schemaVersion": 1},
+            },
+        )
+
+    assert response.status_code == 200
+    assert "Agent token usage:" not in caplog.text
+    assert "Estimated client-observed throughput:" not in caplog.text
+
+
 def test_agent_turn_endpoint_returns_tool_call_response(monkeypatch) -> None:
     monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
     reset_settings_cache()
@@ -326,9 +388,7 @@ def test_default_system_prompt_is_markdown_text() -> None:
 
     assert "genomespy_plan_response" in prompt
     assert "message" in prompt
-    assert "searchableViews" in prompt
-    assert "searchViewDatums" in prompt
-    assert "intentActionSummaries" in prompt
+    assert "getSampleGroups" in prompt
     assert "getIntentActionDocs" in prompt
     assert "getIntentActionTypeDocs" in prompt
     assert "includeSchema" not in prompt

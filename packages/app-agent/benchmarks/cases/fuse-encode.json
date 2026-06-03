@@ -1,0 +1,493 @@
+{
+  "visualizationId": "fuse_encode",
+  "setup": {
+    "route": "/",
+    "specPath": "private/fuse_encode_gs/spec.json",
+    "resetProvenance": true
+  },
+  "cases": [
+    {
+      "id": "fuse-encode.describe_visualization",
+      "prompt": "What's in this visualization?",
+      "difficulty": "descriptive",
+      "taskType": "hybrid",
+      "outcomeType": "text_answer",
+      "tags": ["overview", "descriptive", "smoke"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["methylation", "beta", "FUSE", "samples", "genes"],
+          "mustNotContain": ["I cannot access the visualization"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {},
+        "efficiency": {
+          "minToolCalls": 0,
+          "minIntentActions": 0,
+          "softMaxToolCalls": 4,
+          "softMaxIntentActions": 3,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "answer": 0.8,
+            "efficiency": 0.2
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.compare_beta_and_fuse_tracks",
+      "prompt": "Briefly explain the difference between the beta-value track and the FUSE segmentation track.",
+      "difficulty": "descriptive",
+      "taskType": "hybrid",
+      "outcomeType": "text_answer",
+      "tags": ["descriptive", "tracks", "comparison"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["segment", "cohort", "average", "sample", "beta"],
+          "mustNotContain": ["I cannot access the visualization"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {},
+        "efficiency": {
+          "minToolCalls": 0,
+          "minIntentActions": 0,
+          "softMaxToolCalls": 4,
+          "softMaxIntentActions": 3,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "answer": 0.8,
+            "efficiency": 0.2
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.group_gender_tissue_barplot",
+      "prompt": "Group the samples by gender, summarize the tissue types in each group, and show a bar plot of tissue counts.",
+      "difficulty": "workflow",
+      "taskType": "metadata_only",
+      "outcomeType": "mixed",
+      "tags": ["workflow", "grouping", "summary", "barplot"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["tissue", "group", "gender"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["gender"]
+          },
+          "tools": [
+            {
+              "name": "getAttributeSummary",
+              "label": "summarize_tissue"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_gender"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "barplot",
+              "label": "show_barplot"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.95,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.resolve_ovarian_filter_gender_barplot",
+      "prompt": "Keep only the ovarian samples, group them by gender, and show a bar plot of tissue counts for the remaining cohort.",
+      "difficulty": "workflow",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "value-resolution", "filtering", "barplot"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["gender"],
+            "visibleSampleCount": {
+              "operator": "eq",
+              "value": 5
+            }
+          },
+          "tools": [
+            {
+              "name": "resolveMetadataAttributeValues",
+              "label": "resolve_ovarian_value"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "sampleView/filterByNominal",
+              "label": "filter_ovary"
+            },
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_gender"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "barplot",
+              "label": "show_barplot"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.941,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.age_thresholds_boxplot",
+      "prompt": "Split the cohort into age groups using thresholds at 40 and 50, then show a grouped boxplot of age.",
+      "difficulty": "workflow",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "thresholds", "grouping", "boxplot"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["age"]
+          },
+          "actions": [
+            {
+              "actionType": "sampleView/groupByThresholds",
+              "label": "group_by_age_thresholds"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.941,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.search_brush_derive_gender_boxplot",
+      "prompt": "Find BRCA1 in the gene annotations, zoom to it, brush the region, derive a weighted-mean methylation metadata attribute from that interval, group the samples by gender, and show a grouped boxplot of the derived values.",
+      "difficulty": "workflow",
+      "taskType": "hybrid",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "zoom",
+        "selection",
+        "derived-metadata",
+        "boxplot"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["gender"]
+          },
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_gene"
+            },
+            {
+              "name": "zoomToScale",
+              "label": "zoom_to_gene"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_region"
+            },
+            {
+              "actionTypes": [
+                "sampleView/deriveMetadata",
+                "sampleView/addMetadata",
+                "sampleView/addMetadataFromSource"
+              ],
+              "label": "materialize_region_metadata"
+            },
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_gender"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 5,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.941,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.search_brush_summarize_derive_under40_scatter",
+      "prompt": "Find TP53, brush its region, inspect a raw feature field from the selected methylation track if needed, derive a regional methylation metadata attribute, keep only samples younger than 40, and show a scatterplot comparing age and the derived value.",
+      "difficulty": "workflow",
+      "taskType": "hybrid",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "selection-summary",
+        "derived-metadata",
+        "filtering",
+        "scatterplot"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "visibleSampleCount": {
+              "operator": "eq",
+              "value": 35
+            }
+          },
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_gene"
+            },
+            {
+              "name": "getSelectionFeatureFieldSummary",
+              "label": "inspect_raw_feature_field"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_region"
+            },
+            {
+              "actionTypes": [
+                "sampleView/deriveMetadata",
+                "sampleView/addMetadata",
+                "sampleView/addMetadataFromSource"
+              ],
+              "label": "materialize_region_metadata"
+            },
+            {
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "filter_under_40"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "scatterplot",
+              "label": "show_scatterplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 5,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.941,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.hide_reference_then_describe",
+      "prompt": "Hide the reference sequence track and briefly describe the remaining main data tracks.",
+      "difficulty": "workflow",
+      "taskType": "genomic_track_only",
+      "outcomeType": "mixed",
+      "tags": ["workflow", "visibility", "description"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["beta", "FUSE", "segment", "gene", "annotation"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "viewVisibility": [
+              {
+                "selector": {
+                  "scope": [],
+                  "view": "reference-sequence"
+                },
+                "visible": false
+              }
+            ]
+          },
+          "tools": [
+            {
+              "name": "setViewVisibility",
+              "label": "hide_reference_sequence"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 1,
+          "minIntentActions": 0,
+          "softMaxToolCalls": 5,
+          "softMaxIntentActions": 3,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.938,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    }
+  ]
+}

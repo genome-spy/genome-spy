@@ -69,6 +69,26 @@ UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
   --app-dir packages/app-agent/server
 ```
 
+Optional debug-log flags:
+
+- `GENOMESPY_AGENT_ENABLE_TOKEN_DEBUG_LOGS=true` logs estimated prompt-token
+  breakdowns before each provider request.
+- `GENOMESPY_AGENT_ENABLE_THROUGHPUT_DEBUG_LOGS=true` logs estimated
+  client-observed output throughput after each completed provider response.
+
+Both are enabled by default. To disable them, set either flag to `false` in the
+launch command, for example:
+
+```bash
+GENOMESPY_AGENT_ENABLE_TOKEN_DEBUG_LOGS=false \
+GENOMESPY_AGENT_ENABLE_THROUGHPUT_DEBUG_LOGS=false \
+UV_CACHE_DIR=/tmp/uv-cache uv run --project packages/app-agent/server \
+  python -m uvicorn app.main:app \
+  --host 127.0.0.1 \
+  --port 8001 \
+  --app-dir packages/app-agent/server
+```
+
 **Set VITE configs to point to the relay server and start the GenomeSpy server**
 ```bash
 VITE_AGENT_BASE_URL=http://127.0.0.1:8001 npm start
@@ -122,8 +142,8 @@ vllm serve <model-or-path> \
   --port 8000 \
   --api-key placeholder \
   --max-model-len 262144 \
-  --quantization moe_wna16 \
-  --gpu-memory-utilization 0.80
+  --gpu-memory-utilization 0.80 \
+  ...
 ```
 
 Then point the relay at it:
@@ -134,11 +154,6 @@ export GENOMESPY_AGENT_BASE_URL=http://127.0.0.1:8000/v1
 export GENOMESPY_AGENT_API_KEY=placeholder
 export GENOMESPY_AGENT_ENABLE_STREAMING=false
 ```
-
-#### Optional DGX setup
-
-If you want to run vLLM on a DGX and point a MacBook at it, see
-[`DGX_VLLM_SETUP.md`](./DGX_VLLM_SETUP.md).
 
 ### oMLX
 
@@ -166,40 +181,9 @@ export GENOMESPY_AGENT_ENABLE_STREAMING=false
 If you already use LM Studio models, point `--model-dir` at the same model
 directory.
 
+#### Optional DGX setup
 
-## Use From Another Machine
-
-If the relay runs on another machine:
-
-1. Find the relay host IP:
-   ```bash
-   hostname -I
-   ```
-2. Start GenomeSpy on your MacBook or other laptop:
-   ```bash
-   VITE_AGENT_BASE_URL=http://<relay-host-ip>:8001 npm start
-```
-3. Keep the browser local and point it at the relay, not the model server.
-
-## Troubleshooting
-
-- Relay starts but the browser cannot connect
-  - Check that `VITE_AGENT_BASE_URL` points to the relay.
-  - For local development, it should usually be `http://127.0.0.1:8001`.
-- Relay and browser use different ports
-  - The port in `VITE_AGENT_BASE_URL` must match `uvicorn --port`.
-  - Example: if `uvicorn` uses `--port 8001`, then
-    `VITE_AGENT_BASE_URL` must use `:8001`.
-- Relay startup fails with `KeyError: 'GENOMESPY_AGENT_MODEL'`
-  - `GENOMESPY_AGENT_MODEL` is required.
-  - Fix: export it before starting `uvicorn`.
-- `VIRTUAL_ENV=.venv does not match the project environment path`
-  - `uv` wants to use the project environment instead of the active one.
-  - Fix: add `--active` or let `uv` use the project environment directly.
-- `curl http://127.0.0.1:8001/...` from the Mac fails
-  - The relay is on the remote host, not the Mac.
-  - Fix: use `http://<relay-host-ip>:8001/...` instead.
-
-If you are using DGX + vLLM, see
-[`DGX_VLLM_SETUP.md`](./DGX_VLLM_SETUP.md) for the CUDA, Python, GPU, and
-vLLM-specific troubleshooting notes.
+If you want to run vLLM on a DGX and point a MacBook at it, see
+[`docs/DGX_VLLM_SETUP.md`](./docs/DGX_VLLM_SETUP.md) for the DGX-side vLLM
+setup and [`docs/DGX_VLLM_REMOTE_DEV.md`](./docs/DGX_VLLM_REMOTE_DEV.md) for
+the remote-development workflow.

@@ -6,20 +6,13 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+import tiktoken
+
 from .models import ProviderRequest
 from .prompt_builder import (
     _build_context_text,
     build_prompt_ir,
 )
-
-TiktokenModule = Any
-
-try:
-    import tiktoken as _tiktoken  # type: ignore[import-not-found]
-except ImportError:  # pragma: no cover - exercised only when dependency is missing
-    tiktoken: TiktokenModule | None = None
-else:
-    tiktoken = _tiktoken
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,9 +201,6 @@ def format_token_summary(
 
 
 def _resolve_encoding(model: str) -> Any | None:
-    if tiktoken is None:
-        return None
-
     try:
         return tiktoken.encoding_for_model(model)
     except Exception:
