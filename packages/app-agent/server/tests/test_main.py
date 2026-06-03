@@ -388,9 +388,7 @@ def test_default_system_prompt_is_markdown_text() -> None:
 
     assert "genomespy_plan_response" in prompt
     assert "message" in prompt
-    assert "searchableViews" in prompt
-    assert "searchViewDatums" in prompt
-    assert "intentActionSummaries" in prompt
+    assert "getSampleGroups" in prompt
     assert "getIntentActionDocs" in prompt
     assert "getIntentActionTypeDocs" in prompt
     assert "includeSchema" not in prompt

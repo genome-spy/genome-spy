@@ -3,6 +3,7 @@ import { createAgentSessionController } from "./agentSessionController.js";
 import {
     MAX_REJECTED_TOOL_CALL_RETRIES,
     MAX_REPEATED_REJECTED_TOOL_CALL_REPEATS,
+    MAX_REPEATED_SUCCESS_TOOL_CALL_REPEATS,
 } from "./toolCallLoop.js";
 
 const PREFLIGHT_MESSAGE = 'Preflight check: answer with just "I\'m here".';
@@ -1642,7 +1643,10 @@ describe("createAgentSessionController", () => {
                 });
             }
 
-            if (agentTurnCallCount <= 4) {
+            if (
+                agentTurnCallCount <=
+                MAX_REPEATED_SUCCESS_TOOL_CALL_REPEATS + 2
+            ) {
                 return Promise.resolve({
                     response: {
                         type: "tool_call",
@@ -1685,9 +1689,12 @@ describe("createAgentSessionController", () => {
         const sendPromise = controller.sendMessage(
             "Make the reference sequence visible."
         );
-        await vi.waitFor(() => {
-            expect(controller.getSnapshot().loopRecovery).not.toBeNull();
-        });
+        await vi.waitFor(
+            () => {
+                expect(controller.getSnapshot().loopRecovery).not.toBeNull();
+            },
+            { timeout: 3000 }
+        );
 
         expect(runtime.setViewVisibility).toHaveBeenCalledTimes(1);
 
