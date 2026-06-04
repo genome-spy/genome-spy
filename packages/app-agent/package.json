@@ -52,10 +52,10 @@
     "lit": "^3.3.0"
   },
   "devDependencies": {
-    "@genome-spy/app": "^0.76.0",
+    "@genome-spy/app": "^0.77.0",
     "@reduxjs/toolkit": "^2.11.0"
   },
   "peerDependencies": {
-    "@genome-spy/app": "^0.75.0"
+    "@genome-spy/app": "^0.77.0"
   }
 }
