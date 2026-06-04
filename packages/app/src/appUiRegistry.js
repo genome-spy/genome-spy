@@ -220,8 +220,11 @@ export default class AppUiRegistry extends EventTarget {
             focusedElement = focusedElement.shadowRoot.activeElement;
         }
 
-        if (element.contains(focusedElement)) {
-            focusedElement.blur?.();
+        if (
+            element.contains(focusedElement) &&
+            focusedElement instanceof HTMLElement
+        ) {
+            focusedElement.blur();
         }
     }
 }
