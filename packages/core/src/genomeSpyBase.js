@@ -31,6 +31,7 @@ import { createViewContext } from "./genomeSpy/viewContextFactory.js";
 import { prepareViewHierarchy } from "./genomeSpy/headlessBootstrap.js";
 import { exportCanvas } from "./genomeSpy/canvasExport.js";
 import { validateSelectorConstraints } from "./view/viewSelectors.js";
+import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
@@ -169,6 +170,15 @@ export default class GenomeSpy {
         namedSource.dataSource.updateDynamicData(data);
 
         this.animator.requestRender();
+    }
+
+    /**
+     * Returns a handle for a named parameter.
+     *
+     * @param {string} name
+     */
+    getParam(name) {
+        return resolveEmbedParam(this.viewRoot, name);
     }
 
     /**

@@ -2,6 +2,8 @@ import { ScaleResolutionApi } from "./scaleResolutionApi.js";
 import { TooltipHandler } from "../tooltip/tooltipHandler.js";
 import { RootSpec } from "../spec/root.js";
 import { GenomeSpyConfig } from "../spec/config.js";
+import { Scalar } from "../spec/channel.js";
+import { IntervalSelection } from "./selectionTypes.js";
 
 /**
  * Embeds GenomeSpy into the DOM
@@ -55,6 +57,47 @@ export interface EmbedOptions {
 }
 
 /**
+ * Runtime value type covered by the default embed parameter API.
+ *
+ * The default type covers scalar variable parameters and interval selections.
+ * Object and array variable parameters are supported at runtime, but callers
+ * should provide their own generic type when accessing them:
+ *
+ * `const param = api.getParam<MyValue>("myParam")`
+ *
+ * Current limitations:
+ *
+ * - Parameters are addressed by name only. Independent same-name parameters
+ *   throw an ambiguity error.
+ * - Computed `expr` parameters are readable but cannot be written.
+ * - Point selections are readable as runtime values but are not supported for
+ *   writes through the initial API because valid values require
+ *   GenomeSpy-generated datum ids.
+ * - Projected selections are not supported.
+ */
+export type ParamValue = Scalar | null | undefined | IntervalSelection;
+
+/**
+ * A handle for reading, writing, and subscribing to an explicit parameter.
+ */
+export interface ParamApi<T = ParamValue> {
+    /**
+     * Returns the current parameter value.
+     */
+    getValue: () => T;
+
+    /**
+     * Sets the parameter value. Computed `expr` parameters throw when set.
+     */
+    setValue: (value: T) => void;
+
+    /**
+     * Subscribes to parameter changes. Returns an unsubscribe function.
+     */
+    subscribe: (listener: (value: T) => void) => () => void;
+}
+
+/**
  * An API for controlling the embedded GenomeSpy instance.
  */
 export interface EmbedResult {
@@ -81,6 +124,17 @@ export interface EmbedResult {
      * listeners and controlling the scale domain.
      */
     getScaleResolutionByName: (name: string) => ScaleResolutionApi;
+
+    /**
+     * Returns a handle for reading, writing, and subscribing to a named
+     * parameter.
+     *
+     * Parameters are addressed by name only. If the name resolves to multiple
+     * independent parameters, this method throws an ambiguity error. Parameters
+     * declared with `push: "outer"` are treated as aliases of the outer
+     * parameter they write to.
+     */
+    getParam: <T = ParamValue>(name: string) => ParamApi<T>;
 
     /**
      * Waits until lazy data sources have loaded data for the current visible

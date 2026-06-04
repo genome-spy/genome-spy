@@ -94,6 +94,8 @@ export async function embed(el, spec, options = {}) {
             return genomeSpy.getNamedScaleResolutions().get(name);
         },
 
+        getParam: genomeSpy.getParam.bind(genomeSpy),
+
         awaitVisibleLazyData: genomeSpy.awaitVisibleLazyData.bind(genomeSpy),
         getRenderedBounds: genomeSpy.getRenderedBounds.bind(genomeSpy),
         updateNamedData: genomeSpy.updateNamedData.bind(genomeSpy),

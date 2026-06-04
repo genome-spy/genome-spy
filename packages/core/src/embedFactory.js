@@ -79,6 +79,8 @@ export function createEmbed(GenomeSpy) {
                 return genomeSpy.getNamedScaleResolutions().get(name);
             },
 
+            getParam: genomeSpy.getParam.bind(genomeSpy),
+
             awaitVisibleLazyData:
                 genomeSpy.awaitVisibleLazyData.bind(genomeSpy),
             getRenderedBounds: genomeSpy.getRenderedBounds.bind(genomeSpy),

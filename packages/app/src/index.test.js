@@ -18,6 +18,7 @@ const { AppMock } = vi.hoisted(() => ({
             addEventListener: vi.fn(),
             removeEventListener: vi.fn(),
             getNamedScaleResolutions: vi.fn(() => new Map()),
+            getParam: vi.fn(),
             awaitVisibleLazyData: vi.fn(),
             getRenderedBounds: vi.fn(),
             updateNamedData: vi.fn(),

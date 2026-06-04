@@ -16,6 +16,8 @@ export default defineConfig({
             input: {
                 index: "src/index.html",
                 scaleApi: "src/scaleApi.html",
+                paramApi: "src/paramApi.html",
+                brushLinkingApi: "src/brushLinkingApi.html",
                 linkedEmbeds: "src/linkedEmbeds.html",
                 dynamicNamedData: "src/dynamicNamedData.html",
                 multipleDynamicSources: "src/multipleDynamicSources.html",

@@ -12,3 +12,4 @@ export { GenomeSpy, html, icon, favIcon };
 export const embed = createEmbed(GenomeSpy);
 
 export { loadSpec };
+export { intervalSelection } from "./selection/index.js";

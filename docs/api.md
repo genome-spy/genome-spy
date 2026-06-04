@@ -123,6 +123,46 @@ See also [Config, Themes, and Styles](./grammar/config.md).
 Named scales can be accessed through `getScaleResolutionByName()`. To define a
 named scale in a spec, set `scale.name`. See [Scale](./grammar/scale.md).
 
+### Parameters
+
+Named parameters can be accessed through `getParam()`. The returned handle can
+read and write the parameter value and subscribe to changes:
+
+```js
+const api = await embed(container, spec);
+const threshold = api.getParam("threshold");
+
+console.log(threshold.getValue());
+threshold.setValue(5);
+
+const unsubscribe = threshold.subscribe((value) => {
+  console.log("threshold changed", value);
+});
+```
+
+Variable parameters and interval selections can be read and written. Use
+`intervalSelection()` to construct interval selection values:
+
+```js
+import { embed, intervalSelection } from "@genome-spy/core";
+
+const brush = api.getParam("brush");
+brush.setValue(intervalSelection({ x: [10, 20] }));
+```
+
+Current limitations:
+
+- Parameters are addressed by name only. If the name resolves to multiple
+  independent parameters, `getParam()` throws an ambiguity error.
+- Computed `expr` parameters are readable but cannot be written.
+- Point selections are readable but cannot be written through the API because
+  valid values require GenomeSpy-generated datum ids.
+- Projected selections are not supported.
+
+For examples, see the `paramApi` and `brushLinkingApi` pages in the
+[embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
+package.
+
 ### Custom tooltip handlers
 
 GenomeSpy provides two built-in tooltip handlers.

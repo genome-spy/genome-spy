@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="style.scss" />
+        <title>Brush linking using parameter and scale APIs</title>
+    </head>
+
+    <body>
+        <h1>Brush linking using parameter and scale APIs</h1>
+
+        <p>
+            Brush the overview. The detail view is a separate embed whose named
+            x scale is updated through the ScaleResolution API.
+        </p>
+
+        <section>
+            <h2>Overview</h2>
+            <div id="overview"></div>
+        </section>
+
+        <section>
+            <h2>Detail</h2>
+            <div id="detail"></div>
+        </section>
+
+        <p>
+            <button id="reset">Reset brush</button>
+        </p>
+
+        <script type="module" src="/brushLinkingApi.js"></script>
+    </body>
+</html>
