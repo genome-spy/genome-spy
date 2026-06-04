@@ -16,6 +16,7 @@ export default defineConfig({
             input: {
                 index: "src/index.html",
                 scaleApi: "src/scaleApi.html",
+                linkedEmbeds: "src/linkedEmbeds.html",
                 dynamicNamedData: "src/dynamicNamedData.html",
                 multipleDynamicSources: "src/multipleDynamicSources.html",
                 namedDataProvider: "src/namedDataProvider.html",

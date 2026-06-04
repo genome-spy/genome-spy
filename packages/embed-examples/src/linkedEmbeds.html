@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Linked GenomeSpy Embeds</title>
+    <style>
+        body {
+            margin: 2em;
+            padding: 0;
+            font-family: sans-serif;
+        }
+
+        .linked-embeds h2 {
+            font-size: 1em;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Linked GenomeSpy Embeds</h1>
+
+    <p>
+        The GenomeSpy instances below use separate embeds. A <code>LinkingManager</code>
+        registers each embed and synchronizes their named scale through the
+        ScaleResolution API.
+    </p>
+
+    <div class="linked-embeds">
+        <section>
+            <h2>Embed A</h2>
+            <div id="container-a"></div>
+        </section>
+        <section>
+            <h2>Embed B</h2>
+            <div id="container-b"></div>
+        </section>
+    </div>
+
+    <div id="dashboard"></div>
+
+    <script type="module" src="/linkedEmbeds.js"></script>
+</body>
+
+</html>
