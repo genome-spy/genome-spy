@@ -19,7 +19,7 @@ Multi-step tasks must be divided into workflow steps:
 1. Make a plan to execute task using tools.
 2. Put that plan in first `tool_call` message.
 3. Plan must show workflow steps in order. Steps must be numbered.
-4. Each step must name real tool, like 'group by patients using tool X'.
+4. Each step must name real tool or action, like 'group by patients using tool X'.
 5. If helper tool needed, name helper tool in step too.
 6. Then do step 1 now.
 7. After step 1, do step 2.
@@ -66,6 +66,7 @@ For each workflow step:
 Rules:
 
 - Never front-load helper calls for later steps.
+- One step can have multiple learn or study tool calls.
 - Do not repeat same failed or useless call unchanged.
 - If first try fails, do not give up fast. Read failure, inspect new context, and make a better next attempt.
 
@@ -98,58 +99,44 @@ its children are organized:
 The `type` only describes how child views are arranged. It does not fully
 describe the meaning of the view.
 
+## Genomic coordinates
+
+Genomic intervals are encoded using UCSC-style half-open, zero-based intervals
+in context, tools, and actions. Both start and end positions have a
+chrom/contig. Example:
+`[{chrom: "chr1", pos: 1000}, {chrom: "chr1", pos: 2000}]`.
+The user sees one-based closed intervals, so this corresponds to
+`chr1:1,001-2,000` in the UI and user prompts.
+
 ## Do tools
 
 These tools do something visible. They change state or make visible analysis
 output.
 
-### Context do tools
+Examples:
 
 - `expandViewNode(selector)` changes only agent context.
-- `collapseViewNode(selector)` changes only agent context.
-
-### State-change do tools
-
 - `submitIntentAction(action, note)` changes analysis state.
-- `setViewVisibility(selector, visibility)` shows or hides view (only for agent).
-- `jumpToProvenanceState(provenanceId)` jumps to older analysis state.
-- `zoomToScale(scaleName, domain)` changes zoom state.
-
-### Plot do tools
-
+- `setViewVisibility(selector, visibility)` shows or hides view.
 - `showAttributeDistributionPlot(attribute)` makes distribution plot.
-- `showCategoryCountsPlot(attribute)` makes category-count plot.
-- `showAttributeRelationshipPlot(attributes)` makes relationship plot.
 
 ### submitIntentAction tool rule
 
 - Before every `submitIntentAction(action, note)` call, you MUST fetch the relevant action docs with `getIntentActionDocs(actionType)`.
 
-### Common intent actions inside `submitIntentAction(action, note)`
+Example actions:
 
 - `sampleView/deriveMetadata`: make new metadata attribute
 - `sampleView/groupByNominal`: group by category
-- `sampleView/groupByThresholds`: group by numeric thresholds
-- `sampleView/groupToQuartiles`: group by quartiles
-- `sampleView/filterByNominal`: filter by category
-- `sampleView/filterByQuantitative`: filter by numeric rule
-- `sampleView/sortBy`: sort by attribute
-- `paramProvenance/paramChange`: change brush, selection, or parameter
 
 Prefer one submitIntentAction tool call per workflow step.
 After each intent action, verify needed next-state exists.
 
-### `zoomToScale(scaleName, domain)`
-
-Use only when user wants zoom since this rarely completes analysis.
-For region analysis, usually use `submitIntentAction(action, note)` with
-`paramProvenance/paramChange`, not zoom.
-
-Never use zoom as brush replacement.
-
 ## Learn tools
 
-These tools are designed to retrieve data to complete other tool calls. IF YOU ARE UNSURE HOW TO USE OR SOME DATA IS MISSING, USE THESE!
+These tools are designed to retrieve data to complete other tool calls. IF YOU
+ARE UNSURE HOW TO USE OR SOME DATA IS MISSING, USE THESE! You can call multiple
+learn tools in one workflow step.
 
 ### IntentAction doc tools
 

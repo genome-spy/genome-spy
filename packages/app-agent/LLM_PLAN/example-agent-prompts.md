@@ -13,6 +13,7 @@ Most of these work fine with both gpt-5.4-mini and Qwen3.6 35B MoE. Some are sti
 - Myc copy number vs. survival.
 - Show samples grouped into top and bottom quartiles by survival.
 - Mice without Sry gene (i.e., very low copy number) are unlikely to be male. Check if this is concordant with the Gender attribute. Show a plot.
+- I think it's a bit suspicious that some but not all females have deep Y chromosome deletion in the data.
 - Group into survival quartiles and remove the group that contains value 300.
 - Group into survival quartiles and remove the two middle groups.
 - Show only samples in the top and bottom quartiles by survival.
@@ -38,7 +39,7 @@ Most of these work fine with both gpt-5.4-mini and Qwen3.6 35B MoE. Some are sti
 - Show only samples with very high number of breaks.
 - Group by patient, then show boxplot of mutation counts.
 - Show a box plot that compares mean copy number over the ERBB2 gene across patients.
-- Show how mean copy number over the ERBB2 gene compares across patients. There are multiple samples per patient.
+- Show how mean copy number over the ERBB2 gene compares across patients. Use all samples from each patient, not just one representative sample.
 - Show a plot on how copy number compares across patients in the current selection.
 - What's the average copy number in the q arm of chromosome 6?
 - Group the samples into early (primary + interval) and late (relapse) groups.
@@ -46,7 +47,7 @@ Most of these work fine with both gpt-5.4-mini and Qwen3.6 35B MoE. Some are sti
 - Using the current selection brush, add the number of "stopgain" mutations to metadata.
 - Group the samples into two groups based on the presence of stopgain mutations in the 12q14.3 locus.
 - Are there stopgain mutations in the 12q14.3 locus?
-- Show only patients who have stopgain mutations in the 12q14.3 locus. There are multiple samples per patient.
+- Show only patients who have stopgain mutations in the 12q14.3 locus. All samples from those patients should be shown.
 - Keep only samples with amplifications within the current brush selection. Amplification is 2x current ploidy.
 - Identify samples that have an amplification in the 13q34 locus.
 - Group by patient, plot sampleTime, and tell me about "interval" in the plot. Also explain what the colors mean.

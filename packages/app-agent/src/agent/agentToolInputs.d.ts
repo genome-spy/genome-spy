@@ -398,8 +398,11 @@ export interface GetIntentActionTypeDocsToolInput {
  * Animate one named zoomable scale to an exact domain. Scale names come from
  * `scaleDomains` in the volatile context and from `domainRef` fields in the
  * view tree. Scales are not addressed with view selectors.
- * Zooming only changes the user-visible viewport. You cannot use it for
- * analysis purposes.
+ * Use this only when the user explicitly wants zooming. Zooming only changes
+ * the user-visible viewport and does not perform analysis. For region
+ * analysis, use `submitIntentAction(action, note)` with
+ * `paramProvenance/paramChange` instead. Never use zoom as a brush
+ * replacement.
  * @toolKind do
  * @toolSubkind state_change
  *
