@@ -10,6 +10,25 @@ export interface ScaleResolutionEvent {
 
 export type ScaleResolutionListener = (event: ScaleResolutionEvent) => void;
 
+export interface ZoomToOptions {
+    /**
+     * Approximate transition duration. Zero or omitted zooms immediately.
+     * Boolean `true` indicates a default duration.
+     */
+    duration?: boolean | number;
+
+    /**
+     * Render immediately without scheduling an animation frame.
+     *
+     * This is intended for synchronizing multiple GenomeSpy instances, where
+     * the target view should be redrawn during the same animation frame as the
+     * source view. Use it only for zero-duration zooms. It is not supported for
+     * animated transitions and may do redundant work if several domains are
+     * applied before the browser has a chance to paint.
+     */
+    renderImmediately?: boolean;
+}
+
 /**
  * A public API for ScaleResolution
  */
@@ -59,6 +78,14 @@ export interface ScaleResolutionApi {
 
     zoomTo(
         domain: number[] | ComplexDomain,
-        duration?: boolean | number
+        options?: ZoomToOptions
+    ): Promise<void>;
+
+    /**
+     * @deprecated Use the options object form: `zoomTo(domain, { duration })`.
+     */
+    zoomTo(
+        domain: number[] | ComplexDomain,
+        duration: boolean | number
     ): Promise<void>;
 }

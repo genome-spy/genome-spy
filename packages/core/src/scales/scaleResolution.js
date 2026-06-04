@@ -183,6 +183,7 @@ export default class ScaleResolution {
         this.#interactionController = new ScaleInteractionController({
             getScale: () => this.getScale(),
             getAnimator: () => this.#viewContext.animator,
+            renderImmediately: () => this.#viewContext.renderImmediately(),
             getInitialDomainSnapshot: () =>
                 this.#domainAggregator.initialDomainSnapshot,
             getResetDomain: () => this.#getConfiguredOrDefaultDomain(),
@@ -1273,11 +1274,11 @@ export default class ScaleResolution {
      * Immediately zooms to the given interval.
      *
      * @param {NumericDomain | ComplexDomain} domain
-     * @param {boolean | number} [duration] an approximate duration for transition.
-     *      Zero duration zooms immediately. Boolean `true` indicates a default duration.
+     * @param {import("../types/scaleResolutionApi.js").ZoomToOptions | boolean | number} [options]
+     *      Zoom options. Passing the duration directly as a boolean or number is deprecated.
      */
-    async zoomTo(domain, duration = false) {
-        return this.#interactionController.zoomTo(domain, duration);
+    async zoomTo(domain, options = false) {
+        return this.#interactionController.zoomTo(domain, options);
     }
 
     /**

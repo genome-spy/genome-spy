@@ -126,7 +126,7 @@ class LinkingManager {
     /**
      * @param {ScaleResolutionApi} source
      */
-    async #syncFrom(source) {
+    #syncFrom(source) {
         if (this.#syncing) {
             return;
         }
@@ -137,12 +137,13 @@ class LinkingManager {
 
         this.#syncing = true;
         try {
-            await Promise.all(
-                this.#scaleResolutions
-                    .values()
-                    .filter((scaleResolution) => scaleResolution !== source)
-                    .map((target) => target.zoomTo(domain))
-            );
+            this.#scaleResolutions
+                .values()
+                .filter((scaleResolution) => scaleResolution !== source)
+                .forEach(
+                    (target) =>
+                        void target.zoomTo(domain, { renderImmediately: true })
+                );
         } finally {
             this.#syncing = false;
             updateDashboard();

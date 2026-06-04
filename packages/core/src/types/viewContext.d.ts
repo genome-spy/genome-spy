@@ -34,6 +34,17 @@ export default interface ViewContext {
 
     requestLayoutReflow: () => void;
 
+    /**
+     * Renders the current scene immediately without scheduling an animation frame.
+     *
+     * This is intended for synchronization paths where another GenomeSpy
+     * instance is already rendering the current animation frame and this view
+     * must repaint after a synchronous state update, such as linked scale
+     * domains. Callers should use the animator for ordinary rendering. Calling
+     * this repeatedly before the browser paints may do redundant work.
+     */
+    renderImmediately: () => void;
+
     updateTooltip: <T>(
         datum: T,
         converter?: (datum: T) => Promise<TemplateResult>

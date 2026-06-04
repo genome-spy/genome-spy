@@ -27,6 +27,7 @@ import {
  * @typedef {import("../spec/scale.js").ComplexDomain} ComplexDomain
  * @typedef {import("../spec/scale.js").ZoomParams} ZoomParams
  * @typedef {import("../types/encoder.js").VegaScale} VegaScale
+ * @typedef {import("../types/scaleResolutionApi.js").ZoomToOptions} ZoomToOptions
  * @typedef {VegaScale & { props: import("../spec/scale.js").Scale }} ScaleWithProps
  */
 
@@ -36,6 +37,9 @@ export default class ScaleInteractionController {
 
     /** @type {() => import("../utils/animator.js").default} */
     #getAnimator;
+
+    /** @type {() => void} */
+    #renderImmediately;
 
     /** @type {() => number[]} */
     #getInitialDomainSnapshot;
@@ -56,6 +60,7 @@ export default class ScaleInteractionController {
      * @param {object} options
      * @param {() => ScaleWithProps} options.getScale
      * @param {() => import("../utils/animator.js").default} options.getAnimator
+     * @param {() => void} options.renderImmediately
      * @param {() => number[]} options.getInitialDomainSnapshot
      * @param {() => number[]} options.getResetDomain
      * @param {(domain: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
@@ -64,6 +69,7 @@ export default class ScaleInteractionController {
     constructor({
         getScale,
         getAnimator,
+        renderImmediately,
         getInitialDomainSnapshot,
         getResetDomain,
         fromComplexInterval,
@@ -71,6 +77,7 @@ export default class ScaleInteractionController {
     }) {
         this.#getScale = getScale;
         this.#getAnimator = getAnimator;
+        this.#renderImmediately = renderImmediately;
         this.#getInitialDomainSnapshot = getInitialDomainSnapshot;
         this.#getResetDomain = getResetDomain;
         this.#fromComplexInterval = fromComplexInterval;
@@ -170,13 +177,11 @@ export default class ScaleInteractionController {
      * Immediately zooms to the given interval.
      *
      * @param {NumericDomain | ComplexDomain} domain
-     * @param {boolean | number} [duration] an approximate duration for transition.
-     *      Zero duration zooms immediately. Boolean `true` indicates a default duration.
+     * @param {ZoomToOptions | boolean | number} [options] Zoom options.
+     *      Passing the duration directly as a boolean or number is deprecated.
      */
-    async zoomTo(domain, duration = false) {
-        if (isBoolean(duration)) {
-            duration = duration ? 700 : 0;
-        }
+    async zoomTo(domain, options = false) {
+        const { duration, renderImmediately } = normalizeZoomToOptions(options);
 
         if (!this.isZoomingSupported()) {
             throw new Error("Not a zoomable scale!");
@@ -195,6 +200,12 @@ export default class ScaleInteractionController {
         const from = /** @type {number[]} */ (scale.domain());
 
         if (duration > 0 && from.length == 2) {
+            if (renderImmediately) {
+                throw new Error(
+                    "renderImmediately is not supported for animated zooms."
+                );
+            }
+
             // Spans
             const fw = from[1] - from[0];
             const tw = to[1] - to[0];
@@ -234,7 +245,11 @@ export default class ScaleInteractionController {
         } else {
             this.#cancelZoomTransition();
             scale.domain(to);
-            animator?.requestRender();
+            if (renderImmediately) {
+                this.#renderImmediately();
+            } else {
+                animator?.requestRender();
+            }
         }
     }
 
@@ -277,6 +292,39 @@ export default class ScaleInteractionController {
 
         return 1.0;
     }
+}
+
+/**
+ * @param {ZoomToOptions | boolean | number | undefined} options
+ * @returns {{ duration: number, renderImmediately: boolean }}
+ */
+function normalizeZoomToOptions(options) {
+    if (options === undefined) {
+        return {
+            duration: 0,
+            renderImmediately: false,
+        };
+    }
+
+    if (isBoolean(options)) {
+        return {
+            duration: options ? 700 : 0,
+            renderImmediately: false,
+        };
+    }
+
+    if (typeof options === "number") {
+        return {
+            duration: options,
+            renderImmediately: false,
+        };
+    }
+
+    const duration = options.duration ?? 0;
+    return {
+        duration: isBoolean(duration) ? (duration ? 700 : 0) : duration,
+        renderImmediately: options.renderImmediately === true,
+    };
 }
 
 /**
