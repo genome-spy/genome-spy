@@ -1316,6 +1316,43 @@ describe("createAgentSessionController", () => {
         consoleError.mockRestore();
     });
 
+    it("logs unexpected agent loop failures before surfacing them in chat", async () => {
+        const consoleError = vi
+            .spyOn(console, "error")
+            .mockImplementation(() => {});
+        const runtime = createRuntimeMock();
+        runtime.requestAgentTurn.mockImplementation((message) => {
+            if (message === PREFLIGHT_MESSAGE) {
+                return Promise.resolve({
+                    response: {
+                        type: "answer",
+                        message: "I'm here",
+                    },
+                    trace: {
+                        totalMs: 9,
+                    },
+                });
+            }
+
+            return Promise.reject(new TypeError("loop boom"));
+        });
+
+        const controller = createAgentSessionController(runtime);
+        controller.subscribe(() => {});
+
+        await controller.open();
+        await controller.sendMessage("Show me something.");
+
+        const snapshot = controller.getSnapshot();
+        expect(snapshot.status).toBe("error");
+        expect(snapshot.lastError).toContain("loop boom");
+        expect(consoleError).toHaveBeenCalledWith(
+            "Agent loop failed:",
+            expect.any(TypeError)
+        );
+        consoleError.mockRestore();
+    });
+
     it("pauses when the same rejected tool call repeats", async () => {
         const runtime = createRuntimeMock();
         let agentTurnCallCount = 0;

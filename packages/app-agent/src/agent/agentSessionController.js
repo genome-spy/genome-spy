@@ -834,6 +834,7 @@ export class AgentSessionController {
                 return;
             }
 
+            console.error("Agent loop failed:", error);
             this.#state.pendingResponsePlaceholder = "";
             this.#state.status = "error";
             this.#state.lastError = String(error);
