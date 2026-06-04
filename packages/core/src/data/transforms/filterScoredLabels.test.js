@@ -130,10 +130,14 @@ describe("FilterScoredLabelsTransform", () => {
         expect(resolution.getDomainListenerCount()).toBe(1);
         expect(view.getBroadcastHandlerCount("layoutComputed")).toBe(1);
 
+        const filterSpy = vi.spyOn(transform, "_filterAndPropagate");
+
         resolution.emitDomain();
+        expect(filterSpy).toHaveBeenCalledTimes(1);
+
         view.emit("layoutComputed");
         expect(view.context.animator.requestTransition).toHaveBeenCalledTimes(
-            2
+            1
         );
 
         transform.dispose();
@@ -142,9 +146,11 @@ describe("FilterScoredLabelsTransform", () => {
         expect(view.getBroadcastHandlerCount("layoutComputed")).toBe(0);
 
         resolution.emitDomain();
+        expect(filterSpy).toHaveBeenCalledTimes(1);
+
         view.emit("layoutComputed");
         expect(view.context.animator.requestTransition).toHaveBeenCalledTimes(
-            2
+            1
         );
     });
 });

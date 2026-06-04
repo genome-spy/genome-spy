@@ -59,8 +59,9 @@ export default class FilterScoredLabelsTransform extends Transform {
         const callback = () => this._filterAndPropagate();
         this.schedule = () => view.context.animator.requestTransition(callback);
 
-        // Propagate when the domain changes
-        const domainListener = () => this.schedule();
+        // Propagate immediately when the domain changes so inertial zoom frames
+        // render with labels computed for the current scale domain.
+        const domainListener = () => this._filterAndPropagate();
         this.resolution.addEventListener("domain", domainListener);
         this.registerDisposer(() =>
             this.resolution.removeEventListener("domain", domainListener)
