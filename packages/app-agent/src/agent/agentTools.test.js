@@ -430,7 +430,7 @@ describe("agentTools", () => {
                 actionType: "sampleView/sortBy",
                 description:
                     "Sort samples in descending order by a selected attribute.",
-                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`.",
+                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`. Sorting is stable, so ties preserve current sample order.",
                 payloadFields: [
                     expect.objectContaining({
                         name: "attribute",
