@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
+
+### Bug Fixes
+
+* **app-agent:** guide recovery from missing attributes ([0832af2](https://github.com/genome-spy/genome-spy/commit/0832af22d1673b4045ec226ca1c50d1bd8db5f4d)) by @tuner
+* **app:** avoid double-counting sample sidebar width ([44b6ff7](https://github.com/genome-spy/genome-spy/commit/44b6ff719a47f4fb192df8ada13bd2a1e8807f91)) by @tuner
+* **app:** blur focus when hiding side panels ([83aa0bb](https://github.com/genome-spy/genome-spy/commit/83aa0bb793772b3eca2d6d8cabe30e98cdb556c4)) by @tuner
+* **app:** shorten metadata attribute menu labels ([f8e0fad](https://github.com/genome-spy/genome-spy/commit/f8e0fad6ea6b1ca65a1cae0a2c7a35c3b367bb4a)) by @tuner
+
+### Features
+
+* **app-agent:** compact sample attributes in agent context ([cbf2dbb](https://github.com/genome-spy/genome-spy/commit/cbf2dbbc6421072589b0c9d4a5afc209b565558d)) by @tuner
+* **app-agent:** expose metadata sources to agent ([433bdf9](https://github.com/genome-spy/genome-spy/commit/433bdf9068afc36ce8c7e338a5452ad8a0864477)) by @tuner
+* **app:** add sample group-level actions ([#380](https://github.com/genome-spy/genome-spy/issues/380)) ([623d23b](https://github.com/genome-spy/genome-spy/commit/623d23bf071e56b4726fb39de2f4a75c7c27d353)) by @tuner
+* **app:** configure sample layout ([2e94a77](https://github.com/genome-spy/genome-spy/commit/2e94a7759b853e2129676b71b2606514dac1108c)) by @tuner
+* **app:** show missing metadata cells ([4f14867](https://github.com/genome-spy/genome-spy/commit/4f14867197841727a912c6bbf354798bb053378c)) by @tuner
+* **core:** autoscroll tooltip containers ([08c1f19](https://github.com/genome-spy/genome-spy/commit/08c1f1970cd5aa4336b8fcc0ea91e1ac096f40cb)) by @tuner
+* **core:** expose params in embed api ([0b45810](https://github.com/genome-spy/genome-spy/commit/0b45810a69a36bb1dc627233c0800442c2dd75c3)) by @tuner
+
 # [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
 
 ### Bug Fixes

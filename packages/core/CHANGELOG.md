@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
+
+### Bug Fixes
+
+* **core:** avoid disabling vertex attributes on mark disposal ([4b4b518](https://github.com/genome-spy/genome-spy/commit/4b4b5189465f7363999feea5f021cf1ad3f06a90)) by @tuner
+* **core:** stabilize tiny rects ([ad8f08c](https://github.com/genome-spy/genome-spy/commit/ad8f08c4935126ffc5df0946d2fd40bcfc580fd0)) by @tuner
+* **core:** update scored labels on domain changes ([e42c101](https://github.com/genome-spy/genome-spy/commit/e42c10144875968352e9a22992575d02e02dbda7)) by @tuner
+
+### Features
+
+* **core:** autoscroll tooltip containers ([08c1f19](https://github.com/genome-spy/genome-spy/commit/08c1f1970cd5aa4336b8fcc0ea91e1ac096f40cb)) by @tuner
+* **core:** expose params in embed api ([0b45810](https://github.com/genome-spy/genome-spy/commit/0b45810a69a36bb1dc627233c0800442c2dd75c3)) by @tuner
+* **core:** support immediate zoom rendering ([542e1ea](https://github.com/genome-spy/genome-spy/commit/542e1eaf91a7592577b81215921c29aa28473421)) by @tuner
+
+### Performance Improvements
+
+* **core:** batch BigWig interval requests ([47a1eff](https://github.com/genome-spy/genome-spy/commit/47a1eff57ce327ab7b39e2a87ca967e7fbda1469)), closes [GMOD/bbi-js#84](https://github.com/GMOD/bbi-js/issues/84) by @tuner
+
 # [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
 
 ### Bug Fixes

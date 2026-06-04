@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
+
+### Features
+
+* **core:** expose params in embed api ([0b45810](https://github.com/genome-spy/genome-spy/commit/0b45810a69a36bb1dc627233c0800442c2dd75c3)) by @tuner
+* **core:** support immediate zoom rendering ([542e1ea](https://github.com/genome-spy/genome-spy/commit/542e1eaf91a7592577b81215921c29aa28473421)) by @tuner
+* **embed-examples:** add scale linking between embeds ([8963c84](https://github.com/genome-spy/genome-spy/commit/8963c84e591827f506ec29dc8669d03ebbd9cb22)) by @tuner
+
 # [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
 
 **Note:** Version bump only for package @genome-spy/embed-examples

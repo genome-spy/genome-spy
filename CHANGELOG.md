@@ -3,6 +3,42 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
+
+### Bug Fixes
+
+* **app-agent:** clarify pooled selection feature summaries ([9707463](https://github.com/genome-spy/genome-spy/commit/970746350eeb1cda69f8af1fc909e064f2ff5f4b)) by @tuner
+* **app-agent:** forward agent turn abort signal ([d4e96c2](https://github.com/genome-spy/genome-spy/commit/d4e96c226efc6ec415c2f58b5cb3c04a580c69ea)) by @tuner
+* **app-agent:** guide recovery from missing attributes ([0832af2](https://github.com/genome-spy/genome-spy/commit/0832af22d1673b4045ec226ca1c50d1bd8db5f4d)) by @tuner
+* **app-agent:** log agent loop failures ([76e011b](https://github.com/genome-spy/genome-spy/commit/76e011b95a3adc0d0d55617fb675e35364ac6556)) by @tuner
+* **app-agent:** reject invalid parameter value types ([826dbc4](https://github.com/genome-spy/genome-spy/commit/826dbc4ee30e7ea43d60dbd7fed6cd442b438df9)) by @tuner
+* **app-agent:** restore canvas focus when closing chat ([8f93e9b](https://github.com/genome-spy/genome-spy/commit/8f93e9bbb2ff0e5a97e6851e8dc2e08cdb25090e)) by @tuner
+* **app-agent:** use wildcard for datum field search ([1e5940c](https://github.com/genome-spy/genome-spy/commit/1e5940cce54735b9e7369aded92a8a4e84c3c780)) by @tuner
+* **app:** avoid double-counting sample sidebar width ([44b6ff7](https://github.com/genome-spy/genome-spy/commit/44b6ff719a47f4fb192df8ada13bd2a1e8807f91)) by @tuner
+* **app:** blur focus when hiding side panels ([83aa0bb](https://github.com/genome-spy/genome-spy/commit/83aa0bb793772b3eca2d6d8cabe30e98cdb556c4)) by @tuner
+* **app:** shorten metadata attribute menu labels ([f8e0fad](https://github.com/genome-spy/genome-spy/commit/f8e0fad6ea6b1ca65a1cae0a2c7a35c3b367bb4a)) by @tuner
+* **core:** avoid disabling vertex attributes on mark disposal ([4b4b518](https://github.com/genome-spy/genome-spy/commit/4b4b5189465f7363999feea5f021cf1ad3f06a90)) by @tuner
+* **core:** stabilize tiny rects ([ad8f08c](https://github.com/genome-spy/genome-spy/commit/ad8f08c4935126ffc5df0946d2fd40bcfc580fd0)) by @tuner
+* **core:** update scored labels on domain changes ([e42c101](https://github.com/genome-spy/genome-spy/commit/e42c10144875968352e9a22992575d02e02dbda7)) by @tuner
+
+### Features
+
+* **app-agent:** agent benchmark workflows ([#381](https://github.com/genome-spy/genome-spy/issues/381)) ([26f1f0f](https://github.com/genome-spy/genome-spy/commit/26f1f0fb1399a145e3f5ab1e81b490d2d2bfef6b)) by @okunator
+* **app-agent:** compact sample attributes in agent context ([cbf2dbb](https://github.com/genome-spy/genome-spy/commit/cbf2dbbc6421072589b0c9d4a5afc209b565558d)) by @tuner
+* **app-agent:** expose metadata sources to agent ([433bdf9](https://github.com/genome-spy/genome-spy/commit/433bdf9068afc36ce8c7e338a5452ad8a0864477)) by @tuner
+* **app-agent:** recover from stuck agent loops ([c2c8219](https://github.com/genome-spy/genome-spy/commit/c2c821989ba7776c67b647d6213241d052e283d3)) by @tuner
+* **app:** add sample group-level actions ([#380](https://github.com/genome-spy/genome-spy/issues/380)) ([623d23b](https://github.com/genome-spy/genome-spy/commit/623d23bf071e56b4726fb39de2f4a75c7c27d353)) by @tuner
+* **app:** configure sample layout ([2e94a77](https://github.com/genome-spy/genome-spy/commit/2e94a7759b853e2129676b71b2606514dac1108c)) by @tuner
+* **app:** show missing metadata cells ([4f14867](https://github.com/genome-spy/genome-spy/commit/4f14867197841727a912c6bbf354798bb053378c)) by @tuner
+* **core:** autoscroll tooltip containers ([08c1f19](https://github.com/genome-spy/genome-spy/commit/08c1f1970cd5aa4336b8fcc0ea91e1ac096f40cb)) by @tuner
+* **core:** expose params in embed api ([0b45810](https://github.com/genome-spy/genome-spy/commit/0b45810a69a36bb1dc627233c0800442c2dd75c3)) by @tuner
+* **core:** support immediate zoom rendering ([542e1ea](https://github.com/genome-spy/genome-spy/commit/542e1eaf91a7592577b81215921c29aa28473421)) by @tuner
+* **embed-examples:** add scale linking between embeds ([8963c84](https://github.com/genome-spy/genome-spy/commit/8963c84e591827f506ec29dc8669d03ebbd9cb22)) by @tuner
+
+### Performance Improvements
+
+* **core:** batch BigWig interval requests ([47a1eff](https://github.com/genome-spy/genome-spy/commit/47a1eff57ce327ab7b39e2a87ca967e7fbda1469)), closes [GMOD/bbi-js#84](https://github.com/GMOD/bbi-js/issues/84) by @tuner
+
 # [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
 
 ### Bug Fixes

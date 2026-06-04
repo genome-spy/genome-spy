@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
+
+### Bug Fixes
+
+* **app-agent:** clarify pooled selection feature summaries ([9707463](https://github.com/genome-spy/genome-spy/commit/970746350eeb1cda69f8af1fc909e064f2ff5f4b)) by @tuner
+* **app-agent:** forward agent turn abort signal ([d4e96c2](https://github.com/genome-spy/genome-spy/commit/d4e96c226efc6ec415c2f58b5cb3c04a580c69ea)) by @tuner
+* **app-agent:** guide recovery from missing attributes ([0832af2](https://github.com/genome-spy/genome-spy/commit/0832af22d1673b4045ec226ca1c50d1bd8db5f4d)) by @tuner
+* **app-agent:** log agent loop failures ([76e011b](https://github.com/genome-spy/genome-spy/commit/76e011b95a3adc0d0d55617fb675e35364ac6556)) by @tuner
+* **app-agent:** reject invalid parameter value types ([826dbc4](https://github.com/genome-spy/genome-spy/commit/826dbc4ee30e7ea43d60dbd7fed6cd442b438df9)) by @tuner
+* **app-agent:** restore canvas focus when closing chat ([8f93e9b](https://github.com/genome-spy/genome-spy/commit/8f93e9bbb2ff0e5a97e6851e8dc2e08cdb25090e)) by @tuner
+* **app-agent:** use wildcard for datum field search ([1e5940c](https://github.com/genome-spy/genome-spy/commit/1e5940cce54735b9e7369aded92a8a4e84c3c780)) by @tuner
+
+### Features
+
+* **app-agent:** agent benchmark workflows ([#381](https://github.com/genome-spy/genome-spy/issues/381)) ([26f1f0f](https://github.com/genome-spy/genome-spy/commit/26f1f0fb1399a145e3f5ab1e81b490d2d2bfef6b)) by @okunator
+* **app-agent:** compact sample attributes in agent context ([cbf2dbb](https://github.com/genome-spy/genome-spy/commit/cbf2dbbc6421072589b0c9d4a5afc209b565558d)) by @tuner
+* **app-agent:** expose metadata sources to agent ([433bdf9](https://github.com/genome-spy/genome-spy/commit/433bdf9068afc36ce8c7e338a5452ad8a0864477)) by @tuner
+* **app-agent:** recover from stuck agent loops ([c2c8219](https://github.com/genome-spy/genome-spy/commit/c2c821989ba7776c67b647d6213241d052e283d3)) by @tuner
+* **app:** add sample group-level actions ([#380](https://github.com/genome-spy/genome-spy/issues/380)) ([623d23b](https://github.com/genome-spy/genome-spy/commit/623d23bf071e56b4726fb39de2f4a75c7c27d353)) by @tuner
+
 # [0.76.0](https://github.com/genome-spy/genome-spy/compare/v0.75.0...v0.76.0) (2026-05-25)
 
 ### Bug Fixes
