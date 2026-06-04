@@ -80,8 +80,8 @@ void main(void) {
 
     vec2 size = pos2 - pos1;
 
-    if (size.x <= 0.0 || size.y <= 0.0) {
-        // Early exit. May increase performance or not...
+    if (size.x < 0.0 || size.y < 0.0) {
+        // Keep zero-sized rects alive so min-size clamping can stabilize them.
         gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
