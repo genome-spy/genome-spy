@@ -46,6 +46,33 @@ describe("AppUiRegistry", () => {
         expect(secondPanel.parentElement).toBe(sidePanelHost);
     });
 
+    it("blurs focus from a hidden side panel", () => {
+        const registry = new AppUiRegistry();
+        const appShell = document.createElement("div");
+        const panel = document.createElement("section");
+        const textarea = document.createElement("textarea");
+        panel.append(textarea);
+
+        document.body.append(appShell);
+        registry.attachAppShell(appShell);
+
+        const handle = registry.registerSidePanel({
+            id: "focusable",
+            element: panel,
+        });
+
+        handle.show();
+        textarea.focus();
+        expect(document.activeElement).toBe(textarea);
+
+        handle.hide();
+
+        expect(panel.hidden).toBe(true);
+        expect(document.activeElement).not.toBe(textarea);
+
+        appShell.remove();
+    });
+
     it("snaps measured side panel width to integer pixels", () => {
         const registry = new AppUiRegistry();
         const appShell = document.createElement("div");

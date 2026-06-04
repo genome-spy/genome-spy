@@ -161,6 +161,9 @@ export default class AppUiRegistry extends EventTarget {
             : undefined;
 
         for (const panel of this.#sidePanels.values()) {
+            if (panel !== activePanel) {
+                this.#blurFocusedDescendant(panel.element);
+            }
             if (panel.element.parentElement !== this.#sidePanelHost) {
                 this.#sidePanelHost.append(panel.element);
             }
@@ -194,5 +197,31 @@ export default class AppUiRegistry extends EventTarget {
 
     #emitChange() {
         this.dispatchEvent(new Event("change"));
+    }
+
+    /**
+     * Blurs the focused element when it is inside the given subtree.
+     *
+     * This handles focus inside shadow roots as well.
+     *
+     * @param {HTMLElement} element
+     */
+    #blurFocusedDescendant(element) {
+        const activeElement = document.activeElement;
+        if (!activeElement || activeElement === document.body) {
+            return;
+        }
+        if (!element.contains(activeElement)) {
+            return;
+        }
+
+        let focusedElement = activeElement;
+        while (focusedElement.shadowRoot?.activeElement) {
+            focusedElement = focusedElement.shadowRoot.activeElement;
+        }
+
+        if (element.contains(focusedElement)) {
+            focusedElement.blur?.();
+        }
     }
 }
