@@ -893,6 +893,19 @@ export async function toggleAgentChatPanel(app) {
         return;
     }
 
+    /**
+     * Restore focus to the GenomeSpy canvas so view-level shortcuts work again.
+     *
+     * @param {any} app
+     */
+    const focusGenomeSpyCanvas = (app) => {
+        /** @type {HTMLCanvasElement | null} */
+        const canvas = app.appContainer?.querySelector(
+            ".genome-spy-container canvas"
+        );
+        canvas?.focus();
+    };
+
     let host = agentState.agentChatPanelHost;
 
     if (!host) {
@@ -933,6 +946,8 @@ export async function toggleAgentChatPanel(app) {
             const textarea = panel.renderRoot.querySelector("textarea");
             textarea?.focus();
         }
+    } else {
+        focusGenomeSpyCanvas(app);
     }
 }
 

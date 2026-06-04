@@ -93,6 +93,43 @@ describe("gs-agent-chat-panel", () => {
         expect(sidePanelHandle.show).toHaveBeenCalledTimes(1);
     });
 
+    it("restores focus to the canvas when the panel is closed", async () => {
+        const sidePanelHandle = {
+            show: vi.fn(),
+            hide: vi.fn(),
+            toggle: vi.fn(() => false),
+            dispose: vi.fn(),
+        };
+        const appContainer = document.createElement("div");
+        const genomeSpyContainer = document.createElement("div");
+        genomeSpyContainer.className = "genome-spy-container";
+        const canvas = document.createElement("canvas");
+        canvas.setAttribute("tabindex", "-1");
+        canvas.focus = vi.fn();
+        genomeSpyContainer.append(canvas);
+        appContainer.append(genomeSpyContainer);
+        const app = {
+            appContainer,
+            ui: {
+                registerSidePanel: vi.fn(() => sidePanelHandle),
+            },
+        };
+
+        getAgentState(app).agentAdapter = {
+            requestAgentTurn: vi.fn(),
+            getAgentContext: vi.fn(() => ({})),
+            getAgentVolatileContext: vi.fn(() => ({})),
+            executeActions: vi.fn(),
+        };
+        getAgentState(app).agentChatPanelHandle = sidePanelHandle;
+        getAgentState(app).agentChatPanelHost = document.createElement("div");
+
+        await toggleAgentChatPanel(app);
+
+        expect(sidePanelHandle.toggle).toHaveBeenCalledTimes(1);
+        expect(canvas.focus).toHaveBeenCalledTimes(1);
+    });
+
     it("renders result summary sets as reusable rich content", async () => {
         const content = html`Group by thresholds ${formatSet(["> 0"])} as
         ${formatSet(["Loss", "Gain"])} on stopgain_12q14_3`;
