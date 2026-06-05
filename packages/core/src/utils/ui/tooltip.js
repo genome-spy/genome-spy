@@ -1,4 +1,3 @@
-import clientPoint from "../point.js";
 import { html, render } from "lit";
 import { peek } from "../arrayUtils.js";
 
@@ -22,8 +21,7 @@ export default class Tooltip {
     /** @type {HTMLDivElement} */
     #element;
 
-    /** @type {HTMLElement} */
-    #container;
+    #popoverOpen = false;
 
     #enabledStack = [true];
 
@@ -31,11 +29,10 @@ export default class Tooltip {
      * @param {HTMLElement} container
      */
     constructor(container) {
-        this.#container = container;
-
         this.#element = document.createElement("div");
         this.#element.className = "tooltip";
-        this.#container.appendChild(this.#element);
+        this.#element.setAttribute("popover", "manual");
+        container.appendChild(this.#element);
 
         this.clear();
     }
@@ -61,6 +58,7 @@ export default class Tooltip {
     set visible(visible) {
         if (visible != this.#visible) {
             this.#element.style.display = visible ? null : "none";
+            this.#setPopoverOpen(visible);
             this.#visible = visible;
         }
     }
@@ -71,6 +69,13 @@ export default class Tooltip {
 
     get enabled() {
         return peek(this.#enabledStack) ?? true;
+    }
+
+    /**
+     * @param {Event} event
+     */
+    containsEvent(event) {
+        return event.composedPath().includes(this.#element);
     }
 
     /**
@@ -95,7 +100,10 @@ export default class Tooltip {
             return;
         }
 
-        this.mouseCoords = clientPoint(this.#container, mouseEvent);
+        this.mouseCoords = /** @type {[number, number]} */ ([
+            mouseEvent.clientX,
+            mouseEvent.clientY,
+        ]);
 
         const now = performance.now();
 
@@ -130,12 +138,12 @@ export default class Tooltip {
 
     updatePlacement() {
         /** Space between pointer and tooltip box */
-        const spacing = 20;
+        const spacing = 10;
 
         const [mouseX, mouseY] = this.mouseCoords;
 
         let x = mouseX + spacing;
-        if (x > this.#container.clientWidth - this.#element.offsetWidth) {
+        if (x > window.innerWidth - spacing - this.#element.offsetWidth) {
             x = mouseX - spacing - this.#element.offsetWidth;
         }
         this.#element.style.left = x + "px";
@@ -143,7 +151,7 @@ export default class Tooltip {
         this.#element.style.top =
             Math.min(
                 mouseY + spacing,
-                this.#container.clientHeight - this.#element.offsetHeight
+                window.innerHeight - spacing - this.#element.offsetHeight
             ) + "px";
     }
 
@@ -213,6 +221,23 @@ export default class Tooltip {
 
     _isPenalty() {
         return this.#penaltyUntil && this.#penaltyUntil > performance.now();
+    }
+
+    /**
+     * @param {boolean} open
+     */
+    #setPopoverOpen(open) {
+        if (open == this.#popoverOpen) {
+            return;
+        }
+
+        if (open && this.#element.showPopover) {
+            this.#element.showPopover();
+        } else if (!open && this.#element.hidePopover) {
+            this.#element.hidePopover();
+        }
+
+        this.#popoverOpen = open;
     }
 }
 

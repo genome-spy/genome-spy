@@ -87,7 +87,10 @@ height: 1.5em;
 }
 
 .tooltip {
-position: absolute;
+position: fixed;
+inset: auto;
+margin: 0;
+border: 0;
 
 max-width: 450px;
 overflow: hidden;

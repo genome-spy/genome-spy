@@ -45,6 +45,13 @@ export default class InteractionController {
     #suppressTooltipUntilMouseMove = false;
     #hoverTrackingSuspensionCount = 0;
     #postRenderHoverRefreshRequested = false;
+
+    #dismissStickyTooltip() {
+        this.#tooltip.sticky = false;
+        this.#suppressTooltipUntilMouseMove = true;
+        this.#tooltip.clear();
+    }
+
     /**
      * @param {object} options
      * @param {import("../view/view.js").default} options.viewRoot
@@ -153,13 +160,48 @@ export default class InteractionController {
         this.#cursorManager.clear();
     }
 
+    /**
+     * @returns {() => void}
+     */
     registerInteractionEvents() {
         const canvas = this.#glHelper.canvas;
+        /** @type {Array<() => void>} */
+        const removers = [];
+
+        /**
+         * @param {EventTarget} target
+         * @param {string} type
+         * @param {EventListener} listener
+         * @param {AddEventListenerOptions} [options]
+         */
+        const addListener = (target, type, listener, options) => {
+            target.addEventListener(type, listener, options);
+            removers.push(() =>
+                target.removeEventListener(type, listener, options)
+            );
+        };
 
         let lastWheelEvent = performance.now();
         let longPressTriggered = false;
         /** @type {{ pointerCount: 1 | 2, centerX: number, centerY: number, distance: number } | undefined} */
         let previousTouchGesture;
+
+        if (globalThis.document?.addEventListener) {
+            addListener(
+                document,
+                "mousedown",
+                (/** @type {MouseEvent} */ event) => {
+                    if (
+                        this.#tooltip.sticky &&
+                        !event.composedPath().includes(canvas) &&
+                        !this.#tooltip.containsEvent(event)
+                    ) {
+                        this.#dismissStickyTooltip();
+                    }
+                },
+                { capture: true }
+            );
+        }
 
         /**
          * @param {Point} point
@@ -343,15 +385,13 @@ export default class InteractionController {
             }
         };
 
-        canvas.addEventListener("mousedown", (/** @type {MouseEvent} */ e) => {
+        addListener(canvas, "mousedown", (/** @type {MouseEvent} */ e) => {
             this.#mouseDownCoords = Point.fromMouseEvent(e);
             this.#longPressPending = false;
             const hasModifier = e.shiftKey || e.ctrlKey || e.metaKey;
 
             if (this.#tooltip.sticky) {
-                this.#tooltip.sticky = false;
-                this.#suppressTooltipUntilMouseMove = true;
-                this.#tooltip.clear();
+                this.#dismissStickyTooltip();
                 // Dismiss the sticky tooltip before routing the press so the
                 // click only affects the tooltip state.
                 longPressTriggered = true;
@@ -427,7 +467,7 @@ export default class InteractionController {
             "mousemove",
             "contextmenu",
             "dblclick",
-        ].forEach((type) => canvas.addEventListener(type, listener));
+        ].forEach((type) => addListener(canvas, type, listener));
 
         /**
          * @param {number} clientX
@@ -574,25 +614,23 @@ export default class InteractionController {
             previousTouchGesture = readTouchGesture(touchEvent.touches);
         };
 
-        canvas.addEventListener("touchstart", handleTouchStartOrMove, {
+        addListener(canvas, "touchstart", handleTouchStartOrMove, {
             passive: false,
         });
-        canvas.addEventListener("touchmove", handleTouchStartOrMove, {
+        addListener(canvas, "touchmove", handleTouchStartOrMove, {
             passive: false,
         });
-        canvas.addEventListener("touchend", handleTouchEndOrCancel, {
+        addListener(canvas, "touchend", handleTouchEndOrCancel, {
             passive: false,
         });
-        canvas.addEventListener("touchcancel", handleTouchEndOrCancel, {
+        addListener(canvas, "touchcancel", handleTouchEndOrCancel, {
             passive: false,
         });
 
         // Prevent text selections etc while dragging
-        canvas.addEventListener("dragstart", (event) =>
-            event.stopPropagation()
-        );
+        addListener(canvas, "dragstart", (event) => event.stopPropagation());
 
-        canvas.addEventListener("mouseout", (event) => {
+        addListener(canvas, "mouseout", (event) => {
             if (this.#isInteractionFrozen()) {
                 return;
             }
@@ -610,6 +648,12 @@ export default class InteractionController {
             this.#tooltip.clear();
             this.#currentHover = null;
         });
+
+        return () => {
+            for (const remove of removers) {
+                remove();
+            }
+        };
     }
 
     /**

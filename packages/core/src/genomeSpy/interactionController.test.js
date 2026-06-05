@@ -14,6 +14,80 @@ vi.mock("../gl/webGLHelper.js", () => ({
         readPickingPixel(...args),
 }));
 
+class CanvasStub extends EventTarget {
+    constructor() {
+        super();
+        this.style = { cursor: "" };
+        this.clientLeft = 0;
+        this.clientTop = 0;
+        this.clientWidth = 100;
+        this.clientHeight = 100;
+    }
+
+    getBoundingClientRect() {
+        return {
+            left: 0,
+            top: 0,
+        };
+    }
+}
+
+function installEventTargetDocument() {
+    globalThis.document = /** @type {Document} */ (
+        /** @type {any} */ (new EventTarget())
+    );
+    globalThis.document.body = /** @type {HTMLElement} */ (
+        /** @type {any} */ ({
+            classList: {
+                contains: /** @returns {boolean} */ () => false,
+            },
+        })
+    );
+}
+
+/**
+ * @param {object} options
+ * @param {EventTarget} [options.canvas]
+ * @param {Partial<import("../utils/ui/tooltip.js").default>} [options.tooltip]
+ * @returns {{ controller: InteractionController, tooltip: any }}
+ */
+function createMinimalInteractionController({ canvas, tooltip = {} } = {}) {
+    const actualTooltip = {
+        clear: /** @returns {void} */ () => undefined,
+        containsEvent: /** @returns {boolean} */ () => false,
+        handleMouseMove: /** @returns {void} */ () => undefined,
+        pushEnabledState: /** @returns {void} */ () => undefined,
+        popEnabledState: /** @returns {void} */ () => undefined,
+        updateWithDatum: /** @returns {void} */ () => undefined,
+        visible: true,
+        sticky: true,
+        ...tooltip,
+    };
+
+    return {
+        controller: new InteractionController({
+            viewRoot: /** @type {any} */ ({
+                propagateInteraction: /** @returns {void} */ () => undefined,
+                visit: /** @returns {void} */ () => undefined,
+            }),
+            glHelper: /** @type {any} */ ({
+                canvas: canvas ?? new CanvasStub(),
+                gl: {},
+                _pickingBufferInfo: {},
+            }),
+            tooltip: /** @type {any} */ (actualTooltip),
+            animator: /** @type {any} */ ({
+                requestRender: /** @returns {void} */ () => undefined,
+            }),
+            emitEvent: /** @returns {void} */ () => undefined,
+            tooltipHandlers: /** @type {Record<string, any>} */ ({}),
+            renderPickingFramebuffer: /** @returns {void} */ () => undefined,
+            getDevicePixelRatio: () => 1,
+        }),
+        tooltip: actualTooltip,
+    };
+}
+
 describe("InteractionController", () => {
     beforeEach(() => {
         readPickingPixel.mockReset();
@@ -885,5 +959,58 @@ describe("InteractionController", () => {
         );
 
         expect(updateWithDatum).toHaveBeenCalledTimes(1);
+    });
+
+    it("dismisses a sticky tooltip when mousedown starts outside the canvas", () => {
+        installEventTargetDocument();
+        const clear = vi.fn();
+        const { controller, tooltip } = createMinimalInteractionController({
+            tooltip: { clear },
+        });
+
+        controller.registerInteractionEvents();
+
+        document.dispatchEvent(new Event("mousedown"));
+
+        expect(tooltip.sticky).toBe(false);
+        expect(clear).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps a sticky tooltip open when mousedown starts inside the tooltip", () => {
+        installEventTargetDocument();
+        const tooltipElement = new EventTarget();
+        const clear = vi.fn();
+        const { controller, tooltip } = createMinimalInteractionController({
+            tooltip: {
+                clear,
+                containsEvent: (/** @type {Event} */ event) =>
+                    event.composedPath().includes(tooltipElement),
+            },
+        });
+
+        controller.registerInteractionEvents();
+
+        const event = new Event("mousedown");
+        event.composedPath = () => [tooltipElement, document];
+        document.dispatchEvent(event);
+
+        expect(tooltip.sticky).toBe(true);
+        expect(clear).not.toHaveBeenCalled();
+    });
+
+    it("removes the outside sticky tooltip listener during cleanup", () => {
+        installEventTargetDocument();
+        const clear = vi.fn();
+        const { controller, tooltip } = createMinimalInteractionController({
+            tooltip: { clear },
+        });
+
+        const cleanup = controller.registerInteractionEvents();
+        cleanup();
+
+        document.dispatchEvent(new Event("mousedown"));
+
+        expect(tooltip.sticky).toBe(true);
+        expect(clear).not.toHaveBeenCalled();
     });
 });

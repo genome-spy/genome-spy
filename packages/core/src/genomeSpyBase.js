@@ -535,7 +535,9 @@ export default class GenomeSpy {
 
             await this.#prepareViewsAndData();
 
-            this.#interactionController.registerInteractionEvents();
+            this.#destructionCallbacks.push(
+                this.#interactionController.registerInteractionEvents()
+            );
 
             this.computeLayout();
             this.animator.requestRender();
