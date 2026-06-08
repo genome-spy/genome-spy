@@ -42,6 +42,14 @@ export class SampleLabelView extends UnitView {
     #attributeInfoSource;
 
     /**
+     * Last sample-state snapshot. Hidden views may not have a data source yet,
+     * so the snapshot is replayed when lazy initialization creates one.
+     *
+     * @type {import("./state/sampleState.js").Sample[]}
+     */
+    #samples = [];
+
+    /**
      * @param {import("./sampleView.js").default} sampleView
      * @param {import("@genome-spy/core/view/containerView.js").default} sidebarView
      */
@@ -81,6 +89,11 @@ export class SampleLabelView extends UnitView {
                 }
             )
         );
+        this.registerDisposer(
+            this._addBroadcastHandler("subtreeDataReady", () => {
+                this.#setSamples(this.#samples);
+            })
+        );
     }
 
     /**
@@ -88,13 +101,18 @@ export class SampleLabelView extends UnitView {
      * @param {import("./state/sampleState.js").Sample[]} samples
      */
     #setSamples(samples) {
+        this.#samples = samples;
+
         const dynamicSource =
             /** @type {import("@genome-spy/core/data/sources/namedSource.js").default} */ (
                 this.flowHandle?.dataSource
             );
 
         if (!dynamicSource) {
-            throw new Error("Cannot find sample label data source handle!");
+            // Configured-hidden views are intentionally skipped by lazy data
+            // initialization. Keep #samples current and replay it when the
+            // lazy-initialized subtree reports that its data source is ready.
+            return;
         }
 
         const labelTitle = getLabelTitle(this.#sampleView.spec.samples) ?? "";

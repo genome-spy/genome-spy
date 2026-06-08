@@ -7,6 +7,9 @@ import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
 import { getNonChromeViews } from "@genome-spy/core/view/viewSelectors.js";
+import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
+import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
+import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
@@ -392,6 +395,54 @@ describe("SampleView", () => {
         } finally {
             vi.unstubAllGlobals();
         }
+    });
+
+    test("loads when sample labels are initially hidden", async () => {
+        let labelsVisible = false;
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (candidate) =>
+            candidate.spec.name !== "sample-labels" || labelsVisible;
+
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+            context,
+            initializeFlow: false,
+        });
+        initializeViewSubtree(view, context.dataFlow, (candidate) =>
+            candidate.isConfiguredVisible()
+        );
+
+        // Mirrors loading a bookmark where the label view is hidden before the
+        // first sample-state update arrives.
+        expect(view.sampleLabelView.flowHandle).toBeUndefined();
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", indexNumber: 0 }],
+            })
+        );
+
+        labelsVisible = true;
+        await initializeVisibleViewData(
+            view,
+            context.dataFlow,
+            context.fontManager
+        );
+
+        expect(view.sampleLabelView.flowHandle?.collector.getItemCount()).toBe(
+            1
+        );
     });
 
     test("reserves sidebar padding when computing main pane coordinates", async () => {
