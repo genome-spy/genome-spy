@@ -9,6 +9,7 @@ import {
     getConfiguredNamedRange,
     isConfigRangeName,
 } from "../config/scaleConfig.js";
+import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import { applyLockedProperties, getDefaultScaleType } from "./scaleRules.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 
@@ -132,8 +133,10 @@ export function resolveScalePropsBase({
     }
 
     if (props.domainTransition === undefined) {
-        const hasExprDrivenDomain = memberList.some((member) =>
-            isExprRef(member.channelDef.scale?.domain)
+        const hasExprDrivenDomain = memberList.some(
+            (member) =>
+                collectConfiguredDomainExprRefs(member.channelDef.scale?.domain)
+                    .length > 0
         );
         props.domainTransition = !hasExprDrivenDomain;
     }

@@ -28,7 +28,7 @@ import {
     isPrimaryPositionalChannel,
     isSecondaryChannel,
 } from "../encoder/encoder.js";
-import { isExprRef } from "../paramRuntime/paramUtils.js";
+import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import createIndexer from "../utils/indexer.js";
@@ -658,13 +658,18 @@ export default class ScaleResolution {
                 continue;
             }
             const domain = member.channelDef.scale?.domain;
-            if (!isExprRef(domain)) {
+            const exprRefs = collectConfiguredDomainExprRefs(domain);
+            if (exprRefs.length === 0) {
                 continue;
             }
 
-            const expr = member.view.paramRuntime.createExpression(domain.expr);
-            const unsubscribe = expr.subscribe(listener);
-            this.#configuredDomainExprUnsubscribers.push(unsubscribe);
+            for (const exprRef of exprRefs) {
+                const expr = member.view.paramRuntime.createExpression(
+                    exprRef.expr
+                );
+                const unsubscribe = expr.subscribe(listener);
+                this.#configuredDomainExprUnsubscribers.push(unsubscribe);
+            }
         }
     }
 

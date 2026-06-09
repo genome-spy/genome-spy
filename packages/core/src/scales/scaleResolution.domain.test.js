@@ -104,6 +104,66 @@ describe("Scale resolution domain handling", () => {
         expect(r(getScaleDomain(firstChild, "y"))).toEqual([0, 6]);
     });
 
+    test("Configured domains can contain ExprRefs inside arrays and update reactively", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ y: 1 }] },
+                params: [{ name: "upperBound", value: 2 }],
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: [{ expr: "0" }, { expr: "upperBound" }],
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "y");
+
+        expect(r(resolution.getDomain())).toEqual([0, 2]);
+        expect(resolution.getScale().props.domainTransition).toBe(false);
+
+        view.paramRuntime.setValue("upperBound", 6);
+        await view.paramRuntime.whenPropagated();
+
+        expect(r(resolution.getDomain())).toEqual([0, 6]);
+    });
+
+    test("Configured domains can mix literals and ExprRefs inside arrays", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ y: 1 }] },
+                params: [{ name: "upperBound", value: 2 }],
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: {
+                            domain: [0, { expr: "upperBound" }],
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "y");
+
+        expect(r(resolution.getDomain())).toEqual([0, 2]);
+        expect(resolution.getScale().props.domainTransition).toBe(false);
+
+        view.paramRuntime.setValue("upperBound", 6);
+        await view.paramRuntime.whenPropagated();
+
+        expect(r(resolution.getDomain())).toEqual([0, 6]);
+    });
+
     test("domainTransition defaults to true for ordinary domains", async () => {
         const view = await initView(
             {

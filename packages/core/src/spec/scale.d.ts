@@ -67,8 +67,17 @@ export interface Scale {
      * For _temporal_ fields, `domain` can be a two-element array minimum and maximum values, in the form of either timestamps or the [DateTime definition objects](https://vega.github.io/vega-lite/docs/types.html#datetime).
      *
      * For _ordinal_ and _nominal_ fields, `domain` can be an array that lists valid input values.
+
+     * The domain can also be defined by an expression reference that evaluates to the domain array.
+     * Array elements may also be expression references.
+     *
      */
-    domain?: ScalarDomain | ComplexDomain | SelectionDomainRef | ExprRef;
+    domain?:
+        | ScalarDomain
+        | ComplexDomain
+        | SelectionDomainRef
+        | ExprRef
+        | DomainValueArray;
 
     /**
      * Inserts a single mid-point value into a two-element domain. The mid-point value must lie between the domain minimum and maximum values. This property can be useful for setting a midpoint for [diverging color scales](https://vega.github.io/vega-lite/docs/scale.html#piecewise). The domainMid property is only intended for use with scales supporting continuous, piecewise domains.
@@ -97,10 +106,10 @@ export interface Scale {
      * transition.
      *
      * Set this to `false` to apply domain updates immediately. The default is
-     * `true`, except for domains defined by an `ExprRef`, which default to
+     * `true`, except for domains that include `ExprRef`s, which default to
      * `false` unless overridden.
      *
-     * __Default value:__ `true`, except `false` for ExprRef-driven domains.
+     * __Default value:__ `true`, except `false` for `ExprRef`-driven domains.
      */
     domainTransition?: boolean | Record<string, unknown>;
 
@@ -109,9 +118,9 @@ export interface Scale {
      *
      * - A string indicating a [pre-defined named scale range](https://vega.github.io/vega-lite/docs/scale.html#range-config) (e.g., example, `"symbol"`, or `"diverging"`).
      *
-     * - For [continuous scales](https://vega.github.io/vega-lite/docs/scale.html#continuous), two-element array indicating  minimum and maximum values, or an array with more than two entries for specifying a [piecewise scale](https://vega.github.io/vega-lite/docs/scale.html#piecewise).
+     * - For [continuous scales](https://vega.github.io/vega-lite/docs/scale.html#continuous), two-element array indicating minimum and maximum values, or an array with more than two entries for specifying a [piecewise scale](https://vega.github.io/vega-lite/docs/scale.html#piecewise). Array elements may also be expression references.
      *
-     * - For [discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values.
+     * - For [discrete](https://vega.github.io/vega-lite/docs/scale.html#discrete) and [discretizing](https://vega.github.io/vega-lite/docs/scale.html#discretizing) scales, an array of desired output values. Array elements may also be expression references.
      *
      * __Notes:__
      *
@@ -119,7 +128,7 @@ export interface Scale {
      *
      * 2) Any directly specified `range` for `x` and `y` channels will be ignored. Range can be customized via the view's corresponding [size](https://vega.github.io/vega-lite/docs/size.html) (`width` and `height`).
      */
-    range?: number[] | string[] | string | ExprRef[];
+    range?: (number | string | ExprRef)[] | string;
 
     // ordinal
 
@@ -256,6 +265,10 @@ export interface Scale {
 }
 
 export type InlineLocusAssembly = GenomeDefinition;
+
+export type DomainValue = number | string | boolean | ExprRef;
+
+export type DomainValueArray = DomainValue[];
 
 export interface SelectionDomainRef {
     /**

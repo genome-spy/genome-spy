@@ -11,7 +11,7 @@ import {
     resolveIntervalSelectionBinding,
 } from "./selectionDomainUtils.js";
 import createDomain from "../utils/domainArray.js";
-import { isExprRef } from "../paramRuntime/paramUtils.js";
+import { resolveConfiguredDomainValue } from "./domainExpressions.js";
 import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
 import { getEncoderAccessors, getPrimaryChannel } from "../encoder/encoder.js";
 import {
@@ -386,22 +386,11 @@ function resolveConfiguredDomainMember(
         };
     }
 
-    if (isExprRef(domainDef)) {
-        return {
-            kind: "literal",
-            domain: resolveConfiguredIntervalDomain(
-                member.channelDef.type,
-                member.view.paramRuntime.createExpression(domainDef.expr)(),
-                fromComplexInterval
-            ),
-        };
-    }
-
     return {
         kind: "literal",
         domain: resolveConfiguredIntervalDomain(
             member.channelDef.type,
-            domainDef,
+            resolveConfiguredDomainValue(domainDef, member.view?.paramRuntime),
             fromComplexInterval
         ),
     };
@@ -565,6 +554,7 @@ function resolveSelectionDomain(
  */
 function resolveConfiguredIntervalDomain(type, interval, fromComplexInterval) {
     const numericDomain = fromComplexInterval(interval);
+    // TODO: support Vega-Lite-style `unionWith` domains.
     const internalDomain =
         type === LOCUS &&
         isChromosomalLocusInterval(interval) &&
