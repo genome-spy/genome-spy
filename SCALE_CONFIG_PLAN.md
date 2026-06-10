@@ -526,3 +526,53 @@ semantics.
     - Run schema/docs generation if required by changed spec types.
     - Run docs build if example macros or schema output changed.
     - Tentative commit: `chore(core): update generated schema and docs artifacts`
+
+## Review Follow-Ups
+
+### Fix Before PR
+
+- Attach view-level scale configs before assembly preflight, or otherwise make
+  assembly preflight see view-level scale props. Initial bootstrap currently
+  calls `ensureAssembliesForView(...)` before `attachViewLevelScaleConfigs(...)`,
+  so `scales.<channel>.assembly` can be missed and merged scale props can be
+  cached before the view-level config exists.
+- Invalidate merged scale props when attaching or clearing a view-level config.
+  `attachViewLevelScaleConfig()` and `clearViewLevelScaleConfig()` should
+  invalidate both configured domains and merged scale props.
+- Re-check dynamic insertion ordering. `ContainerMutationHelper.addChildSpec()`
+  ensures assemblies before inserting the child and before remapping
+  view-level configs. Dynamically added locus tracks with view-level
+  `scales.x.assembly` need coverage.
+- Make removal remapping detach stale configs from resolutions that no longer
+  match. The current remap path attaches current mappings but does not clear
+  previously attached mappings that become pending after child removal.
+
+### Trimming Candidates
+
+- Remove `pending` from `ViewLevelScaleConfigMapping` if it remains only a test
+  convenience. It is derivable from `resolution === undefined`.
+- Remove `contributesToDomain` from `ConfiguredDomainSource`. View-level
+  configured domain sources always contribute, and member sources are already
+  filtered before they are converted.
+- Inline `mergeConfiguredDomainSource()` if it remains a one-call wrapper.
+- Decide whether `SCALE_CONFIG_PLAN.md` should stay at the project root before
+  merging. If retained, it should remain implementation-facing and should not
+  be linked from user docs.
+- Re-check whether the two new view-level scale config test files can be
+  slightly consolidated without losing lifecycle coverage.
+
+### Additional Corner-Case Tests
+
+- Initial bootstrap honors view-level `scales.x.assembly` for locus scales.
+- Dynamic child insertion honors view-level `scales.x.assembly` when a pending
+  config becomes active.
+- View-level `scales.x.type: "locus"` with member `encoding.x.type: "locus"`
+  works with a custom assembly and does not rely on the root default assembly.
+- Removing the last matching child detaches the view-level config or leaves no
+  stale active resolution config.
+- View-level selection-domain refs such as `scales.x.domain: { "param": ... }`
+  work and still trigger shared-selection feedback-loop validation.
+- View-level `domainMax` and `domainMid` combine with extracted data domains,
+  matching the existing `domainMin` coverage.
+- View-level `range` with `ExprRef` values resolves against the view-level
+  config scope, if that property is intended to be supported.
