@@ -420,7 +420,11 @@ describe("SampleView", () => {
             context,
             initializeFlow: false,
         });
-        initializeViewSubtree(view, context.dataFlow, (candidate) =>
+        const coreView =
+            /** @type {import("@genome-spy/core/view/view.js").default<any>} */ (
+                view
+            );
+        initializeViewSubtree(coreView, context.dataFlow, (candidate) =>
             candidate.isConfiguredVisible()
         );
 
@@ -429,13 +433,13 @@ describe("SampleView", () => {
         expect(view.sampleLabelView.flowHandle).toBeUndefined();
         view.provenance.store.dispatch(
             view.actions.setSamples({
-                samples: [{ id: "A", indexNumber: 0 }],
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
             })
         );
 
         labelsVisible = true;
         await initializeVisibleViewData(
-            view,
+            coreView,
             context.dataFlow,
             context.fontManager
         );
