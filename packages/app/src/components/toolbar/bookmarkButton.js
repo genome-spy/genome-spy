@@ -49,7 +49,6 @@ class BookmarkButton extends LitElement {
         /** @type {import("../../bookmark/databaseSchema.js").BookmarkEntry} */
         const bookmark = {
             name: undefined,
-            timestamp: Date.now(),
             actions: this.app.provenance.getBookmarkableActionHistory(),
             scaleDomains: {},
         };
