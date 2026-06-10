@@ -31,81 +31,8 @@ Scale defaults can also be configured globally using `config.scale` and
 
 ```
 
-## View-level scale configuration
-
-The channel-level `scale` property follows the Vega-Lite style: scale settings
-are placed inside an encoding channel. This works well for simple unit views.
-However, in composed GenomeSpy views, especially genome-browser-like multi-track
-views, a shared positional scale often represents the viewport of the whole
-subtree. Placing that viewport domain in one child encoding hides an important
-part of the composed view and makes later refactoring cumbersome.
-
-Use view-level `scales` to configure a scale shared by a view subtree:
-
-```json title="Configuring a shared scale for a view subtree"
-{
-  "resolve": {
-    "scale": {
-      "x": "shared"
-    }
-  },
-  "scales": {
-    "x": {
-      "domain": [
-        { "chrom": "chr15", "pos": 92925000 },
-        { "chrom": "chr15", "pos": 92949000 }
-      ]
-    }
-  },
-  "layer": [
-    {
-      "encoding": {
-        "x": {
-          "chrom": "chrom",
-          "pos": "start",
-          "type": "locus"
-        }
-      }
-    }
-  ]
-}
-```
-
-In comparison, the channel-level form places the same domain inside a child
-encoding:
-
-```json title="Channel-level scale configuration"
-{
-  "layer": [
-    {
-      "encoding": {
-        "x": {
-          "chrom": "chrom",
-          "pos": "start",
-          "type": "locus",
-          "scale": {
-            "domain": [
-              { "chrom": "chr15", "pos": 92925000 },
-              { "chrom": "chr15", "pos": 92949000 }
-            ]
-          }
-        }
-      }
-    }
-  ]
-}
-```
-
-Use `resolve.scale` to choose how scale resolutions are shared. A view-level
-`scales.<channel>` entry configures the scale resolution used by that view
-subtree. If the subtree has multiple independent scales for the same channel,
-place `scales.<channel>` closer to the intended subtree or make the sharing
-explicit with `resolve.scale`.
-
-Do not mix view-level `scales.<channel>` with participating
-`encoding.<channel>.scale` objects for the same scale resolution. Keep
-`encoding.<channel>.type` on member encodings; it describes the encoded data and
-drives default scale type inference.
+In composed views, shared scales can also be configured at the view level. See
+[Shared scales in composed views](#shared-scales-in-composed-views).
 
 ## Vega-Lite scales
 
@@ -324,6 +251,109 @@ By default, domain updates are applied with a smooth transition when that is
 possible. Set `domainTransition` to `false` to apply the new domain
 immediately. ExprRef-driven domains default to `domainTransition: false`
 unless overridden.
+
+## Shared scales in composed views
+
+The channel-level `scale` property follows the Vega-Lite style: scale settings
+are placed inside an encoding channel. This works well for local scale settings
+in simple unit views. However, in composed GenomeSpy views, especially
+genome-browser-like multi-track views, a shared positional scale often represents
+the viewport of the whole subtree. Placing that viewport domain in one child
+encoding makes it harder to see which domain controls the composed view.
+
+For example, the channel-level form places the domain inside a child encoding.
+This is valid, but it makes a subtree-level setting look local to one
+participant:
+
+```json title="Channel-level scale configuration"
+{
+  "layer": [
+    {
+      "mark": "rect",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "scale": {
+            "domain": [
+              { "chrom": "chr15", "pos": 92925000 },
+              { "chrom": "chr15", "pos": 92949000 }
+            ]
+          }
+        },
+        "x2": {
+          "chrom": "chrom",
+          "pos": "end"
+        }
+      }
+    },
+    {
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "pos",
+          "type": "locus"
+        }
+      }
+    }
+  ]
+}
+```
+
+Use view-level `scales` to configure the same shared scale at the subtree that
+owns it:
+
+```json title="View-level scale configuration"
+{
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr15", "pos": 92925000 },
+        { "chrom": "chr15", "pos": 92949000 }
+      ]
+    }
+  },
+  "layer": [
+    {
+      "mark": "rect",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus"
+        },
+        "x2": {
+          "chrom": "chrom",
+          "pos": "end"
+        }
+      }
+    },
+    {
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "pos",
+          "type": "locus"
+        }
+      }
+    }
+  ]
+}
+```
+
+Use [`resolve.scale`](./composition/index.md#scale-and-axis-resolution) to
+choose how scales are shared. A view-level `scales.<channel>` entry configures
+the shared scale used by that view subtree. If the subtree has multiple
+independent scales for the same channel, place `scales.<channel>` closer to the
+intended subtree or make the sharing explicit with `resolve.scale`.
+
+Do not mix view-level `scales.<channel>` with participating
+`encoding.<channel>.scale` objects for the same shared scale. Keep
+`encoding.<channel>.type` on member encodings; it describes the encoded data and
+drives default scale type inference.
 
 ## Named scales
 
