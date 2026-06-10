@@ -113,9 +113,9 @@ describe("Tooltip popover placement", () => {
             configurable: true,
         });
 
-        tooltip.handleMouseMove(
-            new MouseEvent("mousemove", { clientX: 250, clientY: 190 })
-        );
+        // Avoid handleMouseMove's timing-based tooltip penalty in this
+        // placement-only test.
+        tooltip.mouseCoords = [250, 190];
         tooltip.setContent("Visible");
 
         expect(element.style.left).toBe("180px");
