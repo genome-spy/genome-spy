@@ -50,6 +50,7 @@ export function mapViewLevelScaleConfigs(root) {
  * @returns {ViewLevelScaleConfigMapping[]}
  */
 export function attachViewLevelScaleConfigs(root) {
+    clearViewLevelScaleConfigs(root);
     const mappings = mapViewLevelScaleConfigs(root);
     for (const mapping of mappings) {
         if (mapping.resolution) {
@@ -60,6 +61,23 @@ export function attachViewLevelScaleConfigs(root) {
         }
     }
     return mappings;
+}
+
+/**
+ * Clears view-level scale configs owned by views in the subtree.
+ *
+ * @param {View} root
+ */
+export function clearViewLevelScaleConfigs(root) {
+    const views = new Set(root.getDescendants());
+    const resolutions = collectAllScaleResolutions(root);
+
+    for (const resolution of resolutions) {
+        const config = resolution.getViewLevelScaleConfig();
+        if (config && views.has(config.view)) {
+            resolution.clearViewLevelScaleConfig(config.view);
+        }
+    }
 }
 
 /**
@@ -98,6 +116,21 @@ function collectVisibleScaleResolutions(view, channel) {
     for (const descendant of view.getDescendants()) {
         const resolution = descendant.getScaleResolution(channel);
         if (resolution) {
+            resolutions.add(resolution);
+        }
+    }
+    return resolutions;
+}
+
+/**
+ * @param {View} view
+ * @returns {Set<ScaleResolution>}
+ */
+function collectAllScaleResolutions(view) {
+    /** @type {Set<ScaleResolution>} */
+    const resolutions = new Set();
+    for (const descendant of view.getDescendants()) {
+        for (const resolution of Object.values(descendant.resolutions.scale)) {
             resolutions.add(resolution);
         }
     }

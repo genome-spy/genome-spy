@@ -189,10 +189,12 @@ describe("view-level scale config mapping", () => {
                 x: { field: "value", type: "quantitative" },
             },
         });
+        const removedResolution = view.getScaleResolution("x");
 
         await view.removeChildAt(0);
         const [mapping] = mapViewLevelScaleConfigs(view);
 
+        expect(removedResolution.getViewLevelScaleConfig()).toBeUndefined();
         expect(mapping).toMatchObject({
             view,
             channel: "x",

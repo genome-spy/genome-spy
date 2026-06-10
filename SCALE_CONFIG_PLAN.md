@@ -529,12 +529,6 @@ semantics.
 
 ## Review Follow-Ups
 
-### Fix Before PR
-
-- Make removal remapping detach stale configs from resolutions that no longer
-  match. The current remap path attaches current mappings but does not clear
-  previously attached mappings that become pending after child removal.
-
 ### Trimming Candidates
 
 - Decide whether `SCALE_CONFIG_PLAN.md` should stay at the project root before
@@ -545,9 +539,5 @@ semantics.
 
 ### Additional Corner-Case Tests
 
-- View-level `scales.x.type: "locus"` with member `encoding.x.type: "locus"`
-  works with a custom assembly and does not rely on the root default assembly.
-- Removing the last matching child detaches the view-level config or leaves no
-  stale active resolution config.
 - View-level `range` with `ExprRef` values resolves against the view-level
   config scope, if that property is intended to be supported.

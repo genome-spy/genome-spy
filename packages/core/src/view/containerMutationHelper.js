@@ -4,7 +4,10 @@ import {
 } from "../data/flowInit.js";
 import { configureViewOpacity } from "../genomeSpy/viewHierarchyConfig.js";
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
-import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
+import {
+    attachViewLevelScaleConfigs,
+    clearViewLevelScaleConfigs,
+} from "../scales/viewLevelScaleConfig.js";
 import { finalizeSubtreeGraphics } from "./viewUtils.js";
 
 /**
@@ -117,6 +120,7 @@ export default class ContainerMutationHelper {
      */
     async removeChildAt(index) {
         const { removeAt } = this.options.getChildSpecs();
+        clearViewLevelScaleConfigs(this.container);
         this.options.removeView(index);
         removeAt(index);
 

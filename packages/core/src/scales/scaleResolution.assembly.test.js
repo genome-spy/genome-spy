@@ -46,6 +46,43 @@ describe("Scale resolution genome assembly", () => {
         ]);
     });
 
+    test("view-level locus type and assembly are compatible with locus members", async () => {
+        const genomeStore = new GenomeStore(".");
+
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            scales: {
+                x: {
+                    type: "locus",
+                    assembly: {
+                        contigs: [{ name: "chrCustom", size: 9 }],
+                    },
+                },
+            },
+            layer: [
+                {
+                    data: { values: [{ chrom: "chrCustom", pos: 3 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            chrom: "chrom",
+                            pos: "pos",
+                            type: "locus",
+                        },
+                    },
+                },
+            ],
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { genomeStore },
+        });
+
+        expect(getRequiredScaleResolution(view, "x").getDomain()).toEqual([
+            0, 9,
+        ]);
+    });
+
     test("view-level locus assembly applies when an empty track receives a child", async () => {
         const genomeStore = new GenomeStore(".");
 
