@@ -55,6 +55,65 @@ describe("ScaleResolution view-level config attachment", () => {
             "Multiple view-level scale configs target the same x scale resolution."
         );
     });
+
+    test("rejects member scale config when attaching view-level config", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ value: 1 }] },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "value",
+                            type: "quantitative",
+                            scale: { nice: false },
+                        },
+                    },
+                },
+            ],
+        };
+
+        const view = await initView(spec, LayerView);
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        expect(() =>
+            resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] })
+        ).toThrow(
+            "Cannot mix view-level scales.x with encoding.x.scale in the same scale resolution."
+        );
+    });
+
+    test("rejects secondary member scale config in the same resolution", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ start: 1, end: 2 }] },
+            layer: [
+                {
+                    mark: "rect",
+                    encoding: {
+                        x: {
+                            field: "start",
+                            type: "quantitative",
+                        },
+                        x2: {
+                            field: "end",
+                            scale: { nice: false },
+                        },
+                    },
+                },
+            ],
+        };
+
+        const view = await initView(spec, LayerView);
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        expect(() =>
+            resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] })
+        ).toThrow(
+            "Cannot mix view-level scales.x with encoding.x2.scale in the same scale resolution."
+        );
+    });
 });
 
 async function createSharedLayer() {

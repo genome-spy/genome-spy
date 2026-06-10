@@ -457,6 +457,8 @@ export default class ScaleResolution {
         const member = normalizeMember(newMember);
         const { channel, channelDef } = member;
 
+        this.#assertCanRegisterMember(member);
+
         // A convenience hack for cases where the new member should adapt
         // the scale type to the existing one. For example: SelectionRect
         // TODO: Add test
@@ -606,6 +608,10 @@ export default class ScaleResolution {
             );
         }
 
+        for (const member of this.#members) {
+            this.#assertMemberHasNoScaleConfig(member);
+        }
+
         this.#viewLevelScaleConfig = { view, config };
         this.#invalidateConfiguredDomain();
     }
@@ -625,6 +631,30 @@ export default class ScaleResolution {
      */
     getViewLevelScaleConfig() {
         return this.#viewLevelScaleConfig;
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     */
+    #assertCanRegisterMember(member) {
+        if (!this.#viewLevelScaleConfig) {
+            return;
+        }
+
+        this.#assertMemberHasNoScaleConfig(member);
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     */
+    #assertMemberHasNoScaleConfig(member) {
+        if (member.channelDef.scale === undefined) {
+            return;
+        }
+
+        throw new Error(
+            `Cannot mix view-level scales.${this.channel} with encoding.${member.channel}.scale in the same scale resolution.`
+        );
     }
 
     dispose() {
