@@ -69,15 +69,17 @@ export default class ContainerMutationHelper {
             this.options.createViewOptions
         );
 
+        insertAt(insertIndex, childSpec);
+        const insertionResult = this.options.insertView(childView, insertIndex);
+
+        attachViewLevelScaleConfigs(this.container);
+
         // Reminder: ensure assemblies from the real child hierarchy before any
         // downstream work that may initialize scales (axis prep / encoders).
         await ensureAssembliesForView(
             childView,
             this.container.context.genomeStore
         );
-
-        insertAt(insertIndex, childSpec);
-        const insertionResult = this.options.insertView(childView, insertIndex);
 
         if (this.options.prepareView) {
             await this.options.prepareView(
@@ -88,7 +90,6 @@ export default class ContainerMutationHelper {
         }
 
         configureViewOpacity(childView);
-        attachViewLevelScaleConfigs(this.container);
 
         const visibilityPredicate = (
             /** @type {import("./view.js").default} */ view

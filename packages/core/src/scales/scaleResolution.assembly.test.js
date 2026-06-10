@@ -8,86 +8,80 @@ import { createTestViewContext } from "../view/testUtils.js";
 import { getRequiredScaleResolution } from "./scaleResolutionTestUtils.js";
 
 describe("Scale resolution genome assembly", () => {
-    test.fails(
-        "view-level locus scale can use inline contigs without root assembly",
-        async () => {
-            const genomeStore = new GenomeStore(".");
+    test("view-level locus scale can use inline contigs without root assembly", async () => {
+        const genomeStore = new GenomeStore(".");
 
-            /** @type {import("../spec/view.js").UnitSpec} */
-            const spec = {
-                data: {
-                    values: [{ chrom: "chrA", pos: 1 }],
-                },
-                scales: {
-                    x: {
-                        type: "locus",
-                        assembly: {
-                            contigs: [
-                                { name: "chrA", size: 5 },
-                                { name: "chrB", size: 7 },
-                            ],
-                        },
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: {
+                values: [{ chrom: "chrA", pos: 1 }],
+            },
+            scales: {
+                x: {
+                    type: "locus",
+                    assembly: {
+                        contigs: [
+                            { name: "chrA", size: 5 },
+                            { name: "chrB", size: 7 },
+                        ],
                     },
                 },
-                mark: "point",
-                encoding: {
-                    x: {
-                        chrom: "chrom",
-                        pos: "pos",
-                        type: "locus",
+            },
+            mark: "point",
+            encoding: {
+                x: {
+                    chrom: "chrom",
+                    pos: "pos",
+                    type: "locus",
+                },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { genomeStore },
+        });
+
+        expect(getRequiredScaleResolution(view, "x").getDomain()).toEqual([
+            0, 12,
+        ]);
+    });
+
+    test("view-level locus assembly applies when an empty track receives a child", async () => {
+        const genomeStore = new GenomeStore(".");
+
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            scales: {
+                x: {
+                    type: "locus",
+                    assembly: {
+                        contigs: [{ name: "chrA", size: 5 }],
                     },
                 },
-            };
+            },
+            layer: [],
+        };
 
-            const { view } = await createHeadlessEngine(spec, {
-                contextOptions: { genomeStore },
-            });
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { genomeStore },
+        });
 
-            expect(getRequiredScaleResolution(view, "x").getDomain()).toEqual([
-                0, 12,
-            ]);
-        }
-    );
-
-    test.fails(
-        "view-level locus assembly applies when an empty track receives a child",
-        async () => {
-            const genomeStore = new GenomeStore(".");
-
-            /** @type {import("../spec/view.js").LayerSpec} */
-            const spec = {
-                scales: {
-                    x: {
-                        type: "locus",
-                        assembly: {
-                            contigs: [{ name: "chrA", size: 5 }],
-                        },
-                    },
+        await view.addChildSpec({
+            data: { values: [{ chrom: "chrA", pos: 1 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    chrom: "chrom",
+                    pos: "pos",
+                    type: "locus",
                 },
-                layer: [],
-            };
+            },
+        });
 
-            const { view } = await createHeadlessEngine(spec, {
-                contextOptions: { genomeStore },
-            });
-
-            await view.addChildSpec({
-                data: { values: [{ chrom: "chrA", pos: 1 }] },
-                mark: "point",
-                encoding: {
-                    x: {
-                        chrom: "chrom",
-                        pos: "pos",
-                        type: "locus",
-                    },
-                },
-            });
-
-            expect(getRequiredScaleResolution(view, "x").getDomain()).toEqual([
-                0, 5,
-            ]);
-        }
-    );
+        expect(getRequiredScaleResolution(view, "x").getDomain()).toEqual([
+            0, 5,
+        ]);
+    });
 
     test("locus scales can use explicit built-in assemblies without root genome config", async () => {
         const genomeStore = new GenomeStore(".");

@@ -614,7 +614,10 @@ export default class ScaleResolution {
         }
 
         this.#viewLevelScaleConfig = { view, config };
+        this.#invalidateMergedScaleProps();
         this.#invalidateConfiguredDomain();
+        this.#refreshSelectionDomainParamSubscriptions();
+        this.#refreshConfiguredDomainExprSubscriptions();
         if (this.#scaleManager.scale) {
             this.#scaleManager.resetScale();
             this.initializeScale();
@@ -627,7 +630,10 @@ export default class ScaleResolution {
     clearViewLevelScaleConfig(view) {
         if (this.#viewLevelScaleConfig?.view === view) {
             this.#viewLevelScaleConfig = undefined;
+            this.#invalidateMergedScaleProps();
             this.#invalidateConfiguredDomain();
+            this.#refreshSelectionDomainParamSubscriptions();
+            this.#refreshConfiguredDomainExprSubscriptions();
             if (this.#scaleManager.scale) {
                 this.#scaleManager.resetScale();
                 this.initializeScale();

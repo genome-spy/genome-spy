@@ -197,8 +197,8 @@ export async function createHeadlessEngine(spec, options = {}) {
         VIEW_ROOT_NAME
     );
 
-    await ensureAssembliesForView(view, context.genomeStore);
     attachViewLevelScaleConfigs(view);
+    await ensureAssembliesForView(view, context.genomeStore);
     prepareViewHierarchy(view);
 
     await initializeViewData(

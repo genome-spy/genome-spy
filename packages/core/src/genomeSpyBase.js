@@ -440,8 +440,8 @@ export default class GenomeSpy {
         // Reminder: assemblies must be ensured after view creation (imports and
         // inheritance resolved), but before any code path that may touch scales
         // (e.g. step-based sizes, dynamic opacity, encoder initialization).
-        await ensureAssembliesForView(this.viewRoot, this.genomeStore);
         attachViewLevelScaleConfigs(this.viewRoot);
+        await ensureAssembliesForView(this.viewRoot, this.genomeStore);
 
         this.#loadingStatusRegistry.set(this.viewRoot, "loading");
 
