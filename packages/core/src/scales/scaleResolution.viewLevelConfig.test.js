@@ -166,6 +166,27 @@ describe("ScaleResolution view-level config attachment", () => {
             'View-level scales.x.type "linear" is incompatible with "locus" data.'
         );
     });
+
+    test("uses view-level domain as an explicit domain", async () => {
+        const view = await createSharedLayer();
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] });
+
+        expect(resolution.getScale().domain()).toEqual([0, 10]);
+        expect(resolution.isDomainDefinedExplicitly()).toBe(true);
+    });
+
+    test("combines view-level domainMin with extracted data domain", async () => {
+        const view = await createSharedLayer();
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        resolution.attachViewLevelScaleConfig(view, { domainMin: 0 });
+        resolution.reconfigure();
+
+        expect(resolution.getScale().domain()).toEqual([0, 1]);
+        expect(resolution.isDomainDefinedExplicitly()).toBe(false);
+    });
 });
 
 async function createSharedLayer() {

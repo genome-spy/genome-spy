@@ -173,6 +173,8 @@ export default class ScaleResolution {
             getAllMembers: () => this.#members,
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
+            getViewLevelConfiguredDomain: () =>
+                this.#getViewLevelConfiguredDomain(),
             getType: () => this.type,
             getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -405,6 +407,10 @@ export default class ScaleResolution {
      * @returns {boolean}
      */
     #hasConfiguredDomain() {
+        if (this.#viewLevelScaleConfig?.config.domain !== undefined) {
+            return true;
+        }
+
         for (const member of this.#members) {
             if (
                 member.contributesToDomain &&
@@ -641,6 +647,21 @@ export default class ScaleResolution {
         return this.#viewLevelScaleConfig;
     }
 
+    #getViewLevelConfiguredDomain() {
+        const viewLevelScaleConfig = this.#viewLevelScaleConfig;
+        if (!viewLevelScaleConfig) {
+            return undefined;
+        }
+
+        return {
+            view: viewLevelScaleConfig.view,
+            channel: this.channel,
+            type: this.type,
+            domain: viewLevelScaleConfig.config.domain,
+            contributesToDomain: true,
+        };
+    }
+
     /**
      * @param {ScaleResolutionMember} member
      */
@@ -748,6 +769,18 @@ export default class ScaleResolution {
                 const unsubscribe = expr.subscribe(listener);
                 this.#configuredDomainExprUnsubscribers.push(unsubscribe);
             }
+        }
+
+        const viewLevelDomain = this.#viewLevelScaleConfig?.config.domain;
+        const viewLevelExprRefs =
+            collectConfiguredDomainExprRefs(viewLevelDomain);
+        for (const exprRef of viewLevelExprRefs) {
+            const expr =
+                this.#viewLevelScaleConfig.view.paramRuntime.createExpression(
+                    exprRef.expr
+                );
+            const unsubscribe = expr.subscribe(listener);
+            this.#configuredDomainExprUnsubscribers.push(unsubscribe);
         }
     }
 
