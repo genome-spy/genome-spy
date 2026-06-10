@@ -23,6 +23,15 @@ describe("scaleRules", () => {
     test("explicit scale type compatibility follows index-like data types", () => {
         expect(() =>
             validateScaleTypeCompatibility(
+                "y",
+                "ordinal",
+                "index",
+                "encoding.y.scale.type"
+            )
+        ).not.toThrow();
+
+        expect(() =>
+            validateScaleTypeCompatibility(
                 "x",
                 "locus",
                 "linear",

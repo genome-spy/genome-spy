@@ -14,6 +14,29 @@ import {
 } from "./scaleResolutionTestUtils.js";
 
 describe("Scale resolution domain handling", () => {
+    test("explicit index scale supports ordinal positional lanes", async () => {
+        // Gene tracks use ordinal lane identifiers with an index scale to get
+        // index-style positional bands and padding.
+        const view = await initView(
+            {
+                data: { values: [{ lane: 0 }, { lane: 1 }] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "lane",
+                        type: "ordinal",
+                        scale: { type: "index", padding: 0.1 },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "y");
+
+        expect(resolution.getResolvedScaleType()).toBe("index");
+    });
+
     test("Scales are shared and explicit domains merged properly", async () => {
         const view = await initView(
             {

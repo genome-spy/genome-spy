@@ -125,7 +125,7 @@ export function validateScaleTypeCompatibility(
 
     if (
         ([INDEX, LOCUS].includes(dataType) && scaleType !== dataType) ||
-        ([INDEX, LOCUS].includes(scaleType) && scaleType !== dataType)
+        (scaleType === LOCUS && scaleType !== dataType)
     ) {
         throw new Error(
             `${source} "${scaleType}" is incompatible with "${dataType}" data.`
