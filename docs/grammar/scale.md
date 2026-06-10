@@ -31,6 +31,82 @@ Scale defaults can also be configured globally using `config.scale` and
 
 ```
 
+## View-level scale configuration
+
+The channel-level `scale` property follows the Vega-Lite style: scale settings
+are placed inside an encoding channel. This works well for simple unit views.
+However, in composed GenomeSpy views, especially genome-browser-like multi-track
+views, a shared positional scale often represents the viewport of the whole
+subtree. Placing that viewport domain in one child encoding hides an important
+part of the composed view and makes later refactoring cumbersome.
+
+Use view-level `scales` to configure a scale shared by a view subtree:
+
+```json title="Configuring a shared scale for a view subtree"
+{
+  "resolve": {
+    "scale": {
+      "x": "shared"
+    }
+  },
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr15", "pos": 92925000 },
+        { "chrom": "chr15", "pos": 92949000 }
+      ]
+    }
+  },
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus"
+        }
+      }
+    }
+  ]
+}
+```
+
+In comparison, the channel-level form places the same domain inside a child
+encoding:
+
+```json title="Channel-level scale configuration"
+{
+  "layer": [
+    {
+      "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "scale": {
+            "domain": [
+              { "chrom": "chr15", "pos": 92925000 },
+              { "chrom": "chr15", "pos": 92949000 }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+Use `resolve.scale` to choose how scale resolutions are shared. A view-level
+`scales.<channel>` entry configures the scale resolution used by that view
+subtree. If the subtree has multiple independent scales for the same channel,
+place `scales.<channel>` closer to the intended subtree or make the sharing
+explicit with `resolve.scale`.
+
+Do not mix view-level `scales.<channel>` with participating
+`encoding.<channel>.scale` objects for the same scale resolution. Keep
+`encoding.<channel>.type` on member encodings; it describes the encoded data and
+drives default scale type inference.
+
 ## Vega-Lite scales
 
 GenomeSpy implements most of the [scale types of
