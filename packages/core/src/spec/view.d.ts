@@ -2,6 +2,7 @@ import { Data } from "./data.js";
 import { TransformParams } from "./transform.js";
 import {
     Channel,
+    ChannelWithScale,
     Encoding,
     FacetFieldDef,
     PrimaryPositionalChannel,
@@ -12,6 +13,7 @@ import { Title } from "./title.js";
 import { Parameter } from "./parameter.js";
 import { GenomeSpyConfig } from "./config.js";
 import { ViewBackgroundProps, ZIndexProps } from "./decoration.js";
+import { Scale } from "./scale.js";
 
 export interface SizeDef {
     /**
@@ -210,6 +212,15 @@ export interface ViewSpecBase extends ResolveSpec {
      * Properties in child views override properties inherited from ancestors.
      */
     config?: GenomeSpyConfig;
+
+    /**
+     * Configures scale resolutions used by this view subtree.
+     *
+     * Use this when a composed view shares a scale across child views and the
+     * scale settings, such as the visible domain, belong to the composed view
+     * rather than an individual encoding.
+     */
+    scales?: Partial<Record<ChannelWithScale, Scale>>;
 
     /**
      * Specifies a [data source](https://genomespy.app/docs/grammar/data/).
