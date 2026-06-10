@@ -2,6 +2,7 @@
 
 import { describe, expect, test } from "vitest";
 
+import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
 import ConcatView from "../view/concatView.js";
 import LayerView from "../view/layerView.js";
 import { initView } from "./scaleResolutionTestUtils.js";
@@ -11,6 +12,30 @@ import {
 } from "./viewLevelScaleConfig.js";
 
 describe("view-level scale config mapping", () => {
+    test("initial view creation attaches mapped configs automatically", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ value: 1 }] },
+            scales: {
+                x: { domain: [0, 10] },
+            },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        const view = await initView(spec, LayerView);
+
+        expect(view.getScaleResolution("x").getScale().domain()).toEqual([
+            0, 10,
+        ]);
+    });
+
     test("maps a subtree config to a unique visible scale resolution", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
@@ -93,7 +118,7 @@ describe("view-level scale config mapping", () => {
             ],
         };
 
-        const view = await initView(spec, ConcatView);
+        const { view } = await createHeadlessViewHierarchy(spec);
 
         expect(() => mapViewLevelScaleConfigs(view)).toThrow(
             "View-level scales.x maps to multiple scale resolutions."
@@ -125,5 +150,57 @@ describe("view-level scale config mapping", () => {
             view,
             config: { domain: [0, 10] },
         });
+    });
+
+    test("attaches pending config when a matching child is added", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            scales: {
+                x: { domain: [0, 10] },
+            },
+            layer: [],
+        };
+
+        const view = await initView(spec, LayerView);
+        await view.addChildSpec({
+            data: { values: [{ value: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "value", type: "quantitative" },
+            },
+        });
+
+        expect(view.getScaleResolution("x").getScale().domain()).toEqual([
+            0, 10,
+        ]);
+    });
+
+    test("rejects ambiguous view-level config during initialization", async () => {
+        /** @type {import("../spec/view.js").ConcatSpec} */
+        const spec = {
+            scales: {
+                x: { domain: [0, 10] },
+            },
+            concat: [
+                {
+                    data: { values: [{ value: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+                {
+                    data: { values: [{ value: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        await expect(initView(spec, ConcatView)).rejects.toThrow(
+            "View-level scales.x maps to multiple scale resolutions."
+        );
     });
 });

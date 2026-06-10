@@ -4,6 +4,7 @@ import {
 } from "../data/flowInit.js";
 import { configureViewOpacity } from "../genomeSpy/viewHierarchyConfig.js";
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
+import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
 import { finalizeSubtreeGraphics } from "./viewUtils.js";
 
 /**
@@ -87,6 +88,7 @@ export default class ContainerMutationHelper {
         }
 
         configureViewOpacity(childView);
+        attachViewLevelScaleConfigs(this.container);
 
         const visibilityPredicate = (
             /** @type {import("./view.js").default} */ view
@@ -120,6 +122,7 @@ export default class ContainerMutationHelper {
         if (this.options.afterRemove) {
             await this.options.afterRemove(index);
         }
+        attachViewLevelScaleConfigs(this.container);
 
         if (this.options.requestLayout !== false) {
             this.container.invalidateSizeCache();
