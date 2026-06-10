@@ -10,7 +10,11 @@ import {
     isConfigRangeName,
 } from "../config/scaleConfig.js";
 import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
-import { applyLockedProperties, getDefaultScaleType } from "./scaleRules.js";
+import {
+    applyLockedProperties,
+    getDefaultScaleType,
+    validateScaleTypeCompatibility,
+} from "./scaleRules.js";
 import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
 
 /**
@@ -81,7 +85,12 @@ export function resolveScalePropsBase({
         props.type = getDefaultScaleType(channel, dataType);
     }
 
-    validateViewLevelScaleType(channel, dataType, props, viewLevelScaleConfig);
+    validateScaleTypeCompatibility(
+        channel,
+        dataType,
+        viewLevelScaleConfig ? props.type : undefined,
+        `View-level scales.${channel}.type`
+    );
 
     if (typeof props.range == "string") {
         if (!isConfigRangeName(props.range)) {
@@ -182,32 +191,6 @@ export function resolveScalePropsBase({
     applyLockedProperties(props, channel);
 
     return props;
-}
-
-/**
- * @param {Channel} channel
- * @param {import("../spec/channel.js").Type} dataType
- * @param {Scale} props
- * @param {{ view: import("../view/view.js").default, config: Scale } | undefined} viewLevelScaleConfig
- */
-function validateViewLevelScaleType(
-    channel,
-    dataType,
-    props,
-    viewLevelScaleConfig
-) {
-    if (!viewLevelScaleConfig || !props.type) {
-        return;
-    }
-
-    if (
-        ([INDEX, LOCUS].includes(dataType) && props.type !== dataType) ||
-        ([INDEX, LOCUS].includes(props.type) && props.type !== dataType)
-    ) {
-        throw new Error(
-            `View-level scales.${channel}.type "${props.type}" is incompatible with "${dataType}" data.`
-        );
-    }
 }
 
 /**

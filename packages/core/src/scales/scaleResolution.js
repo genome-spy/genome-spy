@@ -15,6 +15,7 @@ import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
 import DomainPlanner from "./domainPlanner.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
+import { validateScaleTypeCompatibility } from "./scaleRules.js";
 import {
     INDEX,
     LOCUS,
@@ -24,10 +25,7 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { getAccessorDomainKey } from "../encoder/accessor.js";
-import {
-    isPrimaryPositionalChannel,
-    isSecondaryChannel,
-} from "../encoder/encoder.js";
+import { isSecondaryChannel } from "../encoder/encoder.js";
 import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
@@ -494,15 +492,12 @@ export default class ScaleResolution {
             explicitScaleType ??
             (type === INDEX || type === LOCUS ? type : undefined);
 
-        if (
-            effectiveScaleType &&
-            [INDEX, LOCUS].includes(effectiveScaleType) &&
-            !isPrimaryPositionalChannel(this.channel)
-        ) {
-            throw new Error(
-                `Index and locus scales are only supported on positional channels (x/y). Channel "${this.channel}" resolves to scale type "${effectiveScaleType}".`
-            );
-        }
+        validateScaleTypeCompatibility(
+            this.channel,
+            type,
+            effectiveScaleType,
+            `encoding.${channel}.scale.type`
+        );
 
         if (name) {
             if (this.name !== undefined && name != this.name) {
