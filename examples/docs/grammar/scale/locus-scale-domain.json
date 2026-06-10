@@ -15,14 +15,17 @@
 
   "mark": "point",
 
+  "scales": {
+    "x": {
+      "domain": [{ "chrom": "chr3" }, { "chrom": "chr9" }]
+    }
+  },
+
   "encoding": {
     "x": {
       "chrom": "chrom",
       "pos": "pos",
-      "type": "locus",
-      "scale": {
-        "domain": [{ "chrom": "chr3" }, { "chrom": "chr9" }]
-      }
+      "type": "locus"
     },
     "size": { "value": 200 }
   }

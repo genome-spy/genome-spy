@@ -78,18 +78,21 @@
     { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
   ],
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr5", "pos": 177482500 },
+        { "chrom": "chr5", "pos": 177518000 }
+      ]
+    }
+  },
+
   "encoding": {
     "x": {
       "chrom": "seq_id",
       "pos": "start",
       "offset": 1,
-      "type": "locus",
-      "scale": {
-        "domain": [
-          { "chrom": "chr5", "pos": 177482500 },
-          { "chrom": "chr5", "pos": 177518000 }
-        ]
-      }
+      "type": "locus"
     },
     "x2": { "chrom": "seq_id", "pos": "end" },
     "y": {

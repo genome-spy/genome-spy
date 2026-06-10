@@ -14,6 +14,7 @@ import { resolveBaseConfig } from "../config/resolveConfig.js";
 import { createViewContext } from "./viewContextFactory.js";
 import { ViewFactory, VIEW_ROOT_NAME } from "../view/viewFactory.js";
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
+import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
 import {
     configureViewHierarchy,
     configureViewOpacity,
@@ -196,6 +197,7 @@ export async function createHeadlessEngine(spec, options = {}) {
         VIEW_ROOT_NAME
     );
 
+    attachViewLevelScaleConfigs(view);
     await ensureAssembliesForView(view, context.genomeStore);
     prepareViewHierarchy(view);
 

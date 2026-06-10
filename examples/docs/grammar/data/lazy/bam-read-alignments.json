@@ -20,6 +20,15 @@
     "scale": { "x": "shared" }
   },
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr21", "pos": 33037317 },
+        { "chrom": "chr21", "pos": 33039137 }
+      ]
+    }
+  },
+
   "spacing": 5,
 
   "vconcat": [
@@ -55,13 +64,7 @@
           "chrom": "chrom",
           "pos": "start",
           "type": "locus",
-          "axis": {},
-          "scale": {
-            "domain": [
-              { "chrom": "chr21", "pos": 33037317 },
-              { "chrom": "chr21", "pos": 33039137 }
-            ]
-          }
+          "axis": {}
         },
         "x2": { "chrom": "chrom", "pos": "end" },
         "y": {

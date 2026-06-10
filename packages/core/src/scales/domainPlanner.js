@@ -36,7 +36,9 @@ import {
  * @typedef {import("../spec/scale.js").SelectionDomainRef} SelectionDomainRef
  * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
+ * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
  * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
+ * @typedef {() => ConfiguredDomainSource | undefined} ViewLevelConfiguredDomainGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
  * @typedef {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} GetLocusExtent
  * @typedef {{
@@ -76,6 +78,9 @@ export default class DomainPlanner {
     /** @type {ScaleMembersGetter} */
     #getDataMembers;
 
+    /** @type {ViewLevelConfiguredDomainGetter | undefined} */
+    #getViewLevelConfiguredDomain;
+
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
 
@@ -104,6 +109,7 @@ export default class DomainPlanner {
      * @param {ScaleMembersGetter} options.getActiveMembers Active shared-scale members used for configured domain planning.
      * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
      * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
+     * @param {ViewLevelConfiguredDomainGetter} [options.getViewLevelConfiguredDomain] View-level configured domain source.
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {GetLocusExtent} options.getLocusExtent
      * @param {FromComplexInterval} options.fromComplexInterval
@@ -112,6 +118,7 @@ export default class DomainPlanner {
         getActiveMembers,
         getAllMembers,
         getDataMembers,
+        getViewLevelConfiguredDomain,
         getType,
         getLocusExtent,
         fromComplexInterval,
@@ -119,6 +126,7 @@ export default class DomainPlanner {
         this.#getActiveMembers = getActiveMembers;
         this.#getAllMembers = getAllMembers ?? getActiveMembers;
         this.#getDataMembers = getDataMembers ?? getActiveMembers;
+        this.#getViewLevelConfiguredDomain = getViewLevelConfiguredDomain;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
@@ -232,6 +240,7 @@ export default class DomainPlanner {
 
         const configuredDomain = resolveConfiguredDomain(
             this.#getActiveMembers(),
+            this.#getViewLevelConfiguredDomain?.(),
             this.#fromComplexInterval,
             includeSelectionInitial
         );
@@ -319,6 +328,7 @@ export default class DomainPlanner {
 
 /**
  * @param {Set<ScaleResolutionMember>} members
+ * @param {ConfiguredDomainSource | undefined} viewLevelDomain
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial
  * @returns {{
@@ -328,6 +338,7 @@ export default class DomainPlanner {
  */
 function resolveConfiguredDomain(
     members,
+    viewLevelDomain,
     fromComplexInterval,
     includeSelectionInitial
 ) {
@@ -344,41 +355,62 @@ function resolveConfiguredDomain(
         hasLiteralDomain: false,
     };
 
+    if (viewLevelDomain?.domain !== undefined) {
+        const resolved = resolveConfiguredDomainSource(
+            viewLevelDomain,
+            fromComplexInterval,
+            includeSelectionInitial
+        );
+        mergeConfiguredDomainResolution(state, resolved);
+    }
+
     for (const member of domainMembers) {
-        const resolved = resolveConfiguredDomainMember(
-            member,
+        const resolved = resolveConfiguredDomainSource(
+            {
+                view: member.view,
+                channel: member.channel,
+                type: member.channelDef.type,
+                domain: member.channelDef.scale.domain,
+            },
             fromComplexInterval,
             includeSelectionInitial
         );
 
-        if (resolved.kind === "selection") {
-            mergeSelectionConfiguredDomain(state, resolved);
-            continue;
-        }
-
-        mergeLiteralConfiguredDomain(state, resolved);
+        mergeConfiguredDomainResolution(state, resolved);
     }
 
     return finishConfiguredDomainResolution(state);
 }
 
 /**
- * @param {ScaleResolutionMember} member
+ * @param {ConfiguredDomainResolutionState} state
+ * @param {ConfiguredDomainMemberResolution} resolved
+ */
+function mergeConfiguredDomainResolution(state, resolved) {
+    if (resolved.kind === "selection") {
+        mergeSelectionConfiguredDomain(state, resolved);
+    } else {
+        mergeLiteralConfiguredDomain(state, resolved);
+    }
+}
+
+/**
+ * @param {ConfiguredDomainSource} source
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial
  * @returns {ConfiguredDomainMemberResolution}
  */
-function resolveConfiguredDomainMember(
-    member,
+function resolveConfiguredDomainSource(
+    source,
     fromComplexInterval,
     includeSelectionInitial
 ) {
-    const domainDef = member.channelDef.scale.domain;
+    const domainDef = source.domain;
     if (isSelectionDomainRef(domainDef)) {
         return {
             kind: "selection",
             ...resolveSelectionDomain(
-                member,
+                source,
                 domainDef,
                 fromComplexInterval,
                 includeSelectionInitial
@@ -389,8 +421,8 @@ function resolveConfiguredDomainMember(
     return {
         kind: "literal",
         domain: resolveConfiguredIntervalDomain(
-            member.channelDef.type,
-            resolveConfiguredDomainValue(domainDef, member.view?.paramRuntime),
+            source.type,
+            resolveConfiguredDomainValue(domainDef, source.view?.paramRuntime),
             fromComplexInterval
         ),
     };
@@ -477,7 +509,7 @@ function finishConfiguredDomainResolution(state) {
 }
 
 /**
- * @param {ScaleResolutionMember} member
+ * @param {ConfiguredDomainSource} source
  * @param {SelectionDomainRef} domainRef
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {boolean} includeSelectionInitial
@@ -491,7 +523,7 @@ function finishConfiguredDomainResolution(state) {
  * }}
  */
 function resolveSelectionDomain(
-    member,
+    source,
     domainRef,
     fromComplexInterval,
     includeSelectionInitial
@@ -499,13 +531,13 @@ function resolveSelectionDomain(
     const paramName = domainRef.param;
 
     const resolvedChannel = resolveSelectionDomainChannel(
-        member.channel,
+        source.channel,
         domainRef,
         paramName
     );
 
     const binding = resolveIntervalSelectionBinding(
-        member.view,
+        source.view,
         paramName,
         resolvedChannel
     );
@@ -516,7 +548,7 @@ function resolveSelectionDomain(
         const initialDomain = includeSelectionInitial
             ? domainRef.initial
                 ? resolveConfiguredIntervalDomain(
-                      member.channelDef.type,
+                      source.type,
                       domainRef.initial,
                       fromComplexInterval
                   )
@@ -534,10 +566,7 @@ function resolveSelectionDomain(
 
     return {
         // Selection intervals already use internal scale-domain coordinates.
-        domain: createDomain(
-            member.channelDef.type,
-            fromComplexInterval(interval)
-        ),
+        domain: createDomain(source.type, fromComplexInterval(interval)),
         description,
         param: paramName,
         encoding: resolvedChannel,

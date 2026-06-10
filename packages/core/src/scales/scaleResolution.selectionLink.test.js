@@ -246,6 +246,71 @@ describe("Scale resolution selection-linked domains", () => {
         ).toEqual([0, 10]);
     });
 
+    test("view-level selection-linked domain configures a detail track", async () => {
+        const view = await initView(
+            {
+                params: [{ name: "brush", value: null }],
+                resolve: {
+                    scale: { x: "independent" },
+                },
+                vconcat: [
+                    {
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x"],
+                                },
+                                push: "outer",
+                            },
+                        ],
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { value: 0 },
+                        },
+                    },
+                    {
+                        data: { values: [{ x: 0 }, { x: 5 }, { x: 10 }] },
+                        scales: {
+                            x: {
+                                domain: { param: "brush", encoding: "x" },
+                                zoom: true,
+                            },
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { value: 0 },
+                        },
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const detailResolution = getRequiredScaleResolution(
+            view.children[1],
+            "x"
+        );
+
+        expect(detailResolution.scale.domain()).toEqual([0, 10]);
+
+        view.paramRuntime.setValue("brush", {
+            type: "interval",
+            intervals: { x: [2, 4] },
+        });
+
+        expect(detailResolution.scale.domain()).toEqual([2, 4]);
+        expect(detailResolution.getLinkedSelectionDomainInfo()).toEqual({
+            param: "brush",
+            encoding: "x",
+            persist: true,
+        });
+    });
+
     test("selection-linked domains expose persistence metadata from sibling selections", async () => {
         const { resolution } = await createLinkedHarness({
             param: "brush",

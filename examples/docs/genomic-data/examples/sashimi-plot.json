@@ -27,6 +27,15 @@
     "axis": { "y": "independent" }
   },
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr15", "pos": 92925000 },
+        { "chrom": "chr15", "pos": 92949000 }
+      ]
+    }
+  },
+
   "layer": [
     {
       "name": "coverage",
@@ -45,13 +54,7 @@
         "x": {
           "chrom": "chrom",
           "pos": "start",
-          "type": "locus",
-          "scale": {
-            "domain": [
-              { "chrom": "chr15", "pos": 92925000 },
-              { "chrom": "chr15", "pos": 92949000 }
-            ]
-          }
+          "type": "locus"
         },
         "x2": { "chrom": "chrom", "pos": "end" },
         "y": {

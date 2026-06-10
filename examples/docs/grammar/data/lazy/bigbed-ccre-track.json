@@ -17,17 +17,20 @@
     }
   },
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr7", "pos": 66600000 },
+        { "chrom": "chr7", "pos": 66800000 }
+      ]
+    }
+  },
+
   "encoding": {
     "x": {
       "chrom": "chrom",
       "pos": "chromStart",
-      "type": "locus",
-      "scale": {
-        "domain": [
-          { "chrom": "chr7", "pos": 66600000 },
-          { "chrom": "chr7", "pos": 66800000 }
-        ]
-      }
+      "type": "locus"
     },
     "x2": { "chrom": "chrom", "pos": "chromEnd" },
     "color": {

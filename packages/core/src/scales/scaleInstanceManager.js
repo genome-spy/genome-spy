@@ -53,6 +53,11 @@ export default class ScaleInstanceManager {
         return this.#scale;
     }
 
+    resetScale() {
+        this.dispose();
+        this.#scale = undefined;
+    }
+
     /**
      * @param {import("../spec/scale.js").Scale["assembly"]} [assembly]
      * @returns {import("../genome/genome.js").default}

@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { applyLockedProperties, getDefaultScaleType } from "./scaleRules.js";
+import {
+    applyLockedProperties,
+    getDefaultScaleType,
+    validateScaleTypeCompatibility,
+} from "./scaleRules.js";
 
 describe("scaleRules", () => {
     test("default scale types follow channel and data type", () => {
@@ -13,6 +17,30 @@ describe("scaleRules", () => {
     test("incompatible channel/type combinations throw", () => {
         expect(() => getDefaultScaleType("color", "locus")).toThrow(
             "color does not support locus data type."
+        );
+    });
+
+    test("explicit scale type compatibility follows index-like data types", () => {
+        expect(() =>
+            validateScaleTypeCompatibility(
+                "x",
+                "locus",
+                "linear",
+                "encoding.x.scale.type"
+            )
+        ).toThrow(
+            'encoding.x.scale.type "linear" is incompatible with "locus" data.'
+        );
+
+        expect(() =>
+            validateScaleTypeCompatibility(
+                "color",
+                "nominal",
+                "locus",
+                "encoding.color.scale.type"
+            )
+        ).toThrow(
+            'Index and locus scales are only supported on positional channels (x/y). Channel "color" resolves to scale type "locus".'
         );
     });
 

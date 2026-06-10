@@ -15,6 +15,7 @@ import ScaleInstanceManager from "./scaleInstanceManager.js";
 import { resolveScalePropsBase } from "./scalePropsResolver.js";
 import DomainPlanner from "./domainPlanner.js";
 import ScaleInteractionController from "./scaleInteractionController.js";
+import { validateScaleTypeCompatibility } from "./scaleRules.js";
 import {
     INDEX,
     LOCUS,
@@ -24,10 +25,7 @@ import {
 } from "./scaleResolutionConstants.js";
 
 import { getAccessorDomainKey } from "../encoder/accessor.js";
-import {
-    isPrimaryPositionalChannel,
-    isSecondaryChannel,
-} from "../encoder/encoder.js";
+import { isSecondaryChannel } from "../encoder/encoder.js";
 import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
@@ -143,6 +141,11 @@ export default class ScaleResolution {
     /** @type {import("../view/view.js").default | undefined} */
     #hostView;
 
+    /**
+     * @type {{ view: import("../view/view.js").default, config: import("../spec/scale.js").Scale } | undefined}
+     */
+    #viewLevelScaleConfig;
+
     #resolvingScaleProps = 0;
 
     #memberRegistrationBatchDepth = 0;
@@ -168,6 +171,8 @@ export default class ScaleResolution {
             getAllMembers: () => this.#members,
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
+            getViewLevelConfiguredDomain: () =>
+                this.#getViewLevelConfiguredDomain(),
             getType: () => this.type,
             getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -400,6 +405,10 @@ export default class ScaleResolution {
      * @returns {boolean}
      */
     #hasConfiguredDomain() {
+        if (this.#viewLevelScaleConfig?.config.domain !== undefined) {
+            return true;
+        }
+
         for (const member of this.#members) {
             if (
                 member.contributesToDomain &&
@@ -452,6 +461,8 @@ export default class ScaleResolution {
         const member = normalizeMember(newMember);
         const { channel, channelDef } = member;
 
+        this.#assertCanRegisterMember(member);
+
         // A convenience hack for cases where the new member should adapt
         // the scale type to the existing one. For example: SelectionRect
         // TODO: Add test
@@ -481,15 +492,12 @@ export default class ScaleResolution {
             explicitScaleType ??
             (type === INDEX || type === LOCUS ? type : undefined);
 
-        if (
-            effectiveScaleType &&
-            [INDEX, LOCUS].includes(effectiveScaleType) &&
-            !isPrimaryPositionalChannel(this.channel)
-        ) {
-            throw new Error(
-                `Index and locus scales are only supported on positional channels (x/y). Channel "${this.channel}" resolves to scale type "${effectiveScaleType}".`
-            );
-        }
+        validateScaleTypeCompatibility(
+            this.channel,
+            type,
+            effectiveScaleType,
+            `encoding.${channel}.scale.type`
+        );
 
         if (name) {
             if (this.name !== undefined && name != this.name) {
@@ -587,6 +595,100 @@ export default class ScaleResolution {
         };
     }
 
+    /**
+     * @param {import("../view/view.js").default} view
+     * @param {import("../spec/scale.js").Scale} config
+     */
+    attachViewLevelScaleConfig(view, config) {
+        if (
+            this.#viewLevelScaleConfig &&
+            this.#viewLevelScaleConfig.view !== view
+        ) {
+            throw new Error(
+                `Multiple view-level scale configs target the same ${this.channel} scale resolution.`
+            );
+        }
+
+        for (const member of this.#members) {
+            this.#assertMemberHasNoScaleConfig(member);
+        }
+
+        this.#viewLevelScaleConfig = { view, config };
+        this.#invalidateMergedScaleProps();
+        this.#invalidateConfiguredDomain();
+        this.#refreshSelectionDomainParamSubscriptions();
+        this.#refreshConfiguredDomainExprSubscriptions();
+        if (this.#scaleManager.scale) {
+            this.#scaleManager.resetScale();
+            this.initializeScale();
+        }
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     */
+    clearViewLevelScaleConfig(view) {
+        if (this.#viewLevelScaleConfig?.view === view) {
+            this.#viewLevelScaleConfig = undefined;
+            this.#invalidateMergedScaleProps();
+            this.#invalidateConfiguredDomain();
+            this.#refreshSelectionDomainParamSubscriptions();
+            this.#refreshConfiguredDomainExprSubscriptions();
+            if (this.#scaleManager.scale) {
+                this.#scaleManager.resetScale();
+                this.initializeScale();
+            }
+        }
+    }
+
+    /**
+     * @returns {{ view: import("../view/view.js").default, config: import("../spec/scale.js").Scale } | undefined}
+     */
+    getViewLevelScaleConfig() {
+        return this.#viewLevelScaleConfig;
+    }
+
+    #getViewLevelConfiguredDomain() {
+        const viewLevelScaleConfig = this.#viewLevelScaleConfig;
+        if (!viewLevelScaleConfig) {
+            return undefined;
+        }
+
+        return {
+            view: viewLevelScaleConfig.view,
+            channel:
+                /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                    this.channel
+                ),
+            type: this.type,
+            domain: viewLevelScaleConfig.config.domain,
+        };
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     */
+    #assertCanRegisterMember(member) {
+        if (!this.#viewLevelScaleConfig) {
+            return;
+        }
+
+        this.#assertMemberHasNoScaleConfig(member);
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     */
+    #assertMemberHasNoScaleConfig(member) {
+        if (member.channelDef.scale === undefined) {
+            return;
+        }
+
+        throw new Error(
+            `Cannot mix view-level scales.${this.channel} with encoding.${member.channel}.scale in the same scale resolution.`
+        );
+    }
+
     dispose() {
         this.#clearSelectionDomainParamSubscriptions();
         this.#clearConfiguredDomainExprSubscriptions();
@@ -670,6 +772,18 @@ export default class ScaleResolution {
                 const unsubscribe = expr.subscribe(listener);
                 this.#configuredDomainExprUnsubscribers.push(unsubscribe);
             }
+        }
+
+        const viewLevelDomain = this.#viewLevelScaleConfig?.config.domain;
+        const viewLevelExprRefs =
+            collectConfiguredDomainExprRefs(viewLevelDomain);
+        for (const exprRef of viewLevelExprRefs) {
+            const expr =
+                this.#viewLevelScaleConfig.view.paramRuntime.createExpression(
+                    exprRef.expr
+                );
+            const unsubscribe = expr.subscribe(listener);
+            this.#configuredDomainExprUnsubscribers.push(unsubscribe);
         }
     }
 
@@ -759,6 +873,7 @@ export default class ScaleResolution {
                 channel: this.channel,
                 dataType: this.type,
                 orderedMembers: this.#getOrderedMembers(),
+                viewLevelScaleConfig: this.#viewLevelScaleConfig,
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#resolutionView.getConfigScopes(),
             });

@@ -37,7 +37,6 @@ export function getDefaultScaleType(channel, dataType) {
         if (isPrimaryPositionalChannel(channel)) {
             return dataType;
         } else {
-            // TODO: Also explicitly set scales should be validated
             throw new Error(
                 channel +
                     " does not support " +
@@ -94,6 +93,44 @@ export function getDefaultScaleType(channel, dataType) {
     }
 
     return type;
+}
+
+/**
+ * Validates explicit scale type choices against the resolved data type and
+ * channel constraints.
+ *
+ * @param {Channel} channel
+ * @param {import("../spec/channel.js").Type} dataType
+ * @param {import("../spec/scale.js").ScaleType | undefined} scaleType
+ * @param {string} source
+ */
+export function validateScaleTypeCompatibility(
+    channel,
+    dataType,
+    scaleType,
+    source
+) {
+    if (!scaleType) {
+        return;
+    }
+
+    if (
+        [INDEX, LOCUS].includes(scaleType) &&
+        !isPrimaryPositionalChannel(channel)
+    ) {
+        throw new Error(
+            `Index and locus scales are only supported on positional channels (x/y). Channel "${channel}" resolves to scale type "${scaleType}".`
+        );
+    }
+
+    if (
+        ([INDEX, LOCUS].includes(dataType) && scaleType !== dataType) ||
+        ([INDEX, LOCUS].includes(scaleType) && scaleType !== dataType)
+    ) {
+        throw new Error(
+            `${source} "${scaleType}" is incompatible with "${dataType}" data.`
+        );
+    }
 }
 
 /**

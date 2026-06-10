@@ -42,6 +42,14 @@
           "windowSize": 1000000
         }
       },
+      "scales": {
+        "x": {
+          "domain": [
+            { "chrom": "chr18", "pos": 31524101 },
+            { "chrom": "chr18", "pos": 31525003 }
+          ]
+        }
+      },
       "transform": [
         {
           "type": "formula",
@@ -90,13 +98,7 @@
           "pos": "POS",
           "type": "locus",
           "offset": 1,
-          "axis": null,
-          "scale": {
-            "domain": [
-              { "chrom": "chr18", "pos": 31524101 },
-              { "chrom": "chr18", "pos": 31525003 }
-            ]
-          }
+          "axis": null
         },
         "y": {
           "field": "Germline classification",

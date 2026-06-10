@@ -34,6 +34,7 @@ import { validateSelectorConstraints } from "./view/viewSelectors.js";
 import { resolveEmbedParam } from "./paramRuntime/embedParamApi.js";
 import SingleAxisWindowedSource from "./data/sources/lazy/singleAxisWindowedSource.js";
 import { ensureAssembliesForView } from "./genome/assemblyPreflight.js";
+import { attachViewLevelScaleConfigs } from "./scales/viewLevelScaleConfig.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 import { awaitSubtreeLazyReady } from "./view/dataReadiness.js";
 import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
@@ -439,6 +440,7 @@ export default class GenomeSpy {
         // Reminder: assemblies must be ensured after view creation (imports and
         // inheritance resolved), but before any code path that may touch scales
         // (e.g. step-based sizes, dynamic opacity, encoder initialization).
+        attachViewLevelScaleConfigs(this.viewRoot);
         await ensureAssembliesForView(this.viewRoot, this.genomeStore);
 
         this.#loadingStatusRegistry.set(this.viewRoot, "loading");
