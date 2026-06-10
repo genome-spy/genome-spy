@@ -13,11 +13,14 @@
 
   "mark": { "type": "text", "size": 20, "clip": false },
 
+  "scales": {
+    "x": { "domain": [0, 10], "zoom": true }
+  },
+
   "encoding": {
     "x": {
       "field": "value",
-      "type": "quantitative",
-      "scale": { "domain": [0, 10], "zoom": true }
+      "type": "quantitative"
     },
     "text": { "field": "label" }
   }
