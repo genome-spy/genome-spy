@@ -24,6 +24,7 @@ import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
  * @param {Channel} options.channel
  * @param {import("../spec/channel.js").Type} options.dataType
  * @param {ScaleResolutionMember[]} options.orderedMembers
+ * @param {{ view: import("../view/view.js").default, config: Scale } | undefined} options.viewLevelScaleConfig
  * @param {boolean} options.isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
  * @returns {Scale}
@@ -32,6 +33,7 @@ export function resolveScalePropsBase({
     channel,
     dataType,
     orderedMembers,
+    viewLevelScaleConfig,
     isExplicitDomain,
     configScopes,
 }) {
@@ -45,9 +47,11 @@ export function resolveScalePropsBase({
         )
         .filter((markType) => !!markType);
 
-    const propArray = memberList
-        .map((member) => member.channelDef.scale)
-        .filter((props) => props !== undefined);
+    const propArray = viewLevelScaleConfig
+        ? [viewLevelScaleConfig.config]
+        : memberList
+              .map((member) => member.channelDef.scale)
+              .filter((props) => props !== undefined);
 
     // TODO: Disabled scale: https://vega.github.io/vega-lite/docs/scale.html#disable
     const mergedProps = mergeObjects(propArray, "scale", ["domain"]);
@@ -76,6 +80,8 @@ export function resolveScalePropsBase({
         // including future rect-backed marks such as "bar".
         props.type = getDefaultScaleType(channel, dataType);
     }
+
+    validateViewLevelScaleType(channel, dataType, props, viewLevelScaleConfig);
 
     if (typeof props.range == "string") {
         if (!isConfigRangeName(props.range)) {
@@ -133,11 +139,15 @@ export function resolveScalePropsBase({
     }
 
     if (props.domainTransition === undefined) {
-        const hasExprDrivenDomain = memberList.some(
-            (member) =>
-                collectConfiguredDomainExprRefs(member.channelDef.scale?.domain)
-                    .length > 0
-        );
+        const hasExprDrivenDomain =
+            memberList.some(
+                (member) =>
+                    collectConfiguredDomainExprRefs(
+                        member.channelDef.scale?.domain
+                    ).length > 0
+            ) ||
+            collectConfiguredDomainExprRefs(viewLevelScaleConfig?.config.domain)
+                .length > 0;
         props.domainTransition = !hasExprDrivenDomain;
     }
 
@@ -146,9 +156,12 @@ export function resolveScalePropsBase({
         props.range.some(isExprRef) &&
         memberList.length > 0
     ) {
-        const rangeOwner = memberList.find(
-            (member) => member.channelDef.scale?.range !== undefined
-        )?.view;
+        const rangeOwner =
+            viewLevelScaleConfig?.config.range !== undefined
+                ? viewLevelScaleConfig.view
+                : memberList.find(
+                      (member) => member.channelDef.scale?.range !== undefined
+                  )?.view;
         if (rangeOwner) {
             /** @type {any} */
             (props).__rangeExprScope = rangeOwner;
@@ -169,6 +182,32 @@ export function resolveScalePropsBase({
     applyLockedProperties(props, channel);
 
     return props;
+}
+
+/**
+ * @param {Channel} channel
+ * @param {import("../spec/channel.js").Type} dataType
+ * @param {Scale} props
+ * @param {{ view: import("../view/view.js").default, config: Scale } | undefined} viewLevelScaleConfig
+ */
+function validateViewLevelScaleType(
+    channel,
+    dataType,
+    props,
+    viewLevelScaleConfig
+) {
+    if (!viewLevelScaleConfig || !props.type) {
+        return;
+    }
+
+    if (
+        ([INDEX, LOCUS].includes(dataType) && props.type !== dataType) ||
+        ([INDEX, LOCUS].includes(props.type) && props.type !== dataType)
+    ) {
+        throw new Error(
+            `View-level scales.${channel}.type "${props.type}" is incompatible with "${dataType}" data.`
+        );
+    }
 }
 
 /**

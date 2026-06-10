@@ -614,6 +614,10 @@ export default class ScaleResolution {
 
         this.#viewLevelScaleConfig = { view, config };
         this.#invalidateConfiguredDomain();
+        if (this.#scaleManager.scale) {
+            this.#scaleManager.resetScale();
+            this.initializeScale();
+        }
     }
 
     /**
@@ -623,6 +627,10 @@ export default class ScaleResolution {
         if (this.#viewLevelScaleConfig?.view === view) {
             this.#viewLevelScaleConfig = undefined;
             this.#invalidateConfiguredDomain();
+            if (this.#scaleManager.scale) {
+                this.#scaleManager.resetScale();
+                this.initializeScale();
+            }
         }
     }
 
@@ -829,6 +837,7 @@ export default class ScaleResolution {
                 channel: this.channel,
                 dataType: this.type,
                 orderedMembers: this.#getOrderedMembers(),
+                viewLevelScaleConfig: this.#viewLevelScaleConfig,
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#resolutionView.getConfigScopes(),
             });

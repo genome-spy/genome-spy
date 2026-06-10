@@ -114,6 +114,58 @@ describe("ScaleResolution view-level config attachment", () => {
             "Cannot mix view-level scales.x with encoding.x2.scale in the same scale resolution."
         );
     });
+
+    test("uses view-level scale properties when resolving scale props", async () => {
+        const view = await createSharedLayer();
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        resolution.attachViewLevelScaleConfig(view, {
+            type: "log",
+            base: 2,
+        });
+
+        expect(resolution.getScale().type).toBe("log");
+        expect(resolution.getScale().base()).toBe(2);
+    });
+
+    test("infers scale type from member data type when view-level type is omitted", async () => {
+        const view = await createSharedLayer();
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] });
+
+        expect(resolution.getScale().type).toBe("linear");
+    });
+
+    test("rejects view-level scale type incompatible with inferred data type", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: {
+                values: [{ chrom: "chr1", pos: 1 }],
+            },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            chrom: "chrom",
+                            pos: "pos",
+                            type: "locus",
+                        },
+                    },
+                },
+            ],
+        };
+
+        const view = await initView(spec, LayerView);
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        expect(() =>
+            resolution.attachViewLevelScaleConfig(view, { type: "linear" })
+        ).toThrow(
+            'View-level scales.x.type "linear" is incompatible with "locus" data.'
+        );
+    });
 });
 
 async function createSharedLayer() {
