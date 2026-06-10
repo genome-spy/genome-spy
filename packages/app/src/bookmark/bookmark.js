@@ -46,6 +46,7 @@ export async function restoreBookmark(entry, app) {
         if (entry.actions) {
             if (app.provenance.isUndoable()) {
                 app.provenance.activateInitialState();
+                await app.getSampleView?.()?.awaitMetadataReady();
             }
             if (!app.intentPipeline) {
                 throw new Error(

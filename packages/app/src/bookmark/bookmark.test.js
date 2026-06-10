@@ -51,4 +51,64 @@ describe("bookmark restore", () => {
         });
         expect(paramProvenanceBridge.whenApplied).toHaveBeenCalled();
     });
+
+    it("waits for metadata readiness after provenance reset before submitting actions", async () => {
+        /** @type {import("./databaseSchema.js").BookmarkEntry} */
+        const entry = {
+            name: "metadata-bookmark",
+            actions: /** @type {any} */ ([
+                {
+                    type: "sampleView/groupByNominal",
+                    payload: {
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "Annotations/Lineage",
+                        },
+                    },
+                },
+            ]),
+        };
+
+        /** @type {string[]} */
+        const calls = [];
+        const store = {
+            dispatch: vi.fn(),
+            getState: () => ({ intentStatus: undefined }),
+        };
+        const intentPipeline = {
+            submit: vi.fn(() => {
+                calls.push("submit");
+                return Promise.resolve();
+            }),
+        };
+        const sampleView = {
+            awaitMetadataReady: vi.fn(() => {
+                calls.push("metadata-ready");
+                return Promise.resolve();
+            }),
+        };
+        const app = /** @type {import("../app.js").default} */ (
+            /** @type {any} */ ({
+                store,
+                intentPipeline,
+                paramProvenanceBridge: {
+                    whenApplied: vi.fn(() => Promise.resolve()),
+                },
+                getSampleView: vi.fn(() => sampleView),
+                provenance: {
+                    isUndoable: () => true,
+                    activateInitialState: vi.fn(() => {
+                        calls.push("reset");
+                    }),
+                },
+                genomeSpy: {
+                    getNamedScaleResolutions: () => new Map(),
+                },
+            })
+        );
+
+        await restoreBookmark(entry, app);
+
+        expect(calls).toEqual(["reset", "metadata-ready", "submit"]);
+    });
 });
