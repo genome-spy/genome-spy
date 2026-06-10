@@ -175,6 +175,36 @@ describe("view-level scale config mapping", () => {
         ]);
     });
 
+    test("returns a view-level config to pending when the last matching child is removed", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            scales: {
+                x: { domain: [0, 10] },
+            },
+            layer: [],
+        };
+
+        const view = await initView(spec, LayerView);
+        await view.addChildSpec({
+            data: { values: [{ value: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "value", type: "quantitative" },
+            },
+        });
+
+        await view.removeChildAt(0);
+        const [mapping] = mapViewLevelScaleConfigs(view);
+
+        expect(mapping).toMatchObject({
+            view,
+            channel: "x",
+            config: { domain: [0, 10] },
+            pending: true,
+            resolution: undefined,
+        });
+    });
+
     test("rejects ambiguous view-level config during initialization", async () => {
         /** @type {import("../spec/view.js").ConcatSpec} */
         const spec = {

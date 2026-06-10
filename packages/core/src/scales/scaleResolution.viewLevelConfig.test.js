@@ -187,6 +187,32 @@ describe("ScaleResolution view-level config attachment", () => {
         expect(resolution.getScale().domain()).toEqual([0, 1]);
         expect(resolution.isDomainDefinedExplicitly()).toBe(false);
     });
+
+    test("combines view-level domainMax with extracted data domain", async () => {
+        const view = await createSharedLayer();
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        resolution.attachViewLevelScaleConfig(view, {
+            domainMax: 10,
+            zero: false,
+        });
+        resolution.reconfigure();
+
+        expect(resolution.getScale().domain()).toEqual([1, 10]);
+        expect(resolution.isDomainDefinedExplicitly()).toBe(false);
+    });
+
+    test("combines view-level domainMid with extracted data domain", async () => {
+        const view = await createSharedLayer();
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        resolution.attachViewLevelScaleConfig(view, { domainMid: 0.5 });
+        resolution.reconfigure();
+
+        expect(resolution.getScale().domain()).toEqual([0, 0.5, 1]);
+        expect(resolution.getScale().props.domainMid).toBe(0.5);
+        expect(resolution.isDomainDefinedExplicitly()).toBe(false);
+    });
 });
 
 async function createSharedLayer() {
