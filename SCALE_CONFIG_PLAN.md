@@ -536,8 +536,3 @@ semantics.
   be linked from user docs.
 - Re-check whether the two new view-level scale config test files can be
   slightly consolidated without losing lifecycle coverage.
-
-### Additional Corner-Case Tests
-
-- View-level `range` with `ExprRef` values resolves against the view-level
-  config scope, if that property is intended to be supported.

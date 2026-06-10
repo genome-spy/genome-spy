@@ -128,6 +128,36 @@ describe("ScaleResolution view-level config attachment", () => {
         expect(resolution.getScale().base()).toBe(2);
     });
 
+    test("binds range expressions through the view-level config view", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            params: [{ name: "prefix", value: "c" }],
+            data: { values: [{ value: "a" }] },
+            scales: {
+                shape: {
+                    domain: ["a"],
+                    range: [{ expr: "prefix + 'ircle'" }],
+                },
+            },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        shape: {
+                            field: "value",
+                            type: "nominal",
+                        },
+                    },
+                },
+            ],
+        };
+
+        const view = await initView(spec, LayerView);
+        const resolution = getRequiredScaleResolution(view, "shape");
+
+        expect(resolution.getScale().range()).toEqual(["circle"]);
+    });
+
     test("infers scale type from member data type when view-level type is omitted", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
