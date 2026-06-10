@@ -44,6 +44,26 @@ export function mapViewLevelScaleConfigs(root) {
 }
 
 /**
+ * Maps view-level scale configs and attaches non-pending configs to their
+ * target resolutions.
+ *
+ * @param {View} root
+ * @returns {ViewLevelScaleConfigMapping[]}
+ */
+export function attachViewLevelScaleConfigs(root) {
+    const mappings = mapViewLevelScaleConfigs(root);
+    for (const mapping of mappings) {
+        if (mapping.resolution) {
+            mapping.resolution.attachViewLevelScaleConfig(
+                mapping.view,
+                mapping.config
+            );
+        }
+    }
+    return mappings;
+}
+
+/**
  * @param {View} view
  * @param {ChannelWithScale} channel
  * @param {Scale} config

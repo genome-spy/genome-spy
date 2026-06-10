@@ -5,7 +5,10 @@ import { describe, expect, test } from "vitest";
 import ConcatView from "../view/concatView.js";
 import LayerView from "../view/layerView.js";
 import { initView } from "./scaleResolutionTestUtils.js";
-import { mapViewLevelScaleConfigs } from "./viewLevelScaleConfig.js";
+import {
+    attachViewLevelScaleConfigs,
+    mapViewLevelScaleConfigs,
+} from "./viewLevelScaleConfig.js";
 
 describe("view-level scale config mapping", () => {
     test("maps a subtree config to a unique visible scale resolution", async () => {
@@ -95,5 +98,32 @@ describe("view-level scale config mapping", () => {
         expect(() => mapViewLevelScaleConfigs(view)).toThrow(
             "View-level scales.x maps to multiple scale resolutions."
         );
+    });
+
+    test("attaches mapped configs to target scale resolutions", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ value: 1 }] },
+            scales: {
+                x: { domain: [0, 10] },
+            },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+            ],
+        };
+
+        const view = await initView(spec, LayerView);
+        const [mapping] = attachViewLevelScaleConfigs(view);
+
+        expect(mapping.pending).toBe(false);
+        expect(mapping.resolution.getViewLevelScaleConfig()).toEqual({
+            view,
+            config: { domain: [0, 10] },
+        });
     });
 });

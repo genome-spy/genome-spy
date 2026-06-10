@@ -143,6 +143,11 @@ export default class ScaleResolution {
     /** @type {import("../view/view.js").default | undefined} */
     #hostView;
 
+    /**
+     * @type {{ view: import("../view/view.js").default, config: import("../spec/scale.js").Scale } | undefined}
+     */
+    #viewLevelScaleConfig;
+
     #resolvingScaleProps = 0;
 
     #memberRegistrationBatchDepth = 0;
@@ -585,6 +590,41 @@ export default class ScaleResolution {
             }
             return removed && this.#members.size === 0;
         };
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     * @param {import("../spec/scale.js").Scale} config
+     */
+    attachViewLevelScaleConfig(view, config) {
+        if (
+            this.#viewLevelScaleConfig &&
+            this.#viewLevelScaleConfig.view !== view
+        ) {
+            throw new Error(
+                `Multiple view-level scale configs target the same ${this.channel} scale resolution.`
+            );
+        }
+
+        this.#viewLevelScaleConfig = { view, config };
+        this.#invalidateConfiguredDomain();
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     */
+    clearViewLevelScaleConfig(view) {
+        if (this.#viewLevelScaleConfig?.view === view) {
+            this.#viewLevelScaleConfig = undefined;
+            this.#invalidateConfiguredDomain();
+        }
+    }
+
+    /**
+     * @returns {{ view: import("../view/view.js").default, config: import("../spec/scale.js").Scale } | undefined}
+     */
+    getViewLevelScaleConfig() {
+        return this.#viewLevelScaleConfig;
     }
 
     dispose() {
