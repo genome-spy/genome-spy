@@ -656,7 +656,10 @@ export default class ScaleResolution {
 
         return {
             view: viewLevelScaleConfig.view,
-            channel: this.channel,
+            channel:
+                /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                    this.channel
+                ),
             type: this.type,
             domain: viewLevelScaleConfig.config.domain,
         };

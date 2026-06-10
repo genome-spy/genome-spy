@@ -28,7 +28,7 @@ import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
  * @param {Channel} options.channel
  * @param {import("../spec/channel.js").Type} options.dataType
  * @param {ScaleResolutionMember[]} options.orderedMembers
- * @param {{ view: import("../view/view.js").default, config: Scale } | undefined} options.viewLevelScaleConfig
+ * @param {{ view: import("../view/view.js").default, config: Scale } | undefined} [options.viewLevelScaleConfig]
  * @param {boolean} options.isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
  * @returns {Scale}
