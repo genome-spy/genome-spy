@@ -36,7 +36,7 @@ import {
  * @typedef {import("../spec/scale.js").SelectionDomainRef} SelectionDomainRef
  * @typedef {import("../spec/parameter.js").ExprRef} ExprRef
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
- * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"], contributesToDomain: boolean }} ConfiguredDomainSource
+ * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
  * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
  * @typedef {() => ConfiguredDomainSource | undefined} ViewLevelConfiguredDomainGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
@@ -355,16 +355,13 @@ function resolveConfiguredDomain(
         hasLiteralDomain: false,
     };
 
-    if (
-        viewLevelDomain?.domain !== undefined &&
-        viewLevelDomain.contributesToDomain
-    ) {
-        mergeConfiguredDomainSource(
-            state,
+    if (viewLevelDomain?.domain !== undefined) {
+        const resolved = resolveConfiguredDomainSource(
             viewLevelDomain,
             fromComplexInterval,
             includeSelectionInitial
         );
+        mergeConfiguredDomainResolution(state, resolved);
     }
 
     for (const member of domainMembers) {
@@ -374,7 +371,6 @@ function resolveConfiguredDomain(
                 channel: member.channel,
                 type: member.channelDef.type,
                 domain: member.channelDef.scale.domain,
-                contributesToDomain: member.contributesToDomain,
             },
             fromComplexInterval,
             includeSelectionInitial
@@ -384,26 +380,6 @@ function resolveConfiguredDomain(
     }
 
     return finishConfiguredDomainResolution(state);
-}
-
-/**
- * @param {ConfiguredDomainResolutionState} state
- * @param {ConfiguredDomainSource} source
- * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
- * @param {boolean} includeSelectionInitial
- */
-function mergeConfiguredDomainSource(
-    state,
-    source,
-    fromComplexInterval,
-    includeSelectionInitial
-) {
-    const resolved = resolveConfiguredDomainSource(
-        source,
-        fromComplexInterval,
-        includeSelectionInitial
-    );
-    mergeConfiguredDomainResolution(state, resolved);
 }
 
 /**

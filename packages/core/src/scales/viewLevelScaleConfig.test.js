@@ -67,7 +67,6 @@ describe("view-level scale config mapping", () => {
             view,
             channel: "x",
             config: { domain: [0, 10] },
-            pending: false,
         });
         expect(mappings[0].resolution).toBe(view.getScaleResolution("x"));
     });
@@ -89,7 +88,6 @@ describe("view-level scale config mapping", () => {
             view,
             channel: "x",
             config: { domain: [0, 10] },
-            pending: true,
             resolution: undefined,
         });
     });
@@ -145,7 +143,6 @@ describe("view-level scale config mapping", () => {
         const view = await initView(spec, LayerView);
         const [mapping] = attachViewLevelScaleConfigs(view);
 
-        expect(mapping.pending).toBe(false);
         expect(mapping.resolution.getViewLevelScaleConfig()).toEqual({
             view,
             config: { domain: [0, 10] },
@@ -200,7 +197,6 @@ describe("view-level scale config mapping", () => {
             view,
             channel: "x",
             config: { domain: [0, 10] },
-            pending: true,
             resolution: undefined,
         });
     });

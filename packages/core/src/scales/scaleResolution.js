@@ -659,7 +659,6 @@ export default class ScaleResolution {
             channel: this.channel,
             type: this.type,
             domain: viewLevelScaleConfig.config.domain,
-            contributesToDomain: true,
         };
     }
 

@@ -9,7 +9,6 @@
  * @prop {ChannelWithScale} channel
  * @prop {Scale} config
  * @prop {ScaleResolution | undefined} resolution
- * @prop {boolean} pending
  */
 
 /**
@@ -85,7 +84,6 @@ function mapViewLevelScaleConfig(view, channel, config) {
         channel,
         config,
         resolution,
-        pending: !resolution,
     };
 }
 
