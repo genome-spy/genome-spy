@@ -123,17 +123,6 @@ const infoBoxStyles = css`
         }
     }
 
-    .bookmark-plots {
-        margin-top: var(--gs-basic-spacing);
-        border-top: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
-        padding-top: var(--gs-basic-spacing);
-    }
-
-    .bookmark-plots h3 {
-        font-size: 1em;
-        margin: 0 0 var(--gs-basic-spacing) 0;
-    }
-
     .bookmark-plot {
         margin-top: var(--gs-basic-spacing);
     }
@@ -143,8 +132,12 @@ const infoBoxStyles = css`
         align-items: center;
         justify-content: space-between;
         gap: var(--gs-basic-spacing);
-        font-weight: bold;
         margin-bottom: calc(var(--gs-basic-spacing) * 0.5);
+
+        span {
+            font-weight: bold;
+            font-size: 90%;
+        }
     }
 
     .bookmark-plot-preview {
@@ -289,7 +282,6 @@ export default class BookmarkInfoBox extends BaseDialog {
         }
 
         return html`<div class="bookmark-plots">
-            <h3>Plots</h3>
             ${this.plotResults.map((result, index) => {
                 if (result.error || !result.plot) {
                     return html`<div class="bookmark-plot bookmark-plot-error">
