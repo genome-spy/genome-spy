@@ -166,6 +166,7 @@ export default class BookmarkInfoBox extends BaseDialog {
         allowImport: { type: Boolean },
         baseUrl: { type: String },
         plotResults: { state: true },
+        plotBookmarkContext: {},
         entryIndex: { state: true },
     };
 
@@ -184,6 +185,8 @@ export default class BookmarkInfoBox extends BaseDialog {
         this.baseUrl = "";
         /** @type {import("../../bookmark/bookmark.js").BookmarkPlotRestoreResult[]} */
         this.plotResults = [];
+        /** @type {import("../../bookmark/bookmarkState.js").PlotBookmarkContext | undefined} */
+        this.plotBookmarkContext = undefined;
 
         this.modal = false;
 
@@ -300,7 +303,10 @@ export default class BookmarkInfoBox extends BaseDialog {
                         <button
                             class="btn"
                             type="button"
-                            @click=${() => showPlotDialog(result.plot)}
+                            @click=${() =>
+                                showPlotDialog(result.plot, {
+                                    bookmarkContext: this.plotBookmarkContext,
+                                })}
                         >
                             ${icon(faExpand).node[0]} Open larger
                         </button>

@@ -21,7 +21,7 @@ import {
     restoreBookmark,
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
-import { createBookmarkWithCurrentState } from "./bookmark/bookmarkState.js";
+import { createPlotBookmarkContext } from "./bookmark/bookmarkState.js";
 import { collectScaleDomains } from "./bookmark/scaleDomainUtils.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import {
@@ -149,18 +149,7 @@ export default class App {
                             defaultName,
                             this.provenance,
                             this.intentExecutor,
-                            {
-                                canSaveLocalBookmark: () =>
-                                    !!this.localBookmarkDatabase,
-                                getLocalBookmarkDatabase: () =>
-                                    this.localBookmarkDatabase,
-                                createBookmark: (plots) =>
-                                    createBookmarkWithCurrentState(this, {
-                                        plots,
-                                    }),
-                                saveLocalBookmark: (bookmark) =>
-                                    this.localBookmarkDatabase.put(bookmark),
-                            }
+                            createPlotBookmarkContext(this)
                         )
                     )
             )

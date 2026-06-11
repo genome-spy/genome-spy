@@ -13,11 +13,7 @@ import { showMessageDialog } from "../components/generic/messageDialog.js";
 /**
  * @typedef {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} SampleAttributePlot
  *
- * @typedef {object} PlotBookmarkContext
- * @prop {(plots: import("../bookmark/databaseSchema.d.ts").BookmarkPlotAttachment[]) => import("../bookmark/databaseSchema.d.ts").BookmarkEntry} createBookmark
- * @prop {() => boolean} canSaveLocalBookmark
- * @prop {() => import("../bookmark/bookmarkDatabase.js").default | undefined} getLocalBookmarkDatabase
- * @prop {(bookmark: import("../bookmark/databaseSchema.d.ts").BookmarkEntry) => Promise<void>} saveLocalBookmark
+ * @typedef {import("../bookmark/bookmarkState.js").PlotBookmarkContext} PlotBookmarkContext
  */
 
 /**

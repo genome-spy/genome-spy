@@ -5,6 +5,7 @@ import { normalizeViewSettingsPayload } from "../viewSettingsUtils.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { showDialog } from "../components/generic/baseDialog.js";
 import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
+import { createPlotBookmarkContext } from "./bookmarkState.js";
 
 /**
  * @typedef {object} BookmarkInfoBoxOptions
@@ -210,6 +211,7 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
         existingDialog.entry = entry;
         existingDialog.mode = options.mode ?? "default";
         existingDialog.plotResults = options.plotResults ?? [];
+        existingDialog.plotBookmarkContext = createPlotBookmarkContext(app);
     } else {
         showDialog(
             "gs-bookmark-info-box",
@@ -222,6 +224,7 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
                 el.entry = entry;
                 el.mode = options.mode ?? "default";
                 el.plotResults = options.plotResults ?? [];
+                el.plotBookmarkContext = createPlotBookmarkContext(app);
                 el.allowImport = !!options.database;
 
                 if (options.database) {
