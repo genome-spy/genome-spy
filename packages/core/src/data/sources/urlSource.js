@@ -77,7 +77,10 @@ export default class UrlSource extends DataSource {
     }
 
     async load() {
-        const url = withoutExprRef(this.params.url);
+        const url =
+            /** @type {string | string[] | import("../../spec/data.js").UrlList} */ (
+                withoutExprRef(this.params.url)
+            );
 
         /** @type {string[]} */
         const urls =

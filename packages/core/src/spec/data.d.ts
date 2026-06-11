@@ -12,7 +12,7 @@
  * Constants and utilities for data.
  */
 import { Axis } from "./axis.js";
-import { FieldName, PrimaryPositionalChannel } from "./channel.js";
+import { FieldName, PrimaryPositionalChannel, Scalar } from "./channel.js";
 import { ExprRef } from "./parameter.js";
 
 export type ParseValue =
@@ -172,14 +172,69 @@ export interface UrlList {
     type?: "json" | "csv" | "tsv";
 }
 
+export interface UrlDescriptor {
+    /**
+     * URL of the data file.
+     */
+    url: string;
+
+    /**
+     * Fields attached to each datum loaded from this URL.
+     */
+    fields?: Record<string, Scalar>;
+}
+
+export interface UrlTemplate {
+    /**
+     * URL template. The scalar value is substituted for `{field}`.
+     */
+    template: string;
+
+    /**
+     * Values used for template expansion. An ExprRef can reference reactive
+     * parameters such as `visibleSamples`.
+     */
+    values: Scalar[] | ExprRef;
+
+    /**
+     * Field name used both as the template placeholder and as the attached
+     * datum field.
+     */
+    field: FieldName;
+
+    /**
+     * Maximum number of distinct resolved URLs to load.
+     */
+    maxUrls?: number;
+}
+
+export interface IndexUrlTemplate {
+    /**
+     * URL template for the index file. Uses the `url` template values.
+     */
+    template: string;
+}
+
+export type UrlSourceRef =
+    | string
+    | string[]
+    | ExprRef
+    | UrlList
+    | UrlDescriptor
+    | UrlDescriptor[]
+    | UrlTemplate;
+
+export type IndexUrlSourceRef = string | ExprRef | IndexUrlTemplate;
+
 export interface UrlData extends DataBase {
     /**
-     * An URL or an array of URLs from which to load the data set.
+     * An URL, a list of URLs, or a URL expansion definition from which to load
+     * the data set.
      * Gzip-compressed resources are decompressed transparently when the URL,
      * MIME type, or payload indicates gzip content. Use the `format.type`
      * property to ensure the loaded data is correctly parsed.
      */
-    url: string | string[] | ExprRef | UrlList;
+    url: UrlSourceRef;
 }
 
 export interface InlineData extends DataBase {
@@ -332,14 +387,14 @@ export interface IndexedFastaData extends DebouncedData {
     /**
      * URL of the fasta file.
      */
-    url: string;
+    url: UrlSourceRef;
 
     /**
      * URL of the index file.
      *
      * __Default value:__ `url` + `".fai"`.
      */
-    indexUrl?: string;
+    indexUrl?: IndexUrlSourceRef;
 
     /**
      * Size of each chunk when fetching the fasta file. Data is only fetched
@@ -363,7 +418,7 @@ export interface BigWigData extends DebouncedData {
     /**
      * URL of the BigWig file.
      */
-    url: string | ExprRef;
+    url: UrlSourceRef;
 
     /**
      * The approximate minimum width of each data bin, in pixels.
@@ -386,7 +441,7 @@ export interface BigBedData extends DebouncedData {
     /**
      * URL of the BigBed file.
      */
-    url: string | ExprRef;
+    url: UrlSourceRef;
 
     /**
      * Size of each chunk when fetching the BigBed file. Data is only fetched
@@ -410,14 +465,14 @@ export interface BamData extends DebouncedData {
     /**
      * URL of the BigBed file.
      */
-    url: string;
+    url: UrlSourceRef;
 
     /**
      * URL of the index file.
      *
      * __Default value:__ `url` + `".bai"`.
      */
-    indexUrl?: string;
+    indexUrl?: IndexUrlSourceRef;
 
     /**
      * Size of each chunk when fetching the BigBed file. Data is only fetched
@@ -439,14 +494,14 @@ export interface TabixData extends DebouncedData {
     /**
      * Url of the bgzip compressed file.
      */
-    url: string;
+    url: UrlSourceRef;
 
     /**
      * Url of the tabix index file.
      *
      * __Default value:__ `url` + `".tbi"`.
      */
-    indexUrl?: string;
+    indexUrl?: IndexUrlSourceRef;
 
     /**
      * Add a `chr` (boolean) or custom (string) prefix to the chromosome names

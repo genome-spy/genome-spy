@@ -72,7 +72,9 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                 this.bbi = new BigBed({
                     filehandle: new RemoteFile(
                         addBaseUrl(
-                            withoutExprRef(this.params.url),
+                            /** @type {string} */ (
+                                withoutExprRef(this.params.url)
+                            ),
                             this.view.getBaseUrl()
                         )
                     ),

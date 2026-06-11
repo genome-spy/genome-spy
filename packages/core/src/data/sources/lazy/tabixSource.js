@@ -68,9 +68,13 @@ export default class TabixSource extends SingleAxisWindowedSource {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
 
-                const url = withoutExprRef(this.params.url);
+                const url = /** @type {string} */ (
+                    withoutExprRef(this.params.url)
+                );
                 const indexUrl =
-                    withoutExprRef(this.params.indexUrl) ?? url + ".tbi";
+                    /** @type {string | undefined} */ (
+                        withoutExprRef(this.params.indexUrl)
+                    ) ?? url + ".tbi";
                 const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
 
                 this.#tbiIndex = new TabixIndexedFile({

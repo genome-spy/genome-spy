@@ -69,7 +69,9 @@ export default class BigWigSource extends SingleAxisWindowedSource {
                 this.#bbi = new BigWig({
                     filehandle: new RemoteFile(
                         addBaseUrl(
-                            withoutExprRef(this.params.url),
+                            /** @type {string} */ (
+                                withoutExprRef(this.params.url)
+                            ),
                             this.view.getBaseUrl()
                         )
                     ),

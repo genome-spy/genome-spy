@@ -48,12 +48,14 @@ export default class BamSource extends SingleAxisWindowedSource {
             ]).then(([{ BamFile }, { RemoteFile }]) => {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+                const url = /** @type {string} */ (this.params.url);
+                const indexUrl = /** @type {string | undefined} */ (
+                    this.params.indexUrl
+                );
 
                 this.#bam = new BamFile({
-                    bamFilehandle: withBase(this.params.url),
-                    baiFilehandle: withBase(
-                        this.params.indexUrl ?? this.params.url + ".bai"
-                    ),
+                    bamFilehandle: withBase(url),
+                    baiFilehandle: withBase(indexUrl ?? url + ".bai"),
                 });
 
                 this.#bam.getHeader().then((_header) => {

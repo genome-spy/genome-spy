@@ -34,12 +34,14 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
             ]).then(([{ IndexedFasta }, { RemoteFile }]) => {
                 const withBase = (/** @type {string} */ uri) =>
                     new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
+                const url = /** @type {string} */ (this.params.url);
+                const indexUrl = /** @type {string | undefined} */ (
+                    this.params.indexUrl
+                );
 
                 this.fasta = new IndexedFasta({
-                    fasta: withBase(this.params.url),
-                    fai: withBase(
-                        this.params.indexUrl ?? this.params.url + ".fai"
-                    ),
+                    fasta: withBase(url),
+                    fai: withBase(indexUrl ?? url + ".fai"),
                 });
 
                 resolve();
