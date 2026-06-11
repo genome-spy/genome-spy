@@ -9,7 +9,7 @@ import { showShareBookmarkDialog } from "../components/dialogs/shareBookmarkDial
 export function createPlotBookmarkAttachment(plot) {
     return {
         kind: "sample_attribute_plot",
-        request: plot.request,
+        definition: plot.request,
     };
 }
 

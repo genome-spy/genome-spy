@@ -128,7 +128,7 @@ export async function rebuildBookmarkPlots(entry, app) {
     for (const attachment of attachments) {
         try {
             const plot = await agentApi.buildSampleAttributePlot(
-                attachment.request
+                attachment.definition
             );
             if (!plot) {
                 throw new Error("Plot could not be rebuilt.");

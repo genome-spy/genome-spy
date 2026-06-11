@@ -36,7 +36,7 @@ describe("createBookmarkWithCurrentState", () => {
         /** @type {import("./databaseSchema.d.ts").BookmarkPlotAttachment} */
         const plot = {
             kind: "sample_attribute_plot",
-            request: {
+            definition: {
                 plotType: "boxplot",
                 attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "score" },
             },
@@ -70,7 +70,7 @@ describe("createBookmarkWithCurrentState", () => {
         /** @type {import("./databaseSchema.d.ts").BookmarkPlotAttachment} */
         const plot = {
             kind: "sample_attribute_plot",
-            request: {
+            definition: {
                 plotType: "barplot",
                 attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "status" },
             },

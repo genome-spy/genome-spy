@@ -109,7 +109,7 @@ describe("bookmark restore", () => {
             plots: [
                 {
                     kind: "sample_attribute_plot",
-                    request: {
+                    definition: {
                         plotType: "boxplot",
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",
@@ -132,7 +132,7 @@ describe("bookmark restore", () => {
         const results = await restoreBookmark(entry, app);
 
         expect(buildSampleAttributePlot).toHaveBeenCalledWith(
-            entry.plots[0].request
+            entry.plots[0].definition
         );
         expect(results.plots).toEqual([
             {
@@ -151,7 +151,7 @@ describe("bookmark restore", () => {
             plots: [
                 {
                     kind: "sample_attribute_plot",
-                    request: {
+                    definition: {
                         plotType: "barplot",
                         attribute: {
                             type: "SAMPLE_ATTRIBUTE",

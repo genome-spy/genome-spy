@@ -6,7 +6,7 @@ import { SampleAttributePlotDefinition } from "../charts/sampleAttributePlotType
 
 export interface BookmarkPlotAttachment {
     kind: "sample_attribute_plot";
-    request: SampleAttributePlotDefinition;
+    definition: SampleAttributePlotDefinition;
 }
 
 export interface BookmarkEntry {
