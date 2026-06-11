@@ -128,6 +128,10 @@ describe("sample attribute plot builders", () => {
 
         expect(plot.kind).toBe("sample_attribute_plot");
         expect(plot.plotType).toBe("barplot");
+        expect(plot.request).toEqual({
+            plotType: "bar",
+            attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "status" },
+        });
         expect(plot.title).toBe("Bar plot of status");
         expect(plot.filename).toBe("genomespy-barplot.png");
         expect(plot.summary).toEqual({
@@ -257,6 +261,10 @@ describe("sample attribute plot builders", () => {
         });
 
         expect(plot.plotType).toBe("boxplot");
+        expect(plot.request).toEqual({
+            plotType: "boxplot",
+            attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "score" },
+        });
         expect(plot.title).toBe("Boxplot of score");
         expect(plot.namedData).toHaveLength(2);
         expect(plot.summary).toEqual({
@@ -315,6 +323,11 @@ describe("sample attribute plot builders", () => {
         });
 
         expect(plot.plotType).toBe("scatterplot");
+        expect(plot.request).toEqual({
+            plotType: "scatterplot",
+            xAttribute: { type: "SAMPLE_ATTRIBUTE", specifier: "score" },
+            yAttribute: { type: "SAMPLE_ATTRIBUTE", specifier: "size" },
+        });
         expect(plot.title).toBe("Scatterplot of score vs size");
         expect(plot.summary).toEqual({
             groupCount: 2,

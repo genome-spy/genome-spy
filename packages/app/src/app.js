@@ -147,7 +147,8 @@ export default class App {
                             dataParent,
                             defaultName,
                             this.provenance,
-                            this.intentExecutor
+                            this.intentExecutor,
+                            this
                         )
                     )
             )

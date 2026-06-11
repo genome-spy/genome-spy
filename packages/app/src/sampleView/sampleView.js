@@ -149,11 +149,14 @@ export default class SampleView extends ContainerView {
         dataParent,
         name,
         provenance,
-        intentExecutor
+        intentExecutor,
+        /** @type {import("../app.js").default | undefined} */ app = undefined
     ) {
         super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
+        /** @type {import("../app.js").default | undefined} */
+        this.app = app;
 
         const normalized = normalizeSampleViewSpec(spec);
         for (const warning of normalized.warnings) {

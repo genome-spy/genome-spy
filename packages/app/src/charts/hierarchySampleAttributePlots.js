@@ -126,6 +126,10 @@ export function buildHierarchyBarplot(request) {
     return {
         kind: "sample_attribute_plot",
         plotType: "barplot",
+        request: {
+            plotType: "bar",
+            attribute: request.attributeInfo.attribute,
+        },
         title: `Bar plot of ${templateResultToString(info.title)}`,
         spec,
         namedData: [{ name: BARPLOT_DATA_NAME, rows }],
@@ -202,6 +206,10 @@ export function buildHierarchyBoxplot(request) {
     return {
         kind: "sample_attribute_plot",
         plotType: "boxplot",
+        request: {
+            plotType: "boxplot",
+            attribute: request.attributeInfo.attribute,
+        },
         title: `Boxplot of ${templateResultToString(info.title)}`,
         spec,
         namedData: [
@@ -295,6 +303,11 @@ export function buildHierarchyScatterplot(request) {
     return {
         kind: "sample_attribute_plot",
         plotType: "scatterplot",
+        request: {
+            plotType: "scatterplot",
+            xAttribute: request.xAttributeInfo.attribute,
+            yAttribute: request.yAttributeInfo.attribute,
+        },
         title: `Scatterplot of ${xFieldName} vs ${yFieldName}`,
         spec,
         namedData: [{ name: SCATTERPLOT_DATA_NAME, rows }],

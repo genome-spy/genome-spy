@@ -17,8 +17,7 @@ import { queryDependency } from "../../utils/dependency.js";
 import { restoreBookmarkAndShowInfoBox } from "../../bookmark/bookmark.js";
 import { showEnterBookmarkInfoDialog } from "../dialogs/enterBookmarkDialog.js";
 import { showShareBookmarkDialog } from "../dialogs/shareBookmarkDialog.js";
-import { buildViewSettingsPayload } from "../../viewSettingsUtils.js";
-import { collectScaleDomains } from "../../bookmark/scaleDomainUtils.js";
+import { createBookmarkWithCurrentState } from "../../bookmark/bookmarkState.js";
 
 class BookmarkButton extends LitElement {
     constructor() {
@@ -46,31 +45,7 @@ class BookmarkButton extends LitElement {
     }
 
     #createBookmarkWithCurrentState() {
-        /** @type {import("../../bookmark/databaseSchema.js").BookmarkEntry} */
-        const bookmark = {
-            name: undefined,
-            actions: this.app.provenance.getBookmarkableActionHistory(),
-            scaleDomains: {},
-        };
-
-        const viewSettings = this.app.store.getState().viewSettings;
-        const viewRoot = this.app.genomeSpy.viewRoot;
-        if (viewRoot) {
-            const viewSettingsPayload = buildViewSettingsPayload(
-                viewRoot,
-                viewSettings
-            );
-            if (viewSettingsPayload) {
-                bookmark.viewSettings = viewSettingsPayload;
-            }
-        }
-
-        bookmark.scaleDomains = collectScaleDomains(
-            this.app.genomeSpy,
-            (scaleResolution) => scaleResolution.isZoomable()
-        );
-
-        return bookmark;
+        return createBookmarkWithCurrentState(this.app);
     }
 
     async #shareCurrentState() {
@@ -95,6 +70,7 @@ class BookmarkButton extends LitElement {
 
         bookmark.name ??= existingBookmark?.name;
         bookmark.notes ??= existingBookmark?.notes;
+        bookmark.plots ??= existingBookmark?.plots;
 
         if (
             await showEnterBookmarkInfoDialog(

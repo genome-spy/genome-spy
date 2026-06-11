@@ -100,6 +100,7 @@ export type SampleAttributePlotCharacterization =
 export interface SampleAttributePlot {
     kind: "sample_attribute_plot";
     plotType: SampleAttributePlotType;
+    request: SampleAttributePlotRequest;
     title: string;
     spec: RootSpec;
     namedData: RenderablePlotNamedData[];

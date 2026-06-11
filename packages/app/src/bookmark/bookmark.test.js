@@ -111,4 +111,108 @@ describe("bookmark restore", () => {
 
         expect(calls).toEqual(["reset", "metadata-ready", "submit"]);
     });
+
+    it("rebuilds plot attachments after restoring bookmark state", async () => {
+        /** @type {import("./databaseSchema.js").BookmarkEntry} */
+        const entry = {
+            name: "plot-bookmark",
+            plots: [
+                {
+                    kind: "sample_attribute_plot",
+                    request: {
+                        plotType: "boxplot",
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "score",
+                        },
+                    },
+                },
+            ],
+        };
+        const buildSampleAttributePlot = vi.fn(async () => ({
+            kind: "sample_attribute_plot",
+            title: "Boxplot of score",
+        }));
+        const app = /** @type {import("../app.js").default} */ (
+            /** @type {any} */ ({
+                store: {
+                    dispatch: vi.fn(),
+                    getState: () => ({ intentStatus: undefined }),
+                },
+                provenance: {
+                    isUndoable: () => false,
+                    activateInitialState: vi.fn(),
+                },
+                genomeSpy: {
+                    getNamedScaleResolutions: () => new Map(),
+                },
+                getAgentApi: vi.fn(async () => ({
+                    buildSampleAttributePlot,
+                })),
+            })
+        );
+
+        const results = await restoreBookmark(entry, app);
+
+        expect(buildSampleAttributePlot).toHaveBeenCalledWith(
+            entry.plots[0].request
+        );
+        expect(results.plots).toEqual([
+            {
+                attachment: entry.plots[0],
+                plot: {
+                    kind: "sample_attribute_plot",
+                    title: "Boxplot of score",
+                },
+            },
+        ]);
+    });
+
+    it("captures plot rebuild errors without aborting bookmark restore", async () => {
+        /** @type {import("./databaseSchema.js").BookmarkEntry} */
+        const entry = {
+            name: "broken-plot-bookmark",
+            plots: [
+                {
+                    kind: "sample_attribute_plot",
+                    request: {
+                        plotType: "bar",
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "missing",
+                        },
+                    },
+                },
+            ],
+        };
+        const app = /** @type {import("../app.js").default} */ (
+            /** @type {any} */ ({
+                store: {
+                    dispatch: vi.fn(),
+                    getState: () => ({ intentStatus: undefined }),
+                },
+                provenance: {
+                    isUndoable: () => false,
+                    activateInitialState: vi.fn(),
+                },
+                genomeSpy: {
+                    getNamedScaleResolutions: () => new Map(),
+                },
+                getAgentApi: vi.fn(async () => ({
+                    buildSampleAttributePlot: vi.fn(async () => {
+                        throw new Error("No such attribute: missing");
+                    }),
+                })),
+            })
+        );
+
+        const results = await restoreBookmark(entry, app);
+
+        expect(app.store.dispatch).toHaveBeenCalled();
+        expect(results.plots).toHaveLength(1);
+        expect(results.plots[0]).toMatchObject({
+            attachment: entry.plots[0],
+            error: "No such attribute: missing",
+        });
+    });
 });

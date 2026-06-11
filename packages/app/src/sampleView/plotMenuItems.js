@@ -45,7 +45,8 @@ export function appendPlotMenuItems(
                         sampleHierarchy: sampleView.sampleHierarchy,
                         attributeInfoSource:
                             sampleView.compositeAttributeInfoSource,
-                    })
+                    }),
+                    { app: sampleView.app }
                 ),
         });
         return;
@@ -75,7 +76,8 @@ export function appendPlotMenuItems(
                     sampleHierarchy: sampleView.sampleHierarchy,
                     attributeInfoSource:
                         sampleView.compositeAttributeInfoSource,
-                })
+                }),
+                { app: sampleView.app }
             ),
     });
 
@@ -99,7 +101,8 @@ export function appendPlotMenuItems(
                                 sampleView.compositeAttributeInfoSource,
                             colorScaleDomain: groupColorScale?.domain,
                             colorScaleRange: groupColorScale?.range,
-                        })
+                        }),
+                        { app: sampleView.app }
                     ),
             })),
         ],
