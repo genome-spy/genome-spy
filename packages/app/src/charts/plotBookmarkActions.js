@@ -16,15 +16,6 @@ export function createPlotBookmarkAttachment(plot) {
 /**
  * @param {import("../bookmark/bookmarkState.js").PlotBookmarkContext} bookmarkContext
  * @param {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} plot
- * @returns {import("../bookmark/databaseSchema.d.ts").BookmarkEntry}
- */
-export function createPlotBookmark(bookmarkContext, plot) {
-    return bookmarkContext.createBookmark([createPlotBookmarkAttachment(plot)]);
-}
-
-/**
- * @param {import("../bookmark/bookmarkState.js").PlotBookmarkContext} bookmarkContext
- * @param {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} plot
  */
 export async function addPlotBookmark(bookmarkContext, plot) {
     const bookmarkDatabase = bookmarkContext.getLocalBookmarkDatabase();
@@ -32,7 +23,9 @@ export async function addPlotBookmark(bookmarkContext, plot) {
         return;
     }
 
-    const bookmark = createPlotBookmark(bookmarkContext, plot);
+    const bookmark = bookmarkContext.createBookmark([
+        createPlotBookmarkAttachment(plot),
+    ]);
     if (await showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, "add")) {
         try {
             await bookmarkContext.saveLocalBookmark(bookmark);
@@ -49,7 +42,9 @@ export async function addPlotBookmark(bookmarkContext, plot) {
  * @param {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} plot
  */
 export async function sharePlotBookmark(bookmarkContext, plot) {
-    const bookmark = createPlotBookmark(bookmarkContext, plot);
+    const bookmark = bookmarkContext.createBookmark([
+        createPlotBookmarkAttachment(plot),
+    ]);
     if (await showEnterBookmarkInfoDialog(undefined, bookmark, "share")) {
         showShareBookmarkDialog(bookmark, false);
     }
