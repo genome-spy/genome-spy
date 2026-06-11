@@ -1,20 +1,33 @@
 import {
     activateExprRefProps,
+    isExprRef,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import addBaseUrl from "../../../utils/addBaseUrl.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
+import {
+    normalizeUrlDescriptors,
+    watchUrlDescriptorExpressions,
+} from "../urlDescriptor.js";
 
 /**
  *
  */
 export default class BigWigSource extends SingleAxisWindowedSource {
-    /** @type {number[]} */
-    #reductionLevels = [];
+    /**
+     * @typedef {object} BigWigHandle
+     * @prop {import("@gmod/bbi").BigWig} bbi
+     * @prop {number[]} reductionLevels
+     * @prop {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
+     * @prop {string} url
+     */
 
-    /** @type {import("@gmod/bbi").BigWig} */
-    #bbi;
+    /** @type {BigWigHandle[]} */
+    #handles = [];
+
+    #descriptorSignature = "";
+
+    #loadedDescriptorSignature = "";
 
     /**
      * @param {import("../../../spec/data.js").BigWigData} params
@@ -47,6 +60,21 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             { batchMode: "whenPropagated" }
         );
 
+        if (
+            params.url &&
+            typeof params.url == "object" &&
+            !isExprRef(params.url)
+        ) {
+            watchUrlDescriptorExpressions({
+                url: params.url,
+                paramRuntime: view.paramRuntime,
+                listener: () => {
+                    this.#initialize().then(() => this.reloadLastDomain());
+                },
+                registerDisposer: (disposer) => this.registerDisposer(disposer),
+            });
+        }
+
         if (!this.params.url) {
             throw new Error("No URL provided for BigWigSource");
         }
@@ -61,27 +89,26 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     }
 
     #initialize() {
-        this.initializedPromise = new Promise((resolve, reject) => {
-            Promise.all([
+        this.initializedPromise = normalizeUrlDescriptors({
+            url: this.params.url,
+            baseUrl: this.view.getBaseUrl(),
+            paramRuntime: this.paramRuntime,
+        }).then((descriptors) => {
+            this.#descriptorSignature = JSON.stringify(descriptors);
+            this.#loadedDescriptorSignature = "";
+
+            return Promise.all([
                 import("@gmod/bbi"),
                 import("generic-filehandle2"),
             ]).then(([{ BigWig }, { RemoteFile }]) => {
-                this.#bbi = new BigWig({
-                    filehandle: new RemoteFile(
-                        addBaseUrl(
-                            /** @type {string} */ (
-                                withoutExprRef(this.params.url)
-                            ),
-                            this.view.getBaseUrl()
-                        )
-                    ),
-                });
-
                 this.setLoadingStatus("loading");
-                this.#bbi
-                    .getHeader()
-                    .then((header) => {
-                        this.#reductionLevels =
+                return Promise.all(
+                    descriptors.map(async (descriptor) => {
+                        const bbi = new BigWig({
+                            filehandle: new RemoteFile(descriptor.url),
+                        });
+                        const header = await bbi.getHeader();
+                        const reductionLevels =
                             /** @type {{reductionLevel: number}[]} */ (
                                 header.zoomLevels
                             )
@@ -90,19 +117,25 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
                         // Add the non-reduced level. Not sure if this is the best way to do it.
                         // Afaik, the non-reduced bin size is not available in the header.
-                        this.#reductionLevels.push(1);
+                        reductionLevels.push(1);
 
+                        return {
+                            bbi,
+                            reductionLevels,
+                            fields: descriptor.fields,
+                            url: descriptor.url,
+                        };
+                    })
+                )
+                    .then((handles) => {
+                        this.#handles = handles;
                         this.setLoadingStatus("complete");
-                        resolve();
                     })
                     .catch((e) => {
                         // Load empty data
                         this.load();
-                        this.setLoadingStatus(
-                            "error",
-                            `${withoutExprRef(this.params.url)}: ${e.message}`
-                        );
-                        reject(e);
+                        this.setLoadingStatus("error", e.message);
+                        throw e;
                     });
             });
         });
@@ -121,57 +154,103 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
 
-        const reductionLevel = findReductionLevel(
-            domain,
-            length,
-            this.#reductionLevels
+        const reductionLevels = this.#handles.map((handle) =>
+            findReductionLevel(domain, length, handle.reductionLevels)
         );
 
         // The sensible minimum window size actually depends on the non-reduced data density...
         // Using 5000 as a default to avoid too many requests.
-        const windowSize = Math.max(reductionLevel * length, 5000);
+        const windowSize = Math.max(
+            ...reductionLevels.map((reductionLevel) => reductionLevel * length),
+            5000
+        );
 
         this.callIfWindowsChanged(domain, windowSize, (quantizedInterval) =>
-            this.loadInterval(quantizedInterval, reductionLevel)
+            this.loadInterval(quantizedInterval, reductionLevels)
         );
     }
 
     /**
      * @param {number[]} interval linearized domain
-     * @param {number} reductionLevel
+     * @param {number[]} reductionLevels
      */
     // @ts-expect-error
-    async loadInterval(interval, reductionLevel) {
-        const scale =
-            1 / 2 / reductionLevel / withoutExprRef(this.params.pixelsPerBin);
+    async loadInterval(interval, reductionLevels) {
         const featureChunks = await this.discretizeAndLoad(interval, {
-            load: (d, signal) =>
-                this.#bbi
-                    .getFeatures(d.chrom, d.startPos, d.endPos, {
-                        scale,
-                        signal,
+            load: async (d, signal) => {
+                const featuresByHandle = await Promise.all(
+                    this.#handles.map((handle, i) => {
+                        const scale =
+                            1 /
+                            2 /
+                            reductionLevels[i] /
+                            withoutExprRef(this.params.pixelsPerBin);
+
+                        return handle.bbi
+                            .getFeatures(d.chrom, d.startPos, d.endPos, {
+                                scale,
+                                signal,
+                            })
+                            .then((features) =>
+                                mapFeatures(d.chrom, features, handle.fields)
+                            );
                     })
-                    .then((features) => mapFeatures(d.chrom, features)),
+                );
+
+                return featuresByHandle.flat();
+            },
             loadBatch: (intervals, signal) =>
-                this.#bbi
-                    .getFeaturesMulti(
-                        intervals.map((d) => ({
-                            refName: d.chrom,
-                            start: d.startPos,
-                            end: d.endPos,
-                        })),
-                        { scale, signal }
-                    )
-                    .then((featureChunks) =>
-                        featureChunks.map((features, i) =>
-                            mapFeatures(intervals[i].chrom, features)
+                Promise.all(
+                    this.#handles.map((handle, handleIndex) => {
+                        const scale =
+                            1 /
+                            2 /
+                            reductionLevels[handleIndex] /
+                            withoutExprRef(this.params.pixelsPerBin);
+
+                        return handle.bbi
+                            .getFeaturesMulti(
+                                intervals.map((d) => ({
+                                    refName: d.chrom,
+                                    start: d.startPos,
+                                    end: d.endPos,
+                                })),
+                                { scale, signal }
+                            )
+                            .then((chunks) =>
+                                chunks.map((features, intervalIndex) =>
+                                    mapFeatures(
+                                        intervals[intervalIndex].chrom,
+                                        features,
+                                        handle.fields
+                                    )
+                                )
+                            );
+                    })
+                ).then((chunksByHandle) =>
+                    intervals.map((_, intervalIndex) =>
+                        chunksByHandle.flatMap(
+                            (chunks) => chunks[intervalIndex]
                         )
-                    ),
+                    )
+                ),
         });
 
         if (featureChunks) {
             this.publishData(featureChunks);
+            this.#loadedDescriptorSignature = this.#descriptorSignature;
         }
+    }
+
+    /**
+     * @param {import("./singleAxisLazySource.js").DataReadinessRequest} request
+     * @returns {boolean}
+     */
+    isDataReadyForDomain(request) {
+        return (
+            this.#loadedDescriptorSignature === this.#descriptorSignature &&
+            super.isDataReadyForDomain(request)
+        );
     }
 }
 
@@ -188,9 +267,11 @@ registerBuiltInLazyDataSource(isBigWigSource, BigWigSource);
 /**
  * @param {string} chrom
  * @param {import("@gmod/bbi").Feature[]} features
+ * @param {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
  */
-function mapFeatures(chrom, features) {
+function mapFeatures(chrom, features, fields) {
     return features.map((f) => ({
+        ...fields,
         chrom,
         start: f.start,
         end: f.end,
