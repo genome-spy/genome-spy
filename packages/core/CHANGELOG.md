@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
+
+### Bug Fixes
+
+* **core:** allow index scales for ordinal lanes ([0a0ee3c](https://github.com/genome-spy/genome-spy/commit/0a0ee3ce5432b8c37892468189ac85f9a6b8869d)) by @tuner
+* **core:** show tooltips as manual popovers ([8c76a31](https://github.com/genome-spy/genome-spy/commit/8c76a314289cad97573f8062270868d8c9c0c53c)) by @tuner
+
+### Features
+
+* **core:** align scale domain expressions ([70c6bef](https://github.com/genome-spy/genome-spy/commit/70c6befd12384b0b64d01080b2649956a53d53ef)) by @tuner
+* **core:** view level scale config ([#401](https://github.com/genome-spy/genome-spy/issues/401)) ([428372a](https://github.com/genome-spy/genome-spy/commit/428372acd322c1eb1063f780bcb6335e73009aed)) by @tuner
+
 # [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
 
 ### Bug Fixes

@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
+
+### Bug Fixes
+
+* **app:** handle initially hidden sample labels ([f6b29d3](https://github.com/genome-spy/genome-spy/commit/f6b29d3c2ed3dbd8014b05ff1e1c11922d037297)) by @tuner
+* **app:** remove bookmark timestamps ([6b13e3b](https://github.com/genome-spy/genome-spy/commit/6b13e3bd02e6302a864b98cb67fc8aae250e41d1)) by @tuner
+* **app:** resolve bookmark note assets from remote source ([9e8a89f](https://github.com/genome-spy/genome-spy/commit/9e8a89f419953b708c87fafede57881d7fdddc33)) by @tuner
+* **app:** wait for metadata before bookmark replay ([b3a6edb](https://github.com/genome-spy/genome-spy/commit/b3a6edbf65e0c5c20033cd2090437ad02d36c2ac)) by @tuner
+* **core:** allow index scales for ordinal lanes ([0a0ee3c](https://github.com/genome-spy/genome-spy/commit/0a0ee3ce5432b8c37892468189ac85f9a6b8869d)) by @tuner
+* **core:** show tooltips as manual popovers ([8c76a31](https://github.com/genome-spy/genome-spy/commit/8c76a314289cad97573f8062270868d8c9c0c53c)) by @tuner
+
+### Features
+
+* **app:** bookmarkable plots ([#402](https://github.com/genome-spy/genome-spy/issues/402)) ([9072c04](https://github.com/genome-spy/genome-spy/commit/9072c0499c75cfdc42c6f2f2d7c734398a08d684)) by @tuner
+* **core:** align scale domain expressions ([70c6bef](https://github.com/genome-spy/genome-spy/commit/70c6befd12384b0b64d01080b2649956a53d53ef)) by @tuner
+* **core:** view level scale config ([#401](https://github.com/genome-spy/genome-spy/issues/401)) ([428372a](https://github.com/genome-spy/genome-spy/commit/428372acd322c1eb1063f780bcb6335e73009aed)) by @tuner
+
 # [0.77.0](https://github.com/genome-spy/genome-spy/compare/v0.76.0...v0.77.0) (2026-06-04)
 
 ### Bug Fixes
