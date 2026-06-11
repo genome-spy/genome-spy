@@ -174,43 +174,56 @@ export interface UrlList {
 
 export interface UrlDescriptor {
     /**
-     * URL of the data file.
+     * URL of the data file. Relative URLs are resolved against the view base
+     * URL.
      */
     url: string;
 
     /**
-     * Fields attached to each datum loaded from this URL.
+     * URL of the index file for indexed formats such as Tabix, BAM, and
+     * indexed FASTA. Relative URLs are resolved against the view base URL.
+     * Ignored by sources that do not use an index.
+     */
+    indexUrl?: string;
+
+    /**
+     * Fields attached to each datum loaded from this URL. A field must not
+     * conflict with a field loaded from the data file.
      */
     fields?: Record<string, Scalar>;
 }
 
 export interface UrlTemplate {
     /**
-     * URL template. The scalar value is substituted for `{field}`.
+     * URL template. The value from `values` is substituted for the placeholder
+     * named by `field`, for example `{sample}`.
      */
     template: string;
 
     /**
-     * Values used for template expansion. An ExprRef can reference reactive
-     * parameters such as `visibleSamples`.
+     * Values used for template expansion. Duplicate resolved URLs are loaded
+     * once. An ExprRef can reference reactive parameters such as
+     * `visibleSamples`.
      */
     values: Scalar[] | ExprRef;
 
     /**
-     * Field name used both as the template placeholder and as the attached
-     * datum field.
+     * Field name used as the template placeholder and as the datum field
+     * attached to loaded rows.
      */
     field: FieldName;
 
     /**
-     * Maximum number of distinct resolved URLs to load.
+     * Maximum number of distinct resolved URLs to load. Expansion fails when
+     * the limit is exceeded.
      */
     maxUrls?: number;
 }
 
 export interface IndexUrlTemplate {
     /**
-     * URL template for the index file. Uses the `url` template values.
+     * URL template for index files. Uses the same values and field placeholder
+     * as the `url` template.
      */
     template: string;
 }
@@ -230,6 +243,10 @@ export interface UrlData extends DataBase {
     /**
      * An URL, a list of URLs, or a URL expansion definition from which to load
      * the data set.
+     *
+     * A URL template can expand values from an ExprRef and attach the expanded
+     * value as a field to loaded rows.
+     *
      * Gzip-compressed resources are decompressed transparently when the URL,
      * MIME type, or payload indicates gzip content. Use the `format.type`
      * property to ensure the loaded data is correctly parsed.
@@ -385,12 +402,15 @@ export interface IndexedFastaData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the fasta file.
+     * URL of the fasta file. URL templates and URL descriptor arrays load
+     * multiple files.
      */
     url: UrlSourceRef;
 
     /**
      * URL of the index file.
+     * When `url` is a template, this can be an index URL template using the
+     * same placeholder and values.
      *
      * __Default value:__ `url` + `".fai"`.
      */
@@ -416,7 +436,8 @@ export interface BigWigData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigWig file.
+     * URL of the BigWig file. URL templates and URL descriptor arrays load
+     * multiple BigWig files and attach descriptor fields to loaded rows.
      */
     url: UrlSourceRef;
 
@@ -439,7 +460,8 @@ export interface BigBedData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigBed file.
+     * URL of the BigBed file. URL templates and URL descriptor arrays load
+     * multiple BigBed files and attach descriptor fields to loaded rows.
      */
     url: UrlSourceRef;
 
@@ -463,12 +485,15 @@ export interface BamData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigBed file.
+     * URL of the BAM file. URL templates and URL descriptor arrays load
+     * multiple BAM files.
      */
     url: UrlSourceRef;
 
     /**
      * URL of the index file.
+     * When `url` is a template, this can be an index URL template using the
+     * same placeholder and values.
      *
      * __Default value:__ `url` + `".bai"`.
      */
@@ -492,12 +517,15 @@ export interface TabixData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * Url of the bgzip compressed file.
+     * URL of the bgzip-compressed file. URL templates and URL descriptor
+     * arrays load multiple files and attach descriptor fields to loaded rows.
      */
     url: UrlSourceRef;
 
     /**
-     * Url of the tabix index file.
+     * URL of the tabix index file.
+     * When `url` is a template, this can be an index URL template using the
+     * same placeholder and values.
      *
      * __Default value:__ `url` + `".tbi"`.
      */
