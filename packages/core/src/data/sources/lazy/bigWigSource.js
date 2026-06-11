@@ -6,6 +6,7 @@ import {
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 import {
+    attachDescriptorFields,
     normalizeUrlDescriptors,
     watchUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
@@ -270,13 +271,17 @@ registerBuiltInLazyDataSource(isBigWigSource, BigWigSource);
  * @param {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
  */
 function mapFeatures(chrom, features, fields) {
-    return features.map((f) => ({
-        ...fields,
-        chrom,
-        start: f.start,
-        end: f.end,
-        score: f.score,
-    }));
+    return features.map((f) =>
+        attachDescriptorFields(
+            {
+                chrom,
+                start: f.start,
+                end: f.end,
+                score: f.score,
+            },
+            fields
+        )
+    );
 }
 
 /**

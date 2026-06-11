@@ -60,6 +60,43 @@ export function watchUrlDescriptorExpressions(options) {
 }
 
 /**
+ * @template {Record<string, any>} T
+ * @param {T} datum
+ * @param {Record<string, import("../../spec/channel.js").Scalar>} [fields]
+ * @returns {T}
+ */
+export function attachDescriptorFields(datum, fields) {
+    if (!fields) {
+        return datum;
+    }
+
+    for (const [key, value] of Object.entries(fields)) {
+        if (key in datum && datum[key] !== value) {
+            throw new Error(
+                `Descriptor field "${key}" conflicts with loaded datum.`
+            );
+        }
+    }
+
+    return /** @type {T} */ ({
+        ...fields,
+        ...datum,
+    });
+}
+
+/**
+ * @template {Record<string, any>} T
+ * @param {T[]} data
+ * @param {Record<string, import("../../spec/channel.js").Scalar>} [fields]
+ * @returns {T[]}
+ */
+export function attachDescriptorFieldsToData(data, fields) {
+    return fields
+        ? data.map((datum) => attachDescriptorFields(datum, fields))
+        : data;
+}
+
+/**
  * @param {any} urlSpec
  * @param {UrlDescriptorOptions} options
  * @returns {UrlDescriptor[]}

@@ -5,6 +5,7 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import {
+    attachDescriptorFieldsToData,
     normalizeUrlDescriptors,
     watchUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
@@ -174,7 +175,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
                                 }
                             );
 
-                            return attachFields(
+                            return attachDescriptorFieldsToData(
                                 this._parseFeatures(lines),
                                 handle.fields
                             );
@@ -224,31 +225,4 @@ export default class TabixSource extends SingleAxisWindowedSource {
         // Override me
         return [];
     }
-}
-
-/**
- * @template {Record<string, any>} T
- * @param {T[]} data
- * @param {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
- * @returns {T[]}
- */
-function attachFields(data, fields) {
-    if (!fields) {
-        return data;
-    }
-
-    return data.map((datum) => {
-        for (const [key, value] of Object.entries(fields)) {
-            if (key in datum && datum[key] !== value) {
-                throw new Error(
-                    `Descriptor field "${key}" conflicts with loaded datum.`
-                );
-            }
-        }
-
-        return {
-            ...fields,
-            ...datum,
-        };
-    });
 }

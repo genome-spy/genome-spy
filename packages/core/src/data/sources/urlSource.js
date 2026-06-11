@@ -12,6 +12,7 @@ import {
 } from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
 import {
+    attachDescriptorFields,
     normalizeUrlDescriptors,
     watchUrlDescriptorExpressions,
 } from "./urlDescriptor.js";
@@ -143,7 +144,9 @@ export default class UrlSource extends DataSource {
                         : dataOrPromise;
                 this.beginBatch({ type: "file", url: descriptor.url });
                 for (const d of data) {
-                    this._propagate(attachFields(d, descriptor.fields));
+                    this._propagate(
+                        attachDescriptorFields(d, descriptor.fields)
+                    );
                 }
             } catch (e) {
                 console.warn(e);
@@ -181,26 +184,6 @@ export default class UrlSource extends DataSource {
  */
 export function isUrlData(data) {
     return "url" in data;
-}
-
-/**
- * @param {Record<string, any>} datum
- * @param {Record<string, import("../../spec/channel.js").Scalar>} [fields]
- */
-function attachFields(datum, fields) {
-    if (!fields) {
-        return datum;
-    }
-
-    for (const [key, value] of Object.entries(fields)) {
-        if (key in datum && datum[key] !== value) {
-            throw new Error(
-                `Descriptor field "${key}" conflicts with loaded datum.`
-            );
-        }
-    }
-
-    return { ...fields, ...datum };
 }
 
 /**

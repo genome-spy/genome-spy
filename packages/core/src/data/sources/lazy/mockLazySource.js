@@ -1,5 +1,6 @@
 import SingleAxisLazySource from "./singleAxisLazySource.js";
 import {
+    attachDescriptorFields,
     normalizeUrlDescriptors,
     watchUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
@@ -79,10 +80,9 @@ export default class MockLazySource extends SingleAxisLazySource {
 
         return descriptors.flatMap((descriptor, i) => {
             const rows = this.params.data ?? [{ x: i, value: descriptor.url }];
-            return rows.map((datum) => ({
-                ...descriptor.fields,
-                ...datum,
-            }));
+            return rows.map((datum) =>
+                attachDescriptorFields(datum, descriptor.fields)
+            );
         });
     }
 }
