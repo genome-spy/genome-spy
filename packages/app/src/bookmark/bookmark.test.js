@@ -215,4 +215,40 @@ describe("bookmark restore", () => {
             error: "No such attribute: missing",
         });
     });
+
+    it("returns an empty plot result when intent restore reports an error", async () => {
+        /** @type {import("./databaseSchema.js").BookmarkEntry} */
+        const entry = {
+            name: "intent-error-bookmark",
+            actions: /** @type {any} */ ([
+                { type: "sample/add", payload: { value: 1 } },
+            ]),
+        };
+        const app = /** @type {import("../app.js").default} */ (
+            /** @type {any} */ ({
+                store: {
+                    dispatch: vi.fn(),
+                    getState: () => ({
+                        intentStatus: { status: "error" },
+                    }),
+                },
+                intentPipeline: {
+                    submit: vi.fn(async () => {
+                        throw new Error("Intent failed");
+                    }),
+                },
+                provenance: {
+                    isUndoable: () => false,
+                    activateInitialState: vi.fn(),
+                },
+                genomeSpy: {
+                    getNamedScaleResolutions: () => new Map(),
+                },
+            })
+        );
+
+        await expect(restoreBookmark(entry, app)).resolves.toEqual({
+            plots: [],
+        });
+    });
 });
