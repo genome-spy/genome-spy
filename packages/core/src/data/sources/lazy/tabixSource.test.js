@@ -3,11 +3,14 @@ import Collector from "../../collector.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import TabixTsvSource from "./tabixTsvSource.js";
 
+/** @type {Map<string, string[]>} */
 const linesByUrl = new Map();
+/** @type {Map<string, string>} */
 const indexUrlByUrl = new Map();
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
+        /** @param {string} url */
         constructor(url) {
             this.url = url;
         }
@@ -16,6 +19,7 @@ vi.mock("generic-filehandle2", () => ({
 
 vi.mock("@gmod/tabix", () => ({
     TabixIndexedFile: class TabixIndexedFile {
+        /** @param {{ filehandle: { url: string }, tbiFilehandle: { url: string } }} options */
         constructor(options) {
             this.url = options.filehandle.url;
             this.indexUrl = options.tbiFilehandle.url;
@@ -26,6 +30,12 @@ vi.mock("@gmod/tabix", () => ({
             return "#chrom\tstart\tend\tvalue";
         }
 
+        /**
+         * @param {string} chrom
+         * @param {number} startPos
+         * @param {number} endPos
+         * @param {{ lineCallback: (line: string) => void }} options
+         */
         async getLines(chrom, startPos, endPos, options) {
             for (const line of linesByUrl.get(this.url) ?? []) {
                 options.lineCallback(line);
@@ -35,6 +45,8 @@ vi.mock("@gmod/tabix", () => ({
 }));
 
 function createViewStub() {
+    /** @type {any} */
+    let scaleResolution;
     const paramRuntime = new ViewParamRuntime(
         () => undefined,
         () => scaleResolution
@@ -43,7 +55,9 @@ function createViewStub() {
 
     const genome = {
         totalSize: 1000,
-        continuousToDiscreteChromosomeIntervals: (interval) => [
+        continuousToDiscreteChromosomeIntervals: (
+            /** @type {number[]} */ interval
+        ) => [
             {
                 chrom: "chr1",
                 startPos: interval[0],
@@ -52,12 +66,14 @@ function createViewStub() {
         ],
     };
 
-    const scale = () => undefined;
+    const scale = /** @type {any} */ (
+        /** @returns {undefined} */ () => undefined
+    );
     scale.type = "locus";
     scale.genome = () => genome;
 
-    const scaleResolution = {
-        addEventListener: () => undefined,
+    scaleResolution = {
+        addEventListener: /** @returns {undefined} */ () => undefined,
         getAxisLength: () => 100,
         getDomain: () => [0, 100],
         getScale: () => scale,
@@ -69,10 +85,10 @@ function createViewStub() {
         getScaleResolution: () => scaleResolution,
         isVisible: () => true,
         context: {
-            addBroadcastListener: () => undefined,
+            addBroadcastListener: /** @returns {undefined} */ () => undefined,
             dataFlow: {
                 loadingStatusRegistry: {
-                    set: () => undefined,
+                    set: /** @returns {undefined} */ () => undefined,
                 },
             },
         },
@@ -89,7 +105,7 @@ describe("TabixSource", () => {
 
     it("loads multiple URL/index descriptors and tags parsed rows", async () => {
         const source = new TabixTsvSource(
-            {
+            /** @type {any} */ ({
                 type: "tabix",
                 debounceMode: "domain",
                 url: {
@@ -100,13 +116,13 @@ describe("TabixSource", () => {
                 indexUrl: {
                     template: "variants/{cancer}.vcf.gz.tbi",
                 },
-            },
+            }),
             /** @type {any} */ (createViewStub())
         );
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.initializedPromise;
+        await /** @type {any} */ (source).initializedPromise;
         await source.loadInterval([0, 100]);
 
         expect(indexUrlByUrl).toEqual(

@@ -4,16 +4,23 @@ import {
     watchUrlDescriptorExpressions,
 } from "./urlDescriptor.js";
 
+/**
+ * @param {Record<string, any>} values
+ */
 function createRuntime(values) {
     return {
-        createExpression: (expr) => {
+        createExpression: (/** @type {string} */ expr) => {
             const fn = () => values[expr];
-            fn.subscribe = () => () => undefined;
+            fn.subscribe = /** @returns {() => undefined} */ () => {
+                return () => undefined;
+            };
             return fn;
         },
-        watchExpression: (expr) => {
+        watchExpression: (/** @type {string} */ expr) => {
             const fn = () => values[expr];
-            fn.subscribe = () => () => undefined;
+            fn.subscribe = /** @returns {() => undefined} */ () => {
+                return () => undefined;
+            };
             return fn;
         },
     };
@@ -90,6 +97,7 @@ describe("normalizeUrlDescriptors", () => {
     });
 
     it("watches nested template value expressions", () => {
+        /** @type {string[]} */
         const watched = [];
         watchUrlDescriptorExpressions({
             url: {
@@ -98,11 +106,17 @@ describe("normalizeUrlDescriptors", () => {
                 field: "sample",
             },
             paramRuntime: {
-                watchExpression: (expr) => {
+                watchExpression: (/** @type {string} */ expr) => {
                     watched.push(expr);
-                    return () => [];
+                    return /** @returns {any[]} */ function unsubscribe() {
+                        return [];
+                    };
                 },
-                createExpression: () => () => undefined,
+                createExpression: /** @returns {any} */ () => {
+                    return /** @returns {undefined} */ function expr() {
+                        return undefined;
+                    };
+                },
             },
             listener: () => undefined,
         });

@@ -46,7 +46,7 @@ function createViewStub() {
                          * @param {string} status
                          * @param {string} [detail]
                          */
-                        set: (_view, status, detail) => {
+                        set: (/** @type {any} */ _view, status, detail) => {
                             loadingStatus.status = status;
                             loadingStatus.detail = detail;
                         },
@@ -55,7 +55,7 @@ function createViewStub() {
             },
         })
     );
-    view.loadingStatus = loadingStatus;
+    /** @type {any} */ (view).loadingStatus = loadingStatus;
     return view;
 }
 
@@ -346,7 +346,7 @@ test("UrlSource reports conflicting descriptor fields", async () => {
 
     await source.load();
 
-    expect(view.loadingStatus).toEqual({
+    expect(/** @type {any} */ (view).loadingStatus).toEqual({
         status: "error",
         detail: expect.stringContaining(
             'Descriptor field "sample" conflicts with loaded datum.'

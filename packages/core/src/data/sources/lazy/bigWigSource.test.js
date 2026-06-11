@@ -3,10 +3,12 @@ import Collector from "../../collector.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import BigWigSource from "./bigWigSource.js";
 
+/** @type {Map<string, { start: number, end: number, score: number }[]>} */
 const featuresByUrl = new Map();
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
+        /** @param {string} url */
         constructor(url) {
             this.url = url;
         }
@@ -15,6 +17,7 @@ vi.mock("generic-filehandle2", () => ({
 
 vi.mock("@gmod/bbi", () => ({
     BigWig: class BigWig {
+        /** @param {{ filehandle: { url: string } }} options */
         constructor(options) {
             this.url = options.filehandle.url;
         }
@@ -25,6 +28,7 @@ vi.mock("@gmod/bbi", () => ({
             };
         }
 
+        /** @param {any[]} intervals */
         async getFeaturesMulti(intervals) {
             return intervals.map(() => featuresByUrl.get(this.url) ?? []);
         }
@@ -32,6 +36,8 @@ vi.mock("@gmod/bbi", () => ({
 }));
 
 function createViewStub() {
+    /** @type {any} */
+    let scaleResolution;
     const paramRuntime = new ViewParamRuntime(
         () => undefined,
         () => scaleResolution
@@ -43,7 +49,9 @@ function createViewStub() {
 
     const genome = {
         totalSize: 1000,
-        continuousToDiscreteChromosomeIntervals: (interval) => [
+        continuousToDiscreteChromosomeIntervals: (
+            /** @type {number[]} */ interval
+        ) => [
             {
                 chrom: "chr1",
                 startPos: interval[0],
@@ -52,12 +60,14 @@ function createViewStub() {
         ],
     };
 
-    const scale = () => undefined;
+    const scale = /** @type {any} */ (
+        /** @returns {undefined} */ () => undefined
+    );
     scale.type = "locus";
     scale.genome = () => genome;
 
-    const scaleResolution = {
-        addEventListener: () => undefined,
+    scaleResolution = {
+        addEventListener: /** @returns {undefined} */ () => undefined,
         getAxisLength: () => 100,
         getDomain: () => [0, 100],
         getScale: () => scale,
@@ -72,10 +82,11 @@ function createViewStub() {
             getScaleResolution: () => scaleResolution,
             isVisible: () => true,
             context: {
-                addBroadcastListener: () => undefined,
+                addBroadcastListener: /** @returns {undefined} */ () =>
+                    undefined,
                 dataFlow: {
                     loadingStatusRegistry: {
-                        set: () => undefined,
+                        set: /** @returns {undefined} */ () => undefined,
                     },
                 },
             },
@@ -107,7 +118,7 @@ describe("BigWigSource", () => {
         const collector = new Collector();
         source.addChild(collector);
 
-        await source.initializedPromise;
+        await /** @type {any} */ (source).initializedPromise;
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(false);
 
         await source.loadInterval([0, 100], [1, 1]);
