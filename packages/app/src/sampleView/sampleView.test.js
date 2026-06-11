@@ -170,6 +170,42 @@ describe("SampleView", () => {
         expect(provenance.isUndoable()).toBe(false);
     });
 
+    test("publishes visibleSamples from the sample hierarchy", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+        const facetsView = view.findDescendantByName("sample-facets");
+
+        expect(facetsView.paramRuntime.getValue("visibleSamples")).toEqual([]);
+
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                ],
+            })
+        );
+        await Promise.resolve();
+
+        expect(facetsView.paramRuntime.getValue("visibleSamples")).toEqual([
+            "A",
+            "B",
+        ]);
+    });
+
     test("infers sample label width from the longest display name", async () => {
         const shortWidth = await getSampleLabelWidth(
             {

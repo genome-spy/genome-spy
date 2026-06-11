@@ -118,6 +118,12 @@ export default class SampleView extends ContainerView {
     /** @type {(param: any) => void} */
     #sampleHeightParam;
 
+    /** @type {(value: string[]) => void} */
+    #visibleSamplesParam;
+
+    /** @type {string[]} */
+    #lastVisibleSamples = [];
+
     /** @type {(action: import("@reduxjs/toolkit").PayloadAction<any>) => any} */
     #actionAugmenter;
 
@@ -547,6 +553,7 @@ export default class SampleView extends ContainerView {
                 withMicrotask(() => {
                     this.locationManager.reset();
                     this.sampleGroupView?.updateGroups();
+                    this.#updateVisibleSamplesParam();
                     this.context.requestLayoutReflow();
                     this.context.animator.requestRender();
                 })
@@ -597,6 +604,12 @@ export default class SampleView extends ContainerView {
         this.#sampleHeightParam = (value) => {
             this.#gridChild.view.paramRuntime.setValue("height", value);
         };
+        this.#visibleSamplesParam =
+            this.#gridChild.view.paramRuntime.allocateSetter(
+                "visibleSamples",
+                []
+            );
+        this.#updateVisibleSamplesParam();
 
         // TODO: Hack the sample height to sidebar as well.
 
@@ -821,6 +834,20 @@ export default class SampleView extends ContainerView {
             );
 
         return sampleGroups.map((sampleGroup) => sampleGroup.samples).flat();
+    }
+
+    #updateVisibleSamplesParam() {
+        if (!this.#visibleSamplesParam) {
+            return;
+        }
+
+        const samples = this.leafSamples;
+        if (arraysEqual(samples, this.#lastVisibleSamples)) {
+            return;
+        }
+
+        this.#lastVisibleSamples = samples;
+        this.#visibleSamplesParam(samples);
     }
 
     /**
@@ -1736,4 +1763,12 @@ class SampleGridChild extends GridChild {
 
         yield* super.getChildren();
     }
+}
+
+/**
+ * @param {string[]} a
+ * @param {string[]} b
+ */
+function arraysEqual(a, b) {
+    return a.length == b.length && a.every((value, i) => value == b[i]);
 }
