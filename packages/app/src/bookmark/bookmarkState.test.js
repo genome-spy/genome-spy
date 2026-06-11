@@ -53,4 +53,37 @@ describe("createBookmarkWithCurrentState", () => {
             plots: [plot],
         });
     });
+
+    it("copies the plot attachment array", () => {
+        /** @type {import("./databaseSchema.d.ts").BookmarkPlotAttachment} */
+        const plot = {
+            kind: "sample_attribute_plot",
+            request: {
+                plotType: "bar",
+                attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "status" },
+            },
+        };
+        const plots = [plot];
+        const app = /** @type {import("../app.js").default} */ (
+            /** @type {any} */ ({
+                provenance: {
+                    getBookmarkableActionHistory: vi.fn(() => []),
+                },
+                genomeSpy: {
+                    viewRoot: undefined,
+                    getNamedScaleResolutions: vi.fn(() => new Map()),
+                },
+                store: {
+                    getState: vi.fn(() => ({
+                        viewSettings: { visibilities: {} },
+                    })),
+                },
+            })
+        );
+
+        const bookmark = createBookmarkWithCurrentState(app, { plots });
+        plots.length = 0;
+
+        expect(bookmark.plots).toEqual([plot]);
+    });
 });

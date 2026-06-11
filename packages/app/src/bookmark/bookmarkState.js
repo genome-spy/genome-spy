@@ -40,7 +40,7 @@ export function createBookmarkWithCurrentState(app, options = {}) {
     );
 
     if (options.plots?.length) {
-        bookmark.plots = options.plots;
+        bookmark.plots = options.plots.slice();
     }
 
     return bookmark;
