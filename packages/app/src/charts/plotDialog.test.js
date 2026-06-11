@@ -1,6 +1,6 @@
 // @ts-check
 import { describe, expect, it } from "vitest";
-import { createPlotBookmarkAttachment } from "./plotDialog.js";
+import { createPlotBookmarkAttachment } from "./plotBookmarkActions.js";
 
 describe("createPlotBookmarkAttachment", () => {
     it("uses the plot request without copying the generated title", () => {

@@ -6,26 +6,13 @@ import {
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import { downloadChartPng, embedRenderablePlot } from "./chartDialogUtils.js";
-import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
-import { showShareBookmarkDialog } from "../components/dialogs/shareBookmarkDialog.js";
-import { showMessageDialog } from "../components/generic/messageDialog.js";
+import { addPlotBookmark, sharePlotBookmark } from "./plotBookmarkActions.js";
 
 /**
  * @typedef {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} SampleAttributePlot
  *
  * @typedef {import("../bookmark/bookmarkState.js").PlotBookmarkContext} PlotBookmarkContext
  */
-
-/**
- * @param {SampleAttributePlot} plot
- * @returns {import("../bookmark/databaseSchema.d.ts").BookmarkPlotAttachment}
- */
-export function createPlotBookmarkAttachment(plot) {
-    return {
-        kind: "sample_attribute_plot",
-        request: plot.request,
-    };
-}
 
 export class PlotDialog extends BaseDialog {
     static properties = {
@@ -147,51 +134,20 @@ export class PlotDialog extends BaseDialog {
         this._api = await embedRenderablePlot(container, this.plot);
     }
 
-    /**
-     * @returns {import("../bookmark/databaseSchema.d.ts").BookmarkEntry}
-     */
-    #createPlotBookmark() {
-        if (!this.bookmarkContext || !this.plot) {
-            throw new Error(
-                "Plot bookmark creation requires bookmark context and plot."
-            );
-        }
-
-        return this.bookmarkContext.createBookmark([
-            createPlotBookmarkAttachment(this.plot),
-        ]);
-    }
-
     async #addBookmark() {
-        if (!this.bookmarkContext?.canSaveLocalBookmark()) {
+        if (!this.bookmarkContext || !this.plot) {
             return;
         }
 
-        const bookmarkDatabase =
-            this.bookmarkContext.getLocalBookmarkDatabase();
-        const bookmark = this.#createPlotBookmark();
-        if (
-            await showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, "add")
-        ) {
-            try {
-                await this.bookmarkContext.saveLocalBookmark(bookmark);
-            } catch (error) {
-                showMessageDialog(`${error}`, {
-                    title: "Cannot save the bookmark!",
-                });
-            }
-        }
+        await addPlotBookmark(this.bookmarkContext, this.plot);
     }
 
     async #shareBookmark() {
-        if (!this.bookmarkContext) {
+        if (!this.bookmarkContext || !this.plot) {
             return;
         }
 
-        const bookmark = this.#createPlotBookmark();
-        if (await showEnterBookmarkInfoDialog(undefined, bookmark, "share")) {
-            showShareBookmarkDialog(bookmark, false);
-        }
+        await sharePlotBookmark(this.bookmarkContext, this.plot);
     }
 }
 
