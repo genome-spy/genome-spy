@@ -33,20 +33,30 @@ async function gzipText(text) {
 }
 
 function createViewStub() {
+    /** @type {{ status?: string, detail?: string }} */
+    const loadingStatus = {};
     /** @type {import("../../view/view.js").default} */
-    return /** @type {any} */ (
+    const view = /** @type {any} */ (
         Object.assign(makeParamRuntimeProvider(), {
             getBaseUrl: () => "",
             context: {
                 dataFlow: {
                     loadingStatusRegistry: {
-                        /** @returns {void} */
-                        set: () => {},
+                        /**
+                         * @param {string} status
+                         * @param {string} [detail]
+                         */
+                        set: (_view, status, detail) => {
+                            loadingStatus.status = status;
+                            loadingStatus.detail = detail;
+                        },
                     },
                 },
             },
         })
     );
+    view.loadingStatus = loadingStatus;
+    return view;
 }
 
 /**
@@ -280,4 +290,66 @@ test("UrlSource reads gzip-compressed URL lists transparently", async () => {
             value: 2,
         },
     ]);
+});
+
+test("UrlSource expands URL templates and attaches descriptor fields", async () => {
+    global.fetch = /** @type {any} */ (
+        vi.fn(async (url) => {
+            if (url == "segments/A.tsv") {
+                return new Response("start\tend\n1\t2\n", { status: 200 });
+            }
+            if (url == "segments/B.tsv") {
+                return new Response("start\tend\n3\t4\n", { status: 200 });
+            }
+            throw new Error(`Unexpected URL: ${url}`);
+        })
+    );
+
+    const source = new UrlSource(
+        {
+            url: {
+                template: "segments/{sample}.tsv",
+                values: ["A", "B"],
+                field: "sample",
+            },
+            format: { type: "tsv" },
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([
+        { sample: "A", start: 1, end: 2 },
+        { sample: "B", start: 3, end: 4 },
+    ]);
+});
+
+test("UrlSource reports conflicting descriptor fields", async () => {
+    global.fetch = /** @type {any} */ (
+        vi.fn(
+            async () => new Response("sample\tvalue\nB\t1\n", { status: 200 })
+        )
+    );
+
+    const view = createViewStub();
+    const source = new UrlSource(
+        {
+            url: [
+                {
+                    url: "segments/A.tsv",
+                    fields: { sample: "A" },
+                },
+            ],
+            format: { type: "tsv" },
+        },
+        view
+    );
+
+    await source.load();
+
+    expect(view.loadingStatus).toEqual({
+        status: "error",
+        detail: expect.stringContaining(
+            'Descriptor field "sample" conflicts with loaded datum.'
+        ),
+    });
 });

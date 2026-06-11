@@ -11,6 +11,10 @@ import {
     withoutExprRef,
 } from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
+import {
+    normalizeUrlDescriptors,
+    watchUrlDescriptorExpressions,
+} from "./urlDescriptor.js";
 
 const gzipMimeTypes = new Set(["application/gzip", "application/x-gzip"]);
 const textDecoder = new TextDecoder();
@@ -34,6 +38,15 @@ export default class UrlSource extends DataSource {
             (disposer) => this.registerDisposer(disposer),
             { batchMode: "whenPropagated" }
         );
+
+        if (params.url && typeof params.url == "object") {
+            watchUrlDescriptorExpressions({
+                url: params.url,
+                paramRuntime: view.paramRuntime,
+                listener: () => this.load(),
+                registerDisposer: (disposer) => this.registerDisposer(disposer),
+            });
+        }
 
         this.baseUrl = view?.getBaseUrl();
     }
@@ -77,18 +90,19 @@ export default class UrlSource extends DataSource {
     }
 
     async load() {
-        const url =
-            /** @type {string | string[] | import("../../spec/data.js").UrlList} */ (
-                withoutExprRef(this.params.url)
-            );
+        const url = withoutExprRef(this.params.url);
 
-        /** @type {string[]} */
-        const urls =
+        /** @type {import("./urlDescriptor.js").UrlDescriptor[]} */
+        const descriptors =
             typeof url == "object" && "urlsFromFile" in url
-                ? await this.#loadUrlsFromFile(url)
-                : (Array.isArray(url) ? url : [url]).map((u) =>
-                      concatUrl(this.baseUrl, u)
-                  );
+                ? (await this.#loadUrlsFromFile(url)).map((url) => ({ url }))
+                : await normalizeUrlDescriptors({
+                      url: this.params.url,
+                      baseUrl: this.baseUrl,
+                      paramRuntime: this.paramRuntime,
+                  });
+
+        const urls = descriptors.map((descriptor) => descriptor.url);
 
         const format = getFormat(this.params, urls);
         const type = responseType(format.type);
@@ -117,9 +131,9 @@ export default class UrlSource extends DataSource {
 
         /**
          * @param {any} content
-         * @param {string} [url]
+         * @param {import("./urlDescriptor.js").UrlDescriptor} descriptor
          */
-        const readAndParse = async (content, url) => {
+        const readAndParse = async (content, descriptor) => {
             try {
                 /** @type {any[] | Promise<any[]>} */
                 const dataOrPromise = read(content, toVegaLoaderFormat(format));
@@ -127,15 +141,18 @@ export default class UrlSource extends DataSource {
                     dataOrPromise instanceof Promise
                         ? await dataOrPromise
                         : dataOrPromise;
-                this.beginBatch({ type: "file", url: url });
+                this.beginBatch({ type: "file", url: descriptor.url });
                 for (const d of data) {
-                    this._propagate(d);
+                    this._propagate(attachFields(d, descriptor.fields));
                 }
             } catch (e) {
                 console.warn(e);
-                throw new Error(`Cannot parse: ${url}: ${e.message}`, {
-                    cause: e,
-                });
+                throw new Error(
+                    `Cannot parse: ${descriptor.url}: ${e.message}`,
+                    {
+                        cause: e,
+                    }
+                );
             }
         };
 
@@ -143,7 +160,13 @@ export default class UrlSource extends DataSource {
         this.reset();
 
         try {
-            await Promise.all(urls.map((url) => load(url).then(readAndParse)));
+            await Promise.all(
+                descriptors.map((descriptor) =>
+                    load(descriptor.url).then((content) =>
+                        readAndParse(content, descriptor)
+                    )
+                )
+            );
             this.setLoadingStatus("complete");
         } catch (e) {
             this.setLoadingStatus("error", e.message);
@@ -158,6 +181,26 @@ export default class UrlSource extends DataSource {
  */
 export function isUrlData(data) {
     return "url" in data;
+}
+
+/**
+ * @param {Record<string, any>} datum
+ * @param {Record<string, import("../../spec/channel.js").Scalar>} [fields]
+ */
+function attachFields(datum, fields) {
+    if (!fields) {
+        return datum;
+    }
+
+    for (const [key, value] of Object.entries(fields)) {
+        if (key in datum && datum[key] !== value) {
+            throw new Error(
+                `Descriptor field "${key}" conflicts with loaded datum.`
+            );
+        }
+    }
+
+    return { ...fields, ...datum };
 }
 
 /**
