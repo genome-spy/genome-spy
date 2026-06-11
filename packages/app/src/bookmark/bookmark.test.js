@@ -136,7 +136,6 @@ describe("bookmark restore", () => {
         );
         expect(results.plots).toEqual([
             {
-                attachment: entry.plots[0],
                 plot: {
                     kind: "sample_attribute_plot",
                     title: "Boxplot of score",
@@ -175,7 +174,6 @@ describe("bookmark restore", () => {
         expect(app.store.dispatch).toHaveBeenCalled();
         expect(results.plots).toHaveLength(1);
         expect(results.plots[0]).toMatchObject({
-            attachment: entry.plots[0],
             error: "No such attribute: missing",
         });
     });

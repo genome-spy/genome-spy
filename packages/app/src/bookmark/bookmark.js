@@ -18,7 +18,6 @@ import { createPlotBookmarkContext } from "./bookmarkState.js";
 
 /**
  * @typedef {object} BookmarkPlotRestoreResult
- * @prop {import("./databaseSchema.d.ts").BookmarkPlotAttachment} attachment
  * @prop {import("../charts/sampleAttributePlotTypes.d.ts").SampleAttributePlot} [plot]
  * @prop {string} [error]
  */
@@ -134,10 +133,9 @@ export async function rebuildBookmarkPlots(entry, app) {
             if (!plot) {
                 throw new Error("Plot could not be rebuilt.");
             }
-            results.push({ attachment, plot });
+            results.push({ plot });
         } catch (error) {
             results.push({
-                attachment,
                 error: error instanceof Error ? error.message : String(error),
             });
         }
