@@ -488,6 +488,527 @@
           }
         }
       }
+    },
+    {
+      "id": "fuse-encode.read_refseq_genes_track",
+      "prompt": "How to read the RefSeq genes track?",
+      "difficulty": "descriptive",
+      "ambiguityLevel": "explicit",
+      "taskType": "genomic_track_only",
+      "outcomeType": "text_answer",
+      "tags": ["descriptive", "refseq", "genes", "track"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["gene", "exon", "strand", "arrow", "label"],
+          "mustNotContain": ["I cannot access the visualization"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {},
+        "efficiency": {
+          "minToolCalls": 0,
+          "minIntentActions": 0,
+          "softMaxToolCalls": 4,
+          "softMaxIntentActions": 2,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "answer": 0.8,
+            "efficiency": 0.2
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.repeat_masker_red_bars",
+      "prompt": "Show Repeat Masker and explain the red bars in it.",
+      "difficulty": "descriptive",
+      "ambiguityLevel": "explicit",
+      "taskType": "genomic_track_only",
+      "outcomeType": "text_answer",
+      "tags": ["descriptive", "repeat-masker", "track"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["repeat", "Repeat Masker", "DNA", "red"],
+          "mustNotContain": ["I cannot access the visualization"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {},
+        "efficiency": {
+          "minToolCalls": 0,
+          "minIntentActions": 0,
+          "softMaxToolCalls": 4,
+          "softMaxIntentActions": 2,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "answer": 0.8,
+            "efficiency": 0.2
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.group_quartiles_mean_beta_interval",
+      "prompt": "I'd like to see the samples grouped into quartiles by the mean beta in chr17:4,325,078-4,337,793.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "selection", "quartiles", "methylation"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_interval"
+            },
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "label": "group_interval_mean_beta_quartiles"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.derive_interval_mean_beta_group_quartiles",
+      "prompt": "I'd like to have mean beta in chr17:4,325,078-4,337,793 as a metadata attribute and the samples grouped into quartiles by it.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "selection",
+        "derived-metadata",
+        "quartiles",
+        "methylation"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_interval"
+            },
+            {
+              "actionTypes": [
+                "sampleView/deriveMetadata",
+                "sampleView/addMetadata",
+                "sampleView/addMetadataFromSource"
+              ],
+              "label": "materialize_interval_mean_beta"
+            },
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "label": "group_metadata_quartiles"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "interval_mean_beta_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 8,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.derive_brca1_mean_beta_group_quartiles",
+      "prompt": "I'd like to have mean beta in BRCA1 locus as a metadata attribute and the samples grouped into quartiles by the newly added attribute.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "quartiles",
+        "BRCA1"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_brca1"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_brca1"
+            },
+            {
+              "actionTypes": [
+                "sampleView/deriveMetadata",
+                "sampleView/addMetadata",
+                "sampleView/addMetadataFromSource"
+              ],
+              "label": "materialize_brca1_mean_beta"
+            },
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "label": "group_metadata_quartiles"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "brca1_mean_beta_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 5,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.group_by_mean_explain",
+      "prompt": "If I would like to have you group by mean instead, what would you do?",
+      "difficulty": "descriptive",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "hybrid",
+      "outcomeType": "text_answer",
+      "tags": ["descriptive", "workflow-explanation", "methylation"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["mean", "metadata", "derive", "region"],
+          "mustNotContain": ["I cannot access the visualization"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {},
+        "efficiency": {
+          "minToolCalls": 0,
+          "minIntentActions": 0,
+          "softMaxToolCalls": 4,
+          "softMaxIntentActions": 2,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "answer": 0.8,
+            "efficiency": 0.2
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.show_stomach_samples",
+      "prompt": "Show stomach samples",
+      "difficulty": "workflow",
+      "ambiguityLevel": "simple",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "filtering", "value-resolution", "tissue"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "resolveMetadataAttributeValues",
+              "label": "resolve_stomach_value"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "sampleView/filterByNominal",
+              "label": "filter_stomach"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.add_tp53_brca1_mean_beta_metadata",
+      "prompt": "Add mean beta of TP53 and BRCA1 loci to metadata.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "TP53",
+        "BRCA1"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_gene"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_gene_region"
+            },
+            {
+              "actionTypes": [
+                "sampleView/deriveMetadata",
+                "sampleView/addMetadata",
+                "sampleView/addMetadataFromSource"
+              ],
+              "label": "materialize_gene_mean_beta"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "metadataAttributeCountDelta",
+              "operator": "gte",
+              "value": 2,
+              "label": "two_gene_metadata_attributes_added"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 6,
+          "minIntentActions": 4,
+          "softMaxToolCalls": 12,
+          "softMaxIntentActions": 8,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "fuse-encode.correlate_tp53_brca1_mean_beta",
+      "prompt": "Show how mean beta of TP53 and BRCA1 loci correlate.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "scatterplot",
+        "TP53",
+        "BRCA1"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_gene"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_gene_region"
+            },
+            {
+              "actionTypes": [
+                "sampleView/deriveMetadata",
+                "sampleView/addMetadata",
+                "sampleView/addMetadataFromSource"
+              ],
+              "label": "materialize_gene_mean_beta"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "scatterplot",
+              "label": "show_scatterplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "metadataAttributeCountDelta",
+              "operator": "gte",
+              "value": 2,
+              "label": "two_gene_metadata_attributes_added"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 6,
+          "minIntentActions": 4,
+          "softMaxToolCalls": 12,
+          "softMaxIntentActions": 8,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
     }
   ]
 }

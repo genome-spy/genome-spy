@@ -368,6 +368,115 @@
       }
     },
     {
+      "id": "paper-2024.boxplot_erbb2_mean_copy_number_across_patients",
+      "prompt": "Show a box plot that compares mean copy number over the ERBB2 gene across patients.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "grouping",
+        "patient",
+        "boxplot",
+        "ERBB2"
+      ],
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["patient"]
+          },
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_erbb2"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_erbb2"
+            },
+            {
+              "label": "materialize_erbb2_copy_number_metadata",
+              "actionType": "sampleView/deriveMetadata"
+            },
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_patient"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "erbb2_copy_number_metadata_present"
+            },
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "erbb2_selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "values": ["mean", "weightedMean"],
+              "label": "erbb2_mean_aggregation"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "view",
+              "value": "CNV",
+              "label": "erbb2_copy_number_candidate_view"
+            },
+            {
+              "kind": "selectionAggregationUsageValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "dataType",
+              "value": "quantitative",
+              "label": "erbb2_copy_number_candidate_type"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.941,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      },
+      "oracle": {
+        "expectedAnswer": null
+      }
+    },
+    {
       "id": "paper-2024.compare_erbb2_mean_copy_number_across_patients",
       "prompt": "Show how mean copy number over the ERBB2 gene compares across patients. There are multiple samples per patient.",
       "difficulty": "workflow",
@@ -979,6 +1088,957 @@
             "state": 0,
             "artifacts": 0.2,
             "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.representative_sample_per_patient_highest_purity",
+      "prompt": "Show one representative sample from each patient, the one with the highest purity.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "patient", "representative-samples", "purity"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "sampleView/sortBy",
+              "label": "sort_by_purity"
+            },
+            {
+              "actionType": "sampleView/retainFirstOfEach",
+              "label": "retain_one_per_patient"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.explain_red_circles",
+      "prompt": "What are those red circles all over the visualization?",
+      "difficulty": "descriptive",
+      "ambiguityLevel": "simple",
+      "taskType": "genomic_track_only",
+      "outcomeType": "text_answer",
+      "tags": ["descriptive", "mutations", "track"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["mutation", "variant", "stopgain", "point", "VAF"],
+          "mustNotContain": ["I cannot access the visualization"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {},
+        "efficiency": {
+          "minToolCalls": 0,
+          "minIntentActions": 0,
+          "softMaxToolCalls": 4,
+          "softMaxIntentActions": 2,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "answer": 0.8,
+            "efficiency": 0.2
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.group_nf1_gene_copy_number",
+      "prompt": "Group samples by NF1 gene copy number.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "grouping",
+        "NF1"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_nf1"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_nf1"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_nf1_copy_number_metadata"
+            },
+            {
+              "actionTypes": [
+                "sampleView/groupByThresholds",
+                "sampleView/groupToQuartiles",
+                "sampleView/groupCustomCategories",
+                "sampleView/groupByNominal"
+              ],
+              "label": "group_by_nf1_copy_number"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "nf1_copy_number_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.filter_very_high_breaks",
+      "prompt": "Show only samples with very high number of breaks.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "filtering", "breaks"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "filter_high_breaks"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.keep_stopgain_mutations_chr12_range",
+      "prompt": "Keep only samples with \"stopgain\" mutations within chr12:32,863,050-118,204,492.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "selection", "mutations", "stopgain", "filtering"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_chr12_range"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_stopgain_count_metadata"
+            },
+            {
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "filter_stopgain_positive_samples"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "value": "count",
+              "label": "stopgain_count_aggregation"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.add_stopgain_count_metadata_current_brush",
+      "prompt": "Using the current selection brush, add the number of \"stopgain\" mutations to metadata.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "selection",
+        "mutations",
+        "stopgain",
+        "derived-metadata"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_stopgain_count_metadata"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "stopgain_count_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            },
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "value": "count",
+              "label": "stopgain_count_aggregation"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.ask_stopgain_present_12q14_3",
+      "prompt": "Are there stopgain mutations in the 12q14.3 locus?",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": ["workflow", "selection", "mutations", "stopgain", "12q14.3"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["stopgain", "12q14.3", "mutation"],
+          "requiredStateForAnswer": [
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_12q14_3"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_12q14_3"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "toolCalledAnyOf",
+              "names": [
+                "getSelectionFeatureFieldSummary",
+                "getAttributeSummary"
+              ],
+              "label": "inspect_selected_mutations"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.7,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.retain_patients_with_stopgain_12q14_3",
+      "prompt": "Show only patients who have stopgain mutations in the 12q14.3 locus. There are multiple samples per patient.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "selection", "mutations", "stopgain", "patient"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_12q14_3"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_stopgain_presence_metadata"
+            },
+            {
+              "actionType": "sampleView/retainCategoriesByAttribute",
+              "label": "retain_patients_with_stopgain"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "stopgain_presence_metadata_present"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.keep_amplifications_current_brush",
+      "prompt": "Keep only samples with amplifications within the current brush selection. Amplification is 2x current ploidy.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "selection",
+        "copy-number",
+        "amplification",
+        "filtering"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "keep_samples_with_amplification"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.identify_13q34_amplification_samples",
+      "prompt": "Identify samples that have an amplification in the 13q34 locus.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": [
+        "workflow",
+        "selection",
+        "copy-number",
+        "amplification",
+        "13q34"
+      ],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["13q34", "amplification", "sample"],
+          "mustContainNumberCountAtLeast": 1,
+          "requiredStateForAnswer": [
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_13q34"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "keep_samples_with_amplification"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "select_13q34"
+            },
+            {
+              "actionType": "sampleView/filterByQuantitative",
+              "label": "keep_samples_with_amplification"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.7,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.group_patient_plot_sampletime_explain_interval",
+      "prompt": "Group by patient, plot sampleTime, and tell me about \"interval\" in the plot. Also explain what the colors mean.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": ["workflow", "patient", "sampleTime", "barplot", "explanation"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["interval", "sampleTime", "color", "patient"],
+          "mustNotContain": ["I cannot access the visualization"]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["patient"]
+          },
+          "actions": [
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_patient"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "barplot",
+              "label": "show_barplot"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.ccne1_copy_number_vs_ploidy",
+      "prompt": "How does CCNE1 gene copy number and ploidy correlate?",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "scatterplot",
+        "CCNE1",
+        "ploidy"
+      ],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["ccne1", "ploidy", "correl"],
+          "requiredStateForAnswer": [
+            {
+              "kind": "toolCalled",
+              "name": "searchViewDatums",
+              "label": "find_ccne1"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_ccne1_copy_number_metadata"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_ccne1"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_ccne1"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_ccne1_copy_number_metadata"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "ccne1_copy_number_metadata_present"
+            },
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "scatterplot",
+              "label": "show_scatterplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.mecom_myc_ccne1_variability_stepwise",
+      "prompt": "I'm interested in MECOM, MYC, and CCNE1 genes. Which has the highest variability in copy numbers across the samples? Do it as follows: select gene regions one by one. After each selection, derive a metadata attribute. Once all attributes are there, query the attribute summaries and tell me how you interpret them.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "summary",
+        "variability"
+      ],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["MECOM", "MYC", "CCNE1", "variability"],
+          "requiredStateForAnswer": [
+            {
+              "kind": "toolCalled",
+              "name": "getAttributeSummary",
+              "label": "summarize_derived_attributes"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_gene"
+            },
+            {
+              "name": "getAttributeSummary",
+              "label": "summarize_derived_attributes"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_gene_region"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_gene_copy_number_metadata"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "metadataAttributeCountDelta",
+              "operator": "gte",
+              "value": 3,
+              "label": "three_gene_metadata_attributes_added"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 10,
+          "minIntentActions": 6,
+          "softMaxToolCalls": 18,
+          "softMaxIntentActions": 10,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.75,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.mecom_myc_ccne1_variability",
+      "prompt": "I'm interested in MECOM, MYC, and CCNE1 genes. Which has the highest variability in copy number across the samples?",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": [
+        "workflow",
+        "search",
+        "selection",
+        "derived-metadata",
+        "summary",
+        "variability"
+      ],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["MECOM", "MYC", "CCNE1", "variability"],
+          "mustContainComparisonSignal": true
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_gene"
+            },
+            {
+              "name": "getAttributeSummary",
+              "label": "summarize_derived_attributes"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_gene_region"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_gene_copy_number_metadata"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "metadataAttributeCountDelta",
+              "operator": "gte",
+              "value": 3,
+              "label": "three_gene_metadata_attributes_added"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 8,
+          "minIntentActions": 6,
+          "softMaxToolCalls": 16,
+          "softMaxIntentActions": 10,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.75,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "paper-2024.add_missense_presence_metadata_current_brush",
+      "prompt": "Add a new metadata column indicating whether there are missense mutations within the current selection brush.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "selection",
+        "mutations",
+        "missense",
+        "derived-metadata"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_missense_presence_metadata"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "derivedMetadataAttribute",
+              "label": "missense_presence_metadata_present"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "intentActionPayloadValue",
+              "actionType": "sampleView/deriveMetadata",
+              "path": "payload.attribute.aggregation",
+              "value": "count",
+              "label": "missense_count_based_metadata"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 2,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 6,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
             "efficiency": 0.05
           }
         }

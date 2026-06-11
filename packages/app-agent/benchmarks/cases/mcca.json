@@ -1,0 +1,796 @@
+{
+  "visualizationId": "mcca",
+  "setup": {
+    "route": "/",
+    "specPath": "private/MCCA-visualization/web/specs/spec.json",
+    "resetProvenance": true
+  },
+  "cases": [
+    {
+      "id": "mcca.correlate_pten_sox2_expression",
+      "prompt": "Show how expression of Pten and Sox2 correlate.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "transcriptome", "metadata", "scatterplot"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "actions": [
+            {
+              "actionType": "sampleView/addMetadataFromSource",
+              "label": "add_expression_metadata"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "scatterplot",
+              "label": "show_scatterplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "metadataAttributeCountDelta",
+              "operator": "gte",
+              "value": 2,
+              "label": "two_expression_attributes_added"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 1,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 4,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.correlate_pten_expression_and_copy_number",
+      "prompt": "Show how Pten expression and copy number correlate.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "transcriptome",
+        "copy-number",
+        "selection",
+        "scatterplot"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_pten"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "sampleView/addMetadataFromSource",
+              "label": "add_pten_expression_metadata"
+            },
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_pten"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_pten_copy_number_metadata"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "scatterplot",
+              "label": "show_scatterplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            },
+            {
+              "kind": "metadataAttributeCountDelta",
+              "operator": "gte",
+              "value": 2,
+              "label": "expression_and_copy_number_attributes_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 5,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 10,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.show_top_five_cancer_types",
+      "prompt": "Show only the five most abundant cancer types.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "grouping", "ranking", "cancer-type"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["Annotations/CancerType"]
+          },
+          "actions": [
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_cancer_type"
+            },
+            {
+              "actionType": "sampleView/retainGroupsByRank",
+              "label": "retain_top_five_groups"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.keep_samples_top_five_cancer_types",
+      "prompt": "Keep samples belonging to the top 5 most abundant cancer types.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "filtering", "ranking", "cancer-type"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["Annotations/CancerType"]
+          },
+          "actions": [
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_cancer_type"
+            },
+            {
+              "actionType": "sampleView/retainGroupsByRank",
+              "label": "retain_top_five_groups"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.survival_top_five_cancer_types_boxplot",
+      "prompt": "Show a plot that compares survival days of the top five most abundant cancer types.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "grouping", "ranking", "boxplot", "survival"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["Annotations/CancerType"]
+          },
+          "actions": [
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_cancer_type"
+            },
+            {
+              "actionType": "sampleView/retainGroupsByRank",
+              "label": "retain_top_five_groups"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 3,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 7,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.8,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.compare_survival_deep_pten_deletion",
+      "prompt": "Compare survival of mice with and without deep Pten deletion using copy-number data. Make a plot.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": ["workflow", "copy-number", "selection", "survival", "boxplot"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["pten", "deletion", "survival"],
+          "mustContainComparisonSignal": true,
+          "requiredStateForAnswer": [
+            {
+              "kind": "toolCalled",
+              "name": "searchViewDatums",
+              "label": "find_pten"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_pten"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_pten_copy_number_metadata"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_pten"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_pten"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_pten_copy_number_metadata"
+            },
+            {
+              "actionTypes": [
+                "sampleView/groupByThresholds",
+                "sampleView/groupCustomCategories",
+                "sampleView/groupByNominal"
+              ],
+              "label": "separate_deep_deletion_groups"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 5,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 10,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.7,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.myc_copy_number_vs_survival",
+      "prompt": "Myc copy number vs. survival.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "simple",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": [
+        "workflow",
+        "copy-number",
+        "selection",
+        "survival",
+        "scatterplot"
+      ],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_myc"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_myc"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_myc_copy_number_metadata"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "scatterplot",
+              "label": "show_scatterplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 9,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.6,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0,
+            "artifacts": 0.2,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.show_top_bottom_survival_quartiles",
+      "prompt": "Show samples grouped into only the top and bottom quartiles by survival.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "quartiles", "survival", "group-removal"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["Annotations/SurvivalDays"]
+          },
+          "tools": [
+            {
+              "name": "getSampleGroups",
+              "label": "inspect_quartile_groups"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "label": "group_survival_quartiles"
+            },
+            {
+              "actionType": "sampleView/removeGroup",
+              "label": "remove_middle_quartile_groups"
+            },
+            {
+              "actionType": "sampleView/removeGroup",
+              "label": "remove_other_middle_quartile_group"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 8,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.55,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.sry_copy_number_gender_concordance",
+      "prompt": "Mice without Sry gene (i.e., very low copy number) are unlikely to be male. Check if this is concordant with the Gender attribute. Show a plot.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "ambiguous",
+      "taskType": "hybrid",
+      "outcomeType": "mixed",
+      "tags": ["workflow", "copy-number", "gender", "selection", "boxplot"],
+      "oracle": {
+        "expectedAnswer": {
+          "mustContainAny": ["sry", "gender", "concord"],
+          "requiredStateForAnswer": [
+            {
+              "kind": "toolCalled",
+              "name": "searchViewDatums",
+              "label": "find_sry"
+            },
+            {
+              "kind": "intentActionExecuted",
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_gender"
+            }
+          ]
+        }
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["Annotations/Gender"]
+          },
+          "tools": [
+            {
+              "name": "searchViewDatums",
+              "label": "find_sry"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "paramProvenance/paramChange",
+              "label": "brush_sry"
+            },
+            {
+              "actionType": "sampleView/deriveMetadata",
+              "label": "derive_sry_copy_number_metadata"
+            },
+            {
+              "actionType": "sampleView/groupByNominal",
+              "label": "group_by_gender"
+            }
+          ],
+          "artifacts": [
+            {
+              "kind": "sampleAttributePlot",
+              "plotType": "boxplot",
+              "label": "show_boxplot"
+            }
+          ],
+          "checks": [
+            {
+              "kind": "selectionAggregationFieldCount",
+              "operator": "gte",
+              "value": 1,
+              "label": "selection_candidates_available"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 5,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 10,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.7,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0.2,
+            "answer": 0.15,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.remove_survival_quartile_containing_300",
+      "prompt": "Group into survival quartiles and remove the group that contains value 300.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "quartiles", "survival", "group-removal"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["Annotations/SurvivalDays"]
+          },
+          "tools": [
+            {
+              "name": "getSampleGroups",
+              "label": "inspect_quartile_groups"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "label": "group_survival_quartiles"
+            },
+            {
+              "actionType": "sampleView/removeGroup",
+              "label": "remove_group_containing_300"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 2,
+          "softMaxToolCalls": 8,
+          "softMaxIntentActions": 5,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.55,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.remove_middle_survival_quartiles",
+      "prompt": "Group into survival quartiles and remove the two middle groups.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "quartiles", "survival", "group-removal"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["Annotations/SurvivalDays"]
+          },
+          "tools": [
+            {
+              "name": "getSampleGroups",
+              "label": "inspect_quartile_groups"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "label": "group_survival_quartiles"
+            },
+            {
+              "actionType": "sampleView/removeGroup",
+              "label": "remove_middle_group"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 8,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.55,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    },
+    {
+      "id": "mcca.keep_only_top_bottom_survival_quartiles",
+      "prompt": "Show only samples in the top and bottom quartiles by survival.",
+      "difficulty": "workflow",
+      "ambiguityLevel": "explicit",
+      "taskType": "metadata_only",
+      "outcomeType": "state_change",
+      "tags": ["workflow", "quartiles", "survival", "group-removal"],
+      "oracle": {
+        "expectedAnswer": null
+      },
+      "rubric": {
+        "version": 1,
+        "initialState": {
+          "baseline": "default"
+        },
+        "requirements": {
+          "state": {
+            "groupByAttributes": ["Annotations/SurvivalDays"]
+          },
+          "tools": [
+            {
+              "name": "getSampleGroups",
+              "label": "inspect_quartile_groups"
+            }
+          ],
+          "actions": [
+            {
+              "actionType": "sampleView/groupToQuartiles",
+              "label": "group_survival_quartiles"
+            },
+            {
+              "actionType": "sampleView/removeGroup",
+              "label": "remove_middle_group"
+            }
+          ]
+        },
+        "efficiency": {
+          "minToolCalls": 4,
+          "minIntentActions": 3,
+          "softMaxToolCalls": 8,
+          "softMaxIntentActions": 6,
+          "maxRejectedToolCalls": 0
+        },
+        "scoring": {
+          "passingScore": 0.55,
+          "weights": {
+            "requirements": 0.35,
+            "state": 0.25,
+            "artifacts": 0,
+            "answer": 0,
+            "efficiency": 0.05
+          }
+        }
+      }
+    }
+  ]
+}
