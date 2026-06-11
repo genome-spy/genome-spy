@@ -1,16 +1,24 @@
 import { html, css } from "lit";
 import BaseDialog, { showDialog } from "../components/generic/baseDialog.js";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
+import {
+    faBookmark,
+    faDownload,
+    faShare,
+} from "@fortawesome/free-solid-svg-icons";
 import { downloadChartPng, embedRenderablePlot } from "./chartDialogUtils.js";
+import { addPlotBookmark, sharePlotBookmark } from "./plotBookmarkActions.js";
 
 /**
  * @typedef {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} SampleAttributePlot
+ *
+ * @typedef {import("../bookmark/bookmarkState.js").PlotBookmarkContext} PlotBookmarkContext
  */
 
 export class PlotDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         plot: {},
+        bookmarkContext: {},
     };
 
     static styles = [
@@ -35,6 +43,8 @@ export class PlotDialog extends BaseDialog {
 
         /** @type {SampleAttributePlot | null} */
         this.plot = null;
+        /** @type {PlotBookmarkContext | undefined} */
+        this.bookmarkContext = undefined;
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} */
         this._api = null;
@@ -75,6 +85,25 @@ export class PlotDialog extends BaseDialog {
 
         return [
             this.makeButton(
+                "Add bookmark",
+                () => {
+                    void this.#addBookmark();
+                    return true;
+                },
+                {
+                    iconDef: faBookmark,
+                    disabled: !this.bookmarkContext?.getLocalBookmarkDatabase(),
+                }
+            ),
+            this.makeButton(
+                "Share",
+                () => {
+                    void this.#shareBookmark();
+                    return true;
+                },
+                { iconDef: faShare, disabled: !this.bookmarkContext }
+            ),
+            this.makeButton(
                 "Save PNG",
                 () => {
                     downloadChartPng(
@@ -104,18 +133,36 @@ export class PlotDialog extends BaseDialog {
 
         this._api = await embedRenderablePlot(container, this.plot);
     }
+
+    async #addBookmark() {
+        if (!this.bookmarkContext || !this.plot) {
+            return;
+        }
+
+        await addPlotBookmark(this.bookmarkContext, this.plot);
+    }
+
+    async #shareBookmark() {
+        if (!this.bookmarkContext || !this.plot) {
+            return;
+        }
+
+        await sharePlotBookmark(this.bookmarkContext, this.plot);
+    }
 }
 
 customElements.define("gs-sample-attribute-plot-dialog", PlotDialog);
 
 /**
  * @param {SampleAttributePlot} plot
+ * @param {{ bookmarkContext?: PlotBookmarkContext }} [options]
  * @returns {Promise<import("../components/generic/baseDialog.js").DialogFinishDetail>}
  */
-export function showPlotDialog(plot) {
+export function showPlotDialog(plot, options = {}) {
     return showDialog("gs-sample-attribute-plot-dialog", (el) => {
         const plotDialog = /** @type {PlotDialog} */ (el);
         plotDialog.plot = plot;
+        plotDialog.bookmarkContext = options.bookmarkContext;
         plotDialog.dialogTitle = plot.title;
     });
 }

@@ -5,6 +5,7 @@ import { normalizeViewSettingsPayload } from "../viewSettingsUtils.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 import { showDialog } from "../components/generic/baseDialog.js";
 import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
+import { createPlotBookmarkContext } from "./bookmarkState.js";
 
 /**
  * @typedef {object} BookmarkInfoBoxOptions
@@ -12,6 +13,13 @@ import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmark
  *      An optional bookmark database that contains the entry. Used for next/prev buttons.
  * @prop {"default" | "tour" | "shared"} [mode]
  * @prop {string} [afterTourBookmark] See `RemoteBookmarkConfig`
+ * @prop {BookmarkPlotRestoreResult[]} [plotResults]
+ */
+
+/**
+ * @typedef {object} BookmarkPlotRestoreResult
+ * @prop {import("../charts/sampleAttributePlotTypes.d.ts").SampleAttributePlot} [plot]
+ * @prop {string} [error]
  */
 
 /**
@@ -40,6 +48,7 @@ export function resetToDefaultState(app) {
 /**
  * @param {import("./databaseSchema.js").BookmarkEntry} entry
  * @param {import("../app.js").default} app
+ * @returns {Promise<{ plots: BookmarkPlotRestoreResult[] }>}
  */
 export async function restoreBookmark(entry, app) {
     try {
@@ -81,10 +90,14 @@ export async function restoreBookmark(entry, app) {
             }
         }
         await Promise.all(promises);
+
+        return {
+            plots: await rebuildBookmarkPlots(entry, app),
+        };
     } catch (e) {
         console.error(e);
         if (app.store.getState().intentStatus?.status === "error") {
-            return;
+            return { plots: [] };
         }
         // Non-pipeline restore failures (view settings/scale domains) are
         // reported here; pipeline errors are handled via intent status UI.
@@ -94,7 +107,41 @@ export async function restoreBookmark(entry, app) {
             { type: "error" }
         );
         app.provenance.activateInitialState();
+        return { plots: [] };
     }
+}
+
+/**
+ * @param {import("./databaseSchema.js").BookmarkEntry} entry
+ * @param {import("../app.js").default} app
+ * @returns {Promise<BookmarkPlotRestoreResult[]>}
+ */
+export async function rebuildBookmarkPlots(entry, app) {
+    const attachments = entry.plots ?? [];
+    if (!attachments.length) {
+        return [];
+    }
+
+    const agentApi = await app.getAgentApi();
+    /** @type {BookmarkPlotRestoreResult[]} */
+    const results = [];
+    for (const attachment of attachments) {
+        try {
+            const plot = await agentApi.buildSampleAttributePlot(
+                attachment.definition
+            );
+            if (!plot) {
+                throw new Error("Plot could not be rebuilt.");
+            }
+            results.push({ plot });
+        } catch (error) {
+            results.push({
+                error: error instanceof Error ? error.message : String(error),
+            });
+        }
+    }
+
+    return results;
 }
 /**
  * @param {import("./databaseSchema.js").BookmarkEntry} entry
@@ -125,12 +172,16 @@ export async function importBookmark(entry, app) {
  * @param {BookmarkInfoBoxOptions} [options]
  */
 export async function restoreBookmarkAndShowInfoBox(entry, app, options = {}) {
-    await restoreBookmark(entry, app);
+    const restoreResult = await restoreBookmark(entry, app);
     const shouldShow =
+        restoreResult.plots.length ||
         entry.notes ||
         (options.mode == "shared" && (entry.name || entry.notes));
     if (shouldShow) {
-        await showBookmarkInfoBox(entry, app, options);
+        await showBookmarkInfoBox(entry, app, {
+            ...options,
+            plotResults: restoreResult.plots,
+        });
         return;
     }
     const existingDialog =
@@ -157,6 +208,8 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
     if (existingDialog) {
         existingDialog.entry = entry;
         existingDialog.mode = options.mode ?? "default";
+        existingDialog.plotResults = options.plotResults ?? [];
+        existingDialog.plotBookmarkContext = createPlotBookmarkContext(app);
     } else {
         showDialog(
             "gs-bookmark-info-box",
@@ -168,6 +221,8 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
                 el.baseUrl = app.genomeSpy.spec.baseUrl;
                 el.entry = entry;
                 el.mode = options.mode ?? "default";
+                el.plotResults = options.plotResults ?? [];
+                el.plotBookmarkContext = createPlotBookmarkContext(app);
                 el.allowImport = !!options.database;
 
                 if (options.database) {

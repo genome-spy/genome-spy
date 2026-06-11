@@ -2,6 +2,12 @@ import { DBSchema } from "idb";
 import { ChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { ViewSettingsPayload } from "../state.js";
 import { Action } from "../state/provenance.js";
+import { SampleAttributePlotDefinition } from "../charts/sampleAttributePlotTypes.js";
+
+export interface BookmarkPlotAttachment {
+    kind: "sample_attribute_plot";
+    definition: SampleAttributePlotDefinition;
+}
 
 export interface BookmarkEntry {
     name: string;
@@ -22,6 +28,11 @@ export interface BookmarkEntry {
      * Settings such as view visibilities
      */
     viewSettings?: ViewSettingsPayload;
+
+    /**
+     * Plots attached to the bookmark.
+     */
+    plots?: BookmarkPlotAttachment[];
 }
 
 export interface BookmarkDB extends DBSchema {

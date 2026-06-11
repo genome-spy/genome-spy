@@ -21,6 +21,7 @@ import {
     restoreBookmark,
     restoreBookmarkAndShowInfoBox,
 } from "./bookmark/bookmark.js";
+import { createPlotBookmarkContext } from "./bookmark/bookmarkState.js";
 import { collectScaleDomains } from "./bookmark/scaleDomainUtils.js";
 import { viewSettingsSlice } from "./viewSettingsSlice.js";
 import {
@@ -147,7 +148,8 @@ export default class App {
                             dataParent,
                             defaultName,
                             this.provenance,
-                            this.intentExecutor
+                            this.intentExecutor,
+                            createPlotBookmarkContext(this)
                         )
                     )
             )

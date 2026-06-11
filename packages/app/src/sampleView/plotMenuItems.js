@@ -45,7 +45,8 @@ export function appendPlotMenuItems(
                         sampleHierarchy: sampleView.sampleHierarchy,
                         attributeInfoSource:
                             sampleView.compositeAttributeInfoSource,
-                    })
+                    }),
+                    { bookmarkContext: sampleView.plotBookmarkContext }
                 ),
         });
         return;
@@ -75,7 +76,8 @@ export function appendPlotMenuItems(
                     sampleHierarchy: sampleView.sampleHierarchy,
                     attributeInfoSource:
                         sampleView.compositeAttributeInfoSource,
-                })
+                }),
+                { bookmarkContext: sampleView.plotBookmarkContext }
             ),
     });
 
@@ -99,7 +101,8 @@ export function appendPlotMenuItems(
                                 sampleView.compositeAttributeInfoSource,
                             colorScaleDomain: groupColorScale?.domain,
                             colorScaleRange: groupColorScale?.range,
-                        })
+                        }),
+                        { bookmarkContext: sampleView.plotBookmarkContext }
                     ),
             })),
         ],

@@ -4,10 +4,13 @@ import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
     faBookmark,
     faChevronDown,
+    faExpand,
     faStepBackward,
     faStepForward,
 } from "@fortawesome/free-solid-svg-icons";
 import safeMarkdown from "../../utils/safeMarkdown.js";
+import { embedRenderablePlot } from "../../charts/chartDialogUtils.js";
+import { showPlotDialog } from "../../charts/plotDialog.js";
 
 const infoBoxStyles = css`
     dialog {
@@ -119,6 +122,33 @@ const infoBoxStyles = css`
             opacity: 0;
         }
     }
+
+    .bookmark-plot {
+        margin-top: var(--gs-basic-spacing);
+    }
+
+    .bookmark-plot-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--gs-basic-spacing);
+        margin-bottom: calc(var(--gs-basic-spacing) * 0.5);
+
+        span {
+            font-weight: bold;
+            font-size: 90%;
+        }
+    }
+
+    .bookmark-plot-preview {
+        inline-size: min(520px, 70vw);
+        block-size: 220px;
+        border: 1px solid var(--gs-dialog-stroke-color, #d0d0d0);
+    }
+
+    .bookmark-plot-error {
+        color: #8a1f11;
+    }
 `;
 
 export default class BookmarkInfoBox extends BaseDialog {
@@ -128,6 +158,8 @@ export default class BookmarkInfoBox extends BaseDialog {
         mode: { type: String },
         allowImport: { type: Boolean },
         baseUrl: { type: String },
+        plotResults: { state: true },
+        plotBookmarkContext: {},
         entryIndex: { state: true },
     };
 
@@ -144,6 +176,10 @@ export default class BookmarkInfoBox extends BaseDialog {
          * For markdown base URL resolution
          */
         this.baseUrl = "";
+        /** @type {import("../../bookmark/bookmark.js").BookmarkPlotRestoreResult[]} */
+        this.plotResults = [];
+        /** @type {import("../../bookmark/bookmarkState.js").PlotBookmarkContext | undefined} */
+        this.plotBookmarkContext = undefined;
 
         this.modal = false;
 
@@ -151,6 +187,31 @@ export default class BookmarkInfoBox extends BaseDialog {
         this.names = [];
         /** @type {number} */
         this.entryIndex = -1;
+
+        /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult[]} */
+        this.#plotApis = [];
+        this.#plotPreviewGeneration = 0;
+    }
+
+    /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult[]} */
+    #plotApis;
+
+    /** @type {number} */
+    #plotPreviewGeneration;
+
+    disconnectedCallback() {
+        this.#finalizePlotApis();
+        super.disconnectedCallback();
+    }
+
+    /**
+     * @param {Map<string, any>} changed
+     */
+    updated(changed) {
+        super.updated?.(changed);
+        if (changed.has("plotResults")) {
+            void this.#embedPlotPreviews();
+        }
     }
 
     /**
@@ -211,7 +272,80 @@ export default class BookmarkInfoBox extends BaseDialog {
               })
             : html`<span class="no-notes">No notes provided</span>`;
 
-        return html`<div class="notes">${content}</div>`;
+        return html`<div class="notes">${content}</div>
+            ${this.#renderPlotResults()}`;
+    }
+
+    #renderPlotResults() {
+        if (!this.plotResults.length) {
+            return "";
+        }
+
+        return html`<div class="bookmark-plots">
+            ${this.plotResults.map((result, index) => {
+                if (result.error || !result.plot) {
+                    return html`<div class="bookmark-plot bookmark-plot-error">
+                        ${result.error ?? "Plot could not be rebuilt."}
+                    </div>`;
+                }
+
+                return html`<div class="bookmark-plot">
+                    <div class="bookmark-plot-title">
+                        <span>${result.plot.title}</span>
+                        <button
+                            class="btn"
+                            type="button"
+                            @click=${() =>
+                                showPlotDialog(result.plot, {
+                                    bookmarkContext: this.plotBookmarkContext,
+                                })}
+                        >
+                            ${icon(faExpand).node[0]} Open larger
+                        </button>
+                    </div>
+                    <div
+                        class="bookmark-plot-preview"
+                        data-plot-index=${index}
+                    ></div>
+                </div>`;
+            })}
+        </div>`;
+    }
+
+    #finalizePlotApis() {
+        this.#plotPreviewGeneration++;
+        for (const api of this.#plotApis) {
+            api.finalize();
+        }
+        this.#plotApis = [];
+    }
+
+    async #embedPlotPreviews() {
+        this.#finalizePlotApis();
+        const generation = this.#plotPreviewGeneration;
+
+        for (const [index, result] of this.plotResults.entries()) {
+            if (!result.plot) {
+                continue;
+            }
+
+            const container = /** @type {HTMLElement} */ (
+                this.renderRoot.querySelector(
+                    `.bookmark-plot-preview[data-plot-index="${index}"]`
+                )
+            );
+            if (container) {
+                const api = await embedRenderablePlot(container, result.plot);
+                if (
+                    generation === this.#plotPreviewGeneration &&
+                    this.isConnected
+                ) {
+                    this.#plotApis.push(api);
+                } else {
+                    api.finalize();
+                }
+            }
+        }
     }
 
     renderButtons() {

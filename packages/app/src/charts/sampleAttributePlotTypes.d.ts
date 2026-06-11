@@ -100,6 +100,7 @@ export type SampleAttributePlotCharacterization =
 export interface SampleAttributePlot {
     kind: "sample_attribute_plot";
     plotType: SampleAttributePlotType;
+    request: SampleAttributePlotDefinition;
     title: string;
     spec: RootSpec;
     namedData: RenderablePlotNamedData[];
@@ -129,9 +130,13 @@ export interface HierarchyScatterplotRequest {
     colorScaleRange?: string[];
 }
 
+/**
+ * User/API-facing plot request. This accepts convenience aliases and label
+ * hints that may be useful while resolving a plot, but are not persisted.
+ */
 export type SampleAttributePlotRequest =
     | {
-          plotType: "bar";
+          plotType: "bar" | "barplot";
           attribute: AttributeIdentifier;
           attributeLabel?: string;
       }
@@ -146,4 +151,24 @@ export type SampleAttributePlotRequest =
           yAttribute: AttributeIdentifier;
           xAttributeLabel?: string;
           yAttributeLabel?: string;
+      };
+
+/**
+ * Normalized plot definition that is safe to persist in generated plots and
+ * bookmarks. It uses canonical plot type names and stores only stable attribute
+ * identifiers.
+ */
+export type SampleAttributePlotDefinition =
+    | {
+          plotType: "barplot";
+          attribute: AttributeIdentifier;
+      }
+    | {
+          plotType: "boxplot";
+          attribute: AttributeIdentifier;
+      }
+    | {
+          plotType: "scatterplot";
+          xAttribute: AttributeIdentifier;
+          yAttribute: AttributeIdentifier;
       };

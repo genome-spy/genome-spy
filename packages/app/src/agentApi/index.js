@@ -208,7 +208,7 @@ export function createAgentApi(app) {
             const attributeInfoSource = sampleView.compositeAttributeInfoSource;
             const plotType = request.plotType;
 
-            if (plotType === "bar") {
+            if (plotType === "bar" || plotType === "barplot") {
                 const attributeInfo = await resolvePlotAttributeInfo(
                     attributeInfoSource,
                     request.attribute,

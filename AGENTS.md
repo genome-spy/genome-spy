@@ -62,6 +62,9 @@ aware interactions.
 - Unit tests with Vitest
 - Tests live next to code, with `.test.` in the filename
 - When writing tests, add a short comment for non-obvious test setup/intent.
+- After a refactor, remove tests that only cover temporary compatibility paths
+  or intermediate implementation details unless that behavior remains an
+  intentional public contract.
 - For rendered hierarchy/layout inspection, prefer `specToLayout(...)` or `renderToLayout(...)` from `packages/core/src/view/testUtils.js` instead of ad hoc scripts.
 - `packages/core/layout.test.js` and `packages/core/src/view/layoutSnapshot.test.js` show the recommended layout-snapshot pattern.
 
