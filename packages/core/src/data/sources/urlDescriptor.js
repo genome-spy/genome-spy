@@ -35,6 +35,31 @@ export async function normalizeUrlDescriptors(options) {
 }
 
 /**
+ * @param {{
+ *   url: any,
+ *   indexUrl?: any,
+ *   paramRuntime: { watchExpression?: Function, createExpression: Function },
+ *   listener: () => void,
+ *   registerDisposer?: (disposer: () => void) => void,
+ * }} options
+ */
+export function watchUrlDescriptorExpressions(options) {
+    const expressions = collectUrlExpressions(options.url, options.indexUrl);
+    for (const expr of expressions) {
+        const fn = options.paramRuntime.watchExpression
+            ? options.paramRuntime.watchExpression(expr, options.listener, {
+                  scopeOwned: !options.registerDisposer,
+                  registerDisposer: options.registerDisposer,
+              })
+            : options.paramRuntime.createExpression(expr);
+        if (!options.paramRuntime.watchExpression && fn.subscribe) {
+            const unsubscribe = fn.subscribe(options.listener);
+            options.registerDisposer?.(unsubscribe);
+        }
+    }
+}
+
+/**
  * @param {any} urlSpec
  * @param {UrlDescriptorOptions} options
  * @returns {UrlDescriptor[]}
@@ -189,4 +214,22 @@ function requireParamRuntime(options) {
         throw new Error("URL ExprRef evaluation requires a parameter runtime.");
     }
     return options.paramRuntime;
+}
+
+/**
+ * @param {any} url
+ * @param {any} indexUrl
+ */
+function collectUrlExpressions(url, indexUrl) {
+    const expressions = [];
+    if (isExprRef(url)) {
+        expressions.push(url.expr);
+    }
+    if (isUrlTemplate(url) && isExprRef(url.values)) {
+        expressions.push(url.values.expr);
+    }
+    if (isExprRef(indexUrl)) {
+        expressions.push(indexUrl.expr);
+    }
+    return expressions;
 }

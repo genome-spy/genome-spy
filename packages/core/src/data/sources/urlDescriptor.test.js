@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { normalizeUrlDescriptors } from "./urlDescriptor.js";
+import {
+    normalizeUrlDescriptors,
+    watchUrlDescriptorExpressions,
+} from "./urlDescriptor.js";
 
 function createRuntime(values) {
     return {
@@ -84,5 +87,26 @@ describe("normalizeUrlDescriptors", () => {
                 },
             })
         ).rejects.toThrow("resolved 2 URLs, exceeding maxUrls 1");
+    });
+
+    it("watches nested template value expressions", () => {
+        const watched = [];
+        watchUrlDescriptorExpressions({
+            url: {
+                template: "coverage/{sample}.bw",
+                values: { expr: "visibleSamples" },
+                field: "sample",
+            },
+            paramRuntime: {
+                watchExpression: (expr) => {
+                    watched.push(expr);
+                    return () => [];
+                },
+                createExpression: () => () => undefined,
+            },
+            listener: () => undefined,
+        });
+
+        expect(watched).toEqual(["visibleSamples"]);
     });
 });
