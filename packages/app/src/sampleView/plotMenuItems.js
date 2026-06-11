@@ -46,7 +46,7 @@ export function appendPlotMenuItems(
                         attributeInfoSource:
                             sampleView.compositeAttributeInfoSource,
                     }),
-                    { app: sampleView.app }
+                    { bookmarkContext: sampleView.plotBookmarkContext }
                 ),
         });
         return;
@@ -77,7 +77,7 @@ export function appendPlotMenuItems(
                     attributeInfoSource:
                         sampleView.compositeAttributeInfoSource,
                 }),
-                { app: sampleView.app }
+                { bookmarkContext: sampleView.plotBookmarkContext }
             ),
     });
 
@@ -102,7 +102,7 @@ export function appendPlotMenuItems(
                             colorScaleDomain: groupColorScale?.domain,
                             colorScaleRange: groupColorScale?.range,
                         }),
-                        { app: sampleView.app }
+                        { bookmarkContext: sampleView.plotBookmarkContext }
                     ),
             })),
         ],

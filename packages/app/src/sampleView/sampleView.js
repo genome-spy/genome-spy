@@ -150,13 +150,13 @@ export default class SampleView extends ContainerView {
         name,
         provenance,
         intentExecutor,
-        /** @type {import("../app.js").default | undefined} */ app = undefined
+        /** @type {import("../charts/plotDialog.js").PlotBookmarkContext | undefined} */ plotBookmarkContext = undefined
     ) {
         super(spec, context, layoutParent, dataParent, name);
 
         this.provenance = provenance;
-        /** @type {import("../app.js").default | undefined} */
-        this.app = app;
+        /** @type {import("../charts/plotDialog.js").PlotBookmarkContext | undefined} */
+        this.plotBookmarkContext = plotBookmarkContext;
 
         const normalized = normalizeSampleViewSpec(spec);
         for (const warning of normalized.warnings) {

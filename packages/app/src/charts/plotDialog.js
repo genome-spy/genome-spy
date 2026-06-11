@@ -6,13 +6,18 @@ import {
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import { downloadChartPng, embedRenderablePlot } from "./chartDialogUtils.js";
-import { createBookmarkWithCurrentState } from "../bookmark/bookmarkState.js";
 import { showEnterBookmarkInfoDialog } from "../components/dialogs/enterBookmarkDialog.js";
 import { showShareBookmarkDialog } from "../components/dialogs/shareBookmarkDialog.js";
 import { showMessageDialog } from "../components/generic/messageDialog.js";
 
 /**
  * @typedef {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} SampleAttributePlot
+ *
+ * @typedef {object} PlotBookmarkContext
+ * @prop {(plots: import("../bookmark/databaseSchema.d.ts").BookmarkPlotAttachment[]) => import("../bookmark/databaseSchema.d.ts").BookmarkEntry} createBookmark
+ * @prop {() => boolean} canSaveLocalBookmark
+ * @prop {() => import("../bookmark/bookmarkDatabase.js").default | undefined} getLocalBookmarkDatabase
+ * @prop {(bookmark: import("../bookmark/databaseSchema.d.ts").BookmarkEntry) => Promise<void>} saveLocalBookmark
  */
 
 /**
@@ -30,7 +35,7 @@ export class PlotDialog extends BaseDialog {
     static properties = {
         ...super.properties,
         plot: {},
-        app: {},
+        bookmarkContext: {},
     };
 
     static styles = [
@@ -55,8 +60,8 @@ export class PlotDialog extends BaseDialog {
 
         /** @type {SampleAttributePlot | null} */
         this.plot = null;
-        /** @type {import("../app.js").default | undefined} */
-        this.app = undefined;
+        /** @type {PlotBookmarkContext | undefined} */
+        this.bookmarkContext = undefined;
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | null} */
         this._api = null;
@@ -104,7 +109,7 @@ export class PlotDialog extends BaseDialog {
                 },
                 {
                     iconDef: faBookmark,
-                    disabled: !this.app?.localBookmarkDatabase,
+                    disabled: !this.bookmarkContext?.canSaveLocalBookmark(),
                 }
             ),
             this.makeButton(
@@ -113,7 +118,7 @@ export class PlotDialog extends BaseDialog {
                     void this.#shareBookmark();
                     return true;
                 },
-                { iconDef: faShare, disabled: !this.app }
+                { iconDef: faShare, disabled: !this.bookmarkContext }
             ),
             this.makeButton(
                 "Save PNG",
@@ -150,30 +155,30 @@ export class PlotDialog extends BaseDialog {
      * @returns {import("../bookmark/databaseSchema.d.ts").BookmarkEntry}
      */
     #createPlotBookmark() {
-        if (!this.app || !this.plot) {
-            throw new Error("Plot bookmark creation requires app and plot.");
+        if (!this.bookmarkContext || !this.plot) {
+            throw new Error(
+                "Plot bookmark creation requires bookmark context and plot."
+            );
         }
 
-        return createBookmarkWithCurrentState(this.app, {
-            plots: [createPlotBookmarkAttachment(this.plot)],
-        });
+        return this.bookmarkContext.createBookmark([
+            createPlotBookmarkAttachment(this.plot),
+        ]);
     }
 
     async #addBookmark() {
-        if (!this.app?.localBookmarkDatabase) {
+        if (!this.bookmarkContext?.canSaveLocalBookmark()) {
             return;
         }
 
+        const bookmarkDatabase =
+            this.bookmarkContext.getLocalBookmarkDatabase();
         const bookmark = this.#createPlotBookmark();
         if (
-            await showEnterBookmarkInfoDialog(
-                this.app.localBookmarkDatabase,
-                bookmark,
-                "add"
-            )
+            await showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, "add")
         ) {
             try {
-                await this.app.localBookmarkDatabase.put(bookmark);
+                await this.bookmarkContext.saveLocalBookmark(bookmark);
             } catch (error) {
                 showMessageDialog(`${error}`, {
                     title: "Cannot save the bookmark!",
@@ -183,7 +188,7 @@ export class PlotDialog extends BaseDialog {
     }
 
     async #shareBookmark() {
-        if (!this.app) {
+        if (!this.bookmarkContext) {
             return;
         }
 
@@ -198,14 +203,14 @@ customElements.define("gs-sample-attribute-plot-dialog", PlotDialog);
 
 /**
  * @param {SampleAttributePlot} plot
- * @param {{ app?: import("../app.js").default }} [options]
+ * @param {{ bookmarkContext?: PlotBookmarkContext }} [options]
  * @returns {Promise<import("../components/generic/baseDialog.js").DialogFinishDetail>}
  */
 export function showPlotDialog(plot, options = {}) {
     return showDialog("gs-sample-attribute-plot-dialog", (el) => {
         const plotDialog = /** @type {PlotDialog} */ (el);
         plotDialog.plot = plot;
-        plotDialog.app = options.app;
+        plotDialog.bookmarkContext = options.bookmarkContext;
         plotDialog.dialogTitle = plot.title;
     });
 }
