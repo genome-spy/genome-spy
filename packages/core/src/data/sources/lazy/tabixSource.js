@@ -101,9 +101,10 @@ export default class TabixSource extends SingleAxisWindowedSource {
             ]).then(async ([{ TabixIndexedFile }, { RemoteFile }]) => {
                 const renameRefSeqs =
                     addChrPrefix === true
-                        ? (refSeq) => "chr" + refSeq
+                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
                         : addChrPrefix
-                          ? (refSeq) => addChrPrefix + refSeq
+                          ? (/** @type {string} */ refSeq) =>
+                                addChrPrefix + refSeq
                           : undefined;
 
                 try {
@@ -226,7 +227,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
 }
 
 /**
- * @template T
+ * @template {Record<string, any>} T
  * @param {T[]} data
  * @param {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
  * @returns {T[]}
