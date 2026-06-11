@@ -194,10 +194,14 @@ export default class BookmarkInfoBox extends BaseDialog {
 
         /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult[]} */
         this.#plotApis = [];
+        this.#plotPreviewGeneration = 0;
     }
 
     /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult[]} */
     #plotApis;
+
+    /** @type {number} */
+    #plotPreviewGeneration;
 
     disconnectedCallback() {
         this.#finalizePlotApis();
@@ -311,6 +315,7 @@ export default class BookmarkInfoBox extends BaseDialog {
     }
 
     #finalizePlotApis() {
+        this.#plotPreviewGeneration++;
         for (const api of this.#plotApis) {
             api.finalize();
         }
@@ -319,6 +324,7 @@ export default class BookmarkInfoBox extends BaseDialog {
 
     async #embedPlotPreviews() {
         this.#finalizePlotApis();
+        const generation = this.#plotPreviewGeneration;
 
         for (const [index, result] of this.plotResults.entries()) {
             if (!result.plot) {
@@ -331,9 +337,15 @@ export default class BookmarkInfoBox extends BaseDialog {
                 )
             );
             if (container) {
-                this.#plotApis.push(
-                    await embedRenderablePlot(container, result.plot)
-                );
+                const api = await embedRenderablePlot(container, result.plot);
+                if (
+                    generation === this.#plotPreviewGeneration &&
+                    this.isConnected
+                ) {
+                    this.#plotApis.push(api);
+                } else {
+                    api.finalize();
+                }
             }
         }
     }
