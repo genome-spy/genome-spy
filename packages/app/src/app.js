@@ -43,6 +43,7 @@ import ParamProvenanceBridge from "./state/paramProvenanceBridge.js";
 import { getParamActionInfo } from "./state/paramActionInfo.js";
 import { validateSelectorConstraints } from "./viewSelectorConstraints.js";
 import { resetProvenanceHistory } from "./state/provenanceBaseline.js";
+import { concatUrl, getDirectory } from "@genome-spy/core/utils/url.js";
 import { paramProvenanceSlice } from "./state/paramProvenanceSlice.js";
 import { setupSelectionExpansionContextMenu } from "./state/selectionExpansionContextMenu.js";
 import {
@@ -709,7 +710,10 @@ export default class App {
         }
         if (!this.globalBookmarkDatabase) {
             this.globalBookmarkDatabase = new SimpleBookmarkDatabase(
-                remoteBookmarks
+                remoteBookmarks,
+                {
+                    baseUrl: getRemoteBookmarkBaseUrl(this.rootSpec),
+                }
             );
         }
         return this.globalBookmarkDatabase;
@@ -732,6 +736,18 @@ export default class App {
 
         return sampleView;
     }
+}
+
+/**
+ * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
+ */
+export function getRemoteBookmarkBaseUrl(rootSpec) {
+    const remoteConf = rootSpec.bookmarks?.remote;
+    if (!remoteConf) {
+        return undefined;
+    }
+
+    return getDirectory(concatUrl(rootSpec.baseUrl, remoteConf.url));
 }
 
 /**

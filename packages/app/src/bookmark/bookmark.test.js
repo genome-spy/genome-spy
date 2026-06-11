@@ -1,6 +1,7 @@
 // @ts-check
 import { describe, expect, it, vi } from "vitest";
-import { restoreBookmark } from "./bookmark.js";
+import { getBookmarkInfoBoxBaseUrl, restoreBookmark } from "./bookmark.js";
+import SimpleBookmarkDatabase from "./simpleBookmarkDatabase.js";
 
 /**
  * @param {object} [overrides]
@@ -196,5 +197,19 @@ describe("bookmark restore", () => {
         await expect(restoreBookmark(entry, app)).resolves.toEqual({
             plots: [],
         });
+    });
+});
+
+describe("bookmark note base URL", () => {
+    it("uses the containing database base URL before the spec base", () => {
+        const database = new SimpleBookmarkDatabase([], {
+            baseUrl: "tour-assets/",
+        });
+        const app = createBookmarkRestoreApp();
+        app.genomeSpy.spec = /** @type {any} */ ({ baseUrl: "specs/" });
+
+        expect(getBookmarkInfoBoxBaseUrl(app, { database })).toBe(
+            "tour-assets/"
+        );
     });
 });

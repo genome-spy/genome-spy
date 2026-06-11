@@ -14,6 +14,7 @@ import { createPlotBookmarkContext } from "./bookmarkState.js";
  * @prop {"default" | "tour" | "shared"} [mode]
  * @prop {string} [afterTourBookmark] See `RemoteBookmarkConfig`
  * @prop {BookmarkPlotRestoreResult[]} [plotResults]
+ * @prop {string} [baseUrl]
  */
 
 /**
@@ -206,6 +207,7 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
         );
 
     if (existingDialog) {
+        existingDialog.baseUrl = getBookmarkInfoBoxBaseUrl(app, options);
         existingDialog.entry = entry;
         existingDialog.mode = options.mode ?? "default";
         existingDialog.plotResults = options.plotResults ?? [];
@@ -217,8 +219,7 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
                 /** @type {import("../components/dialogs/bookmarkInfoBox.js").default} */
                 el
             ) => {
-                // TODO: It's actually the bookmarkDatabase's url that should be used as a baseUrl
-                el.baseUrl = app.genomeSpy.spec.baseUrl;
+                el.baseUrl = getBookmarkInfoBoxBaseUrl(app, options);
                 el.entry = entry;
                 el.mode = options.mode ?? "default";
                 el.plotResults = options.plotResults ?? [];
@@ -273,4 +274,16 @@ export async function showBookmarkInfoBox(entry, app, options = {}) {
             );
         }
     }
+}
+
+/**
+ * @param {import("../app.js").default} app
+ * @param {BookmarkInfoBoxOptions} options
+ */
+export function getBookmarkInfoBoxBaseUrl(app, options) {
+    return (
+        options.database?.baseUrl ??
+        options.baseUrl ??
+        app.genomeSpy.spec.baseUrl
+    );
 }

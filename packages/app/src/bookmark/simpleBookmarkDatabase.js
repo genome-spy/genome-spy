@@ -6,10 +6,12 @@ import BookmarkDatabase from "./bookmarkDatabase.js";
 export default class SimpleBookmarkDatabase extends BookmarkDatabase {
     /**
      * @param {import("./databaseSchema.js").BookmarkEntry[]} bookmarks
+     * @param {{ baseUrl?: string }} [options]
      */
-    constructor(bookmarks) {
+    constructor(bookmarks, options = {}) {
         super();
 
+        this.baseUrl = options.baseUrl;
         this.bookmarks = bookmarks;
         this.names = bookmarks.map((bookmark) => bookmark.name);
     }

@@ -2,6 +2,11 @@
  * An abstract base class for bookmark databases
  */
 export default class BookmarkDatabase {
+    constructor() {
+        /** @type {string | undefined} Base URL for bookmark-authored assets. */
+        this.baseUrl = undefined;
+    }
+
     /**
      * @returns true if this database implementation is mutable
      */
