@@ -2,6 +2,35 @@
 import { describe, expect, it, vi } from "vitest";
 import { createBookmarkWithCurrentState } from "./bookmarkState.js";
 
+/**
+ * @param {object} [options]
+ * @param {import("@reduxjs/toolkit").Action[]} [options.actions]
+ * @param {Map<string, any>} [options.scales]
+ * @returns {import("../app.js").default}
+ */
+function createBookmarkStateApp(options = {}) {
+    return /** @type {import("../app.js").default} */ (
+        /** @type {any} */ ({
+            provenance: {
+                getBookmarkableActionHistory: vi.fn(
+                    () => options.actions ?? []
+                ),
+            },
+            genomeSpy: {
+                viewRoot: undefined,
+                getNamedScaleResolutions: vi.fn(
+                    () => options.scales ?? new Map()
+                ),
+            },
+            store: {
+                getState: vi.fn(() => ({
+                    viewSettings: { visibilities: {} },
+                })),
+            },
+        })
+    );
+}
+
 describe("createBookmarkWithCurrentState", () => {
     it("adds plot attachments to the current bookmark state", () => {
         /** @type {import("./databaseSchema.d.ts").BookmarkPlotAttachment} */
@@ -12,35 +41,18 @@ describe("createBookmarkWithCurrentState", () => {
                 attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "score" },
             },
         };
-        const app = /** @type {import("../app.js").default} */ (
-            /** @type {any} */ ({
-                provenance: {
-                    getBookmarkableActionHistory: vi.fn(() => [
-                        { type: "sample/action" },
-                    ]),
-                },
-                genomeSpy: {
-                    viewRoot: undefined,
-                    getNamedScaleResolutions: vi.fn(
-                        () =>
-                            new Map([
-                                [
-                                    "x",
-                                    {
-                                        isZoomable: () => true,
-                                        getComplexDomain: () => [1, 2],
-                                    },
-                                ],
-                            ])
-                    ),
-                },
-                store: {
-                    getState: vi.fn(() => ({
-                        viewSettings: { visibilities: {} },
-                    })),
-                },
-            })
-        );
+        const app = createBookmarkStateApp({
+            actions: [{ type: "sample/action" }],
+            scales: new Map([
+                [
+                    "x",
+                    {
+                        isZoomable: () => true,
+                        getComplexDomain: () => [1, 2],
+                    },
+                ],
+            ]),
+        });
 
         const bookmark = createBookmarkWithCurrentState(app, {
             plots: [plot],
@@ -64,22 +76,7 @@ describe("createBookmarkWithCurrentState", () => {
             },
         };
         const plots = [plot];
-        const app = /** @type {import("../app.js").default} */ (
-            /** @type {any} */ ({
-                provenance: {
-                    getBookmarkableActionHistory: vi.fn(() => []),
-                },
-                genomeSpy: {
-                    viewRoot: undefined,
-                    getNamedScaleResolutions: vi.fn(() => new Map()),
-                },
-                store: {
-                    getState: vi.fn(() => ({
-                        viewSettings: { visibilities: {} },
-                    })),
-                },
-            })
-        );
+        const app = createBookmarkStateApp();
 
         const bookmark = createBookmarkWithCurrentState(app, { plots });
         plots.length = 0;
