@@ -129,7 +129,7 @@ describe("sample attribute plot builders", () => {
         expect(plot.kind).toBe("sample_attribute_plot");
         expect(plot.plotType).toBe("barplot");
         expect(plot.request).toEqual({
-            plotType: "bar",
+            plotType: "barplot",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "status" },
         });
         expect(plot.title).toBe("Bar plot of status");

@@ -71,7 +71,7 @@ describe("createBookmarkWithCurrentState", () => {
         const plot = {
             kind: "sample_attribute_plot",
             request: {
-                plotType: "bar",
+                plotType: "barplot",
                 attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "status" },
             },
         };

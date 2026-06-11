@@ -100,7 +100,7 @@ export type SampleAttributePlotCharacterization =
 export interface SampleAttributePlot {
     kind: "sample_attribute_plot";
     plotType: SampleAttributePlotType;
-    request: SampleAttributePlotRequest;
+    request: SampleAttributePlotDefinition;
     title: string;
     spec: RootSpec;
     namedData: RenderablePlotNamedData[];
@@ -132,7 +132,7 @@ export interface HierarchyScatterplotRequest {
 
 export type SampleAttributePlotRequest =
     | {
-          plotType: "bar";
+          plotType: "bar" | "barplot";
           attribute: AttributeIdentifier;
           attributeLabel?: string;
       }
@@ -147,4 +147,19 @@ export type SampleAttributePlotRequest =
           yAttribute: AttributeIdentifier;
           xAttributeLabel?: string;
           yAttributeLabel?: string;
+      };
+
+export type SampleAttributePlotDefinition =
+    | {
+          plotType: "barplot";
+          attribute: AttributeIdentifier;
+      }
+    | {
+          plotType: "boxplot";
+          attribute: AttributeIdentifier;
+      }
+    | {
+          plotType: "scatterplot";
+          xAttribute: AttributeIdentifier;
+          yAttribute: AttributeIdentifier;
       };

@@ -5,7 +5,7 @@ import { createPlotBookmarkAttachment } from "./plotBookmarkActions.js";
 describe("createPlotBookmarkAttachment", () => {
     it("uses the plot request without copying the generated title", () => {
         const request = {
-            plotType: "bar",
+            plotType: "barplot",
             attribute: { type: "SAMPLE_ATTRIBUTE", specifier: "status" },
         };
         const plot =

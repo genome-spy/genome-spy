@@ -127,7 +127,7 @@ export function buildHierarchyBarplot(request) {
         kind: "sample_attribute_plot",
         plotType: "barplot",
         request: {
-            plotType: "bar",
+            plotType: "barplot",
             attribute: request.attributeInfo.attribute,
         },
         title: `Bar plot of ${templateResultToString(info.title)}`,

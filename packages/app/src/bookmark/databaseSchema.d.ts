@@ -2,11 +2,11 @@ import { DBSchema } from "idb";
 import { ChromosomalLocus } from "@genome-spy/core/genome/genome.js";
 import { ViewSettingsPayload } from "../state.js";
 import { Action } from "../state/provenance.js";
-import { SampleAttributePlotRequest } from "../charts/sampleAttributePlotTypes.js";
+import { SampleAttributePlotDefinition } from "../charts/sampleAttributePlotTypes.js";
 
 export interface BookmarkPlotAttachment {
     kind: "sample_attribute_plot";
-    request: SampleAttributePlotRequest;
+    request: SampleAttributePlotDefinition;
 }
 
 export interface BookmarkEntry {
