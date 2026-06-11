@@ -45,14 +45,14 @@ A URL specification may resolve to URL descriptors:
   {
     url: "https://example.org/A.vcf.gz",
     indexUrl: "https://example.org/A.vcf.gz.tbi",
-    fields: { sample: "A" }
+    fields: { sample: "A" },
   },
   {
     url: "https://example.org/B.vcf.gz",
     indexUrl: "https://example.org/B.vcf.gz.tbi",
-    fields: { sample: "B" }
-  }
-]
+    fields: { sample: "B" },
+  },
+];
 ```
 
 The `indexUrl` property is optional and applies to formats with a separate
@@ -103,8 +103,8 @@ If `visibleSamples` is `["A", "B"]`, this expands to:
 ```js
 [
   { url: "https://example.org/A.bw", fields: { sample: "A" } },
-  { url: "https://example.org/B.bw", fields: { sample: "B" } }
-]
+  { url: "https://example.org/B.bw", fields: { sample: "B" } },
+];
 ```
 
 The `field` property identifies the scalar value in the template and the field
@@ -243,7 +243,7 @@ SampleView should publish a reactive parameter derived from `SampleHierarchy`,
 not from closeup or viewport layout state. A suitable initial value is:
 
 ```js
-visibleSamples = ["A", "B", "C"]
+visibleSamples = ["A", "B", "C"];
 ```
 
 This represents samples that survive the current filtering/grouping/provenance
@@ -255,8 +255,8 @@ Future versions may publish richer values:
 ```js
 visibleSampleInfo = [
   { sample: "S1", patient: "P1", cancer: "ovarian" },
-  { sample: "S2", patient: "P1", cancer: "ovarian" }
-]
+  { sample: "S2", patient: "P1", cancer: "ovarian" },
+];
 ```
 
 Core should treat these as generic expression values. It should not depend on
@@ -395,3 +395,47 @@ fields before propagation.
    `maxUrls`, eager URL field attachment, and multi-BigWig row tagging.
 7. Later, support object-valued template values and partition-file use cases such
    as patient-level or cancer-level variant files.
+
+## Market Fit
+
+The feature is not mainly about showing hundreds of signal tracks. Its value is
+the transition from cohort-level findings to detailed patient or sample evidence:
+
+```text
+cohort overview -> filter/group/sort -> resolve relevant files -> inspect locus
+```
+
+Existing genome browsers are strong at locus-level inspection, and cohort portals
+are strong at matrix-level summaries. The gap is the interactive handoff between
+the two. Researchers often identify a subgroup in one tool, then manually move
+sample IDs and loci into another tool for detailed inspection. Multi-URL sources
+would make that handoff part of the visualization state.
+
+Best research-oriented use cases:
+
+- Structural variant or copy-number event effects on RNA coverage, exon usage,
+  and nearby gene expression.
+- Subgroup-specific ATAC-seq, ChIP-seq, or CUT&Tag signal at regulatory regions.
+- Matched primary/relapse or pre/post-treatment signal changes within patients.
+- Patient-level or cancer-type-level variant files loaded only after the cohort
+  is narrowed enough to make the detailed view meaningful.
+- Outlier validation, where a cohort-level association is checked against raw or
+  high-resolution signal in the top or selected samples.
+- Pseudobulk single-cell signal tracks for selected cell types, conditions, or
+  clusters.
+
+The likely audience is high-touch exploratory research: cancer genomics,
+translational genomics, regulatory genomics, and multi-omics teams with curated
+per-sample or per-patient files. For these users, the workflow saves time and
+reduces context switching rather than replacing standard statistical analysis.
+
+From a product point of view, the differentiator is cohort-state-driven lazy
+loading. The same filtering, grouping, sorting, and provenance state that defines
+the cohort overview also defines which detailed files are fetched. This positions
+GenomeSpy between cohort portals and genome browsers: more analytical than a
+track browser, but closer to raw genomic evidence than matrix-only dashboards.
+
+Adoption depends on keeping configuration simple. A regular URL template driven
+by `visibleSamples` is understandable to data providers, while `maxUrls` prevents
+accidental broad loading. More complex partitioned-file workflows can be added
+later without changing the core value proposition.
