@@ -178,6 +178,10 @@ export default class SampleView extends ContainerView {
         this.#initAttributeInfo();
         this.#setupActionAugmenter(intentExecutor);
         this.#setupStoreSubscriptions();
+        this.#visibleSamplesParam = this.paramRuntime.allocateSetter(
+            "visibleSamples",
+            []
+        );
 
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
 
@@ -604,11 +608,6 @@ export default class SampleView extends ContainerView {
         this.#sampleHeightParam = (value) => {
             this.#gridChild.view.paramRuntime.setValue("height", value);
         };
-        this.#visibleSamplesParam =
-            this.#gridChild.view.paramRuntime.allocateSetter(
-                "visibleSamples",
-                []
-            );
         this.#updateVisibleSamplesParam();
 
         // TODO: Hack the sample height to sidebar as well.

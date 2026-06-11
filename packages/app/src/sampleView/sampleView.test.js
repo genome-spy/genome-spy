@@ -188,7 +188,7 @@ describe("SampleView", () => {
         });
         const facetsView = view.findDescendantByName("sample-facets");
 
-        expect(facetsView.paramRuntime.getValue("visibleSamples")).toEqual([]);
+        expect(facetsView.paramRuntime.findValue("visibleSamples")).toEqual([]);
 
         view.provenance.store.dispatch(
             view.actions.setSamples({
@@ -200,7 +200,7 @@ describe("SampleView", () => {
         );
         await Promise.resolve();
 
-        expect(facetsView.paramRuntime.getValue("visibleSamples")).toEqual([
+        expect(facetsView.paramRuntime.findValue("visibleSamples")).toEqual([
             "A",
             "B",
         ]);
