@@ -130,6 +130,10 @@ export interface HierarchyScatterplotRequest {
     colorScaleRange?: string[];
 }
 
+/**
+ * User/API-facing plot request. This accepts convenience aliases and label
+ * hints that may be useful while resolving a plot, but are not persisted.
+ */
 export type SampleAttributePlotRequest =
     | {
           plotType: "bar" | "barplot";
@@ -149,6 +153,11 @@ export type SampleAttributePlotRequest =
           yAttributeLabel?: string;
       };
 
+/**
+ * Normalized plot definition that is safe to persist in generated plots and
+ * bookmarks. It uses canonical plot type names and stores only stable attribute
+ * identifiers.
+ */
 export type SampleAttributePlotDefinition =
     | {
           plotType: "barplot";
