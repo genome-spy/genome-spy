@@ -27,11 +27,11 @@ export function createPlotBookmark(bookmarkContext, plot) {
  * @param {import("./sampleAttributePlotTypes.d.ts").SampleAttributePlot} plot
  */
 export async function addPlotBookmark(bookmarkContext, plot) {
-    if (!bookmarkContext.canSaveLocalBookmark()) {
+    const bookmarkDatabase = bookmarkContext.getLocalBookmarkDatabase();
+    if (!bookmarkDatabase) {
         return;
     }
 
-    const bookmarkDatabase = bookmarkContext.getLocalBookmarkDatabase();
     const bookmark = createPlotBookmark(bookmarkContext, plot);
     if (await showEnterBookmarkInfoDialog(bookmarkDatabase, bookmark, "add")) {
         try {

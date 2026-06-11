@@ -92,7 +92,7 @@ export class PlotDialog extends BaseDialog {
                 },
                 {
                     iconDef: faBookmark,
-                    disabled: !this.bookmarkContext?.canSaveLocalBookmark(),
+                    disabled: !this.bookmarkContext?.getLocalBookmarkDatabase(),
                 }
             ),
             this.makeButton(
