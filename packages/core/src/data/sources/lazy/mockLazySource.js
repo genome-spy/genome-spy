@@ -1,4 +1,8 @@
 import SingleAxisLazySource from "./singleAxisLazySource.js";
+import {
+    normalizeUrlDescriptors,
+    watchUrlDescriptorExpressions,
+} from "../urlDescriptor.js";
 
 /**
  * Testing-only lazy data source that delays data publishing.
@@ -6,7 +10,7 @@ import SingleAxisLazySource from "./singleAxisLazySource.js";
  */
 export default class MockLazySource extends SingleAxisLazySource {
     /**
-     * @param {{ channel?: import("../../../spec/channel.js").PrimaryPositionalChannel, delay?: number, data?: import("../../flowNode.js").Datum[] }} params
+     * @param {{ channel?: import("../../../spec/channel.js").PrimaryPositionalChannel, delay?: number, data?: import("../../flowNode.js").Datum[], url?: any }} params
      * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
@@ -23,6 +27,18 @@ export default class MockLazySource extends SingleAxisLazySource {
                 this.pendingTimer = undefined;
             }
         });
+
+        if (params.url && typeof params.url == "object") {
+            watchUrlDescriptorExpressions({
+                url: params.url,
+                paramRuntime: view.paramRuntime,
+                listener: () => {
+                    this._lastLoadedDomain = undefined;
+                    this.onDomainChanged();
+                },
+                registerDisposer: (disposer) => this.registerDisposer(disposer),
+            });
+        }
     }
 
     /**
@@ -34,11 +50,39 @@ export default class MockLazySource extends SingleAxisLazySource {
             this.pendingTimer = undefined;
         }
 
-        const data = this.params.data ?? [];
+        this.setLoadingStatus("loading");
         this.pendingTimer = setTimeout(() => {
             this.pendingTimer = undefined;
-            this.publishData([data]);
-            this.requestRender();
+            this.#resolveData()
+                .then((data) => {
+                    this.publishData([data]);
+                    this.setLoadingStatus("complete");
+                    this.requestRender();
+                })
+                .catch((e) => {
+                    this.load();
+                    this.setLoadingStatus("error", e.message);
+                });
         }, this.delay);
+    }
+
+    async #resolveData() {
+        if (!this.params.url) {
+            return this.params.data ?? [];
+        }
+
+        const descriptors = await normalizeUrlDescriptors({
+            url: this.params.url,
+            baseUrl: this.view.getBaseUrl(),
+            paramRuntime: this.view.paramRuntime,
+        });
+
+        return descriptors.flatMap((descriptor, i) => {
+            const rows = this.params.data ?? [{ x: i, value: descriptor.url }];
+            return rows.map((datum) => ({
+                ...descriptor.fields,
+                ...datum,
+            }));
+        });
     }
 }
