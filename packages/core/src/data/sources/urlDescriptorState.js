@@ -1,4 +1,8 @@
-import { urlDescriptorKey } from "./urlDescriptor.js";
+import {
+    loadUrlDescriptorOrSkip,
+    UrlLimitExceededError,
+    urlDescriptorKey,
+} from "./urlDescriptor.js";
 
 /**
  * Tracks active URL descriptors, descriptor-keyed handles, and the descriptor
@@ -81,5 +85,45 @@ export default class UrlDescriptorState {
             this.#handleCache.set(descriptorKey, handle);
         }
         return { descriptorKey, handle };
+    }
+}
+
+/**
+ * Updates descriptor-backed lazy-source handles using the shared multi-URL
+ * loading policy. Over-limit URL expansion is treated as an empty completed
+ * source so stale data is cleared without surfacing a runtime error.
+ *
+ * @template T
+ * @template M
+ * @param {{
+ *     controller: { normalize: () => Promise<import("./urlDescriptor.js").UrlDescriptor[]> },
+ *     state: UrlDescriptorState<T>,
+ *     clearData: () => void,
+ *     setLoadingStatus: (status: import("../../types/viewContext.js").DataLoadingStatus, detail?: string) => void,
+ *     loadModules: () => Promise<M>,
+ *     createHandle: (descriptor: import("./urlDescriptor.js").UrlDescriptor, modules: M) => Promise<T>,
+ * }} options
+ */
+export async function updateUrlDescriptorState(options) {
+    try {
+        const descriptors = await options.controller.normalize();
+        const modules = await options.loadModules();
+
+        options.setLoadingStatus("loading");
+        await options.state.update(descriptors, (descriptor) =>
+            loadUrlDescriptorOrSkip(descriptor, () =>
+                options.createHandle(descriptor, modules)
+            )
+        );
+        options.setLoadingStatus("complete");
+    } catch (e) {
+        options.clearData();
+        if (e instanceof UrlLimitExceededError) {
+            options.state.clearActive();
+            options.setLoadingStatus("complete");
+        } else {
+            options.setLoadingStatus("error", e.message);
+            throw e;
+        }
     }
 }

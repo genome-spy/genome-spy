@@ -2,13 +2,11 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import {
-    createDescriptorFieldAttacher,
-    loadUrlDescriptorOrSkip,
-    UrlLimitExceededError,
-} from "../urlDescriptor.js";
+import { createDescriptorFieldAttacher } from "../urlDescriptor.js";
 import UrlDescriptorController from "../urlDescriptorController.js";
-import UrlDescriptorState from "../urlDescriptorState.js";
+import UrlDescriptorState, {
+    updateUrlDescriptorState,
+} from "../urlDescriptorState.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -103,35 +101,16 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     }
 
     async #doInitialize() {
-        try {
-            const descriptors = await this.#urlDescriptors.normalize();
-            const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
-                import("@gmod/bed"),
-                import("@gmod/bbi"),
-                import("generic-filehandle2"),
-            ]);
-            const BED = bed.default;
-
-            this.setLoadingStatus("loading");
-            await this.#descriptorState.update(
-                descriptors,
-                async (descriptor) =>
-                    loadUrlDescriptorOrSkip(descriptor, () =>
-                        this.#createHandle(descriptor, BigBed, RemoteFile, BED)
-                    )
-            );
-            this.setLoadingStatus("complete");
-        } catch (e) {
-            // Load empty data
-            this.load();
-            if (e instanceof UrlLimitExceededError) {
-                this.#descriptorState.clearActive();
-                this.setLoadingStatus("complete");
-            } else {
-                this.setLoadingStatus("error", e.message);
-                throw e;
-            }
-        }
+        await updateUrlDescriptorState({
+            controller: this.#urlDescriptors,
+            state: this.#descriptorState,
+            clearData: () => this.load(),
+            setLoadingStatus: (status, detail) =>
+                this.setLoadingStatus(status, detail),
+            loadModules: loadBigBedModules,
+            createHandle: (descriptor, { BigBed, RemoteFile, BED }) =>
+                this.#createHandle(descriptor, BigBed, RemoteFile, BED),
+        });
     }
 
     /**
@@ -386,6 +365,15 @@ function isBigBedSource(params) {
 }
 
 registerBuiltInLazyDataSource(isBigBedSource, BigBedSource);
+
+async function loadBigBedModules() {
+    const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
+        import("@gmod/bed"),
+        import("@gmod/bbi"),
+        import("generic-filehandle2"),
+    ]);
+    return { BigBed, RemoteFile, BED: bed.default };
+}
 
 /**
  * @param {T[]} arr

@@ -1,16 +1,13 @@
 import { unzip } from "@gmod/bgzf-filehandle";
 import {
     activateExprRefProps,
-    isExprRef,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import {
-    attachDescriptorFieldsToData,
-    loadUrlDescriptorOrSkip,
-    normalizeUrlDescriptors,
-    watchUrlDescriptorExpressions,
-} from "../urlDescriptor.js";
-import UrlDescriptorState from "../urlDescriptorState.js";
+import { attachDescriptorFieldsToData } from "../urlDescriptor.js";
+import UrlDescriptorController from "../urlDescriptorController.js";
+import UrlDescriptorState, {
+    updateUrlDescriptorState,
+} from "../urlDescriptorState.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 /**
@@ -29,6 +26,9 @@ export default class TabixSource extends SingleAxisWindowedSource {
 
     /** @type {UrlDescriptorState<TabixHandle>} */
     #descriptorState = new UrlDescriptorState();
+
+    /** @type {UrlDescriptorController} */
+    #urlDescriptors;
 
     /**
      * @param {import("../../../spec/data.js").TabixData} params
@@ -66,21 +66,11 @@ export default class TabixSource extends SingleAxisWindowedSource {
             { batchMode: "whenPropagated" }
         );
 
-        if (
-            params.url &&
-            typeof params.url == "object" &&
-            !isExprRef(params.url)
-        ) {
-            watchUrlDescriptorExpressions({
-                url: params.url,
-                indexUrl: params.indexUrl,
-                paramRuntime: view.paramRuntime,
-                listener: () => {
-                    this.#reloadIfCurrentDomainNeedsData();
-                },
-                registerDisposer: (disposer) => this.registerDisposer(disposer),
-            });
-        }
+        this.#urlDescriptors = new UrlDescriptorController(this, {
+            getUrl: () => this.params.url,
+            getIndexUrl: () => this.params.indexUrl,
+            onChange: () => this.#reloadIfCurrentDomainNeedsData(),
+        });
 
         if (!withoutExprRef(this.params.url)) {
             throw new Error("No URL provided for TabixSource");
@@ -117,43 +107,38 @@ export default class TabixSource extends SingleAxisWindowedSource {
     }
 
     async #doInitialize() {
-        const descriptors = await normalizeUrlDescriptors({
-            url: this.params.url,
-            indexUrl: this.params.indexUrl,
-            baseUrl: this.view.getBaseUrl(),
-            paramRuntime: this.paramRuntime,
+        await updateUrlDescriptorState({
+            controller: this.#urlDescriptors,
+            state: this.#descriptorState,
+            clearData: () => this.load(),
+            setLoadingStatus: (status, detail) =>
+                this.setLoadingStatus(status, detail),
+            loadModules: async () => {
+                const { TabixIndexedFile, RemoteFile } =
+                    await loadTabixModules();
+                const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
+
+                const renameRefSeqs =
+                    addChrPrefix === true
+                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
+                        : addChrPrefix
+                          ? (/** @type {string} */ refSeq) =>
+                                addChrPrefix + refSeq
+                          : undefined;
+
+                return { TabixIndexedFile, RemoteFile, renameRefSeqs };
+            },
+            createHandle: (
+                descriptor,
+                { TabixIndexedFile, RemoteFile, renameRefSeqs }
+            ) =>
+                this.#createHandle(
+                    descriptor,
+                    TabixIndexedFile,
+                    RemoteFile,
+                    renameRefSeqs
+                ),
         });
-        const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
-
-        const [{ TabixIndexedFile }, { RemoteFile }] = await Promise.all([
-            import("@gmod/tabix"),
-            import("generic-filehandle2"),
-        ]);
-        const renameRefSeqs =
-            addChrPrefix === true
-                ? (/** @type {string} */ refSeq) => "chr" + refSeq
-                : addChrPrefix
-                  ? (/** @type {string} */ refSeq) => addChrPrefix + refSeq
-                  : undefined;
-
-        try {
-            this.setLoadingStatus("loading");
-            await this.#descriptorState.update(descriptors, (descriptor) =>
-                loadUrlDescriptorOrSkip(descriptor, () =>
-                    this.#createHandle(
-                        descriptor,
-                        TabixIndexedFile,
-                        RemoteFile,
-                        renameRefSeqs
-                    )
-                )
-            );
-            this.setLoadingStatus("complete");
-        } catch (e) {
-            this.load();
-            this.setLoadingStatus("error", e.message);
-            throw e;
-        }
     }
 
     /**
@@ -311,4 +296,12 @@ export default class TabixSource extends SingleAxisWindowedSource {
             super.isDataReadyForDomain(request)
         );
     }
+}
+
+async function loadTabixModules() {
+    const [{ TabixIndexedFile }, { RemoteFile }] = await Promise.all([
+        import("@gmod/tabix"),
+        import("generic-filehandle2"),
+    ]);
+    return { TabixIndexedFile, RemoteFile };
 }

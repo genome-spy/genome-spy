@@ -59,6 +59,8 @@ vi.mock("@gmod/tabix", () => ({
 }));
 
 function createViewStub() {
+    /** @type {{ status: import("../../../types/viewContext.js").DataLoadingStatus, detail?: string }[]} */
+    const loadingStatuses = [];
     /** @type {any} */
     let scaleResolution;
     const paramRuntime = new ViewParamRuntime(
@@ -99,6 +101,7 @@ function createViewStub() {
     return {
         paramRuntime,
         setVisibleCancers,
+        loadingStatuses,
         getBaseUrl: () => "",
         getScaleResolution: () => scaleResolution,
         isVisible: () => true,
@@ -106,7 +109,11 @@ function createViewStub() {
             addBroadcastListener: /** @returns {undefined} */ () => undefined,
             dataFlow: {
                 loadingStatusRegistry: {
-                    set: /** @returns {undefined} */ () => undefined,
+                    set: (
+                        /** @type {any} */ _view,
+                        /** @type {import("../../../types/viewContext.js").DataLoadingStatus} */ status,
+                        /** @type {string | undefined} */ detail
+                    ) => loadingStatuses.push({ status, detail }),
                 },
             },
         },
@@ -361,5 +368,30 @@ describe("TabixSource", () => {
         ]);
         expect(requestedIntervals).toHaveLength(2);
         expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
+    });
+
+    it("treats maxValues overflow as an empty completed lazy source", async () => {
+        const view = createViewStub();
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: {
+                    template: "variants/{cancer}.vcf.gz",
+                    values: { expr: "visibleCancers" },
+                    field: "cancer",
+                    maxValues: 1,
+                },
+            }),
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+
+        expect(openedUrls).toEqual([]);
+        expect(view.loadingStatuses.at(-1)).toEqual({ status: "complete" });
+        expect([...collector.getData()]).toEqual([]);
     });
 });
