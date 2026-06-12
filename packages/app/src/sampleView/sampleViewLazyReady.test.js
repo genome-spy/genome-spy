@@ -140,7 +140,7 @@ describe("SampleView lazy readiness", () => {
                                 template: "signals/{sample}.mock",
                                 values: { expr: "visibleSamples" },
                                 field: "sample",
-                                maxUrls: 2,
+                                maxValues: 2,
                             },
                             data: [{ x: 1, beta: 1 }],
                         })

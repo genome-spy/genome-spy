@@ -214,10 +214,10 @@ export interface UrlTemplate {
     field: FieldName;
 
     /**
-     * Maximum number of distinct resolved URLs to load. Expansion fails when
+     * Maximum number of distinct resolved values to load. Expansion fails when
      * the limit is exceeded.
      */
-    maxUrls?: number;
+    maxValues?: number;
 }
 
 export interface IndexUrlTemplate {

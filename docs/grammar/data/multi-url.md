@@ -38,7 +38,7 @@ value is substituted into the URL and attached as a row field.
     "template": "signals/{sample}.bw",
     "values": ["S1", "S2"],
     "field": "sample",
-    "maxUrls": 20
+    "maxValues": 20
   }
 }
 ```
@@ -47,8 +47,8 @@ This resolves to two files, `signals/S1.bw` and `signals/S2.bw`. Rows loaded
 from the first file receive `"sample": "S1"`, and rows loaded from the second
 file receive `"sample": "S2"`.
 
-Duplicate resolved URLs are loaded only once. Use `maxUrls` to prevent accidental
-broad loading when a template is driven by interactive state.
+Duplicate resolved URLs are loaded only once. Use `maxValues` to prevent
+accidental broad loading when a template is driven by interactive state.
 
 ## Reactive Values
 
@@ -64,7 +64,7 @@ set of files is controlled by application state or parameters.
         "template": "signals/{sample}.bw",
         "values": { "expr": "visibleSamples" },
         "field": "sample",
-        "maxUrls": 20
+        "maxValues": 20
       }
     }
   }
@@ -91,7 +91,7 @@ This is useful for sample-specific or patient-specific tabular files.
       "template": "segments/{sample}.tsv",
       "values": ["S1", "S2"],
       "field": "sample",
-      "maxUrls": 50
+      "maxValues": 50
     },
     "format": { "type": "tsv" }
   }
@@ -116,7 +116,7 @@ tracks.
         "template": "coverage/{sample}.bw",
         "values": { "expr": "visibleSamples" },
         "field": "sample",
-        "maxUrls": 20
+        "maxValues": 20
       }
     }
   }
@@ -140,7 +140,7 @@ Formats such as Tabix-backed TSV, GFF3, and VCF use an index file. Keep
         "template": "variants/{sample}.vcf.gz",
         "values": { "expr": "visibleSamples" },
         "field": "sample",
-        "maxUrls": 20
+        "maxValues": 20
       },
       "indexUrl": {
         "template": "variants/{sample}.vcf.gz.tbi"
@@ -158,9 +158,8 @@ use it. For example, Tabix defaults to the data URL plus `.tbi`.
 - Template values are scalar in the current version.
 - Object-valued metadata templates, such as one file per patient or cancer type,
   require additional design.
-- BigWig and Tabix-backed sources are the primary multi-file lazy sources.
-- BigBed, BAM, and indexed FASTA should be treated as single-file sources unless
-  their docs state otherwise.
+- BigWig, BigBed, and Tabix-backed sources support multi-file lazy loading.
+- BAM and indexed FASTA should be treated as single-file sources unless their
+  docs state otherwise.
 - Loading is snapshot-based. Rows are propagated after the active set of files
   has completed for the current request.
-

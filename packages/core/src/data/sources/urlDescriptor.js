@@ -54,7 +54,7 @@ import { concatUrl } from "../../utils/url.js";
 
 /**
  * Expands a URL spec into concrete descriptors, resolves relative URLs against
- * the view base URL, deduplicates the result, and enforces `maxUrls`.
+ * the view base URL, deduplicates the result, and enforces `maxValues`.
  *
  * @param {UrlDescriptorOptions} options
  * @returns {Promise<UrlDescriptor[]>}
@@ -69,7 +69,7 @@ export async function normalizeUrlDescriptors(options) {
             : undefined,
     }));
 
-    return dedupeAndLimit(resolved, getMaxUrls(options.url));
+    return dedupeAndLimit(resolved, getMaxValues(options.url));
 }
 
 /**
@@ -280,9 +280,9 @@ function fillTemplate(template, field, value) {
  * descriptors.
  *
  * @param {UrlDescriptor[]} descriptors
- * @param {number | undefined} maxUrls
+ * @param {number | undefined} maxValues
  */
-function dedupeAndLimit(descriptors, maxUrls) {
+function dedupeAndLimit(descriptors, maxValues) {
     const byKey = new Map();
     for (const descriptor of descriptors) {
         const key = descriptor.url + "\n" + (descriptor.indexUrl ?? "");
@@ -292,9 +292,9 @@ function dedupeAndLimit(descriptors, maxUrls) {
     }
 
     const result = Array.from(byKey.values());
-    if (maxUrls !== undefined && result.length > maxUrls) {
+    if (maxValues !== undefined && result.length > maxValues) {
         throw new Error(
-            `URL expansion resolved ${result.length} URLs, exceeding maxUrls ${maxUrls}.`
+            `URL expansion resolved ${result.length} distinct values, exceeding maxValues ${maxValues}.`
         );
     }
     return result;
@@ -335,8 +335,8 @@ function isIndexTemplate(value) {
  * @param {UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown} value
  * @returns {number | undefined}
  */
-function getMaxUrls(value) {
-    return isUrlTemplate(value) ? value.maxUrls : undefined;
+function getMaxValues(value) {
+    return isUrlTemplate(value) ? value.maxValues : undefined;
 }
 
 /**

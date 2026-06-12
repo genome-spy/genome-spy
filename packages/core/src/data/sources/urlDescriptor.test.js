@@ -84,17 +84,17 @@ describe("normalizeUrlDescriptors", () => {
         ]);
     });
 
-    it("throws when maxUrls is exceeded", async () => {
+    it("throws when maxValues is exceeded", async () => {
         await expect(
             normalizeUrlDescriptors({
                 url: {
                     template: "coverage/{sample}.bw",
                     values: ["A", "B"],
                     field: "sample",
-                    maxUrls: 1,
+                    maxValues: 1,
                 },
             })
-        ).rejects.toThrow("resolved 2 URLs, exceeding maxUrls 1");
+        ).rejects.toThrow("resolved 2 distinct values, exceeding maxValues 1");
     });
 
     it("normalizes a source that expects one resolved descriptor", async () => {

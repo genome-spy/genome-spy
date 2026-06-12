@@ -50,7 +50,7 @@ descriptor per data/index URL pair.
 
 Template URL configuration is deliberately scalar in the first version. The
 template has a placeholder field, values from either a static array or ExprRef,
-and an optional `maxUrls`. Each scalar value substitutes the placeholder and is
+and an optional `maxValues`. Each scalar value substitutes the placeholder and is
 also attached as a row field. For example, a per-sample BigWig template can load
 only the samples exposed by `visibleSamples` and tag each returned BigWig row
 with its sample identifier.
@@ -116,7 +116,7 @@ Sources normalize URL specifications before loading:
 2. Expand primary and sibling index URL templates using static or reactive
    values.
 3. Deduplicate by resolved primary URL and associated index URL.
-4. Enforce `maxUrls` if configured.
+4. Enforce `maxValues` if configured.
 5. Resolve primary and index URLs against `baseUrl`.
 6. Load files with source-appropriate parallelism.
 7. Attach descriptor fields to propagated rows.
@@ -168,7 +168,7 @@ not merge two sources whose reactive URL expressions are scoped differently.
 
 Over-limit or unresolved URL states should reset and complete the branch with
 empty data, plus an informative loading status. This prevents stale data from
-remaining visible when a filter broadens beyond `maxUrls`.
+remaining visible when a filter broadens beyond `maxValues`.
 
 ## Lazy Source Compatibility
 
@@ -181,9 +181,8 @@ Strong initial candidates:
 
 - `bigwig`: Good first target. BigWig rows do not normally contain sample or
   partition identity, so descriptor fields are directly useful.
-- `bigbed`: Good candidate as a single-file indexed interval source. The branch
-  currently keeps BigBed single-file only, but it now uses the same single-URL
-  descriptor normalization path.
+- `bigbed`: Supported as a multi-file indexed interval source. Each descriptor
+  keeps its own BigBed handle and parser state.
 - `tabix`: Good target for TSV-like interval data. The base Tabix source now
   handles primary/index descriptor pairs.
 - `gff3`: Compatible through the Tabix base class. It is less important for
@@ -215,12 +214,12 @@ The branch implemented the initial multi-URL path in small commits:
    single URL refs, and multi URL refs.
 2. Added `urlDescriptor.js` as the shared normalization layer for strings,
    arrays, descriptors, templates, ExprRefs, index URL templates, deduplication,
-   and `maxUrls`.
+   and `maxValues`.
 3. Added nested expression watching for URL template values.
 4. Updated eager `UrlSource` to consume descriptors, preserve URL array
    behavior, emit file batches, and attach descriptor fields to parsed rows.
-5. Updated BigWig to load multiple descriptors, tag rows, and make readiness
-   depend on the active descriptor signature.
+5. Updated BigWig and BigBed to load multiple descriptors, tag rows, and make
+   readiness depend on the active descriptor set.
 6. Updated Tabix to load multiple descriptor/index pairs and attach descriptor
    fields to parsed rows.
 7. Added SampleView `visibleSamples` as a reactive parameter derived from
@@ -232,9 +231,9 @@ The branch implemented the initial multi-URL path in small commits:
 10. Split source reference types so single-file sources do not advertise
     multi-file behavior in the schema.
 
-The implementation is intentionally conservative. BigWig and Tabix are the
-multi-file lazy targets. BigBed, BAM, and indexed FASTA now use the shared
-single-URL normalization path, but they do not yet support multiple descriptors.
+The implementation is intentionally conservative. BigWig, BigBed, and Tabix are
+the multi-file lazy targets. BAM and indexed FASTA still use the shared
+single-URL normalization path and do not yet support multiple descriptors.
 
 ## Remaining Work
 
@@ -244,7 +243,7 @@ be considered production-ready:
 - Run `npm run build` and `npm run build:docs` after the latest `data.d.ts`
   changes. Commit generated schema/docs artifacts if the build updates them.
 - Manually verify over-limit behavior in an App-like flow. The intended behavior
-  is to clear stale data and report a clear loading/error status when `maxUrls`
+  is to clear stale data and report a clear loading/error status when `maxValues`
   is exceeded.
 - Review ordering and reload churn when `visibleSamples` changes order but not
   membership. URL deduplication prevents duplicate loads, but order-only changes
@@ -253,9 +252,6 @@ be considered production-ready:
   expressions and do not accidentally merge unrelated dataflow branches.
 - Exercise the feature with a real local BigWig dataset, such as the
   `private/ENCODE-ATAC` handoff dataset.
-- Decide whether BigBed should also support multiple descriptors in the first
-  public release. It is mechanically similar to BigWig, but it was not required
-  for the initial SampleView signal workflow.
 
 Future extensions:
 
@@ -269,7 +265,7 @@ Future extensions:
 
 - Should descriptor fields override existing row fields, or should conflicts
   always fail fast? The current direction is fail-fast on conflicting values.
-- Should `maxUrls` live only inside the template object, or should there also be
+- Should `maxValues` live only inside the template object, or should there also be
   a source-level limit?
 - Should over-limit behavior be represented as an error status, a warning-like
   empty state, or a dedicated load-gated state?
@@ -320,6 +316,6 @@ than a track browser, but closer to raw genomic evidence than matrix-only
 dashboards.
 
 Adoption depends on keeping configuration simple. A regular URL template driven
-by `visibleSamples` is understandable to data providers, while `maxUrls`
+by `visibleSamples` is understandable to data providers, while `maxValues`
 prevents accidental broad loading. More complex partitioned-file workflows can
 be added later without changing the core value proposition.
