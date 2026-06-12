@@ -90,58 +90,58 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     }
 
     #initialize() {
-        this.initializedPromise = normalizeUrlDescriptors({
+        this.initializedPromise = this.#doInitialize();
+        return this.initializedPromise;
+    }
+
+    async #doInitialize() {
+        const descriptors = await normalizeUrlDescriptors({
             url: this.params.url,
             baseUrl: this.view.getBaseUrl(),
             paramRuntime: this.paramRuntime,
-        }).then((descriptors) => {
-            this.#descriptorSignature = JSON.stringify(descriptors);
-            this.#loadedDescriptorSignature = "";
-
-            return Promise.all([
-                import("@gmod/bbi"),
-                import("generic-filehandle2"),
-            ]).then(([{ BigWig }, { RemoteFile }]) => {
-                this.setLoadingStatus("loading");
-                return Promise.all(
-                    descriptors.map(async (descriptor) => {
-                        const bbi = new BigWig({
-                            filehandle: new RemoteFile(descriptor.url),
-                        });
-                        const header = await bbi.getHeader();
-                        const reductionLevels =
-                            /** @type {{reductionLevel: number}[]} */ (
-                                header.zoomLevels
-                            )
-                                .map((z) => z.reductionLevel)
-                                .reverse();
-
-                        // Add the non-reduced level. Not sure if this is the best way to do it.
-                        // Afaik, the non-reduced bin size is not available in the header.
-                        reductionLevels.push(1);
-
-                        return {
-                            bbi,
-                            reductionLevels,
-                            fields: descriptor.fields,
-                            url: descriptor.url,
-                        };
-                    })
-                )
-                    .then((handles) => {
-                        this.#handles = handles;
-                        this.setLoadingStatus("complete");
-                    })
-                    .catch((e) => {
-                        // Load empty data
-                        this.load();
-                        this.setLoadingStatus("error", e.message);
-                        throw e;
-                    });
-            });
         });
+        this.#descriptorSignature = JSON.stringify(descriptors);
+        this.#loadedDescriptorSignature = "";
 
-        return this.initializedPromise;
+        const [{ BigWig }, { RemoteFile }] = await Promise.all([
+            import("@gmod/bbi"),
+            import("generic-filehandle2"),
+        ]);
+
+        try {
+            this.setLoadingStatus("loading");
+            this.#handles = await Promise.all(
+                descriptors.map(async (descriptor) => {
+                    const bbi = new BigWig({
+                        filehandle: new RemoteFile(descriptor.url),
+                    });
+                    const header = await bbi.getHeader();
+                    const reductionLevels =
+                        /** @type {{reductionLevel: number}[]} */ (
+                            header.zoomLevels
+                        )
+                            .map((z) => z.reductionLevel)
+                            .reverse();
+
+                    // Add the non-reduced level. Not sure if this is the best way to do it.
+                    // Afaik, the non-reduced bin size is not available in the header.
+                    reductionLevels.push(1);
+
+                    return {
+                        bbi,
+                        reductionLevels,
+                        fields: descriptor.fields,
+                        url: descriptor.url,
+                    };
+                })
+            );
+            this.setLoadingStatus("complete");
+        } catch (e) {
+            // Load empty data
+            this.load();
+            this.setLoadingStatus("error", e.message);
+            throw e;
+        }
     }
 
     /**

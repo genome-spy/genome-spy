@@ -1,4 +1,4 @@
-import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { normalizeUrlDescriptors } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -27,30 +27,41 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.initializedPromise = new Promise((resolve) => {
-            Promise.all([
-                import("@gmod/indexedfasta"),
-                import("generic-filehandle2"),
-            ]).then(([{ IndexedFasta }, { RemoteFile }]) => {
-                const withBase = (/** @type {string} */ uri) =>
-                    new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
-                const url = /** @type {string} */ (this.params.url);
-                const indexUrl = /** @type {string | undefined} */ (
-                    this.params.indexUrl
-                );
-
-                this.fasta = new IndexedFasta({
-                    fasta: withBase(url),
-                    fai: withBase(indexUrl ?? url + ".fai"),
-                });
-
-                resolve();
-            });
-        });
+        this.#initialize();
     }
 
     get label() {
         return "bigWigSource";
+    }
+
+    #initialize() {
+        this.initializedPromise = this.#doInitialize();
+        return this.initializedPromise;
+    }
+
+    async #doInitialize() {
+        const descriptors = await normalizeUrlDescriptors({
+            url: this.params.url,
+            indexUrl: this.params.indexUrl,
+            baseUrl: this.view.getBaseUrl(),
+            paramRuntime: this.paramRuntime,
+        });
+        if (descriptors.length !== 1) {
+            throw new Error(
+                "IndexedFastaSource supports exactly one resolved URL."
+            );
+        }
+
+        const descriptor = descriptors[0];
+        const [{ IndexedFasta }, { RemoteFile }] = await Promise.all([
+            import("@gmod/indexedfasta"),
+            import("generic-filehandle2"),
+        ]);
+
+        this.fasta = new IndexedFasta({
+            fasta: new RemoteFile(descriptor.url),
+            fai: new RemoteFile(descriptor.indexUrl ?? descriptor.url + ".fai"),
+        });
     }
 
     /**

@@ -1,4 +1,4 @@
-import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { normalizeUrlDescriptors } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -41,41 +41,50 @@ export default class BamSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.initializedPromise = new Promise((resolve) => {
-            Promise.all([
-                import("@gmod/bam"),
-                import("generic-filehandle2"),
-            ]).then(([{ BamFile }, { RemoteFile }]) => {
-                const withBase = (/** @type {string} */ uri) =>
-                    new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
-                const url = /** @type {string} */ (this.params.url);
-                const indexUrl = /** @type {string | undefined} */ (
-                    this.params.indexUrl
-                );
-
-                this.#bam = new BamFile({
-                    bamFilehandle: withBase(url),
-                    baiFilehandle: withBase(indexUrl ?? url + ".bai"),
-                });
-
-                this.#bam.getHeader().then((_header) => {
-                    const g = this.genome.hasChrPrefix();
-                    const b =
-                        this.#bam.indexToChr?.[0]?.refName.startsWith("chr");
-                    if (g && !b) {
-                        this.chrPrefixFixer = (chr) => chr.replace("chr", "");
-                    } else if (!g && b) {
-                        this.chrPrefixFixer = (chr) => "chr" + chr;
-                    }
-
-                    resolve();
-                });
-            });
-        });
+        this.#initialize();
     }
 
     get label() {
         return "bamSource";
+    }
+
+    #initialize() {
+        this.initializedPromise = this.#doInitialize();
+        return this.initializedPromise;
+    }
+
+    async #doInitialize() {
+        const descriptors = await normalizeUrlDescriptors({
+            url: this.params.url,
+            indexUrl: this.params.indexUrl,
+            baseUrl: this.view.getBaseUrl(),
+            paramRuntime: this.paramRuntime,
+        });
+        if (descriptors.length !== 1) {
+            throw new Error("BamSource supports exactly one resolved URL.");
+        }
+
+        const descriptor = descriptors[0];
+        const [{ BamFile }, { RemoteFile }] = await Promise.all([
+            import("@gmod/bam"),
+            import("generic-filehandle2"),
+        ]);
+
+        this.#bam = new BamFile({
+            bamFilehandle: new RemoteFile(descriptor.url),
+            baiFilehandle: new RemoteFile(
+                descriptor.indexUrl ?? descriptor.url + ".bai"
+            ),
+        });
+
+        await this.#bam.getHeader();
+        const g = this.genome.hasChrPrefix();
+        const b = this.#bam.indexToChr?.[0]?.refName.startsWith("chr");
+        if (g && !b) {
+            this.chrPrefixFixer = (chr) => chr.replace("chr", "");
+        } else if (!g && b) {
+            this.chrPrefixFixer = (chr) => "chr" + chr;
+        }
     }
 
     /**

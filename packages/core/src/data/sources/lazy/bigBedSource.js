@@ -61,59 +61,56 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     }
 
     #initialize() {
-        this.initializedPromise = normalizeUrlDescriptors({
+        this.initializedPromise = this.#doInitialize();
+        return this.initializedPromise;
+    }
+
+    async #doInitialize() {
+        const descriptors = await normalizeUrlDescriptors({
             url: this.params.url,
             baseUrl: this.view.getBaseUrl(),
             paramRuntime: this.paramRuntime,
-        }).then((descriptors) => {
-            if (descriptors.length !== 1) {
-                throw new Error(
-                    "BigBedSource supports exactly one resolved URL."
-                );
-            }
+        });
+        if (descriptors.length !== 1) {
+            throw new Error("BigBedSource supports exactly one resolved URL.");
+        }
 
-            const descriptor = descriptors[0];
+        const descriptor = descriptors[0];
+        const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
+            import("@gmod/bed"),
+            import("@gmod/bbi"),
+            import("generic-filehandle2"),
+        ]);
+        const BED = bed.default;
 
-            return Promise.all([
-                import("@gmod/bed"),
-                import("@gmod/bbi"),
-                import("generic-filehandle2"),
-            ]).then(([bed, { BigBed }, { RemoteFile }]) => {
-                const BED = bed.default;
-
-                this.bbi = new BigBed({
-                    filehandle: new RemoteFile(descriptor.url),
-                });
-
-                this.setLoadingStatus("loading");
-                this.bbi
-                    .getHeader()
-                    .then(async (header) => {
-                        // @ts-ignore TODO: Fix
-                        this.parser = new BED({ autoSql: header.autoSql });
-                        try {
-                            const fastParser = makeFastParser(this.parser);
-                            this.parseLine = (chrom, f) =>
-                                fastParser(chrom, f.start, f.end, f.rest);
-                        } catch {
-                            this.parseLine = (chrom, f) =>
-                                this.parser.parseLine(
-                                    `${chrom}\t${f.start}\t${f.end}\t${f.rest}`
-                                );
-                        }
-
-                        this.setLoadingStatus("complete");
-                    })
-                    .catch((e) => {
-                        // Load empty data
-                        this.load();
-                        this.setLoadingStatus("error", e.message);
-                        throw e;
-                    });
-            });
+        this.bbi = new BigBed({
+            filehandle: new RemoteFile(descriptor.url),
         });
 
-        return this.initializedPromise;
+        try {
+            this.setLoadingStatus("loading");
+            const header = await this.bbi.getHeader();
+
+            // @ts-ignore TODO: Fix
+            this.parser = new BED({ autoSql: header.autoSql });
+            try {
+                const fastParser = makeFastParser(this.parser);
+                this.parseLine = (chrom, f) =>
+                    fastParser(chrom, f.start, f.end, f.rest);
+            } catch {
+                this.parseLine = (chrom, f) =>
+                    this.parser.parseLine(
+                        `${chrom}\t${f.start}\t${f.end}\t${f.rest}`
+                    );
+            }
+
+            this.setLoadingStatus("complete");
+        } catch (e) {
+            // Load empty data
+            this.load();
+            this.setLoadingStatus("error", e.message);
+            throw e;
+        }
     }
 
     /**

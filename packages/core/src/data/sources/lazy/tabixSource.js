@@ -88,63 +88,62 @@ export default class TabixSource extends SingleAxisWindowedSource {
     }
 
     #initialize() {
-        this.initializedPromise = normalizeUrlDescriptors({
+        this.initializedPromise = this.#doInitialize();
+        return this.initializedPromise;
+    }
+
+    async #doInitialize() {
+        const descriptors = await normalizeUrlDescriptors({
             url: this.params.url,
             indexUrl: this.params.indexUrl,
             baseUrl: this.view.getBaseUrl(),
             paramRuntime: this.paramRuntime,
-        }).then((descriptors) => {
-            const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
-
-            return Promise.all([
-                import("@gmod/tabix"),
-                import("generic-filehandle2"),
-            ]).then(async ([{ TabixIndexedFile }, { RemoteFile }]) => {
-                const renameRefSeqs =
-                    addChrPrefix === true
-                        ? (/** @type {string} */ refSeq) => "chr" + refSeq
-                        : addChrPrefix
-                          ? (/** @type {string} */ refSeq) =>
-                                addChrPrefix + refSeq
-                          : undefined;
-
-                try {
-                    this.setLoadingStatus("loading");
-                    const handlesAndHeaders = await Promise.all(
-                        descriptors.map(async (descriptor) => {
-                            const tbiIndex = new TabixIndexedFile({
-                                filehandle: new RemoteFile(descriptor.url),
-                                tbiFilehandle: new RemoteFile(
-                                    descriptor.indexUrl ??
-                                        descriptor.url + ".tbi"
-                                ),
-                                renameRefSeqs,
-                            });
-                            const header = await tbiIndex.getHeader();
-
-                            return {
-                                handle: {
-                                    tbiIndex,
-                                    fields: descriptor.fields,
-                                    url: descriptor.url,
-                                },
-                                header,
-                            };
-                        })
-                    );
-
-                    this.#handles = handlesAndHeaders.map((d) => d.handle);
-                    await this._handleHeader(handlesAndHeaders[0].header);
-                    this.setLoadingStatus("complete");
-                } catch (e) {
-                    this.load();
-                    this.setLoadingStatus("error", e.message);
-                    throw e;
-                }
-            });
         });
+        const addChrPrefix = withoutExprRef(this.params.addChrPrefix);
 
-        return this.initializedPromise;
+        const [{ TabixIndexedFile }, { RemoteFile }] = await Promise.all([
+            import("@gmod/tabix"),
+            import("generic-filehandle2"),
+        ]);
+        const renameRefSeqs =
+            addChrPrefix === true
+                ? (/** @type {string} */ refSeq) => "chr" + refSeq
+                : addChrPrefix
+                  ? (/** @type {string} */ refSeq) => addChrPrefix + refSeq
+                  : undefined;
+
+        try {
+            this.setLoadingStatus("loading");
+            const handlesAndHeaders = await Promise.all(
+                descriptors.map(async (descriptor) => {
+                    const tbiIndex = new TabixIndexedFile({
+                        filehandle: new RemoteFile(descriptor.url),
+                        tbiFilehandle: new RemoteFile(
+                            descriptor.indexUrl ?? descriptor.url + ".tbi"
+                        ),
+                        renameRefSeqs,
+                    });
+                    const header = await tbiIndex.getHeader();
+
+                    return {
+                        handle: {
+                            tbiIndex,
+                            fields: descriptor.fields,
+                            url: descriptor.url,
+                        },
+                        header,
+                    };
+                })
+            );
+
+            this.#handles = handlesAndHeaders.map((d) => d.handle);
+            await this._handleHeader(handlesAndHeaders[0].header);
+            this.setLoadingStatus("complete");
+        } catch (e) {
+            this.load();
+            this.setLoadingStatus("error", e.message);
+            throw e;
+        }
     }
 
     /**
