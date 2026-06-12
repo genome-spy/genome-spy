@@ -8,9 +8,9 @@ import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 import {
     attachDescriptorFields,
     normalizeUrlDescriptors,
-    urlDescriptorKey,
     watchUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
+import UrlDescriptorState from "../urlDescriptorState.js";
 
 /**
  *
@@ -24,17 +24,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      * @prop {string} url
      */
 
-    /** @type {Map<string, BigWigHandle>} */
-    #handleCache = new Map();
-
-    /** @type {BigWigHandle[]} */
-    #handles = [];
-
-    /** @type {Set<string>} */
-    #descriptorKeys = new Set();
-
-    /** @type {Set<string>} */
-    #loadedDescriptorKeys = new Set();
+    /** @type {UrlDescriptorState<BigWigHandle>} */
+    #descriptorState = new UrlDescriptorState();
 
     /**
      * @param {import("../../../spec/data.js").BigWigData} params
@@ -127,8 +118,6 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             baseUrl: this.view.getBaseUrl(),
             paramRuntime: this.paramRuntime,
         });
-        const descriptorKeys = descriptors.map(urlDescriptorKey);
-
         const [{ BigWig }, { RemoteFile }] = await Promise.all([
             import("@gmod/bbi"),
             import("generic-filehandle2"),
@@ -136,17 +125,11 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         try {
             this.setLoadingStatus("loading");
-            this.#handles = await Promise.all(
-                descriptors.map((descriptor, i) =>
-                    this.#getOrCreateHandle(
-                        descriptor,
-                        descriptorKeys[i],
-                        BigWig,
-                        RemoteFile
-                    )
-                )
+            await this.#descriptorState.update(
+                descriptors,
+                async (descriptor) =>
+                    this.#createHandle(descriptor, BigWig, RemoteFile)
             );
-            this.#descriptorKeys = new Set(descriptorKeys);
             this.setLoadingStatus("complete");
         } catch (e) {
             // Load empty data
@@ -158,17 +141,11 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
     /**
      * @param {import("../urlDescriptor.js").UrlDescriptor} descriptor
-     * @param {string} descriptorKey
      * @param {typeof import("@gmod/bbi").BigWig} BigWig
      * @param {typeof import("generic-filehandle2").RemoteFile} RemoteFile
      * @returns {Promise<BigWigHandle>}
      */
-    async #getOrCreateHandle(descriptor, descriptorKey, BigWig, RemoteFile) {
-        const cachedHandle = this.#handleCache.get(descriptorKey);
-        if (cachedHandle) {
-            return cachedHandle;
-        }
-
+    async #createHandle(descriptor, BigWig, RemoteFile) {
         const bbi = new BigWig({
             filehandle: new RemoteFile(descriptor.url),
         });
@@ -189,7 +166,6 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             fields: descriptor.fields,
             url: descriptor.url,
         };
-        this.#handleCache.set(descriptorKey, handle);
         return handle;
     }
 
@@ -201,16 +177,17 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     async onDomainChanged(domain) {
         await this.initializedPromise;
 
-        if (!this.#handles.length) {
+        const handles = this.#descriptorState.handles;
+        if (!handles.length) {
             this.publishData([]);
-            this.#loadedDescriptorKeys = new Set(this.#descriptorKeys);
+            this.#descriptorState.markLoaded();
             return;
         }
 
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
 
-        const reductionLevels = this.#handles.map((handle) =>
+        const reductionLevels = handles.map((handle) =>
             findReductionLevel(domain, length, handle.reductionLevels)
         );
 
@@ -235,7 +212,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         const featureChunks = await this.discretizeAndLoad(interval, {
             load: async (d, signal) => {
                 const featuresByHandle = await Promise.all(
-                    this.#handles.map((handle, i) => {
+                    this.#descriptorState.handles.map((handle, i) => {
                         const scale =
                             1 /
                             2 /
@@ -257,7 +234,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             },
             loadBatch: (intervals, signal) =>
                 Promise.all(
-                    this.#handles.map((handle, handleIndex) => {
+                    this.#descriptorState.handles.map((handle, handleIndex) => {
                         const scale =
                             1 /
                             2 /
@@ -294,7 +271,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         if (featureChunks) {
             this.publishData(featureChunks);
-            this.#loadedDescriptorKeys = new Set(this.#descriptorKeys);
+            this.#descriptorState.markLoaded();
         }
     }
 
@@ -304,7 +281,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      */
     isDataReadyForDomain(request) {
         return (
-            this.#descriptorKeys.isSubsetOf(this.#loadedDescriptorKeys) &&
+            this.#descriptorState.activeSetLoaded &&
             super.isDataReadyForDomain(request)
         );
     }
