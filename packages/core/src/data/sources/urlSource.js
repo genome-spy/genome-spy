@@ -12,7 +12,7 @@ import {
 } from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
 import {
-    attachDescriptorFields,
+    createDescriptorFieldAttacher,
     loadUrlDescriptorOrSkip,
     UrlLimitExceededError,
 } from "./urlDescriptor.js";
@@ -143,10 +143,11 @@ export default class UrlSource extends DataSource {
                                 ? await dataOrPromise
                                 : dataOrPromise;
                         this.beginBatch({ type: "file", url: descriptor.url });
+                        const attachFields = createDescriptorFieldAttacher(
+                            descriptor.fields
+                        );
                         for (const d of data) {
-                            this._propagate(
-                                attachDescriptorFields(d, descriptor.fields)
-                            );
+                            this._propagate(attachFields(d));
                         }
                     } catch (e) {
                         console.warn(e);

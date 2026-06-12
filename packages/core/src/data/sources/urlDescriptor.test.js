@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+    createDescriptorFieldAttacher,
     normalizeUrlDescriptors,
     normalizeSingleUrlDescriptor,
     UrlLimitExceededError,
@@ -148,5 +149,31 @@ describe("normalizeUrlDescriptors", () => {
         });
 
         expect(watched).toEqual(["visibleSamples"]);
+    });
+});
+
+describe("createDescriptorFieldAttacher", () => {
+    it("returns datums unchanged when fields are disabled", () => {
+        const attach = createDescriptorFieldAttacher(undefined);
+        const datum = { value: 1 };
+
+        expect(attach(datum)).toBe(datum);
+        expect(datum).toEqual({ value: 1 });
+    });
+
+    it("mutates source-owned datums when attaching fields", () => {
+        const attach = createDescriptorFieldAttacher({ patient: "patient1" });
+        const datum = { value: 1 };
+
+        expect(attach(datum)).toBe(datum);
+        expect(datum).toEqual({ patient: "patient1", value: 1 });
+    });
+
+    it("throws when an attached field conflicts with a loaded datum", () => {
+        const attach = createDescriptorFieldAttacher({ patient: "patient1" });
+
+        expect(() => attach({ patient: "patient2" })).toThrow(
+            'Descriptor field "patient" conflicts with loaded datum.'
+        );
     });
 });

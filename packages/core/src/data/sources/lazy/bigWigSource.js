@@ -5,7 +5,7 @@ import {
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 import {
-    attachDescriptorFields,
+    createDescriptorFieldAttacher,
     loadUrlDescriptorOrSkip,
     UrlLimitExceededError,
 } from "../urlDescriptor.js";
@@ -19,8 +19,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     /**
      * @typedef {object} BigWigHandle
      * @prop {import("@gmod/bbi").BigWig} bbi
+     * @prop {(datum: Record<string, any>) => Record<string, any>} attachFields
      * @prop {number[]} reductionLevels
-     * @prop {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
      * @prop {string} url
      */
 
@@ -161,8 +161,8 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         const handle = {
             bbi,
+            attachFields: createDescriptorFieldAttacher(descriptor.fields),
             reductionLevels,
-            fields: descriptor.fields,
             url: descriptor.url,
         };
         return handle;
@@ -254,7 +254,11 @@ export default class BigWigSource extends SingleAxisWindowedSource {
                         }
                     )
                     .then((features) =>
-                        mapFeatures(interval.chrom, features, handle.fields)
+                        mapFeatures(
+                            interval.chrom,
+                            features,
+                            handle.attachFields
+                        )
                     );
             })
         );
@@ -295,7 +299,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
                             mapFeatures(
                                 intervals[intervalIndex].chrom,
                                 features,
-                                handle.fields
+                                handle.attachFields
                             )
                         )
                     );
@@ -340,19 +344,16 @@ async function loadBigWigModules() {
 /**
  * @param {string} chrom
  * @param {import("@gmod/bbi").Feature[]} features
- * @param {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
+ * @param {(datum: Record<string, any>) => Record<string, any>} attachFields
  */
-function mapFeatures(chrom, features, fields) {
+function mapFeatures(chrom, features, attachFields) {
     return features.map((f) =>
-        attachDescriptorFields(
-            {
-                chrom,
-                start: f.start,
-                end: f.end,
-                score: f.score,
-            },
-            fields
-        )
+        attachFields({
+            chrom,
+            start: f.start,
+            end: f.end,
+            score: f.score,
+        })
     );
 }
 

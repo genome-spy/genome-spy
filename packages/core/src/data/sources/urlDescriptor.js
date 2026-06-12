@@ -145,9 +145,53 @@ export function watchUrlDescriptorExpressions(options) {
 }
 
 /**
- * Attaches descriptor fields to a loaded datum. A descriptor field is context
- * from the URL expansion, such as `{ sample: "S1" }`, so an existing data field
- * with a different value indicates ambiguous source metadata and fails fast.
+ * Creates a mutating attacher for descriptor fields. Descriptor fields are
+ * source context from URL expansion, such as `{ sample: "S1" }`. Source-loaded
+ * datums are fresh objects, so mutating them avoids per-row cloning while still
+ * detecting ambiguous source metadata.
+ *
+ * @template {Record<string, any>} T
+ * @param {Record<string, Scalar>} [fields]
+ * @returns {(datum: T) => T}
+ */
+export function createDescriptorFieldAttacher(fields) {
+    if (!fields) {
+        return (datum) => datum;
+    }
+
+    const entries = Object.entries(fields);
+    if (entries.length == 1) {
+        const [key, value] = entries[0];
+        return (datum) => {
+            if (key in datum && datum[key] !== value) {
+                throw new Error(
+                    `Descriptor field "${key}" conflicts with loaded datum.`
+                );
+            }
+            datum[key] = value;
+            return datum;
+        };
+    }
+
+    return (datum) => {
+        for (const [key, value] of entries) {
+            if (key in datum && datum[key] !== value) {
+                throw new Error(
+                    `Descriptor field "${key}" conflicts with loaded datum.`
+                );
+            }
+        }
+
+        for (const [key, value] of entries) {
+            datum[key] = value;
+        }
+
+        return datum;
+    };
+}
+
+/**
+ * Attaches descriptor fields to a loaded datum.
  *
  * @template {Record<string, any>} T
  * @param {T} datum
@@ -155,22 +199,7 @@ export function watchUrlDescriptorExpressions(options) {
  * @returns {T}
  */
 export function attachDescriptorFields(datum, fields) {
-    if (!fields) {
-        return datum;
-    }
-
-    for (const [key, value] of Object.entries(fields)) {
-        if (key in datum && datum[key] !== value) {
-            throw new Error(
-                `Descriptor field "${key}" conflicts with loaded datum.`
-            );
-        }
-    }
-
-    return /** @type {T} */ ({
-        ...fields,
-        ...datum,
-    });
+    return createDescriptorFieldAttacher(fields)(datum);
 }
 
 /**
@@ -180,9 +209,15 @@ export function attachDescriptorFields(datum, fields) {
  * @returns {T[]}
  */
 export function attachDescriptorFieldsToData(data, fields) {
-    return fields
-        ? data.map((datum) => attachDescriptorFields(datum, fields))
-        : data;
+    if (!fields) {
+        return data;
+    }
+
+    const attach = createDescriptorFieldAttacher(fields);
+    for (let i = 0; i < data.length; i++) {
+        data[i] = attach(data[i]);
+    }
+    return data;
 }
 
 /**

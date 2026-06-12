@@ -3,7 +3,7 @@ import {
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
 import {
-    attachDescriptorFields,
+    createDescriptorFieldAttacher,
     loadUrlDescriptorOrSkip,
     UrlLimitExceededError,
 } from "../urlDescriptor.js";
@@ -15,9 +15,9 @@ import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 export default class BigBedSource extends SingleAxisWindowedSource {
     /**
      * @typedef {object} BigBedHandle
+     * @prop {(datum: Record<string, any>) => Record<string, any>} attachFields
      * @prop {import("@gmod/bbi").BigBed} bbi
      * @prop {(chrom: string, fields: { start: number, end: number, rest?: string }) => Record<string, any>} parseLine
-     * @prop {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
      * @prop {string} url
      */
 
@@ -160,9 +160,9 @@ export default class BigBedSource extends SingleAxisWindowedSource {
         }
 
         return {
+            attachFields: createDescriptorFieldAttacher(descriptor.fields),
             bbi,
             parseLine,
-            fields: descriptor.fields,
             url: descriptor.url,
         };
     }
@@ -184,9 +184,8 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                                 })
                                 .then((features) =>
                                     features.map((f) =>
-                                        attachDescriptorFields(
-                                            handle.parseLine(d.chrom, f),
-                                            handle.fields
+                                        handle.attachFields(
+                                            handle.parseLine(d.chrom, f)
                                         )
                                     )
                                 )
