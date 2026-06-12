@@ -274,7 +274,10 @@ function expandTemplate(templateSpec, indexUrlSpec, options) {
 
     return values.map((value) => {
         const scalar = assertScalar(value);
-        const fields = { [templateSpec.field]: scalar };
+        const fields =
+            templateSpec.attach === false
+                ? undefined
+                : { [templateSpec.field]: scalar };
         return {
             url: fillTemplate(
                 templateSpec.template,

@@ -177,6 +177,38 @@ describe("TabixSource", () => {
         ]);
     });
 
+    it("can expand URL templates without attaching fields", async () => {
+        linesByUrl.set("variants/patient1.vcf.gz", ["chr1\t5\t6\tC"]);
+
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: {
+                    template: "variants/{patient}.vcf.gz",
+                    values: ["patient1"],
+                    field: "patient",
+                    attach: false,
+                },
+            }),
+            /** @type {any} */ (createViewStub())
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect([...collector.getData()]).toEqual([
+            {
+                chrom: "chr1",
+                start: 5,
+                end: 6,
+                value: "C",
+            },
+        ]);
+    });
+
     it("skips failed template URLs when configured", async () => {
         const warn = vi
             .spyOn(console, "warn")

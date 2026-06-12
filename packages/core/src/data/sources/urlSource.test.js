@@ -390,6 +390,29 @@ test("UrlSource skips failed template URLs when configured", async () => {
     );
 });
 
+test("UrlSource can expand URL templates without attaching fields", async () => {
+    global.fetch = /** @type {any} */ (
+        vi.fn(
+            async () => new Response("sample\tvalue\nS1\t1\n", { status: 200 })
+        )
+    );
+
+    const source = new UrlSource(
+        {
+            url: {
+                template: "variants/{patient}.tsv",
+                values: ["patient1"],
+                field: "patient",
+                attach: false,
+            },
+            format: { type: "tsv" },
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([{ sample: "S1", value: 1 }]);
+});
+
 test("UrlSource reports conflicting template fields", async () => {
     global.fetch = /** @type {any} */ (
         vi.fn(

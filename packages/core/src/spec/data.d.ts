@@ -193,6 +193,16 @@ export interface UrlTemplate {
     field: FieldName;
 
     /**
+     * Whether to attach the template value to each loaded datum using `field`
+     * as the datum field name. Disable this when the expanded URL identifies
+     * only a file partition and the loaded data already contains the relevant
+     * identifiers.
+     *
+     * __Default value:__ `true`
+     */
+    attach?: boolean;
+
+    /**
      * Maximum number of distinct resolved values to load. If the limit is
      * exceeded, the source loads no data.
      */

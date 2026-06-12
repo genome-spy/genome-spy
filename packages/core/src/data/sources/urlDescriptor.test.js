@@ -66,6 +66,19 @@ describe("normalizeUrlDescriptors", () => {
         ]);
     });
 
+    it("can use template values without attaching fields", async () => {
+        const descriptors = await normalizeUrlDescriptors({
+            url: {
+                template: "variants/{patient}.tsv",
+                values: ["patient1"],
+                field: "patient",
+                attach: false,
+            },
+        });
+
+        expect(descriptors).toEqual([{ url: "variants/patient1.tsv" }]);
+    });
+
     it("deduplicates by resolved url and indexUrl", async () => {
         const descriptors = await normalizeUrlDescriptors({
             url: {
