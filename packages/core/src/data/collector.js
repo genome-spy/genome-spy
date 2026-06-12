@@ -119,23 +119,14 @@ export default class Collector extends FlowNode {
         this.#buffer = [];
 
         if (this.params.groupby?.length) {
-            if (this.facetBatches.size > 1) {
-                throw new Error("TODO: Support faceted data!");
-            }
-
-            const data = this.facetBatches.get(undefined);
-
             const accessors = this.params.groupby.map((fieldName) =>
                 field(fieldName)
             );
-            const groups =
-                accessors.length > 1
-                    ? // There's something strange in d3-array's typings
-                      /** @type {Map<any, any>} */ /** @type {any} */ (
-                          group(data, ...accessors)
-                      )
-                    : // D3's group is SLOW!
-                      groupBy(data, accessors[0]);
+            const data =
+                this.facetBatches.size > 1
+                    ? iterateFacetBatchData(this.facetBatches.values())
+                    : this.facetBatches.get(undefined);
+            const groups = groupData(data, accessors);
 
             this.facetBatches.clear();
             for (const [key, data] of iterateNestedMaps(groups)) {
@@ -465,16 +456,43 @@ class DomainCache {
 }
 
 /**
+ * @param {Iterable<Data>} batches
+ * @returns {Iterable<Datum>}
+ */
+function iterateFacetBatchData(batches) {
+    return {
+        [Symbol.iterator]: function* generator() {
+            for (const data of batches) {
+                yield* data;
+            }
+        },
+    };
+}
+
+/**
+ * @param {Iterable<Datum>} data
+ * @param {((data: Datum) => import("../spec/channel.js").Scalar)[]} accessors
+ */
+function groupData(data, accessors) {
+    return accessors.length > 1
+        ? // There's something strange in d3-array's typings
+          /** @type {Map<any, any>} */ /** @type {any} */ (
+              group(data, ...accessors)
+          )
+        : // D3's group is SLOW!
+          groupBy(data, accessors[0]);
+}
+
+/**
  * Like D3's group but without InternMap, which is slow.
  * TODO: Implement multi-level grouping
  *
- * @param {Datum[]} data
+ * @param {Iterable<Datum>} data
  * @param {(data: Datum) => import("../spec/channel.js").Scalar} accessor
  */
 function groupBy(data, accessor) {
     const groups = new Map();
-    for (let i = 0, n = data.length; i < n; i++) {
-        const datum = data[i];
+    for (const datum of data) {
         const key = accessor(datum);
         let group = groups.get(key);
         if (!group) {

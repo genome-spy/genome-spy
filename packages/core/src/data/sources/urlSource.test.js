@@ -16,6 +16,7 @@ afterEach(() => {
     if (originalFetch) {
         global.fetch = originalFetch;
     }
+    vi.restoreAllMocks();
 });
 
 /**
@@ -33,20 +34,30 @@ async function gzipText(text) {
 }
 
 function createViewStub() {
+    /** @type {{ status?: string, detail?: string }} */
+    const loadingStatus = {};
     /** @type {import("../../view/view.js").default} */
-    return /** @type {any} */ (
+    const view = /** @type {any} */ (
         Object.assign(makeParamRuntimeProvider(), {
             getBaseUrl: () => "",
             context: {
                 dataFlow: {
                     loadingStatusRegistry: {
-                        /** @returns {void} */
-                        set: () => {},
+                        /**
+                         * @param {string} status
+                         * @param {string} [detail]
+                         */
+                        set: (/** @type {any} */ _view, status, detail) => {
+                            loadingStatus.status = status;
+                            loadingStatus.detail = detail;
+                        },
                     },
                 },
             },
         })
     );
+    /** @type {any} */ (view).loadingStatus = loadingStatus;
+    return view;
 }
 
 /**
@@ -280,4 +291,154 @@ test("UrlSource reads gzip-compressed URL lists transparently", async () => {
             value: 2,
         },
     ]);
+});
+
+test("UrlSource expands URL templates and attaches descriptor fields", async () => {
+    global.fetch = /** @type {any} */ (
+        vi.fn(async (url) => {
+            if (url == "segments/A.tsv") {
+                return new Response("start\tend\n1\t2\n", { status: 200 });
+            }
+            if (url == "segments/B.tsv") {
+                return new Response("start\tend\n3\t4\n", { status: 200 });
+            }
+            throw new Error(`Unexpected URL: ${url}`);
+        })
+    );
+
+    const source = new UrlSource(
+        {
+            url: {
+                template: "segments/{sample}.tsv",
+                values: ["A", "B"],
+                field: "sample",
+            },
+            format: { type: "tsv" },
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([
+        { sample: "A", start: 1, end: 2 },
+        { sample: "B", start: 3, end: 4 },
+    ]);
+});
+
+test("UrlSource treats maxValues overflow as empty completed data", async () => {
+    global.fetch = /** @type {any} */ (vi.fn());
+
+    const view = createViewStub();
+    const source = new UrlSource(
+        {
+            url: {
+                template: "segments/{sample}.tsv",
+                values: ["A", "B"],
+                field: "sample",
+                maxValues: 1,
+            },
+            format: { type: "tsv" },
+        },
+        view
+    );
+
+    expect(await collectSource(source)).toEqual([]);
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(/** @type {any} */ (view).loadingStatus).toEqual({
+        status: "complete",
+        detail: undefined,
+    });
+});
+
+test("UrlSource skips failed template URLs when configured", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    global.fetch = /** @type {any} */ (
+        vi.fn(async (url) => {
+            if (url == "segments/missing.tsv") {
+                return new Response("Not found", {
+                    status: 404,
+                    statusText: "Not Found",
+                });
+            }
+            return new Response("value\n1\n", { status: 200 });
+        })
+    );
+
+    const view = createViewStub();
+    const source = new UrlSource(
+        {
+            url: {
+                template: "segments/{patient}.tsv",
+                values: ["patient1", "missing"],
+                field: "patient",
+                onLoadError: "skip",
+            },
+            format: { type: "tsv" },
+        },
+        view
+    );
+
+    expect(await collectSource(source)).toEqual([
+        { patient: "patient1", value: 1 },
+    ]);
+    expect(/** @type {any} */ (view).loadingStatus).toEqual({
+        status: "complete",
+        detail: undefined,
+    });
+    expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping failed URL: segments/missing.tsv"),
+        expect.any(Error)
+    );
+});
+
+test("UrlSource can expand URL templates without attaching fields", async () => {
+    global.fetch = /** @type {any} */ (
+        vi.fn(
+            async () => new Response("sample\tvalue\nS1\t1\n", { status: 200 })
+        )
+    );
+
+    const source = new UrlSource(
+        {
+            url: {
+                template: "variants/{patient}.tsv",
+                values: ["patient1"],
+                field: "patient",
+                attach: false,
+            },
+            format: { type: "tsv" },
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([{ sample: "S1", value: 1 }]);
+});
+
+test("UrlSource reports conflicting template fields", async () => {
+    global.fetch = /** @type {any} */ (
+        vi.fn(
+            async () => new Response("sample\tvalue\nB\t1\n", { status: 200 })
+        )
+    );
+
+    const view = createViewStub();
+    const source = new UrlSource(
+        {
+            url: {
+                template: "segments/{sample}.tsv",
+                values: ["A"],
+                field: "sample",
+            },
+            format: { type: "tsv" },
+        },
+        view
+    );
+
+    await source.load();
+
+    expect(/** @type {any} */ (view).loadingStatus).toEqual({
+        status: "error",
+        detail: expect.stringContaining(
+            'Descriptor field "sample" conflicts with loaded datum.'
+        ),
+    });
 });

@@ -10,6 +10,8 @@ import { getNonChromeViews } from "@genome-spy/core/view/viewSelectors.js";
 import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
+import Collector from "@genome-spy/core/data/collector.js";
+import UrlSource from "@genome-spy/core/data/sources/urlSource.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
@@ -168,6 +170,240 @@ describe("SampleView", () => {
         const provenance = new Provenance(store);
         expect(provenance.getBookmarkableActionHistory()).toEqual([]);
         expect(provenance.isUndoable()).toBe(false);
+    });
+
+    test("publishes visibleSamples from the sample hierarchy", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+        const facetsView = view.findDescendantByName("sample-facets");
+
+        expect(facetsView.paramRuntime.findValue("visibleSamples")).toEqual([]);
+
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                ],
+            })
+        );
+        await Promise.resolve();
+
+        expect(facetsView.paramRuntime.findValue("visibleSamples")).toEqual([
+            "A",
+            "B",
+        ]);
+    });
+
+    test("publishes visibleSampleMetadata with lazy hierarchical access", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+        const facetsView = view.findDescendantByName("sample-facets");
+        const initialMetadata = facetsView.paramRuntime.findValue(
+            "visibleSampleMetadata"
+        );
+
+        expect(initialMetadata.patient).toEqual([]);
+        expect(initialMetadata.Clinical.patientId).toEqual([]);
+
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                    { id: "C", displayName: "C", indexNumber: 2 },
+                ],
+            })
+        );
+        view.provenance.store.dispatch(
+            view.actions.addMetadata({
+                columnarMetadata: {
+                    sample: ["A", "B", "C"],
+                    "Clinical/patientId": ["P1", "P1", "P2"],
+                    "Clinical/diagnosis": ["AML", "AML", "ALL"],
+                    "batch id": ["B1", "B2", ""],
+                },
+                replace: true,
+            })
+        );
+        await Promise.resolve();
+
+        const metadata = facetsView.paramRuntime.findValue(
+            "visibleSampleMetadata"
+        );
+        expect(metadata["Clinical/patientId"]).toEqual(["P1", "P1", "P2"]);
+        expect(metadata.Clinical.patientId).toEqual(["P1", "P1", "P2"]);
+        expect(metadata.Clinical.diagnosis).toEqual(["AML", "AML", "ALL"]);
+        expect(metadata["batch id"]).toEqual(["B1", "B2"]);
+    });
+
+    test("evaluates visibleSampleMetadata in expressions", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+        const facetsView = view.findDescendantByName("sample-facets");
+
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                ],
+            })
+        );
+        view.provenance.store.dispatch(
+            view.actions.addMetadata({
+                columnarMetadata: {
+                    sample: ["A", "B"],
+                    "Clinical/patientId": ["P1", "P2"],
+                },
+                replace: true,
+            })
+        );
+        await Promise.resolve();
+
+        expect(
+            facetsView.paramRuntime.createExpression(
+                'visibleSampleMetadata["Clinical/patientId"]'
+            )()
+        ).toEqual(["P1", "P2"]);
+        expect(
+            facetsView.paramRuntime.createExpression(
+                "visibleSampleMetadata.Clinical.patientId"
+            )()
+        ).toEqual(["P1", "P2"]);
+    });
+
+    test("uses visibleSampleMetadata to expand eager URL data partitions", async () => {
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = /** @type {any} */ (
+            vi.fn(async (url) => {
+                if (url == "mutations/P1.tsv") {
+                    return new Response("sample\tvalue\nA\t1\nB\t2\n", {
+                        status: 200,
+                    });
+                }
+                if (url == "mutations/P2.tsv") {
+                    return new Response("sample\tvalue\nC\t3\n", {
+                        status: 200,
+                    });
+                }
+                throw new Error("Unexpected URL: " + url);
+            })
+        );
+
+        try {
+            const { view } = await createSampleViewForTest({
+                spec: {
+                    data: {
+                        values: [{ sample: "A", x: 1 }],
+                    },
+                    samples: {},
+                    spec: {
+                        name: "mutation-values",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "value", type: "quantitative" },
+                        },
+                    },
+                },
+            });
+
+            view.provenance.store.dispatch(
+                view.actions.setSamples({
+                    samples: [
+                        { id: "A", displayName: "A", indexNumber: 0 },
+                        { id: "B", displayName: "B", indexNumber: 1 },
+                        { id: "C", displayName: "C", indexNumber: 2 },
+                    ],
+                })
+            );
+            view.provenance.store.dispatch(
+                view.actions.addMetadata({
+                    columnarMetadata: {
+                        sample: ["A", "B", "C"],
+                        "Clinical/patientId": ["P1", "P1", "P2"],
+                    },
+                    replace: true,
+                })
+            );
+            await Promise.resolve();
+
+            const source = new UrlSource(
+                {
+                    url: {
+                        template: "mutations/{patient}.tsv",
+                        values: {
+                            expr: 'visibleSampleMetadata["Clinical/patientId"]',
+                        },
+                        field: "patient",
+                    },
+                    format: { type: "tsv" },
+                },
+                /** @type {any} */ ({
+                    paramRuntime: view.paramRuntime,
+                    getBaseUrl: () => "",
+                    context: {
+                        dataFlow: {
+                            loadingStatusRegistry: {
+                                set: () => undefined,
+                            },
+                        },
+                    },
+                })
+            );
+            const collector = new Collector();
+            source.addChild(collector);
+            await source.load();
+
+            expect([...collector.getData()]).toEqual([
+                { patient: "P1", sample: "A", value: 1 },
+                { patient: "P1", sample: "B", value: 2 },
+                { patient: "P2", sample: "C", value: 3 },
+            ]);
+            expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
     });
 
     test("infers sample label width from the longest display name", async () => {

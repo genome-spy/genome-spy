@@ -12,7 +12,7 @@
  * Constants and utilities for data.
  */
 import { Axis } from "./axis.js";
-import { FieldName, PrimaryPositionalChannel } from "./channel.js";
+import { FieldName, PrimaryPositionalChannel, Scalar } from "./channel.js";
 import { ExprRef } from "./parameter.js";
 
 export type ParseValue =
@@ -172,14 +172,82 @@ export interface UrlList {
     type?: "json" | "csv" | "tsv";
 }
 
+export interface UrlTemplate {
+    /**
+     * URL template. The value from `values` is substituted for the placeholder
+     * named by `field`, for example `{sample}`.
+     */
+    template: string;
+
+    /**
+     * Values used for template expansion. Duplicate resolved URLs are loaded
+     * once. An ExprRef can reference reactive parameters such as
+     * `visibleSamples`.
+     */
+    values: Scalar[] | ExprRef;
+
+    /**
+     * Field name used as the template placeholder and as the datum field
+     * attached to loaded rows.
+     */
+    field: FieldName;
+
+    /**
+     * Whether to attach the template value to each loaded datum using `field`
+     * as the datum field name. Disable this when the expanded URL identifies
+     * only a file partition and the loaded data already contains the relevant
+     * identifiers.
+     *
+     * __Default value:__ `true`
+     */
+    attach?: boolean;
+
+    /**
+     * Maximum number of distinct resolved values to load. If the limit is
+     * exceeded, the source loads no data.
+     */
+    maxValues?: number;
+
+    /**
+     * Behavior when loading an expanded URL fails. The default `"error"`
+     * fails the data source. Use `"skip"` when some expanded URLs are expected
+     * to be unavailable, for example when data files for some patients have
+     * not been generated yet.
+     *
+     * __Default value:__ `"error"`
+     */
+    onLoadError?: "error" | "skip";
+}
+
+export interface IndexUrlTemplate {
+    /**
+     * URL template for index files. Uses the same values and field placeholder
+     * as the `url` template.
+     */
+    template: string;
+}
+
+export type UrlSourceRef = string | string[] | ExprRef | UrlList | UrlTemplate;
+
+export type SingleUrlSourceRef = string | ExprRef | UrlTemplate;
+
+export type MultiUrlSourceRef = string | string[] | ExprRef | UrlTemplate;
+
+export type IndexUrlSourceRef = string | ExprRef | IndexUrlTemplate;
+
 export interface UrlData extends DataBase {
     /**
-     * An URL or an array of URLs from which to load the data set.
+     * An URL, a list of URLs, or a URL expansion definition from which to load
+     * the data set.
+     *
+     * A URL template can expand values from an ExprRef and attach the expanded
+     * value as a field to loaded rows.
+     *
      * Gzip-compressed resources are decompressed transparently when the URL,
      * MIME type, or payload indicates gzip content. Use the `format.type`
      * property to ensure the loaded data is correctly parsed.
      */
-    url: string | string[] | ExprRef | UrlList;
+    url: UrlSourceRef;
 }
 
 export interface InlineData extends DataBase {
@@ -330,16 +398,18 @@ export interface IndexedFastaData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the fasta file.
+     * URL of the fasta file. URL templates must resolve to one URL.
      */
-    url: string;
+    url: SingleUrlSourceRef;
 
     /**
      * URL of the index file.
+     * When `url` is a template, this can be an index URL template using the
+     * same placeholder and values.
      *
      * __Default value:__ `url` + `".fai"`.
      */
-    indexUrl?: string;
+    indexUrl?: IndexUrlSourceRef;
 
     /**
      * Size of each chunk when fetching the fasta file. Data is only fetched
@@ -361,9 +431,10 @@ export interface BigWigData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigWig file.
+     * URL of the BigWig file. URL templates load multiple BigWig files and
+     * attach the template field to loaded rows.
      */
-    url: string | ExprRef;
+    url: MultiUrlSourceRef;
 
     /**
      * The approximate minimum width of each data bin, in pixels.
@@ -384,9 +455,10 @@ export interface BigBedData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigBed file.
+     * URL of the BigBed file. URL templates load multiple BigBed files and
+     * attach the template field to loaded rows.
      */
-    url: string | ExprRef;
+    url: MultiUrlSourceRef;
 
     /**
      * Size of each chunk when fetching the BigBed file. Data is only fetched
@@ -408,16 +480,18 @@ export interface BamData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigBed file.
+     * URL of the BAM file. URL templates must resolve to one URL.
      */
-    url: string;
+    url: SingleUrlSourceRef;
 
     /**
      * URL of the index file.
+     * When `url` is a template, this can be an index URL template using the
+     * same placeholder and values.
      *
      * __Default value:__ `url` + `".bai"`.
      */
-    indexUrl?: string;
+    indexUrl?: IndexUrlSourceRef;
 
     /**
      * Size of each chunk when fetching the BigBed file. Data is only fetched
@@ -437,16 +511,19 @@ export interface TabixData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * Url of the bgzip compressed file.
+     * URL of the bgzip-compressed file. URL templates load multiple files and
+     * attach the template field to loaded rows.
      */
-    url: string;
+    url: MultiUrlSourceRef;
 
     /**
-     * Url of the tabix index file.
+     * URL of the tabix index file.
+     * When `url` is a template, this can be an index URL template using the
+     * same placeholder and values.
      *
      * __Default value:__ `url` + `".tbi"`.
      */
-    indexUrl?: string;
+    indexUrl?: IndexUrlSourceRef;
 
     /**
      * Add a `chr` (boolean) or custom (string) prefix to the chromosome names

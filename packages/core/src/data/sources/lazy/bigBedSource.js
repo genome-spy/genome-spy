@@ -2,19 +2,28 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { createDescriptorFieldAttacher } from "../urlDescriptor.js";
+import UrlDescriptorController from "../urlDescriptorController.js";
+import UrlDescriptorState, {
+    updateUrlDescriptorState,
+} from "../urlDescriptorState.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 export default class BigBedSource extends SingleAxisWindowedSource {
-    /** @type {import("@gmod/bed").default} */
-    parser;
+    /**
+     * @typedef {object} BigBedHandle
+     * @prop {(datum: Record<string, any>) => Record<string, any>} attachFields
+     * @prop {import("@gmod/bbi").BigBed} bbi
+     * @prop {(chrom: string, fields: { start: number, end: number, rest?: string }) => Record<string, any>} parseLine
+     * @prop {string} url
+     */
 
-    /** @type {import("@gmod/bbi").BigBed} */
-    bbi;
+    /** @type {UrlDescriptorState<BigBedHandle>} */
+    #descriptorState = new UrlDescriptorState();
 
-    /** @type {(chrom: string, fields: { start: number, end: number, rest?: string }) => Record<string, any>} */
-    parseLine;
+    /** @type {UrlDescriptorController} */
+    #urlDescriptors;
 
     /**
      * @param {import("../../../spec/data.js").BigBedData} params
@@ -38,7 +47,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {
-                    this.#initialize().then(() => this.reloadLastDomain());
+                    this.#reloadIfCurrentDomainNeedsData();
                 } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
@@ -46,6 +55,11 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             (disposer) => this.registerDisposer(disposer),
             { batchMode: "whenPropagated" }
         );
+
+        this.#urlDescriptors = new UrlDescriptorController(this, {
+            getUrl: () => this.params.url,
+            onChange: () => this.#reloadIfCurrentDomainNeedsData(),
+        });
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigBedSource");
@@ -61,77 +75,119 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     }
 
     #initialize() {
-        this.initializedPromise = new Promise((resolve, reject) => {
-            Promise.all([
-                import("@gmod/bed"),
-                import("@gmod/bbi"),
-                import("generic-filehandle2"),
-            ]).then(([bed, { BigBed }, { RemoteFile }]) => {
-                const BED = bed.default;
+        const initializePromise = this.#doInitialize();
+        this.initializedPromise = initializePromise;
+        return initializePromise;
+    }
 
-                this.bbi = new BigBed({
-                    filehandle: new RemoteFile(
-                        addBaseUrl(
-                            withoutExprRef(this.params.url),
-                            this.view.getBaseUrl()
-                        )
-                    ),
-                });
+    /**
+     * Refreshes active descriptors and reloads the current domain only if the
+     * current loaded data does not cover the new active descriptor set.
+     */
+    async #reloadIfCurrentDomainNeedsData() {
+        try {
+            await this.#initialize();
 
-                this.setLoadingStatus("loading");
-                this.bbi
-                    .getHeader()
-                    .then(async (header) => {
-                        // @ts-ignore TODO: Fix
-                        this.parser = new BED({ autoSql: header.autoSql });
-                        try {
-                            const fastParser = makeFastParser(this.parser);
-                            this.parseLine = (chrom, f) =>
-                                fastParser(chrom, f.start, f.end, f.rest);
-                        } catch {
-                            this.parseLine = (chrom, f) =>
-                                this.parser.parseLine(
-                                    `${chrom}\t${f.start}\t${f.end}\t${f.rest}`
-                                );
-                        }
+            if (
+                !this.isDataReadyForDomain({
+                    [this.channel]: this.scaleResolution.getDomain(),
+                })
+            ) {
+                this.reloadLastDomain();
+            }
+        } catch {
+            // Initialization has already updated the loading status.
+        }
+    }
 
-                        this.setLoadingStatus("complete");
-                        resolve();
-                    })
-                    .catch((e) => {
-                        // Load empty data
-                        this.load();
-                        this.setLoadingStatus(
-                            "error",
-                            `${withoutExprRef(this.params.url)}: ${e.message}`
-                        );
-                        reject(e);
-                    });
-            });
+    async #doInitialize() {
+        await updateUrlDescriptorState({
+            controller: this.#urlDescriptors,
+            state: this.#descriptorState,
+            clearData: () => this.load(),
+            setLoadingStatus: (status, detail) =>
+                this.setLoadingStatus(status, detail),
+            loadModules: loadBigBedModules,
+            createHandle: (descriptor, { BigBed, RemoteFile, BED }) =>
+                this.#createHandle(descriptor, BigBed, RemoteFile, BED),
         });
+    }
 
-        return this.initializedPromise;
+    /**
+     * @param {import("../urlDescriptor.js").UrlDescriptor} descriptor
+     * @param {typeof import("@gmod/bbi").BigBed} BigBed
+     * @param {typeof import("generic-filehandle2").RemoteFile} RemoteFile
+     * @param {typeof import("@gmod/bed").default} BED
+     * @returns {Promise<BigBedHandle>}
+     */
+    async #createHandle(descriptor, BigBed, RemoteFile, BED) {
+        const bbi = new BigBed({
+            filehandle: new RemoteFile(descriptor.url),
+        });
+        const header = await bbi.getHeader();
+
+        // @ts-ignore TODO: Fix
+        const parser = new BED({ autoSql: header.autoSql });
+        /** @type {BigBedHandle["parseLine"]} */
+        let parseLine;
+        try {
+            const fastParser = makeFastParser(parser);
+            parseLine = (chrom, f) => fastParser(chrom, f.start, f.end, f.rest);
+        } catch {
+            parseLine = (chrom, f) =>
+                parser.parseLine(`${chrom}\t${f.start}\t${f.end}\t${f.rest}`);
+        }
+
+        return {
+            attachFields: createDescriptorFieldAttacher(descriptor.fields),
+            bbi,
+            parseLine,
+            url: descriptor.url,
+        };
     }
 
     /**
      * @param {number[]} interval linearized domain
      */
     async loadInterval(interval) {
+        const handles = this.#descriptorState.handles;
         const features = await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
-                this.bbi
-                    .getFeatures(d.chrom, d.startPos, d.endPos, {
-                        signal,
-                    })
-                    .then((features) =>
-                        features.map((f) => this.parseLine(d.chrom, f))
+                (
+                    await Promise.all(
+                        handles.map((handle) =>
+                            handle.bbi
+                                .getFeatures(d.chrom, d.startPos, d.endPos, {
+                                    signal,
+                                })
+                                .then((features) =>
+                                    features.map((f) =>
+                                        handle.attachFields(
+                                            handle.parseLine(d.chrom, f)
+                                        )
+                                    )
+                                )
+                        )
                     )
+                ).flat()
         );
 
         if (features) {
             this.publishData(features);
+            this.#descriptorState.markLoaded();
         }
+    }
+
+    /**
+     * @param {import("./singleAxisLazySource.js").DataReadinessRequest} request
+     * @returns {boolean}
+     */
+    isDataReadyForDomain(request) {
+        return (
+            this.#descriptorState.activeSetLoaded &&
+            super.isDataReadyForDomain(request)
+        );
     }
 }
 
@@ -309,6 +365,15 @@ function isBigBedSource(params) {
 }
 
 registerBuiltInLazyDataSource(isBigBedSource, BigBedSource);
+
+async function loadBigBedModules() {
+    const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
+        import("@gmod/bed"),
+        import("@gmod/bbi"),
+        import("generic-filehandle2"),
+    ]);
+    return { BigBed, RemoteFile, BED: bed.default };
+}
 
 /**
  * @param {T[]} arr

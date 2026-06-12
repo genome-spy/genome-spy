@@ -108,6 +108,96 @@ describe("SampleView lazy readiness", () => {
         }
     });
 
+    it("uses visibleSamples to expand multi-url lazy data", async () => {
+        vi.useFakeTimers();
+        /** @type {() => void} */
+        let unregister;
+
+        try {
+            unregister = registerLazyDataSource(
+                (params) =>
+                    /** @type {any} */ (params)?.type === "mockMultiUrl",
+                MockLazySource
+            );
+
+            /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+            const spec = {
+                samples: {
+                    identity: {
+                        data: {
+                            values: [{ sample: "A" }, { sample: "B" }],
+                        },
+                        idField: "sample",
+                    },
+                },
+                data: {
+                    lazy: /** @type {import("@genome-spy/core/spec/data.js").LazyDataParams} */ (
+                        /** @type {unknown} */ ({
+                            type: "mockMultiUrl",
+                            channel: "x",
+                            delay: 10,
+                            url: {
+                                template: "signals/{sample}.mock",
+                                values: { expr: "visibleSamples" },
+                                field: "sample",
+                                maxValues: 2,
+                            },
+                            data: [{ x: 1, beta: 1 }],
+                        })
+                    ),
+                },
+                spec: {
+                    name: "beta-values",
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "beta", type: "quantitative" },
+                    },
+                },
+            };
+
+            const { view } = await createSampleViewForTest({ spec });
+            view.provenance.store.dispatch(
+                view.actions.setSamples({
+                    samples: [
+                        { id: "A", displayName: "A", indexNumber: 0 },
+                        { id: "B", displayName: "B", indexNumber: 1 },
+                    ],
+                })
+            );
+            await Promise.resolve();
+
+            const trackView = view.findDescendantByName("beta-values");
+            const ensurePromise = view.ensureViewAttributeAvailability({
+                view: "beta-values",
+                field: "beta",
+                interval: [0, 10],
+                aggregation: { op: "count" },
+            });
+
+            await vi.advanceTimersByTimeAsync(10);
+            await expect(ensurePromise).resolves.toBeUndefined();
+
+            const collector = /** @type {any} */ (trackView).getCollector();
+            expect(
+                [...collector.getData()].map(({ sample, x, beta }) => ({
+                    sample,
+                    x,
+                    beta,
+                }))
+            ).toEqual([
+                { sample: "A", x: 1, beta: 1 },
+                { sample: "B", x: 1, beta: 1 },
+            ]);
+        } finally {
+            if (unregister) {
+                unregister();
+            }
+            vi.useRealTimers();
+        }
+    });
+
     it("rejects ensureViewAttributeAvailability when interval source selector cannot be resolved", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {

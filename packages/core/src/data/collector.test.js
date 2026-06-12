@@ -79,6 +79,31 @@ test("Collector collects, groups, and sorts data", () => {
     );
 });
 
+test("Collector groups already faceted batches", () => {
+    const collector = new Collector({
+        type: "collect",
+        groupby: ["sample"],
+    });
+
+    collector.beginBatch({ type: "facet", facetId: "A" });
+    collector.handle({ sample: "A", x: 1 });
+    collector.beginBatch({ type: "facet", facetId: "B" });
+    collector.handle({ sample: "B", x: 2 });
+    collector.handle({ sample: "B", x: 3 });
+    collector.complete();
+
+    expect([...collector.getData()]).toEqual([
+        { sample: "A", x: 1 },
+        { sample: "B", x: 2 },
+        { sample: "B", x: 3 },
+    ]);
+    expect(collector.facetBatches.get(["A"])).toEqual([{ sample: "A", x: 1 }]);
+    expect(collector.facetBatches.get(["B"])).toEqual([
+        { sample: "B", x: 2 },
+        { sample: "B", x: 3 },
+    ]);
+});
+
 test("Collector throws on incomplete flow", () => {
     const collector = new Collector();
 

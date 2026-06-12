@@ -38,6 +38,7 @@ export async function initializeViewData(
     // await fonts inside text mark graphics updates and before loading data for
     // subtrees that contain measureText transforms.
     await fontManager.waitUntilReady();
+    await finalizeSubtreeGraphics(graphicsPromises);
 
     // Find all data sources and initiate loading.
     await loadViewSubtreeData(
@@ -45,8 +46,6 @@ export async function initializeViewData(
         new Set(builtDataFlow.dataSources),
         visibilityPredicate
     );
-
-    await finalizeSubtreeGraphics(graphicsPromises);
 
     return builtDataFlow;
 }
@@ -113,6 +112,7 @@ export async function initializeVisibleViewData(
     // Newly visible subtrees may introduce text marks or measureText transforms
     // that request fonts during initializeViewSubtree.
     await fontManager.waitUntilReady();
+    await finalizeSubtreeGraphics(graphicsPromises);
 
     for (const collector of collectorsToRepropagate) {
         collector.repropagate();
@@ -131,8 +131,6 @@ export async function initializeVisibleViewData(
             )
         );
     }
-
-    await finalizeSubtreeGraphics(graphicsPromises);
 
     return builtDataFlow;
 }

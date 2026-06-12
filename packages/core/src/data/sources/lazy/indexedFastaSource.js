@@ -1,4 +1,4 @@
-import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -27,28 +27,37 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
 
         this.setupDebouncing(this.params);
 
-        this.initializedPromise = new Promise((resolve) => {
-            Promise.all([
-                import("@gmod/indexedfasta"),
-                import("generic-filehandle2"),
-            ]).then(([{ IndexedFasta }, { RemoteFile }]) => {
-                const withBase = (/** @type {string} */ uri) =>
-                    new RemoteFile(addBaseUrl(uri, this.view.getBaseUrl()));
-
-                this.fasta = new IndexedFasta({
-                    fasta: withBase(this.params.url),
-                    fai: withBase(
-                        this.params.indexUrl ?? this.params.url + ".fai"
-                    ),
-                });
-
-                resolve();
-            });
-        });
+        this.#initialize();
     }
 
     get label() {
         return "bigWigSource";
+    }
+
+    #initialize() {
+        this.initializedPromise = this.#doInitialize();
+        return this.initializedPromise;
+    }
+
+    async #doInitialize() {
+        const descriptor = await normalizeSingleUrlDescriptor(
+            {
+                url: this.params.url,
+                indexUrl: this.params.indexUrl,
+                baseUrl: this.view.getBaseUrl(),
+                paramRuntime: this.paramRuntime,
+            },
+            "IndexedFastaSource"
+        );
+        const [{ IndexedFasta }, { RemoteFile }] = await Promise.all([
+            import("@gmod/indexedfasta"),
+            import("generic-filehandle2"),
+        ]);
+
+        this.fasta = new IndexedFasta({
+            fasta: new RemoteFile(descriptor.url),
+            fai: new RemoteFile(descriptor.indexUrl ?? descriptor.url + ".fai"),
+        });
     }
 
     /**
