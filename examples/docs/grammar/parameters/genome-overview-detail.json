@@ -4,12 +4,25 @@
   "description": [
     "Genome overview + detail example.",
     "The top view provides an overview of the genome, and the bottom view shows details for the brushed region in the overview.",
-    "The overview is implemented as a template that can be reused across different specs."
+    "The overview is implemented as a template that can be reused across different specs.",
+    "The overview's x scale is excluded from the root scale domain, which is linked to the brush parameter and initializes the detail view."
   ],
 
   "assembly": "hg38",
 
   "params": [{ "name": "brush" }],
+
+  "scales": {
+    "x": {
+      "domain": {
+        "param": "brush",
+        "initial": [
+          { "chrom": "chr6", "pos": 20000000 },
+          { "chrom": "chr11", "pos": 40000000 }
+        ]
+      }
+    }
+  },
 
   "spacing": 0,
 
@@ -31,15 +44,6 @@
           "chrom": "chrom",
           "pos": "start",
           "type": "locus",
-          "scale": {
-            "domain": {
-              "param": "brush",
-              "initial": [
-                { "chrom": "chr6", "pos": 20000000 },
-                { "chrom": "chr11", "pos": 40000000 }
-              ]
-            }
-          },
           "axis": {
             "chromGrid": true
           }

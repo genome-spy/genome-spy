@@ -1,4 +1,5 @@
-import { getNonChromeViews } from "../view/viewSelectors.js";
+import { VISIT_SKIP } from "../view/view.js";
+import { visitNonChromeViews } from "../view/viewSelectors.js";
 
 /**
  * @typedef {import("../spec/channel.js").ChannelWithScale} ChannelWithScale
@@ -115,12 +116,20 @@ function mapViewLevelScaleConfig(view, channel, config) {
 function collectVisibleScaleResolutions(view, channel) {
     /** @type {Set<ScaleResolution>} */
     const resolutions = new Set();
-    for (const descendant of getNonChromeViews(view)) {
+    visitNonChromeViews(view, (descendant) => {
+        if (
+            descendant !== view &&
+            descendant.getConfiguredOrDefaultResolution(channel, "scale") ===
+                "excluded"
+        ) {
+            return VISIT_SKIP;
+        }
+
         const resolution = descendant.getScaleResolution(channel);
         if (resolution) {
             resolutions.add(resolution);
         }
-    }
+    });
     return resolutions;
 }
 

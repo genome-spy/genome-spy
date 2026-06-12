@@ -150,6 +150,108 @@ describe("view-level scale config mapping", () => {
         );
     });
 
+    test("ignores excluded child subtrees when mapping a parent config", async () => {
+        /** @type {import("../spec/view.js").ConcatSpec} */
+        const spec = {
+            assembly: "hg38",
+            params: [{ name: "brush", value: null }],
+            scales: {
+                x: {
+                    domain: {
+                        param: "brush",
+                        initial: [
+                            { chrom: "chr6", pos: 20000000 },
+                            { chrom: "chr11", pos: 40000000 },
+                        ],
+                    },
+                },
+            },
+            vconcat: [
+                {
+                    resolve: { scale: { x: "excluded" } },
+                    vconcat: [
+                        {
+                            params: [
+                                {
+                                    name: "brush",
+                                    select: {
+                                        type: "interval",
+                                        encodings: ["x"],
+                                    },
+                                    push: "outer",
+                                },
+                            ],
+                            data: {
+                                values: [
+                                    { chrom: "chr1", pos: 1 },
+                                    { chrom: "chr2", pos: 1 },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    chrom: "chrom",
+                                    pos: "pos",
+                                    type: "locus",
+                                },
+                                y: { value: 0 },
+                            },
+                        },
+                        {
+                            data: {
+                                values: [
+                                    { chrom: "chr1", pos: 1 },
+                                    { chrom: "chr2", pos: 1 },
+                                ],
+                            },
+                            mark: "rule",
+                            encoding: {
+                                x: {
+                                    chrom: "chrom",
+                                    pos: "pos",
+                                    type: "locus",
+                                },
+                            },
+                        },
+                    ],
+                },
+                {
+                    data: {
+                        values: [
+                            { chrom: "chr6", pos: 30000000 },
+                            { chrom: "chr11", pos: 30000000 },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            chrom: "chrom",
+                            pos: "pos",
+                            type: "locus",
+                        },
+                        y: { value: 0 },
+                    },
+                },
+            ],
+        };
+
+        const view = await initView(spec, ConcatView);
+        const detail = view.children[1];
+        const resolution = detail.getScaleResolution("x");
+        const mappings = mapViewLevelScaleConfigs(view);
+
+        expect(mappings).toHaveLength(1);
+        expect(mappings[0].resolution).toBe(resolution);
+        expect(resolution.getComplexDomain()).toEqual([
+            { chrom: "chr6", pos: 20000000 },
+            { chrom: "chr11", pos: 40000000 },
+        ]);
+        expect(resolution.getLinkedSelectionDomainInfo()).toMatchObject({
+            param: "brush",
+            encoding: "x",
+        });
+    });
+
     test("keeps an empty subtree config pending", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {

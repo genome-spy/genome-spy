@@ -105,16 +105,18 @@ work with GenomeSpy's hierarchical parameter scopes:
 2. Define the brushing selection in a child view with the same `name`.
 3. Add `"push": "outer"` so selection updates are written to the ancestor
    parameter.
-4. Reference the parameter in a linked view via `scale.domain`, for example:
-   `{ "param": "brush" }`.
+4. Reference the parameter in a linked scale domain, for example:
+   `{ "param": "brush" }`. The domain can be placed in
+   `encoding.<channel>.scale.domain` or, for composed views, in a view-level
+   `scales.<channel>.domain`.
 
 If the linked scale is zoomable, GenomeSpy automatically keeps the domain and
 selection synchronized in both directions. For non-zoomable linked scales, the
 selection only drives the domain.
 
-Use `initial` on the linked `scale.domain` object to provide the configured
-starting domain while the selection is empty. `initial` is only supported on
-zoomable linked scales:
+Use `initial` on the linked domain object to provide the configured starting
+domain while the selection is empty. `initial` is only supported on zoomable
+linked scales:
 
 ```json
 {
@@ -150,8 +152,11 @@ EXAMPLE examples/docs/grammar/parameters/two-way-linking.json height=250
 ##### Overview+detail Example
 
 The example below shows an overview+detail view of a genome. The top view shows
-the whole genome, while the bottom view shows a zoomed-in region.
-[`"link"`](./mark/link.md) mark with a `"diagonal"` shape visually connects the
-selected region in the overview to the detail view.
+the whole genome, while the bottom view shows a zoomed-in region. The linked
+domain is configured at the root using `scales.x.domain`, and its `initial`
+value sets the detail view's starting domain. The overview template uses
+`resolve.scale.x: "excluded"` so its own x scales are not affected by the
+detail domain. A [`"link"`](./mark/link.md) mark with a `"diagonal"` shape
+visually connects the selected region in the overview to the detail view.
 
 EXAMPLE examples/docs/grammar/parameters/genome-overview-detail.json height=150 spechidden
