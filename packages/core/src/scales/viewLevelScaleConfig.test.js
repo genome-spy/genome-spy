@@ -71,6 +71,85 @@ describe("view-level scale config mapping", () => {
         expect(mappings[0].resolution).toBe(view.getScaleResolution("x"));
     });
 
+    test("maps a composed view config to its shared inherited positional scale", async () => {
+        // Mirrors tracks where a shared x encoding is defined on a vconcat and
+        // one child repeats the inherited channel to customize other encodings.
+        /** @type {import("../spec/view.js").ConcatSpec} */
+        const spec = {
+            assembly: "hg38",
+            data: {
+                values: [
+                    {
+                        chrom: "chr11",
+                        start: 5280000,
+                        end: 5280100,
+                        score: 3,
+                    },
+                ],
+            },
+            scales: {
+                x: {
+                    domain: [
+                        { chrom: "chr11", pos: 5280000 },
+                        { chrom: "chr11", pos: 5290000 },
+                    ],
+                },
+            },
+            encoding: {
+                x: { chrom: "chrom", pos: "start", type: "locus" },
+                x2: { chrom: "chrom", pos: "end" },
+            },
+            resolve: {
+                axis: { x: "shared" },
+            },
+            vconcat: [
+                {
+                    height: 140,
+                    mark: "rect",
+                    encoding: {
+                        x: { chrom: "chrom", pos: "start", type: "locus" },
+                        y: {
+                            field: "score",
+                            type: "quantitative",
+                            axis: { grid: true },
+                        },
+                    },
+                },
+                {
+                    height: 80,
+                    mark: "rect",
+                    encoding: {
+                        color: { field: "score", type: "quantitative" },
+                    },
+                },
+            ],
+            config: {
+                view: { stroke: "lightgray" },
+            },
+        };
+
+        const view = await initView(spec, ConcatView);
+        const mappings = mapViewLevelScaleConfigs(view);
+
+        expect(mappings).toHaveLength(1);
+        expect(mappings[0]).toMatchObject({
+            view,
+            channel: "x",
+            config: {
+                domain: [
+                    { chrom: "chr11", pos: 5280000 },
+                    { chrom: "chr11", pos: 5290000 },
+                ],
+            },
+        });
+        expect(mappings[0].resolution).toBe(
+            view.children[0].getScaleResolution("x")
+        );
+        expect(mappings[0].resolution).toBe(
+            view.children[1].getScaleResolution("x")
+        );
+    });
+
     test("keeps an empty subtree config pending", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {

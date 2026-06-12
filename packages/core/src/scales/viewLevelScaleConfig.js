@@ -1,3 +1,5 @@
+import { getNonChromeViews } from "../view/viewSelectors.js";
+
 /**
  * @typedef {import("../spec/channel.js").ChannelWithScale} ChannelWithScale
  * @typedef {import("../spec/scale.js").Scale} Scale
@@ -113,7 +115,7 @@ function mapViewLevelScaleConfig(view, channel, config) {
 function collectVisibleScaleResolutions(view, channel) {
     /** @type {Set<ScaleResolution>} */
     const resolutions = new Set();
-    for (const descendant of view.getDescendants()) {
+    for (const descendant of getNonChromeViews(view)) {
         const resolution = descendant.getScaleResolution(channel);
         if (resolution) {
             resolutions.add(resolution);
