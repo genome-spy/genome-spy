@@ -201,6 +201,10 @@ export default class PointMark extends Mark {
 
     getSemanticThreshold() {
         if (this.sampledSemanticScores) {
+            if (this.sampledSemanticScores.length === 0) {
+                return -1;
+            }
+
             const p = Math.max(
                 0,
                 1 - this.#semanticZoomFraction() * this.unitView.getZoomLevel()
