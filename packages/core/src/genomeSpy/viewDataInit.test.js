@@ -277,6 +277,55 @@ describe("viewDataInit", () => {
         expect(datum?.width).toBe(24);
     });
 
+    test("finalizes graphics before initial data load notifies marks", async () => {
+        const context = createTestViewContext();
+        context.glHelper = /** @type {any} */ ({
+            createRangeTexture: () => undefined,
+        });
+
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        if (!(root instanceof UnitView)) {
+            throw new Error("Expected a unit view.");
+        }
+
+        const events = [];
+        const initializeSpy = vi
+            .spyOn(root.mark, "initializeGraphics")
+            .mockResolvedValue();
+        const finalizeSpy = vi
+            .spyOn(root.mark, "finalizeGraphicsInitialization")
+            .mockImplementation(() => {
+                events.push("finalize");
+            });
+        const updateSpy = vi
+            .spyOn(root.mark, "updateGraphicsData")
+            .mockImplementation(() => {
+                events.push("update");
+            });
+
+        await initializeViewData(
+            root,
+            context.dataFlow,
+            context.fontManager,
+            () => undefined
+        );
+
+        expect(events).toEqual(["finalize", "update"]);
+
+        initializeSpy.mockRestore();
+        finalizeSpy.mockRestore();
+        updateSpy.mockRestore();
+    });
+
     test("completed collectors repropagate to newly attached views", async () => {
         const context = createTestViewContext();
         context.isViewConfiguredVisible = (view) => view.spec.visible ?? true;
