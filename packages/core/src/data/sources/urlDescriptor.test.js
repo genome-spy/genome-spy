@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     normalizeUrlDescriptors,
     normalizeSingleUrlDescriptor,
+    UrlLimitExceededError,
     watchUrlDescriptorExpressions,
 } from "./urlDescriptor.js";
 
@@ -84,7 +85,7 @@ describe("normalizeUrlDescriptors", () => {
         ]);
     });
 
-    it("throws when maxValues is exceeded", async () => {
+    it("throws a typed error when maxValues is exceeded", async () => {
         await expect(
             normalizeUrlDescriptors({
                 url: {
@@ -94,7 +95,7 @@ describe("normalizeUrlDescriptors", () => {
                     maxValues: 1,
                 },
             })
-        ).rejects.toThrow("resolved 2 distinct values, exceeding maxValues 1");
+        ).rejects.toThrow(UrlLimitExceededError);
     });
 
     it("normalizes a source that expects one resolved descriptor", async () => {

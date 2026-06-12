@@ -2,7 +2,10 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import { attachDescriptorFields } from "../urlDescriptor.js";
+import {
+    attachDescriptorFields,
+    UrlLimitExceededError,
+} from "../urlDescriptor.js";
 import UrlDescriptorController from "../urlDescriptorController.js";
 import UrlDescriptorState from "../urlDescriptorState.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
@@ -83,27 +86,31 @@ export default class BigBedSource extends SingleAxisWindowedSource {
      * current loaded data does not cover the new active descriptor set.
      */
     async #reloadIfCurrentDomainNeedsData() {
-        await this.#initialize();
+        try {
+            await this.#initialize();
 
-        if (
-            !this.isDataReadyForDomain({
-                [this.channel]: this.scaleResolution.getDomain(),
-            })
-        ) {
-            this.reloadLastDomain();
+            if (
+                !this.isDataReadyForDomain({
+                    [this.channel]: this.scaleResolution.getDomain(),
+                })
+            ) {
+                this.reloadLastDomain();
+            }
+        } catch {
+            // Initialization has already updated the loading status.
         }
     }
 
     async #doInitialize() {
-        const descriptors = await this.#urlDescriptors.normalize();
-        const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
-            import("@gmod/bed"),
-            import("@gmod/bbi"),
-            import("generic-filehandle2"),
-        ]);
-        const BED = bed.default;
-
         try {
+            const descriptors = await this.#urlDescriptors.normalize();
+            const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
+                import("@gmod/bed"),
+                import("@gmod/bbi"),
+                import("generic-filehandle2"),
+            ]);
+            const BED = bed.default;
+
             this.setLoadingStatus("loading");
             await this.#descriptorState.update(
                 descriptors,
@@ -114,8 +121,13 @@ export default class BigBedSource extends SingleAxisWindowedSource {
         } catch (e) {
             // Load empty data
             this.load();
-            this.setLoadingStatus("error", e.message);
-            throw e;
+            if (e instanceof UrlLimitExceededError) {
+                this.#descriptorState.clearActive();
+                this.setLoadingStatus("complete");
+            } else {
+                this.setLoadingStatus("error", e.message);
+                throw e;
+            }
         }
     }
 

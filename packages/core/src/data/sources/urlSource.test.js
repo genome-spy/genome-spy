@@ -323,6 +323,31 @@ test("UrlSource expands URL templates and attaches descriptor fields", async () 
     ]);
 });
 
+test("UrlSource treats maxValues overflow as empty completed data", async () => {
+    global.fetch = /** @type {any} */ (vi.fn());
+
+    const view = createViewStub();
+    const source = new UrlSource(
+        {
+            url: {
+                template: "segments/{sample}.tsv",
+                values: ["A", "B"],
+                field: "sample",
+                maxValues: 1,
+            },
+            format: { type: "tsv" },
+        },
+        view
+    );
+
+    expect(await collectSource(source)).toEqual([]);
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(/** @type {any} */ (view).loadingStatus).toEqual({
+        status: "complete",
+        detail: undefined,
+    });
+});
+
 test("UrlSource reports conflicting descriptor fields", async () => {
     global.fetch = /** @type {any} */ (
         vi.fn(

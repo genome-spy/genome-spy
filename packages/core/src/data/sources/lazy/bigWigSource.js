@@ -4,7 +4,10 @@ import {
 } from "../../../paramRuntime/paramUtils.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
-import { attachDescriptorFields } from "../urlDescriptor.js";
+import {
+    attachDescriptorFields,
+    UrlLimitExceededError,
+} from "../urlDescriptor.js";
 import UrlDescriptorController from "../urlDescriptorController.js";
 import UrlDescriptorState from "../urlDescriptorState.js";
 
@@ -89,14 +92,18 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      * current loaded data does not cover the new active descriptor set.
      */
     async #reloadIfCurrentDomainNeedsData() {
-        await this.#initialize();
+        try {
+            await this.#initialize();
 
-        if (
-            !this.isDataReadyForDomain({
-                [this.channel]: this.scaleResolution.getDomain(),
-            })
-        ) {
-            this.reloadLastDomain();
+            if (
+                !this.isDataReadyForDomain({
+                    [this.channel]: this.scaleResolution.getDomain(),
+                })
+            ) {
+                this.reloadLastDomain();
+            }
+        } catch {
+            // Initialization has already updated the loading status.
         }
     }
 
@@ -104,10 +111,10 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      * @returns {Promise<void>}
      */
     async #doInitialize() {
-        const descriptors = await this.#urlDescriptors.normalize();
-        const { BigWig, RemoteFile } = await loadBigWigModules();
-
         try {
+            const descriptors = await this.#urlDescriptors.normalize();
+            const { BigWig, RemoteFile } = await loadBigWigModules();
+
             this.setLoadingStatus("loading");
             await this.#descriptorState.update(
                 descriptors,
@@ -118,8 +125,13 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         } catch (e) {
             // Load empty data
             this.load();
-            this.setLoadingStatus("error", e.message);
-            throw e;
+            if (e instanceof UrlLimitExceededError) {
+                this.#descriptorState.clearActive();
+                this.setLoadingStatus("complete");
+            } else {
+                this.setLoadingStatus("error", e.message);
+                throw e;
+            }
         }
     }
 

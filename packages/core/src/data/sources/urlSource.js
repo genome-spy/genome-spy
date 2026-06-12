@@ -11,7 +11,10 @@ import {
     withoutExprRef,
 } from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
-import { attachDescriptorFields } from "./urlDescriptor.js";
+import {
+    attachDescriptorFields,
+    UrlLimitExceededError,
+} from "./urlDescriptor.js";
 import UrlDescriptorController from "./urlDescriptorController.js";
 
 const gzipMimeTypes = new Set(["application/gzip", "application/x-gzip"]);
@@ -86,84 +89,90 @@ export default class UrlSource extends DataSource {
     }
 
     async load() {
-        const url = withoutExprRef(this.params.url);
-
-        /** @type {import("./urlDescriptor.js").UrlDescriptor[]} */
-        const descriptors =
-            typeof url == "object" && "urlsFromFile" in url
-                ? (await this.#loadUrlsFromFile(url)).map((url) => ({ url }))
-                : await this.#urlDescriptors.normalize();
-
-        const urls = descriptors.map((descriptor) => descriptor.url);
-
-        const format = getFormat(this.params, urls);
-        const type = responseType(format.type);
-
-        if (urls.length === 0 || !urls[0]) {
-            this.reset();
-            this.complete();
-            return;
-        }
-
-        /** @param {string} url */
-        const load = async (url) => {
-            try {
-                const result = await fetch(url);
-                if (!result.ok) {
-                    throw new Error(`${result.status} ${result.statusText}`);
-                }
-                return await readResponseBody(result, url, type);
-            } catch (e) {
-                throw new Error(
-                    `Could not load data: ${url}. Reason: ${e.message}`,
-                    { cause: e }
-                );
-            }
-        };
-
-        /**
-         * @param {any} content
-         * @param {import("./urlDescriptor.js").UrlDescriptor} descriptor
-         */
-        const readAndParse = async (content, descriptor) => {
-            try {
-                /** @type {any[] | Promise<any[]>} */
-                const dataOrPromise = read(content, toVegaLoaderFormat(format));
-                const data =
-                    dataOrPromise instanceof Promise
-                        ? await dataOrPromise
-                        : dataOrPromise;
-                this.beginBatch({ type: "file", url: descriptor.url });
-                for (const d of data) {
-                    this._propagate(
-                        attachDescriptorFields(d, descriptor.fields)
-                    );
-                }
-            } catch (e) {
-                console.warn(e);
-                throw new Error(
-                    `Cannot parse: ${descriptor.url}: ${e.message}`,
-                    {
-                        cause: e,
-                    }
-                );
-            }
-        };
-
         this.setLoadingStatus("loading");
         this.reset();
 
         try {
-            await Promise.all(
-                descriptors.map((descriptor) =>
-                    load(descriptor.url).then((content) =>
-                        readAndParse(content, descriptor)
+            const url = withoutExprRef(this.params.url);
+
+            /** @type {import("./urlDescriptor.js").UrlDescriptor[]} */
+            const descriptors =
+                typeof url == "object" && "urlsFromFile" in url
+                    ? (await this.#loadUrlsFromFile(url)).map((url) => ({
+                          url,
+                      }))
+                    : await this.#urlDescriptors.normalize();
+
+            const urls = descriptors.map((descriptor) => descriptor.url);
+            if (urls.length > 0 && urls[0]) {
+                const format = getFormat(this.params, urls);
+                const type = responseType(format.type);
+
+                /** @param {string} url */
+                const load = async (url) => {
+                    try {
+                        const result = await fetch(url);
+                        if (!result.ok) {
+                            throw new Error(
+                                `${result.status} ${result.statusText}`
+                            );
+                        }
+                        return await readResponseBody(result, url, type);
+                    } catch (e) {
+                        throw new Error(
+                            `Could not load data: ${url}. Reason: ${e.message}`,
+                            { cause: e }
+                        );
+                    }
+                };
+
+                /**
+                 * @param {any} content
+                 * @param {import("./urlDescriptor.js").UrlDescriptor} descriptor
+                 */
+                const readAndParse = async (content, descriptor) => {
+                    try {
+                        /** @type {any[] | Promise<any[]>} */
+                        const dataOrPromise = read(
+                            content,
+                            toVegaLoaderFormat(format)
+                        );
+                        const data =
+                            dataOrPromise instanceof Promise
+                                ? await dataOrPromise
+                                : dataOrPromise;
+                        this.beginBatch({ type: "file", url: descriptor.url });
+                        for (const d of data) {
+                            this._propagate(
+                                attachDescriptorFields(d, descriptor.fields)
+                            );
+                        }
+                    } catch (e) {
+                        console.warn(e);
+                        throw new Error(
+                            `Cannot parse: ${descriptor.url}: ${e.message}`,
+                            {
+                                cause: e,
+                            }
+                        );
+                    }
+                };
+
+                await Promise.all(
+                    descriptors.map((descriptor) =>
+                        load(descriptor.url).then((content) =>
+                            readAndParse(content, descriptor)
+                        )
                     )
-                )
-            );
+                );
+            }
             this.setLoadingStatus("complete");
         } catch (e) {
-            this.setLoadingStatus("error", e.message);
+            if (e instanceof UrlLimitExceededError) {
+                this.setLoadingStatus("complete");
+            } else {
+                this.setLoadingStatus("error", e.message);
+            }
         }
         this.complete();
     }

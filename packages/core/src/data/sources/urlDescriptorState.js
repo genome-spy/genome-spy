@@ -31,6 +31,12 @@ export default class UrlDescriptorState {
         this.#loadedKeys = new Set(this.#activeKeys);
     }
 
+    clearActive() {
+        this.#handles = [];
+        this.#activeKeys = new Set();
+        this.#loadedKeys = new Set();
+    }
+
     /**
      * Refreshes active descriptors while reusing cached handles.
      *

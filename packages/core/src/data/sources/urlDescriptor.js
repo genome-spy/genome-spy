@@ -53,6 +53,31 @@ import { concatUrl } from "../../utils/url.js";
  */
 
 /**
+ * Thrown when URL expansion resolves more distinct descriptors than the spec
+ * allows. Sources may handle this as an intentional empty data state.
+ */
+export class UrlLimitExceededError extends Error {
+    /** @type {number} */
+    count;
+
+    /** @type {number} */
+    maxValues;
+
+    /**
+     * @param {number} count
+     * @param {number} maxValues
+     */
+    constructor(count, maxValues) {
+        super(
+            `URL expansion resolved ${count} distinct values, exceeding maxValues ${maxValues}.`
+        );
+        this.name = "UrlLimitExceededError";
+        this.count = count;
+        this.maxValues = maxValues;
+    }
+}
+
+/**
  * Expands a URL spec into concrete descriptors, resolves relative URLs against
  * the view base URL, deduplicates the result, and enforces `maxValues`.
  *
@@ -293,9 +318,7 @@ function dedupeAndLimit(descriptors, maxValues) {
 
     const result = Array.from(byKey.values());
     if (maxValues !== undefined && result.length > maxValues) {
-        throw new Error(
-            `URL expansion resolved ${result.length} distinct values, exceeding maxValues ${maxValues}.`
-        );
+        throw new UrlLimitExceededError(result.length, maxValues);
     }
     return result;
 }

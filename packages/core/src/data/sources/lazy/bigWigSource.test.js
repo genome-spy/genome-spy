@@ -50,6 +50,8 @@ vi.mock("@gmod/bbi", () => ({
  */
 function createViewStub(initialVisibleSamples = ["A", "B"]) {
     let domain = [0, 100];
+    /** @type {{ status: import("../../../types/viewContext.js").DataLoadingStatus, detail?: string }[]} */
+    const loadingStatuses = [];
 
     /** @type {any} */
     let scaleResolution;
@@ -91,6 +93,7 @@ function createViewStub(initialVisibleSamples = ["A", "B"]) {
     return {
         paramRuntime,
         setVisibleSamples,
+        loadingStatuses,
         setDomain: (/** @type {number[]} */ value) => {
             domain = value;
         },
@@ -104,7 +107,11 @@ function createViewStub(initialVisibleSamples = ["A", "B"]) {
                     undefined,
                 dataFlow: {
                     loadingStatusRegistry: {
-                        set: /** @returns {undefined} */ () => undefined,
+                        set: (
+                            /** @type {any} */ _view,
+                            /** @type {import("../../../types/viewContext.js").DataLoadingStatus} */ status,
+                            /** @type {string | undefined} */ detail
+                        ) => loadingStatuses.push({ status, detail }),
                     },
                 },
             },
@@ -276,5 +283,41 @@ describe("BigWigSource", () => {
             { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
             { sample: "C", chrom: "chr1", start: 7, end: 8, score: 9 },
         ]);
+    });
+
+    it("treats maxValues overflow updates as an empty completed lazy source", async () => {
+        const { view, setVisibleSamples, loadingStatuses } = createViewStub([
+            "A",
+        ]);
+        const source = new BigWigSource(
+            {
+                type: "bigwig",
+                debounceMode: "domain",
+                url: {
+                    template: "signals/{sample}.bw",
+                    values: { expr: "visibleSamples" },
+                    field: "sample",
+                    maxValues: 1,
+                },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100], [1, 1]);
+
+        expect(openedUrls).toEqual(["signals/A.bw"]);
+        expect([...collector.getData()]).toEqual([
+            { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
+        ]);
+
+        setVisibleSamples(["A", "B"]);
+        await /** @type {any} */ (source).initializedPromise;
+
+        expect(openedUrls).toEqual(["signals/A.bw"]);
+        expect(loadingStatuses.at(-1)).toEqual({ status: "complete" });
+        expect([...collector.getData()]).toEqual([]);
     });
 });

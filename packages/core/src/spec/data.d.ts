@@ -214,8 +214,8 @@ export interface UrlTemplate {
     field: FieldName;
 
     /**
-     * Maximum number of distinct resolved values to load. Expansion fails when
-     * the limit is exceeded.
+     * Maximum number of distinct resolved values to load. If the limit is
+     * exceeded, the source loads no data.
      */
     maxValues?: number;
 }

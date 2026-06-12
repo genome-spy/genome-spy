@@ -63,6 +63,8 @@ vi.mock("@gmod/bbi", () => ({
  */
 function createViewStub(initialVisibleSamples = ["A", "B"]) {
     let domain = [0, 100];
+    /** @type {{ status: import("../../../types/viewContext.js").DataLoadingStatus, detail?: string }[]} */
+    const loadingStatuses = [];
 
     /** @type {any} */
     let scaleResolution;
@@ -101,6 +103,7 @@ function createViewStub(initialVisibleSamples = ["A", "B"]) {
     return {
         paramRuntime,
         setVisibleSamples,
+        loadingStatuses,
         setDomain: (/** @type {number[]} */ value) => {
             domain = value;
         },
@@ -111,7 +114,11 @@ function createViewStub(initialVisibleSamples = ["A", "B"]) {
             addBroadcastListener: /** @returns {undefined} */ () => undefined,
             dataFlow: {
                 loadingStatusRegistry: {
-                    set: /** @returns {undefined} */ () => undefined,
+                    set: (
+                        /** @type {any} */ _view,
+                        /** @type {import("../../../types/viewContext.js").DataLoadingStatus} */ status,
+                        /** @type {string | undefined} */ detail
+                    ) => loadingStatuses.push({ status, detail }),
                 },
             },
         },
@@ -311,5 +318,30 @@ describe("BigBedSource", () => {
                 name: "feature C",
             },
         ]);
+    });
+
+    it("treats maxValues overflow as an empty completed lazy source", async () => {
+        const view = createViewStub(["A", "B"]);
+        const source = new BigBedSource(
+            {
+                type: "bigbed",
+                debounceMode: "domain",
+                url: {
+                    template: "features/{sample}.bb",
+                    values: { expr: "visibleSamples" },
+                    field: "sample",
+                    maxValues: 1,
+                },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+
+        expect(openedUrls).toEqual([]);
+        expect(view.loadingStatuses.at(-1)).toEqual({ status: "complete" });
+        expect([...collector.getData()]).toEqual([]);
     });
 });

@@ -48,7 +48,10 @@ from the first file receive `"sample": "S1"`, and rows loaded from the second
 file receive `"sample": "S2"`.
 
 Duplicate resolved URLs are loaded only once. Use `maxValues` to prevent
-accidental broad loading when a template is driven by interactive state.
+accidental broad loading when a template is driven by interactive state. If the
+number of distinct resolved URLs exceeds `maxValues`, the source loads no data.
+This lets a visualization show a separate annotation, for example asking the
+user to filter to a smaller set of samples.
 
 ## Reactive Values
 
