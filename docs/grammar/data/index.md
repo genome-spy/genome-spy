@@ -23,6 +23,10 @@ comprising millions of records. These data sources enable easy handling of
 standard bioinformatic data formats such as [indexed
 FASTA](lazy.md#indexed-fasta) and [BigWig](lazy.md#bigwig).
 
+Advanced cohort visualizations may need to load one file per sample, patient, or
+other partition. See [URL templates and multiple files](multi-url.md) for
+template-based URL expansion and row tagging.
+
 Furthermore, GenomeSpy enables the creation of an empty data source with a given
 `name`. This data source can be dynamically updated using the
 [API](eager.md#named-data), making it particularly useful when embedding
@@ -30,3 +34,4 @@ GenomeSpy in web applications.
 
 - [Eager data](eager.md)
 - [Lazy data](lazy.md)
+- [URL templates and multiple files](multi-url.md)

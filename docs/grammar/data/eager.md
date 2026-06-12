@@ -136,6 +136,10 @@ format with [`"regexFold"`](../transform/regex-fold.md).
 }
 ```
 
+For advanced cases where URLs are generated from sample or cohort state and the
+loaded rows should be tagged with the source identity, see
+[URL templates and multiple files](multi-url.md).
+
 If you have many files, you can place the file list in a separate file with
 `urlsFromFile`.
 

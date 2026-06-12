@@ -29,6 +29,10 @@ Unlike in eager data, the `type` of the data source must be specified explicitly
 }
 ```
 
+Some lazy sources also support advanced
+[URL templates and multiple files](multi-url.md), which are useful in complex
+cohort visualizations that load per-sample signal or partitioned variant files.
+
 ## Indexed FASTA
 
 The `"indexedFasta"` source enable fast random access to a reference sequence.
@@ -74,6 +78,10 @@ currently visible region. However, the window size automatically adapts to the
 zoom level, and data are fetched in higher resolution when zooming in. The data
 source provides data objects with the following fields: `chrom` (string),
 `start` (integer), `end` (integer), and `score` (number).
+
+For advanced per-sample signal views, BigWig can use
+[URL templates](multi-url.md) to load a bounded set of files and attach the
+sample identifier to each returned row.
 
 ### Parameters
 
@@ -136,6 +144,9 @@ automatically unless you provide `parse` (see [eager data sources](eager.md#tabu
 for the supported syntax). If the file uses bare chromosome names, set
 `addChrPrefix` to `true` to align them with GenomeSpy's UCSC-style genomes.
 
+Advanced multi-file Tabix views can use a URL template together with an
+`indexUrl` template. See [URL templates and multiple files](multi-url.md).
+
 ### Parameters
 
 SCHEMA TabixTsvData
@@ -146,6 +157,9 @@ The tabix-based `"vcf"` source enables the retrieval of variant data stored in
 VCF files. The object format GenomeSpy uses is described in
 [vcf-js](https://github.com/GMOD/vcf-js/tree/master?tab=readme-ov-file#methods)'s
 documentation.
+
+For partitioned VCF files, use the same multi-file mechanism as Tabix. Complex
+multi-sample VCF row shaping may still require additional transforms.
 
 ### Parameters
 

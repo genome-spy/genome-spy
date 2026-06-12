@@ -46,6 +46,7 @@ nav:
                 - "grammar/data/index.md"
                 - Eager Data Sources: "grammar/data/eager.md"
                 - Lazy Data Sources: "grammar/data/lazy.md"
+                - URL Templates and Multiple Files: "grammar/data/multi-url.md"
           - Transform:
                 - "grammar/transform/index.md"
                 - Aggregate: "grammar/transform/aggregate.md"
