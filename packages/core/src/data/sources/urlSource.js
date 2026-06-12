@@ -11,11 +11,8 @@ import {
     withoutExprRef,
 } from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
-import {
-    attachDescriptorFields,
-    normalizeUrlDescriptors,
-    watchUrlDescriptorExpressions,
-} from "./urlDescriptor.js";
+import { attachDescriptorFields } from "./urlDescriptor.js";
+import UrlDescriptorController from "./urlDescriptorController.js";
 
 const gzipMimeTypes = new Set(["application/gzip", "application/x-gzip"]);
 const textDecoder = new TextDecoder();
@@ -25,6 +22,9 @@ const textDecoder = new TextDecoder();
  * payloads before handing them to the registered format reader.
  */
 export default class UrlSource extends DataSource {
+    /** @type {UrlDescriptorController} */
+    #urlDescriptors;
+
     /**
      * @param {import("../../spec/data.js").UrlData} params
      * @param {import("../../view/view.js").default} view
@@ -40,16 +40,11 @@ export default class UrlSource extends DataSource {
             { batchMode: "whenPropagated" }
         );
 
-        if (params.url && typeof params.url == "object") {
-            watchUrlDescriptorExpressions({
-                url: params.url,
-                paramRuntime: view.paramRuntime,
-                listener: () => this.load(),
-                registerDisposer: (disposer) => this.registerDisposer(disposer),
-            });
-        }
-
         this.baseUrl = view?.getBaseUrl();
+        this.#urlDescriptors = new UrlDescriptorController(this, {
+            getUrl: () => this.params.url,
+            onChange: () => this.load(),
+        });
     }
 
     get identifier() {
@@ -97,11 +92,7 @@ export default class UrlSource extends DataSource {
         const descriptors =
             typeof url == "object" && "urlsFromFile" in url
                 ? (await this.#loadUrlsFromFile(url)).map((url) => ({ url }))
-                : await normalizeUrlDescriptors({
-                      url: this.params.url,
-                      baseUrl: this.baseUrl,
-                      paramRuntime: this.paramRuntime,
-                  });
+                : await this.#urlDescriptors.normalize();
 
         const urls = descriptors.map((descriptor) => descriptor.url);
 

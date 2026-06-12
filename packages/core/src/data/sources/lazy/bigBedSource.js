@@ -1,13 +1,9 @@
 import {
     activateExprRefProps,
-    isExprRef,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import {
-    attachDescriptorFields,
-    normalizeUrlDescriptors,
-    watchUrlDescriptorExpressions,
-} from "../urlDescriptor.js";
+import { attachDescriptorFields } from "../urlDescriptor.js";
+import UrlDescriptorController from "../urlDescriptorController.js";
 import UrlDescriptorState from "../urlDescriptorState.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
@@ -23,6 +19,9 @@ export default class BigBedSource extends SingleAxisWindowedSource {
 
     /** @type {UrlDescriptorState<BigBedHandle>} */
     #descriptorState = new UrlDescriptorState();
+
+    /** @type {UrlDescriptorController} */
+    #urlDescriptors;
 
     /**
      * @param {import("../../../spec/data.js").BigBedData} params
@@ -55,18 +54,10 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             { batchMode: "whenPropagated" }
         );
 
-        if (
-            params.url &&
-            typeof params.url == "object" &&
-            !isExprRef(params.url)
-        ) {
-            watchUrlDescriptorExpressions({
-                url: params.url,
-                paramRuntime: view.paramRuntime,
-                listener: () => this.#reloadIfCurrentDomainNeedsData(),
-                registerDisposer: (disposer) => this.registerDisposer(disposer),
-            });
-        }
+        this.#urlDescriptors = new UrlDescriptorController(this, {
+            getUrl: () => this.params.url,
+            onChange: () => this.#reloadIfCurrentDomainNeedsData(),
+        });
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigBedSource");
@@ -104,11 +95,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     }
 
     async #doInitialize() {
-        const descriptors = await normalizeUrlDescriptors({
-            url: this.params.url,
-            baseUrl: this.view.getBaseUrl(),
-            paramRuntime: this.paramRuntime,
-        });
+        const descriptors = await this.#urlDescriptors.normalize();
         const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
             import("@gmod/bed"),
             import("@gmod/bbi"),
