@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     normalizeUrlDescriptors,
+    normalizeSingleUrlDescriptor,
     watchUrlDescriptorExpressions,
 } from "./urlDescriptor.js";
 
@@ -94,6 +95,17 @@ describe("normalizeUrlDescriptors", () => {
                 },
             })
         ).rejects.toThrow("resolved 2 URLs, exceeding maxUrls 1");
+    });
+
+    it("normalizes a source that expects one resolved descriptor", async () => {
+        await expect(
+            normalizeSingleUrlDescriptor(
+                {
+                    url: ["a.bam", "b.bam"],
+                },
+                "BamSource"
+            )
+        ).rejects.toThrow("BamSource supports exactly one resolved URL.");
     });
 
     it("watches nested template value expressions", () => {

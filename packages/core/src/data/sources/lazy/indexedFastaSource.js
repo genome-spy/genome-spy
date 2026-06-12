@@ -1,4 +1,4 @@
-import { normalizeUrlDescriptors } from "../urlDescriptor.js";
+import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -40,19 +40,15 @@ export default class IndexedFastaSource extends SingleAxisWindowedSource {
     }
 
     async #doInitialize() {
-        const descriptors = await normalizeUrlDescriptors({
-            url: this.params.url,
-            indexUrl: this.params.indexUrl,
-            baseUrl: this.view.getBaseUrl(),
-            paramRuntime: this.paramRuntime,
-        });
-        if (descriptors.length !== 1) {
-            throw new Error(
-                "IndexedFastaSource supports exactly one resolved URL."
-            );
-        }
-
-        const descriptor = descriptors[0];
+        const descriptor = await normalizeSingleUrlDescriptor(
+            {
+                url: this.params.url,
+                indexUrl: this.params.indexUrl,
+                baseUrl: this.view.getBaseUrl(),
+                paramRuntime: this.paramRuntime,
+            },
+            "IndexedFastaSource"
+        );
         const [{ IndexedFasta }, { RemoteFile }] = await Promise.all([
             import("@gmod/indexedfasta"),
             import("generic-filehandle2"),

@@ -2,7 +2,7 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import { normalizeUrlDescriptors } from "../urlDescriptor.js";
+import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -66,16 +66,14 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     }
 
     async #doInitialize() {
-        const descriptors = await normalizeUrlDescriptors({
-            url: this.params.url,
-            baseUrl: this.view.getBaseUrl(),
-            paramRuntime: this.paramRuntime,
-        });
-        if (descriptors.length !== 1) {
-            throw new Error("BigBedSource supports exactly one resolved URL.");
-        }
-
-        const descriptor = descriptors[0];
+        const descriptor = await normalizeSingleUrlDescriptor(
+            {
+                url: this.params.url,
+                baseUrl: this.view.getBaseUrl(),
+                paramRuntime: this.paramRuntime,
+            },
+            "BigBedSource"
+        );
         const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
             import("@gmod/bed"),
             import("@gmod/bbi"),

@@ -71,6 +71,23 @@ export async function normalizeUrlDescriptors(options) {
 }
 
 /**
+ * Expands a URL spec that is expected to resolve to exactly one descriptor.
+ * Sources that still support only one remote file use this to fail before
+ * constructing file handles.
+ *
+ * @param {UrlDescriptorOptions} options
+ * @param {string} sourceName
+ * @returns {Promise<UrlDescriptor>}
+ */
+export async function normalizeSingleUrlDescriptor(options, sourceName) {
+    const descriptors = await normalizeUrlDescriptors(options);
+    if (descriptors.length !== 1) {
+        throw new Error(`${sourceName} supports exactly one resolved URL.`);
+    }
+    return descriptors[0];
+}
+
+/**
  * Subscribes to expressions that affect URL expansion. Sources call this in
  * addition to `activateExprRefProps` because template values are nested under
  * `url.values` and therefore are not top-level data source properties.
