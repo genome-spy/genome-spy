@@ -49,8 +49,9 @@ SCHEMA UrlTemplate
 
 ## Reactive Values
 
-The `values` property may use an expression reference. This is useful when the
-set of files is controlled by application state or parameters.
+The `values` property may use an [expression](../expressions.md) reference. This
+is useful when the set of files is controlled by application state or
+parameters.
 
 ```json title="Example: URL template driven by a parameter"
 {
