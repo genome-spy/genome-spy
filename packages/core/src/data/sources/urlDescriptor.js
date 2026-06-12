@@ -1,4 +1,15 @@
 // @ts-check
+/**
+ * Utilities for turning the different URL source shapes accepted by the spec
+ * into a common descriptor array used by eager and lazy sources.
+ *
+ * A descriptor always has a concrete data URL and may also carry an index URL
+ * and fields that should be attached to every datum loaded from that URL. URL
+ * templates are intentionally resolved here, outside individual source
+ * implementations, so BigWig, Tabix, eager URL loading, and test sources share
+ * the same ExprRef evaluation, base URL resolution, deduplication, and
+ * descriptor-field conflict behavior.
+ */
 import { isExprRef, withoutExprRef } from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
 
@@ -18,6 +29,9 @@ import { concatUrl } from "../../utils/url.js";
  */
 
 /**
+ * Expands a URL spec into concrete descriptors, resolves relative URLs against
+ * the view base URL, deduplicates the result, and enforces `maxUrls`.
+ *
  * @param {UrlDescriptorOptions} options
  * @returns {Promise<UrlDescriptor[]>}
  */
@@ -35,6 +49,10 @@ export async function normalizeUrlDescriptors(options) {
 }
 
 /**
+ * Subscribes to expressions that affect URL expansion. Sources call this in
+ * addition to `activateExprRefProps` because template values are nested under
+ * `url.values` and therefore are not top-level data source properties.
+ *
  * @param {{
  *   url: any,
  *   indexUrl?: any,
@@ -60,6 +78,10 @@ export function watchUrlDescriptorExpressions(options) {
 }
 
 /**
+ * Attaches descriptor fields to a loaded datum. A descriptor field is context
+ * from the URL expansion, such as `{ sample: "S1" }`, so an existing data field
+ * with a different value indicates ambiguous source metadata and fails fast.
+ *
  * @template {Record<string, any>} T
  * @param {T} datum
  * @param {Record<string, import("../../spec/channel.js").Scalar>} [fields]
@@ -114,6 +136,10 @@ function expandUrl(urlSpec, options) {
 }
 
 /**
+ * Expands URL templates using a single scalar field. The optional index URL
+ * template deliberately reuses the data URL template's `values` and `field` so
+ * data/index pairs cannot drift apart.
+ *
  * @param {any} templateSpec
  * @param {any} indexUrlSpec
  * @param {UrlDescriptorOptions} options
@@ -186,6 +212,10 @@ function fillTemplate(template, field, value) {
 }
 
 /**
+ * Deduplicates by the complete data/index URL pair. Different index URLs for
+ * the same data URL are preserved because they are distinct source
+ * descriptors.
+ *
  * @param {UrlDescriptor[]} descriptors
  * @param {number | undefined} maxUrls
  */
@@ -254,6 +284,10 @@ function requireParamRuntime(options) {
 }
 
 /**
+ * URL expansion only watches expressions that can change the set of resolved
+ * descriptors. Expressions in other source properties are handled by the
+ * source-specific `activateExprRefProps` wiring.
+ *
  * @param {any} url
  * @param {any} indexUrl
  */
