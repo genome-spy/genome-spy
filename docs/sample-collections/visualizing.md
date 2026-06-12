@@ -177,6 +177,43 @@ encodes the _area_, not the diameter of the points, the `pow` function is used
 to square the value. The technique shown here is used in the
 [PARPiCL](https://genomespy.app/examples/?spec=PARPiCL/parpicl.json) example.
 
+### Visible sample parameters { #visible-sample-parameters }
+
+Sample view exposes parameters that describe the currently visible samples.
+These are mainly useful in advanced cohort visualizations where data sources
+should react to the current sample set.
+
+`visibleSamples` contains the identifiers of samples that are currently visible
+in the sample hierarchy. It is based on filtering and grouping state, but not on
+transient viewport closeup state.
+
+```json title="Using visibleSamples"
+{
+  "expr": "visibleSamples"
+}
+```
+
+`visibleSampleMetadata` provides metadata values for the currently visible
+samples. Use bracket access for full metadata paths, or dot access for simple
+hierarchical names:
+
+```json title="Using visibleSampleMetadata"
+{
+  "expr": "visibleSampleMetadata['Clinical/patientId']"
+}
+```
+
+```json title="Dot access for hierarchical metadata"
+{
+  "expr": "visibleSampleMetadata.Clinical.patientId"
+}
+```
+
+These parameters are often used with
+[URL templates and multiple files](../grammar/data/multi-url.md) to load
+per-sample, per-patient, or per-cohort-partition files only for the currently
+relevant samples.
+
 ### Aggregation
 
 `aggregateSamples` adds one or more summary tracks to a sample view. Use it when
