@@ -146,11 +146,11 @@ describe("BigBedSource", () => {
         vi.unstubAllGlobals();
     });
 
-    it("opens a single normalized URL descriptor", async () => {
+    it("opens a single normalized URL", async () => {
         const source = new BigBedSource(
             {
                 type: "bigbed",
-                url: { url: "features.bb" },
+                url: "features.bb",
             },
             /** @type {any} */ (createViewStub())
         );

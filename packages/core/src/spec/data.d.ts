@@ -172,27 +172,6 @@ export interface UrlList {
     type?: "json" | "csv" | "tsv";
 }
 
-export interface UrlDescriptor {
-    /**
-     * URL of the data file. Relative URLs are resolved against the view base
-     * URL.
-     */
-    url: string;
-
-    /**
-     * URL of the index file for indexed formats such as Tabix, BAM, and
-     * indexed FASTA. Relative URLs are resolved against the view base URL.
-     * Ignored by sources that do not use an index.
-     */
-    indexUrl?: string;
-
-    /**
-     * Fields attached to each datum loaded from this URL. A field must not
-     * conflict with a field loaded from the data file.
-     */
-    fields?: Record<string, Scalar>;
-}
-
 export interface UrlTemplate {
     /**
      * URL template. The value from `values` is substituted for the placeholder
@@ -228,24 +207,11 @@ export interface IndexUrlTemplate {
     template: string;
 }
 
-export type UrlSourceRef =
-    | string
-    | string[]
-    | ExprRef
-    | UrlList
-    | UrlDescriptor
-    | UrlDescriptor[]
-    | UrlTemplate;
+export type UrlSourceRef = string | string[] | ExprRef | UrlList | UrlTemplate;
 
-export type SingleUrlSourceRef = string | ExprRef | UrlDescriptor | UrlTemplate;
+export type SingleUrlSourceRef = string | ExprRef | UrlTemplate;
 
-export type MultiUrlSourceRef =
-    | string
-    | string[]
-    | ExprRef
-    | UrlDescriptor
-    | UrlDescriptor[]
-    | UrlTemplate;
+export type MultiUrlSourceRef = string | string[] | ExprRef | UrlTemplate;
 
 export type IndexUrlSourceRef = string | ExprRef | IndexUrlTemplate;
 
@@ -445,8 +411,8 @@ export interface BigWigData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigWig file. URL templates and URL descriptor arrays load
-     * multiple BigWig files and attach descriptor fields to loaded rows.
+     * URL of the BigWig file. URL templates load multiple BigWig files and
+     * attach the template field to loaded rows.
      */
     url: MultiUrlSourceRef;
 
@@ -469,8 +435,8 @@ export interface BigBedData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigBed file. URL templates and URL descriptor arrays load
-     * multiple BigBed files and attach descriptor fields to loaded rows.
+     * URL of the BigBed file. URL templates load multiple BigBed files and
+     * attach the template field to loaded rows.
      */
     url: MultiUrlSourceRef;
 
@@ -525,8 +491,8 @@ export interface TabixData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the bgzip-compressed file. URL templates and URL descriptor
-     * arrays load multiple files and attach descriptor fields to loaded rows.
+     * URL of the bgzip-compressed file. URL templates load multiple files and
+     * attach the template field to loaded rows.
      */
     url: MultiUrlSourceRef;
 

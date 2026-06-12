@@ -348,7 +348,7 @@ test("UrlSource treats maxValues overflow as empty completed data", async () => 
     });
 });
 
-test("UrlSource reports conflicting descriptor fields", async () => {
+test("UrlSource reports conflicting template fields", async () => {
     global.fetch = /** @type {any} */ (
         vi.fn(
             async () => new Response("sample\tvalue\nB\t1\n", { status: 200 })
@@ -358,12 +358,11 @@ test("UrlSource reports conflicting descriptor fields", async () => {
     const view = createViewStub();
     const source = new UrlSource(
         {
-            url: [
-                {
-                    url: "segments/A.tsv",
-                    fields: { sample: "A" },
-                },
-            ],
+            url: {
+                template: "segments/{sample}.tsv",
+                values: ["A"],
+                field: "sample",
+            },
             format: { type: "tsv" },
         },
         view
