@@ -16,6 +16,8 @@ import { concatUrl } from "../../utils/url.js";
 /**
  * @typedef {import("../../spec/channel.js").Scalar} Scalar
  * @typedef {import("../../spec/data.js").UrlSourceRef} UrlSourceRef
+ * @typedef {import("../../spec/data.js").SingleUrlSourceRef} SingleUrlSourceRef
+ * @typedef {import("../../spec/data.js").MultiUrlSourceRef} MultiUrlSourceRef
  * @typedef {import("../../spec/data.js").IndexUrlSourceRef} IndexUrlSourceRef
  * @typedef {import("../../spec/data.js").UrlTemplate} UrlTemplate
  * @typedef {import("../../spec/data.js").IndexUrlTemplate} IndexUrlTemplate
@@ -44,7 +46,7 @@ import { concatUrl } from "../../utils/url.js";
 
 /**
  * @typedef {object} UrlDescriptorOptions
- * @prop {UrlSourceRef | unknown} url
+ * @prop {UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown} url
  * @prop {IndexUrlSourceRef | unknown} [indexUrl]
  * @prop {string} [baseUrl]
  * @prop {UrlExpressionRuntime} [paramRuntime]
@@ -93,7 +95,7 @@ export async function normalizeSingleUrlDescriptor(options, sourceName) {
  * `url.values` and therefore are not top-level data source properties.
  *
  * @param {{
- *   url: UrlSourceRef | unknown,
+ *   url: UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown,
  *   indexUrl?: IndexUrlSourceRef | unknown,
  *   paramRuntime: UrlExpressionRuntime,
  *   listener: () => void,
@@ -158,7 +160,7 @@ export function attachDescriptorFieldsToData(data, fields) {
 }
 
 /**
- * @param {UrlSourceRef | unknown} urlSpec
+ * @param {UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown} urlSpec
  * @param {UrlDescriptorOptions} options
  * @returns {UrlDescriptor[]}
  */
@@ -314,7 +316,7 @@ function isIndexTemplate(value) {
 }
 
 /**
- * @param {UrlSourceRef | unknown} value
+ * @param {UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown} value
  * @returns {number | undefined}
  */
 function getMaxUrls(value) {
@@ -336,7 +338,7 @@ function requireParamRuntime(options) {
  * descriptors. Expressions in other source properties are handled by the
  * source-specific `activateExprRefProps` wiring.
  *
- * @param {UrlSourceRef | unknown} url
+ * @param {UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown} url
  * @param {IndexUrlSourceRef | unknown} indexUrl
  * @returns {string[]}
  */

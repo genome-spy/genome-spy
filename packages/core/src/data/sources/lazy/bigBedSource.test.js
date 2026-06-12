@@ -93,10 +93,10 @@ describe("BigBedSource", () => {
 
     it("rejects multiple resolved URLs explicitly", async () => {
         const source = new BigBedSource(
-            {
+            /** @type {any} */ ({
                 type: "bigbed",
                 url: ["a.bb", "b.bb"],
-            },
+            }),
             /** @type {any} */ (createViewStub())
         );
 

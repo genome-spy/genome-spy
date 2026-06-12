@@ -237,6 +237,16 @@ export type UrlSourceRef =
     | UrlDescriptor[]
     | UrlTemplate;
 
+export type SingleUrlSourceRef = string | ExprRef | UrlDescriptor | UrlTemplate;
+
+export type MultiUrlSourceRef =
+    | string
+    | string[]
+    | ExprRef
+    | UrlDescriptor
+    | UrlDescriptor[]
+    | UrlTemplate;
+
 export type IndexUrlSourceRef = string | ExprRef | IndexUrlTemplate;
 
 export interface UrlData extends DataBase {
@@ -402,10 +412,9 @@ export interface IndexedFastaData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the fasta file. URL templates and URL descriptor arrays load
-     * multiple files.
+     * URL of the fasta file. URL templates must resolve to one URL.
      */
-    url: UrlSourceRef;
+    url: SingleUrlSourceRef;
 
     /**
      * URL of the index file.
@@ -439,7 +448,7 @@ export interface BigWigData extends DebouncedData {
      * URL of the BigWig file. URL templates and URL descriptor arrays load
      * multiple BigWig files and attach descriptor fields to loaded rows.
      */
-    url: UrlSourceRef;
+    url: MultiUrlSourceRef;
 
     /**
      * The approximate minimum width of each data bin, in pixels.
@@ -460,10 +469,9 @@ export interface BigBedData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigBed file. URL templates and URL descriptor arrays load
-     * multiple BigBed files and attach descriptor fields to loaded rows.
+     * URL of the BigBed file. URL templates must resolve to one URL.
      */
-    url: UrlSourceRef;
+    url: SingleUrlSourceRef;
 
     /**
      * Size of each chunk when fetching the BigBed file. Data is only fetched
@@ -485,10 +493,9 @@ export interface BamData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BAM file. URL templates and URL descriptor arrays load
-     * multiple BAM files.
+     * URL of the BAM file. URL templates must resolve to one URL.
      */
-    url: UrlSourceRef;
+    url: SingleUrlSourceRef;
 
     /**
      * URL of the index file.
@@ -520,7 +527,7 @@ export interface TabixData extends DebouncedData {
      * URL of the bgzip-compressed file. URL templates and URL descriptor
      * arrays load multiple files and attach descriptor fields to loaded rows.
      */
-    url: UrlSourceRef;
+    url: MultiUrlSourceRef;
 
     /**
      * URL of the tabix index file.
