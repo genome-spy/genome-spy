@@ -2,7 +2,7 @@ import {
     activateExprRefProps,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import addBaseUrl from "../../../utils/addBaseUrl.js";
+import { normalizeUrlDescriptors } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
@@ -61,8 +61,20 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     }
 
     #initialize() {
-        this.initializedPromise = new Promise((resolve, reject) => {
-            Promise.all([
+        this.initializedPromise = normalizeUrlDescriptors({
+            url: this.params.url,
+            baseUrl: this.view.getBaseUrl(),
+            paramRuntime: this.paramRuntime,
+        }).then((descriptors) => {
+            if (descriptors.length !== 1) {
+                throw new Error(
+                    "BigBedSource supports exactly one resolved URL."
+                );
+            }
+
+            const descriptor = descriptors[0];
+
+            return Promise.all([
                 import("@gmod/bed"),
                 import("@gmod/bbi"),
                 import("generic-filehandle2"),
@@ -70,14 +82,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                 const BED = bed.default;
 
                 this.bbi = new BigBed({
-                    filehandle: new RemoteFile(
-                        addBaseUrl(
-                            /** @type {string} */ (
-                                withoutExprRef(this.params.url)
-                            ),
-                            this.view.getBaseUrl()
-                        )
-                    ),
+                    filehandle: new RemoteFile(descriptor.url),
                 });
 
                 this.setLoadingStatus("loading");
@@ -98,16 +103,12 @@ export default class BigBedSource extends SingleAxisWindowedSource {
                         }
 
                         this.setLoadingStatus("complete");
-                        resolve();
                     })
                     .catch((e) => {
                         // Load empty data
                         this.load();
-                        this.setLoadingStatus(
-                            "error",
-                            `${withoutExprRef(this.params.url)}: ${e.message}`
-                        );
-                        reject(e);
+                        this.setLoadingStatus("error", e.message);
+                        throw e;
                     });
             });
         });
