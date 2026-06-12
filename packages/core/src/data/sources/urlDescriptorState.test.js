@@ -63,4 +63,20 @@ describe("UrlDescriptorState", () => {
 
         expect(state.activeSetLoaded).toBe(false);
     });
+
+    it("does not activate descriptors whose handle creation was skipped", async () => {
+        const state = new UrlDescriptorState();
+
+        await state.update(
+            [{ url: "a.bw" }, { url: "missing.bw" }],
+            async (descriptor) =>
+                descriptor.url == "missing.bw"
+                    ? undefined
+                    : { url: descriptor.url }
+        );
+        state.markLoaded();
+
+        expect(state.handles).toEqual([{ url: "a.bw" }]);
+        expect(state.activeSetLoaded).toBe(true);
+    });
 });

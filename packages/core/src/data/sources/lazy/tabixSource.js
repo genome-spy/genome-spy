@@ -6,6 +6,7 @@ import {
 } from "../../../paramRuntime/paramUtils.js";
 import {
     attachDescriptorFieldsToData,
+    loadUrlDescriptorOrSkip,
     normalizeUrlDescriptors,
     watchUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
@@ -114,30 +115,37 @@ export default class TabixSource extends SingleAxisWindowedSource {
 
         try {
             this.setLoadingStatus("loading");
-            const handlesAndHeaders = await Promise.all(
-                descriptors.map(async (descriptor) => {
-                    const tbiIndex = new TabixIndexedFile({
-                        filehandle: new RemoteFile(descriptor.url),
-                        tbiFilehandle: new RemoteFile(
-                            descriptor.indexUrl ?? descriptor.url + ".tbi"
-                        ),
-                        renameRefSeqs,
-                    });
-                    const header = await tbiIndex.getHeader();
+            const handlesAndHeaders = (
+                await Promise.all(
+                    descriptors.map((descriptor) =>
+                        loadUrlDescriptorOrSkip(descriptor, async () => {
+                            const tbiIndex = new TabixIndexedFile({
+                                filehandle: new RemoteFile(descriptor.url),
+                                tbiFilehandle: new RemoteFile(
+                                    descriptor.indexUrl ??
+                                        descriptor.url + ".tbi"
+                                ),
+                                renameRefSeqs,
+                            });
+                            const header = await tbiIndex.getHeader();
 
-                    return {
-                        handle: {
-                            tbiIndex,
-                            fields: descriptor.fields,
-                            url: descriptor.url,
-                        },
-                        header,
-                    };
-                })
-            );
+                            return {
+                                handle: {
+                                    tbiIndex,
+                                    fields: descriptor.fields,
+                                    url: descriptor.url,
+                                },
+                                header,
+                            };
+                        })
+                    )
+                )
+            ).filter((d) => d);
 
             this.#handles = handlesAndHeaders.map((d) => d.handle);
-            await this._handleHeader(handlesAndHeaders[0].header);
+            if (handlesAndHeaders[0]) {
+                await this._handleHeader(handlesAndHeaders[0].header);
+            }
             this.setLoadingStatus("complete");
         } catch (e) {
             this.load();

@@ -7,6 +7,8 @@ import TabixTsvSource from "./tabixTsvSource.js";
 const linesByUrl = new Map();
 /** @type {Map<string, string>} */
 const indexUrlByUrl = new Map();
+/** @type {Set<string>} */
+const failingHeaderUrls = new Set();
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -27,6 +29,9 @@ vi.mock("@gmod/tabix", () => ({
         }
 
         async getHeader() {
+            if (failingHeaderUrls.has(this.url)) {
+                throw new Error("Missing Tabix file");
+            }
             return "#chrom\tstart\tend\tvalue";
         }
 
@@ -99,6 +104,7 @@ describe("TabixSource", () => {
     beforeEach(() => {
         linesByUrl.clear();
         indexUrlByUrl.clear();
+        failingHeaderUrls.clear();
         linesByUrl.set("variants/ovarian.vcf.gz", ["chr1\t1\t2\tA"]);
         linesByUrl.set("variants/breast.vcf.gz", ["chr1\t3\t4\tB"]);
     });
@@ -147,5 +153,56 @@ describe("TabixSource", () => {
                 value: "B",
             },
         ]);
+    });
+
+    it("skips failed template URLs when configured", async () => {
+        const warn = vi
+            .spyOn(console, "warn")
+            .mockImplementation(() => undefined);
+        failingHeaderUrls.add("variants/missing.vcf.gz");
+
+        const source = new TabixTsvSource(
+            /** @type {any} */ ({
+                type: "tabix",
+                debounceMode: "domain",
+                url: {
+                    template: "variants/{cancer}.vcf.gz",
+                    values: ["ovarian", "missing"],
+                    field: "cancer",
+                    onLoadError: "skip",
+                },
+                indexUrl: {
+                    template: "variants/{cancer}.vcf.gz.tbi",
+                },
+            }),
+            /** @type {any} */ (createViewStub())
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect(indexUrlByUrl).toEqual(
+            new Map([
+                ["variants/ovarian.vcf.gz", "variants/ovarian.vcf.gz.tbi"],
+                ["variants/missing.vcf.gz", "variants/missing.vcf.gz.tbi"],
+            ])
+        );
+        expect([...collector.getData()]).toEqual([
+            {
+                cancer: "ovarian",
+                chrom: "chr1",
+                start: 1,
+                end: 2,
+                value: "A",
+            },
+        ]);
+        expect(warn).toHaveBeenCalledWith(
+            expect.stringContaining(
+                "Skipping failed URL: variants/missing.vcf.gz"
+            ),
+            expect.any(Error)
+        );
     });
 });

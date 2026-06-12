@@ -40,6 +40,9 @@ number of distinct resolved URLs exceeds `maxValues`, the source loads no data.
 This lets a visualization show a separate annotation, for example asking the
 user to filter to a smaller set of samples.
 
+If some expanded files may be unavailable, set `onLoadError` to `"skip"` to
+load the remaining files and write a warning to the browser console.
+
 The template object accepts the following properties:
 
 SCHEMA UrlTemplate

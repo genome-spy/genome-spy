@@ -16,6 +16,7 @@ afterEach(() => {
     if (originalFetch) {
         global.fetch = originalFetch;
     }
+    vi.restoreAllMocks();
 });
 
 /**
@@ -346,6 +347,47 @@ test("UrlSource treats maxValues overflow as empty completed data", async () => 
         status: "complete",
         detail: undefined,
     });
+});
+
+test("UrlSource skips failed template URLs when configured", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    global.fetch = /** @type {any} */ (
+        vi.fn(async (url) => {
+            if (url == "segments/missing.tsv") {
+                return new Response("Not found", {
+                    status: 404,
+                    statusText: "Not Found",
+                });
+            }
+            return new Response("value\n1\n", { status: 200 });
+        })
+    );
+
+    const view = createViewStub();
+    const source = new UrlSource(
+        {
+            url: {
+                template: "segments/{patient}.tsv",
+                values: ["patient1", "missing"],
+                field: "patient",
+                onLoadError: "skip",
+            },
+            format: { type: "tsv" },
+        },
+        view
+    );
+
+    expect(await collectSource(source)).toEqual([
+        { patient: "patient1", value: 1 },
+    ]);
+    expect(/** @type {any} */ (view).loadingStatus).toEqual({
+        status: "complete",
+        detail: undefined,
+    });
+    expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("Skipping failed URL: segments/missing.tsv"),
+        expect.any(Error)
+    );
 });
 
 test("UrlSource reports conflicting template fields", async () => {

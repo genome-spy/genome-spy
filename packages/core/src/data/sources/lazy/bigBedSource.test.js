@@ -9,6 +9,8 @@ const openedUrls = [];
 const featuresByUrl = new Map();
 /** @type {{ chrom: string, start: number, end: number }[]} */
 const requestedIntervals = [];
+/** @type {Set<string>} */
+const failingHeaderUrls = new Set();
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -43,6 +45,9 @@ vi.mock("@gmod/bbi", () => ({
         }
 
         async getHeader() {
+            if (failingHeaderUrls.has(this.url)) {
+                throw new Error("Missing BigBed");
+            }
             return /** @type {{ autoSql: any }} */ ({ autoSql: undefined });
         }
 
@@ -129,6 +134,7 @@ describe("BigBedSource", () => {
     beforeEach(() => {
         openedUrls.length = 0;
         requestedIntervals.length = 0;
+        failingHeaderUrls.clear();
         featuresByUrl.clear();
         featuresByUrl.set("https://example.org/spec/features/A.bb", [
             { start: 1, end: 2, rest: "feature A" },
@@ -199,6 +205,52 @@ describe("BigBedSource", () => {
                 name: "feature B",
             },
         ]);
+    });
+
+    it("skips failed template URLs when configured", async () => {
+        const warn = vi
+            .spyOn(console, "warn")
+            .mockImplementation(() => undefined);
+        failingHeaderUrls.add("https://example.org/spec/features/missing.bb");
+
+        const source = new BigBedSource(
+            {
+                type: "bigbed",
+                debounceMode: "domain",
+                url: {
+                    template: "features/{sample}.bb",
+                    values: ["A", "missing"],
+                    field: "sample",
+                    onLoadError: "skip",
+                },
+            },
+            /** @type {any} */ (createViewStub())
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect(openedUrls).toEqual([
+            "https://example.org/spec/features/A.bb",
+            "https://example.org/spec/features/missing.bb",
+        ]);
+        expect([...collector.getData()]).toEqual([
+            {
+                sample: "A",
+                chrom: "chr1",
+                chromStart: 1,
+                chromEnd: 2,
+                name: "feature A",
+            },
+        ]);
+        expect(warn).toHaveBeenCalledWith(
+            expect.stringContaining(
+                "Skipping failed URL: https://example.org/spec/features/missing.bb"
+            ),
+            expect.any(Error)
+        );
     });
 
     it("reloads when restored URL values are cached but not loaded for the current domain", async () => {

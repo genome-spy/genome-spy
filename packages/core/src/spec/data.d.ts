@@ -197,6 +197,16 @@ export interface UrlTemplate {
      * exceeded, the source loads no data.
      */
     maxValues?: number;
+
+    /**
+     * Behavior when loading an expanded URL fails. The default `"error"`
+     * fails the data source. Use `"skip"` when some expanded URLs are expected
+     * to be unavailable, for example when data files for some patients have
+     * not been generated yet.
+     *
+     * __Default value:__ `"error"`
+     */
+    onLoadError?: "error" | "skip";
 }
 
 export interface IndexUrlTemplate {

@@ -6,6 +6,7 @@ import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 import {
     attachDescriptorFields,
+    loadUrlDescriptorOrSkip,
     UrlLimitExceededError,
 } from "../urlDescriptor.js";
 import UrlDescriptorController from "../urlDescriptorController.js";
@@ -119,7 +120,9 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             await this.#descriptorState.update(
                 descriptors,
                 async (descriptor) =>
-                    this.#createHandle(descriptor, BigWig, RemoteFile)
+                    loadUrlDescriptorOrSkip(descriptor, () =>
+                        this.#createHandle(descriptor, BigWig, RemoteFile)
+                    )
             );
             this.setLoadingStatus("complete");
         } catch (e) {

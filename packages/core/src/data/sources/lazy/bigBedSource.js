@@ -4,6 +4,7 @@ import {
 } from "../../../paramRuntime/paramUtils.js";
 import {
     attachDescriptorFields,
+    loadUrlDescriptorOrSkip,
     UrlLimitExceededError,
 } from "../urlDescriptor.js";
 import UrlDescriptorController from "../urlDescriptorController.js";
@@ -115,7 +116,9 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             await this.#descriptorState.update(
                 descriptors,
                 async (descriptor) =>
-                    this.#createHandle(descriptor, BigBed, RemoteFile, BED)
+                    loadUrlDescriptorOrSkip(descriptor, () =>
+                        this.#createHandle(descriptor, BigBed, RemoteFile, BED)
+                    )
             );
             this.setLoadingStatus("complete");
         } catch (e) {

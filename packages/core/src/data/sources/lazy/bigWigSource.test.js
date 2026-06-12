@@ -9,6 +9,8 @@ const featuresByUrl = new Map();
 const requestedIntervals = [];
 /** @type {string[]} */
 const openedUrls = [];
+/** @type {Set<string>} */
+const failingHeaderUrls = new Set();
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -28,6 +30,9 @@ vi.mock("@gmod/bbi", () => ({
         }
 
         async getHeader() {
+            if (failingHeaderUrls.has(this.url)) {
+                throw new Error("Missing BigWig");
+            }
             return {
                 zoomLevels: [{ reductionLevel: 10 }],
             };
@@ -124,6 +129,7 @@ describe("BigWigSource", () => {
         featuresByUrl.clear();
         requestedIntervals.length = 0;
         openedUrls.length = 0;
+        failingHeaderUrls.clear();
         featuresByUrl.set("signals/A.bw", [{ start: 1, end: 2, score: 3 }]);
         featuresByUrl.set("signals/B.bw", [{ start: 4, end: 5, score: 6 }]);
         featuresByUrl.set("signals/C.bw", [{ start: 7, end: 8, score: 9 }]);
@@ -319,5 +325,42 @@ describe("BigWigSource", () => {
         expect(openedUrls).toEqual(["signals/A.bw"]);
         expect(loadingStatuses.at(-1)).toEqual({ status: "complete" });
         expect([...collector.getData()]).toEqual([]);
+    });
+
+    it("skips failed template URLs when configured", async () => {
+        const warn = vi
+            .spyOn(console, "warn")
+            .mockImplementation(() => undefined);
+        failingHeaderUrls.add("signals/missing.bw");
+
+        const { view, loadingStatuses } = createViewStub(["A", "missing"]);
+        const source = new BigWigSource(
+            {
+                type: "bigwig",
+                debounceMode: "domain",
+                url: {
+                    template: "signals/{sample}.bw",
+                    values: { expr: "visibleSamples" },
+                    field: "sample",
+                    onLoadError: "skip",
+                },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100], [1]);
+
+        expect(openedUrls).toEqual(["signals/A.bw", "signals/missing.bw"]);
+        expect(loadingStatuses.at(-1)).toEqual({ status: "complete" });
+        expect([...collector.getData()]).toEqual([
+            { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
+        ]);
+        expect(warn).toHaveBeenCalledWith(
+            expect.stringContaining("Skipping failed URL: signals/missing.bw"),
+            expect.any(Error)
+        );
     });
 });

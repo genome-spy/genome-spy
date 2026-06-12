@@ -13,6 +13,7 @@ import {
 import { concatUrl } from "../../utils/url.js";
 import {
     attachDescriptorFields,
+    loadUrlDescriptorOrSkip,
     UrlLimitExceededError,
 } from "./urlDescriptor.js";
 import UrlDescriptorController from "./urlDescriptorController.js";
@@ -158,11 +159,20 @@ export default class UrlSource extends DataSource {
                     }
                 };
 
-                await Promise.all(
+                const loaded = await Promise.all(
                     descriptors.map((descriptor) =>
-                        load(descriptor.url).then((content) =>
-                            readAndParse(content, descriptor)
-                        )
+                        loadUrlDescriptorOrSkip(descriptor, async () => ({
+                            descriptor,
+                            content: await load(descriptor.url),
+                        }))
+                    )
+                );
+
+                await Promise.all(
+                    loaded.map((entry) =>
+                        entry
+                            ? readAndParse(entry.content, entry.descriptor)
+                            : undefined
                     )
                 );
             }

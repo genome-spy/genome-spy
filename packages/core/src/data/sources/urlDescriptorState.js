@@ -41,11 +41,11 @@ export default class UrlDescriptorState {
      * Refreshes active descriptors while reusing cached handles.
      *
      * @param {import("./urlDescriptor.js").UrlDescriptor[]} descriptors
-     * @param {(descriptor: import("./urlDescriptor.js").UrlDescriptor, descriptorKey: string) => Promise<T>} createHandle
+     * @param {(descriptor: import("./urlDescriptor.js").UrlDescriptor, descriptorKey: string) => Promise<T | undefined>} createHandle
      */
     async update(descriptors, createHandle) {
         const descriptorKeys = descriptors.map(urlDescriptorKey);
-        this.#handles = await Promise.all(
+        const entries = await Promise.all(
             descriptors.map((descriptor, i) =>
                 this.#getOrCreateHandle(
                     descriptor,
@@ -54,22 +54,32 @@ export default class UrlDescriptorState {
                 )
             )
         );
-        this.#activeKeys = new Set(descriptorKeys);
+        this.#handles = entries
+            .filter((entry) => entry.handle)
+            .map((entry) => /** @type {T} */ (entry.handle));
+        this.#activeKeys = new Set(
+            entries
+                .filter((entry) => entry.handle)
+                .map((entry) => entry.descriptorKey)
+        );
     }
 
     /**
      * @param {import("./urlDescriptor.js").UrlDescriptor} descriptor
      * @param {string} descriptorKey
-     * @param {(descriptor: import("./urlDescriptor.js").UrlDescriptor, descriptorKey: string) => Promise<T>} createHandle
+     * @param {(descriptor: import("./urlDescriptor.js").UrlDescriptor, descriptorKey: string) => Promise<T | undefined>} createHandle
+     * @returns {Promise<{ descriptorKey: string, handle: T | undefined }>}
      */
     async #getOrCreateHandle(descriptor, descriptorKey, createHandle) {
         const cachedHandle = this.#handleCache.get(descriptorKey);
         if (cachedHandle) {
-            return cachedHandle;
+            return { descriptorKey, handle: cachedHandle };
         }
 
         const handle = await createHandle(descriptor, descriptorKey);
-        this.#handleCache.set(descriptorKey, handle);
-        return handle;
+        if (handle) {
+            this.#handleCache.set(descriptorKey, handle);
+        }
+        return { descriptorKey, handle };
     }
 }

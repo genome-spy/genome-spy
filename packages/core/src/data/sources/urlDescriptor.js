@@ -42,6 +42,7 @@ import { concatUrl } from "../../utils/url.js";
  * @prop {string} url
  * @prop {string} [indexUrl]
  * @prop {Record<string, Scalar>} [fields]
+ * @prop {"error" | "skip"} [onLoadError]
  */
 
 /**
@@ -185,6 +186,44 @@ export function attachDescriptorFieldsToData(data, fields) {
 }
 
 /**
+ * Reports and classifies a failed expanded URL load. Missing partitions can be
+ * intentional in template-based sources, but strict failure remains the
+ * default behavior.
+ *
+ * @param {UrlDescriptor} descriptor
+ * @param {Error} error
+ * @returns {boolean}
+ */
+function shouldSkipUrlLoadError(descriptor, error) {
+    if (descriptor.onLoadError == "skip") {
+        console.warn(`Skipping failed URL: ${descriptor.url}`, error);
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Runs a per-descriptor load operation and converts configured failures into
+ * skipped results.
+ *
+ * @template T
+ * @param {UrlDescriptor} descriptor
+ * @param {() => Promise<T>} load
+ * @returns {Promise<T | undefined>}
+ */
+export async function loadUrlDescriptorOrSkip(descriptor, load) {
+    try {
+        return await load();
+    } catch (e) {
+        if (shouldSkipUrlLoadError(descriptor, e)) {
+            return undefined;
+        }
+        throw e;
+    }
+}
+
+/**
  * Returns a stable key for comparing URL descriptors independently of their
  * position in a descriptor array.
  *
@@ -252,6 +291,7 @@ function expandTemplate(templateSpec, indexUrlSpec, options) {
                       withoutExprRef(indexUrlSpec)
                   ),
             fields,
+            onLoadError: templateSpec.onLoadError,
         };
     });
 }
