@@ -160,6 +160,22 @@ export function attachDescriptorFieldsToData(data, fields) {
 }
 
 /**
+ * Returns a stable key for comparing URL descriptors independently of their
+ * position in a descriptor array.
+ *
+ * @param {UrlDescriptor} descriptor
+ */
+export function urlDescriptorKey(descriptor) {
+    return JSON.stringify({
+        url: descriptor.url,
+        indexUrl: descriptor.indexUrl,
+        fields: descriptor.fields
+            ? Object.fromEntries(Object.entries(descriptor.fields).sort())
+            : undefined,
+    });
+}
+
+/**
  * @param {UrlSourceRef | SingleUrlSourceRef | MultiUrlSourceRef | unknown} urlSpec
  * @param {UrlDescriptorOptions} options
  * @returns {UrlDescriptor[]}

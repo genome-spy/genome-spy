@@ -8,6 +8,7 @@ import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 import {
     attachDescriptorFields,
     normalizeUrlDescriptors,
+    urlDescriptorKey,
     watchUrlDescriptorExpressions,
 } from "../urlDescriptor.js";
 
@@ -23,12 +24,17 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      * @prop {string} url
      */
 
+    /** @type {Map<string, BigWigHandle>} */
+    #handleCache = new Map();
+
     /** @type {BigWigHandle[]} */
     #handles = [];
 
-    #descriptorSignature = "";
+    /** @type {Set<string>} */
+    #descriptorKeys = new Set();
 
-    #loadedDescriptorSignature = "";
+    /** @type {Set<string>} */
+    #loadedDescriptorKeys = new Set();
 
     /**
      * @param {import("../../../spec/data.js").BigWigData} params
@@ -52,7 +58,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {
-                    this.#initialize().then(() => this.reloadLastDomain());
+                    this.#reloadIfCurrentDomainNeedsData();
                 } else if (props.has("pixelsPerBin")) {
                     this.reloadLastDomain();
                 }
@@ -69,9 +75,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             watchUrlDescriptorExpressions({
                 url: params.url,
                 paramRuntime: view.paramRuntime,
-                listener: () => {
-                    this.#initialize().then(() => this.reloadLastDomain());
-                },
+                listener: () => this.#reloadIfCurrentDomainNeedsData(),
                 registerDisposer: (disposer) => this.registerDisposer(disposer),
             });
         }
@@ -89,19 +93,41 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         return "bigWigSource";
     }
 
+    /**
+     * @returns {Promise<void>}
+     */
     #initialize() {
-        this.initializedPromise = this.#doInitialize();
-        return this.initializedPromise;
+        const initializePromise = this.#doInitialize();
+        this.initializedPromise = initializePromise;
+        return initializePromise;
     }
 
+    /**
+     * Refreshes active descriptors and reloads the current domain only if the
+     * current loaded data does not cover the new active descriptor set.
+     */
+    async #reloadIfCurrentDomainNeedsData() {
+        await this.#initialize();
+
+        if (
+            !this.isDataReadyForDomain({
+                [this.channel]: this.scaleResolution.getDomain(),
+            })
+        ) {
+            this.reloadLastDomain();
+        }
+    }
+
+    /**
+     * @returns {Promise<void>}
+     */
     async #doInitialize() {
         const descriptors = await normalizeUrlDescriptors({
             url: this.params.url,
             baseUrl: this.view.getBaseUrl(),
             paramRuntime: this.paramRuntime,
         });
-        this.#descriptorSignature = JSON.stringify(descriptors);
-        this.#loadedDescriptorSignature = "";
+        const descriptorKeys = descriptors.map(urlDescriptorKey);
 
         const [{ BigWig }, { RemoteFile }] = await Promise.all([
             import("@gmod/bbi"),
@@ -111,30 +137,16 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         try {
             this.setLoadingStatus("loading");
             this.#handles = await Promise.all(
-                descriptors.map(async (descriptor) => {
-                    const bbi = new BigWig({
-                        filehandle: new RemoteFile(descriptor.url),
-                    });
-                    const header = await bbi.getHeader();
-                    const reductionLevels =
-                        /** @type {{reductionLevel: number}[]} */ (
-                            header.zoomLevels
-                        )
-                            .map((z) => z.reductionLevel)
-                            .reverse();
-
-                    // Add the non-reduced level. Not sure if this is the best way to do it.
-                    // Afaik, the non-reduced bin size is not available in the header.
-                    reductionLevels.push(1);
-
-                    return {
-                        bbi,
-                        reductionLevels,
-                        fields: descriptor.fields,
-                        url: descriptor.url,
-                    };
-                })
+                descriptors.map((descriptor, i) =>
+                    this.#getOrCreateHandle(
+                        descriptor,
+                        descriptorKeys[i],
+                        BigWig,
+                        RemoteFile
+                    )
+                )
             );
+            this.#descriptorKeys = new Set(descriptorKeys);
             this.setLoadingStatus("complete");
         } catch (e) {
             // Load empty data
@@ -145,12 +157,55 @@ export default class BigWigSource extends SingleAxisWindowedSource {
     }
 
     /**
+     * @param {import("../urlDescriptor.js").UrlDescriptor} descriptor
+     * @param {string} descriptorKey
+     * @param {typeof import("@gmod/bbi").BigWig} BigWig
+     * @param {typeof import("generic-filehandle2").RemoteFile} RemoteFile
+     * @returns {Promise<BigWigHandle>}
+     */
+    async #getOrCreateHandle(descriptor, descriptorKey, BigWig, RemoteFile) {
+        const cachedHandle = this.#handleCache.get(descriptorKey);
+        if (cachedHandle) {
+            return cachedHandle;
+        }
+
+        const bbi = new BigWig({
+            filehandle: new RemoteFile(descriptor.url),
+        });
+        const header = await bbi.getHeader();
+        const reductionLevels = /** @type {{reductionLevel: number}[]} */ (
+            header.zoomLevels
+        )
+            .map((z) => z.reductionLevel)
+            .reverse();
+
+        // Add the non-reduced level. Not sure if this is the best way to do it.
+        // Afaik, the non-reduced bin size is not available in the header.
+        reductionLevels.push(1);
+
+        const handle = {
+            bbi,
+            reductionLevels,
+            fields: descriptor.fields,
+            url: descriptor.url,
+        };
+        this.#handleCache.set(descriptorKey, handle);
+        return handle;
+    }
+
+    /**
      * Listen to the domain change event and update data when the covered windows change.
      *
      * @param {number[]} domain Linearized domain
      */
     async onDomainChanged(domain) {
         await this.initializedPromise;
+
+        if (!this.#handles.length) {
+            this.publishData([]);
+            this.#loadedDescriptorKeys = new Set(this.#descriptorKeys);
+            return;
+        }
 
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
@@ -239,7 +294,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
 
         if (featureChunks) {
             this.publishData(featureChunks);
-            this.#loadedDescriptorSignature = this.#descriptorSignature;
+            this.#loadedDescriptorKeys = new Set(this.#descriptorKeys);
         }
     }
 
@@ -249,7 +304,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
      */
     isDataReadyForDomain(request) {
         return (
-            this.#loadedDescriptorSignature === this.#descriptorSignature &&
+            this.#descriptorKeys.isSubsetOf(this.#loadedDescriptorKeys) &&
             super.isDataReadyForDomain(request)
         );
     }

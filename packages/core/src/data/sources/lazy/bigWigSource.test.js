@@ -7,6 +7,8 @@ import BigWigSource from "./bigWigSource.js";
 const featuresByUrl = new Map();
 /** @type {{ refName: string, start: number, end: number }[]} */
 const requestedIntervals = [];
+/** @type {string[]} */
+const openedUrls = [];
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -22,6 +24,7 @@ vi.mock("@gmod/bbi", () => ({
         /** @param {{ filehandle: { url: string } }} options */
         constructor(options) {
             this.url = options.filehandle.url;
+            openedUrls.push(this.url);
         }
 
         async getHeader() {
@@ -42,7 +45,10 @@ vi.mock("@gmod/bbi", () => ({
     },
 }));
 
-function createViewStub() {
+/**
+ * @param {string[]} initialVisibleSamples
+ */
+function createViewStub(initialVisibleSamples = ["A", "B"]) {
     let domain = [0, 100];
 
     /** @type {any} */
@@ -51,10 +57,10 @@ function createViewStub() {
         () => undefined,
         () => scaleResolution
     );
-    const setVisibleSamples = paramRuntime.allocateSetter("visibleSamples", [
-        "A",
-        "B",
-    ]);
+    const setVisibleSamples = paramRuntime.allocateSetter(
+        "visibleSamples",
+        initialVisibleSamples
+    );
 
     const genome = {
         totalSize: 1000,
@@ -110,8 +116,10 @@ describe("BigWigSource", () => {
     beforeEach(() => {
         featuresByUrl.clear();
         requestedIntervals.length = 0;
+        openedUrls.length = 0;
         featuresByUrl.set("signals/A.bw", [{ start: 1, end: 2, score: 3 }]);
         featuresByUrl.set("signals/B.bw", [{ start: 4, end: 5, score: 6 }]);
+        featuresByUrl.set("signals/C.bw", [{ start: 7, end: 8, score: 9 }]);
     });
 
     afterEach(() => {
@@ -156,7 +164,7 @@ describe("BigWigSource", () => {
             clearTimeout,
         });
 
-        const { view, setDomain, setVisibleSamples } = createViewStub();
+        const { view, setDomain, setVisibleSamples } = createViewStub([]);
         setDomain([100, 200]);
         const source = new BigWigSource(
             {
@@ -186,6 +194,87 @@ describe("BigWigSource", () => {
         });
         expect([...collector.getData()]).toEqual([
             { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
+        ]);
+    });
+
+    it("reloads when restored URL values are cached but not loaded for the current domain", async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal("window", {
+            setTimeout,
+            clearTimeout,
+        });
+
+        const { view, setVisibleSamples } = createViewStub();
+        const source = new BigWigSource(
+            {
+                type: "bigwig",
+                debounceMode: "domain",
+                url: {
+                    template: "signals/{sample}.bw",
+                    values: { expr: "visibleSamples" },
+                    field: "sample",
+                },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100], [1, 1]);
+
+        expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
+        expect(requestedIntervals).toHaveLength(2);
+
+        setVisibleSamples(["B", "A"]);
+        await /** @type {any} */ (source).initializedPromise;
+        await vi.runAllTimersAsync();
+
+        expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
+        expect(requestedIntervals).toHaveLength(2);
+        expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
+
+        setVisibleSamples(["A"]);
+        await /** @type {any} */ (source).initializedPromise;
+        await vi.runAllTimersAsync();
+
+        expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
+        expect(requestedIntervals).toHaveLength(2);
+        expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
+
+        const domainChangePromise = source.onDomainChanged([100, 200]);
+        await vi.runAllTimersAsync();
+        await domainChangePromise;
+
+        expect(requestedIntervals).toHaveLength(3);
+        expect([...collector.getData()]).toEqual([
+            { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
+        ]);
+
+        setVisibleSamples(["A", "B"]);
+        await /** @type {any} */ (source).initializedPromise;
+        await vi.runAllTimersAsync();
+
+        expect(openedUrls).toEqual(["signals/A.bw", "signals/B.bw"]);
+        expect(requestedIntervals).toHaveLength(5);
+        expect([...collector.getData()]).toEqual([
+            { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
+            { sample: "B", chrom: "chr1", start: 4, end: 5, score: 6 },
+        ]);
+
+        setVisibleSamples(["A", "C"]);
+        await /** @type {any} */ (source).initializedPromise;
+        await vi.runAllTimersAsync();
+
+        expect(openedUrls).toEqual([
+            "signals/A.bw",
+            "signals/B.bw",
+            "signals/C.bw",
+        ]);
+        expect(requestedIntervals).toHaveLength(7);
+        expect([...collector.getData()]).toEqual([
+            { sample: "A", chrom: "chr1", start: 1, end: 2, score: 3 },
+            { sample: "C", chrom: "chr1", start: 7, end: 8, score: 9 },
         ]);
     });
 });
