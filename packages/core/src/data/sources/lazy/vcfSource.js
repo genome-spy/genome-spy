@@ -2,31 +2,30 @@ import TabixSource from "./tabixSource.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
 /**
- * @extends {TabixSource<import("./vcfTypes.js").ParsedVariant>}
+ * @extends {TabixSource<import("./vcfTypes.js").ParsedVariant, import("@gmod/vcf").default>}
  */
 export default class VcfSource extends TabixSource {
-    /** @type {import("@gmod/vcf").default} */
-    #tbiVCFParser;
-
     get label() {
         return "vcfSource";
     }
 
     /**
      * @param {string} header
+     * @returns {Promise<import("@gmod/vcf").default>}
      */
-    async _handleHeader(header) {
+    async _createParser(header) {
         const VCFParser = (await import("@gmod/vcf")).default;
         // @ts-ignore - There's something wrong with the type definition
-        this.#tbiVCFParser = new VCFParser({ header });
+        return new VCFParser({ header });
     }
 
     /**
      * @param {string[]} lines
+     * @param {import("@gmod/vcf").default} parser
      */
-    _parseFeatures(lines) {
+    _parseFeatures(lines, parser) {
         return lines.map((line) => {
-            const parsed = this.#tbiVCFParser.parseLine(line);
+            const parsed = parser.parseLine(line);
             delete parsed.GENOTYPES;
             // @ts-ignore
             parsed.SAMPLES = parsed.SAMPLES();

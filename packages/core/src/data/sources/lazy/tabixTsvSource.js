@@ -102,51 +102,53 @@ export function parseTabixTsvLines(lines, columns, parse) {
 }
 
 /**
- * @extends {TabixSource<Record<string, any>>}
+ * @extends {TabixSource<Record<string, any>, string[]>}
  */
 export default class TabixTsvSource extends TabixSource {
-    /** @type {string[] | undefined} */
-    #columns;
-
     get label() {
         return "tabixSource";
     }
 
     /**
      * @param {string} header
+     * @param {import("@gmod/tabix").TabixIndexedFile} tbiIndex
+     * @returns {Promise<string[]>}
      */
-    async _handleHeader(header) {
+    async _createParser(header, tbiIndex) {
         const params =
             /** @type {import("../../../spec/data.js").TabixTsvData} */ (
                 this.params
             );
         const columns = withoutExprRef(params.columns);
-        this.#columns = columns ?? extractTabixTsvColumns(header);
+        let fileColumns = columns ?? extractTabixTsvColumns(header);
 
-        if (!this.#columns?.length) {
-            this.#columns = extractTabixTsvColumnsFromFirstLine(
-                await this._readFilePrefix()
+        if (!fileColumns?.length) {
+            fileColumns = extractTabixTsvColumnsFromFirstLine(
+                await this._readFilePrefix(tbiIndex)
             );
         }
 
-        if (!this.#columns?.length) {
+        if (!fileColumns?.length) {
             throw new Error(
                 "No columns available for Tabix TSV source. Provide data.lazy.columns or a tabix header line such as #chrom\\tstart\\tend, or a plain first row such as chrom\\tstart\\tend."
             );
         }
+
+        return fileColumns;
     }
 
     /**
      * @param {string[]} lines
+     * @param {string[] | undefined} columns
      */
-    _parseFeatures(lines) {
+    _parseFeatures(lines, columns) {
         const params =
             /** @type {import("../../../spec/data.js").TabixTsvData} */ (
                 this.params
             );
         return parseTabixTsvLines(
             lines,
-            this.#columns ?? [],
+            columns ?? [],
             withoutExprRef(params.parse)
         );
     }

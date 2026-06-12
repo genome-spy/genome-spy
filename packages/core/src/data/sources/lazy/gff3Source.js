@@ -2,28 +2,27 @@ import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import TabixSource from "./tabixSource.js";
 
 /**
- * @extends {TabixSource<import("gff-nostream").GFF3Feature>}
+ * @extends {TabixSource<import("gff-nostream").GFF3Feature, import("gff-nostream")>}
  */
 export default class Gff3Source extends TabixSource {
-    /** @type {import("gff-nostream")} */
-    #gff;
-
     get label() {
         return "gff3Source";
     }
 
     /**
      * @param {string} header
+     * @returns {Promise<import("gff-nostream")>}
      */
-    async _handleHeader(header) {
-        this.#gff = await import("gff-nostream");
+    async _createParser(header) {
+        return await import("gff-nostream");
     }
 
     /**
      * @param {string[]} lines
+     * @param {import("gff-nostream")} gff
      */
-    _parseFeatures(lines) {
-        const features = this.#gff?.parseStringSync(lines.join("\n"));
+    _parseFeatures(lines, gff) {
+        const features = gff.parseStringSync(lines.join("\n"));
 
         return features;
     }
