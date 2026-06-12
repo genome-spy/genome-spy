@@ -1859,9 +1859,19 @@ function createVisibleSampleMetadataProxy(
                         cache
                     );
                 } else {
-                    return undefined;
+                    return EMPTY_VISIBLE_SAMPLE_METADATA_VALUES;
                 }
             },
         }
     );
 }
+
+const EMPTY_VISIBLE_SAMPLE_METADATA_VALUES = new Proxy([], {
+    get(target, prop, receiver) {
+        if (prop in target || typeof prop !== "string") {
+            return Reflect.get(target, prop, receiver);
+        }
+
+        return EMPTY_VISIBLE_SAMPLE_METADATA_VALUES;
+    },
+});

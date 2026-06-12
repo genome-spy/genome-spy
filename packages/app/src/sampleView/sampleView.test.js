@@ -225,6 +225,12 @@ describe("SampleView", () => {
             },
         });
         const facetsView = view.findDescendantByName("sample-facets");
+        const initialMetadata = facetsView.paramRuntime.findValue(
+            "visibleSampleMetadata"
+        );
+
+        expect(initialMetadata.patient).toEqual([]);
+        expect(initialMetadata.Clinical.patientId).toEqual([]);
 
         view.provenance.store.dispatch(
             view.actions.setSamples({
