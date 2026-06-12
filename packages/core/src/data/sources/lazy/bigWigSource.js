@@ -118,10 +118,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             baseUrl: this.view.getBaseUrl(),
             paramRuntime: this.paramRuntime,
         });
-        const [{ BigWig }, { RemoteFile }] = await Promise.all([
-            import("@gmod/bbi"),
-            import("generic-filehandle2"),
-        ]);
+        const { BigWig, RemoteFile } = await loadBigWigModules();
 
         try {
             this.setLoadingStatus("loading");
@@ -187,85 +184,40 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         // TODO: Postpone the initial load until layout is computed and remove 700.
         const length = this.scaleResolution.getAxisLength() || 700;
 
-        const reductionLevels = handles.map((handle) =>
+        const selectedReductionLevels = handles.map((handle) =>
             findReductionLevel(domain, length, handle.reductionLevels)
         );
 
         // The sensible minimum window size actually depends on the non-reduced data density...
         // Using 5000 as a default to avoid too many requests.
         const windowSize = Math.max(
-            ...reductionLevels.map((reductionLevel) => reductionLevel * length),
+            ...selectedReductionLevels.map(
+                (reductionLevel) => reductionLevel * length
+            ),
             5000
         );
 
         this.callIfWindowsChanged(domain, windowSize, (quantizedInterval) =>
-            this.loadInterval(quantizedInterval, reductionLevels)
+            this.loadInterval(quantizedInterval, selectedReductionLevels)
         );
     }
 
     /**
      * @param {number[]} interval linearized domain
-     * @param {number[]} reductionLevels
+     * @param {number[]} selectedReductionLevels
      */
     // @ts-expect-error
-    async loadInterval(interval, reductionLevels) {
+    async loadInterval(interval, selectedReductionLevels) {
+        const handles = this.#descriptorState.handles;
         const featureChunks = await this.discretizeAndLoad(interval, {
-            load: async (d, signal) => {
-                const featuresByHandle = await Promise.all(
-                    this.#descriptorState.handles.map((handle, i) => {
-                        const scale =
-                            1 /
-                            2 /
-                            reductionLevels[i] /
-                            withoutExprRef(this.params.pixelsPerBin);
-
-                        return handle.bbi
-                            .getFeatures(d.chrom, d.startPos, d.endPos, {
-                                scale,
-                                signal,
-                            })
-                            .then((features) =>
-                                mapFeatures(d.chrom, features, handle.fields)
-                            );
-                    })
-                );
-
-                return featuresByHandle.flat();
-            },
+            load: (d, signal) =>
+                this.#loadFeatures(d, handles, selectedReductionLevels, signal),
             loadBatch: (intervals, signal) =>
-                Promise.all(
-                    this.#descriptorState.handles.map((handle, handleIndex) => {
-                        const scale =
-                            1 /
-                            2 /
-                            reductionLevels[handleIndex] /
-                            withoutExprRef(this.params.pixelsPerBin);
-
-                        return handle.bbi
-                            .getFeaturesMulti(
-                                intervals.map((d) => ({
-                                    refName: d.chrom,
-                                    start: d.startPos,
-                                    end: d.endPos,
-                                })),
-                                { scale, signal }
-                            )
-                            .then((chunks) =>
-                                chunks.map((features, intervalIndex) =>
-                                    mapFeatures(
-                                        intervals[intervalIndex].chrom,
-                                        features,
-                                        handle.fields
-                                    )
-                                )
-                            );
-                    })
-                ).then((chunksByHandle) =>
-                    intervals.map((_, intervalIndex) =>
-                        chunksByHandle.flatMap(
-                            (chunks) => chunks[intervalIndex]
-                        )
-                    )
+                this.#loadFeatureBatches(
+                    intervals,
+                    handles,
+                    selectedReductionLevels,
+                    signal
                 ),
         });
 
@@ -273,6 +225,84 @@ export default class BigWigSource extends SingleAxisWindowedSource {
             this.publishData(featureChunks);
             this.#descriptorState.markLoaded();
         }
+    }
+
+    /**
+     * @param {import("@genome-spy/core/genome/genome.js").DiscreteChromosomeInterval} interval
+     * @param {BigWigHandle[]} handles
+     * @param {number[]} selectedReductionLevels
+     * @param {AbortSignal} signal
+     */
+    async #loadFeatures(interval, handles, selectedReductionLevels, signal) {
+        const featuresByHandle = await Promise.all(
+            handles.map((handle, i) => {
+                const scale = bigWigScale(
+                    selectedReductionLevels[i],
+                    withoutExprRef(this.params.pixelsPerBin)
+                );
+
+                return handle.bbi
+                    .getFeatures(
+                        interval.chrom,
+                        interval.startPos,
+                        interval.endPos,
+                        {
+                            scale,
+                            signal,
+                        }
+                    )
+                    .then((features) =>
+                        mapFeatures(interval.chrom, features, handle.fields)
+                    );
+            })
+        );
+
+        return featuresByHandle.flat();
+    }
+
+    /**
+     * @param {import("@genome-spy/core/genome/genome.js").DiscreteChromosomeInterval[]} intervals
+     * @param {BigWigHandle[]} handles
+     * @param {number[]} selectedReductionLevels
+     * @param {AbortSignal} signal
+     */
+    async #loadFeatureBatches(
+        intervals,
+        handles,
+        selectedReductionLevels,
+        signal
+    ) {
+        const chunksByHandle = await Promise.all(
+            handles.map((handle, handleIndex) => {
+                const scale = bigWigScale(
+                    selectedReductionLevels[handleIndex],
+                    withoutExprRef(this.params.pixelsPerBin)
+                );
+
+                return handle.bbi
+                    .getFeaturesMulti(
+                        intervals.map((d) => ({
+                            refName: d.chrom,
+                            start: d.startPos,
+                            end: d.endPos,
+                        })),
+                        { scale, signal }
+                    )
+                    .then((chunks) =>
+                        chunks.map((features, intervalIndex) =>
+                            mapFeatures(
+                                intervals[intervalIndex].chrom,
+                                features,
+                                handle.fields
+                            )
+                        )
+                    );
+            })
+        );
+
+        return intervals.map((_, intervalIndex) =>
+            chunksByHandle.flatMap((chunks) => chunks[intervalIndex])
+        );
     }
 
     /**
@@ -296,6 +326,14 @@ function isBigWigSource(params) {
 }
 
 registerBuiltInLazyDataSource(isBigWigSource, BigWigSource);
+
+async function loadBigWigModules() {
+    const [{ BigWig }, { RemoteFile }] = await Promise.all([
+        import("@gmod/bbi"),
+        import("generic-filehandle2"),
+    ]);
+    return { BigWig, RemoteFile };
+}
 
 /**
  * @param {string} chrom
@@ -326,4 +364,12 @@ function findReductionLevel(domain, widthInPixels, reductionLevels) {
     return (
         reductionLevels.find((r) => r < bpPerPixel) ?? reductionLevels.at(-1)
     );
+}
+
+/**
+ * @param {number} reductionLevel
+ * @param {number} pixelsPerBin
+ */
+function bigWigScale(reductionLevel, pixelsPerBin) {
+    return 1 / 2 / reductionLevel / pixelsPerBin;
 }
