@@ -78,6 +78,27 @@ In GenomeSpy App's SampleView, `visibleSamples` is derived from the current
 sample hierarchy. This makes it possible to move from a cohort-level view to
 detailed signal tracks for the currently relevant samples.
 
+SampleView also exposes `visibleSampleMetadata` for metadata-driven partitions.
+Use bracket access for full metadata paths, or dot access for simple
+hierarchical names:
+
+```json title="Example: Eager files partitioned by patient metadata"
+{
+  "data": {
+    "url": {
+      "template": "mutations/{patient}.tsv",
+      "values": { "expr": "visibleSampleMetadata['Clinical/patientId']" },
+      "field": "patient",
+      "maxValues": 20
+    },
+    "format": { "type": "tsv" }
+  }
+}
+```
+
+Duplicate metadata values are allowed. If multiple visible samples belong to
+the same patient, the resolved patient file is loaded once.
+
 This mechanism is intended for focused sets of files, such as tens of signal
 tracks. It is not a good way to display hundreds or thousands of BigWigs at
 once.

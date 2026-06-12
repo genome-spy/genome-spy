@@ -124,6 +124,9 @@ export default class SampleView extends ContainerView {
     /** @type {string[]} */
     #lastVisibleSamples = [];
 
+    /** @type {(value: Record<string, any>) => void} */
+    #visibleSampleMetadataParam;
+
     /** @type {(action: import("@reduxjs/toolkit").PayloadAction<any>) => any} */
     #actionAugmenter;
 
@@ -181,6 +184,10 @@ export default class SampleView extends ContainerView {
         this.#visibleSamplesParam = this.paramRuntime.allocateSetter(
             "visibleSamples",
             []
+        );
+        this.#visibleSampleMetadataParam = this.paramRuntime.allocateSetter(
+            "visibleSampleMetadata",
+            createVisibleSampleMetadataProxy(this.sampleHierarchy, [])
         );
 
         this.getSamples = () => sampleSelector(this.sampleHierarchy);
@@ -558,9 +565,17 @@ export default class SampleView extends ContainerView {
                     this.locationManager.reset();
                     this.sampleGroupView?.updateGroups();
                     this.#updateVisibleSamplesParam();
+                    this.#updateVisibleSampleMetadataParam();
                     this.context.requestLayoutReflow();
                     this.context.animator.requestRender();
                 })
+            )
+        );
+        this.registerDisposer(
+            subscribeTo(
+                this.provenance.store,
+                () => this.sampleHierarchy.sampleMetadata,
+                withMicrotask(() => this.#updateVisibleSampleMetadataParam())
             )
         );
     }
@@ -847,6 +862,19 @@ export default class SampleView extends ContainerView {
 
         this.#lastVisibleSamples = samples;
         this.#visibleSamplesParam(samples);
+    }
+
+    #updateVisibleSampleMetadataParam() {
+        if (!this.#visibleSampleMetadataParam) {
+            return;
+        }
+
+        this.#visibleSampleMetadataParam(
+            createVisibleSampleMetadataProxy(
+                this.sampleHierarchy,
+                this.leafSamples
+            )
+        );
     }
 
     /**
@@ -1770,4 +1798,70 @@ class SampleGridChild extends GridChild {
  */
 function arraysEqual(a, b) {
     return a.length == b.length && a.every((value, i) => value == b[i]);
+}
+
+/**
+ * Creates a lazy object for expressions such as
+ * `visibleSampleMetadata["Clinical/patientId"]` and
+ * `visibleSampleMetadata.Clinical.patientId`.
+ *
+ * @param {import("./state/sampleState.js").SampleHierarchy} sampleHierarchy
+ * @param {string[]} visibleSamples
+ * @param {string} [prefix]
+ * @param {Map<string, any>} [cache]
+ * @returns {Record<string, any>}
+ */
+function createVisibleSampleMetadataProxy(
+    sampleHierarchy,
+    visibleSamples,
+    prefix = "",
+    cache = new Map()
+) {
+    const attributes = sampleHierarchy.sampleMetadata.attributeNames;
+    const entities = sampleHierarchy.sampleMetadata.entities;
+
+    const hasAttributePrefix = (/** @type {string} */ path) =>
+        attributes.some((attribute) => attribute.startsWith(path + "/"));
+
+    const collectValues = (/** @type {string} */ attribute) => {
+        if (cache.has(attribute)) {
+            return cache.get(attribute);
+        }
+
+        const values = [];
+        for (const sampleId of visibleSamples) {
+            const value = entities[sampleId]?.[attribute];
+            if (value !== undefined && value !== null && value !== "") {
+                values.push(value);
+            }
+        }
+
+        cache.set(attribute, values);
+        return values;
+    };
+
+    return new Proxy(
+        {},
+        {
+            get(_target, prop) {
+                if (typeof prop !== "string") {
+                    return undefined;
+                }
+
+                const path = prefix ? prefix + "/" + prop : prop;
+                if (attributes.includes(path)) {
+                    return collectValues(path);
+                } else if (hasAttributePrefix(path)) {
+                    return createVisibleSampleMetadataProxy(
+                        sampleHierarchy,
+                        visibleSamples,
+                        path,
+                        cache
+                    );
+                } else {
+                    return undefined;
+                }
+            },
+        }
+    );
 }
