@@ -14,18 +14,40 @@ import { isExprRef, withoutExprRef } from "../../paramRuntime/paramUtils.js";
 import { concatUrl } from "../../utils/url.js";
 
 /**
+ * @typedef {import("../../spec/channel.js").Scalar} Scalar
+ * @typedef {import("../../spec/data.js").UrlSourceRef} UrlSourceRef
+ * @typedef {import("../../spec/data.js").IndexUrlSourceRef} IndexUrlSourceRef
+ * @typedef {import("../../spec/data.js").UrlTemplate} UrlTemplate
+ * @typedef {import("../../spec/data.js").IndexUrlTemplate} IndexUrlTemplate
+ * @typedef {import("../../spec/parameter.js").ExprRef} ExprRef
+ * @typedef {() => unknown} ExpressionFunction
+ * @typedef {ExpressionFunction & { subscribe?: (listener: () => void) => () => void }} SubscribableExpressionFunction
+ * @typedef {{
+ *     createExpression: (expr: string) => SubscribableExpressionFunction,
+ *     watchExpression?: (
+ *         expr: string,
+ *         listener: () => void,
+ *         options?: {
+ *             scopeOwned?: boolean,
+ *             registerDisposer?: (disposer: () => void) => void
+ *         }
+ *     ) => SubscribableExpressionFunction,
+ * }} UrlExpressionRuntime
+ */
+
+/**
  * @typedef {object} UrlDescriptor
  * @prop {string} url
  * @prop {string} [indexUrl]
- * @prop {Record<string, import("../../spec/channel.js").Scalar>} [fields]
+ * @prop {Record<string, Scalar>} [fields]
  */
 
 /**
  * @typedef {object} UrlDescriptorOptions
- * @prop {any} url
- * @prop {any} [indexUrl]
+ * @prop {UrlSourceRef | unknown} url
+ * @prop {IndexUrlSourceRef | unknown} [indexUrl]
  * @prop {string} [baseUrl]
- * @prop {{ createExpression: (expr: string) => () => any }} [paramRuntime]
+ * @prop {UrlExpressionRuntime} [paramRuntime]
  */
 
 /**
@@ -54,9 +76,9 @@ export async function normalizeUrlDescriptors(options) {
  * `url.values` and therefore are not top-level data source properties.
  *
  * @param {{
- *   url: any,
- *   indexUrl?: any,
- *   paramRuntime: { watchExpression?: Function, createExpression: Function },
+ *   url: UrlSourceRef | unknown,
+ *   indexUrl?: IndexUrlSourceRef | unknown,
+ *   paramRuntime: UrlExpressionRuntime,
  *   listener: () => void,
  *   registerDisposer?: (disposer: () => void) => void,
  * }} options
@@ -84,7 +106,7 @@ export function watchUrlDescriptorExpressions(options) {
  *
  * @template {Record<string, any>} T
  * @param {T} datum
- * @param {Record<string, import("../../spec/channel.js").Scalar>} [fields]
+ * @param {Record<string, Scalar>} [fields]
  * @returns {T}
  */
 export function attachDescriptorFields(datum, fields) {
@@ -109,7 +131,7 @@ export function attachDescriptorFields(datum, fields) {
 /**
  * @template {Record<string, any>} T
  * @param {T[]} data
- * @param {Record<string, import("../../spec/channel.js").Scalar>} [fields]
+ * @param {Record<string, Scalar>} [fields]
  * @returns {T[]}
  */
 export function attachDescriptorFieldsToData(data, fields) {
@@ -119,7 +141,7 @@ export function attachDescriptorFieldsToData(data, fields) {
 }
 
 /**
- * @param {any} urlSpec
+ * @param {UrlSourceRef | unknown} urlSpec
  * @param {UrlDescriptorOptions} options
  * @returns {UrlDescriptor[]}
  */
@@ -140,8 +162,8 @@ function expandUrl(urlSpec, options) {
  * template deliberately reuses the data URL template's `values` and `field` so
  * data/index pairs cannot drift apart.
  *
- * @param {any} templateSpec
- * @param {any} indexUrlSpec
+ * @param {UrlTemplate} templateSpec
+ * @param {IndexUrlSourceRef | unknown} indexUrlSpec
  * @param {UrlDescriptorOptions} options
  * @returns {UrlDescriptor[]}
  */
@@ -175,8 +197,9 @@ function expandTemplate(templateSpec, indexUrlSpec, options) {
 }
 
 /**
- * @param {any} values
+ * @param {UrlTemplate["values"] | unknown} values
  * @param {UrlDescriptorOptions} options
+ * @returns {unknown}
  */
 function resolveValues(values, options) {
     return isExprRef(values)
@@ -185,15 +208,20 @@ function resolveValues(values, options) {
 }
 
 /**
- * @param {any} value
+ * @param {unknown} value
  * @returns {UrlDescriptor}
  */
 function normalizeDescriptor(value) {
     if (typeof value == "string") {
         return { url: value };
     }
-    if (value && typeof value == "object" && typeof value.url == "string") {
-        return value;
+    if (
+        value &&
+        typeof value == "object" &&
+        "url" in value &&
+        typeof value.url == "string"
+    ) {
+        return /** @type {UrlDescriptor} */ (value);
     }
     throw new Error("URL descriptor must be a string or an object with url.");
 }
@@ -201,7 +229,7 @@ function normalizeDescriptor(value) {
 /**
  * @param {string} template
  * @param {string} field
- * @param {import("../../spec/channel.js").Scalar} value
+ * @param {Scalar} value
  */
 function fillTemplate(template, field, value) {
     const placeholder = "{" + field + "}";
@@ -238,8 +266,8 @@ function dedupeAndLimit(descriptors, maxUrls) {
 }
 
 /**
- * @param {any} value
- * @returns {import("../../spec/channel.js").Scalar}
+ * @param {unknown} value
+ * @returns {Scalar}
  */
 function assertScalar(value) {
     if (
@@ -249,25 +277,28 @@ function assertScalar(value) {
     ) {
         throw new Error("URL template values must be scalar in this version.");
     }
-    return value;
+    return /** @type {Scalar} */ (value);
 }
 
 /**
- * @param {any} value
+ * @param {unknown} value
+ * @returns {value is UrlTemplate}
  */
 function isUrlTemplate(value) {
-    return value && typeof value == "object" && "template" in value;
+    return Boolean(value && typeof value == "object" && "template" in value);
 }
 
 /**
- * @param {any} value
+ * @param {unknown} value
+ * @returns {value is IndexUrlTemplate}
  */
 function isIndexTemplate(value) {
-    return value && typeof value == "object" && "template" in value;
+    return Boolean(value && typeof value == "object" && "template" in value);
 }
 
 /**
- * @param {any} value
+ * @param {UrlSourceRef | unknown} value
+ * @returns {number | undefined}
  */
 function getMaxUrls(value) {
     return isUrlTemplate(value) ? value.maxUrls : undefined;
@@ -288,8 +319,9 @@ function requireParamRuntime(options) {
  * descriptors. Expressions in other source properties are handled by the
  * source-specific `activateExprRefProps` wiring.
  *
- * @param {any} url
- * @param {any} indexUrl
+ * @param {UrlSourceRef | unknown} url
+ * @param {IndexUrlSourceRef | unknown} indexUrl
+ * @returns {string[]}
  */
 function collectUrlExpressions(url, indexUrl) {
     const expressions = [];
