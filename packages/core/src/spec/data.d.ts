@@ -469,9 +469,10 @@ export interface BigBedData extends DebouncedData {
     channel?: PrimaryPositionalChannel;
 
     /**
-     * URL of the BigBed file. URL templates must resolve to one URL.
+     * URL of the BigBed file. URL templates and URL descriptor arrays load
+     * multiple BigBed files and attach descriptor fields to loaded rows.
      */
-    url: SingleUrlSourceRef;
+    url: MultiUrlSourceRef;
 
     /**
      * Size of each chunk when fetching the BigBed file. Data is only fetched

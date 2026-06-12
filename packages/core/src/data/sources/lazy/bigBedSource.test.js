@@ -1,9 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import Collector from "../../collector.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
 import BigBedSource from "./bigBedSource.js";
 
 /** @type {string[]} */
 const openedUrls = [];
+/** @type {Map<string, { start: number, end: number, rest: string }[]>} */
+const featuresByUrl = new Map();
+/** @type {{ chrom: string, start: number, end: number }[]} */
+const requestedIntervals = [];
 
 vi.mock("generic-filehandle2", () => ({
     RemoteFile: class RemoteFile {
@@ -17,8 +22,15 @@ vi.mock("generic-filehandle2", () => ({
 
 vi.mock("@gmod/bed", () => ({
     default: class Bed {
-        parseLine() {
-            return {};
+        /** @param {string} line */
+        parseLine(line) {
+            const [chrom, start, end, name] = line.split("\t");
+            return {
+                chrom,
+                chromStart: Number(start),
+                chromEnd: Number(end),
+                name,
+            };
         }
     },
 }));
@@ -33,13 +45,34 @@ vi.mock("@gmod/bbi", () => ({
         async getHeader() {
             return /** @type {{ autoSql: any }} */ ({ autoSql: undefined });
         }
+
+        /**
+         * @param {string} chrom
+         * @param {number} start
+         * @param {number} end
+         */
+        async getFeatures(chrom, start, end) {
+            requestedIntervals.push({ chrom, start, end });
+            return featuresByUrl.get(this.url) ?? [];
+        }
     },
 }));
 
-function createViewStub() {
+/**
+ * @param {string[]} initialVisibleSamples
+ */
+function createViewStub(initialVisibleSamples = ["A", "B"]) {
+    let domain = [0, 100];
+
+    /** @type {any} */
+    let scaleResolution;
     const paramRuntime = new ViewParamRuntime(
         () => undefined,
         () => scaleResolution
+    );
+    const setVisibleSamples = paramRuntime.allocateSetter(
+        "visibleSamples",
+        initialVisibleSamples
     );
 
     const scale = /** @type {any} */ (
@@ -48,19 +81,29 @@ function createViewStub() {
     scale.type = "locus";
     scale.genome = () => ({
         totalSize: 1000,
-        continuousToDiscreteChromosomeIntervals:
-            /** @returns {any[]} */ () => [],
+        continuousToDiscreteChromosomeIntervals: (
+            /** @type {number[]} */ interval
+        ) => [
+            {
+                chrom: "chr1",
+                startPos: interval[0],
+                endPos: interval[1],
+            },
+        ],
     });
 
-    /** @type {any} */
-    const scaleResolution = {
+    scaleResolution = {
         addEventListener: /** @returns {undefined} */ () => undefined,
-        getDomain: () => [0, 100],
+        getDomain: () => domain,
         getScale: () => scale,
     };
 
     return {
         paramRuntime,
+        setVisibleSamples,
+        setDomain: (/** @type {number[]} */ value) => {
+            domain = value;
+        },
         getBaseUrl: () => "https://example.org/spec/",
         getScaleResolution: () => scaleResolution,
         isVisible: () => true,
@@ -76,8 +119,27 @@ function createViewStub() {
 }
 
 describe("BigBedSource", () => {
-    it("opens a single normalized URL descriptor", async () => {
+    beforeEach(() => {
         openedUrls.length = 0;
+        requestedIntervals.length = 0;
+        featuresByUrl.clear();
+        featuresByUrl.set("https://example.org/spec/features/A.bb", [
+            { start: 1, end: 2, rest: "feature A" },
+        ]);
+        featuresByUrl.set("https://example.org/spec/features/B.bb", [
+            { start: 3, end: 4, rest: "feature B" },
+        ]);
+        featuresByUrl.set("https://example.org/spec/features/C.bb", [
+            { start: 5, end: 6, rest: "feature C" },
+        ]);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    it("opens a single normalized URL descriptor", async () => {
         const source = new BigBedSource(
             {
                 type: "bigbed",
@@ -91,17 +153,163 @@ describe("BigBedSource", () => {
         expect(openedUrls).toEqual(["https://example.org/spec/features.bb"]);
     });
 
-    it("rejects multiple resolved URLs explicitly", async () => {
+    it("loads multiple descriptors and tags parsed rows", async () => {
         const source = new BigBedSource(
-            /** @type {any} */ ({
+            {
                 type: "bigbed",
-                url: ["a.bb", "b.bb"],
-            }),
+                debounceMode: "domain",
+                url: {
+                    template: "features/{sample}.bb",
+                    values: ["A", "B"],
+                    field: "sample",
+                },
+            },
             /** @type {any} */ (createViewStub())
         );
+        const collector = new Collector();
+        source.addChild(collector);
 
-        await expect(
-            /** @type {any} */ (source).initializedPromise
-        ).rejects.toThrow("BigBedSource supports exactly one resolved URL.");
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect(openedUrls).toEqual([
+            "https://example.org/spec/features/A.bb",
+            "https://example.org/spec/features/B.bb",
+        ]);
+        expect([...collector.getData()]).toEqual([
+            {
+                sample: "A",
+                chrom: "chr1",
+                chromStart: 1,
+                chromEnd: 2,
+                name: "feature A",
+            },
+            {
+                sample: "B",
+                chrom: "chr1",
+                chromStart: 3,
+                chromEnd: 4,
+                name: "feature B",
+            },
+        ]);
+    });
+
+    it("reloads when restored URL values are cached but not loaded for the current domain", async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal("window", {
+            setTimeout,
+            clearTimeout,
+        });
+
+        const view = createViewStub();
+        const source = new BigBedSource(
+            {
+                type: "bigbed",
+                debounceMode: "domain",
+                url: {
+                    template: "features/{sample}.bb",
+                    values: { expr: "visibleSamples" },
+                    field: "sample",
+                },
+            },
+            /** @type {any} */ (view)
+        );
+        const collector = new Collector();
+        source.addChild(collector);
+
+        await /** @type {any} */ (source).initializedPromise;
+        await source.loadInterval([0, 100]);
+
+        expect(openedUrls).toEqual([
+            "https://example.org/spec/features/A.bb",
+            "https://example.org/spec/features/B.bb",
+        ]);
+        expect(requestedIntervals).toHaveLength(2);
+
+        view.setVisibleSamples(["B", "A"]);
+        await /** @type {any} */ (source).initializedPromise;
+        await vi.runAllTimersAsync();
+
+        expect(openedUrls).toEqual([
+            "https://example.org/spec/features/A.bb",
+            "https://example.org/spec/features/B.bb",
+        ]);
+        expect(requestedIntervals).toHaveLength(2);
+        expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
+
+        view.setVisibleSamples(["A"]);
+        await /** @type {any} */ (source).initializedPromise;
+        await vi.runAllTimersAsync();
+
+        expect(requestedIntervals).toHaveLength(2);
+        expect(source.isDataReadyForDomain({ x: [0, 100] })).toBe(true);
+
+        const domainChangePromise = source.onDomainChanged([100, 200]);
+        await vi.runAllTimersAsync();
+        await domainChangePromise;
+
+        expect(requestedIntervals).toHaveLength(3);
+        expect([...collector.getData()]).toEqual([
+            {
+                sample: "A",
+                chrom: "chr1",
+                chromStart: 1,
+                chromEnd: 2,
+                name: "feature A",
+            },
+        ]);
+
+        view.setVisibleSamples(["A", "B"]);
+        await /** @type {any} */ (source).initializedPromise;
+        await vi.runAllTimersAsync();
+
+        expect(openedUrls).toEqual([
+            "https://example.org/spec/features/A.bb",
+            "https://example.org/spec/features/B.bb",
+        ]);
+        expect(requestedIntervals).toHaveLength(5);
+        expect([...collector.getData()]).toEqual([
+            {
+                sample: "A",
+                chrom: "chr1",
+                chromStart: 1,
+                chromEnd: 2,
+                name: "feature A",
+            },
+            {
+                sample: "B",
+                chrom: "chr1",
+                chromStart: 3,
+                chromEnd: 4,
+                name: "feature B",
+            },
+        ]);
+
+        view.setVisibleSamples(["A", "C"]);
+        await /** @type {any} */ (source).initializedPromise;
+        await vi.runAllTimersAsync();
+
+        expect(openedUrls).toEqual([
+            "https://example.org/spec/features/A.bb",
+            "https://example.org/spec/features/B.bb",
+            "https://example.org/spec/features/C.bb",
+        ]);
+        expect(requestedIntervals).toHaveLength(7);
+        expect([...collector.getData()]).toEqual([
+            {
+                sample: "A",
+                chrom: "chr1",
+                chromStart: 1,
+                chromEnd: 2,
+                name: "feature A",
+            },
+            {
+                sample: "C",
+                chrom: "chr1",
+                chromStart: 5,
+                chromEnd: 6,
+                name: "feature C",
+            },
+        ]);
     });
 });

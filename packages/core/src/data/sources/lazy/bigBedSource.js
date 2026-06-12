@@ -1,20 +1,28 @@
 import {
     activateExprRefProps,
+    isExprRef,
     withoutExprRef,
 } from "../../../paramRuntime/paramUtils.js";
-import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
+import {
+    attachDescriptorFields,
+    normalizeUrlDescriptors,
+    watchUrlDescriptorExpressions,
+} from "../urlDescriptor.js";
+import UrlDescriptorState from "../urlDescriptorState.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 export default class BigBedSource extends SingleAxisWindowedSource {
-    /** @type {import("@gmod/bed").default} */
-    parser;
+    /**
+     * @typedef {object} BigBedHandle
+     * @prop {import("@gmod/bbi").BigBed} bbi
+     * @prop {(chrom: string, fields: { start: number, end: number, rest?: string }) => Record<string, any>} parseLine
+     * @prop {Record<string, import("../../../spec/channel.js").Scalar>} [fields]
+     * @prop {string} url
+     */
 
-    /** @type {import("@gmod/bbi").BigBed} */
-    bbi;
-
-    /** @type {(chrom: string, fields: { start: number, end: number, rest?: string }) => Record<string, any>} */
-    parseLine;
+    /** @type {UrlDescriptorState<BigBedHandle>} */
+    #descriptorState = new UrlDescriptorState();
 
     /**
      * @param {import("../../../spec/data.js").BigBedData} params
@@ -38,7 +46,7 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             paramsWithDefaults,
             (props) => {
                 if (props.has("url")) {
-                    this.#initialize().then(() => this.reloadLastDomain());
+                    this.#reloadIfCurrentDomainNeedsData();
                 } else if (props.has("windowSize")) {
                     this.reloadLastDomain();
                 }
@@ -46,6 +54,19 @@ export default class BigBedSource extends SingleAxisWindowedSource {
             (disposer) => this.registerDisposer(disposer),
             { batchMode: "whenPropagated" }
         );
+
+        if (
+            params.url &&
+            typeof params.url == "object" &&
+            !isExprRef(params.url)
+        ) {
+            watchUrlDescriptorExpressions({
+                url: params.url,
+                paramRuntime: view.paramRuntime,
+                listener: () => this.#reloadIfCurrentDomainNeedsData(),
+                registerDisposer: (disposer) => this.registerDisposer(disposer),
+            });
+        }
 
         if (!this.params.url) {
             throw new Error("No URL provided for BigBedSource");
@@ -61,19 +82,33 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     }
 
     #initialize() {
-        this.initializedPromise = this.#doInitialize();
-        return this.initializedPromise;
+        const initializePromise = this.#doInitialize();
+        this.initializedPromise = initializePromise;
+        return initializePromise;
+    }
+
+    /**
+     * Refreshes active descriptors and reloads the current domain only if the
+     * current loaded data does not cover the new active descriptor set.
+     */
+    async #reloadIfCurrentDomainNeedsData() {
+        await this.#initialize();
+
+        if (
+            !this.isDataReadyForDomain({
+                [this.channel]: this.scaleResolution.getDomain(),
+            })
+        ) {
+            this.reloadLastDomain();
+        }
     }
 
     async #doInitialize() {
-        const descriptor = await normalizeSingleUrlDescriptor(
-            {
-                url: this.params.url,
-                baseUrl: this.view.getBaseUrl(),
-                paramRuntime: this.paramRuntime,
-            },
-            "BigBedSource"
-        );
+        const descriptors = await normalizeUrlDescriptors({
+            url: this.params.url,
+            baseUrl: this.view.getBaseUrl(),
+            paramRuntime: this.paramRuntime,
+        });
         const [bed, { BigBed }, { RemoteFile }] = await Promise.all([
             import("@gmod/bed"),
             import("@gmod/bbi"),
@@ -81,27 +116,13 @@ export default class BigBedSource extends SingleAxisWindowedSource {
         ]);
         const BED = bed.default;
 
-        this.bbi = new BigBed({
-            filehandle: new RemoteFile(descriptor.url),
-        });
-
         try {
             this.setLoadingStatus("loading");
-            const header = await this.bbi.getHeader();
-
-            // @ts-ignore TODO: Fix
-            this.parser = new BED({ autoSql: header.autoSql });
-            try {
-                const fastParser = makeFastParser(this.parser);
-                this.parseLine = (chrom, f) =>
-                    fastParser(chrom, f.start, f.end, f.rest);
-            } catch {
-                this.parseLine = (chrom, f) =>
-                    this.parser.parseLine(
-                        `${chrom}\t${f.start}\t${f.end}\t${f.rest}`
-                    );
-            }
-
+            await this.#descriptorState.update(
+                descriptors,
+                async (descriptor) =>
+                    this.#createHandle(descriptor, BigBed, RemoteFile, BED)
+            );
             this.setLoadingStatus("complete");
         } catch (e) {
             // Load empty data
@@ -112,24 +133,81 @@ export default class BigBedSource extends SingleAxisWindowedSource {
     }
 
     /**
+     * @param {import("../urlDescriptor.js").UrlDescriptor} descriptor
+     * @param {typeof import("@gmod/bbi").BigBed} BigBed
+     * @param {typeof import("generic-filehandle2").RemoteFile} RemoteFile
+     * @param {typeof import("@gmod/bed").default} BED
+     * @returns {Promise<BigBedHandle>}
+     */
+    async #createHandle(descriptor, BigBed, RemoteFile, BED) {
+        const bbi = new BigBed({
+            filehandle: new RemoteFile(descriptor.url),
+        });
+        const header = await bbi.getHeader();
+
+        // @ts-ignore TODO: Fix
+        const parser = new BED({ autoSql: header.autoSql });
+        /** @type {BigBedHandle["parseLine"]} */
+        let parseLine;
+        try {
+            const fastParser = makeFastParser(parser);
+            parseLine = (chrom, f) => fastParser(chrom, f.start, f.end, f.rest);
+        } catch {
+            parseLine = (chrom, f) =>
+                parser.parseLine(`${chrom}\t${f.start}\t${f.end}\t${f.rest}`);
+        }
+
+        return {
+            bbi,
+            parseLine,
+            fields: descriptor.fields,
+            url: descriptor.url,
+        };
+    }
+
+    /**
      * @param {number[]} interval linearized domain
      */
     async loadInterval(interval) {
+        const handles = this.#descriptorState.handles;
         const features = await this.discretizeAndLoad(
             interval,
             async (d, signal) =>
-                this.bbi
-                    .getFeatures(d.chrom, d.startPos, d.endPos, {
-                        signal,
-                    })
-                    .then((features) =>
-                        features.map((f) => this.parseLine(d.chrom, f))
+                (
+                    await Promise.all(
+                        handles.map((handle) =>
+                            handle.bbi
+                                .getFeatures(d.chrom, d.startPos, d.endPos, {
+                                    signal,
+                                })
+                                .then((features) =>
+                                    features.map((f) =>
+                                        attachDescriptorFields(
+                                            handle.parseLine(d.chrom, f),
+                                            handle.fields
+                                        )
+                                    )
+                                )
+                        )
                     )
+                ).flat()
         );
 
         if (features) {
             this.publishData(features);
+            this.#descriptorState.markLoaded();
         }
+    }
+
+    /**
+     * @param {import("./singleAxisLazySource.js").DataReadinessRequest} request
+     * @returns {boolean}
+     */
+    isDataReadyForDomain(request) {
+        return (
+            this.#descriptorState.activeSetLoaded &&
+            super.isDataReadyForDomain(request)
+        );
     }
 }
 
