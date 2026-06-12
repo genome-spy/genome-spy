@@ -26,8 +26,8 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
     /** @type {number[]} */
     #lastQuantizedInterval = [0, 0];
 
-    /** @type {number[]} */
-    #lastDomain = [0, 0];
+    /** @type {number[] | undefined} */
+    #lastDomain;
 
     #lastWindowSize = 0;
 
@@ -91,9 +91,8 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      * @protected
      */
     reloadLastDomain() {
-        const domain = this.#lastDomain;
+        const domain = this.#lastDomain ?? this.scaleResolution.getDomain();
 
-        this.#lastDomain = [0, 0];
         this.#lastQuantizedInterval = [0, 0];
         this._lastLoadedDomain = undefined;
 
