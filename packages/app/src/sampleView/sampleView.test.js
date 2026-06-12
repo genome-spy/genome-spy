@@ -313,8 +313,8 @@ describe("SampleView", () => {
     });
 
     test("uses visibleSampleMetadata to expand eager URL data partitions", async () => {
-        const originalFetch = global.fetch;
-        global.fetch = /** @type {any} */ (
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = /** @type {any} */ (
             vi.fn(async (url) => {
                 if (url == "mutations/P1.tsv") {
                     return new Response("sample\tvalue\nA\t1\nB\t2\n", {
@@ -400,9 +400,9 @@ describe("SampleView", () => {
                 { patient: "P1", sample: "B", value: 2 },
                 { patient: "P2", sample: "C", value: 3 },
             ]);
-            expect(global.fetch).toHaveBeenCalledTimes(2);
+            expect(globalThis.fetch).toHaveBeenCalledTimes(2);
         } finally {
-            global.fetch = originalFetch;
+            globalThis.fetch = originalFetch;
         }
     });
 

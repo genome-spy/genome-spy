@@ -16,5 +16,6 @@ test("point semantic threshold is defined for empty data", async () => {
         UnitView
     );
 
-    expect(view.mark.getSemanticThreshold()).toBe(-1);
+    const mark = /** @type {import("./point.js").default} */ (view.mark);
+    expect(mark.getSemanticThreshold()).toBe(-1);
 });

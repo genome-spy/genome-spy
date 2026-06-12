@@ -280,7 +280,7 @@ describe("viewDataInit", () => {
     test("finalizes graphics before initial data load notifies marks", async () => {
         const context = createTestViewContext();
         context.glHelper = /** @type {any} */ ({
-            createRangeTexture: () => undefined,
+            createRangeTexture: /** @returns {undefined} */ () => undefined,
         });
 
         /** @type {import("../spec/view.js").UnitSpec} */
@@ -297,6 +297,7 @@ describe("viewDataInit", () => {
             throw new Error("Expected a unit view.");
         }
 
+        /** @type {string[]} */
         const events = [];
         const initializeSpy = vi
             .spyOn(root.mark, "initializeGraphics")

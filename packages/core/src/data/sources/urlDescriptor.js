@@ -150,9 +150,8 @@ export function watchUrlDescriptorExpressions(options) {
  * datums are fresh objects, so mutating them avoids per-row cloning while still
  * detecting ambiguous source metadata.
  *
- * @template {Record<string, any>} T
  * @param {Record<string, Scalar>} [fields]
- * @returns {(datum: T) => T}
+ * @returns {(datum: Record<string, any>) => Record<string, any>}
  */
 export function createDescriptorFieldAttacher(fields) {
     if (!fields) {
@@ -199,7 +198,7 @@ export function createDescriptorFieldAttacher(fields) {
  * @returns {T}
  */
 export function attachDescriptorFields(datum, fields) {
-    return createDescriptorFieldAttacher(fields)(datum);
+    return /** @type {T} */ (createDescriptorFieldAttacher(fields)(datum));
 }
 
 /**
@@ -215,7 +214,7 @@ export function attachDescriptorFieldsToData(data, fields) {
 
     const attach = createDescriptorFieldAttacher(fields);
     for (let i = 0; i < data.length; i++) {
-        data[i] = attach(data[i]);
+        data[i] = /** @type {T} */ (attach(data[i]));
     }
     return data;
 }
