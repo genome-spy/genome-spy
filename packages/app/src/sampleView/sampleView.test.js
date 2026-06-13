@@ -1306,6 +1306,47 @@ describe("SampleView", () => {
         expect(view.childCoords.x).toBe(view.getOverhang().left);
     });
 
+    test("does not reserve a sample y-axis lane for an inside axis", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 2 }],
+            },
+            samples: {},
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left", placement: "inside" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(view.childCoords.x).toBe(view.sidebarCoords.x2);
+        expect(view.childCoords.x).toBe(view.getOverhang().left);
+    });
+
     test("drops left spec y-axis overhang before rendering samples below the height threshold", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
