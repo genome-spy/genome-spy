@@ -44,20 +44,27 @@ function findUnitView(axisView, name) {
 }
 
 /**
+ * @param {import("../spec/axis.js").AxisOrient} orient
  * @param {import("../spec/axis.js").Axis} axis
  */
-async function createLeftAxis(axis) {
+async function createAxis(orient, axis) {
+    const channel = orient === "left" || orient === "right" ? "y" : "x";
+    const disabledChannel = channel === "x" ? "y" : "x";
     const { view } = await createHeadlessViewHierarchy(
         {
             data: { values: [{ x: 1, y: 2 }] },
             mark: "point",
             encoding: {
-                x: { field: "x", type: "quantitative", axis: null },
-                y: {
-                    field: "y",
+                [disabledChannel]: {
+                    field: disabledChannel,
+                    type: "quantitative",
+                    axis: null,
+                },
+                [channel]: {
+                    field: channel,
                     type: "quantitative",
                     axis: {
-                        orient: "left",
+                        orient,
                         ...axis,
                     },
                 },
@@ -70,7 +77,14 @@ async function createLeftAxis(axis) {
         }
     );
 
-    return findAxisView(view, "left");
+    return findAxisView(view, orient);
+}
+
+/**
+ * @param {import("../spec/axis.js").Axis} axis
+ */
+async function createLeftAxis(axis) {
+    return createAxis("left", axis);
 }
 
 /**
@@ -119,29 +133,52 @@ describe("axis placement", () => {
         expect(ticks.spec.encoding.x2.value.expr).toContain("* -1");
     });
 
-    test("left inside axis does not reserve external overhang", async () => {
-        const layout = await specToLayout(
-            {
-                data: { values: [{ x: 1, y: 2 }] },
-                mark: "point",
-                encoding: {
-                    x: { field: "x", type: "quantitative", axis: null },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        axis: { orient: "left", placement: "inside" },
+    test("top inside axis mirrors title side into the plot", async () => {
+        const axis = await createAxis("top", {
+            placement: "inside",
+            title: "Signal",
+        });
+        const title = findUnitView(axis, "title");
+
+        expect(title.spec.mark.y).toBe(0);
+        expect(title.spec.mark.baseline).toBe("bottom");
+    });
+
+    test.each(["left", "right", "top", "bottom"])(
+        "%s inside axis does not reserve external overhang",
+        async (orient) => {
+            const channel = orient === "left" || orient === "right" ? "y" : "x";
+            const disabledChannel = channel === "x" ? "y" : "x";
+            const layout = await specToLayout(
+                {
+                    data: { values: [{ x: 1, y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        [disabledChannel]: {
+                            field: disabledChannel,
+                            type: "quantitative",
+                            axis: null,
+                        },
+                        [channel]: {
+                            field: channel,
+                            type: "quantitative",
+                            axis: { orient, placement: "inside" },
+                        },
                     },
                 },
-            },
-            {},
-            Rectangle.create(0, 0, 200, 100)
-        );
+                {},
+                Rectangle.create(0, 0, 200, 100)
+            );
 
-        const plot = findLayoutNode(layout, "grid0");
-        if (!plot?.coords) {
-            throw new Error("Plot layout node not found!");
+            const plot = findLayoutNode(layout, "grid0");
+            if (!plot?.coords) {
+                throw new Error("Plot layout node not found!");
+            }
+
+            expect(readCoord(plot.coords, "x")).toBe(0);
+            expect(readCoord(plot.coords, "y")).toBe(0);
+            expect(readCoord(plot.coords, "width")).toBe(200);
+            expect(readCoord(plot.coords, "height")).toBe(100);
         }
-
-        expect(readCoord(plot.coords, "x")).toBe(0);
-    });
+    );
 });

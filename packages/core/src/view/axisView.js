@@ -470,7 +470,7 @@ function createAxis(axisProps, type) {
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
 
-    const { anchor, offsetDirection } = getAxisGeometry(ap);
+    const { anchor, offsetDirection, tickSide } = getAxisGeometry(ap);
 
     const makeMainDomainDef = () => ({
         field: "value",
@@ -568,9 +568,9 @@ function createAxis(axisProps, type) {
             type: "text",
             clip: false,
             align: "center",
-            baseline: ap.orient == "bottom" ? "bottom" : "top",
+            baseline: tickSide == "bottom" ? "bottom" : "top",
             angle: [0, 90, 0, -90][
-                ["top", "right", "bottom", "left"].indexOf(ap.orient)
+                ["top", "right", "bottom", "left"].indexOf(tickSide)
             ],
             text: ap.title,
             color: ap.titleColor,
