@@ -421,7 +421,22 @@ toggleable layer children may define several axes for the same orient, while
 only one of those layers is visible at a time.
 
 The next refactor should move axis candidate collection and active-axis
-selection into Core so GridView and SampleView use the same rules.
+selection into Core, but the first implementation phase should target the
+minimum requirement: toggleable SampleView children must support axes correctly.
+Ordinary GridView overhang/rendering migration should be treated as a follow-up
+phase after SampleView behavior is evaluated.
+
+Recommended execution order:
+
+1. Collect Core axis candidates.
+2. Add Core active-candidate resolution without changing ordinary GridView
+   behavior.
+3. Expose a small candidate API for SampleView.
+4. Migrate SampleChromeLayout to that API.
+5. Add SampleView toggleable-layer tests.
+6. Stop for evaluation.
+7. Only after evaluation, consider changing ordinary GridView overhang and
+   rendering to use active candidates.
 
 ### Step 1: Introduce Axis Candidate Data In GridChild
 
@@ -470,8 +485,8 @@ from visible candidates:
 
 The tentative arbitration rule should be "last visible candidate wins" because
 that aligns with the current SampleChromeLayout behavior and with topmost layer
-intuition. If this is not acceptable for ordinary GridView, the rule should be
-changed once in Core before SampleView migrates to it.
+intuition. If this does not produce acceptable SampleView behavior, the rule
+should be changed once in Core before SampleView migrates to it.
 
 Multiple visible candidates for the same orient should eventually be surfaced as
 a warning or diagnostic, but the first implementation may only make the rule
@@ -483,7 +498,82 @@ Tentative commit:
 feat(core): resolve active grid axis candidates by visibility
 ```
 
-### Step 3: Switch GridView Overhang To Active Axes
+### Step 3: Expose A Small Axis Candidate API For SampleView
+
+SampleView should not inspect Core internals directly. Add a narrow GridChild
+API that SampleGridChild can pass to SampleChromeLayout, for example:
+
+```js
+getActiveAxisCandidate(orient)
+getActiveAxisCandidates(orient)
+```
+
+If SampleView still needs the selected `sourceView` later, return the active
+candidate rather than only the `AxisView`.
+
+Tentative commit:
+
+```text
+refactor(core): expose active grid axis candidates
+```
+
+### Step 4: Migrate SampleChromeLayout To Core Candidate Resolution
+
+Remove SampleChromeLayout's local candidate filtering/arbitration once Core
+provides equivalent active-axis selection. SampleChromeLayout should ask for the
+active axis or active candidate and then handle only SampleView-specific policy:
+
+- `specYAxis.mode`
+- `minSampleHeight`
+- left/right lane reservation
+- repeated target selection
+- closeup render suppression
+
+This should reduce divergence between GridView and SampleView when toggleable
+layers change visibility.
+
+Tentative commit:
+
+```text
+refactor(app): use core active axis candidates in sample chrome
+```
+
+### Step 5: Add SampleView Toggleable-Layer Tests
+
+Add focused tests for SampleView children that are LayerViews with independent
+y-axes. The tests should cover:
+
+- hidden layer candidates do not reserve a y-axis lane
+- newly visible layer candidates reserve and render a lane
+- undefined y-axis orient follows the Core `left` then `right` fallback
+- explicit `left` and `right` axes can coexist when their source layers are
+  visible
+- if multiple visible candidates compete for the same orient, the documented
+  arbitration rule chooses the rendered/reserved axis
+
+Tentative commit:
+
+```text
+test(app): cover toggleable sample axis candidates
+```
+
+### Stop For Evaluation
+
+Stop here before changing ordinary GridView overhang or rendering behavior.
+
+Evaluate:
+
+- Does SampleView now support toggleable layered axes correctly?
+- Did the Core candidate API stay small and understandable?
+- Does the implementation preserve existing GridView behavior?
+- Are default orient fallback rules still consistent with `CHANNEL_ORIENTS`?
+- Is ambiguity handling acceptable for multiple visible candidates?
+
+If these answers are satisfactory, the minimum requirement is met. The remaining
+steps should be treated as a separate Core behavior migration, not as part of the
+minimum SampleView toggleable-axis work.
+
+### Phase 2 Step 6: Switch GridView Overhang To Active Axes
 
 Change `GridChild.getOverhang()` so axis overhang comes from active candidates,
 not from all created/existing axes. Hidden toggleable layers should no longer
@@ -505,7 +595,7 @@ Tentative commit:
 fix(core): base grid axis overhang on visible candidates
 ```
 
-### Step 4: Switch GridView Rendering To Active Axes
+### Phase 2 Step 7: Switch GridView Rendering To Active Axes
 
 Change GridView axis rendering to render only active candidates. This should
 align rendering with the overhang result from Step 3.
@@ -523,47 +613,7 @@ Tentative commit:
 fix(core): render only active grid axis candidates
 ```
 
-### Step 5: Expose A Small Axis Candidate API For SampleView
-
-SampleView should not inspect Core internals directly. Add a narrow GridChild
-API that SampleGridChild can pass to SampleChromeLayout, for example:
-
-```js
-getActiveAxis(orient)
-getActiveAxisCandidates(orient)
-```
-
-If SampleView still needs the selected `sourceView` later, return the active
-candidate rather than only the `AxisView`.
-
-Tentative commit:
-
-```text
-refactor(core): expose active grid axis candidates
-```
-
-### Step 6: Migrate SampleChromeLayout To Core Candidate Resolution
-
-Remove SampleChromeLayout's local candidate filtering/arbitration once Core
-provides equivalent active-axis selection. SampleChromeLayout should ask for the
-active axis or active candidate and then handle only SampleView-specific policy:
-
-- `specYAxis.mode`
-- `minSampleHeight`
-- left/right lane reservation
-- repeated target selection
-- closeup render suppression
-
-This should reduce divergence between GridView and SampleView when toggleable
-layers change visibility.
-
-Tentative commit:
-
-```text
-refactor(app): use core active axis candidates in sample chrome
-```
-
-### Step 7: Revisit SampleView Layout Preparation
+### Phase 2 Step 8: Revisit SampleView Layout Preparation
 
 After Core axis visibility is shared, re-evaluate the current
 `prepareLayoutSize()` path. It may still be needed because SampleView's y-axis
@@ -586,7 +636,7 @@ Tentative commit:
 refactor(core): formalize prepared layout overhang hook
 ```
 
-### Step 8: Remove Transitional Duplication
+### Phase 2 Step 9: Remove Transitional Duplication
 
 Once GridView and SampleView both use the Core candidate model, remove
 transitional maps or compatibility helpers that duplicate candidate state.
@@ -603,7 +653,7 @@ Tentative commit:
 refactor(core): remove transitional axis candidate paths
 ```
 
-### Step 9: Documentation And Diagnostics
+### Phase 2 Step 10: Documentation And Diagnostics
 
 Document the visibility behavior in developer-facing architecture notes or code
 comments near the Core candidate resolver. User-facing docs probably only need a
