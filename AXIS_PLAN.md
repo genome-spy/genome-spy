@@ -443,6 +443,13 @@ Add an internal candidate structure while preserving the existing public
 active. For ordinary unit axes, this is the child view. For LayerView child axes,
 this is the layer child that owns the axis resolution.
 
+Default orient selection must stay aligned with GridView's current behavior:
+`x` axes prefer `bottom` then `top`, and `y` axes prefer `left` then `right`,
+using `CHANNEL_ORIENTS`. SampleView must not introduce its own orient
+preference. When SampleView migrates to Core axis candidates, child y-axis
+candidates with undefined orient should receive the same left/right fallback
+assignment as ordinary GridView axes.
+
 The first step should collect candidates in `GridChild.createAxes()` without
 changing rendering or overhang behavior.
 
