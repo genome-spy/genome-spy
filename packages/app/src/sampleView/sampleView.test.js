@@ -1351,7 +1351,7 @@ describe("SampleView", () => {
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
     });
 
-    test("reports prepared layout dirty when filtering changes spec y-axis reserve at the same height", async () => {
+    test("invalidates size cache when filtering may change spec y-axis overhang", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
             data: {
@@ -1402,6 +1402,7 @@ describe("SampleView", () => {
 
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
 
+        const invalidateSizeCacheSpy = vi.spyOn(view, "invalidateSizeCache");
         view.provenance.store.dispatch(
             view.actions.filterByNominal({
                 attribute: {
@@ -1422,6 +1423,9 @@ describe("SampleView", () => {
         await Promise.resolve();
         view.sampleGroupView.updateGroups();
 
-        expect(view.prepareLayoutSize(300, view.childCoords.height)).toBe(true);
+        expect(invalidateSizeCacheSpy).toHaveBeenCalled();
+        expect(view.getOverhang().left).toBeGreaterThan(
+            view.sidebarCoords.width
+        );
     });
 });
