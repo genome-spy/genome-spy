@@ -1628,4 +1628,85 @@ describe("SampleView", () => {
 
         expect(renderBSpy).toHaveBeenCalled();
     });
+
+    test("hides a sample y-axis when its ancestor layer is hidden", async () => {
+        let lohVisible = true;
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (candidate) =>
+            candidate.spec.name !== "LOH" || lohVisible;
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 0.5 }],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "middle",
+                minSampleHeight: 1,
+            },
+            // Mirrors imports such as cnv-segments.json where a toggleable
+            // layer wraps the unit view that contributes the y-axis.
+            spec: {
+                height: 160,
+                layer: [
+                    {
+                        name: "LOH",
+                        layer: [
+                            {
+                                name: "loh-bars",
+                                mark: "rect",
+                                encoding: {
+                                    sample: { field: "sample" },
+                                    x: { field: "x", type: "quantitative" },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: { title: "LOH" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec, context });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const axis = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.title === "LOH"
+            );
+        if (!(axis instanceof AxisView)) {
+            throw new Error("Expected LOH y-axis candidate!");
+        }
+
+        const renderSpy = vi.spyOn(axis, "render");
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+        expect(renderSpy).toHaveBeenCalledTimes(1);
+
+        lohVisible = false;
+        renderSpy.mockClear();
+        view.invalidateSizeCache();
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderSpy).not.toHaveBeenCalled();
+    });
 });

@@ -11,6 +11,7 @@ import coalesce from "../utils/coalesce.js";
 
 import mergeObjects from "../utils/mergeObjects.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
+import { isChromeView } from "../view/viewSelectors.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
 
 /**
@@ -95,6 +96,22 @@ export default class AxisResolution {
             invalidate(this, "axisProps");
         }
         return removed;
+    }
+
+    /**
+     * @returns {boolean} True when at least one non-chrome axis-contributing view is visible.
+     */
+    hasVisibleNonChromeMember() {
+        for (const member of this.#members) {
+            if (
+                member.view.isVisible() &&
+                !member.view.getLayoutAncestors().some(isChromeView)
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     getAxisProps() {
