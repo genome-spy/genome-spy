@@ -375,4 +375,32 @@ describe("Axis extent measurement", () => {
 
         expect(implicitSnapshot.extent).toBe(explicitSnapshot.extent);
     });
+
+    test("degenerate quantitative domains do not grow measured y-axis extent", async () => {
+        const context = createBroadcastingTestViewContext();
+        const root = await createAndInitializeRoot(
+            {
+                data: {
+                    values: [{ y: 0 }],
+                },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        scale: { domain: [0, 0] },
+                        axis: { format: ".8f" },
+                    },
+                },
+            },
+            context
+        );
+
+        const axis = findAxisView(root, "left");
+        const initialExtent = axis.getPerpendicularSize();
+
+        await settleLayout(root, context);
+
+        expect(axis.getPerpendicularSize()).toBe(initialExtent);
+    });
 });
