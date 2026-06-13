@@ -47,6 +47,45 @@ export function orient2channel(slot) {
 }
 
 /**
+ * @param {AxisOrient} orient
+ * @returns {AxisOrient}
+ */
+function getOppositeOrient(orient) {
+    switch (orient) {
+        case "left":
+            return "right";
+        case "right":
+            return "left";
+        case "top":
+            return "bottom";
+        case "bottom":
+            return "top";
+        default:
+            throw new Error("Invalid axis orient: " + orient);
+    }
+}
+
+/**
+ * @param {Axis} axisProps
+ */
+function getAxisGeometry(axisProps) {
+    const side = axisProps.orient;
+    const tickSide =
+        axisProps.placement === "inside" ? getOppositeOrient(side) : side;
+
+    const anchor = tickSide == "bottom" || tickSide == "left" ? 1 : 0;
+    const offsetDirection =
+        tickSide == "bottom" || tickSide == "right" ? 1 : -1;
+
+    return {
+        side,
+        tickSide,
+        anchor,
+        offsetDirection,
+    };
+}
+
+/**
  * An internal view that renders an axis.
  *
  * TODO: Implement grid
@@ -377,7 +416,7 @@ function getMeasuredLabelExtent(axisProps, context, labelsView) {
  * @param {Axis} axisProps
  */
 function getDefaultAngleAndAlign(type, axisProps) {
-    const orient = axisProps.orient;
+    const orient = getAxisGeometry(axisProps).tickSide;
     const discrete = type == "nominal" || type == "ordinal";
 
     /** @type {import("../spec/font.js").Align} */
@@ -431,10 +470,7 @@ function createAxis(axisProps, type) {
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
 
-    const offsetDirection =
-        ap.orient == "bottom" || ap.orient == "right" ? 1 : -1;
-
-    const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
+    const { anchor, offsetDirection } = getAxisGeometry(ap);
 
     const makeMainDomainDef = () => ({
         field: "value",
