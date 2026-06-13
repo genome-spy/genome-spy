@@ -259,10 +259,10 @@ export default class AxisView extends LayerView {
 }
 
 /**
- * @param {import("../encoder/encoder.js").VegaScale} scale
+ * @param {import("../types/encoder.js").VegaScale} scale
  */
 function hasDegenerateContinuousDomain(scale) {
-    const domain = scale.domain();
+    const domain = /** @type {unknown[]} */ (scale.domain());
     return (
         isContinuous(scale.type) &&
         domain.length >= 2 &&

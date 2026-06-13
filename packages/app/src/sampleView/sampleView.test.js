@@ -39,6 +39,22 @@ class NoOpRenderingContext extends ViewRenderingContext {
 }
 
 /**
+ * @param {import("./sampleView.js").default} view
+ * @returns {AxisView[]}
+ */
+function getLeftAxisViews(view) {
+    return /** @type {AxisView[]} */ (
+        view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            )
+    );
+}
+
+/**
  * @param {import("@genome-spy/app/spec/sampleView.js").SampleSpec} spec
  * @param {import("./state/sampleState.js").Sample[]} samples
  */
@@ -1498,13 +1514,7 @@ describe("SampleView", () => {
             firstFacet: true,
         });
 
-        const yAxes = view
-            .getDescendants()
-            .filter(
-                (descendant) =>
-                    descendant instanceof AxisView &&
-                    descendant.axisProps.orient === "left"
-            );
+        const yAxes = getLeftAxisViews(view);
 
         expect(yAxes).toHaveLength(2);
         const axisA = yAxes.find((axis) => axis.axisProps.title === "A");
@@ -1593,13 +1603,7 @@ describe("SampleView", () => {
         await Promise.resolve();
         view.sampleGroupView.updateGroups();
 
-        const yAxes = view
-            .getDescendants()
-            .filter(
-                (descendant) =>
-                    descendant instanceof AxisView &&
-                    descendant.axisProps.orient === "left"
-            );
+        const yAxes = getLeftAxisViews(view);
 
         expect(yAxes.map((axis) => axis.axisProps.title)).toEqual(["A", "B"]);
         const axisB = yAxes.find((axis) => axis.axisProps.title === "B");
@@ -1616,7 +1620,9 @@ describe("SampleView", () => {
 
         signalBVisible = true;
         await initializeVisibleViewData(
-            view,
+            /** @type {import("@genome-spy/core/view/view.js").default} */ (
+                /** @type {unknown} */ (view)
+            ),
             context.dataFlow,
             context.fontManager
         );
