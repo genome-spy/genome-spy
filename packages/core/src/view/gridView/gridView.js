@@ -938,7 +938,7 @@ export default class GridView extends ContainerView {
                 }
 
                 queueDecoration(
-                    defaultAxisZindex(axisView.axisProps.zindex, clipped),
+                    defaultAxisZindex(axisView.axisProps, clipped),
                     DECORATION_ORDER.axis,
                     () =>
                         axisView.render(context, translatedCoords, {
@@ -961,7 +961,7 @@ export default class GridView extends ContainerView {
                     (orient == "bottom" && row == grid.nRows - 1)
                 ) {
                     queueDecoration(
-                        defaultAxisZindex(axisView.axisProps.zindex, clipped),
+                        defaultAxisZindex(axisView.axisProps, clipped),
                         DECORATION_ORDER.axis,
                         () =>
                             axisView.render(
@@ -1364,15 +1364,24 @@ function getSeparatorDirections(spec) {
 }
 
 /**
- * Default z-index for axes. Clipped or scrollable content gets a higher
+ * Default z-index for axes. Inside axes default to overlays because they share
+ * plot space with marks. Clipped or scrollable outside axes get a higher
  * default to keep guides above visible edge artifacts.
  *
- * @param {number | undefined} zindex
+ * @param {import("../../spec/axis.js").Axis} axisProps
  * @param {boolean} clipped
  * @returns {number}
  */
-function defaultAxisZindex(zindex, clipped) {
-    return zindex ?? (clipped ? CLIPPED_DECORATION_ZINDEX : 0);
+function defaultAxisZindex(axisProps, clipped) {
+    if (axisProps.zindex !== undefined) {
+        return axisProps.zindex;
+    } else if (axisProps.placement === "inside") {
+        return 1;
+    } else if (clipped) {
+        return CLIPPED_DECORATION_ZINDEX;
+    } else {
+        return 0;
+    }
 }
 
 /**

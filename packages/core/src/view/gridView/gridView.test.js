@@ -537,6 +537,82 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["child", "axis_bottom", "axis_left"]);
     });
 
+    test("defaults inside axes above marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: {
+                                    grid: false,
+                                    placement: "inside",
+                                },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: {
+                                    grid: false,
+                                    placement: "inside",
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["child", "axis_bottom", "axis_left"]
+        );
+
+        expect(order).toEqual(["child", "axis_bottom", "axis_left"]);
+    });
+
+    test("explicit inside axis zindex can render below marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: {
+                                    grid: false,
+                                    placement: "inside",
+                                    zindex: 0,
+                                },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: {
+                                    grid: false,
+                                    placement: "inside",
+                                    zindex: 0,
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["axis_bottom", "axis_left", "child"]
+        );
+
+        expect(order).toEqual(["axis_bottom", "axis_left", "child"]);
+    });
+
     test("defaults clipped axes and view stroke above marks", async () => {
         const order = await recordRenderOrder(
             {
