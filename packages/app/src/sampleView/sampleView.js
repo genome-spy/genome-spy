@@ -742,13 +742,9 @@ export default class SampleView extends ContainerView {
     getOverhang() {
         const sidebarWidth = this.#getSidebarWidth().px ?? 0;
         const locations = this.locationManager.getLocations();
-        const chromeOverhang = new Padding(
-            0,
-            this.#gridChild.sampleChromeLayout.getRightReserve(locations),
-            0,
-            sidebarWidth +
-                this.#gridChild.sampleChromeLayout.getLeftReserve(locations)
-        );
+        const chromeOverhang = this.#gridChild.sampleChromeLayout
+            .getHorizontalReserve(locations)
+            .add(new Padding(0, 0, 0, sidebarWidth));
 
         return chromeOverhang.add(this.#gridChild.getOverhangWithoutYAxes());
     }
@@ -765,24 +761,14 @@ export default class SampleView extends ContainerView {
      */
     prepareLayoutSize(_width, height) {
         const previousLocations = this.locationManager.getLocations();
-        const previousLeft =
-            this.#gridChild.sampleChromeLayout.getLeftReserve(
-                previousLocations
-            );
-        const previousRight =
-            this.#gridChild.sampleChromeLayout.getRightReserve(
-                previousLocations
-            );
 
         this.#preparedLayoutHeight = height;
 
         const nextLocations = this.locationManager.getLocations();
-        const nextLeft =
-            this.#gridChild.sampleChromeLayout.getLeftReserve(nextLocations);
-        const nextRight =
-            this.#gridChild.sampleChromeLayout.getRightReserve(nextLocations);
-
-        return previousLeft !== nextLeft || previousRight !== nextRight;
+        return this.#gridChild.sampleChromeLayout.hasHorizontalReserveChanged(
+            previousLocations,
+            nextLocations
+        );
     }
 
     /**

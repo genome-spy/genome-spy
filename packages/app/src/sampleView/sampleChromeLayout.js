@@ -1,6 +1,7 @@
 // @ts-check
 
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
+import Padding from "@genome-spy/core/view/layout/padding.js";
 
 const DEFAULT_MIN_SAMPLE_HEIGHT = 50;
 
@@ -57,6 +58,33 @@ export default class SampleChromeLayout {
      */
     getRightReserve(locations) {
         return this.#getReserve("right", locations);
+    }
+
+    /**
+     * @param {Locations} [locations]
+     * @returns {Padding}
+     */
+    getHorizontalReserve(locations) {
+        return new Padding(
+            0,
+            this.getRightReserve(locations),
+            0,
+            this.getLeftReserve(locations)
+        );
+    }
+
+    /**
+     * @param {Locations} [previousLocations]
+     * @param {Locations} [nextLocations]
+     * @returns {boolean}
+     */
+    hasHorizontalReserveChanged(previousLocations, nextLocations) {
+        return (
+            this.getLeftReserve(previousLocations) !==
+                this.getLeftReserve(nextLocations) ||
+            this.getRightReserve(previousLocations) !==
+                this.getRightReserve(nextLocations)
+        );
     }
 
     /**
