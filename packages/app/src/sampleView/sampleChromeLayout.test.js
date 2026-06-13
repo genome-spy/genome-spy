@@ -38,7 +38,7 @@ describe("SampleChromeLayout", () => {
         expect(adjusted.width).toBe(224);
     });
 
-    test("does not reserve lanes below the minimum sample height or during peek", () => {
+    test("does not reserve lanes below the minimum sample height", () => {
         const axes = {
             left: createAxisView(30, 2),
         };
@@ -48,14 +48,28 @@ describe("SampleChromeLayout", () => {
             getAxes: () => axes,
             getPeekState: () => 0,
         });
+
+        expect(shortSamples.getLeftReserve(locations)).toBe(0);
+    });
+
+    test("keeps lane reservation but suppresses rendering during peek", () => {
+        const axisView = createAxisView(30, 2);
+        const locations = createLocations(60);
         const peek = new SampleChromeLayout({
             specYAxis: { mode: "middle", minSampleHeight: 50 },
-            getAxes: () => axes,
+            getAxes: () => ({ left: axisView }),
             getPeekState: () => 0.5,
         });
 
-        expect(shortSamples.getLeftReserve(locations)).toBe(0);
-        expect(peek.getLeftReserve(createLocations(60))).toBe(0);
+        expect(peek.getLeftReserve(locations)).toBe(32);
+
+        peek.renderVerticalAxes(
+            /** @type {any} */ ({}),
+            Rectangle.create(50, 100, 200, 120),
+            locations
+        );
+
+        expect(axisView.render).not.toHaveBeenCalled();
     });
 
     test("renders an axis for every eligible sample in all mode", () => {

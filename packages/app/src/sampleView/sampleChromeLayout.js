@@ -79,7 +79,7 @@ export default class SampleChromeLayout {
      * @param {import("@genome-spy/core/types/rendering.js").RenderingOptions} [options]
      */
     renderVerticalAxes(context, plotCoords, locations, options = {}) {
-        if (!this.#isEnabled(locations)) {
+        if (!this.#isEnabled(locations) || this.#getPeekState() !== 0) {
             return;
         }
 
@@ -131,10 +131,6 @@ export default class SampleChromeLayout {
      */
     #isEnabled(locations) {
         if (!this.#specYAxis || this.#specYAxis.mode === "none") {
-            return false;
-        }
-
-        if (this.#getPeekState() !== 0) {
             return false;
         }
 
