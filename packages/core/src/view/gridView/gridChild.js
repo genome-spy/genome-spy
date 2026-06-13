@@ -56,6 +56,18 @@ export default class GridChild {
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} axes */
         this.axes = {};
 
+        /**
+         * @type {{
+         *     axisView: AxisView,
+         *     sourceView: import("../view.js").default,
+         *     channel: import("../../spec/channel.js").PrimaryPositionalChannel,
+         *     orient: import("../../spec/axis.js").AxisOrient,
+         *     resolution: import("../../scales/axisResolution.js").default,
+         *     order: number,
+         * }[]}
+         */
+        this.axisCandidates = [];
+
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
         this.gridLines = {};
 
@@ -645,6 +657,7 @@ export default class GridChild {
         this.disposeAxisViews();
 
         const { view, axes, gridLines } = this;
+        let axisCandidateOrder = 0;
 
         /**
          * @param {import("../../scales/axisResolution.js").default} r
@@ -710,6 +723,14 @@ export default class GridChild {
                     axisParent
                 );
                 axes[props.orient] = axisView;
+                this.axisCandidates.push({
+                    axisView,
+                    sourceView: axisParent,
+                    channel,
+                    orient: props.orient,
+                    resolution: r,
+                    order: axisCandidateOrder++,
+                });
                 await axisView.initializeChildren();
             }
         };
@@ -843,6 +864,7 @@ export default class GridChild {
         }
 
         this.axes = {};
+        this.axisCandidates = [];
         this.gridLines = {};
     }
 
