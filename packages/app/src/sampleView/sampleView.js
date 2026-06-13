@@ -1805,7 +1805,8 @@ class SampleGridChild extends GridChild {
         /** @type {SampleChromeLayout} */
         this.sampleChromeLayout = new SampleChromeLayout({
             specYAxis: layoutParent.spec.specYAxis,
-            getAxes: () => this.axes,
+            getActiveAxisCandidate: (orient) =>
+                this.getActiveAxisCandidate(orient),
             getPeekState: () => layoutParent.locationManager.getPeekState(),
         });
 
@@ -1842,6 +1843,17 @@ class SampleGridChild extends GridChild {
         }
 
         this.summaryViews = summaryViews;
+    }
+
+    /**
+     * SampleView repeats one child view for many sample rows. Its vertical axes
+     * are selected by visibility-aware candidate arbitration instead of the
+     * single-axis-per-orient map used by ordinary GridView rendering.
+     *
+     * @returns {boolean}
+     */
+    allowDuplicateAxes() {
+        return true;
     }
 
     /**

@@ -8,8 +8,6 @@ const DEFAULT_MIN_SAMPLE_HEIGHT = 50;
 /**
  * Coordinates SampleView-specific chrome around the repeated sample pane.
  *
- * The initial implementation is intentionally a no-op boundary. Later steps
- * will add vertical axis lanes without adding that policy to SampleView.
  */
 export default class SampleChromeLayout {
     /**
@@ -21,11 +19,8 @@ export default class SampleChromeLayout {
     /** @type {import("@genome-spy/app/spec/sampleView.js").SpecYAxisDef | undefined} */
     #specYAxis;
 
-    /** @type {() => Partial<Record<"left" | "right", AxisView>>} */
-    #getAxes;
-
-    /** @type {(() => Partial<Record<"left" | "right", AxisCandidate[]>>) | undefined} */
-    #getAxisCandidates;
+    /** @type {(orient: "left" | "right") => AxisCandidate | undefined} */
+    #getActiveAxisCandidate;
 
     /** @type {() => number} */
     #getPeekState;
@@ -33,14 +28,13 @@ export default class SampleChromeLayout {
     /**
      * @param {object} [options]
      * @param {import("@genome-spy/app/spec/sampleView.js").SpecYAxisDef} [options.specYAxis]
-     * @param {() => Partial<Record<"left" | "right", AxisView>>} [options.getAxes]
-     * @param {() => Partial<Record<"left" | "right", AxisCandidate[]>>} [options.getAxisCandidates]
+     * @param {(orient: "left" | "right") => AxisCandidate | undefined} [options.getActiveAxisCandidate]
      * @param {() => number} [options.getPeekState]
      */
     constructor(options = {}) {
         this.#specYAxis = options.specYAxis;
-        this.#getAxes = options.getAxes ?? (() => ({}));
-        this.#getAxisCandidates = options.getAxisCandidates;
+        this.#getActiveAxisCandidate =
+            options.getActiveAxisCandidate ?? (() => undefined);
         this.#getPeekState = options.getPeekState ?? (() => 0);
     }
 
@@ -163,16 +157,7 @@ export default class SampleChromeLayout {
      * @returns {AxisView | undefined}
      */
     #getAxisView(orient) {
-        const candidates = this.#getAxisCandidates?.()[orient];
-        if (candidates) {
-            return candidates
-                .filter((candidate) =>
-                    candidate.sourceView.isConfiguredVisible()
-                )
-                .at(-1)?.axisView;
-        }
-
-        return this.#getAxes()[orient];
+        return this.#getActiveAxisCandidate(orient)?.axisView;
     }
 
     /**

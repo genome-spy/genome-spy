@@ -643,7 +643,9 @@ export default class GridChild {
         if (this.title) {
             yield this.title;
         }
-        yield* Object.values(this.axes);
+        for (const candidate of this.axisCandidates) {
+            yield candidate.axisView;
+        }
         yield* Object.values(this.gridLines);
         yield this.view;
         yield* Object.values(this.scrollbars);
@@ -844,7 +846,10 @@ export default class GridChild {
         }
 
         // Axes are created after scales are resolved, so we need to resolve possible new scales here
-        [...Object.values(axes), ...Object.values(gridLines)].forEach((v) =>
+        [
+            ...this.axisCandidates.map((candidate) => candidate.axisView),
+            ...Object.values(gridLines),
+        ].forEach((v) =>
             v.visit((view) => {
                 if (view instanceof UnitView) {
                     view.resolve("scale");
