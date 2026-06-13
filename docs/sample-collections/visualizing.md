@@ -60,12 +60,6 @@ while the top layer might show single-nucleotide variants.
 }
 ```
 
-!!! warning "Y axis ticks"
-
-    The Y axis ticks are not available in sample views at the moment.
-    Will be fixed at a later time. However, they would not be particularly
-    practical with high number of samples.
-
 !!! note "But we have Band scale?"
 
     Superficially similar results can be achieved by using the
@@ -105,6 +99,22 @@ Configure metadata sources and metadata matrix layout in
 The following properties configure `samples.identity`:
 
 APP_SCHEMA SampleIdentityDef
+
+### Showing sample y-axes
+
+Sample views can show vertical axes for the repeated sample plots when the
+child `spec` defines a y-axis. By default, the axis is repeated for every
+visible sample whose row is tall enough. Dense views hide the axes automatically
+to avoid clutter.
+
+The sample view property that enables and disables this behavior is:
+
+APP_SCHEMA SampleSpec sampleYAxis
+
+When `sampleYAxis` is enabled, the following properties configure how sample
+y-axes are shown:
+
+APP_SCHEMA SampleYAxisDef mode minSampleHeight
 
 ### Adjusting sample labels
 
