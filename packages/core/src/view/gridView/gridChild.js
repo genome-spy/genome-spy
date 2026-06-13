@@ -28,6 +28,15 @@ import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 
+/**
+ * @typedef {{
+ *     axisView: AxisView,
+ *     channel: import("../../spec/channel.js").PrimaryPositionalChannel,
+ *     orient: import("../../spec/axis.js").AxisOrient,
+ *     resolution: import("../../scales/axisResolution.js").default,
+ * }} AxisCandidate
+ */
+
 export default class GridChild {
     /**
      * Users guide:
@@ -55,6 +64,9 @@ export default class GridChild {
 
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} axes */
         this.axes = {};
+
+        /** @type {AxisCandidate[]} */
+        this.axisCandidates = [];
 
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
         this.gridLines = {};
@@ -629,7 +641,9 @@ export default class GridChild {
         if (this.title) {
             yield this.title;
         }
-        yield* Object.values(this.axes);
+        for (const candidate of this.axisCandidates) {
+            yield candidate.axisView;
+        }
         yield* Object.values(this.gridLines);
         yield this.view;
         yield* Object.values(this.scrollbars);
@@ -645,7 +659,6 @@ export default class GridChild {
         this.disposeAxisViews();
 
         const { view, axes, gridLines } = this;
-
         /**
          * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
@@ -696,7 +709,7 @@ export default class GridChild {
             const props = getAxisPropsWithDefaults(r, channel);
 
             if (props) {
-                if (axes[props.orient]) {
+                if (axes[props.orient] && !this.allowDuplicateAxes()) {
                     throw new Error(
                         `An axis with the orient "${props.orient}" already exists!`
                     );
@@ -709,7 +722,13 @@ export default class GridChild {
                     this.layoutParent,
                     axisParent
                 );
-                axes[props.orient] = axisView;
+                axes[props.orient] ??= axisView;
+                this.axisCandidates.push({
+                    axisView,
+                    channel,
+                    orient: props.orient,
+                    resolution: r,
+                });
                 await axisView.initializeChildren();
             }
         };
@@ -821,7 +840,10 @@ export default class GridChild {
         }
 
         // Axes are created after scales are resolved, so we need to resolve possible new scales here
-        [...Object.values(axes), ...Object.values(gridLines)].forEach((v) =>
+        [
+            ...this.axisCandidates.map((candidate) => candidate.axisView),
+            ...Object.values(gridLines),
+        ].forEach((v) =>
             v.visit((view) => {
                 if (view instanceof UnitView) {
                     view.resolve("scale");
@@ -831,11 +853,43 @@ export default class GridChild {
     }
 
     /**
+     * Allows subclasses such as SampleGridChild to keep multiple same-orient
+     * axis candidates. Ordinary GridView behavior still rejects duplicates.
+     *
+     * @protected
+     * @returns {boolean}
+     */
+    allowDuplicateAxes() {
+        return false;
+    }
+
+    /**
+     * @param {import("../../spec/axis.js").AxisOrient} orient
+     * @returns {AxisCandidate | undefined}
+     */
+    getActiveAxisCandidate(orient) {
+        // Later candidates win, matching the existing layer draw order.
+        return this.getActiveAxisCandidates(orient).at(-1);
+    }
+
+    /**
+     * @param {import("../../spec/axis.js").AxisOrient} orient
+     * @returns {AxisCandidate[]}
+     */
+    getActiveAxisCandidates(orient) {
+        return this.axisCandidates.filter(
+            (candidate) =>
+                candidate.orient === orient &&
+                candidate.resolution.hasVisibleNonChromeMember()
+        );
+    }
+
+    /**
      * Disposes axis and gridline views so axes can be recreated safely.
      */
     disposeAxisViews() {
-        for (const axisView of Object.values(this.axes)) {
-            axisView.disposeSubtree();
+        for (const candidate of this.axisCandidates) {
+            candidate.axisView.disposeSubtree();
         }
 
         for (const gridView of Object.values(this.gridLines)) {
@@ -843,6 +897,7 @@ export default class GridChild {
         }
 
         this.axes = {};
+        this.axisCandidates = [];
         this.gridLines = {};
     }
 

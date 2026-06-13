@@ -80,6 +80,7 @@ import {
     resolveSelectionExpansionContext,
 } from "../state/selectionExpansionContext.js";
 import { createSelectionExpansionMenuItem } from "../state/selectionExpansionMenu.js";
+import SampleChromeLayout from "./sampleChromeLayout.js";
 
 /** @type {import("./types.js").AttributeIdentifierType} */
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
@@ -98,6 +99,18 @@ export default class SampleView extends ContainerView {
      * @typedef {import("@genome-spy/core/genome/genome.js").ChromosomalLocus} ChromosomalLocus
      * @typedef {import("@genome-spy/core/data/sources/lazy/singleAxisLazySource.js").DataReadinessRequest} DataReadinessRequest
      */
+
+    /** @type {Rectangle} */
+    childCoords;
+
+    /** @type {Rectangle} */
+    sidebarCoords;
+
+    /** @type {LocationManager} */
+    locationManager;
+
+    /** @type {number} */
+    #preparedLayoutHeight = 0;
 
     /** @type {SampleGridChild} */
     #gridChild;
@@ -514,7 +527,8 @@ export default class SampleView extends ContainerView {
 
         this.locationManager = new LocationManager({
             getSampleHierarchy: () => this.sampleHierarchy,
-            getHeight: () => this.childCoords.height,
+            getHeight: () =>
+                this.#preparedLayoutHeight || this.childCoords.height,
             getSummaryHeight: () =>
                 this.#gridChild?.summaryViews.getSize().height.px,
             onLocationUpdate: ({ sampleHeight }) => {
@@ -563,6 +577,7 @@ export default class SampleView extends ContainerView {
                 () => this.sampleHierarchy.rootGroup,
                 withMicrotask(() => {
                     this.locationManager.reset();
+                    this.invalidateSizeCache();
                     this.sampleGroupView?.updateGroups();
                     this.#updateVisibleSamplesParam();
                     this.#updateVisibleSampleMetadataParam();
@@ -727,9 +742,33 @@ export default class SampleView extends ContainerView {
      */
     getOverhang() {
         const sidebarWidth = this.#getSidebarWidth().px ?? 0;
+        const locations = this.locationManager.getLocations();
+        const chromeOverhang = this.#gridChild.sampleChromeLayout
+            .getHorizontalReserve(locations)
+            .add(new Padding(0, 0, 0, sidebarWidth));
 
-        return new Padding(0, 0, 0, sidebarWidth).add(
-            this.#gridChild.getOverhang()
+        return chromeOverhang.add(this.#gridChild.getOverhangWithoutYAxes());
+    }
+
+    /**
+     * Informs SampleView about the content slot size before GridView queries
+     * overhang. The repeated y-axis threshold depends on fitted sample height,
+     * so relying on the previous render's child coordinates would make y-axis
+     * overhang stale after resize.
+     *
+     * @param {number} _width
+     * @param {number} height
+     * @returns {boolean} `true` when size-dependent horizontal overhang changed.
+     */
+    prepareLayoutSize(_width, height) {
+        const previousLocations = this.locationManager.getLocations();
+
+        this.#preparedLayoutHeight = height;
+
+        const nextLocations = this.locationManager.getLocations();
+        return this.#gridChild.sampleChromeLayout.hasHorizontalReserveChanged(
+            previousLocations,
+            nextLocations
         );
     }
 
@@ -943,7 +982,10 @@ export default class SampleView extends ContainerView {
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
-        const locations = this.locationManager.getLocations();
+        const locations =
+            /** @type {import("./sampleViewTypes.js").Locations} */ (
+                this.locationManager.getLocations()
+            );
 
         const sampleOptions = this.#getSampleRenderOptions(
             locations.samples,
@@ -978,11 +1020,21 @@ export default class SampleView extends ContainerView {
         }
 
         for (const [orient, axisView] of Object.entries(gridChild.axes)) {
+            if (orient === "left" || orient === "right") {
+                continue;
+            }
+
             axisView.render(
                 context,
                 translateAxisCoords(coords, orient, axisView)
             );
         }
+        gridChild.sampleChromeLayout.renderVerticalAxes(
+            context,
+            coords,
+            locations,
+            options
+        );
 
         // Summary rendering --------
 
@@ -1039,7 +1091,7 @@ export default class SampleView extends ContainerView {
             coords = coords.shrink(this.getPadding());
         }
 
-        coords = coords.shrink(this.#gridChild.getOverhang());
+        coords = coords.shrink(this.#gridChild.getOverhangWithoutYAxes());
         // TODO: Should also consider the overhang of the summaries.
 
         context.pushView(this, coords);
@@ -1058,7 +1110,13 @@ export default class SampleView extends ContainerView {
             });
 
         this.sidebarCoords = toColumnCoords(cols[0]);
-        this.childCoords = toColumnCoords(cols[1]);
+        const samplePaneCoords = toColumnCoords(cols[1]);
+        this.childCoords = samplePaneCoords;
+        const locations = this.locationManager.getLocations();
+        this.childCoords = this.#gridChild.sampleChromeLayout.getPlotCoords(
+            samplePaneCoords,
+            locations
+        );
 
         this.#sidebarView.render(context, this.sidebarCoords, options);
 
@@ -1731,7 +1789,7 @@ class ProcessSampleIdentity extends FlowNode {
 class SampleGridChild extends GridChild {
     /**
      * @param {View} view
-     * @param {ContainerView} layoutParent
+     * @param {SampleView} layoutParent
      * @param {number} serial
      * @param {ConcatView} summaryViews
      * @param {import("@genome-spy/core/spec/view.js").ViewBackground} [viewBackgroundSpec]
@@ -1743,6 +1801,14 @@ class SampleGridChild extends GridChild {
         this.groupBackground = undefined;
         /** @type {UnitView} */
         this.groupBackgroundStroke = undefined;
+
+        /** @type {SampleChromeLayout} */
+        this.sampleChromeLayout = new SampleChromeLayout({
+            sampleYAxis: layoutParent.spec.sampleYAxis,
+            getActiveAxisCandidate: (orient) =>
+                this.getActiveAxisCandidate(orient),
+            getPeekState: () => layoutParent.locationManager.getPeekState(),
+        });
 
         const backgroundSpec = createBackground(viewBackgroundSpec);
         if (backgroundSpec) {
@@ -1777,6 +1843,48 @@ class SampleGridChild extends GridChild {
         }
 
         this.summaryViews = summaryViews;
+    }
+
+    /**
+     * SampleView repeats one child view for many sample rows. Its vertical axes
+     * are selected by visibility-aware candidate arbitration instead of the
+     * single-axis-per-orient map used by ordinary GridView rendering.
+     *
+     * @returns {boolean}
+     */
+    allowDuplicateAxes() {
+        return true;
+    }
+
+    /**
+     * SampleView owns repeated y-axis lanes so that they can be placed between
+     * the sidebar and repeated plot. The wrapped GridChild still owns x-axis
+     * overhang and any non-axis overhang from the child view.
+     *
+     * @returns {Padding}
+     */
+    getOverhangWithoutYAxes() {
+        const axisOverhang = (
+            /** @type {import("@genome-spy/core/spec/axis.js").AxisOrient} */ orient
+        ) => {
+            const axisView = this.axes[orient];
+            return axisView
+                ? Math.max(
+                      axisView.getPerpendicularSize() +
+                          (axisView.axisProps.offset ?? 0),
+                      0
+                  )
+                : 0;
+        };
+
+        const verticalAxisOverhang = new Padding(
+            0,
+            axisOverhang("right"),
+            0,
+            axisOverhang("left")
+        );
+
+        return this.getOverhang().subtract(verticalAxisOverhang);
     }
 
     *getChildren() {

@@ -38,6 +38,15 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     sampleLayout?: SampleLayoutDef;
 
     /**
+     * Controls how vertical axes are shown for repeated sample plots.
+     *
+     * Set to `null` to disable sample y-axes.
+     *
+     * __Default value:__ `{"mode": "all", "minSampleHeight": 60}`
+     */
+    sampleYAxis?: SampleYAxisDef | null;
+
+    /**
      * An object defining the view background and outline. The background is
      * repeated for each group.
      */
@@ -58,6 +67,28 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
      * __Default value:__ `true`
      */
     stickySummaries?: boolean;
+}
+
+export type SampleYAxisMode = "all" | "top" | "middle" | "bottom";
+
+export interface SampleYAxisDef {
+    /**
+     * How vertical axes are shown for repeated sample plots.
+     *
+     * - `"all"` shows an axis for every eligible visible sample.
+     * - `"top"`, `"middle"`, and `"bottom"` show one representative axis.
+     *
+     * __Default value:__ `"all"`
+     */
+    mode?: SampleYAxisMode;
+
+    /**
+     * Minimum visible sample height in pixels required before a repeated y-axis
+     * can be shown.
+     *
+     * __Default value:__ `60`
+     */
+    minSampleHeight?: number;
 }
 
 export type SampleAttributeType = "nominal" | "ordinal" | "quantitative";

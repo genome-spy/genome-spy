@@ -1,3 +1,5 @@
+import { isContinuous } from "vega-scale";
+
 import LayerView from "./layerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
@@ -225,6 +227,13 @@ export default class AxisView extends LayerView {
             return;
         }
 
+        if (scaleResolution) {
+            const scale = scaleResolution.getScale();
+            if (hasDegenerateContinuousDomain(scale)) {
+                return;
+            }
+        }
+
         const measuredLabelExtent = getMeasuredLabelExtent(
             this.axisProps,
             this.context,
@@ -247,6 +256,18 @@ export default class AxisView extends LayerView {
         this.invalidateSizeCache();
         this.context.requestLayoutReflow();
     }
+}
+
+/**
+ * @param {import("../types/encoder.js").VegaScale} scale
+ */
+function hasDegenerateContinuousDomain(scale) {
+    const domain = /** @type {unknown[]} */ (scale.domain());
+    return (
+        isContinuous(scale.type) &&
+        domain.length >= 2 &&
+        domain.every((value) => value === domain[0])
+    );
 }
 
 /**

@@ -587,7 +587,7 @@ export default class GridView extends ContainerView {
         const flexOpts = {
             devicePixelRatio,
         };
-        const columnFlexCoords = mapToPixelCoords(
+        let columnFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("column"),
             coords.width,
             flexOpts
@@ -603,6 +603,33 @@ export default class GridView extends ContainerView {
             this.#visibleChildren.length,
             this.#columns ?? Infinity
         );
+
+        let columnLayoutDirty = false;
+        for (const [i, gridChild] of this.#visibleChildren.entries()) {
+            const [col, row] = grid.getCellCoords(i);
+            const colLocSize =
+                columnFlexCoords[this.#getViewSlot("column", col)];
+            const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
+
+            // Some child views have side overhang that depends on the final
+            // row height, such as SampleView's repeated y-axis threshold. Row
+            // slots are known here, but final columns may need one more pass if
+            // a child reports that its height-dependent overhang changed.
+            const layoutChanged =
+                /** @type {{ prepareLayoutSize?: (width: number, height: number) => boolean }} */ (
+                    gridChild.view
+                ).prepareLayoutSize?.(colLocSize.size, rowLocSize.size);
+            columnLayoutDirty ||= layoutChanged === true;
+        }
+
+        if (columnLayoutDirty) {
+            this._invalidateCacheByPrefix("size/directionSizes/column");
+            columnFlexCoords = mapToPixelCoords(
+                this.#makeFlexItems("column"),
+                coords.width,
+                flexOpts
+            );
+        }
 
         /** @param {number} x */
         const round = (x) =>

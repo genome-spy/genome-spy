@@ -12,6 +12,7 @@ import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import Collector from "@genome-spy/core/data/collector.js";
 import UrlSource from "@genome-spy/core/data/sources/urlSource.js";
+import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
@@ -35,6 +36,22 @@ class NoOpRenderingContext extends ViewRenderingContext {
     renderMark() {
         //
     }
+}
+
+/**
+ * @param {import("./sampleView.js").default} view
+ * @returns {AxisView[]}
+ */
+function getLeftAxisViews(view) {
+    return /** @type {AxisView[]} */ (
+        view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            )
+    );
 }
 
 /**
@@ -1189,5 +1206,513 @@ describe("SampleView", () => {
         expect(axisZoomSpy).toHaveBeenCalledTimes(1);
         expect(contentZoomSpy).toHaveBeenCalledTimes(1);
         expect(axisZoomSpy.mock.calls[0]).toEqual(contentZoomSpy.mock.calls[0]);
+    });
+
+    test("does not render vertical spec axes through the pane-level axis path by default", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 2 }],
+            },
+            samples: {},
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const verticalAxisView = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            );
+
+        expect(verticalAxisView).toBeInstanceOf(AxisView);
+        expect(verticalAxisView.coords).toBeUndefined();
+        expect(view.sidebarCoords.x).toBe(0);
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
+    test("reserves a lane between the sidebar and sample plot for a default left sample y-axis", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 2 }],
+            },
+            samples: {},
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const verticalAxisView = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            );
+        if (!(verticalAxisView instanceof AxisView)) {
+            throw new Error("Expected vertical axis view!");
+        }
+
+        const reserve =
+            verticalAxisView.getPerpendicularSize() +
+            (verticalAxisView.axisProps.offset ?? 0);
+
+        expect(view.childCoords.x).toBe(view.sidebarCoords.x2 + reserve);
+        expect(view.childCoords.x).toBe(view.getOverhang().left);
+    });
+
+    test("drops left spec y-axis overhang before rendering samples below the height threshold", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1, y: 2 },
+                    { sample: "B", x: 2, y: 3 },
+                    { sample: "C", x: 3, y: 4 },
+                ],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "all",
+                minSampleHeight: 50,
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                    { id: "C", displayName: "C", indexNumber: 2 },
+                ],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 300), {
+            firstFacet: true,
+        });
+
+        expect(view.getOverhang().left).toBeGreaterThan(
+            view.sidebarCoords.width
+        );
+
+        view.prepareLayoutSize(300, 120);
+
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
+    test("invalidates size cache when filtering may change spec y-axis overhang", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1, y: 2 },
+                    { sample: "B", x: 2, y: 3 },
+                    { sample: "C", x: 3, y: 4 },
+                    { sample: "D", x: 4, y: 5 },
+                ],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "all",
+                minSampleHeight: 50,
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                    { id: "C", displayName: "C", indexNumber: 2 },
+                    { id: "D", displayName: "D", indexNumber: 3 },
+                ],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+
+        const invalidateSizeCacheSpy = vi.spyOn(view, "invalidateSizeCache");
+        view.provenance.store.dispatch(
+            view.actions.filterByNominal({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "keep",
+                },
+                values: ["yes"],
+                [AUGMENTED_KEY]: {
+                    values: {
+                        A: "yes",
+                        B: "no",
+                        C: "no",
+                        D: "no",
+                    },
+                },
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        expect(invalidateSizeCacheSpy).toHaveBeenCalled();
+        expect(view.getOverhang().left).toBeGreaterThan(
+            view.sidebarCoords.width
+        );
+    });
+
+    test("uses the visible layer candidate for a repeated sample y-axis", async () => {
+        /** @type {string | undefined} */
+        let visibleLayerName;
+        const context = createTestViewContext();
+        // Create both axis candidates first, then toggle effective visibility.
+        context.isViewConfiguredVisible = (candidate) =>
+            !["signal-a", "signal-b"].includes(candidate.spec.name) ||
+            !visibleLayerName ||
+            candidate.spec.name === visibleLayerName;
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, a: 2, b: 3 }],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "middle",
+                minSampleHeight: 1,
+            },
+            spec: {
+                height: 160,
+                resolve: {
+                    axis: { y: "independent" },
+                    scale: { y: "independent" },
+                },
+                layer: [
+                    {
+                        name: "signal-a",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                axis: { orient: "left", title: "A" },
+                            },
+                        },
+                    },
+                    {
+                        name: "signal-b",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "b",
+                                type: "quantitative",
+                                axis: { orient: "left", title: "B" },
+                            },
+                        },
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec, context });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        visibleLayerName = "signal-a";
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const yAxes = getLeftAxisViews(view);
+
+        expect(yAxes).toHaveLength(2);
+        const axisA = yAxes.find((axis) => axis.axisProps.title === "A");
+        const axisB = yAxes.find((axis) => axis.axisProps.title === "B");
+        if (!(axisA instanceof AxisView) || !(axisB instanceof AxisView)) {
+            throw new Error("Expected both layer y-axis candidates!");
+        }
+
+        const renderASpy = vi.spyOn(axisA, "render");
+        const renderBSpy = vi.spyOn(axisB, "render");
+
+        expect(axisA.coords).toBeDefined();
+        expect(axisB.coords).toBeUndefined();
+
+        visibleLayerName = "signal-b";
+        renderASpy.mockClear();
+        renderBSpy.mockClear();
+        view.invalidateSizeCache();
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderASpy).not.toHaveBeenCalled();
+        expect(renderBSpy).toHaveBeenCalled();
+    });
+
+    test("renders a repeated y-axis when an initially hidden layer becomes visible", async () => {
+        let signalBVisible = false;
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (candidate) =>
+            candidate.spec.name !== "signal-b" || signalBVisible;
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, a: 2, b: 3 }],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "middle",
+                minSampleHeight: 1,
+            },
+            spec: {
+                height: 160,
+                resolve: {
+                    axis: { y: "independent" },
+                    scale: { y: "independent" },
+                },
+                layer: [
+                    {
+                        name: "signal-a",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                axis: { orient: "left", title: "A" },
+                            },
+                        },
+                    },
+                    {
+                        name: "signal-b",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "b",
+                                type: "quantitative",
+                                axis: { orient: "left", title: "B" },
+                            },
+                        },
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec, context });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const yAxes = getLeftAxisViews(view);
+
+        expect(yAxes.map((axis) => axis.axisProps.title)).toEqual(["A", "B"]);
+        const axisB = yAxes.find((axis) => axis.axisProps.title === "B");
+        if (!(axisB instanceof AxisView)) {
+            throw new Error("Expected initially hidden layer axis!");
+        }
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(axisB.coords).toBeUndefined();
+
+        signalBVisible = true;
+        await initializeVisibleViewData(
+            /** @type {import("@genome-spy/core/view/view.js").default} */ (
+                /** @type {unknown} */ (view)
+            ),
+            context.dataFlow,
+            context.fontManager
+        );
+
+        const renderBSpy = vi.spyOn(axisB, "render");
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderBSpy).toHaveBeenCalled();
+    });
+
+    test("hides a sample y-axis when its ancestor layer is hidden", async () => {
+        let lohVisible = true;
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (candidate) =>
+            candidate.spec.name !== "LOH" || lohVisible;
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 0.5 }],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "middle",
+                minSampleHeight: 1,
+            },
+            // Mirrors imports such as cnv-segments.json where a toggleable
+            // layer wraps the unit view that contributes the y-axis.
+            spec: {
+                height: 160,
+                layer: [
+                    {
+                        name: "LOH",
+                        layer: [
+                            {
+                                name: "loh-bars",
+                                mark: "rect",
+                                encoding: {
+                                    sample: { field: "sample" },
+                                    x: { field: "x", type: "quantitative" },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: { title: "LOH" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec, context });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const axis = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.title === "LOH"
+            );
+        if (!(axis instanceof AxisView)) {
+            throw new Error("Expected LOH y-axis candidate!");
+        }
+
+        const renderSpy = vi.spyOn(axis, "render");
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+        expect(renderSpy).toHaveBeenCalledTimes(1);
+
+        lohVisible = false;
+        renderSpy.mockClear();
+        view.invalidateSizeCache();
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderSpy).not.toHaveBeenCalled();
     });
 });

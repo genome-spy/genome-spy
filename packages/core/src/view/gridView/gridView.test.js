@@ -4,6 +4,7 @@ import ConcatView from "../concatView.js";
 import Interaction from "../../utils/interaction.js";
 import Rectangle from "../layout/rectangle.js";
 import Point from "../layout/point.js";
+import Padding from "../layout/padding.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
@@ -47,6 +48,17 @@ const makeUnitSpec = () => ({
     encoding: {
         x: { field: "x", type: "quantitative" },
         y: { field: "y", type: "quantitative" },
+    },
+});
+
+/**
+ * @returns {import("../../spec/view.js").UnitSpec}
+ */
+const makeUnitSpecWithoutAxes = () => ({
+    ...makeUnitSpec(),
+    encoding: {
+        x: { field: "x", type: "quantitative", axis: null },
+        y: { field: "y", type: "quantitative", axis: null },
     },
 });
 
@@ -215,6 +227,17 @@ describe("GridView separators", () => {
         });
     };
 
+    /**
+     * @param {import("../concatView.js").default} view
+     * @param {number} height
+     */
+    const renderForLayoutHeight = (view, height) => {
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, height), {
+            firstFacet: true,
+        });
+    };
+
     test("vconcat draws only horizontal separators", async () => {
         const view = await createAndInitialize(
             {
@@ -234,6 +257,44 @@ describe("GridView separators", () => {
 
         expect(horizontalCount).toBe(1);
         expect(verticalCount).toBe(0);
+    });
+
+    test("vconcat recomputes column alignment after preparing height-dependent child overhang", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [makeUnitSpecWithoutAxes(), makeUnitSpecWithoutAxes()],
+            },
+            ConcatView
+        );
+        const heightDependentChild = /** @type {UnitView & {
+            prepareLayoutSize: (width: number, height: number) => boolean
+        }} */ (view.children[1]);
+
+        let preparedHeight = 0;
+        heightDependentChild.prepareLayoutSize = (_width, height) => {
+            const previousReserve = preparedHeight >= 50 ? 30 : 0;
+            preparedHeight = height;
+            const nextReserve = preparedHeight >= 50 ? 30 : 0;
+            return previousReserve !== nextReserve;
+        };
+        heightDependentChild.getOverhang = () =>
+            new Padding(0, 0, 0, preparedHeight >= 50 ? 30 : 0);
+        view._invalidateCacheByPrefix("size");
+
+        renderForLayoutHeight(view, 300);
+
+        expect(preparedHeight).toBeGreaterThan(50);
+        expect(
+            heightDependentChild.coords.x +
+                heightDependentChild.getOverhang().left
+        ).toBe(30);
+
+        renderForLayoutHeight(view, 80);
+
+        expect(
+            heightDependentChild.coords.x +
+                heightDependentChild.getOverhang().left
+        ).toBe(0);
     });
 
     test("child width params shadow the parent width in hconcat layouts", async () => {
