@@ -100,6 +100,15 @@ export default class SampleView extends ContainerView {
      * @typedef {import("@genome-spy/core/data/sources/lazy/singleAxisLazySource.js").DataReadinessRequest} DataReadinessRequest
      */
 
+    /** @type {Rectangle} */
+    childCoords;
+
+    /** @type {Rectangle} */
+    sidebarCoords;
+
+    /** @type {LocationManager} */
+    locationManager;
+
     /** @type {SampleGridChild} */
     #gridChild;
 
@@ -944,7 +953,10 @@ export default class SampleView extends ContainerView {
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
-        const locations = this.locationManager.getLocations();
+        const locations =
+            /** @type {import("./sampleViewTypes.js").Locations} */ (
+                this.locationManager.getLocations()
+            );
 
         const sampleOptions = this.#getSampleRenderOptions(
             locations.samples,
@@ -1068,7 +1080,13 @@ export default class SampleView extends ContainerView {
             });
 
         this.sidebarCoords = toColumnCoords(cols[0]);
-        this.childCoords = toColumnCoords(cols[1]);
+        const samplePaneCoords = toColumnCoords(cols[1]);
+        this.childCoords = samplePaneCoords;
+        const locations = this.locationManager.getLocations();
+        this.childCoords = this.#gridChild.sampleChromeLayout.getPlotCoords(
+            samplePaneCoords,
+            locations
+        );
 
         this.#sidebarView.render(context, this.sidebarCoords, options);
 
@@ -1741,7 +1759,7 @@ class ProcessSampleIdentity extends FlowNode {
 class SampleGridChild extends GridChild {
     /**
      * @param {View} view
-     * @param {ContainerView} layoutParent
+     * @param {SampleView} layoutParent
      * @param {number} serial
      * @param {ConcatView} summaryViews
      * @param {import("@genome-spy/core/spec/view.js").ViewBackground} [viewBackgroundSpec]
@@ -1755,7 +1773,11 @@ class SampleGridChild extends GridChild {
         this.groupBackgroundStroke = undefined;
 
         /** @type {SampleChromeLayout} */
-        this.sampleChromeLayout = new SampleChromeLayout();
+        this.sampleChromeLayout = new SampleChromeLayout({
+            specYAxis: layoutParent.spec.specYAxis,
+            getAxes: () => this.axes,
+            getPeekState: () => layoutParent.locationManager.getPeekState(),
+        });
 
         const backgroundSpec = createBackground(viewBackgroundSpec);
         if (backgroundSpec) {

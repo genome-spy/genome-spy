@@ -1230,4 +1230,63 @@ describe("SampleView", () => {
         expect(verticalAxisView).toBeInstanceOf(AxisView);
         expect(verticalAxisView.coords).toBeUndefined();
     });
+
+    test("reserves a lane between the sidebar and sample plot for an enabled left spec y-axis", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 2 }],
+            },
+            samples: {},
+            specYAxis: {
+                mode: "middle",
+                minSampleHeight: 1,
+            },
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const verticalAxisView = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            );
+        if (!(verticalAxisView instanceof AxisView)) {
+            throw new Error("Expected vertical axis view!");
+        }
+
+        const reserve =
+            verticalAxisView.getPerpendicularSize() +
+            (verticalAxisView.axisProps.offset ?? 0);
+
+        expect(view.childCoords.x).toBe(view.sidebarCoords.x2 + reserve);
+    });
 });
