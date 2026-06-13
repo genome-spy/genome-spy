@@ -12,6 +12,7 @@ import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import Collector from "@genome-spy/core/data/collector.js";
 import UrlSource from "@genome-spy/core/data/sources/urlSource.js";
+import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
@@ -1348,5 +1349,79 @@ describe("SampleView", () => {
         view.prepareLayoutSize(300, 120);
 
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
+    test("reports prepared layout dirty when filtering changes spec y-axis reserve at the same height", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1, y: 2 },
+                    { sample: "B", x: 2, y: 3 },
+                    { sample: "C", x: 3, y: 4 },
+                    { sample: "D", x: 4, y: 5 },
+                ],
+            },
+            samples: {},
+            specYAxis: {
+                mode: "all",
+                minSampleHeight: 50,
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                    { id: "C", displayName: "C", indexNumber: 2 },
+                    { id: "D", displayName: "D", indexNumber: 3 },
+                ],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+
+        view.provenance.store.dispatch(
+            view.actions.filterByNominal({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "keep",
+                },
+                values: ["yes"],
+                [AUGMENTED_KEY]: {
+                    values: {
+                        A: "yes",
+                        B: "no",
+                        C: "no",
+                        D: "no",
+                    },
+                },
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        expect(view.prepareLayoutSize(300, view.childCoords.height)).toBe(true);
     });
 });

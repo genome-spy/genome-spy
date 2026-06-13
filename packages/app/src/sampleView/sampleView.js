@@ -112,6 +112,11 @@ export default class SampleView extends ContainerView {
     /** @type {number} */
     #preparedLayoutHeight = 0;
 
+    // A hierarchy reset discards the location state that would reveal how the
+    // parent GridView's cached column overhang differs from the next render.
+    /** @type {boolean} */
+    #sizeDependentOverhangDirty = false;
+
     /** @type {SampleGridChild} */
     #gridChild;
 
@@ -577,6 +582,7 @@ export default class SampleView extends ContainerView {
                 () => this.sampleHierarchy.rootGroup,
                 withMicrotask(() => {
                     this.locationManager.reset();
+                    this.#sizeDependentOverhangDirty = true;
                     this.sampleGroupView?.updateGroups();
                     this.#updateVisibleSamplesParam();
                     this.#updateVisibleSampleMetadataParam();
@@ -765,10 +771,16 @@ export default class SampleView extends ContainerView {
         this.#preparedLayoutHeight = height;
 
         const nextLocations = this.locationManager.getLocations();
-        return this.#gridChild.sampleChromeLayout.hasHorizontalReserveChanged(
-            previousLocations,
-            nextLocations
-        );
+        const changed =
+            this.#sizeDependentOverhangDirty ||
+            this.#gridChild.sampleChromeLayout.hasHorizontalReserveChanged(
+                previousLocations,
+                nextLocations
+            );
+
+        this.#sizeDependentOverhangDirty = false;
+
+        return changed;
     }
 
     /**
