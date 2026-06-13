@@ -1428,4 +1428,110 @@ describe("SampleView", () => {
             view.sidebarCoords.width
         );
     });
+
+    test("uses the visible layer candidate for a repeated sample y-axis", async () => {
+        /** @type {string | undefined} */
+        let visibleLayerName;
+        const context = createTestViewContext();
+        // Create both axis candidates first, then toggle effective visibility.
+        context.isViewConfiguredVisible = (candidate) =>
+            !["signal-a", "signal-b"].includes(candidate.spec.name) ||
+            !visibleLayerName ||
+            candidate.spec.name === visibleLayerName;
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, a: 2, b: 3 }],
+            },
+            samples: {},
+            specYAxis: {
+                mode: "middle",
+                minSampleHeight: 1,
+            },
+            spec: {
+                height: 160,
+                resolve: {
+                    axis: { y: "independent" },
+                    scale: { y: "independent" },
+                },
+                layer: [
+                    {
+                        name: "signal-a",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                axis: { orient: "left", title: "A" },
+                            },
+                        },
+                    },
+                    {
+                        name: "signal-b",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "b",
+                                type: "quantitative",
+                                axis: { orient: "left", title: "B" },
+                            },
+                        },
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec, context });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+
+        visibleLayerName = "signal-a";
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const yAxes = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            );
+
+        expect(yAxes).toHaveLength(2);
+        const axisA = yAxes.find((axis) => axis.axisProps.title === "A");
+        const axisB = yAxes.find((axis) => axis.axisProps.title === "B");
+        if (!(axisA instanceof AxisView) || !(axisB instanceof AxisView)) {
+            throw new Error("Expected both layer y-axis candidates!");
+        }
+
+        const renderASpy = vi.spyOn(axisA, "render");
+        const renderBSpy = vi.spyOn(axisB, "render");
+
+        expect(axisA.coords).toBeDefined();
+        expect(axisB.coords).toBeUndefined();
+
+        visibleLayerName = "signal-b";
+        renderASpy.mockClear();
+        renderBSpy.mockClear();
+        view.invalidateSizeCache();
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderASpy).not.toHaveBeenCalled();
+        expect(renderBSpy).toHaveBeenCalled();
+    });
 });
