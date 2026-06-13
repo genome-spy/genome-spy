@@ -38,6 +38,14 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     sampleLayout?: SampleLayoutDef;
 
     /**
+     * Controls how vertical axes from the repeated `spec` child are shown for
+     * visible samples.
+     *
+     * If omitted, repeated child y-axes are not shown by SampleView.
+     */
+    specYAxis?: SpecYAxisDef;
+
+    /**
      * An object defining the view background and outline. The background is
      * repeated for each group.
      */
@@ -58,6 +66,29 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
      * __Default value:__ `true`
      */
     stickySummaries?: boolean;
+}
+
+export type SpecYAxisMode = "none" | "all" | "top" | "middle" | "bottom";
+
+export interface SpecYAxisDef {
+    /**
+     * How vertical axes from the repeated `spec` child are shown.
+     *
+     * - `"none"` hides repeated y-axes.
+     * - `"all"` shows an axis for every eligible visible sample.
+     * - `"top"`, `"middle"`, and `"bottom"` show one representative axis.
+     *
+     * __Default value:__ `"none"`
+     */
+    mode?: SpecYAxisMode;
+
+    /**
+     * Minimum visible sample height in pixels required before a repeated y-axis
+     * can be shown.
+     *
+     * __Default value:__ `50`
+     */
+    minSampleHeight?: number;
 }
 
 export type SampleAttributeType = "nominal" | "ordinal" | "quantitative";
