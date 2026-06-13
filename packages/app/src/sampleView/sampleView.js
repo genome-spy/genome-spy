@@ -109,6 +109,9 @@ export default class SampleView extends ContainerView {
     /** @type {LocationManager} */
     locationManager;
 
+    /** @type {number} */
+    #preparedLayoutHeight = 0;
+
     /** @type {SampleGridChild} */
     #gridChild;
 
@@ -524,7 +527,8 @@ export default class SampleView extends ContainerView {
 
         this.locationManager = new LocationManager({
             getSampleHierarchy: () => this.sampleHierarchy,
-            getHeight: () => this.childCoords.height,
+            getHeight: () =>
+                this.#preparedLayoutHeight || this.childCoords.height,
             getSummaryHeight: () =>
                 this.#gridChild?.summaryViews.getSize().height.px,
             onLocationUpdate: ({ sampleHeight }) => {
@@ -747,6 +751,19 @@ export default class SampleView extends ContainerView {
         );
 
         return chromeOverhang.add(this.#gridChild.getOverhangWithoutYAxes());
+    }
+
+    /**
+     * Informs SampleView about the content slot size before GridView queries
+     * overhang. The repeated y-axis threshold depends on fitted sample height,
+     * so relying on the previous render's child coordinates would make y-axis
+     * overhang stale after resize.
+     *
+     * @param {number} _width
+     * @param {number} height
+     */
+    prepareLayoutSize(_width, height) {
+        this.#preparedLayoutHeight = height;
     }
 
     /**

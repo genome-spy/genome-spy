@@ -631,6 +631,10 @@ export default class GridView extends ContainerView {
             const viewportSize = view.getViewportSize();
             const viewSize = view.getSize();
 
+            /** @type {{ prepareLayoutSize?: (width: number, height: number) => void }} */ (
+                view
+            ).prepareLayoutSize?.(colLocSize.size, rowLocSize.size);
+
             const overhang = view.getOverhang();
 
             const x = colLocSize.location - overhang.left;
