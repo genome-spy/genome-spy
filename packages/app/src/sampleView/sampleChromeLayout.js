@@ -13,7 +13,7 @@ const DEFAULT_MODE = "all";
 export default class SampleChromeLayout {
     /**
      * @typedef {import("@genome-spy/core/view/axisView.js").default} AxisView
-     * @typedef {{ axisView: AxisView, sourceView: { isConfiguredVisible: () => boolean } }} AxisCandidate
+     * @typedef {{ axisView: AxisView }} AxisCandidate
      * @typedef {import("./sampleViewTypes.js").Locations} Locations
      */
 

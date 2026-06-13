@@ -222,8 +222,5 @@ function leftCandidate(axisView) {
 function createCandidate(axisView) {
     return {
         axisView,
-        sourceView: {
-            isConfiguredVisible: () => true,
-        },
     };
 }

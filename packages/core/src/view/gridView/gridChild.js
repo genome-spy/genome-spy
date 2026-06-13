@@ -31,11 +31,9 @@ import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 /**
  * @typedef {{
  *     axisView: AxisView,
- *     sourceView: import("../view.js").default,
  *     channel: import("../../spec/channel.js").PrimaryPositionalChannel,
  *     orient: import("../../spec/axis.js").AxisOrient,
  *     resolution: import("../../scales/axisResolution.js").default,
- *     order: number,
  * }} AxisCandidate
  */
 
@@ -661,8 +659,6 @@ export default class GridChild {
         this.disposeAxisViews();
 
         const { view, axes, gridLines } = this;
-        let axisCandidateOrder = 0;
-
         /**
          * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
@@ -729,11 +725,9 @@ export default class GridChild {
                 axes[props.orient] ??= axisView;
                 this.axisCandidates.push({
                     axisView,
-                    sourceView: axisParent,
                     channel,
                     orient: props.orient,
                     resolution: r,
-                    order: axisCandidateOrder++,
                 });
                 await axisView.initializeChildren();
             }
@@ -874,6 +868,7 @@ export default class GridChild {
      * @returns {AxisCandidate | undefined}
      */
     getActiveAxisCandidate(orient) {
+        // Later candidates win, matching the existing layer draw order.
         return this.getActiveAxisCandidates(orient).at(-1);
     }
 
