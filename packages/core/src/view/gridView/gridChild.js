@@ -28,6 +28,17 @@ import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 
+/**
+ * @typedef {{
+ *     axisView: AxisView,
+ *     sourceView: import("../view.js").default,
+ *     channel: import("../../spec/channel.js").PrimaryPositionalChannel,
+ *     orient: import("../../spec/axis.js").AxisOrient,
+ *     resolution: import("../../scales/axisResolution.js").default,
+ *     order: number,
+ * }} AxisCandidate
+ */
+
 export default class GridChild {
     /**
      * Users guide:
@@ -56,16 +67,7 @@ export default class GridChild {
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} axes */
         this.axes = {};
 
-        /**
-         * @type {{
-         *     axisView: AxisView,
-         *     sourceView: import("../view.js").default,
-         *     channel: import("../../spec/channel.js").PrimaryPositionalChannel,
-         *     orient: import("../../spec/axis.js").AxisOrient,
-         *     resolution: import("../../scales/axisResolution.js").default,
-         *     order: number,
-         * }[]}
-         */
+        /** @type {AxisCandidate[]} */
         this.axisCandidates = [];
 
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
@@ -709,7 +711,7 @@ export default class GridChild {
             const props = getAxisPropsWithDefaults(r, channel);
 
             if (props) {
-                if (axes[props.orient]) {
+                if (axes[props.orient] && !this.allowDuplicateAxes()) {
                     throw new Error(
                         `An axis with the orient "${props.orient}" already exists!`
                     );
@@ -722,7 +724,7 @@ export default class GridChild {
                     this.layoutParent,
                     axisParent
                 );
-                axes[props.orient] = axisView;
+                axes[props.orient] ??= axisView;
                 this.axisCandidates.push({
                     axisView,
                     sourceView: axisParent,
@@ -852,11 +854,42 @@ export default class GridChild {
     }
 
     /**
+     * Allows subclasses such as SampleGridChild to keep multiple same-orient
+     * axis candidates. Ordinary GridView behavior still rejects duplicates.
+     *
+     * @protected
+     * @returns {boolean}
+     */
+    allowDuplicateAxes() {
+        return false;
+    }
+
+    /**
+     * @param {import("../../spec/axis.js").AxisOrient} orient
+     * @returns {AxisCandidate | undefined}
+     */
+    getActiveAxisCandidate(orient) {
+        return this.getActiveAxisCandidates(orient).at(-1);
+    }
+
+    /**
+     * @param {import("../../spec/axis.js").AxisOrient} orient
+     * @returns {AxisCandidate[]}
+     */
+    getActiveAxisCandidates(orient) {
+        return this.axisCandidates.filter(
+            (candidate) =>
+                candidate.orient === orient &&
+                candidate.sourceView.isConfiguredVisible()
+        );
+    }
+
+    /**
      * Disposes axis and gridline views so axes can be recreated safely.
      */
     disposeAxisViews() {
-        for (const axisView of Object.values(this.axes)) {
-            axisView.disposeSubtree();
+        for (const candidate of this.axisCandidates) {
+            candidate.axisView.disposeSubtree();
         }
 
         for (const gridView of Object.values(this.gridLines)) {
