@@ -411,3 +411,203 @@ Tentative commit:
 ```text
 docs(app): document sample view specYAxis
 ```
+
+## Follow-Up Refactor: Visibility-Aware Axis Candidates In Core
+
+The current SampleView y-axis implementation has enough local structure to
+support repeated axes, but visibility-aware axis arbitration should not remain a
+SampleView-only concept. Ordinary GridView-managed axes can hit the same problem:
+toggleable layer children may define several axes for the same orient, while
+only one of those layers is visible at a time.
+
+The next refactor should move axis candidate collection and active-axis
+selection into Core so GridView and SampleView use the same rules.
+
+### Step 1: Introduce Axis Candidate Data In GridChild
+
+Add an internal candidate structure while preserving the existing public
+`axes` map during the transition:
+
+```js
+{
+    axisView,
+    sourceView,
+    channel,
+    orient,
+    resolution,
+    order,
+}
+```
+
+`sourceView` should be the view whose visibility controls whether the axis is
+active. For ordinary unit axes, this is the child view. For LayerView child axes,
+this is the layer child that owns the axis resolution.
+
+The first step should collect candidates in `GridChild.createAxes()` without
+changing rendering or overhang behavior.
+
+Tentative commit:
+
+```text
+refactor(core): collect grid axis candidates
+```
+
+### Step 2: Add Active-Axis Resolution
+
+Add a deterministic helper that selects the active candidate for each orient
+from visible candidates:
+
+- zero visible candidates: no active axis
+- one visible candidate: use it
+- multiple visible candidates: pick deterministically based on layer/spec order
+
+The tentative arbitration rule should be "last visible candidate wins" because
+that aligns with the current SampleChromeLayout behavior and with topmost layer
+intuition. If this is not acceptable for ordinary GridView, the rule should be
+changed once in Core before SampleView migrates to it.
+
+Multiple visible candidates for the same orient should eventually be surfaced as
+a warning or diagnostic, but the first implementation may only make the rule
+deterministic.
+
+Tentative commit:
+
+```text
+feat(core): resolve active grid axis candidates by visibility
+```
+
+### Step 3: Switch GridView Overhang To Active Axes
+
+Change `GridChild.getOverhang()` so axis overhang comes from active candidates,
+not from all created/existing axes. Hidden toggleable layers should no longer
+reserve axis space.
+
+Keep non-axis child overhang untouched:
+
+```js
+activeAxisOverhang.unionOrAdd(childViewOverhang)
+```
+
+Add GridView tests for a LayerView with toggleable children whose y-axes share
+an orient. The tests should verify that hiding a layer also removes its axis
+overhang when no other visible candidate uses that orient.
+
+Tentative commit:
+
+```text
+fix(core): base grid axis overhang on visible candidates
+```
+
+### Step 4: Switch GridView Rendering To Active Axes
+
+Change GridView axis rendering to render only active candidates. This should
+align rendering with the overhang result from Step 3.
+
+Important cases to test:
+
+- hidden layer axis is not rendered
+- newly visible layer axis is rendered after visibility changes
+- if multiple candidates are visible, the same candidate that contributes
+  overhang is rendered
+
+Tentative commit:
+
+```text
+fix(core): render only active grid axis candidates
+```
+
+### Step 5: Expose A Small Axis Candidate API For SampleView
+
+SampleView should not inspect Core internals directly. Add a narrow GridChild
+API that SampleGridChild can pass to SampleChromeLayout, for example:
+
+```js
+getActiveAxis(orient)
+getActiveAxisCandidates(orient)
+```
+
+If SampleView still needs the selected `sourceView` later, return the active
+candidate rather than only the `AxisView`.
+
+Tentative commit:
+
+```text
+refactor(core): expose active grid axis candidates
+```
+
+### Step 6: Migrate SampleChromeLayout To Core Candidate Resolution
+
+Remove SampleChromeLayout's local candidate filtering/arbitration once Core
+provides equivalent active-axis selection. SampleChromeLayout should ask for the
+active axis or active candidate and then handle only SampleView-specific policy:
+
+- `specYAxis.mode`
+- `minSampleHeight`
+- left/right lane reservation
+- repeated target selection
+- closeup render suppression
+
+This should reduce divergence between GridView and SampleView when toggleable
+layers change visibility.
+
+Tentative commit:
+
+```text
+refactor(app): use core active axis candidates in sample chrome
+```
+
+### Step 7: Revisit SampleView Layout Preparation
+
+After Core axis visibility is shared, re-evaluate the current
+`prepareLayoutSize()` path. It may still be needed because SampleView's y-axis
+lane depends on fitted sample height, but the API should be explicit and
+documented in Core if it remains.
+
+Possible end state:
+
+```js
+prepareLayout({ width, height }) {
+    return { horizontalOverhangChanged: boolean };
+}
+```
+
+Avoid preserving a duck-typed hook indefinitely if more views start using it.
+
+Tentative commit:
+
+```text
+refactor(core): formalize prepared layout overhang hook
+```
+
+### Step 8: Remove Transitional Duplication
+
+Once GridView and SampleView both use the Core candidate model, remove
+transitional maps or compatibility helpers that duplicate candidate state.
+
+Targets to inspect:
+
+- `GridChild.axes` if it becomes redundant or misleading
+- local SampleChromeLayout candidate arbitration
+- SampleGridChild axis-overhang subtraction helpers that can move to Core
+
+Tentative commit:
+
+```text
+refactor(core): remove transitional axis candidate paths
+```
+
+### Step 9: Documentation And Diagnostics
+
+Document the visibility behavior in developer-facing architecture notes or code
+comments near the Core candidate resolver. User-facing docs probably only need a
+brief statement that axes follow layer visibility.
+
+If ambiguity warnings are added, document when they fire and how users can avoid
+them, for example by placing mutually exclusive layers in a visibility group or
+using distinct axis orientations.
+
+Tentative commit:
+
+```text
+docs(core): document visibility-aware axis arbitration
+```
