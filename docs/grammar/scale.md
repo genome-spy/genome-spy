@@ -394,6 +394,13 @@ GenomeSpy implements most of Vega-Lite's axis properties. See the [interface
 definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/spec/axis.d.ts)
 for supported properties. TODO: Write a proper documentation.
 
+Axes are placed outside the plotting area by default. Set
+`axis.placement` to `"inside"` to draw an axis into the plot area instead. An
+inside axis is mirrored into the plot: for example, a left-oriented y-axis keeps
+its domain line at the left plot edge, while ticks and labels extend rightward
+over the plotted data. Inside axes do not reserve external layout space and
+render above marks by default. Use `axis.zindex` to override that layering.
+
 !!! note "Grid lines"
 
     Grid lines are hidden by default in GenomeSpy and can be enabled for each
