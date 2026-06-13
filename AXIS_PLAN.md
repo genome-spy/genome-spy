@@ -249,3 +249,165 @@ The best implementation path is likely:
 3. Add or prepare the candidate model needed for toggleable layered axes.
 4. Keep the behavior compatible with a later Core-level visibility-aware axis
    arbitration model.
+
+## Step-By-Step Implementation Sketch
+
+This is a tentative implementation sequence, not a final task checklist. The
+steps are ordered to keep behavior reviewable and to avoid mixing schema,
+layout, rendering, and visibility arbitration in one change.
+
+### Step 1: Add The Public Spec Surface
+
+Add `specYAxis` to the SampleView spec types and generated schema/docs flow.
+
+Include:
+
+- `mode?: "none" | "all" | "top" | "middle" | "bottom"`
+- `minSampleHeight?: number`
+- default documentation for `minSampleHeight: 50`
+- concise docs explaining that the axes come from the repeated `spec` child
+
+Tentative commit:
+
+```text
+feat(app): add specYAxis sample view option
+```
+
+### Step 2: Introduce SampleView Chrome Layout Objects
+
+Add the internal structure without changing visible behavior yet.
+
+Likely files:
+
+- `packages/app/src/sampleView/sampleChromeLayout.js`
+- `packages/app/src/sampleView/sampleAxisLane.js`
+- possibly `packages/app/src/sampleView/sampleAxisTargetSelector.js`
+
+The initial implementation can return zero left/right reservations and no
+rendered vertical axes. The point of this step is to establish the boundary so
+later changes do not bloat `sampleView.js`.
+
+Tentative commit:
+
+```text
+refactor(app): introduce sample view chrome layout
+```
+
+### Step 3: Split SampleView Axis Rendering By Orientation
+
+Change SampleView so horizontal axes remain rendered by the existing pane-level
+path, while vertical axes are delegated to the chrome layout.
+
+This should preserve current horizontal-axis behavior and intentionally stop
+using the old whole-pane vertical-axis rendering path.
+
+Tentative commit:
+
+```text
+refactor(app): delegate sample view vertical axes to chrome layout
+```
+
+### Step 4: Add Left And Right Axis Lane Reservation
+
+Teach the chrome layout to reserve independent left and right lanes around the
+sample plot when an active axis is allowed by `specYAxis`.
+
+The sample plot rectangle should become:
+
+```text
+left lane | sample plot + scrollbar edge | right lane
+```
+
+within the area after the sidebar. The vertical scrollbar should remain attached
+to the sample plot edge rather than moving outside the right axis lane.
+
+Tentative commit:
+
+```text
+feat(app): reserve sample view y-axis lanes
+```
+
+### Step 5: Render Repeated And Representative Y-Axis Targets
+
+Implement target selection for:
+
+- `"all"`
+- `"top"`
+- `"middle"`
+- `"bottom"`
+
+Render the active axis against sample-local rectangles and clip output to the
+visible sample pane. Use the full sample row rectangle for axis coordinates even
+when the row is partially visible.
+
+Tentative commit:
+
+```text
+feat(app): render sample view y-axis targets
+```
+
+### Step 6: Suppress Axes During Closeup Without Layout Churn
+
+Ensure any active or transitioning closeup/peek state hides vertical axes at
+render time without requesting layout reflow.
+
+The non-peek lane reservation state should remain stable while closeup is being
+activated, active, or being disabled.
+
+Tentative commit:
+
+```text
+fix(app): suppress sample y-axes during closeup
+```
+
+### Step 7: Add Visibility-Aware Axis Candidates
+
+Extend the lane design from one axis per orient to candidates keyed by source
+view visibility.
+
+The lane should choose among visible candidates:
+
+- zero visible candidates: no lane
+- one visible candidate: use it
+- multiple visible candidates: deterministic arbitration plus a surfaced
+  ambiguity signal
+
+This step should be designed so the same candidate model can later be shared
+with ordinary GridView axis handling.
+
+Tentative commit:
+
+```text
+feat(app): arbitrate sample y-axis candidates by visibility
+```
+
+### Step 8: Cover Behavior With Focused Tests
+
+Add tests close to SampleView and any new helper modules.
+
+High-value coverage:
+
+- `specYAxis.mode: "none"` keeps behavior disabled
+- `minSampleHeight` gates lane reservation and rendering
+- left and right lanes reserve independently
+- representative target selection chooses top, middle, and bottom samples
+- closeup suppresses rendering without forcing layout recomputation
+- visibility arbitration ignores hidden layer axis candidates
+
+Tentative commit:
+
+```text
+test(app): cover sample view y-axis lanes
+```
+
+### Step 9: Add User-Facing Documentation Or Example
+
+Add concise docs or an example spec if the feature is ready for users. If the
+feature remains experimental, document only the schema/JSDoc surface and defer a
+larger guide.
+
+Tentative commit:
+
+```text
+docs(app): document sample view specYAxis
+```
