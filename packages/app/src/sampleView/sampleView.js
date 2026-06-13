@@ -80,6 +80,7 @@ import {
     resolveSelectionExpansionContext,
 } from "../state/selectionExpansionContext.js";
 import { createSelectionExpansionMenuItem } from "../state/selectionExpansionMenu.js";
+import SampleChromeLayout from "./sampleChromeLayout.js";
 
 /** @type {import("./types.js").AttributeIdentifierType} */
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
@@ -978,11 +979,20 @@ export default class SampleView extends ContainerView {
         }
 
         for (const [orient, axisView] of Object.entries(gridChild.axes)) {
+            if (orient === "left" || orient === "right") {
+                continue;
+            }
+
             axisView.render(
                 context,
                 translateAxisCoords(coords, orient, axisView)
             );
         }
+        gridChild.sampleChromeLayout.renderVerticalAxes(
+            context,
+            coords,
+            options
+        );
 
         // Summary rendering --------
 
@@ -1743,6 +1753,9 @@ class SampleGridChild extends GridChild {
         this.groupBackground = undefined;
         /** @type {UnitView} */
         this.groupBackgroundStroke = undefined;
+
+        /** @type {SampleChromeLayout} */
+        this.sampleChromeLayout = new SampleChromeLayout();
 
         const backgroundSpec = createBackground(viewBackgroundSpec);
         if (backgroundSpec) {
