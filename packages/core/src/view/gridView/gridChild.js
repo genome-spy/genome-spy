@@ -906,13 +906,15 @@ export default class GridChild {
             /** @type {import("../../spec/axis.js").AxisOrient} */ orient
         ) => {
             const axisView = this.axes[orient];
-            return axisView
-                ? Math.max(
-                      axisView.getPerpendicularSize() +
-                          (axisView.axisProps.offset ?? 0),
-                      0
-                  )
-                : 0;
+            if (!axisView || axisView.axisProps.placement === "inside") {
+                return 0;
+            }
+
+            return Math.max(
+                axisView.getPerpendicularSize() +
+                    (axisView.axisProps.offset ?? 0),
+                0
+            );
         };
 
         // Axes and overhang should be mutually exclusive, so we can just add them together

@@ -1396,18 +1396,30 @@ function defaultBackgroundStrokeZindex(zindex, clipped) {
 export function translateAxisCoords(coords, orient, axisView) {
     const props = axisView.axisProps;
     const ps = axisView.getPerpendicularSize();
+    const inside = props.placement === "inside";
+    const offset = props.offset ?? 0;
 
     if (orient == "bottom") {
-        return coords
-            .translate(0, coords.height + props.offset)
-            .modify({ height: ps });
+        return inside
+            ? coords.translate(0, coords.height - ps - offset).modify({
+                  height: ps,
+              })
+            : coords.translate(0, coords.height + offset).modify({
+                  height: ps,
+              });
     } else if (orient == "top") {
-        return coords.translate(0, -ps - props.offset).modify({ height: ps });
+        return inside
+            ? coords.translate(0, offset).modify({ height: ps })
+            : coords.translate(0, -ps - offset).modify({ height: ps });
     } else if (orient == "left") {
-        return coords.translate(-ps - props.offset, 0).modify({ width: ps });
+        return inside
+            ? coords.translate(offset, 0).modify({ width: ps })
+            : coords.translate(-ps - offset, 0).modify({ width: ps });
     } else if (orient == "right") {
-        return coords
-            .translate(coords.width + props.offset, 0)
-            .modify({ width: ps });
+        return inside
+            ? coords.translate(coords.width - ps - offset, 0).modify({
+                  width: ps,
+              })
+            : coords.translate(coords.width + offset, 0).modify({ width: ps });
     }
 }

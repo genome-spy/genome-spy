@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 
 import AxisView from "./axisView.js";
+import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
+import { specToLayout } from "./testUtils.js";
 import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
 
 /**
@@ -71,6 +73,37 @@ async function createLeftAxis(axis) {
     return findAxisView(view, "left");
 }
 
+/**
+ * @param {{ viewName: string, coords?: string, children: any[] }} node
+ * @param {string} viewName
+ * @returns {{ viewName: string, coords?: string, children: any[] } | undefined}
+ */
+function findLayoutNode(node, viewName) {
+    if (node.viewName === viewName) {
+        return node;
+    }
+
+    for (const child of node.children) {
+        const found = findLayoutNode(child, viewName);
+        if (found) {
+            return found;
+        }
+    }
+}
+
+/**
+ * @param {string} coords
+ * @param {"x" | "y" | "width" | "height"} key
+ */
+function readCoord(coords, key) {
+    const match = coords.match(new RegExp(key + ": ([0-9.-]+)"));
+    if (!match) {
+        throw new Error("Coordinate not found: " + key);
+    }
+
+    return Number(match[1]);
+}
+
 describe("axis placement", () => {
     test("left inside axis mirrors tick and label direction into the plot", async () => {
         const axis = await createLeftAxis({ placement: "inside" });
@@ -84,5 +117,31 @@ describe("axis placement", () => {
         expect(labels.spec.mark.xOffset).toBeGreaterThan(0);
         expect(ticks.spec.encoding.x.value).toBe(0);
         expect(ticks.spec.encoding.x2.value.expr).toContain("* -1");
+    });
+
+    test("left inside axis does not reserve external overhang", async () => {
+        const layout = await specToLayout(
+            {
+                data: { values: [{ x: 1, y: 2 }] },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative", axis: null },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left", placement: "inside" },
+                    },
+                },
+            },
+            {},
+            Rectangle.create(0, 0, 200, 100)
+        );
+
+        const plot = findLayoutNode(layout, "grid0");
+        if (!plot?.coords) {
+            throw new Error("Plot layout node not found!");
+        }
+
+        expect(readCoord(plot.coords, "x")).toBe(0);
     });
 });
