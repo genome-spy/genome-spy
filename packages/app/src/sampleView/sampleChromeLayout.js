@@ -1,5 +1,7 @@
 // @ts-check
 
+import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
+
 const DEFAULT_MIN_SAMPLE_HEIGHT = 50;
 
 /**
@@ -71,12 +73,36 @@ export default class SampleChromeLayout {
     }
 
     /**
-     * @param {import("@genome-spy/core/view/renderingContext/viewRenderingContext.js").default | object} context
+     * @param {import("@genome-spy/core/view/renderingContext/viewRenderingContext.js").default} context
      * @param {import("@genome-spy/core/view/layout/rectangle.js").default} plotCoords
+     * @param {Locations} [locations]
      * @param {import("@genome-spy/core/types/rendering.js").RenderingOptions} [options]
      */
-    renderVerticalAxes(context, plotCoords, options = {}) {
-        // No-op until vertical axis lanes are added.
+    renderVerticalAxes(context, plotCoords, locations, options = {}) {
+        if (!this.#isEnabled(locations)) {
+            return;
+        }
+
+        const axes = this.#getAxes();
+        for (const orient of /** @type {const} */ (["left", "right"])) {
+            const axisView = axes[orient];
+            if (!axisView) {
+                continue;
+            }
+
+            for (const sample of this.#selectTargets(locations)) {
+                const sampleCoords = plotCoords.modify({
+                    y: () => plotCoords.y + sample.locSize.location,
+                    height: sample.locSize.size,
+                });
+
+                axisView.render(
+                    context,
+                    translateAxisCoords(sampleCoords, orient, axisView),
+                    options
+                );
+            }
+        }
     }
 
     /**
@@ -120,5 +146,62 @@ export default class SampleChromeLayout {
                 (sample) => sample.locSize.size >= minSampleHeight
             ) ?? false
         );
+    }
+
+    /**
+     * @param {Locations} locations
+     * @returns {import("./sampleViewTypes.js").SampleLocation[]}
+     */
+    #selectTargets(locations) {
+        const minSampleHeight =
+            this.#specYAxis?.minSampleHeight ?? DEFAULT_MIN_SAMPLE_HEIGHT;
+        const eligible = locations.samples.filter(
+            (sample) => sample.locSize.size >= minSampleHeight
+        );
+
+        switch (this.#specYAxis?.mode) {
+            case "all":
+                return eligible;
+            case "top":
+                return eligible.slice(0, 1);
+            case "middle": {
+                if (!eligible.length) {
+                    return [];
+                }
+
+                const first = locations.samples[0];
+                const last = locations.samples.at(-1);
+                const midpoint =
+                    first && last
+                        ? (first.locSize.location +
+                              last.locSize.location +
+                              last.locSize.size) /
+                          2
+                        : 0;
+
+                let closest = eligible[0];
+                let closestDistance = Infinity;
+                for (const sample of eligible) {
+                    const center =
+                        sample.locSize.location + sample.locSize.size / 2;
+                    const distance = Math.abs(center - midpoint);
+                    if (distance < closestDistance) {
+                        closest = sample;
+                        closestDistance = distance;
+                    }
+                }
+
+                return [closest];
+            }
+            case "bottom":
+                return eligible.slice(-1);
+            case "none":
+            case undefined:
+                return [];
+            default:
+                throw new Error(
+                    `Invalid specYAxis mode: ${this.#specYAxis.mode}`
+                );
+        }
     }
 }

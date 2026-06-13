@@ -1003,6 +1003,7 @@ export default class SampleView extends ContainerView {
         gridChild.sampleChromeLayout.renderVerticalAxes(
             context,
             coords,
+            locations,
             options
         );
 

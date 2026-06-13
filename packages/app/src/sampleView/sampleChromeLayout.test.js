@@ -1,5 +1,5 @@
 // @ts-check
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import SampleChromeLayout from "./sampleChromeLayout.js";
 
@@ -14,7 +14,7 @@ describe("SampleChromeLayout", () => {
         expect(layout.getPlotCoords(plotCoords)).toBe(plotCoords);
 
         expect(() =>
-            layout.renderVerticalAxes(context, plotCoords)
+            layout.renderVerticalAxes(/** @type {any} */ (context), plotCoords)
         ).not.toThrow();
     });
 
@@ -57,16 +57,73 @@ describe("SampleChromeLayout", () => {
         expect(shortSamples.getLeftReserve(locations)).toBe(0);
         expect(peek.getLeftReserve(createLocations(60))).toBe(0);
     });
+
+    test("renders an axis for every eligible sample in all mode", () => {
+        const axisView = createAxisView(10, 2);
+        const layout = new SampleChromeLayout({
+            specYAxis: { mode: "all", minSampleHeight: 50 },
+            getAxes: () => ({ left: axisView }),
+            getPeekState: () => 0,
+        });
+        const plotCoords = Rectangle.create(50, 100, 200, 120);
+        const locations = createLocations([60, 40, 70]);
+
+        layout.renderVerticalAxes(
+            /** @type {any} */ ({}),
+            plotCoords,
+            locations
+        );
+
+        expect(axisView.render).toHaveBeenCalledTimes(2);
+        expect(axisView.render.mock.calls[0][1].x).toBe(38);
+        expect(axisView.render.mock.calls[0][1].y).toBe(100);
+        expect(axisView.render.mock.calls[0][1].height).toBe(60);
+        expect(axisView.render.mock.calls[1][1].y).toBe(200);
+        expect(axisView.render.mock.calls[1][1].height).toBe(70);
+    });
+
+    test("renders the midpoint sample in middle mode", () => {
+        const axisView = createAxisView(10, 2);
+        const layout = new SampleChromeLayout({
+            specYAxis: { mode: "middle", minSampleHeight: 1 },
+            getAxes: () => ({ left: axisView }),
+            getPeekState: () => 0,
+        });
+        const plotCoords = Rectangle.create(50, 100, 200, 120);
+        const locations = createLocations([30, 30, 30]);
+
+        layout.renderVerticalAxes(
+            /** @type {any} */ ({}),
+            plotCoords,
+            locations
+        );
+
+        expect(axisView.render).toHaveBeenCalledTimes(1);
+        expect(axisView.render.mock.calls[0][1].y).toBe(130);
+        expect(axisView.render.mock.calls[0][1].height).toBe(30);
+    });
 });
 
 /**
- * @param {number} sampleHeight
+ * @param {number | number[]} sampleHeights
  * @returns {import("./sampleViewTypes.js").Locations}
  */
-function createLocations(sampleHeight) {
+function createLocations(sampleHeights) {
+    const heights = Array.isArray(sampleHeights)
+        ? sampleHeights
+        : [sampleHeights];
+    let location = 0;
+
     return {
         groups: [],
-        samples: [{ key: "A", locSize: { location: 0, size: sampleHeight } }],
+        samples: heights.map((size, index) => {
+            const sample = {
+                key: String.fromCharCode("A".charCodeAt(0) + index),
+                locSize: { location, size },
+            };
+            location += size;
+            return sample;
+        }),
         summaries: [],
     };
 }
@@ -79,5 +136,6 @@ function createAxisView(size, offset) {
     return /** @type {any} */ ({
         axisProps: { offset },
         getPerpendicularSize: () => size,
+        render: vi.fn(),
     });
 }
