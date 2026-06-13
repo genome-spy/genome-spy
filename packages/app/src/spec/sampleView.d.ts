@@ -38,12 +38,13 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     sampleLayout?: SampleLayoutDef;
 
     /**
-     * Controls how vertical axes from the repeated `spec` child are shown for
-     * visible samples.
+     * Controls how vertical axes are shown for repeated sample plots.
      *
-     * If omitted, repeated child y-axes are not shown by SampleView.
+     * Set to `null` to disable sample y-axes.
+     *
+     * __Default value:__ `{"mode": "all", "minSampleHeight": 60}`
      */
-    specYAxis?: SpecYAxisDef;
+    sampleYAxis?: SampleYAxisDef | null;
 
     /**
      * An object defining the view background and outline. The background is
@@ -68,25 +69,24 @@ export interface SampleSpec extends Omit<ViewSpecBase, "templates"> {
     stickySummaries?: boolean;
 }
 
-export type SpecYAxisMode = "none" | "all" | "top" | "middle" | "bottom";
+export type SampleYAxisMode = "all" | "top" | "middle" | "bottom";
 
-export interface SpecYAxisDef {
+export interface SampleYAxisDef {
     /**
-     * How vertical axes from the repeated `spec` child are shown.
+     * How vertical axes are shown for repeated sample plots.
      *
-     * - `"none"` hides repeated y-axes.
      * - `"all"` shows an axis for every eligible visible sample.
      * - `"top"`, `"middle"`, and `"bottom"` show one representative axis.
      *
-     * __Default value:__ `"none"`
+     * __Default value:__ `"all"`
      */
-    mode?: SpecYAxisMode;
+    mode?: SampleYAxisMode;
 
     /**
      * Minimum visible sample height in pixels required before a repeated y-axis
      * can be shown.
      *
-     * __Default value:__ `50`
+     * __Default value:__ `60`
      */
     minSampleHeight?: number;
 }

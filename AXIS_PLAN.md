@@ -24,27 +24,31 @@ axis candidates.
 Add one optional SampleView property:
 
 ```ts
-specYAxis?: {
-    mode?: "none" | "all" | "top" | "middle" | "bottom";
+sampleYAxis?: SampleYAxisDef | null;
+
+interface SampleYAxisDef {
+    mode?: "all" | "top" | "middle" | "bottom";
     minSampleHeight?: number;
 }
 ```
 
 Suggested semantics:
 
-- `"none"` disables SampleView y-axis rendering.
+- `null` disables SampleView y-axis rendering.
+- Omitted `sampleYAxis` uses the default enabled behavior.
 - `"all"` repeats the active y-axis for every eligible visible sample.
 - `"top"`, `"middle"`, and `"bottom"` render one representative y-axis next to
   one eligible visible sample.
 - `minSampleHeight` controls when an axis is allowed to appear.
-  Default: `50`.
+  Default: `60`.
 
-The conservative default should probably be `mode: "none"` so existing
-SampleView specs do not change visually.
+The default should be `{ "mode": "all", "minSampleHeight": 60 }`. Existing
+visualizations generally disabled child y-axes because SampleView did not
+previously handle them well, so useful y-axis behavior should be enabled unless
+`sampleYAxis` is explicitly `null`.
 
-The name `specYAxis` is intentionally explicit: the axes come from the
-SampleView's repeated `spec` child, not from sample labels, metadata, summaries,
-or grouping chrome.
+The name `sampleYAxis` describes the rendered behavior: y-axes are shown for
+sample plots, not for sample labels, metadata, summaries, or grouping chrome.
 
 ## Winning Architecture: Integrated Axis Lanes
 
@@ -97,7 +101,7 @@ axisView.getPerpendicularSize() + (axisView.axisProps.offset ?? 0)
 
 Lane reservation is active only when:
 
-- `specYAxis.mode` is not `"none"`
+- `sampleYAxis` is not `null`
 - a visible axis candidate exists for the lane orient
 - SampleView is in non-peek overview mode
 - at least one eligible visible sample meets `minSampleHeight`
@@ -221,8 +225,6 @@ frames and closeup activation/deactivation must not request layout reflow.
 
 ## Open Design Points
 
-- Exact default for `mode`: safest is `"none"`, while `"middle"` would make
-  configured y-axes useful automatically.
 - Arbitration rule for multiple visible candidates on the same orient: first
   visible by spec order, last/topmost visible by layer order, warning, or error.
 - Whether y-axis grid lines should remain group-level initially or later become
@@ -245,7 +247,8 @@ The first SampleView implementation phase is done.
 
 Completed pieces:
 
-- `specYAxis` is available on SampleView specs.
+- `sampleYAxis` is available on SampleView specs and is disabled only when set
+  to `null`.
 - `SampleChromeLayout` owns SampleView-specific y-axis lane policy.
 - Horizontal axes remain pane-level axes.
 - Vertical axes are reserved and rendered as repeated or representative

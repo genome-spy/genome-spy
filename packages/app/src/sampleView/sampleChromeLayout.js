@@ -3,7 +3,8 @@
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
 
-const DEFAULT_MIN_SAMPLE_HEIGHT = 50;
+const DEFAULT_MIN_SAMPLE_HEIGHT = 60;
+const DEFAULT_MODE = "all";
 
 /**
  * Coordinates SampleView-specific chrome around the repeated sample pane.
@@ -16,8 +17,8 @@ export default class SampleChromeLayout {
      * @typedef {import("./sampleViewTypes.js").Locations} Locations
      */
 
-    /** @type {import("@genome-spy/app/spec/sampleView.js").SpecYAxisDef | undefined} */
-    #specYAxis;
+    /** @type {import("@genome-spy/app/spec/sampleView.js").SampleYAxisDef | null | undefined} */
+    #sampleYAxis;
 
     /** @type {(orient: "left" | "right") => AxisCandidate | undefined} */
     #getActiveAxisCandidate;
@@ -27,12 +28,12 @@ export default class SampleChromeLayout {
 
     /**
      * @param {object} [options]
-     * @param {import("@genome-spy/app/spec/sampleView.js").SpecYAxisDef} [options.specYAxis]
+     * @param {import("@genome-spy/app/spec/sampleView.js").SampleYAxisDef | null} [options.sampleYAxis]
      * @param {(orient: "left" | "right") => AxisCandidate | undefined} [options.getActiveAxisCandidate]
      * @param {() => number} [options.getPeekState]
      */
     constructor(options = {}) {
-        this.#specYAxis = options.specYAxis;
+        this.#sampleYAxis = options.sampleYAxis;
         this.#getActiveAxisCandidate =
             options.getActiveAxisCandidate ?? (() => undefined);
         this.#getPeekState = options.getPeekState ?? (() => 0);
@@ -165,12 +166,12 @@ export default class SampleChromeLayout {
      * @returns {boolean}
      */
     #isEnabled(locations) {
-        if (!this.#specYAxis || this.#specYAxis.mode === "none") {
+        if (this.#sampleYAxis === null) {
             return false;
         }
 
         const minSampleHeight =
-            this.#specYAxis.minSampleHeight ?? DEFAULT_MIN_SAMPLE_HEIGHT;
+            this.#sampleYAxis?.minSampleHeight ?? DEFAULT_MIN_SAMPLE_HEIGHT;
 
         return (
             locations?.samples.some(
@@ -185,12 +186,12 @@ export default class SampleChromeLayout {
      */
     #selectTargets(locations) {
         const minSampleHeight =
-            this.#specYAxis?.minSampleHeight ?? DEFAULT_MIN_SAMPLE_HEIGHT;
+            this.#sampleYAxis?.minSampleHeight ?? DEFAULT_MIN_SAMPLE_HEIGHT;
         const eligible = locations.samples.filter(
             (sample) => sample.locSize.size >= minSampleHeight
         );
 
-        switch (this.#specYAxis?.mode) {
+        switch (this.#sampleYAxis?.mode ?? DEFAULT_MODE) {
             case "all":
                 return eligible;
             case "top":
@@ -226,12 +227,9 @@ export default class SampleChromeLayout {
             }
             case "bottom":
                 return eligible.slice(-1);
-            case "none":
-            case undefined:
-                return [];
             default:
                 throw new Error(
-                    `Invalid specYAxis mode: ${this.#specYAxis.mode}`
+                    `Invalid sampleYAxis mode: ${this.#sampleYAxis?.mode}`
                 );
         }
     }

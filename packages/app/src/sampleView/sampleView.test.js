@@ -1234,17 +1234,13 @@ describe("SampleView", () => {
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
     });
 
-    test("reserves a lane between the sidebar and sample plot for an enabled left spec y-axis", async () => {
+    test("reserves a lane between the sidebar and sample plot for a default left sample y-axis", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
             data: {
                 values: [{ sample: "A", x: 1, y: 2 }],
             },
             samples: {},
-            specYAxis: {
-                mode: "middle",
-                minSampleHeight: 1,
-            },
             spec: {
                 height: 160,
                 mark: "point",
@@ -1305,7 +1301,7 @@ describe("SampleView", () => {
                 ],
             },
             samples: {},
-            specYAxis: {
+            sampleYAxis: {
                 mode: "all",
                 minSampleHeight: 50,
             },
@@ -1363,7 +1359,7 @@ describe("SampleView", () => {
                 ],
             },
             samples: {},
-            specYAxis: {
+            sampleYAxis: {
                 mode: "all",
                 minSampleHeight: 50,
             },
@@ -1445,7 +1441,7 @@ describe("SampleView", () => {
                 values: [{ sample: "A", x: 1, a: 2, b: 3 }],
             },
             samples: {},
-            specYAxis: {
+            sampleYAxis: {
                 mode: "middle",
                 minSampleHeight: 1,
             },
@@ -1547,7 +1543,7 @@ describe("SampleView", () => {
                 values: [{ sample: "A", x: 1, a: 2, b: 3 }],
             },
             samples: {},
-            specYAxis: {
+            sampleYAxis: {
                 mode: "middle",
                 minSampleHeight: 1,
             },

@@ -19,12 +19,12 @@ describe("SampleChromeLayout", () => {
     });
 
     test("reserves left and right lanes for eligible samples", () => {
+        const leftAxis = createAxisView(30, 2);
+        const rightAxis = createAxisView(40, 4);
         const layout = new SampleChromeLayout({
-            specYAxis: { mode: "middle", minSampleHeight: 50 },
-            getAxes: () => ({
-                left: createAxisView(30, 2),
-                right: createAxisView(40, 4),
-            }),
+            sampleYAxis: { mode: "middle", minSampleHeight: 50 },
+            getActiveAxisCandidate: (orient) =>
+                createCandidate(orient === "left" ? leftAxis : rightAxis),
             getPeekState: () => 0,
         });
         const plotCoords = Rectangle.create(10, 20, 300, 120);
@@ -39,13 +39,11 @@ describe("SampleChromeLayout", () => {
     });
 
     test("does not reserve lanes below the minimum sample height", () => {
-        const axes = {
-            left: createAxisView(30, 2),
-        };
+        const axisView = createAxisView(30, 2);
         const locations = createLocations(49);
         const shortSamples = new SampleChromeLayout({
-            specYAxis: { mode: "middle", minSampleHeight: 50 },
-            getAxes: () => axes,
+            sampleYAxis: { mode: "middle", minSampleHeight: 50 },
+            getActiveAxisCandidate: leftCandidate(axisView),
             getPeekState: () => 0,
         });
 
@@ -56,8 +54,8 @@ describe("SampleChromeLayout", () => {
         const axisView = createAxisView(30, 2);
         const locations = createLocations(60);
         const peek = new SampleChromeLayout({
-            specYAxis: { mode: "middle", minSampleHeight: 50 },
-            getAxes: () => ({ left: axisView }),
+            sampleYAxis: { mode: "middle", minSampleHeight: 50 },
+            getActiveAxisCandidate: leftCandidate(axisView),
             getPeekState: () => 0.5,
         });
 
@@ -75,8 +73,8 @@ describe("SampleChromeLayout", () => {
     test("renders an axis for every eligible sample in all mode", () => {
         const axisView = createAxisView(10, 2);
         const layout = new SampleChromeLayout({
-            specYAxis: { mode: "all", minSampleHeight: 50 },
-            getAxes: () => ({ left: axisView }),
+            sampleYAxis: { mode: "all", minSampleHeight: 50 },
+            getActiveAxisCandidate: leftCandidate(axisView),
             getPeekState: () => 0,
         });
         const plotCoords = Rectangle.create(50, 100, 200, 120);
@@ -99,8 +97,8 @@ describe("SampleChromeLayout", () => {
     test("renders the midpoint sample in middle mode", () => {
         const axisView = createAxisView(10, 2);
         const layout = new SampleChromeLayout({
-            specYAxis: { mode: "middle", minSampleHeight: 1 },
-            getAxes: () => ({ left: axisView }),
+            sampleYAxis: { mode: "middle", minSampleHeight: 1 },
+            getActiveAxisCandidate: leftCandidate(axisView),
             getPeekState: () => 0,
         });
         const plotCoords = Rectangle.create(50, 100, 200, 120);
@@ -117,17 +115,11 @@ describe("SampleChromeLayout", () => {
         expect(axisView.render.mock.calls[0][1].height).toBe(30);
     });
 
-    test("ignores hidden axis candidates and uses the visible candidate", () => {
-        const hiddenAxis = createAxisView(20, 2);
-        const visibleAxis = createAxisView(30, 4);
+    test("uses the active axis candidate", () => {
+        const axisView = createAxisView(30, 4);
         const layout = new SampleChromeLayout({
-            specYAxis: { mode: "middle", minSampleHeight: 1 },
-            getAxisCandidates: () => ({
-                left: [
-                    createCandidate(hiddenAxis, false),
-                    createCandidate(visibleAxis, true),
-                ],
-            }),
+            sampleYAxis: { mode: "middle", minSampleHeight: 1 },
+            getActiveAxisCandidate: leftCandidate(axisView),
             getPeekState: () => 0,
         });
         const locations = createLocations(60);
@@ -139,21 +131,32 @@ describe("SampleChromeLayout", () => {
         );
 
         expect(layout.getLeftReserve(locations)).toBe(34);
-        expect(hiddenAxis.render).not.toHaveBeenCalled();
-        expect(visibleAxis.render).toHaveBeenCalledTimes(1);
+        expect(axisView.render).toHaveBeenCalledTimes(1);
     });
 
-    test("uses the last visible candidate when multiple candidates are visible", () => {
-        const firstAxis = createAxisView(20, 2);
-        const lastAxis = createAxisView(30, 4);
+    test("uses all mode and default min sample height by default", () => {
+        const axisView = createAxisView(10, 2);
         const layout = new SampleChromeLayout({
-            specYAxis: { mode: "middle", minSampleHeight: 1 },
-            getAxisCandidates: () => ({
-                left: [
-                    createCandidate(firstAxis, true),
-                    createCandidate(lastAxis, true),
-                ],
-            }),
+            getActiveAxisCandidate: leftCandidate(axisView),
+            getPeekState: () => 0,
+        });
+        const locations = createLocations([60, 59, 61]);
+
+        layout.renderVerticalAxes(
+            /** @type {any} */ ({}),
+            Rectangle.create(50, 100, 200, 120),
+            locations
+        );
+
+        expect(layout.getLeftReserve(locations)).toBe(12);
+        expect(axisView.render).toHaveBeenCalledTimes(2);
+    });
+
+    test("does not reserve or render when sampleYAxis is null", () => {
+        const axisView = createAxisView(10, 2);
+        const layout = new SampleChromeLayout({
+            sampleYAxis: null,
+            getActiveAxisCandidate: leftCandidate(axisView),
             getPeekState: () => 0,
         });
         const locations = createLocations(60);
@@ -164,9 +167,8 @@ describe("SampleChromeLayout", () => {
             locations
         );
 
-        expect(layout.getLeftReserve(locations)).toBe(34);
-        expect(firstAxis.render).not.toHaveBeenCalled();
-        expect(lastAxis.render).toHaveBeenCalledTimes(1);
+        expect(layout.getLeftReserve(locations)).toBe(0);
+        expect(axisView.render).not.toHaveBeenCalled();
     });
 });
 
@@ -208,13 +210,20 @@ function createAxisView(size, offset) {
 
 /**
  * @param {any} axisView
- * @param {boolean} visible
  */
-function createCandidate(axisView, visible) {
+function leftCandidate(axisView) {
+    return (/** @type {"left" | "right"} */ orient) =>
+        orient === "left" ? createCandidate(axisView) : undefined;
+}
+
+/**
+ * @param {any} axisView
+ */
+function createCandidate(axisView) {
     return {
         axisView,
         sourceView: {
-            isConfiguredVisible: () => visible,
+            isConfiguredVisible: () => true,
         },
     };
 }

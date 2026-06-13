@@ -1804,7 +1804,7 @@ class SampleGridChild extends GridChild {
 
         /** @type {SampleChromeLayout} */
         this.sampleChromeLayout = new SampleChromeLayout({
-            specYAxis: layoutParent.spec.specYAxis,
+            sampleYAxis: layoutParent.spec.sampleYAxis,
             getActiveAxisCandidate: (orient) =>
                 this.getActiveAxisCandidate(orient),
             getPeekState: () => layoutParent.locationManager.getPeekState(),
