@@ -761,9 +761,28 @@ export default class SampleView extends ContainerView {
      *
      * @param {number} _width
      * @param {number} height
+     * @returns {boolean} `true` when size-dependent horizontal overhang changed.
      */
     prepareLayoutSize(_width, height) {
+        const previousLocations = this.locationManager.getLocations();
+        const previousLeft =
+            this.#gridChild.sampleChromeLayout.getLeftReserve(
+                previousLocations
+            );
+        const previousRight =
+            this.#gridChild.sampleChromeLayout.getRightReserve(
+                previousLocations
+            );
+
         this.#preparedLayoutHeight = height;
+
+        const nextLocations = this.locationManager.getLocations();
+        const nextLeft =
+            this.#gridChild.sampleChromeLayout.getLeftReserve(nextLocations);
+        const nextRight =
+            this.#gridChild.sampleChromeLayout.getRightReserve(nextLocations);
+
+        return previousLeft !== nextLeft || previousRight !== nextRight;
     }
 
     /**

@@ -267,12 +267,15 @@ describe("GridView separators", () => {
             ConcatView
         );
         const heightDependentChild = /** @type {UnitView & {
-            prepareLayoutSize: (width: number, height: number) => void
+            prepareLayoutSize: (width: number, height: number) => boolean
         }} */ (view.children[1]);
 
         let preparedHeight = 0;
         heightDependentChild.prepareLayoutSize = (_width, height) => {
+            const previousReserve = preparedHeight >= 50 ? 30 : 0;
             preparedHeight = height;
+            const nextReserve = preparedHeight >= 50 ? 30 : 0;
+            return previousReserve !== nextReserve;
         };
         heightDependentChild.getOverhang = () =>
             new Padding(0, 0, 0, preparedHeight >= 50 ? 30 : 0);
