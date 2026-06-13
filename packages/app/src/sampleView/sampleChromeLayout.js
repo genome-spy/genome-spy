@@ -13,6 +13,7 @@ const DEFAULT_MIN_SAMPLE_HEIGHT = 50;
 export default class SampleChromeLayout {
     /**
      * @typedef {import("@genome-spy/core/view/axisView.js").default} AxisView
+     * @typedef {{ axisView: AxisView, sourceView: { isConfiguredVisible: () => boolean } }} AxisCandidate
      * @typedef {import("./sampleViewTypes.js").Locations} Locations
      */
 
@@ -22,6 +23,9 @@ export default class SampleChromeLayout {
     /** @type {() => Partial<Record<"left" | "right", AxisView>>} */
     #getAxes;
 
+    /** @type {(() => Partial<Record<"left" | "right", AxisCandidate[]>>) | undefined} */
+    #getAxisCandidates;
+
     /** @type {() => number} */
     #getPeekState;
 
@@ -29,11 +33,13 @@ export default class SampleChromeLayout {
      * @param {object} [options]
      * @param {import("@genome-spy/app/spec/sampleView.js").SpecYAxisDef} [options.specYAxis]
      * @param {() => Partial<Record<"left" | "right", AxisView>>} [options.getAxes]
+     * @param {() => Partial<Record<"left" | "right", AxisCandidate[]>>} [options.getAxisCandidates]
      * @param {() => number} [options.getPeekState]
      */
     constructor(options = {}) {
         this.#specYAxis = options.specYAxis;
         this.#getAxes = options.getAxes ?? (() => ({}));
+        this.#getAxisCandidates = options.getAxisCandidates;
         this.#getPeekState = options.getPeekState ?? (() => 0);
     }
 
@@ -83,9 +89,8 @@ export default class SampleChromeLayout {
             return;
         }
 
-        const axes = this.#getAxes();
         for (const orient of /** @type {const} */ (["left", "right"])) {
-            const axisView = axes[orient];
+            const axisView = this.#getAxisView(orient);
             if (!axisView) {
                 continue;
             }
@@ -115,7 +120,7 @@ export default class SampleChromeLayout {
             return 0;
         }
 
-        const axisView = this.#getAxes()[orient];
+        const axisView = this.#getAxisView(orient);
         if (!axisView) {
             return 0;
         }
@@ -123,6 +128,23 @@ export default class SampleChromeLayout {
         return (
             axisView.getPerpendicularSize() + (axisView.axisProps.offset ?? 0)
         );
+    }
+
+    /**
+     * @param {"left" | "right"} orient
+     * @returns {AxisView | undefined}
+     */
+    #getAxisView(orient) {
+        const candidates = this.#getAxisCandidates?.()[orient];
+        if (candidates) {
+            return candidates
+                .filter((candidate) =>
+                    candidate.sourceView.isConfiguredVisible()
+                )
+                .at(-1)?.axisView;
+        }
+
+        return this.#getAxes()[orient];
     }
 
     /**

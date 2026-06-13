@@ -116,6 +116,58 @@ describe("SampleChromeLayout", () => {
         expect(axisView.render.mock.calls[0][1].y).toBe(130);
         expect(axisView.render.mock.calls[0][1].height).toBe(30);
     });
+
+    test("ignores hidden axis candidates and uses the visible candidate", () => {
+        const hiddenAxis = createAxisView(20, 2);
+        const visibleAxis = createAxisView(30, 4);
+        const layout = new SampleChromeLayout({
+            specYAxis: { mode: "middle", minSampleHeight: 1 },
+            getAxisCandidates: () => ({
+                left: [
+                    createCandidate(hiddenAxis, false),
+                    createCandidate(visibleAxis, true),
+                ],
+            }),
+            getPeekState: () => 0,
+        });
+        const locations = createLocations(60);
+
+        layout.renderVerticalAxes(
+            /** @type {any} */ ({}),
+            Rectangle.create(50, 100, 200, 120),
+            locations
+        );
+
+        expect(layout.getLeftReserve(locations)).toBe(34);
+        expect(hiddenAxis.render).not.toHaveBeenCalled();
+        expect(visibleAxis.render).toHaveBeenCalledTimes(1);
+    });
+
+    test("uses the last visible candidate when multiple candidates are visible", () => {
+        const firstAxis = createAxisView(20, 2);
+        const lastAxis = createAxisView(30, 4);
+        const layout = new SampleChromeLayout({
+            specYAxis: { mode: "middle", minSampleHeight: 1 },
+            getAxisCandidates: () => ({
+                left: [
+                    createCandidate(firstAxis, true),
+                    createCandidate(lastAxis, true),
+                ],
+            }),
+            getPeekState: () => 0,
+        });
+        const locations = createLocations(60);
+
+        layout.renderVerticalAxes(
+            /** @type {any} */ ({}),
+            Rectangle.create(50, 100, 200, 120),
+            locations
+        );
+
+        expect(layout.getLeftReserve(locations)).toBe(34);
+        expect(firstAxis.render).not.toHaveBeenCalled();
+        expect(lastAxis.render).toHaveBeenCalledTimes(1);
+    });
 });
 
 /**
@@ -152,4 +204,17 @@ function createAxisView(size, offset) {
         getPerpendicularSize: () => size,
         render: vi.fn(),
     });
+}
+
+/**
+ * @param {any} axisView
+ * @param {boolean} visible
+ */
+function createCandidate(axisView, visible) {
+    return {
+        axisView,
+        sourceView: {
+            isConfiguredVisible: () => visible,
+        },
+    };
 }
