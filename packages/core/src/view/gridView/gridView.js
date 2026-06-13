@@ -587,7 +587,7 @@ export default class GridView extends ContainerView {
         const flexOpts = {
             devicePixelRatio,
         };
-        const columnFlexCoords = mapToPixelCoords(
+        let columnFlexCoords = mapToPixelCoords(
             this.#makeFlexItems("column"),
             coords.width,
             flexOpts
@@ -602,6 +602,25 @@ export default class GridView extends ContainerView {
         const grid = new Grid(
             this.#visibleChildren.length,
             this.#columns ?? Infinity
+        );
+
+        for (const [i, gridChild] of this.#visibleChildren.entries()) {
+            const [col, row] = grid.getCellCoords(i);
+            const colLocSize =
+                columnFlexCoords[this.#getViewSlot("column", col)];
+            const rowLocSize = rowFlexCoords[this.#getViewSlot("row", row)];
+
+            /** @type {{ prepareLayoutSize?: (width: number, height: number) => void }} */ (
+                gridChild.view
+            ).prepareLayoutSize?.(colLocSize.size, rowLocSize.size);
+        }
+
+        this._invalidateCacheByPrefix("size/directionSizes/column");
+
+        columnFlexCoords = mapToPixelCoords(
+            this.#makeFlexItems("column"),
+            coords.width,
+            flexOpts
         );
 
         /** @param {number} x */
@@ -630,10 +649,6 @@ export default class GridView extends ContainerView {
 
             const viewportSize = view.getViewportSize();
             const viewSize = view.getSize();
-
-            /** @type {{ prepareLayoutSize?: (width: number, height: number) => void }} */ (
-                view
-            ).prepareLayoutSize?.(colLocSize.size, rowLocSize.size);
 
             const overhang = view.getOverhang();
 
