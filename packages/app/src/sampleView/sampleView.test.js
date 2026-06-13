@@ -1534,4 +1534,102 @@ describe("SampleView", () => {
         expect(renderASpy).not.toHaveBeenCalled();
         expect(renderBSpy).toHaveBeenCalled();
     });
+
+    test("renders a repeated y-axis when an initially hidden layer becomes visible", async () => {
+        let signalBVisible = false;
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (candidate) =>
+            candidate.spec.name !== "signal-b" || signalBVisible;
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, a: 2, b: 3 }],
+            },
+            samples: {},
+            specYAxis: {
+                mode: "middle",
+                minSampleHeight: 1,
+            },
+            spec: {
+                height: 160,
+                resolve: {
+                    axis: { y: "independent" },
+                    scale: { y: "independent" },
+                },
+                layer: [
+                    {
+                        name: "signal-a",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "a",
+                                type: "quantitative",
+                                axis: { orient: "left", title: "A" },
+                            },
+                        },
+                    },
+                    {
+                        name: "signal-b",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "b",
+                                type: "quantitative",
+                                axis: { orient: "left", title: "B" },
+                            },
+                        },
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec, context });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const yAxes = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            );
+
+        expect(yAxes.map((axis) => axis.axisProps.title)).toEqual(["A", "B"]);
+        const axisB = yAxes.find((axis) => axis.axisProps.title === "B");
+        if (!(axisB instanceof AxisView)) {
+            throw new Error("Expected initially hidden layer axis!");
+        }
+
+        const renderContext = new NoOpRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(axisB.coords).toBeUndefined();
+
+        signalBVisible = true;
+        await initializeVisibleViewData(
+            view,
+            context.dataFlow,
+            context.fontManager
+        );
+
+        const renderBSpy = vi.spyOn(axisB, "render");
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderBSpy).toHaveBeenCalled();
+    });
 });
