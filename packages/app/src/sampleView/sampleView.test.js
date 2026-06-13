@@ -1229,6 +1229,8 @@ describe("SampleView", () => {
 
         expect(verticalAxisView).toBeInstanceOf(AxisView);
         expect(verticalAxisView.coords).toBeUndefined();
+        expect(view.sidebarCoords.x).toBe(0);
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
     });
 
     test("reserves a lane between the sidebar and sample plot for an enabled left spec y-axis", async () => {
@@ -1288,5 +1290,6 @@ describe("SampleView", () => {
             (verticalAxisView.axisProps.offset ?? 0);
 
         expect(view.childCoords.x).toBe(view.sidebarCoords.x2 + reserve);
+        expect(view.childCoords.x).toBe(view.getOverhang().left);
     });
 });

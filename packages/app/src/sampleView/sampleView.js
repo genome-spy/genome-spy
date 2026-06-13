@@ -737,10 +737,16 @@ export default class SampleView extends ContainerView {
      */
     getOverhang() {
         const sidebarWidth = this.#getSidebarWidth().px ?? 0;
-
-        return new Padding(0, 0, 0, sidebarWidth).add(
-            this.#gridChild.getOverhang()
+        const locations = this.locationManager.getLocations();
+        const chromeOverhang = new Padding(
+            0,
+            this.#gridChild.sampleChromeLayout.getRightReserve(locations),
+            0,
+            sidebarWidth +
+                this.#gridChild.sampleChromeLayout.getLeftReserve(locations)
         );
+
+        return chromeOverhang.add(this.#gridChild.getOverhangWithoutYAxes());
     }
 
     /**
@@ -1062,7 +1068,7 @@ export default class SampleView extends ContainerView {
             coords = coords.shrink(this.getPadding());
         }
 
-        coords = coords.shrink(this.#gridChild.getOverhang());
+        coords = coords.shrink(this.#gridChild.getOverhangWithoutYAxes());
         // TODO: Should also consider the overhang of the summaries.
 
         context.pushView(this, coords);
@@ -1813,6 +1819,37 @@ class SampleGridChild extends GridChild {
         }
 
         this.summaryViews = summaryViews;
+    }
+
+    /**
+     * SampleView owns repeated y-axis lanes so that they can be placed between
+     * the sidebar and repeated plot. The wrapped GridChild still owns x-axis
+     * overhang and any non-axis overhang from the child view.
+     *
+     * @returns {Padding}
+     */
+    getOverhangWithoutYAxes() {
+        const axisOverhang = (
+            /** @type {import("@genome-spy/core/spec/axis.js").AxisOrient} */ orient
+        ) => {
+            const axisView = this.axes[orient];
+            return axisView
+                ? Math.max(
+                      axisView.getPerpendicularSize() +
+                          (axisView.axisProps.offset ?? 0),
+                      0
+                  )
+                : 0;
+        };
+
+        const verticalAxisOverhang = new Padding(
+            0,
+            axisOverhang("right"),
+            0,
+            axisOverhang("left")
+        );
+
+        return this.getOverhang().subtract(verticalAxisOverhang);
     }
 
     *getChildren() {
