@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import AxisView from "./axisView.js";
+import AxisView, { createGenomeAxis } from "./axisView.js";
 import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
 import { specToLayout } from "./testUtils.js";
@@ -142,6 +142,55 @@ describe("axis placement", () => {
 
         expect(title.spec.mark.y).toBe(0);
         expect(title.spec.mark.baseline).toBe("bottom");
+    });
+
+    test("left inside genome axis mirrors chromosome ticks and labels", () => {
+        const spec = createGenomeAxis(
+            /** @type {import("../spec/axis.js").GenomeAxis} */ ({
+                orient: "left",
+                placement: "inside",
+                chromTicks: true,
+                chromLabels: true,
+                chromTickSize: 5,
+                chromTickWidth: 1,
+                chromLabelPadding: 2,
+                chromLabelFontSize: 10,
+                labels: false,
+                ticks: false,
+                domain: false,
+            }),
+            "locus"
+        );
+        const chromLayer = spec.layer.find(
+            (layer) => layer.name === "chromosome_ticks_and_labels"
+        );
+        if (!chromLayer || !("layer" in chromLayer)) {
+            throw new Error("Chromosome layer not found!");
+        }
+
+        const chromTicks = chromLayer.layer.find(
+            (layer) => layer.name === "chromosome_ticks"
+        );
+        const chromLabels = chromLayer.layer.find(
+            (layer) => layer.name === "chromosome_labels"
+        );
+        if (!chromTicks || !chromLabels) {
+            throw new Error("Chromosome axis views not found!");
+        }
+
+        const ticks = /** @type {import("../spec/view.js").UnitSpec} */ (
+            chromTicks
+        );
+        const labels = /** @type {import("../spec/view.js").UnitSpec} */ (
+            chromLabels
+        );
+        const ticksMark = /** @type {any} */ (ticks.mark);
+        const labelsMark = /** @type {any} */ (labels.mark);
+
+        expect(ticksMark.x).toBe(0);
+        expect(ticksMark.x2.expr).toContain("* -1");
+        expect(labelsMark.x).toBe(0);
+        expect(labelsMark.angle).toBe(90);
     });
 
     test.each(["left", "right", "top", "bottom"])(

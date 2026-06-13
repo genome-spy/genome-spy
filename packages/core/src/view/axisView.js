@@ -644,7 +644,7 @@ export function createGenomeAxis(axisProps, type) {
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
 
-    const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
+    const { anchor, tickSide } = getAxisGeometry(ap);
 
     /**
      * @return {import("../spec/view.js").UnitSpec}
@@ -672,7 +672,7 @@ export function createGenomeAxis(axisProps, type) {
     const createChromosomeLabels = () => {
         /** @type {Partial<import("../spec/mark.js").TextProps>} */
         let chromLabelMarkProps;
-        switch (ap.orient) {
+        switch (tickSide) {
             case "top":
                 chromLabelMarkProps = {
                     y: 0,
@@ -750,7 +750,7 @@ export function createGenomeAxis(axisProps, type) {
 
     /** @type {Axis} */
     let fixedAxisProps;
-    switch (ap.orient) {
+    switch (tickSide) {
         case "bottom":
         case "top":
             fixedAxisProps = {};
