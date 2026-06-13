@@ -268,3 +268,208 @@ Start with ordinary quantitative/linear axes and implement the internal
 
 Once ordinary axes work and existing axis tests pass, evaluate genome axes and
 SampleView examples visually before extending scope.
+
+## Step-By-Step Implementation Plan
+
+The work should proceed in small commits because axis behavior touches layout,
+rendering order, and generated schema docs.
+
+### 1. Add the public axis property and schema docs
+
+Tentative commit message:
+
+```text
+feat(core): add axis placement spec
+```
+
+Add `AxisPlacement = "outside" | "inside"` and `placement?: AxisPlacement` to
+the Core axis spec. Document that `"outside"` is the default and that inside
+axes draw into the plotting area without reserving external layout space.
+
+Evaluation point:
+
+- Generated schema/types accept `axis.placement`.
+- Existing specs remain valid without migration.
+- The docs avoid promising automatic padding, label backgrounds, or
+  data-avoidance behavior.
+
+### 2. Introduce axis-side geometry helpers
+
+Tentative commit message:
+
+```text
+refactor(core): separate axis anchor side from tick side
+```
+
+Add a small internal helper that resolves:
+
+- the anchor side from `orient`
+- the placement from `axis.placement ?? "outside"`
+- the tick/label side by mirroring the anchor side when placement is `"inside"`
+
+Use this helper in ordinary axis tick, label, title, and size calculations.
+Keep the existing outside-axis snapshots and tests passing before changing
+layout behavior.
+
+Evaluation point:
+
+- Outside axes are behaviorally unchanged.
+- The helper reduces repeated orientation branching instead of adding parallel
+  inside-axis branches throughout `AxisView`.
+- Explicit `labelAlign`, `labelBaseline`, `labelAngle`, and title properties
+  still override defaults.
+
+### 3. Make inside axes render with no external overhang
+
+Tentative commit message:
+
+```text
+feat(core): exclude inside axes from external overhang
+```
+
+Update GridView/GridChild overhang calculations so inside axes do not reserve
+space outside the plot. Keep outside-axis overhang unchanged.
+
+For SampleView, make the y-axis lane reservation ignore inside axes while still
+allowing SampleView to render the same `AxisView` instances against sample-local
+plot rectangles.
+
+Evaluation point:
+
+- A left inside y-axis does not increase left overhang.
+- A right inside y-axis does not increase right overhang.
+- Existing outside-axis alignment in concat/vconcat still works.
+- SampleView inside y-axes do not create sidebar-to-plot spacer lanes.
+
+### 4. Align rendering order with existing z-index semantics
+
+Tentative commit message:
+
+```text
+feat(core): default inside axes to plot overlays
+```
+
+Do not add a new inside-axis render phase. Use the existing decoration z-index
+pipeline. Inside axes should get a positive effective default z-index so they
+render after marks, while explicit `axis.zindex` continues to override the
+default.
+
+Evaluation point:
+
+- `placement: "inside"` with omitted `zindex` renders above marks.
+- `placement: "inside", zindex: 0` renders before marks.
+- Outside axes keep their current default z-index behavior, including clipped
+  or scrollable views.
+- Existing GridView z-index tests remain meaningful and only need focused
+  additions for inside placement.
+
+### 5. Add focused layout and rendering tests
+
+Tentative commit message:
+
+```text
+test(core): cover inside axis layout and zindex
+```
+
+Add tests close to the affected code. Prefer layout snapshot utilities where
+they capture the contract clearly.
+
+Suggested coverage:
+
+- left/right/top/bottom inside axes reserve no external overhang
+- left inside y-axis mirrors right-axis tick/label direction
+- right inside y-axis mirrors left-axis tick/label direction
+- top/bottom inside axes mirror vertically
+- explicit `axis.zindex` overrides the inside-axis overlay default
+- outside axes keep existing overhang and z-index behavior
+
+Evaluation point:
+
+- Tests describe durable behavior rather than implementation details.
+- No tests depend on temporary compatibility branches.
+- The assertions catch both geometry and layout regressions.
+
+### 6. Evaluate genome axes separately
+
+Tentative commit message if support is straightforward:
+
+```text
+feat(core): support inside placement for genome axes
+```
+
+Tentative commit message if support is deferred:
+
+```text
+docs(core): document inside axis genome limitation
+```
+
+Try routing genome-specific axis pieces through the same side/tick-side helper.
+If this stays local and clear, include genome axes in the feature. If it spreads
+large special cases through `AxisView`, defer it and document the limitation.
+
+Evaluation point:
+
+- Ordinary quantitative axes should not be held hostage by genome-specific
+  complexity.
+- Genome support should share the same geometry model or be explicitly scoped
+  out for the first version.
+
+### 7. Verify SampleView behavior with representative axes
+
+Tentative commit message:
+
+```text
+test(app): cover inside sample y axes
+```
+
+Add or adjust SampleView tests for `sampleYAxis` modes that render one
+representative axis. The feature remains a Core axis property, but SampleView is
+the main motivating consumer and should not accidentally reserve axis lanes for
+inside axes.
+
+Evaluation point:
+
+- `sampleYAxis.mode: "top"`, `"middle"`, or `"bottom"` can render an inside
+  y-axis without external lane reservation.
+- `sampleYAxis.mode: "all"` works mechanically, even if it may be visually busy.
+- Toggleable-layer axis visibility remains based on visible axis candidates.
+
+### 8. Update user-facing docs and examples only after behavior settles
+
+Tentative commit message:
+
+```text
+docs: document inside axes
+```
+
+Update schema-derived docs and add a concise user-facing note where axis
+placement belongs. Avoid SampleView-specific framing except as an example of
+why inside axes are useful.
+
+Evaluation point:
+
+- The docs explain `placement` as a Core axis property.
+- Defaults and limitations match the implemented behavior.
+- Examples remain small and inspectable.
+
+### 9. Final verification
+
+Tentative commit message only if fixes are needed:
+
+```text
+fix(core): polish inside axis edge cases
+```
+
+Run focused tests during development, then broader checks before review:
+
+```text
+npx vitest run packages/core/src/view/gridView/gridView.test.js
+npx vitest run packages/app/src/sampleView/sampleView.test.js
+npm --workspaces run test:tsc --if-present
+```
+
+Evaluation point:
+
+- No known layout regressions for outside axes.
+- Inside axes work in ordinary GridView and SampleView scenarios.
+- Any remaining unsupported cases are documented rather than silently broken.
