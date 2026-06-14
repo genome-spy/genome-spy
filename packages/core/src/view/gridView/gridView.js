@@ -9,7 +9,11 @@ import {
 import Grid from "../layout/grid.js";
 import Padding from "../layout/padding.js";
 import Rectangle from "../layout/rectangle.js";
-import AxisView, { CHANNEL_ORIENTS, ORIENT_CHANNELS } from "../axisView.js";
+import AxisView, {
+    CHANNEL_ORIENTS,
+    ORIENT_CHANNELS,
+    getExternalAxisOverhang,
+} from "../axisView.js";
 import ContainerView from "../containerView.js";
 import {
     propagateInteraction,
@@ -549,15 +553,8 @@ export default class GridView extends ContainerView {
             if (axisView?.axisProps.orient !== orient) {
                 return 0;
             }
-            if (axisView.axisProps.placement === "inside") {
-                return 0;
-            }
 
-            return Math.max(
-                axisView.getPerpendicularSize() +
-                    (axisView.axisProps.offset ?? 0),
-                0
-            );
+            return getExternalAxisOverhang(axisView);
         };
 
         return new Padding(

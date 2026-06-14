@@ -69,20 +69,38 @@ function getOppositeOrient(orient) {
  * @param {Axis} axisProps
  */
 function getAxisGeometry(axisProps) {
-    const side = axisProps.orient;
     const tickSide =
-        axisProps.placement === "inside" ? getOppositeOrient(side) : side;
+        axisProps.placement === "inside"
+            ? getOppositeOrient(axisProps.orient)
+            : axisProps.orient;
 
     const anchor = tickSide == "bottom" || tickSide == "left" ? 1 : 0;
     const offsetDirection =
         tickSide == "bottom" || tickSide == "right" ? 1 : -1;
 
     return {
-        side,
         tickSide,
         anchor,
         offsetDirection,
     };
+}
+
+/**
+ * Returns the horizontal or vertical space reserved by an outside axis.
+ * Inside axes are drawn over the plot and therefore reserve no external space.
+ *
+ * @param {AxisView | undefined} axisView
+ * @returns {number}
+ */
+export function getExternalAxisOverhang(axisView) {
+    if (!axisView || axisView.axisProps.placement === "inside") {
+        return 0;
+    }
+
+    return Math.max(
+        axisView.getPerpendicularSize() + (axisView.axisProps.offset ?? 0),
+        0
+    );
 }
 
 /**
