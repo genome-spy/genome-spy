@@ -746,7 +746,7 @@ export default class GridView extends ContainerView {
             gridChild.coords = viewportCoords;
 
             const parentClip = normalizeClipOptions(options);
-            const clippedChildCoords = clipCoords(viewportCoords, parentClip);
+            const visibleChildCoords = clipCoords(viewportCoords, parentClip);
 
             renderItems.push({
                 col,
@@ -761,7 +761,7 @@ export default class GridView extends ContainerView {
                 viewportCoords,
                 viewCoords,
                 parentClip,
-                clippedChildCoords,
+                visibleChildCoords,
                 viewWidth,
                 viewHeight,
                 scrollable,
@@ -816,7 +816,7 @@ export default class GridView extends ContainerView {
                     () =>
                         item.background?.render(
                             context,
-                            item.clippedChildCoords,
+                            item.visibleChildCoords,
                             {
                                 ...options,
                                 clipRect: undefined,
@@ -871,7 +871,7 @@ export default class GridView extends ContainerView {
                 viewportCoords,
                 viewCoords,
                 parentClip,
-                clippedChildCoords,
+                visibleChildCoords,
                 viewWidth,
                 viewHeight,
                 scrollable,
@@ -891,11 +891,11 @@ export default class GridView extends ContainerView {
                 );
             }
 
-            const contentClip = clipped
+            const childClip = clipped
                 ? combineClipOptions(
                       parentClip,
                       createClipOptions(
-                          clippedChildCoords,
+                          visibleChildCoords,
                           clippedChildren ||
                               Boolean(gridChild.scrollbars.horizontal),
                           clippedChildren ||
@@ -911,8 +911,8 @@ export default class GridView extends ContainerView {
                     clipped
                         ? {
                               ...options,
-                              clipRect: clippedChildCoords,
-                              clip: contentClip,
+                              clipRect: childClip?.rect,
+                              clip: childClip,
                           }
                         : options
                 );
@@ -927,7 +927,7 @@ export default class GridView extends ContainerView {
                     ),
                     DECORATION_ORDER.backgroundStroke,
                     () =>
-                        backgroundStroke?.render(context, clippedChildCoords, {
+                        backgroundStroke?.render(context, visibleChildCoords, {
                             ...options,
                             clipRect: undefined,
                         })
