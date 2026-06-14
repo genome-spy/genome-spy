@@ -2,6 +2,7 @@ import { group } from "d3-array";
 
 import ViewRenderingContext from "./viewRenderingContext.js";
 import { color } from "d3-color";
+import { normalizeClipOptions } from "../../types/rendering.js";
 
 /**
  * @typedef {object} BufferedViewRenderingOptions
@@ -96,7 +97,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 mark,
                 callback,
                 coords: this.#coords,
-                clipRect: options.clipRect,
+                clip: normalizeClipOptions(options),
             });
         }
     }
@@ -206,7 +207,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                                 this.#canvasSize,
                                 this.#dpr,
                                 coords,
-                                request.clipRect
+                                request.clip
                             );
                         })
                     );
