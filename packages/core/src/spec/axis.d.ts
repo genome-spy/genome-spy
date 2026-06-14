@@ -127,6 +127,18 @@ export interface Axis extends BaseAxis, ZIndexProps {
     title?: string | null;
 
     /**
+     * Fitting mode for the axis title. `"point"` anchors the title at the
+     * center of the axis without constraining its length. `"range"` constrains
+     * the title to the axis span using
+     * [ranged text](https://genomespy.app/docs/grammar/mark/text/#ranged-text),
+     * allowing it to be squeezed to fit and kept visible inside scrollable
+     * viewports.
+     *
+     * __Default value:__ `"point"`
+     */
+    titleFit?: "point" | "range";
+
+    /**
      * The orthogonal offset in pixels by which to displace the axis from its position along the edge of the chart.
      */
     offset?: number;

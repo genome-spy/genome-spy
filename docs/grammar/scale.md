@@ -401,6 +401,10 @@ its domain line at the left plot edge, while ticks and labels extend rightward
 over the plotted data. Inside axes do not reserve external layout space and
 render above marks by default. Use `axis.zindex` to override that layering.
 
+Set `axis.titleFit` to `"range"` to constrain the axis title to the axis span.
+Ranged titles are squeezed when space is scarce and stay visible longer inside
+scrollable viewports, but cannot extend outside the axis span.
+
 !!! note "Grid lines"
 
     Grid lines are hidden by default in GenomeSpy and can be enabled for each

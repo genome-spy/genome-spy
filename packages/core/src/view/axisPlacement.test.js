@@ -144,6 +144,43 @@ describe("axis placement", () => {
         expect(title.spec.mark.baseline).toBe("bottom");
     });
 
+    test("axis title uses point positioning by default", async () => {
+        const axis = await createAxis("bottom", {
+            title: "Signal",
+        });
+        const title = findUnitView(axis, "title");
+
+        expect(title.spec.mark.x).toBe(0.5);
+        expect(title.spec.mark.x2).toBeUndefined();
+        expect(title.spec.mark.flushX).toBeUndefined();
+    });
+
+    test("horizontal ranged axis title spans the axis and flushes horizontally", async () => {
+        const axis = await createAxis("bottom", {
+            title: "Signal",
+            titleFit: "range",
+        });
+        const title = findUnitView(axis, "title");
+
+        expect(title.spec.mark.x).toBe(0);
+        expect(title.spec.mark.x2).toBe(1);
+        expect(title.spec.mark.flushX).toBe(true);
+        expect(title.spec.mark.y).toBe(0);
+    });
+
+    test("vertical ranged axis title spans the axis and flushes vertically", async () => {
+        const axis = await createAxis("left", {
+            title: "Signal",
+            titleFit: "range",
+        });
+        const title = findUnitView(axis, "title");
+
+        expect(title.spec.mark.y).toBe(0);
+        expect(title.spec.mark.y2).toBe(1);
+        expect(title.spec.mark.flushY).toBe(true);
+        expect(title.spec.mark.x).toBe(0);
+    });
+
     test("left inside genome axis mirrors chromosome ticks and labels", () => {
         const spec = createGenomeAxis(
             /** @type {import("../spec/axis.js").GenomeAxis} */ ({

@@ -579,23 +579,37 @@ function createAxis(axisProps, type) {
     /**
      * @return {import("../spec/view.js").UnitSpec}
      */
-    const createTitle = () => ({
-        name: "title",
-        data: { values: [{}] },
-        mark: {
-            type: "text",
-            clip: false,
-            align: "center",
-            baseline: tickSide == "bottom" ? "bottom" : "top",
-            angle: [0, 90, 0, -90][
-                ["top", "right", "bottom", "left"].indexOf(tickSide)
-            ],
-            text: ap.title,
-            color: ap.titleColor,
-            [main]: 0.5,
-            [secondary]: 1 - anchor,
-        },
-    });
+    const createTitle = () => {
+        /** @type {Partial<import("../spec/mark.js").TextProps>} */
+        const rangedTitleProps =
+            ap.titleFit === "range"
+                ? {
+                      [main]: 0,
+                      [main + "2"]: 1,
+                      [main === "x" ? "flushX" : "flushY"]: true,
+                  }
+                : {
+                      [main]: 0.5,
+                  };
+
+        return {
+            name: "title",
+            data: { values: [{}] },
+            mark: {
+                ...rangedTitleProps,
+                type: "text",
+                clip: false,
+                align: "center",
+                baseline: tickSide == "bottom" ? "bottom" : "top",
+                angle: [0, 90, 0, -90][
+                    ["top", "right", "bottom", "left"].indexOf(tickSide)
+                ],
+                text: ap.title,
+                color: ap.titleColor,
+                [secondary]: 1 - anchor,
+            },
+        };
+    };
 
     /**
      * @return {import("../spec/view.js").LayerSpec}
