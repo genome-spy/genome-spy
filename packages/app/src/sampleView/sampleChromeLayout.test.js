@@ -137,6 +137,27 @@ describe("SampleChromeLayout", () => {
         expect(axisView.render.mock.calls[0][1].height).toBe(30);
     });
 
+    test("prefers the upper middle sample in middle mode near-ties", () => {
+        const axisView = createAxisView(10, 2);
+        const layout = new SampleChromeLayout({
+            sampleYAxis: { mode: "middle", minSampleHeight: 1 },
+            getActiveAxisCandidate: leftCandidate(axisView),
+            getPeekState: () => 0,
+        });
+        const plotCoords = Rectangle.create(50, 100, 200, 120);
+        const locations = createLocations([25, 25, 24.999999998, 25.000000002]);
+
+        layout.renderVerticalAxes(
+            /** @type {any} */ ({}),
+            plotCoords,
+            locations
+        );
+
+        expect(axisView.render).toHaveBeenCalledTimes(1);
+        expect(axisView.render.mock.calls[0][1].y).toBe(125);
+        expect(axisView.render.mock.calls[0][1].height).toBe(25);
+    });
+
     test("uses the active axis candidate", () => {
         const axisView = createAxisView(30, 4);
         const layout = new SampleChromeLayout({

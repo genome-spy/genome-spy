@@ -5,6 +5,7 @@ import Padding from "@genome-spy/core/view/layout/padding.js";
 
 const DEFAULT_MIN_SAMPLE_HEIGHT = 60;
 const DEFAULT_MODE = "all";
+const MIDDLE_SAMPLE_TIE_EPSILON = 1e-6;
 
 /**
  * Coordinates SampleView-specific chrome around the repeated sample pane.
@@ -221,7 +222,10 @@ export default class SampleChromeLayout {
                     const center =
                         sample.locSize.location + sample.locSize.size / 2;
                     const distance = Math.abs(center - midpoint);
-                    if (distance < closestDistance) {
+                    if (
+                        distance <
+                        closestDistance - MIDDLE_SAMPLE_TIE_EPSILON
+                    ) {
                         closest = sample;
                         closestDistance = distance;
                     }
