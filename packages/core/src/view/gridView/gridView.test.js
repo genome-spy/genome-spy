@@ -448,6 +448,72 @@ describe("GridView separators", () => {
         expect(child.coords.height).toBe(200);
     });
 
+    test("explicit scrollable viewport height constrains nested grid viewport", async () => {
+        const view = await createAndInitialize(
+            {
+                data: { values: [{ x: 1, y: 2 }] },
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+                vconcat: [
+                    {
+                        viewportHeight: 300,
+                        vconcat: [
+                            {
+                                height: 200,
+                                mark: "point",
+                            },
+                            {
+                                height: 200,
+                                mark: "point",
+                            },
+                        ],
+                    },
+                    {
+                        height: 200,
+                        mark: "point",
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const [scrollableChild, followingChild] = view.children;
+
+        // The explicit viewport height is the outer visible height. Nested
+        // child axes may affect the scrollable content size, but must not
+        // inflate the parent row and overlap the following row.
+        expect(scrollableChild.coords.height).toBe(300);
+        expect(followingChild.coords.y).toBeGreaterThanOrEqual(
+            scrollableChild.coords.y2
+        );
+
+        const verticalScrollbar =
+            /** @type {import("./scrollbar.js").default | undefined} */ (
+                view
+                    .getDescendants()
+                    .find(
+                        (descendant) => descendant.name === "scrollbar-vertical"
+                    )
+            );
+        if (!verticalScrollbar) {
+            throw new Error("Expected vertical scrollbar!");
+        }
+
+        verticalScrollbar.setViewportOffset(Number.POSITIVE_INFINITY);
+        renderForLayout(view);
+
+        const contentBottom = Math.max(
+            ...scrollableChild
+                .getDescendants()
+                .map((descendant) => descendant.coords?.y2 ?? -Infinity)
+        );
+        expect(contentBottom).toBe(scrollableChild.coords.y2);
+    });
+
     test("text expressions see child size on the first render pass", async () => {
         const view = await createAndInitialize(
             {

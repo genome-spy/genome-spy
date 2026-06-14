@@ -683,16 +683,34 @@ export default class GridView extends ContainerView {
             /**
              * @param {FlexDimensions} size
              * @param {"width" | "height"} dimension
+             * @param {boolean} explicitViewport
              */
-            const getLen = (size, dimension) =>
+            const getLen = (size, dimension, explicitViewport = false) =>
                 (size[dimension].grow
                     ? (dimension == "width" ? colLocSize : rowLocSize).size
-                    : size[dimension].px) + overhang[dimension];
+                    : size[dimension].px) +
+                (explicitViewport ? 0 : overhang[dimension]);
 
-            const viewportWidth = getLen(viewportSize, "width");
-            const viewportHeight = getLen(viewportSize, "height");
-            const viewWidth = getLen(viewSize, "width");
-            const viewHeight = getLen(viewSize, "height");
+            const viewportWidth = getLen(
+                viewportSize,
+                "width",
+                view.spec.viewportWidth != null
+            );
+            const viewportHeight = getLen(
+                viewportSize,
+                "height",
+                view.spec.viewportHeight != null
+            );
+            const viewWidth = getLen(
+                viewSize,
+                "width",
+                view.spec.viewportWidth != null
+            );
+            const viewHeight = getLen(
+                viewSize,
+                "height",
+                view.spec.viewportHeight != null
+            );
 
             const hScrollbar = gridChild.scrollbars.horizontal;
             const vScrollbar = gridChild.scrollbars.vertical;
