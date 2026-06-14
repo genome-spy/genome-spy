@@ -92,6 +92,8 @@ export interface GenomeAxis extends Axis {
 
 export type AxisOrient = "top" | "bottom" | "left" | "right";
 
+export type AxisPlacement = "outside" | "inside";
+
 export interface Axis extends BaseAxis, ZIndexProps {
     /**
      * Named style reference(s) resolved from `config.style`.
@@ -105,6 +107,13 @@ export interface Axis extends BaseAxis, ZIndexProps {
      * __Default value:__ `"bottom"` for x-axes and `"left"` for y-axes.
      */
     orient?: AxisOrient;
+
+    /**
+     * Placement of the axis relative to the plotting area. Outside axes reserve layout space outside the plot. Inside axes are mirrored into the plot and do not reserve external layout space.
+     *
+     * __Default value:__ `"outside"`.
+     */
+    placement?: AxisPlacement;
 
     /**
      * The format specifier pattern for axis labels.

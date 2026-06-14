@@ -718,172 +718,172 @@ ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 335, y: 290, width: 260, height: 200",
+              "coords": "Rectangle: x: 335, y: 257, width: 260, height: 200",
               "viewName": "grid_lines",
             },
           ],
-          "coords": "Rectangle: x: 335, y: 290, width: 260, height: 200",
+          "coords": "Rectangle: x: 335, y: 257, width: 260, height: 200",
           "viewName": "grid_layers",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 335, y: 290, width: 260, height: 200",
+          "coords": "Rectangle: x: 335, y: 257, width: 260, height: 200",
           "viewName": "backgroundStroke1",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 490, width: 260, height: 32",
+              "coords": "Rectangle: x: 32, y: 457, width: 260, height: 32",
               "viewName": "domain",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 32, y: 490, width: 260, height: 32",
+                  "coords": "Rectangle: x: 32, y: 457, width: 260, height: 32",
                   "viewName": "ticks",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 32, y: 490, width: 260, height: 32",
+                  "coords": "Rectangle: x: 32, y: 457, width: 260, height: 32",
                   "viewName": "labels_main",
                 },
               ],
-              "coords": "Rectangle: x: 32, y: 490, width: 260, height: 32",
+              "coords": "Rectangle: x: 32, y: 457, width: 260, height: 32",
               "viewName": "ticks_and_labels",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 490, width: 260, height: 32",
+              "coords": "Rectangle: x: 32, y: 457, width: 260, height: 32",
               "viewName": "title",
             },
           ],
-          "coords": "Rectangle: x: 32, y: 490, width: 260, height: 32",
+          "coords": "Rectangle: x: 32, y: 457, width: 260, height: 32",
           "viewName": "axis_bottom",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 0, y: 290, width: 32, height: 200",
+              "coords": "Rectangle: x: 0, y: 257, width: 32, height: 200",
               "viewName": "domain",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 0, y: 290, width: 32, height: 200",
+                  "coords": "Rectangle: x: 0, y: 257, width: 32, height: 200",
                   "viewName": "ticks",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 0, y: 290, width: 32, height: 200",
+                  "coords": "Rectangle: x: 0, y: 257, width: 32, height: 200",
                   "viewName": "labels_main",
                 },
               ],
-              "coords": "Rectangle: x: 0, y: 290, width: 32, height: 200",
+              "coords": "Rectangle: x: 0, y: 257, width: 32, height: 200",
               "viewName": "ticks_and_labels",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 0, y: 290, width: 32, height: 200",
+              "coords": "Rectangle: x: 0, y: 257, width: 32, height: 200",
               "viewName": "title",
             },
           ],
-          "coords": "Rectangle: x: 0, y: 290, width: 32, height: 200",
+          "coords": "Rectangle: x: 0, y: 257, width: 32, height: 200",
           "viewName": "axis_left",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 335, y: 490, width: 260, height: 33",
+              "coords": "Rectangle: x: 335, y: 457, width: 260, height: 33",
               "viewName": "domain",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 335, y: 490, width: 260, height: 33",
+                  "coords": "Rectangle: x: 335, y: 457, width: 260, height: 33",
                   "viewName": "ticks",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 335, y: 490, width: 260, height: 33",
+                  "coords": "Rectangle: x: 335, y: 457, width: 260, height: 33",
                   "viewName": "labels_main",
                 },
               ],
-              "coords": "Rectangle: x: 335, y: 490, width: 260, height: 33",
+              "coords": "Rectangle: x: 335, y: 457, width: 260, height: 33",
               "viewName": "ticks_and_labels",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 335, y: 490, width: 260, height: 33",
+              "coords": "Rectangle: x: 335, y: 457, width: 260, height: 33",
               "viewName": "title",
             },
           ],
-          "coords": "Rectangle: x: 335, y: 490, width: 260, height: 33",
+          "coords": "Rectangle: x: 335, y: 457, width: 260, height: 33",
           "viewName": "axis_bottom",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 302, y: 290, width: 33, height: 200",
+              "coords": "Rectangle: x: 302, y: 257, width: 33, height: 200",
               "viewName": "domain",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 302, y: 290, width: 33, height: 200",
+                  "coords": "Rectangle: x: 302, y: 257, width: 33, height: 200",
                   "viewName": "ticks",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 302, y: 290, width: 33, height: 200",
+                  "coords": "Rectangle: x: 302, y: 257, width: 33, height: 200",
                   "viewName": "labels_main",
                 },
               ],
-              "coords": "Rectangle: x: 302, y: 290, width: 33, height: 200",
+              "coords": "Rectangle: x: 302, y: 257, width: 33, height: 200",
               "viewName": "ticks_and_labels",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 302, y: 290, width: 33, height: 200",
+              "coords": "Rectangle: x: 302, y: 257, width: 33, height: 200",
               "viewName": "title",
             },
           ],
-          "coords": "Rectangle: x: 302, y: 290, width: 33, height: 200",
+          "coords": "Rectangle: x: 302, y: 257, width: 33, height: 200",
           "viewName": "axis_left",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 32, y: 290, width: 260, height: 200",
+          "coords": "Rectangle: x: 32, y: 257, width: 260, height: 200",
           "viewName": "genomespy-scatter",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 335, y: 290, width: 260, height: 200",
+          "coords": "Rectangle: x: 335, y: 257, width: 260, height: 200",
           "viewName": "vegalite-like-scatter",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 32, y: 290, width: 260, height: 200",
+          "coords": "Rectangle: x: 32, y: 257, width: 260, height: 200",
           "viewName": "title0",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 335, y: 290, width: 260, height: 200",
+          "coords": "Rectangle: x: 335, y: 257, width: 260, height: 200",
           "viewName": "title1",
         },
       ],
-      "coords": "Rectangle: x: 0, y: 290, width: 627, height: 266",
+      "coords": "Rectangle: x: 0, y: 257, width: 627, height: 266",
       "viewName": "grid1",
     },
   ],
-  "coords": "Rectangle: x: 0, y: 0, width: 627, height: 556",
+  "coords": "Rectangle: x: 0, y: 0, width: 595, height: 490",
   "viewName": "viewRoot",
 }
 `;
@@ -971,159 +971,159 @@ ViewCoords {
   "children": [
     ViewCoords {
       "children": [],
-      "coords": "Rectangle: x: 970, y: 0, width: 510, height: 968",
+      "coords": "Rectangle: x: 908, y: 0, width: 572, height: 968",
       "viewName": "backgroundStroke1",
     },
     ViewCoords {
       "children": [
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 970, y: 968, width: 510, height: 32",
+          "coords": "Rectangle: x: 908, y: 968, width: 572, height: 32",
           "viewName": "domain",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 970, y: 968, width: 510, height: 32",
+              "coords": "Rectangle: x: 908, y: 968, width: 572, height: 32",
               "viewName": "ticks",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 970, y: 968, width: 510, height: 32",
+              "coords": "Rectangle: x: 908, y: 968, width: 572, height: 32",
               "viewName": "labels_main",
             },
           ],
-          "coords": "Rectangle: x: 970, y: 968, width: 510, height: 32",
+          "coords": "Rectangle: x: 908, y: 968, width: 572, height: 32",
           "viewName": "ticks_and_labels",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 970, y: 968, width: 510, height: 32",
+          "coords": "Rectangle: x: 908, y: 968, width: 572, height: 32",
           "viewName": "title",
         },
       ],
-      "coords": "Rectangle: x: 970, y: 968, width: 510, height: 32",
+      "coords": "Rectangle: x: 908, y: 968, width: 572, height: 32",
       "viewName": "axis_bottom",
     },
     ViewCoords {
       "children": [
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 938, y: 0, width: 32, height: 968",
+          "coords": "Rectangle: x: 876, y: 0, width: 32, height: 968",
           "viewName": "domain",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 938, y: 0, width: 32, height: 968",
+              "coords": "Rectangle: x: 876, y: 0, width: 32, height: 968",
               "viewName": "ticks",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 938, y: 0, width: 32, height: 968",
+              "coords": "Rectangle: x: 876, y: 0, width: 32, height: 968",
               "viewName": "labels_main",
             },
           ],
-          "coords": "Rectangle: x: 938, y: 0, width: 32, height: 968",
+          "coords": "Rectangle: x: 876, y: 0, width: 32, height: 968",
           "viewName": "ticks_and_labels",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 938, y: 0, width: 32, height: 968",
+          "coords": "Rectangle: x: 876, y: 0, width: 32, height: 968",
           "viewName": "title",
         },
       ],
-      "coords": "Rectangle: x: 938, y: 0, width: 32, height: 968",
+      "coords": "Rectangle: x: 876, y: 0, width: 32, height: 968",
       "viewName": "axis_left",
     },
     ViewCoords {
       "children": [
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 42, y: 0, width: 846, height: 417",
+          "coords": "Rectangle: x: 42, y: 0, width: 784, height: 448",
           "viewName": "backgroundStroke0",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 42, y: 417, width: 846, height: 32",
+              "coords": "Rectangle: x: 42, y: 448, width: 784, height: 32",
               "viewName": "domain",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 42, y: 417, width: 846, height: 32",
+                  "coords": "Rectangle: x: 42, y: 448, width: 784, height: 32",
                   "viewName": "ticks",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 42, y: 417, width: 846, height: 32",
+                  "coords": "Rectangle: x: 42, y: 448, width: 784, height: 32",
                   "viewName": "labels_main",
                 },
               ],
-              "coords": "Rectangle: x: 42, y: 417, width: 846, height: 32",
+              "coords": "Rectangle: x: 42, y: 448, width: 784, height: 32",
               "viewName": "ticks_and_labels",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 42, y: 417, width: 846, height: 32",
+              "coords": "Rectangle: x: 42, y: 448, width: 784, height: 32",
               "viewName": "title",
             },
           ],
-          "coords": "Rectangle: x: 42, y: 417, width: 846, height: 32",
+          "coords": "Rectangle: x: 42, y: 448, width: 784, height: 32",
           "viewName": "axis_bottom",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 10, y: 0, width: 32, height: 417",
+              "coords": "Rectangle: x: 10, y: 0, width: 32, height: 448",
               "viewName": "domain",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 10, y: 0, width: 32, height: 417",
+                  "coords": "Rectangle: x: 10, y: 0, width: 32, height: 448",
                   "viewName": "ticks",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 10, y: 0, width: 32, height: 417",
+                  "coords": "Rectangle: x: 10, y: 0, width: 32, height: 448",
                   "viewName": "labels_main",
                 },
               ],
-              "coords": "Rectangle: x: 10, y: 0, width: 32, height: 417",
+              "coords": "Rectangle: x: 10, y: 0, width: 32, height: 448",
               "viewName": "ticks_and_labels",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 10, y: 0, width: 32, height: 417",
+              "coords": "Rectangle: x: 10, y: 0, width: 32, height: 448",
               "viewName": "title",
             },
           ],
-          "coords": "Rectangle: x: 10, y: 0, width: 32, height: 417",
+          "coords": "Rectangle: x: 10, y: 0, width: 32, height: 448",
           "viewName": "axis_left",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 42, y: 0, width: 846, height: 417",
+          "coords": "Rectangle: x: 42, y: 0, width: 784, height: 448",
           "viewName": "grid0",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 42, y: 489, width: 150, height: 479",
+              "coords": "Rectangle: x: 42, y: 520, width: 150, height: 448",
               "viewName": "backgroundStroke0",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 254, y: 489, width: 634, height: 479",
+              "coords": "Rectangle: x: 254, y: 520, width: 572, height: 448",
               "viewName": "backgroundStroke1",
             },
             ViewCoords {
@@ -1162,124 +1162,124 @@ ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 0, y: 489, width: 32, height: 479",
+                  "coords": "Rectangle: x: 0, y: 520, width: 32, height: 448",
                   "viewName": "domain",
                 },
                 ViewCoords {
                   "children": [
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 0, y: 489, width: 32, height: 479",
+                      "coords": "Rectangle: x: 0, y: 520, width: 32, height: 448",
                       "viewName": "ticks",
                     },
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 0, y: 489, width: 32, height: 479",
+                      "coords": "Rectangle: x: 0, y: 520, width: 32, height: 448",
                       "viewName": "labels_main",
                     },
                   ],
-                  "coords": "Rectangle: x: 0, y: 489, width: 32, height: 479",
+                  "coords": "Rectangle: x: 0, y: 520, width: 32, height: 448",
                   "viewName": "ticks_and_labels",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 0, y: 489, width: 32, height: 479",
+                  "coords": "Rectangle: x: 0, y: 520, width: 32, height: 448",
                   "viewName": "title",
                 },
               ],
-              "coords": "Rectangle: x: 0, y: 489, width: 32, height: 479",
+              "coords": "Rectangle: x: 0, y: 520, width: 32, height: 448",
               "viewName": "axis_left",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 254, y: 968, width: 634, height: 32",
+                  "coords": "Rectangle: x: 254, y: 968, width: 572, height: 32",
                   "viewName": "domain",
                 },
                 ViewCoords {
                   "children": [
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 254, y: 968, width: 634, height: 32",
+                      "coords": "Rectangle: x: 254, y: 968, width: 572, height: 32",
                       "viewName": "ticks",
                     },
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 254, y: 968, width: 634, height: 32",
+                      "coords": "Rectangle: x: 254, y: 968, width: 572, height: 32",
                       "viewName": "labels_main",
                     },
                   ],
-                  "coords": "Rectangle: x: 254, y: 968, width: 634, height: 32",
+                  "coords": "Rectangle: x: 254, y: 968, width: 572, height: 32",
                   "viewName": "ticks_and_labels",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 254, y: 968, width: 634, height: 32",
+                  "coords": "Rectangle: x: 254, y: 968, width: 572, height: 32",
                   "viewName": "title",
                 },
               ],
-              "coords": "Rectangle: x: 254, y: 968, width: 634, height: 32",
+              "coords": "Rectangle: x: 254, y: 968, width: 572, height: 32",
               "viewName": "axis_bottom",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 222, y: 489, width: 32, height: 479",
+                  "coords": "Rectangle: x: 222, y: 520, width: 32, height: 448",
                   "viewName": "domain",
                 },
                 ViewCoords {
                   "children": [
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 222, y: 489, width: 32, height: 479",
+                      "coords": "Rectangle: x: 222, y: 520, width: 32, height: 448",
                       "viewName": "ticks",
                     },
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 222, y: 489, width: 32, height: 479",
+                      "coords": "Rectangle: x: 222, y: 520, width: 32, height: 448",
                       "viewName": "labels_main",
                     },
                   ],
-                  "coords": "Rectangle: x: 222, y: 489, width: 32, height: 479",
+                  "coords": "Rectangle: x: 222, y: 520, width: 32, height: 448",
                   "viewName": "ticks_and_labels",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 222, y: 489, width: 32, height: 479",
+                  "coords": "Rectangle: x: 222, y: 520, width: 32, height: 448",
                   "viewName": "title",
                 },
               ],
-              "coords": "Rectangle: x: 222, y: 489, width: 32, height: 479",
+              "coords": "Rectangle: x: 222, y: 520, width: 32, height: 448",
               "viewName": "axis_left",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 42, y: 489, width: 150, height: 479",
+              "coords": "Rectangle: x: 42, y: 520, width: 150, height: 448",
               "viewName": "grid0",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 254, y: 489, width: 634, height: 479",
+              "coords": "Rectangle: x: 254, y: 520, width: 572, height: 448",
               "viewName": "grid1",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 254, y: 489, width: 634, height: 479",
+              "coords": "Rectangle: x: 254, y: 520, width: 572, height: 448",
               "viewName": "title1",
             },
           ],
-          "coords": "Rectangle: x: 0, y: 459, width: 908, height: 541",
+          "coords": "Rectangle: x: 0, y: 490, width: 846, height: 510",
           "viewName": "grid1",
         },
       ],
-      "coords": "Rectangle: x: 0, y: 0, width: 908, height: 1000",
+      "coords": "Rectangle: x: 0, y: 0, width: 846, height: 1000",
       "viewName": "grid0",
     },
     ViewCoords {
       "children": [],
-      "coords": "Rectangle: x: 970, y: 0, width: 510, height: 968",
+      "coords": "Rectangle: x: 908, y: 0, width: 572, height: 968",
       "viewName": "grid1",
     },
   ],
@@ -1297,48 +1297,48 @@ ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 663, width: 681, height: 305",
+              "coords": "Rectangle: x: 32, y: 663, width: 713, height: 305",
               "viewName": "grid_lines",
             },
           ],
-          "coords": "Rectangle: x: 32, y: 663, width: 681, height: 305",
+          "coords": "Rectangle: x: 32, y: 663, width: 713, height: 305",
           "viewName": "grid_layers",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 32, y: 663, width: 681, height: 305",
+          "coords": "Rectangle: x: 32, y: 663, width: 713, height: 305",
           "viewName": "backgroundStroke1",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 0, width: 681, height: 32",
+              "coords": "Rectangle: x: 32, y: 0, width: 713, height: 32",
               "viewName": "domain",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 32, y: 0, width: 681, height: 32",
+                  "coords": "Rectangle: x: 32, y: 0, width: 713, height: 32",
                   "viewName": "ticks",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 32, y: 0, width: 681, height: 32",
+                  "coords": "Rectangle: x: 32, y: 0, width: 713, height: 32",
                   "viewName": "labels_main",
                 },
               ],
-              "coords": "Rectangle: x: 32, y: 0, width: 681, height: 32",
+              "coords": "Rectangle: x: 32, y: 0, width: 713, height: 32",
               "viewName": "ticks_and_labels",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 0, width: 681, height: 32",
+              "coords": "Rectangle: x: 32, y: 0, width: 713, height: 32",
               "viewName": "title",
             },
           ],
-          "coords": "Rectangle: x: 32, y: 0, width: 681, height: 32",
+          "coords": "Rectangle: x: 32, y: 0, width: 713, height: 32",
           "viewName": "axis_top",
         },
         ViewCoords {
@@ -1379,32 +1379,32 @@ ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 32, y: 32, width: 681, height: 306",
+                  "coords": "Rectangle: x: 32, y: 32, width: 713, height: 306",
                   "viewName": "grid_lines",
                 },
               ],
-              "coords": "Rectangle: x: 32, y: 32, width: 681, height: 306",
+              "coords": "Rectangle: x: 32, y: 32, width: 713, height: 306",
               "viewName": "grid_layers",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 32, y: 348, width: 681, height: 306",
+                  "coords": "Rectangle: x: 32, y: 348, width: 713, height: 306",
                   "viewName": "grid_lines",
                 },
               ],
-              "coords": "Rectangle: x: 32, y: 348, width: 681, height: 306",
+              "coords": "Rectangle: x: 32, y: 348, width: 713, height: 306",
               "viewName": "grid_layers",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 32, width: 681, height: 306",
+              "coords": "Rectangle: x: 32, y: 32, width: 713, height: 306",
               "viewName": "backgroundStroke0",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 348, width: 681, height: 306",
+              "coords": "Rectangle: x: 32, y: 348, width: 713, height: 306",
               "viewName": "backgroundStroke1",
             },
             ViewCoords {
@@ -1443,55 +1443,55 @@ ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 713, y: 348, width: 32, height: 306",
+                  "coords": "Rectangle: x: 745, y: 348, width: 32, height: 306",
                   "viewName": "domain",
                 },
                 ViewCoords {
                   "children": [
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 713, y: 348, width: 32, height: 306",
+                      "coords": "Rectangle: x: 745, y: 348, width: 32, height: 306",
                       "viewName": "ticks",
                     },
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 713, y: 348, width: 32, height: 306",
+                      "coords": "Rectangle: x: 745, y: 348, width: 32, height: 306",
                       "viewName": "labels_main",
                     },
                   ],
-                  "coords": "Rectangle: x: 713, y: 348, width: 32, height: 306",
+                  "coords": "Rectangle: x: 745, y: 348, width: 32, height: 306",
                   "viewName": "ticks_and_labels",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 713, y: 348, width: 32, height: 306",
+                  "coords": "Rectangle: x: 745, y: 348, width: 32, height: 306",
                   "viewName": "title",
                 },
               ],
-              "coords": "Rectangle: x: 713, y: 348, width: 32, height: 306",
+              "coords": "Rectangle: x: 745, y: 348, width: 32, height: 306",
               "viewName": "axis_right",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 32, width: 681, height: 306",
+              "coords": "Rectangle: x: 32, y: 32, width: 713, height: 306",
               "viewName": "grid0",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 32, y: 348, width: 681, height: 306",
+              "coords": "Rectangle: x: 32, y: 348, width: 713, height: 306",
               "viewName": "grid1",
             },
           ],
-          "coords": "Rectangle: x: 0, y: 32, width: 745, height: 621",
+          "coords": "Rectangle: x: 0, y: 32, width: 777, height: 621",
           "viewName": "grid0",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 32, y: 663, width: 681, height: 305",
+          "coords": "Rectangle: x: 32, y: 663, width: 713, height: 305",
           "viewName": "grid1",
         },
       ],
-      "coords": "Rectangle: x: 0, y: 32, width: 745, height: 936",
+      "coords": "Rectangle: x: 0, y: 32, width: 777, height: 936",
       "viewName": "left",
     },
     ViewCoords {
@@ -1500,80 +1500,48 @@ ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 787, y: 663, width: 681, height: 305",
+              "coords": "Rectangle: x: 787, y: 663, width: 713, height: 305",
               "viewName": "grid_lines",
             },
           ],
-          "coords": "Rectangle: x: 787, y: 663, width: 681, height: 305",
+          "coords": "Rectangle: x: 787, y: 663, width: 713, height: 305",
           "viewName": "grid_layers",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 787, y: 663, width: 681, height: 305",
+          "coords": "Rectangle: x: 787, y: 663, width: 713, height: 305",
           "viewName": "backgroundStroke1",
         },
         ViewCoords {
           "children": [
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 755, y: 663, width: 32, height: 305",
+              "coords": "Rectangle: x: 787, y: 968, width: 713, height: 32",
               "viewName": "domain",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 755, y: 663, width: 32, height: 305",
+                  "coords": "Rectangle: x: 787, y: 968, width: 713, height: 32",
                   "viewName": "ticks",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 755, y: 663, width: 32, height: 305",
+                  "coords": "Rectangle: x: 787, y: 968, width: 713, height: 32",
                   "viewName": "labels_main",
                 },
               ],
-              "coords": "Rectangle: x: 755, y: 663, width: 32, height: 305",
+              "coords": "Rectangle: x: 787, y: 968, width: 713, height: 32",
               "viewName": "ticks_and_labels",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 755, y: 663, width: 32, height: 305",
+              "coords": "Rectangle: x: 787, y: 968, width: 713, height: 32",
               "viewName": "title",
             },
           ],
-          "coords": "Rectangle: x: 755, y: 663, width: 32, height: 305",
-          "viewName": "axis_left",
-        },
-        ViewCoords {
-          "children": [
-            ViewCoords {
-              "children": [],
-              "coords": "Rectangle: x: 787, y: 968, width: 681, height: 32",
-              "viewName": "domain",
-            },
-            ViewCoords {
-              "children": [
-                ViewCoords {
-                  "children": [],
-                  "coords": "Rectangle: x: 787, y: 968, width: 681, height: 32",
-                  "viewName": "ticks",
-                },
-                ViewCoords {
-                  "children": [],
-                  "coords": "Rectangle: x: 787, y: 968, width: 681, height: 32",
-                  "viewName": "labels_main",
-                },
-              ],
-              "coords": "Rectangle: x: 787, y: 968, width: 681, height: 32",
-              "viewName": "ticks_and_labels",
-            },
-            ViewCoords {
-              "children": [],
-              "coords": "Rectangle: x: 787, y: 968, width: 681, height: 32",
-              "viewName": "title",
-            },
-          ],
-          "coords": "Rectangle: x: 787, y: 968, width: 681, height: 32",
+          "coords": "Rectangle: x: 787, y: 968, width: 713, height: 32",
           "viewName": "axis_bottom",
         },
         ViewCoords {
@@ -1582,64 +1550,74 @@ ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 787, y: 32, width: 681, height: 306",
+                  "coords": "Rectangle: x: 787, y: 32, width: 713, height: 306",
                   "viewName": "grid_lines",
                 },
               ],
-              "coords": "Rectangle: x: 787, y: 32, width: 681, height: 306",
+              "coords": "Rectangle: x: 787, y: 32, width: 713, height: 306",
               "viewName": "grid_layers",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 787, y: 348, width: 681, height: 306",
+                  "coords": "Rectangle: x: 787, y: 348, width: 713, height: 306",
                   "viewName": "grid_lines",
                 },
               ],
-              "coords": "Rectangle: x: 787, y: 348, width: 681, height: 306",
+              "coords": "Rectangle: x: 787, y: 348, width: 713, height: 306",
               "viewName": "grid_layers",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 787, y: 32, width: 681, height: 306",
+              "coords": "Rectangle: x: 787, y: 32, width: 713, height: 306",
               "viewName": "backgroundStroke0",
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 787, y: 348, width: 681, height: 306",
+              "coords": "Rectangle: x: 787, y: 348, width: 713, height: 306",
               "viewName": "backgroundStroke1",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 787, y: 32, width: 713, height: 306",
+              "viewName": "grid0",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 787, y: 348, width: 713, height: 306",
+              "viewName": "grid1",
             },
             ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 755, y: 32, width: 32, height: 306",
+                  "coords": "Rectangle: x: 787, y: 32, width: 32, height: 306",
                   "viewName": "domain",
                 },
                 ViewCoords {
                   "children": [
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 755, y: 32, width: 32, height: 306",
+                      "coords": "Rectangle: x: 787, y: 32, width: 32, height: 306",
                       "viewName": "ticks",
                     },
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 755, y: 32, width: 32, height: 306",
+                      "coords": "Rectangle: x: 787, y: 32, width: 32, height: 306",
                       "viewName": "labels_main",
                     },
                   ],
-                  "coords": "Rectangle: x: 755, y: 32, width: 32, height: 306",
+                  "coords": "Rectangle: x: 787, y: 32, width: 32, height: 306",
                   "viewName": "ticks_and_labels",
                 },
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 755, y: 32, width: 32, height: 306",
+                  "coords": "Rectangle: x: 787, y: 32, width: 32, height: 306",
                   "viewName": "title",
                 },
               ],
-              "coords": "Rectangle: x: 755, y: 32, width: 32, height: 306",
+              "coords": "Rectangle: x: 787, y: 32, width: 32, height: 306",
               "viewName": "axis_left",
             },
             ViewCoords {
@@ -1674,27 +1652,49 @@ ViewCoords {
               "coords": "Rectangle: x: 1468, y: 348, width: 32, height: 306",
               "viewName": "axis_right",
             },
-            ViewCoords {
-              "children": [],
-              "coords": "Rectangle: x: 787, y: 32, width: 681, height: 306",
-              "viewName": "grid0",
-            },
-            ViewCoords {
-              "children": [],
-              "coords": "Rectangle: x: 787, y: 348, width: 681, height: 306",
-              "viewName": "grid1",
-            },
           ],
-          "coords": "Rectangle: x: 755, y: 32, width: 745, height: 621",
+          "coords": "Rectangle: x: 787, y: 32, width: 713, height: 621",
           "viewName": "grid0",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 787, y: 663, width: 681, height: 305",
+          "coords": "Rectangle: x: 787, y: 663, width: 713, height: 305",
           "viewName": "grid1",
         },
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 787, y: 663, width: 32, height: 305",
+              "viewName": "domain",
+            },
+            ViewCoords {
+              "children": [
+                ViewCoords {
+                  "children": [],
+                  "coords": "Rectangle: x: 787, y: 663, width: 32, height: 305",
+                  "viewName": "ticks",
+                },
+                ViewCoords {
+                  "children": [],
+                  "coords": "Rectangle: x: 787, y: 663, width: 32, height: 305",
+                  "viewName": "labels_main",
+                },
+              ],
+              "coords": "Rectangle: x: 787, y: 663, width: 32, height: 305",
+              "viewName": "ticks_and_labels",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 787, y: 663, width: 32, height: 305",
+              "viewName": "title",
+            },
+          ],
+          "coords": "Rectangle: x: 787, y: 663, width: 32, height: 305",
+          "viewName": "axis_left",
+        },
       ],
-      "coords": "Rectangle: x: 755, y: 32, width: 745, height: 936",
+      "coords": "Rectangle: x: 787, y: 32, width: 713, height: 936",
       "viewName": "right",
     },
   ],

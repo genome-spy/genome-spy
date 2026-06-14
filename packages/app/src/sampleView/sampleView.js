@@ -40,6 +40,7 @@ import GridChild, {
     createBackground,
     createBackgroundStroke,
 } from "@genome-spy/core/view/gridView/gridChild.js";
+import { getExternalAxisOverhang } from "@genome-spy/core/view/axisView.js";
 import { isAggregateSamplesSpec } from "./specGuards.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
@@ -1866,16 +1867,7 @@ class SampleGridChild extends GridChild {
     getOverhangWithoutYAxes() {
         const axisOverhang = (
             /** @type {import("@genome-spy/core/spec/axis.js").AxisOrient} */ orient
-        ) => {
-            const axisView = this.axes[orient];
-            return axisView
-                ? Math.max(
-                      axisView.getPerpendicularSize() +
-                          (axisView.axisProps.offset ?? 0),
-                      0
-                  )
-                : 0;
-        };
+        ) => getExternalAxisOverhang(this.axes[orient]);
 
         const verticalAxisOverhang = new Padding(
             0,

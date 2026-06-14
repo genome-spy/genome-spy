@@ -148,6 +148,10 @@ export default class SampleChromeLayout {
             return 0;
         }
 
+        if (axisView.axisProps.placement === "inside") {
+            return 0;
+        }
+
         return (
             axisView.getPerpendicularSize() + (axisView.axisProps.offset ?? 0)
         );

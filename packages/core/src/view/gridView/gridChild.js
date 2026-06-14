@@ -9,7 +9,10 @@ import {
 } from "../../selection/selection.js";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import AxisGridView from "../axisGridView.js";
-import AxisView, { CHANNEL_ORIENTS } from "../axisView.js";
+import AxisView, {
+    CHANNEL_ORIENTS,
+    getExternalAxisOverhang,
+} from "../axisView.js";
 import LayerView from "../layerView.js";
 import Padding from "../layout/padding.js";
 import Point from "../layout/point.js";
@@ -904,16 +907,7 @@ export default class GridChild {
     getOverhang() {
         const calculate = (
             /** @type {import("../../spec/axis.js").AxisOrient} */ orient
-        ) => {
-            const axisView = this.axes[orient];
-            return axisView
-                ? Math.max(
-                      axisView.getPerpendicularSize() +
-                          (axisView.axisProps.offset ?? 0),
-                      0
-                  )
-                : 0;
-        };
+        ) => getExternalAxisOverhang(this.axes[orient]);
 
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return new Padding(

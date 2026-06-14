@@ -330,6 +330,124 @@ describe("GridView separators", () => {
         );
     });
 
+    test("nested grid plot widths stay aligned with inside axes", async () => {
+        const view = await createAndInitialize(
+            {
+                hconcat: [
+                    {
+                        name: "leftColumn",
+                        columns: 1,
+                        concat: [
+                            {
+                                name: "leftPlot",
+                                data: { values: [{ x: 1, y: 2 }] },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: { orient: "right" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        name: "rightColumn",
+                        columns: 1,
+                        concat: [
+                            {
+                                name: "rightPlot",
+                                data: { values: [{ x: 1, y: 2 }] },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: {
+                                            orient: "right",
+                                            placement: "inside",
+                                        },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const leftPlot = view.getDescendants().find((descendant) => {
+            return (
+                descendant instanceof UnitView && descendant.name === "leftPlot"
+            );
+        });
+        const rightPlot = view.getDescendants().find((descendant) => {
+            return (
+                descendant instanceof UnitView &&
+                descendant.name === "rightPlot"
+            );
+        });
+        if (
+            !(leftPlot instanceof UnitView) ||
+            !(rightPlot instanceof UnitView)
+        ) {
+            throw new Error("Expected named plot views!");
+        }
+
+        expect(leftPlot.coords.width).toBe(rightPlot.coords.width);
+    });
+
+    test("shared inside axes do not reserve external overhang", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: {
+                                    placement: "inside",
+                                },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+                resolve: {
+                    axis: { x: "shared" },
+                },
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const [child] = view.children;
+        expect(child.coords.y).toBe(0);
+        expect(child.coords.height).toBe(200);
+    });
+
     test("text expressions see child size on the first render pass", async () => {
         const view = await createAndInitialize(
             {
@@ -535,6 +653,82 @@ describe("GridView decoration zindex", () => {
         );
 
         expect(order).toEqual(["child", "axis_bottom", "axis_left"]);
+    });
+
+    test("defaults inside axes above marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: {
+                                    grid: false,
+                                    placement: "inside",
+                                },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: {
+                                    grid: false,
+                                    placement: "inside",
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["child", "axis_bottom", "axis_left"]
+        );
+
+        expect(order).toEqual(["child", "axis_bottom", "axis_left"]);
+    });
+
+    test("explicit inside axis zindex can render below marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: {
+                                    grid: false,
+                                    placement: "inside",
+                                    zindex: 0,
+                                },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: {
+                                    grid: false,
+                                    placement: "inside",
+                                    zindex: 0,
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["axis_bottom", "axis_left", "child"]
+        );
+
+        expect(order).toEqual(["axis_bottom", "axis_left", "child"]);
     });
 
     test("defaults clipped axes and view stroke above marks", async () => {

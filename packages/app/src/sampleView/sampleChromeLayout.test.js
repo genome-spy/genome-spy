@@ -38,6 +38,28 @@ describe("SampleChromeLayout", () => {
         expect(adjusted.width).toBe(224);
     });
 
+    test("renders inside axes without reserving horizontal lanes", () => {
+        const axisView = createAxisView(30, 2, "inside");
+        const layout = new SampleChromeLayout({
+            sampleYAxis: { mode: "middle", minSampleHeight: 50 },
+            getActiveAxisCandidate: leftCandidate(axisView),
+            getPeekState: () => 0,
+        });
+        const plotCoords = Rectangle.create(10, 20, 300, 120);
+        const locations = createLocations(60);
+
+        layout.renderVerticalAxes(
+            /** @type {any} */ ({}),
+            plotCoords,
+            locations
+        );
+
+        expect(layout.getLeftReserve(locations)).toBe(0);
+        expect(layout.getPlotCoords(plotCoords, locations)).toBe(plotCoords);
+        expect(axisView.render).toHaveBeenCalledTimes(1);
+        expect(axisView.render.mock.calls[0][1].x).toBe(12);
+    });
+
     test("does not reserve lanes below the minimum sample height", () => {
         const axisView = createAxisView(30, 2);
         const locations = createLocations(49);
@@ -199,10 +221,11 @@ function createLocations(sampleHeights) {
 /**
  * @param {number} size
  * @param {number} offset
+ * @param {import("@genome-spy/core/spec/axis.js").AxisPlacement} [placement]
  */
-function createAxisView(size, offset) {
+function createAxisView(size, offset, placement) {
     return /** @type {any} */ ({
-        axisProps: { offset },
+        axisProps: { offset, placement },
         getPerpendicularSize: () => size,
         render: vi.fn(),
     });

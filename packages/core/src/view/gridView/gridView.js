@@ -9,7 +9,11 @@ import {
 import Grid from "../layout/grid.js";
 import Padding from "../layout/padding.js";
 import Rectangle from "../layout/rectangle.js";
-import AxisView, { CHANNEL_ORIENTS, ORIENT_CHANNELS } from "../axisView.js";
+import AxisView, {
+    CHANNEL_ORIENTS,
+    ORIENT_CHANNELS,
+    getExternalAxisOverhang,
+} from "../axisView.js";
 import ContainerView from "../containerView.js";
 import {
     propagateInteraction,
@@ -367,17 +371,32 @@ export default class GridView extends ContainerView {
                 })
                 .reduce((a, b) => Math.max(a, b), 0);
 
+        /**
+         * @param {GridChild} child
+         * @returns {import("../layout/flexLayout.js").SizeDef}
+         */
+        const getPlotSize = (child) => {
+            // External overhang is represented by axis/padding slots. The
+            // growable view slot should contain only the child's plot area.
+            const size = child.view.getViewportSize()[dim];
+            const overhang = child.view.getOverhang();
+            const overhangSize =
+                direction == "column" ? overhang.width : overhang.height;
+
+            return {
+                px: Math.max((size.px ?? 0) - overhangSize, 0),
+                grow: size.grow,
+            };
+        };
+
         return this._cache(`size/directionSizes/${direction}`, () =>
             this.#grid[direction == "column" ? "colIndices" : "rowIndices"].map(
                 (col) => ({
                     axisBefore: getMaxAxisSize(col, 0),
                     axisAfter: getMaxAxisSize(col, 1),
                     view: getLargestSize(
-                        col.map(
-                            (rowIndex) =>
-                                this.#visibleChildren[
-                                    rowIndex
-                                ].view.getViewportSize()[dim]
+                        col.map((rowIndex) =>
+                            getPlotSize(this.#visibleChildren[rowIndex])
                         )
                     ),
                 })
@@ -535,11 +554,7 @@ export default class GridView extends ContainerView {
                 return 0;
             }
 
-            return Math.max(
-                axisView.getPerpendicularSize() +
-                    (axisView.axisProps.offset ?? 0),
-                0
-            );
+            return getExternalAxisOverhang(axisView);
         };
 
         return new Padding(
@@ -938,7 +953,7 @@ export default class GridView extends ContainerView {
                 }
 
                 queueDecoration(
-                    defaultAxisZindex(axisView.axisProps.zindex, clipped),
+                    defaultAxisZindex(axisView.axisProps, clipped),
                     DECORATION_ORDER.axis,
                     () =>
                         axisView.render(context, translatedCoords, {
@@ -961,7 +976,7 @@ export default class GridView extends ContainerView {
                     (orient == "bottom" && row == grid.nRows - 1)
                 ) {
                     queueDecoration(
-                        defaultAxisZindex(axisView.axisProps.zindex, clipped),
+                        defaultAxisZindex(axisView.axisProps, clipped),
                         DECORATION_ORDER.axis,
                         () =>
                             axisView.render(
@@ -1364,15 +1379,24 @@ function getSeparatorDirections(spec) {
 }
 
 /**
- * Default z-index for axes. Clipped or scrollable content gets a higher
+ * Default z-index for axes. Inside axes default to overlays because they share
+ * plot space with marks. Clipped or scrollable outside axes get a higher
  * default to keep guides above visible edge artifacts.
  *
- * @param {number | undefined} zindex
+ * @param {import("../../spec/axis.js").Axis} axisProps
  * @param {boolean} clipped
  * @returns {number}
  */
-function defaultAxisZindex(zindex, clipped) {
-    return zindex ?? (clipped ? CLIPPED_DECORATION_ZINDEX : 0);
+function defaultAxisZindex(axisProps, clipped) {
+    if (axisProps.zindex !== undefined) {
+        return axisProps.zindex;
+    } else if (axisProps.placement === "inside") {
+        return 1;
+    } else if (clipped) {
+        return CLIPPED_DECORATION_ZINDEX;
+    } else {
+        return 0;
+    }
 }
 
 /**
@@ -1396,18 +1420,30 @@ function defaultBackgroundStrokeZindex(zindex, clipped) {
 export function translateAxisCoords(coords, orient, axisView) {
     const props = axisView.axisProps;
     const ps = axisView.getPerpendicularSize();
+    const inside = props.placement === "inside";
+    const offset = props.offset ?? 0;
 
     if (orient == "bottom") {
-        return coords
-            .translate(0, coords.height + props.offset)
-            .modify({ height: ps });
+        return inside
+            ? coords.translate(0, coords.height - ps - offset).modify({
+                  height: ps,
+              })
+            : coords.translate(0, coords.height + offset).modify({
+                  height: ps,
+              });
     } else if (orient == "top") {
-        return coords.translate(0, -ps - props.offset).modify({ height: ps });
+        return inside
+            ? coords.translate(0, offset).modify({ height: ps })
+            : coords.translate(0, -ps - offset).modify({ height: ps });
     } else if (orient == "left") {
-        return coords.translate(-ps - props.offset, 0).modify({ width: ps });
+        return inside
+            ? coords.translate(offset, 0).modify({ width: ps })
+            : coords.translate(-ps - offset, 0).modify({ width: ps });
     } else if (orient == "right") {
-        return coords
-            .translate(coords.width + props.offset, 0)
-            .modify({ width: ps });
+        return inside
+            ? coords.translate(coords.width - ps - offset, 0).modify({
+                  width: ps,
+              })
+            : coords.translate(coords.width + offset, 0).modify({ width: ps });
     }
 }

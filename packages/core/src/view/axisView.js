@@ -47,6 +47,63 @@ export function orient2channel(slot) {
 }
 
 /**
+ * @param {AxisOrient} orient
+ * @returns {AxisOrient}
+ */
+function getOppositeOrient(orient) {
+    switch (orient) {
+        case "left":
+            return "right";
+        case "right":
+            return "left";
+        case "top":
+            return "bottom";
+        case "bottom":
+            return "top";
+        default:
+            throw new Error("Invalid axis orient: " + orient);
+    }
+}
+
+/**
+ * @param {Axis} axisProps
+ */
+function getAxisGeometry(axisProps) {
+    const tickSide =
+        axisProps.placement === "inside"
+            ? getOppositeOrient(axisProps.orient)
+            : axisProps.orient;
+
+    const anchor = tickSide == "bottom" || tickSide == "left" ? 1 : 0;
+    const offsetDirection =
+        tickSide == "bottom" || tickSide == "right" ? 1 : -1;
+
+    return {
+        tickSide,
+        anchor,
+        offsetDirection,
+    };
+}
+
+/**
+ * Returns the horizontal or vertical space reserved by an outside axis.
+ * Inside axes are drawn over the plot and therefore reserve no external space.
+ *
+ * @param {AxisView | undefined} axisView
+ * @returns {number}
+ */
+export function getExternalAxisOverhang(axisView) {
+    if (!axisView || axisView.axisProps.placement === "inside") {
+        return 0;
+    }
+
+    return Math.max(
+        axisView.getPerpendicularSize() + (axisView.axisProps.offset ?? 0),
+        0
+    );
+}
+
+/**
  * An internal view that renders an axis.
  *
  * TODO: Implement grid
@@ -377,7 +434,7 @@ function getMeasuredLabelExtent(axisProps, context, labelsView) {
  * @param {Axis} axisProps
  */
 function getDefaultAngleAndAlign(type, axisProps) {
-    const orient = axisProps.orient;
+    const orient = getAxisGeometry(axisProps).tickSide;
     const discrete = type == "nominal" || type == "ordinal";
 
     /** @type {import("../spec/font.js").Align} */
@@ -431,10 +488,7 @@ function createAxis(axisProps, type) {
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
 
-    const offsetDirection =
-        ap.orient == "bottom" || ap.orient == "right" ? 1 : -1;
-
-    const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
+    const { anchor, offsetDirection, tickSide } = getAxisGeometry(ap);
 
     const makeMainDomainDef = () => ({
         field: "value",
@@ -532,9 +586,9 @@ function createAxis(axisProps, type) {
             type: "text",
             clip: false,
             align: "center",
-            baseline: ap.orient == "bottom" ? "bottom" : "top",
+            baseline: tickSide == "bottom" ? "bottom" : "top",
             angle: [0, 90, 0, -90][
-                ["top", "right", "bottom", "left"].indexOf(ap.orient)
+                ["top", "right", "bottom", "left"].indexOf(tickSide)
             ],
             text: ap.title,
             color: ap.titleColor,
@@ -608,7 +662,7 @@ export function createGenomeAxis(axisProps, type) {
     const main = orient2channel(ap.orient);
     const secondary = getPerpendicularChannel(main);
 
-    const anchor = ap.orient == "bottom" || ap.orient == "left" ? 1 : 0;
+    const { anchor, tickSide } = getAxisGeometry(ap);
 
     /**
      * @return {import("../spec/view.js").UnitSpec}
@@ -636,7 +690,7 @@ export function createGenomeAxis(axisProps, type) {
     const createChromosomeLabels = () => {
         /** @type {Partial<import("../spec/mark.js").TextProps>} */
         let chromLabelMarkProps;
-        switch (ap.orient) {
+        switch (tickSide) {
             case "top":
                 chromLabelMarkProps = {
                     y: 0,
@@ -714,7 +768,7 @@ export function createGenomeAxis(axisProps, type) {
 
     /** @type {Axis} */
     let fixedAxisProps;
-    switch (ap.orient) {
+    switch (tickSide) {
         case "bottom":
         case "top":
             fixedAxisProps = {};
