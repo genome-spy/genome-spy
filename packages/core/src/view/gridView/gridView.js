@@ -27,6 +27,7 @@ import KeyboardZoomController from "./keyboardZoomController.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
+import { normalizeClipOptions } from "../../types/rendering.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -744,9 +745,8 @@ export default class GridView extends ContainerView {
 
             gridChild.coords = viewportCoords;
 
-            const clippedChildCoords = options.clipRect
-                ? viewportCoords.intersect(options.clipRect)
-                : viewportCoords;
+            const parentClip = normalizeClipOptions(options);
+            const clippedChildCoords = clipCoords(viewportCoords, parentClip);
 
             renderItems.push({
                 col,
@@ -760,6 +760,7 @@ export default class GridView extends ContainerView {
                 selectionRect,
                 viewportCoords,
                 viewCoords,
+                parentClip,
                 clippedChildCoords,
                 viewWidth,
                 viewHeight,
@@ -869,6 +870,7 @@ export default class GridView extends ContainerView {
                 selectionRect,
                 viewportCoords,
                 viewCoords,
+                parentClip,
                 clippedChildCoords,
                 viewWidth,
                 viewHeight,
@@ -891,7 +893,7 @@ export default class GridView extends ContainerView {
 
             const contentClip = clipped
                 ? combineClipOptions(
-                      options.clip,
+                      parentClip,
                       createClipOptions(
                           clippedChildCoords,
                           clippedChildren ||
@@ -1445,6 +1447,25 @@ function defaultBackgroundStrokeZindex(zindex, clipped) {
  */
 function createClipOptions(rect, clipX, clipY) {
     return clipX || clipY ? { rect, clipX, clipY } : undefined;
+}
+
+/**
+ * @param {Rectangle} coords
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
+ * @returns {Rectangle}
+ */
+function clipCoords(coords, clip) {
+    if (!clip) {
+        return coords;
+    } else if (clip.clipX && clip.clipY) {
+        return coords.intersect(clip.rect);
+    } else if (clip.clipX) {
+        return coords.intersectX(clip.rect);
+    } else if (clip.clipY) {
+        return coords.intersectY(clip.rect);
+    } else {
+        return coords;
+    }
 }
 
 /**
