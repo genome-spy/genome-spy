@@ -45,10 +45,14 @@ export interface MarkPropsBase {
     opacity?: number | ExprRef;
 
     /**
-     * If true, the mark is clipped to the UnitView's rectangle. By default, clipping
-     * is enabled for marks that have zoomable positional scales.
+     * Controls whether the mark is clipped to the UnitView's rectangle. The
+     * values `"x"` and `"y"` clip only in the corresponding screen-space
+     * direction. Inherited clipping from parent containers still applies unless
+     * `"never"` is used.
+     *
+     * __Default value:__ the direction of zoomable positional scales
      */
-    clip?: boolean | "never";
+    clip?: boolean | "x" | "y" | "never";
 
     /**
      * Offsets of the `x` and `x2` coordinates in pixels. The offset is applied

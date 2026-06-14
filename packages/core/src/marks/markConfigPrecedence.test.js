@@ -73,7 +73,30 @@ describe("mark config precedence", () => {
         expect(/** @type {any} */ (view.mark.properties).size).toBe(7);
     });
 
-    test("zoomability-backed clip default is cached", async () => {
+    test("explicit directional clip overrides zoomability-backed default", async () => {
+        const view = /** @type {UnitView} */ (
+            await create(
+                {
+                    data: {
+                        values: [{ x: 1, y: 1 }],
+                    },
+                    mark: {
+                        type: "point",
+                        clip: "y",
+                    },
+                    encoding: {
+                        x: { field: "x", type: "index" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+                UnitView
+            )
+        );
+
+        expect(view.mark.properties.clip).toBe("y");
+    });
+
+    test("zoomability-backed clip default uses the zoomable direction", async () => {
         const view = /** @type {UnitView} */ (
             await create(
                 {
@@ -93,9 +116,63 @@ describe("mark config precedence", () => {
         const xResolution = view.getScaleResolution("x");
         const zoomSpy = vi.spyOn(xResolution, "isZoomable");
 
-        expect(view.mark.properties.clip).toBe(true);
-        expect(view.mark.properties.clip).toBe(true);
+        expect(view.mark.properties.clip).toBe("x");
+        expect(view.mark.properties.clip).toBe("x");
         expect(zoomSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("zoomability-backed clip default uses y when only y is zoomable", async () => {
+        const view = /** @type {UnitView} */ (
+            await create(
+                {
+                    data: {
+                        values: [{ x: 1, y: 1 }],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+                UnitView
+            )
+        );
+
+        vi.spyOn(view.getScaleResolution("x"), "isZoomable").mockReturnValue(
+            false
+        );
+        vi.spyOn(view.getScaleResolution("y"), "isZoomable").mockReturnValue(
+            true
+        );
+
+        expect(view.mark.properties.clip).toBe("y");
+    });
+
+    test("zoomability-backed clip default uses both directions when both axes are zoomable", async () => {
+        const view = /** @type {UnitView} */ (
+            await create(
+                {
+                    data: {
+                        values: [{ x: 1, y: 1 }],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+                UnitView
+            )
+        );
+
+        vi.spyOn(view.getScaleResolution("x"), "isZoomable").mockReturnValue(
+            true
+        );
+        vi.spyOn(view.getScaleResolution("y"), "isZoomable").mockReturnValue(
+            true
+        );
+
+        expect(view.mark.properties.clip).toBe(true);
     });
 
     test("mark style applies after mark buckets and before explicit props", async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import Rectangle from "../view/layout/rectangle.js";
-import { createViewportScope } from "./mark.js";
+import { createSelfClipOptions, createViewportScope } from "./mark.js";
 
 describe("mark viewport scope", () => {
     test("clips only x when clipX is enabled", () => {
@@ -51,5 +51,29 @@ describe("mark viewport scope", () => {
         expect(
             scope.coords.equals(Rectangle.create(0, 0, 20, 10))
         ).toBeTruthy();
+    });
+});
+
+describe("mark self clip options", () => {
+    test("maps directional mark clip values", () => {
+        const coords = Rectangle.create(1, 2, 6, 4);
+
+        expect(createSelfClipOptions(true, coords)).toMatchObject({
+            rect: coords,
+            clipX: true,
+            clipY: true,
+        });
+        expect(createSelfClipOptions("x", coords)).toMatchObject({
+            rect: coords,
+            clipX: true,
+            clipY: false,
+        });
+        expect(createSelfClipOptions("y", coords)).toMatchObject({
+            rect: coords,
+            clipX: false,
+            clipY: true,
+        });
+        expect(createSelfClipOptions(false, coords)).toBeUndefined();
+        expect(createSelfClipOptions("never", coords)).toBeUndefined();
     });
 });
