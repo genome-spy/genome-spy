@@ -841,6 +841,48 @@ describe("GridView decoration zindex", () => {
         ]);
     });
 
+    test("defaults directionally clipped view stroke above marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        view: {
+                            stroke: "#999",
+                        },
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: {
+                            type: "point",
+                            clip: "x",
+                        },
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: { grid: false },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: { grid: false },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["child", "backgroundStroke0", "axis_bottom", "axis_left"]
+        );
+
+        expect(order).toEqual([
+            "child",
+            "backgroundStroke0",
+            "axis_bottom",
+            "axis_left",
+        ]);
+    });
+
     test("explicit axis and view stroke zindex override the clipped default", async () => {
         const order = await recordRenderOrder(
             {
@@ -1022,6 +1064,166 @@ describe("GridView decoration zindex", () => {
         );
 
         expect(order).toEqual(["selectionRect", "child"]);
+    });
+});
+
+describe("GridView scrollable clipping", () => {
+    test("preserves horizontal view stroke bounds when clipped vertically", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        name: "scrollable",
+                        viewportHeight: 50,
+                        vconcat: [
+                            {
+                                height: 100,
+                                view: { stroke: "#999" },
+                                ...makeUnitSpec(),
+                            },
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+        const backgroundStroke = view
+            .getDescendants()
+            .find((descendant) =>
+                descendant.name?.startsWith("backgroundStroke")
+            );
+        /** @type {Rectangle | undefined} */
+        let strokeCoords;
+
+        if (!backgroundStroke) {
+            throw new Error("Missing background stroke view.");
+        }
+
+        const original = backgroundStroke.render.bind(backgroundStroke);
+        backgroundStroke.render = (context, coords, options = {}) => {
+            strokeCoords = coords;
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+            clip: {
+                rect: Rectangle.create(0, 0, 100, 40),
+                clipX: false,
+                clipY: true,
+            },
+            clipRect: Rectangle.create(0, 0, 100, 40),
+        });
+
+        expect(strokeCoords?.x).toBe(32);
+        expect(strokeCoords?.width).toBe(168);
+        expect(strokeCoords?.y).toBe(0);
+        expect(strokeCoords?.height).toBe(40);
+    });
+
+    test("clips vertically scrollable content only along y", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        name: "scrollable",
+                        viewportHeight: 50,
+                        vconcat: [
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+        const scrollable = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "scrollable");
+        /** @type {import("../../types/rendering.js").RenderingOptions | undefined} */
+        let renderOptions;
+
+        if (!scrollable) {
+            throw new Error("Missing scrollable child view.");
+        }
+
+        const original = scrollable.render.bind(scrollable);
+        scrollable.render = (context, coords, options = {}) => {
+            renderOptions = options;
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        expect(renderOptions?.clip).toMatchObject({
+            clipX: false,
+            clipY: true,
+        });
+        expect(renderOptions?.clip?.rect).toBe(renderOptions?.clipRect);
+    });
+
+    test("clips horizontally scrollable content only along x", async () => {
+        const view = await createAndInitialize(
+            {
+                hconcat: [
+                    {
+                        name: "scrollable",
+                        viewportWidth: 50,
+                        hconcat: [
+                            {
+                                width: 100,
+                                ...makeUnitSpec(),
+                            },
+                            {
+                                width: 100,
+                                ...makeUnitSpec(),
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+        const scrollable = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "scrollable");
+        /** @type {import("../../types/rendering.js").RenderingOptions | undefined} */
+        let renderOptions;
+
+        if (!scrollable) {
+            throw new Error("Missing scrollable child view.");
+        }
+
+        const original = scrollable.render.bind(scrollable);
+        scrollable.render = (context, coords, options = {}) => {
+            renderOptions = options;
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        expect(renderOptions?.clip).toMatchObject({
+            clipX: true,
+            clipY: false,
+        });
+        expect(renderOptions?.clip?.rect).toBe(renderOptions?.clipRect);
     });
 });
 

@@ -39,6 +39,17 @@ export interface RenderingOptions {
      * Mainly intended for clipping scrollable views.
      */
     clipRect?: Rectangle;
+
+    /**
+     * Clip rendering using the given rectangle and direction flags.
+     */
+    clip?: ClipOptions;
+}
+
+export interface ClipOptions {
+    rect: Rectangle;
+    clipX: boolean;
+    clipY: boolean;
 }
 
 /**
@@ -61,7 +72,12 @@ export interface BufferedRenderingRequest {
     callback: () => void;
     coords: Rectangle;
     clipRect?: Rectangle;
+    clip?: ClipOptions;
 }
+
+export function normalizeClipOptions(
+    options: RenderingOptions
+): ClipOptions | undefined;
 
 /**
  * Method signature for View.render(). Reduces the amount of JSDoc needed.

@@ -240,6 +240,46 @@ export default class Rectangle {
     }
 
     /**
+     * Returns an intersection of this and the other's x range. The y range is
+     * preserved.
+     *
+     * @param {Rectangle} rectangle
+     */
+    intersectX(rectangle) {
+        if (this === rectangle || rectangle == null) {
+            return this;
+        }
+
+        return new Rectangle(
+            () => Math.max(this.x, rectangle.x),
+            this._passThrough("y"),
+            () =>
+                Math.min(this.x2, rectangle.x2) - Math.max(this.x, rectangle.x),
+            this._passThrough("height")
+        );
+    }
+
+    /**
+     * Returns an intersection of this and the other's y range. The x range is
+     * preserved.
+     *
+     * @param {Rectangle} rectangle
+     */
+    intersectY(rectangle) {
+        if (this === rectangle || rectangle == null) {
+            return this;
+        }
+
+        return new Rectangle(
+            this._passThrough("x"),
+            () => Math.max(this.y, rectangle.y),
+            this._passThrough("width"),
+            () =>
+                Math.min(this.y2, rectangle.y2) - Math.max(this.y, rectangle.y)
+        );
+    }
+
+    /**
      * Returns an union of this and the other rectangle.
      *
      * @param {Rectangle} rectangle
