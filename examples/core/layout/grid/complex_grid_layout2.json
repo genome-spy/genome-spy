@@ -78,6 +78,13 @@
           "axis": {
             "orient": "bottom"
           }
+        },
+        "y": {
+          "field": "sin",
+          "type": "quantitative",
+          "axis": {
+            "placement": "inside"
+          }
         }
       },
       "concat": [
@@ -97,7 +104,7 @@
                 "y": {
                   "field": "sin",
                   "type": "quantitative",
-                  "axis": { "orient": "right" }
+                  "axis": { "orient": "right", "placement": "inside" }
                 }
               }
             }

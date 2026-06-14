@@ -330,6 +330,87 @@ describe("GridView separators", () => {
         );
     });
 
+    test("nested grid plot widths stay aligned with inside axes", async () => {
+        const view = await createAndInitialize(
+            {
+                hconcat: [
+                    {
+                        name: "leftColumn",
+                        columns: 1,
+                        concat: [
+                            {
+                                name: "leftPlot",
+                                data: { values: [{ x: 1, y: 2 }] },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: { orient: "right" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        name: "rightColumn",
+                        columns: 1,
+                        concat: [
+                            {
+                                name: "rightPlot",
+                                data: { values: [{ x: 1, y: 2 }] },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: {
+                                            orient: "right",
+                                            placement: "inside",
+                                        },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const leftPlot = view.getDescendants().find((descendant) => {
+            return (
+                descendant instanceof UnitView && descendant.name === "leftPlot"
+            );
+        });
+        const rightPlot = view.getDescendants().find((descendant) => {
+            return (
+                descendant instanceof UnitView &&
+                descendant.name === "rightPlot"
+            );
+        });
+        if (
+            !(leftPlot instanceof UnitView) ||
+            !(rightPlot instanceof UnitView)
+        ) {
+            throw new Error("Expected named plot views!");
+        }
+
+        expect(leftPlot.coords.width).toBe(rightPlot.coords.width);
+    });
+
     test("text expressions see child size on the first render pass", async () => {
         const view = await createAndInitialize(
             {

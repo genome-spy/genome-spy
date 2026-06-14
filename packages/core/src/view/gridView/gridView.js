@@ -367,17 +367,32 @@ export default class GridView extends ContainerView {
                 })
                 .reduce((a, b) => Math.max(a, b), 0);
 
+        /**
+         * @param {GridChild} child
+         * @returns {import("../layout/flexLayout.js").SizeDef}
+         */
+        const getPlotSize = (child) => {
+            // External overhang is represented by axis/padding slots. The
+            // growable view slot should contain only the child's plot area.
+            const size = child.view.getViewportSize()[dim];
+            const overhang = child.view.getOverhang();
+            const overhangSize =
+                direction == "column" ? overhang.width : overhang.height;
+
+            return {
+                px: Math.max((size.px ?? 0) - overhangSize, 0),
+                grow: size.grow,
+            };
+        };
+
         return this._cache(`size/directionSizes/${direction}`, () =>
             this.#grid[direction == "column" ? "colIndices" : "rowIndices"].map(
                 (col) => ({
                     axisBefore: getMaxAxisSize(col, 0),
                     axisAfter: getMaxAxisSize(col, 1),
                     view: getLargestSize(
-                        col.map(
-                            (rowIndex) =>
-                                this.#visibleChildren[
-                                    rowIndex
-                                ].view.getViewportSize()[dim]
+                        col.map((rowIndex) =>
+                            getPlotSize(this.#visibleChildren[rowIndex])
                         )
                     ),
                 })
