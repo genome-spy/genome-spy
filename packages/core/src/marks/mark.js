@@ -128,30 +128,6 @@ function normalizeViewportClip(clip) {
 }
 
 /**
- * @param {import("../spec/mark.js").MarkProps["clip"]} markClip
- * @param {Rectangle} coords
- * @param {ClipOptions | Rectangle | undefined} clip
- * @param {boolean} explicitClipFalse
- * @returns {ClipOptions | undefined}
- */
-export function resolveViewportClip(markClip, coords, clip, explicitClipFalse) {
-    if (explicitClipFalse || markClip === "never") {
-        return undefined;
-    } else {
-        return (
-            normalizeViewportClip(clip) ??
-            (markClip
-                ? {
-                      rect: coords,
-                      clipX: true,
-                      clipY: true,
-                  }
-                : undefined)
-        );
-    }
-}
-
-/**
  *
  * @typedef {import("../types/rendering.js").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
@@ -1543,15 +1519,13 @@ export default class Mark {
         /** @type {object} */
         let uniforms;
 
-        const markDef = this.unitView.spec.mark;
-        const explicitClipFalse =
-            typeof markDef == "object" && markDef.clip === false;
-        const normalizedClip = resolveViewportClip(
-            props.clip,
-            coords,
-            clip,
-            explicitClipFalse
-        );
+        const normalizedClip =
+            props.clip === "never"
+                ? undefined
+                : (normalizeViewportClip(clip) ??
+                  (props.clip
+                      ? { rect: coords, clipX: true, clipY: true }
+                      : undefined));
         const viewportScope = createViewportScope(
             canvasSize,
             coords,

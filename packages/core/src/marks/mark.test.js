@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import Rectangle from "../view/layout/rectangle.js";
-import { createViewportScope, resolveViewportClip } from "./mark.js";
+import { createViewportScope } from "./mark.js";
 
 describe("mark viewport scope", () => {
     test("clips only x when clipX is enabled", () => {
@@ -34,41 +34,5 @@ describe("mark viewport scope", () => {
         expect(scope.coords.equals(Rectangle.create(0, 3, 20, 2))).toBeTruthy();
         expect(scope.xClipOffset).toBe(0);
         expect(scope.yClipOffset).toBe(1);
-    });
-});
-
-describe("mark viewport clip resolution", () => {
-    test("explicit clip false suppresses inherited render clip", () => {
-        const coords = Rectangle.create(1, 2, 6, 4);
-        const clip = {
-            rect: Rectangle.create(0, 0, 10, 10),
-            clipX: false,
-            clipY: true,
-        };
-
-        expect(resolveViewportClip(false, coords, clip, true)).toBeUndefined();
-    });
-
-    test("default clip false preserves inherited render clip", () => {
-        const coords = Rectangle.create(1, 2, 6, 4);
-        const clip = {
-            rect: Rectangle.create(0, 0, 10, 10),
-            clipX: false,
-            clipY: true,
-        };
-
-        expect(resolveViewportClip(false, coords, clip, false)).toBe(clip);
-    });
-
-    test("clip true falls back to the mark rectangle", () => {
-        const coords = Rectangle.create(1, 2, 6, 4);
-
-        expect(
-            resolveViewportClip(true, coords, undefined, false)
-        ).toMatchObject({
-            rect: coords,
-            clipX: true,
-            clipY: true,
-        });
     });
 });
