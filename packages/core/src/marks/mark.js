@@ -77,7 +77,7 @@ export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 export function createViewportScope(coords, clip) {
     if (!clip || (!clip.clipX && !clip.clipY)) {
         return {
-            usesScopedViewport: false,
+            requiresScissor: false,
             coords,
             xClipOffset: 0,
             yClipOffset: 0,
@@ -92,7 +92,7 @@ export function createViewportScope(coords, clip) {
               : coords.intersectY(clip.rect);
 
     return {
-        usesScopedViewport: true,
+        requiresScissor: true,
         coords: clippedCoords.flatten(),
         xClipOffset: clip.clipX ? Math.min(0, coords.x - clip.rect.x) : 0,
         yClipOffset: clip.clipY ? Math.max(0, coords.y2 - clip.rect.y2) : 0,
@@ -1515,7 +1515,7 @@ export default class Mark {
         const viewportScope = createViewportScope(coords, normalizedClip);
         const scopedCoords = viewportScope.coords;
 
-        if (viewportScope.usesScopedViewport) {
+        if (viewportScope.requiresScissor) {
             if (!scopedCoords.isDefined()) {
                 return false;
             }

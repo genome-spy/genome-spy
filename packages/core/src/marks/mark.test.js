@@ -13,7 +13,7 @@ describe("mark viewport scope", () => {
             clipY: false,
         });
 
-        expect(scope.usesScopedViewport).toBeTruthy();
+        expect(scope.requiresScissor).toBeTruthy();
         expect(scope.coords.equals(Rectangle.create(4, 2, 3, 4))).toBeTruthy();
         expect(scope.xClipOffset).toBe(-3);
         expect(scope.yClipOffset).toBe(0);
@@ -28,7 +28,7 @@ describe("mark viewport scope", () => {
             clipY: true,
         });
 
-        expect(scope.usesScopedViewport).toBeTruthy();
+        expect(scope.requiresScissor).toBeTruthy();
         expect(scope.coords.equals(Rectangle.create(1, 3, 6, 2))).toBeTruthy();
         expect(scope.xClipOffset).toBe(0);
         expect(scope.yClipOffset).toBe(1);
