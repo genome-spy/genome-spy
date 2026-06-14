@@ -48,6 +48,8 @@ The main code paths to inspect and likely modify are:
 
 ### Phase 1: Add Explicit Clip Semantics Without Behavior Changes
 
+Tentative commit: `feat(core): add directional clipping options`
+
 Start by adding a small internal clipping representation while preserving the
 current public rendering behavior. Existing `clipRect` callers should continue
 to mean "clip both x and y".
@@ -77,6 +79,8 @@ new model exists, but all existing visualizations still clip exactly as before.
 
 ### Phase 2: Make Rectangle Clipping Direction-Aware
 
+Tentative commit: `feat(core): add directional rectangle intersections`
+
 Add focused geometry helpers to `packages/core/src/view/layout/rectangle.js`.
 The goal is to remove fake infinite rectangles from callers and make directional
 intersection explicit.
@@ -95,6 +99,8 @@ should be simple and deterministic; they should not know anything about axes,
 scrollbars, WebGL, or marks.
 
 ### Phase 3: Simplify Mark Viewport Setup Around a Clip Mask
+
+Tentative commit: `refactor(core): derive mark viewport from clip mask`
 
 Update `Mark.setViewport()` in `packages/core/src/marks/mark.js` to accept the
 normalized clip options rather than only a bare rectangle. This is also the
@@ -137,6 +143,8 @@ how that rectangle is derived; it does not require non-rectangular scissoring.
 
 ### Phase 4: Thread Clip Options Through Rendering Contexts
 
+Tentative commit: `refactor(core): thread clip options through render contexts`
+
 Update render contexts so buffering and immediate rendering share the same
 normalized clipping semantics.
 
@@ -157,6 +165,8 @@ old `clipRect` semantics.
 
 ### Phase 5: Replace the GridView Scrollable-Axis Hack
 
+Tentative commit: `fix(core): clip scrollable axes by direction`
+
 After compatibility is covered, update scrollable-axis rendering in
 `packages/core/src/view/gridView/gridView.js`.
 
@@ -176,6 +186,8 @@ the domain line should remain visible, and ticks/labels should not be clipped
 in the perpendicular direction.
 
 ### Phase 6: WebGPU Migration Note
+
+Tentative commit: `docs(core): note WebGPU clipping migration context`
 
 The `webgpu` branch and standalone `packages/webgpu-renderer` package do not
 currently provide reusable directional clipping code. The lower-level renderer
