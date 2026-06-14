@@ -411,6 +411,43 @@ describe("GridView separators", () => {
         expect(leftPlot.coords.width).toBe(rightPlot.coords.width);
     });
 
+    test("shared inside axes do not reserve external overhang", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: {
+                                    placement: "inside",
+                                },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+                resolve: {
+                    axis: { x: "shared" },
+                },
+            },
+            ConcatView
+        );
+
+        renderForLayout(view);
+
+        const [child] = view.children;
+        expect(child.coords.y).toBe(0);
+        expect(child.coords.height).toBe(200);
+    });
+
     test("text expressions see child size on the first render pass", async () => {
         const view = await createAndInitialize(
             {

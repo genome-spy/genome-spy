@@ -549,6 +549,9 @@ export default class GridView extends ContainerView {
             if (axisView?.axisProps.orient !== orient) {
                 return 0;
             }
+            if (axisView.axisProps.placement === "inside") {
+                return 0;
+            }
 
             return Math.max(
                 axisView.getPerpendicularSize() +
