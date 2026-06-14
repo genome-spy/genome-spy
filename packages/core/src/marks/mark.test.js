@@ -16,8 +16,6 @@ describe("mark viewport scope", () => {
 
         expect(scope.requiresScissor).toBeTruthy();
         expect(scope.coords.equals(Rectangle.create(4, 0, 3, 10))).toBeTruthy();
-        expect(scope.xClipOffset).toBe(-3);
-        expect(scope.yClipOffset).toBe(0);
     });
 
     test("clips only y when clipY is enabled", () => {
@@ -32,7 +30,26 @@ describe("mark viewport scope", () => {
 
         expect(scope.requiresScissor).toBeTruthy();
         expect(scope.coords.equals(Rectangle.create(0, 3, 20, 2))).toBeTruthy();
-        expect(scope.xClipOffset).toBe(0);
-        expect(scope.yClipOffset).toBe(1);
+    });
+
+    test("uses inherited clip bounds without self-clipping", () => {
+        const canvasSize = { width: 20, height: 10 };
+        const coords = Rectangle.create(1, 2, 6, 4);
+        const clipRect = Rectangle.create(4, 0, 4, 10);
+        const scope = createViewportScope(
+            canvasSize,
+            coords,
+            {
+                rect: clipRect,
+                clipX: false,
+                clipY: true,
+            },
+            false
+        );
+
+        expect(scope.requiresScissor).toBeTruthy();
+        expect(
+            scope.coords.equals(Rectangle.create(0, 0, 20, 10))
+        ).toBeTruthy();
     });
 });
