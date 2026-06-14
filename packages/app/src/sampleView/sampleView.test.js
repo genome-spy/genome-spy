@@ -1345,6 +1345,8 @@ describe("SampleView", () => {
 
         expect(view.childCoords.x).toBe(view.sidebarCoords.x2);
         expect(view.childCoords.x).toBe(view.getOverhang().left);
+        expect(view.sidebarCoords.x).toBe(0);
+        expect(view.sidebarCoords.width).toBe(view.getOverhang().left);
     });
 
     test("drops left spec y-axis overhang before rendering samples below the height threshold", async () => {

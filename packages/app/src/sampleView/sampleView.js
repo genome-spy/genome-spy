@@ -1868,7 +1868,7 @@ class SampleGridChild extends GridChild {
             /** @type {import("@genome-spy/core/spec/axis.js").AxisOrient} */ orient
         ) => {
             const axisView = this.axes[orient];
-            return axisView
+            return axisView && axisView.axisProps.placement !== "inside"
                 ? Math.max(
                       axisView.getPerpendicularSize() +
                           (axisView.axisProps.offset ?? 0),
