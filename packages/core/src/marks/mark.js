@@ -66,6 +66,54 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 
 /**
+ * @typedef {import("../types/rendering.js").ClipOptions} ClipOptions
+ * @typedef {import("../view/layout/rectangle.js").default} Rectangle
+ */
+
+/**
+ * @param {Rectangle} coords
+ * @param {ClipOptions | undefined} clip
+ */
+export function createViewportScope(coords, clip) {
+    if (!clip || (!clip.clipX && !clip.clipY)) {
+        return {
+            usesScopedViewport: false,
+            coords,
+            xClipOffset: 0,
+            yClipOffset: 0,
+        };
+    }
+
+    const clippedCoords =
+        clip.clipX && clip.clipY
+            ? coords.intersect(clip.rect)
+            : clip.clipX
+              ? coords.intersectX(clip.rect)
+              : coords.intersectY(clip.rect);
+
+    return {
+        usesScopedViewport: true,
+        coords: clippedCoords.flatten(),
+        xClipOffset: clip.clipX ? Math.min(0, coords.x - clip.rect.x) : 0,
+        yClipOffset: clip.clipY ? Math.max(0, coords.y2 - clip.rect.y2) : 0,
+    };
+}
+
+/**
+ * @param {ClipOptions | Rectangle | undefined} clip
+ * @returns {ClipOptions | undefined}
+ */
+function normalizeViewportClip(clip) {
+    if (!clip) {
+        return undefined;
+    } else if ("rect" in clip) {
+        return clip;
+    } else {
+        return { rect: clip, clipX: true, clipY: true };
+    }
+}
+
+/**
  *
  * @typedef {import("../types/rendering.js").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
@@ -1437,10 +1485,10 @@ export default class Mark {
      * @param {{width: number, height: number}} canvasSize Size of the canvas in logical pixels
      * @param {number} dpr Device pixel ratio
      * @param {import("../view/layout/rectangle.js").default} coords
-     * @param {import("../view/layout/rectangle.js").default} [clipRect]
+     * @param {ClipOptions | Rectangle} [clip]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
-    setViewport(canvasSize, dpr, coords, clipRect) {
+    setViewport(canvasSize, dpr, coords, clip) {
         coords = coords.flatten();
 
         const gl = this.gl;
@@ -1457,41 +1505,26 @@ export default class Mark {
         /** @type {object} */
         let uniforms;
 
-        let clippedCoords = coords;
+        const normalizedClip =
+            props.clip === "never"
+                ? undefined
+                : (normalizeViewportClip(clip) ??
+                  (props.clip
+                      ? { rect: coords, clipX: true, clipY: true }
+                      : undefined));
+        const viewportScope = createViewportScope(coords, normalizedClip);
+        const scopedCoords = viewportScope.coords;
 
-        if (props.clip !== "never" && (props.clip || clipRect)) {
-            let xClipOffset = 0;
-            let yClipOffset = 0;
-
-            /** @type {[number, number]} */
-            let uViewScale;
-
-            if (clipRect) {
-                // The following fails with axes that are handled by a GridView
-                // that itself is scrollable. The axes are clipped to the viewport
-                // but also to the axis view, resulting in clipped axes where
-                // not necessary.
-                clippedCoords = coords.intersect(clipRect).flatten();
-                if (!clippedCoords.isDefined()) {
-                    return false;
-                }
-
-                uViewScale = [
-                    coords.width / clippedCoords.width,
-                    coords.height / clippedCoords.height,
-                ];
-
-                yClipOffset = Math.max(0, coords.y2 - clipRect.y2);
-                xClipOffset = Math.min(0, coords.x - clipRect.x);
-            } else {
-                uViewScale = [1, 1];
+        if (viewportScope.usesScopedViewport) {
+            if (!scopedCoords.isDefined()) {
+                return false;
             }
 
             const physicalGlCoords = [
-                clippedCoords.x,
-                canvasSize.height - clippedCoords.y2,
-                clippedCoords.width,
-                clippedCoords.height,
+                scopedCoords.x,
+                canvasSize.height - scopedCoords.y2,
+                scopedCoords.width,
+                scopedCoords.height,
             ].map((x) => x * dpr);
 
             // Because glViewport accepts only integers, we subtract the rounding
@@ -1510,12 +1543,15 @@ export default class Mark {
 
             uniforms = {
                 uViewOffset: [
-                    (xOffset + xClipOffset + xError / dpr) /
-                        clippedCoords.width,
-                    -(yOffset + yClipOffset - yError / dpr) /
-                        clippedCoords.height,
+                    (xOffset + viewportScope.xClipOffset + xError / dpr) /
+                        scopedCoords.width,
+                    -(yOffset + viewportScope.yClipOffset - yError / dpr) /
+                        scopedCoords.height,
                 ],
-                uViewScale,
+                uViewScale: [
+                    coords.width / scopedCoords.width,
+                    coords.height / scopedCoords.height,
+                ],
             };
         } else {
             if (!coords.isDefined()) {
