@@ -1,155 +1,183 @@
-# Scrollable Viewport Directional Clipping Plan
+# Directional Clipping Plan
 
 ## Goal
 
-Migrate scrollable viewport clipping to use directional clipping consistently.
+Use directional clipping consistently across scrollable viewports and mark
+self-clipping.
+
 The target behavior is:
 
 - vertical scrollable viewports clip scrollable content and axes along `y`
-  only, unless a child mark explicitly requires both-direction clipping
+  only
 - horizontal scrollable viewports clip scrollable content and axes along `x`
-  only, unless a child mark explicitly requires both-direction clipping
-- view strokes, backgrounds, axes, ticks, and labels are not unintentionally
-  shortened in the perpendicular direction
-- legacy `clipRect` behavior remains compatible for ordinary clipped marks and
-  non-scrollable views
+  only
+- inherited container clipping still applies to axis chrome and marks that opt
+  out of self-clipping
+- mark self-clipping follows the zoomable scale direction by default
+- explicit mark `clip` settings override the default
+- legacy `clipRect` behavior remains compatible for callers that still provide
+  only a rectangle
 
 ## Current State
 
-Already implemented on this branch:
+Implemented on this branch:
 
 - `ClipOptions` with `{ rect, clipX, clipY }` in
   `packages/core/src/types/rendering.d.ts`
 - `normalizeClipOptions(...)` in `packages/core/src/types/rendering.js`
 - directional `Rectangle.intersectX(...)` and `Rectangle.intersectY(...)`
 - `Mark.setViewport(...)` accepts directional clip options and derives WebGL
-  scissor state through `createViewportScope(...)`
+  viewport/scissor state through `createViewportScope(...)`
+- `Mark.setViewport(...)` separates inherited/container clipping from mark
+  self-clipping
 - `BufferedViewRenderingContext` and `SimpleViewRenderingContext` pass
   normalized clip options to marks
-- `GridView` creates directional clips for scrollable child content and
-  scrollable axes
+- `GridView` uses directional clip options for scrollable child content,
+  scrollable axes, and child visible bounds
+- scrollable viewport decorations use directionally clipped geometry, so view
+  strokes are not shortened in the perpendicular direction
 
-Known remaining problem:
+Manual verification for `examples/core/layout/grid/scrollable_viewport2.json`
+has confirmed:
 
-- `GridView` still computes `clippedChildCoords` from `clipRect` using
-  `viewportCoords.intersect(options.clipRect)`, which clips both directions.
-  Decorations such as view strokes then render using that already-shortened
-  rectangle. In the scrollable viewport example, the upper scrollable region now
-  loses the right and bottom view-stroke edges.
-
-The branch therefore has mixed semantics: mark rendering understands
-directional clipping, but some layout/decorations still treat `clipRect` as the
-source of truth.
+- axis domain lines are visible and clipped at the scrollable viewport edges
+- the lightgray view stroke right edge inside the scrollable viewport is visible
+- plot marks remain clipped along the scroll direction
 
 ## Design Direction
 
-`clipRect` should become a compatibility input, not the internal source of
-truth for scrollable viewport clipping. Inside GridView, decisions should use
-`ClipOptions` and explicitly derive the geometry needed for each purpose.
+Keep these concepts separate:
 
-Use these meanings:
-
-- `clip`: directional rendering/scissor contract
-- `clip.rect`: the concrete rectangle used by lower-level renderers when a
-  rectangle is still required
+- `clip`: inherited/container clipping and directional rendering contract
+- self clipping: clipping caused by a mark's own `clip` property
+- `clip.rect`: the concrete rectangle used by lower-level renderers
 - directionally clipped coordinates: geometry used for backgrounds, strokes,
-  child visible bounds, hit testing, and layout-facing bookkeeping
-- `clipRect`: legacy compatibility field for old callers, eventually derived
-  from `clip.rect` rather than independently computed
+  child visible bounds, and layout-facing bookkeeping
+- `clipRect`: legacy compatibility field, derived from `clip.rect` where a
+  rectangular field is still needed
 
-## Next Implementation Steps
+The important semantic distinction is:
 
-### Step 1: Add Directional Coordinate Helper For GridView
+- `clip: false` means no mark self-clipping, but inherited clipping still
+  applies
+- `clip: "never"` means no mark self-clipping and no inherited clipping
+- directional values should control only mark self-clipping
 
-Tentative commit: `refactor(core): derive grid child bounds from clip options`
+## Remaining Implementation Steps
 
-Add a helper near the existing GridView clipping helpers:
+### Step 1: Extend Mark `clip` Spec Values
 
-- Input: `coords`, `clip`
-- Output: a rectangle clipped according to `clip.clipX` and `clip.clipY`
-- Behavior:
-  - no clip: return `coords`
-  - `clipX && clipY`: `coords.intersect(clip.rect)`
-  - `clipX`: `coords.intersectX(clip.rect)`
-  - `clipY`: `coords.intersectY(clip.rect)`
+Tentative commit: `feat(core): add directional mark clip values`
 
-Use this helper instead of raw `viewportCoords.intersect(options.clipRect)` for
-child visible bounds.
+Extend the mark spec type from:
 
-This is the main fix for the current regression: a vertically scrollable region
-should not shorten the view-stroke rectangle along `x`.
+```ts
+boolean | "never"
+```
 
-### Step 2: Remove `clippedChildCoords` As A Rectangular Assumption
+to:
 
-Tentative commit: `refactor(core): use directional child clip bounds`
+```ts
+boolean | "x" | "y" | "never"
+```
 
-Rename or split `clippedChildCoords` so its meaning is explicit. The current
-name hides that it was historically clipped in both directions.
+Semantics:
 
-Suggested names:
+- `true`: self-clip in both `x` and `y`
+- `false`: do not self-clip; still honor inherited clipping
+- `"x"`: self-clip only horizontally
+- `"y"`: self-clip only vertically
+- `"never"`: ignore self clipping and inherited clipping
 
-- `visibleChildCoords`: directionally clipped viewport coordinates used for
-  backgrounds and view strokes
-- `childClip`: the directional `ClipOptions` passed to child rendering
+Update user-facing JSDoc in `packages/core/src/spec/mark.d.ts` with concise
+wording. Mention that `"x"` and `"y"` refer to clipping direction in screen
+space and that inherited clipping from parent containers still applies unless
+`"never"` is used.
 
-Then update these uses in `packages/core/src/view/gridView/gridView.js`:
+### Step 2: Derive Directional Default Clip From Zoomable Scales
 
-- background fill rendering
-- child content rendering
-- background/view stroke rendering
-- any saved `renderItems` fields that carry child visible bounds
+Tentative commit: `fix(core): default mark clipping by zoom direction`
 
-The stroke should render using directionally clipped visible bounds, but with
-`clipRect` cleared when appropriate so the stroke itself is not scissored again.
+Change the default mark clip getter in `packages/core/src/marks/mark.js`.
 
-### Step 3: Audit Axis Clip Composition
+Current behavior:
 
-Tentative commit: `fix(core): compose scrollable axis clips directionally`
+- any zoomable `x` or `y` scale returns `true`
+- `true` self-clips in both directions
 
-Review the independent-axis block in `GridView`.
+Target behavior:
 
-The current axis code builds a directional `axisClip`, combines it with
-`options.clip`, and then sets `clipRect = clip?.rect`. That may still be too
-coarse when parent and axis clips constrain different dimensions.
+- only `x` zoomable: default `clip` is `"x"`
+- only `y` zoomable: default `clip` is `"y"`
+- both zoomable: default `clip` is `true`
+- neither zoomable: default `clip` is `false`
 
-Expected behavior:
+Explicit spec/config/style `clip` values must continue to take precedence over
+the zoomability-derived default.
 
-- bottom/top axes in horizontally scrollable content get `clipX: true`
-- left/right axes in vertically scrollable content get `clipY: true`
-- perpendicular overhang for ticks, labels, and domain strokes remains visible
-- inherited parent clipping is preserved only for the dimensions it actually
-  clips
+### Step 3: Map Mark Clip Values To Self-Clip Options
 
-If a rectangular compatibility field must be passed, derive it from the combined
-clip after the directional composition. Do not independently intersect the axis
-coordinates with a rectangular `clipRect`.
+Tentative commit: `refactor(core): map mark clip to directional self clip`
 
-### Step 4: Add Regression Tests For Decoration Geometry
+Add a small helper near `createViewportScope(...)` in
+`packages/core/src/marks/mark.js`:
 
-Tentative commit: `test(core): cover directional scrollable decorations`
+- input: resolved mark clip value and mark coordinates
+- output: directional self-clip options or no self clip
 
-Add focused Vitest coverage before each behavior change where possible.
+Mapping:
 
-Recommended tests in `packages/core/src/view/gridView/gridView.test.js`:
+- `true` -> `{ rect: coords, clipX: true, clipY: true }`
+- `"x"` -> `{ rect: coords, clipX: true, clipY: false }`
+- `"y"` -> `{ rect: coords, clipX: false, clipY: true }`
+- `false` -> no self clip
+- `"never"` -> no inherited clip and no self clip
 
-- vertical scrollable viewport receives `clipX: false, clipY: true` for
-  scrollable child content
-- horizontal scrollable viewport receives `clipX: true, clipY: false`
-- view stroke/background geometry for vertical scrolling preserves full
-  horizontal width
-- view stroke/background geometry for horizontal scrolling preserves full
-  vertical height
-- explicitly clipped child marks still produce both-direction clipping
+Then combine inherited clip options with self-clip options before calling
+`createViewportScope(...)`.
 
-The current failing visual case should be represented by a non-WebGL test that
-patches the background stroke render method and inspects the coordinates passed
-to it.
+Watch for the existing composition smell: when two clips constrain the same
+direction, the result should use the intersection of the two ranges, not simply
+replace the earlier range with the later one.
 
-### Step 5: Manual WebGL Verification
+### Step 4: Tighten Clip Composition
 
-Tentative commit: none unless documentation is updated.
+Tentative commit: `fix(core): intersect same-direction clip composition`
 
-Manual verification remains necessary because the bug is visual WebGL output.
+Review and update `combineClipOptions(...)` in `GridView` or move a shared
+version to `packages/core/src/types/rendering.js` if mark self-clip composition
+also needs it.
+
+Expected composition:
+
+- if only one clip constrains a direction, keep that range
+- if both clips constrain `x`, intersect their x ranges
+- if both clips constrain `y`, intersect their y ranges
+- keep unconstrained directions unconstrained
+
+Add focused tests for nested/inherited clipping so parent clips cannot be
+widened by child or axis clips.
+
+### Step 5: Tests And Schema Artifacts
+
+Tentative commit: `test(core): cover directional mark clip defaults`
+
+Add or update tests for:
+
+- default clip is `"x"` when only the x scale is zoomable
+- default clip is `"y"` when only the y scale is zoomable
+- default clip is `true` when both scales are zoomable
+- explicit `clip: true`, `false`, `"x"`, `"y"`, and `"never"` override defaults
+- `Mark.setViewport(...)` self-clips only in the requested direction
+- inherited scrollable viewport clipping still applies when `clip` is `false`,
+  `"x"`, or `"y"`
+
+If schema or docs artifacts are checked in or required by CI, regenerate them
+after changing `packages/core/src/spec/mark.d.ts`.
+
+### Step 6: Manual WebGL Verification
+
+Tentative commit: none unless documentation or example files are updated.
 
 Run:
 
@@ -166,32 +194,38 @@ http://localhost:8080/?spec=examples/core/layout/grid/scrollable_viewport2.json
 Check:
 
 - upper scrollable region keeps right and bottom view-stroke edges visible
-- bottom axis domain line is visible
-- tick labels are not hard-clipped in the perpendicular direction
+- axis domain lines are visible
+- y-axis tick labels are clipped only by the scrollable viewport, not by
+  internal child-view boundaries
 - content is still clipped along the scroll direction
-- ordinary clipped-mark examples still clip in both directions
+- ordinary explicitly clipped marks still clip in both directions
+
+Also verify a zoomable x-only case for issue #237:
+
+- marks touching the top or bottom plot edge are not clipped along `y`
+- marks remain clipped along `x`
 
 ## Risks
 
 - Keeping both `clipRect` and `clip` alive can reintroduce contradictory state.
   Prefer deriving rectangular compatibility fields from `clip`, not the other
   way around.
-- View strokes and backgrounds use geometry, not only scissor state. Fixing
-  mark clipping is insufficient if decoration coordinates are already clipped
-  incorrectly.
 - Combining parent and child directional clips is subtle when different
   dimensions come from different rectangles.
-- Existing tests can pass while WebGL output is visibly wrong; add tests that
-  inspect decoration coordinates and keep manual visual verification.
+- `clip: false` and `clip: "never"` must remain distinct. The former still
+  honors inherited clipping; the latter does not.
+- Existing tests can pass while WebGL output is visibly wrong; keep manual
+  visual verification for scrollable viewports and edge strokes.
 
 ## Verification Commands
 
 Use focused checks while iterating:
 
 ```bash
-npx vitest run packages/core/src/view/gridView/gridView.test.js
 npx vitest run packages/core/src/marks/mark.test.js
-npx vitest run packages/core/src/view/renderingContext/simpleViewRenderingContext.test.js
+npx vitest run packages/core/src/marks/markConfigPrecedence.test.js
+npx vitest run packages/core/src/view/gridView/gridView.test.js
+npx vitest run packages/core/src/types/rendering.test.js
 npm --workspace @genome-spy/core run test:tsc
 ```
 
@@ -199,6 +233,14 @@ Before considering the branch complete:
 
 ```bash
 npm test
+```
+
+## PR Note
+
+The eventual PR should mention:
+
+```text
+Closes #237
 ```
 
 ## WebGPU Note
