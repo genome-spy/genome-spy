@@ -882,6 +882,7 @@ export default class GridView extends ContainerView {
 
             const clippedChildren = isClippedChildren(view);
             const clipped = clippedChildren || scrollable;
+            const clippedDecorations = hasClippedChildren(view) || scrollable;
 
             for (const gridLineView of Object.values(gridLines)) {
                 queueDecoration(
@@ -923,7 +924,7 @@ export default class GridView extends ContainerView {
                 queueDecoration(
                     defaultBackgroundStrokeZindex(
                         gridChild.backgroundStrokeZindex,
-                        clipped
+                        clippedDecorations
                     ),
                     DECORATION_ORDER.backgroundStroke,
                     () =>
@@ -980,7 +981,7 @@ export default class GridView extends ContainerView {
                 }
 
                 queueDecoration(
-                    defaultAxisZindex(axisView.axisProps, clipped),
+                    defaultAxisZindex(axisView.axisProps, clippedDecorations),
                     DECORATION_ORDER.axis,
                     () =>
                         axisView.render(context, translatedCoords, {
@@ -1004,7 +1005,10 @@ export default class GridView extends ContainerView {
                     (orient == "bottom" && row == grid.nRows - 1)
                 ) {
                     queueDecoration(
-                        defaultAxisZindex(axisView.axisProps, clipped),
+                        defaultAxisZindex(
+                            axisView.axisProps,
+                            clippedDecorations
+                        ),
                         DECORATION_ORDER.axis,
                         () =>
                             axisView.render(
@@ -1366,6 +1370,22 @@ export function isClippedChildren(view) {
     view.visit((v) => {
         if (v instanceof UnitView) {
             clipped &&= v.mark.properties.clip === true;
+        }
+    });
+
+    return clipped;
+}
+
+/**
+ * @param {View} view
+ */
+function hasClippedChildren(view) {
+    let clipped = false;
+
+    view.visit((v) => {
+        if (v instanceof UnitView) {
+            const clip = v.mark.properties.clip;
+            clipped ||= clip === true || clip === "x" || clip === "y";
         }
     });
 

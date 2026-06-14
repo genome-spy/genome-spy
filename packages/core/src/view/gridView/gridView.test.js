@@ -841,6 +841,48 @@ describe("GridView decoration zindex", () => {
         ]);
     });
 
+    test("defaults directionally clipped view stroke above marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        view: {
+                            stroke: "#999",
+                        },
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: {
+                            type: "point",
+                            clip: "x",
+                        },
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: { grid: false },
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: { grid: false },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["child", "backgroundStroke0", "axis_bottom", "axis_left"]
+        );
+
+        expect(order).toEqual([
+            "child",
+            "backgroundStroke0",
+            "axis_bottom",
+            "axis_left",
+        ]);
+    });
+
     test("explicit axis and view stroke zindex override the clipped default", async () => {
         const order = await recordRenderOrder(
             {
