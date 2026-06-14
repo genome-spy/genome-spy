@@ -5,31 +5,33 @@ import { createViewportScope } from "./mark.js";
 
 describe("mark viewport scope", () => {
     test("clips only x when clipX is enabled", () => {
+        const canvasSize = { width: 20, height: 10 };
         const coords = Rectangle.create(1, 2, 6, 4);
         const clipRect = Rectangle.create(4, 3, 4, 2);
-        const scope = createViewportScope(coords, {
+        const scope = createViewportScope(canvasSize, coords, {
             rect: clipRect,
             clipX: true,
             clipY: false,
         });
 
         expect(scope.requiresScissor).toBeTruthy();
-        expect(scope.coords.equals(Rectangle.create(4, 2, 3, 4))).toBeTruthy();
+        expect(scope.coords.equals(Rectangle.create(4, 0, 3, 10))).toBeTruthy();
         expect(scope.xClipOffset).toBe(-3);
         expect(scope.yClipOffset).toBe(0);
     });
 
     test("clips only y when clipY is enabled", () => {
+        const canvasSize = { width: 20, height: 10 };
         const coords = Rectangle.create(1, 2, 6, 4);
         const clipRect = Rectangle.create(4, 3, 4, 2);
-        const scope = createViewportScope(coords, {
+        const scope = createViewportScope(canvasSize, coords, {
             rect: clipRect,
             clipX: false,
             clipY: true,
         });
 
         expect(scope.requiresScissor).toBeTruthy();
-        expect(scope.coords.equals(Rectangle.create(1, 3, 6, 2))).toBeTruthy();
+        expect(scope.coords.equals(Rectangle.create(0, 3, 20, 2))).toBeTruthy();
         expect(scope.xClipOffset).toBe(0);
         expect(scope.yClipOffset).toBe(1);
     });

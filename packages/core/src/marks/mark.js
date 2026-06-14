@@ -71,29 +71,43 @@ export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
  */
 
 /**
+ * @param {{ width: number, height: number }} canvasSize
  * @param {Rectangle} coords
  * @param {ClipOptions | undefined} clip
  */
-export function createViewportScope(coords, clip) {
+export function createViewportScope(canvasSize, coords, clip) {
     if (!clip || (!clip.clipX && !clip.clipY)) {
         return {
             requiresScissor: false,
             coords,
+            clipX: false,
+            clipY: false,
             xClipOffset: 0,
             yClipOffset: 0,
         };
     }
 
-    const clippedCoords =
-        clip.clipX && clip.clipY
-            ? coords.intersect(clip.rect)
-            : clip.clipX
-              ? coords.intersectX(clip.rect)
-              : coords.intersectY(clip.rect);
+    let clippedCoords = coords.intersect(clip.rect);
+
+    if (!clip.clipX) {
+        clippedCoords = clippedCoords.modify({
+            x: 0,
+            width: canvasSize.width,
+        });
+    }
+
+    if (!clip.clipY) {
+        clippedCoords = clippedCoords.modify({
+            y: 0,
+            height: canvasSize.height,
+        });
+    }
 
     return {
         requiresScissor: true,
         coords: clippedCoords.flatten(),
+        clipX: clip.clipX,
+        clipY: clip.clipY,
         xClipOffset: clip.clipX ? Math.min(0, coords.x - clip.rect.x) : 0,
         yClipOffset: clip.clipY ? Math.max(0, coords.y2 - clip.rect.y2) : 0,
     };
@@ -1512,7 +1526,11 @@ export default class Mark {
                   (props.clip
                       ? { rect: coords, clipX: true, clipY: true }
                       : undefined));
-        const viewportScope = createViewportScope(coords, normalizedClip);
+        const viewportScope = createViewportScope(
+            canvasSize,
+            coords,
+            normalizedClip
+        );
         const scopedCoords = viewportScope.coords;
 
         if (viewportScope.requiresScissor) {
@@ -1543,14 +1561,29 @@ export default class Mark {
 
             uniforms = {
                 uViewOffset: [
-                    (xOffset + viewportScope.xClipOffset + xError / dpr) /
-                        scopedCoords.width,
-                    -(yOffset + viewportScope.yClipOffset - yError / dpr) /
-                        scopedCoords.height,
+                    viewportScope.clipX
+                        ? (xOffset + viewportScope.xClipOffset + xError / dpr) /
+                          scopedCoords.width
+                        : (coords.x + xOffset) / canvasSize.width,
+                    viewportScope.clipY
+                        ? -(
+                              yOffset +
+                              viewportScope.yClipOffset -
+                              yError / dpr
+                          ) / scopedCoords.height
+                        : (canvasSize.height -
+                              coords.y -
+                              yOffset -
+                              coords.height) /
+                          canvasSize.height,
                 ],
                 uViewScale: [
-                    coords.width / scopedCoords.width,
-                    coords.height / scopedCoords.height,
+                    viewportScope.clipX
+                        ? coords.width / scopedCoords.width
+                        : coords.width / canvasSize.width,
+                    viewportScope.clipY
+                        ? coords.height / scopedCoords.height
+                        : coords.height / canvasSize.height,
                 ],
             };
         } else {
