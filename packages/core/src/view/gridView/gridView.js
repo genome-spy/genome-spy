@@ -878,7 +878,8 @@ export default class GridView extends ContainerView {
                 row,
             } = item;
 
-            const clipped = isClippedChildren(view) || scrollable;
+            const clippedChildren = isClippedChildren(view);
+            const clipped = clippedChildren || scrollable;
 
             for (const gridLineView of Object.values(gridLines)) {
                 queueDecoration(
@@ -888,6 +889,19 @@ export default class GridView extends ContainerView {
                 );
             }
 
+            const contentClip = clipped
+                ? combineClipOptions(
+                      options.clip,
+                      createClipOptions(
+                          clippedChildCoords,
+                          clippedChildren ||
+                              Boolean(gridChild.scrollbars.horizontal),
+                          clippedChildren ||
+                              Boolean(gridChild.scrollbars.vertical)
+                      )
+                  )
+                : options.clip;
+
             const renderContent = () =>
                 view.render(
                     context,
@@ -896,6 +910,7 @@ export default class GridView extends ContainerView {
                         ? {
                               ...options,
                               clipRect: clippedChildCoords,
+                              clip: contentClip,
                           }
                         : options
                 );
@@ -949,25 +964,17 @@ export default class GridView extends ContainerView {
                 );
 
                 let clipRect = options.clipRect;
+                let clip = options.clip;
 
                 // Scrollable axes must be clipped along the scroll direction.
                 if (scrollable) {
-                    clipRect = translatedCoords.intersect(clipRect).intersect(
-                        scrollable
-                            ? viewportCoords.modify(
-                                  // Ugly hack. Need to implement intersectX and intersectY.
-                                  direction == "vertical"
-                                      ? {
-                                            x: -100000,
-                                            width: 200000,
-                                        }
-                                      : {
-                                            y: -100000,
-                                            height: 200000,
-                                        }
-                              )
-                            : undefined
+                    const axisClip = createClipOptions(
+                        viewportCoords,
+                        direction == "horizontal",
+                        direction == "vertical"
                     );
+                    clip = combineClipOptions(clip, axisClip);
+                    clipRect = clip?.rect;
                 }
 
                 queueDecoration(
@@ -977,6 +984,7 @@ export default class GridView extends ContainerView {
                         axisView.render(context, translatedCoords, {
                             ...options,
                             clipRect,
+                            clip,
                         })
                 );
             }
@@ -1427,6 +1435,45 @@ function defaultAxisZindex(axisProps, clipped) {
  */
 function defaultBackgroundStrokeZindex(zindex, clipped) {
     return zindex ?? (clipped ? CLIPPED_DECORATION_ZINDEX : 0);
+}
+
+/**
+ * @param {Rectangle} rect
+ * @param {boolean} clipX
+ * @param {boolean} clipY
+ * @returns {import("../../types/rendering.js").ClipOptions | undefined}
+ */
+function createClipOptions(rect, clipX, clipY) {
+    return clipX || clipY ? { rect, clipX, clipY } : undefined;
+}
+
+/**
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} current
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} next
+ * @returns {import("../../types/rendering.js").ClipOptions | undefined}
+ */
+function combineClipOptions(current, next) {
+    if (!current) {
+        return next;
+    } else if (!next) {
+        return current;
+    }
+
+    const clipX = current.clipX || next.clipX;
+    const clipY = current.clipY || next.clipY;
+    const xRect = next.clipX ? next.rect : current.rect;
+    const yRect = next.clipY ? next.rect : current.rect;
+
+    return createClipOptions(
+        new Rectangle(
+            () => xRect.x,
+            () => yRect.y,
+            () => xRect.width,
+            () => yRect.height
+        ),
+        clipX,
+        clipY
+    );
 }
 
 /**

@@ -1025,6 +1025,108 @@ describe("GridView decoration zindex", () => {
     });
 });
 
+describe("GridView scrollable clipping", () => {
+    test("clips vertically scrollable content only along y", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        name: "scrollable",
+                        viewportHeight: 50,
+                        vconcat: [
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+        const scrollable = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "scrollable");
+        /** @type {import("../../types/rendering.js").RenderingOptions | undefined} */
+        let renderOptions;
+
+        if (!scrollable) {
+            throw new Error("Missing scrollable child view.");
+        }
+
+        const original = scrollable.render.bind(scrollable);
+        scrollable.render = (context, coords, options = {}) => {
+            renderOptions = options;
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        expect(renderOptions?.clip).toMatchObject({
+            clipX: false,
+            clipY: true,
+        });
+        expect(renderOptions?.clip?.rect).toBe(renderOptions?.clipRect);
+    });
+
+    test("clips horizontally scrollable content only along x", async () => {
+        const view = await createAndInitialize(
+            {
+                hconcat: [
+                    {
+                        name: "scrollable",
+                        viewportWidth: 50,
+                        hconcat: [
+                            {
+                                width: 100,
+                                ...makeUnitSpec(),
+                            },
+                            {
+                                width: 100,
+                                ...makeUnitSpec(),
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+        const scrollable = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "scrollable");
+        /** @type {import("../../types/rendering.js").RenderingOptions | undefined} */
+        let renderOptions;
+
+        if (!scrollable) {
+            throw new Error("Missing scrollable child view.");
+        }
+
+        const original = scrollable.render.bind(scrollable);
+        scrollable.render = (context, coords, options = {}) => {
+            renderOptions = options;
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        expect(renderOptions?.clip).toMatchObject({
+            clipX: true,
+            clipY: false,
+        });
+        expect(renderOptions?.clip?.rect).toBe(renderOptions?.clipRect);
+    });
+});
+
 describe("GridView wheel zoom", () => {
     /**
      * @param {ConcatView} view
