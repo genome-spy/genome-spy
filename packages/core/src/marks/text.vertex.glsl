@@ -174,11 +174,12 @@ void main(void) {
     }
 #endif
 
-    if ((uCullByVisibleRange.x > 0.5 && (pos.x < uLogicalVisibleRect.x || pos.x > uLogicalVisibleRect.z))
-        || (uCullByVisibleRange.y > 0.5 && (pos.y < uLogicalVisibleRect.y || pos.y > uLogicalVisibleRect.w))) {
+#ifdef VISIBLE_RANGE_CULLING
+    if (isOutsideVisibleRange(pos)) {
         gl_Position = vec4(0.0);
         return;
     }
+#endif
 
     if (scale < 1.0) {
         if (uSqueeze) {

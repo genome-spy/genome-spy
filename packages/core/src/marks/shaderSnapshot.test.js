@@ -187,6 +187,7 @@ describe("generated shader snapshots", () => {
         });
 
         expect(sources).toMatchSnapshot();
+        expect(sources.vertex).not.toContain("#define VISIBLE_RANGE_CULLING");
     });
 
     test("interval selection example", async () => {
@@ -249,8 +250,9 @@ describe("generated shader snapshots", () => {
             },
         });
 
-        expect(sources.vertex).toContain("uCullByVisibleRange.x > 0.5");
-        expect(sources.vertex).toContain("uLogicalVisibleRect");
+        expect(sources.vertex).toContain("#define VISIBLE_RANGE_CULLING");
+        expect(sources.vertex).toContain("bool isOutsideVisibleRange");
+        expect(sources.vertex).toContain("isOutsideVisibleRange(pos)");
     });
 
     test("point shader supports visible-range culling", async () => {
@@ -268,8 +270,9 @@ describe("generated shader snapshots", () => {
             },
         });
 
-        expect(sources.vertex).toContain("uCullByVisibleRange.y > 0.5");
-        expect(sources.vertex).toContain("uLogicalVisibleRect");
+        expect(sources.vertex).toContain("#define VISIBLE_RANGE_CULLING");
+        expect(sources.vertex).toContain("bool isOutsideVisibleRange");
+        expect(sources.vertex).toContain("isOutsideVisibleRange(facetedPos)");
     });
 
     test("penguins scatter plot example", async () => {

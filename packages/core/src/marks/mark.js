@@ -501,8 +501,14 @@ export default class Mark {
         const shaderChannels = this.getAttributes();
         const encoders = this.encoders;
         const sampleFacetMode = this.getSampleFacetMode();
+        const useVisibleRangeCulling = Boolean(
+            this.properties.cullByVisibleRange
+        );
         if (sampleFacetMode) {
             extraHeaders.push(`#define ${sampleFacetMode}`);
+        }
+        if (useVisibleRangeCulling) {
+            extraHeaders.push("#define VISIBLE_RANGE_CULLING");
         }
 
         // For debugging

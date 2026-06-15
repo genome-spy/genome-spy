@@ -73,6 +73,15 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
+}
+
 float linearstep(float edge0, float edge1, float x) {
     return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }
@@ -339,6 +348,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {
@@ -1002,12 +1020,13 @@ void main(void) {
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
     vec2 facetedPos = applySampleFacet(pos);
 
-    if ((uCullByVisibleRange.x > 0.5 && (facetedPos.x < uLogicalVisibleRect.x || facetedPos.x > uLogicalVisibleRect.z))
-        || (uCullByVisibleRange.y > 0.5 && (facetedPos.y < uLogicalVisibleRect.y || facetedPos.y > uLogicalVisibleRect.w))) {
+#ifdef VISIBLE_RANGE_CULLING
+    if (isOutsideVisibleRange(facetedPos)) {
         gl_PointSize = 0.0;
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;
     }
+#endif
 
     gl_Position = unitToNdc(facetedPos);
 
@@ -1155,6 +1174,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {
@@ -1335,6 +1363,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {
@@ -2245,6 +2282,15 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
+}
+
 float linearstep(float edge0, float edge1, float x) {
     return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }
@@ -2517,6 +2563,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {
@@ -3217,12 +3272,13 @@ void main(void) {
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
     vec2 facetedPos = applySampleFacet(pos);
 
-    if ((uCullByVisibleRange.x > 0.5 && (facetedPos.x < uLogicalVisibleRect.x || facetedPos.x > uLogicalVisibleRect.z))
-        || (uCullByVisibleRange.y > 0.5 && (facetedPos.y < uLogicalVisibleRect.y || facetedPos.y > uLogicalVisibleRect.w))) {
+#ifdef VISIBLE_RANGE_CULLING
+    if (isOutsideVisibleRange(facetedPos)) {
         gl_PointSize = 0.0;
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;
     }
+#endif
 
     gl_Position = unitToNdc(facetedPos);
 
@@ -3366,6 +3422,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {
@@ -3634,6 +3699,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {
@@ -4295,12 +4369,13 @@ void main(void) {
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
     vec2 facetedPos = applySampleFacet(pos);
 
-    if ((uCullByVisibleRange.x > 0.5 && (facetedPos.x < uLogicalVisibleRect.x || facetedPos.x > uLogicalVisibleRect.z))
-        || (uCullByVisibleRange.y > 0.5 && (facetedPos.y < uLogicalVisibleRect.y || facetedPos.y > uLogicalVisibleRect.w))) {
+#ifdef VISIBLE_RANGE_CULLING
+    if (isOutsideVisibleRange(facetedPos)) {
         gl_PointSize = 0.0;
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;
     }
+#endif
 
     gl_Position = unitToNdc(facetedPos);
 
@@ -4453,6 +4528,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {
@@ -4840,6 +4924,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {

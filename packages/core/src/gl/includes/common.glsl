@@ -36,6 +36,15 @@ vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
 }
 
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
+}
+
 float linearstep(float edge0, float edge1, float x) {
     return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
 }

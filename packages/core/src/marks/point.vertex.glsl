@@ -55,12 +55,13 @@ void main(void) {
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
     vec2 facetedPos = applySampleFacet(pos);
 
-    if ((uCullByVisibleRange.x > 0.5 && (facetedPos.x < uLogicalVisibleRect.x || facetedPos.x > uLogicalVisibleRect.z))
-        || (uCullByVisibleRange.y > 0.5 && (facetedPos.y < uLogicalVisibleRect.y || facetedPos.y > uLogicalVisibleRect.w))) {
+#ifdef VISIBLE_RANGE_CULLING
+    if (isOutsideVisibleRange(facetedPos)) {
         gl_PointSize = 0.0;
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;
     }
+#endif
 
     gl_Position = unitToNdc(facetedPos);
 
