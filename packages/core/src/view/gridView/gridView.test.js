@@ -9,6 +9,7 @@ import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import { normalizeClipOptions } from "../renderingContext/clipOptions.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
+import LegendView from "../legendView.js";
 import { translateLegendCoords } from "./gridView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
 import { createLogicalVisibleRect } from "../../marks/mark.js";
@@ -170,6 +171,163 @@ describe("translateLegendCoords", () => {
         expect(coords.y).toBe(20);
         expect(coords.width).toBe(80);
         expect(coords.height).toBe(200);
+    });
+});
+
+describe("GridView legends", () => {
+    const createLegendTestView = (
+        /** @type {Partial<import("../../spec/root.js").RootSpec>} */ spec = {}
+    ) =>
+        createAndInitialize(
+            /** @type {import("../../spec/root.js").RootSpec} */ ({
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: { field: "Origin", type: "nominal" },
+                        },
+                    },
+                ],
+                ...spec,
+            }),
+            ConcatView
+        );
+
+    const getLegends = (/** @type {ConcatView} */ view) =>
+        view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof LegendView);
+
+    test("keeps legends hidden by default", async () => {
+        const view = await createLegendTestView();
+
+        expect(getLegends(view)).toHaveLength(0);
+    });
+
+    test("creates an opt-in right legend for a nominal color scale", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+        });
+        const legends = getLegends(view);
+        const legendSpec = legends[0].spec;
+        const labels = legends[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "labels");
+
+        expect(legends).toHaveLength(1);
+        expect(legends[0].name).toBe("legend_right");
+        expect(legendSpec.data).toEqual({
+            lazy: { type: "legendEntries", channel: "color" },
+        });
+        expect(labels).toBeInstanceOf(UnitView);
+        expect(
+            Array.from(labels.flowHandle.collector.getData()).map(
+                ({ value, label, _legendIndex }) => ({
+                    value,
+                    label,
+                    _legendIndex,
+                })
+            )
+        ).toEqual([
+            { value: "Europe", label: "Europe", _legendIndex: 0 },
+            { value: "Japan", label: "Japan", _legendIndex: 1 },
+        ]);
+        expect(
+            /** @type {import("../../spec/view.js").UnitSpec} */ (
+                legendSpec.layer[1]
+            ).mark
+        ).toMatchObject({
+            text: "Origin",
+        });
+    });
+
+    test("creates an explicit channel legend even when defaults are disabled", async () => {
+        const view = await createLegendTestView({
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "Origin",
+                            type: "nominal",
+                            legend: { title: "Region" },
+                        },
+                    },
+                },
+            ],
+        });
+        const legends = getLegends(view);
+
+        expect(legends).toHaveLength(1);
+        expect(
+            /** @type {import("../../spec/view.js").UnitSpec} */ (
+                legends[0].spec.layer[1]
+            ).mark
+        ).toMatchObject({
+            text: "Region",
+        });
+    });
+
+    test("respects explicit legend null", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "Origin",
+                            type: "nominal",
+                            legend: null,
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(getLegends(view)).toHaveLength(0);
+    });
+
+    test("does not create legends for positional quantitative channels", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: { values: [{ x: 1, y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+            ],
+        });
+
+        expect(getLegends(view)).toHaveLength(0);
     });
 });
 

@@ -7,6 +7,11 @@ import {
     isIntervalSelectionConfig,
     selectionContainsPoint,
 } from "../../selection/selection.js";
+import {
+    findChannelDefWithScale,
+    isFieldDef,
+    isValueDef,
+} from "../../encoder/encoder.js";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import AxisGridView from "../axisGridView.js";
 import AxisView, {
@@ -30,7 +35,8 @@ import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
-import { getExternalLegendOverhang } from "../legendView.js";
+import { getConfiguredLegendDefaults } from "../../config/legendConfig.js";
+import LegendView, { getExternalLegendOverhang } from "../legendView.js";
 
 /**
  * @typedef {{
@@ -787,6 +793,83 @@ export default class GridChild {
             }
         };
 
+        /**
+         * @param {import("../../spec/channel.js").ChannelWithScale} channel
+         * @param {import("../unitView.js").default} legendParent
+         */
+        const createLegend = async (channel, legendParent) => {
+            const channelDef = findChannelDefWithScale(
+                legendParent.spec.encoding?.[channel]
+            );
+            if (!channelDef || isValueDef(channelDef)) {
+                return;
+            }
+
+            const explicitLegend =
+                "legend" in channelDef ? channelDef.legend : undefined;
+            if (explicitLegend === null) {
+                return;
+            }
+
+            const legendOverrides =
+                explicitLegend === undefined
+                    ? undefined
+                    : /** @type {import("../../spec/legend.js").LegendConfig} */ ({
+                          disable: false,
+                          ...explicitLegend,
+                      });
+            const legendDefaults = getConfiguredLegendDefaults(
+                legendParent.getConfigScopes(),
+                legendOverrides
+            );
+            if (legendDefaults.disable) {
+                return;
+            }
+
+            if (
+                channelDef.type !== "nominal" &&
+                channelDef.type !== "ordinal"
+            ) {
+                return;
+            }
+
+            const scaleResolution = legendParent.getScaleResolution(channel);
+            if (!scaleResolution) {
+                return;
+            }
+
+            const orient = legendDefaults.orient ?? "right";
+            if (this.legends[orient] && !this.allowDuplicateAxes()) {
+                throw new Error(
+                    `A legend with the orient "${orient}" already exists!`
+                );
+            }
+
+            const legend = new LegendView(
+                {
+                    scaleName: scaleResolution.name ?? channel,
+                    channel,
+                    legend: {
+                        title:
+                            legendDefaults.title ??
+                            ("title" in channelDef
+                                ? channelDef.title
+                                : undefined) ??
+                            (isFieldDef(channelDef)
+                                ? channelDef.field
+                                : undefined),
+                        ...legendDefaults,
+                    },
+                },
+                this.layoutParent.context,
+                this.layoutParent,
+                legendParent
+            );
+
+            this.legends[orient] ??= legend;
+            await legend.initializeChildren();
+        };
+
         // Handle children that have caught axis resolutions. Create axes for them.
         for (const channel of /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
             "x",
@@ -853,10 +936,22 @@ export default class GridChild {
             // TODO: Axis grid
         }
 
+        if (view instanceof UnitView) {
+            for (const channel of Object.keys(view.spec.encoding ?? {})) {
+                await createLegend(
+                    /** @type {import("../../spec/channel.js").ChannelWithScale} */ (
+                        channel
+                    ),
+                    view
+                );
+            }
+        }
+
         // Axes are created after scales are resolved, so we need to resolve possible new scales here
         [
             ...this.axisCandidates.map((candidate) => candidate.axisView),
             ...Object.values(gridLines),
+            ...Object.values(this.legends),
         ].forEach((v) =>
             v.visit((view) => {
                 if (view instanceof UnitView) {
@@ -910,9 +1005,14 @@ export default class GridChild {
             gridView.disposeSubtree();
         }
 
+        for (const legendView of Object.values(this.legends)) {
+            legendView.disposeSubtree();
+        }
+
         this.axes = {};
         this.axisCandidates = [];
         this.gridLines = {};
+        this.legends = {};
     }
 
     /**

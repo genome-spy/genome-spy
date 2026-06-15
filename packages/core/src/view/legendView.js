@@ -12,7 +12,7 @@ const DEFAULT_LEGEND_EXTENT = 80;
 
 /**
  * @param {object} options
- * @param {LegendEntry[]} options.entries
+ * @param {LegendEntry[]} [options.entries]
  * @param {string} options.scaleName
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {LegendConfig} options.legend
@@ -47,11 +47,13 @@ export function createSymbolLegendSpec({
                     field: "_legendEntryX",
                     type: "quantitative",
                     scale: null,
+                    axis: null,
                 },
                 y: {
                     field: "_legendLabelY",
                     type: "quantitative",
                     scale: null,
+                    axis: null,
                 },
                 [channel]: {
                     field: "value",
@@ -99,11 +101,13 @@ export function createSymbolLegendSpec({
                 field: "_legendLabelX",
                 type: "quantitative",
                 scale: null,
+                axis: null,
             },
             y: {
                 field: "_legendLabelY",
                 type: "quantitative",
                 scale: null,
+                axis: null,
             },
             text: { field: "label" },
         },
@@ -111,7 +115,13 @@ export function createSymbolLegendSpec({
 
     return {
         name: "legend_" + orient,
-        data: { values: entries },
+        resolve: {
+            scale: { x: "excluded", y: "excluded" },
+            axis: { x: "excluded", y: "excluded" },
+        },
+        data: entries
+            ? { values: entries }
+            : { lazy: { type: "legendEntries", channel } },
         transform: [
             {
                 type: "measureText",
@@ -152,7 +162,7 @@ export default class LegendView extends LayerView {
 
     /**
      * @param {object} props
-     * @param {LegendEntry[]} props.entries
+     * @param {LegendEntry[]} [props.entries]
      * @param {string} props.scaleName
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
      * @param {LegendConfig} props.legend
@@ -180,6 +190,7 @@ export default class LegendView extends LayerView {
             }
         );
 
+        this.needsAxes = { x: false, y: false };
         this.legendProps = legend;
 
         markViewAsNonAddressable(this, { skipSubtree: true });

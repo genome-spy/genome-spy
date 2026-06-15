@@ -12,7 +12,12 @@
  * Constants and utilities for data.
  */
 import { Axis } from "./axis.js";
-import { FieldName, PrimaryPositionalChannel, Scalar } from "./channel.js";
+import {
+    ChannelWithScale,
+    FieldName,
+    PrimaryPositionalChannel,
+    Scalar,
+} from "./channel.js";
 import { ExprRef } from "./parameter.js";
 
 export type ParseValue =
@@ -331,6 +336,7 @@ export interface LazyData {
 
 export type LazyDataParams =
     | AxisTicksData
+    | LegendEntriesData
     | AxisGenomeData
     | IndexedFastaData
     | BigWigData
@@ -378,6 +384,18 @@ export interface AxisTicksData {
 
     /** Which channel's scale domain to listen to */
     channel: PrimaryPositionalChannel;
+}
+
+/**
+ * Internal data source for generated legend entries.
+ *
+ * @internal
+ */
+export interface LegendEntriesData {
+    type: "legendEntries";
+
+    /** Which channel's scale domain to use */
+    channel: ChannelWithScale;
 }
 
 export interface AxisGenomeData {
