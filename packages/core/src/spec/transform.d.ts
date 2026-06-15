@@ -537,6 +537,26 @@ export interface PackLabelsParams extends TransformParamsBase {
     columnPadding?: number;
 
     /**
+     * Horizontal offset for all generated entry coordinates in pixels.
+     *
+     * **Default:** `0`
+     */
+    xOffset?: number;
+
+    /**
+     * Vertical offset for all generated entry coordinates in pixels.
+     *
+     * **Default:** `0`
+     */
+    yOffset?: number;
+
+    /**
+     * Height of the pixel-space layout area. When provided, the transform also
+     * emits inverted y coordinates for GenomeSpy's unit y range.
+     */
+    yExtent?: number;
+
+    /**
      * Output field names for generated layout values. This transform is
      * intended for internally generated guide specs.
      */
@@ -549,6 +569,8 @@ export interface PackLabelsParams extends TransformParamsBase {
         entryHeight: Field;
         labelX: Field;
         labelY: Field;
+        entryY2: Field;
+        labelY2: Field;
     }>;
 }
 

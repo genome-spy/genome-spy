@@ -29,6 +29,19 @@ export function createSymbolLegendSpec({
     const labelAlign = legend.labelAlign ?? "left";
     const labelBaseline = legend.labelBaseline ?? "middle";
     const labelFontSize = legend.labelFontSize ?? 10;
+    const titleFontSize = legend.titleFontSize ?? 11;
+    const titlePadding = legend.titlePadding ?? 5;
+    const entryYOffset = title ? titleFontSize + titlePadding : 0;
+    const horizontalPixelScale = {
+        domain: [0, DEFAULT_LEGEND_EXTENT],
+        zero: false,
+        nice: false,
+    };
+    const verticalPixelScale = {
+        domain: [0, DEFAULT_LEGEND_EXTENT],
+        zero: false,
+        nice: false,
+    };
 
     /** @type {import("../spec/view.js").UnitSpec[]} */
     const layer = [
@@ -37,6 +50,7 @@ export function createSymbolLegendSpec({
             mark: {
                 type: "point",
                 clip: false,
+                cullByVisibleRange: false,
                 filled: false,
                 shape: legend.symbolType,
                 size: legend.symbolSize,
@@ -46,13 +60,14 @@ export function createSymbolLegendSpec({
                 x: {
                     field: "_legendEntryX",
                     type: "quantitative",
-                    scale: null,
+                    scale: horizontalPixelScale,
                     axis: null,
+                    buildIndex: false,
                 },
                 y: {
-                    field: "_legendLabelY",
+                    field: "_legendLabelY2",
                     type: "quantitative",
-                    scale: null,
+                    scale: verticalPixelScale,
                     axis: null,
                 },
                 [channel]: {
@@ -67,7 +82,15 @@ export function createSymbolLegendSpec({
     if (title) {
         layer.push({
             name: "title",
-            data: { values: [{}] },
+            data: {
+                values: [
+                    {
+                        _legendTitleX: 0,
+                        _legendTitleY:
+                            DEFAULT_LEGEND_EXTENT - titleFontSize / 2,
+                    },
+                ],
+            },
             mark: {
                 type: "text",
                 clip: false,
@@ -77,8 +100,23 @@ export function createSymbolLegendSpec({
                 font: legend.titleFont,
                 fontStyle: legend.titleFontStyle,
                 fontWeight: legend.titleFontWeight,
-                size: legend.titleFontSize,
+                size: titleFontSize,
                 text: title,
+            },
+            encoding: {
+                x: {
+                    field: "_legendTitleX",
+                    type: "quantitative",
+                    scale: horizontalPixelScale,
+                    axis: null,
+                    buildIndex: false,
+                },
+                y: {
+                    field: "_legendTitleY",
+                    type: "quantitative",
+                    scale: verticalPixelScale,
+                    axis: null,
+                },
             },
         });
     }
@@ -88,6 +126,7 @@ export function createSymbolLegendSpec({
         mark: {
             type: "text",
             clip: false,
+            cullByVisibleRange: false,
             align: labelAlign,
             baseline: labelBaseline,
             color: legend.labelColor,
@@ -100,13 +139,14 @@ export function createSymbolLegendSpec({
             x: {
                 field: "_legendLabelX",
                 type: "quantitative",
-                scale: null,
+                scale: horizontalPixelScale,
                 axis: null,
+                buildIndex: false,
             },
             y: {
-                field: "_legendLabelY",
+                field: "_legendLabelY2",
                 type: "quantitative",
-                scale: null,
+                scale: verticalPixelScale,
                 axis: null,
             },
             text: { field: "label" },
@@ -143,6 +183,8 @@ export function createSymbolLegendSpec({
                 fontSize: labelFontSize,
                 rowPadding: legend.rowPadding,
                 columnPadding: legend.columnPadding,
+                yOffset: entryYOffset,
+                yExtent: DEFAULT_LEGEND_EXTENT,
             },
         ],
         layer,
@@ -154,7 +196,9 @@ export function createSymbolLegendSpec({
  * @returns {number}
  */
 export function getExternalLegendOverhang(legendView) {
-    return legendView ? legendView.getPerpendicularSize() : 0;
+    return legendView
+        ? legendView.getPerpendicularSize() + legendView.getExternalPadding()
+        : 0;
 }
 
 export default class LegendView extends LayerView {
@@ -213,6 +257,10 @@ export default class LegendView extends LayerView {
 
     getPerpendicularSize() {
         return this.#effectiveExtent;
+    }
+
+    getExternalPadding() {
+        return this.legendProps.padding ?? 0;
     }
 
     isPickingSupported() {

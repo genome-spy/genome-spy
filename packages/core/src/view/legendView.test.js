@@ -61,6 +61,8 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
             fontSize: 10,
             rowPadding: 2,
             columnPadding: 10,
+            yOffset: 16,
+            yExtent: 80,
         },
     ]);
     expect(spec.layer).toHaveLength(3);
@@ -72,7 +74,7 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
     });
     expect(symbols.encoding).toMatchObject({
         x: { field: "_legendEntryX", type: "quantitative" },
-        y: { field: "_legendLabelY", type: "quantitative" },
+        y: { field: "_legendLabelY2", type: "quantitative" },
         color: { field: "value", type: "nominal", scale: { name: "color" } },
     });
     expect(title.mark).toMatchObject({
@@ -82,6 +84,13 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
         baseline: "middle",
         text: "Origin",
     });
+    expect(title.data).toEqual({
+        values: [{ _legendTitleX: 0, _legendTitleY: 74.5 }],
+    });
+    expect(title.encoding).toMatchObject({
+        x: { field: "_legendTitleX", type: "quantitative" },
+        y: { field: "_legendTitleY", type: "quantitative" },
+    });
     expect(labels.mark).toMatchObject({
         type: "text",
         clip: false,
@@ -90,7 +99,7 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
     });
     expect(labels.encoding).toMatchObject({
         x: { field: "_legendLabelX", type: "quantitative" },
-        y: { field: "_legendLabelY", type: "quantitative" },
+        y: { field: "_legendLabelY2", type: "quantitative" },
         text: { field: "label" },
     });
 });

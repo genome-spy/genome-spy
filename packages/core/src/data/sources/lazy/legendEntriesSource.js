@@ -1,5 +1,6 @@
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { createDiscreteLegendEntries } from "../../../view/legend/legendEntries.js";
+import { isChromeView } from "../../../view/viewSelectors.js";
 import DataSource from "../dataSource.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
@@ -15,9 +16,7 @@ export default class LegendEntriesSource extends DataSource {
         super(view);
 
         this.params = params;
-        this.scaleResolution =
-            view.dataParent?.getScaleResolution(params.channel) ??
-            view.getScaleResolution(params.channel);
+        this.scaleResolution = findLegendScaleResolution(view, params.channel);
         if (!this.scaleResolution) {
             throw new Error(
                 `The legend entries data source cannot find a resolved scale for channel "${params.channel}".`
@@ -57,6 +56,21 @@ export default class LegendEntriesSource extends DataSource {
             this.complete();
         }
     }
+}
+
+/**
+ * @param {import("../../../view/view.js").default} view
+ * @param {import("../../../spec/channel.js").ChannelWithScale} channel
+ */
+export function findLegendScaleResolution(view, channel) {
+    let parent = view.dataParent;
+    while (parent && isChromeView(parent)) {
+        parent = parent.dataParent;
+    }
+
+    return (
+        parent?.getScaleResolution(channel) ?? view.getScaleResolution(channel)
+    );
 }
 
 /**

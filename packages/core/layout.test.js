@@ -58,13 +58,7 @@ describe("Test layout process", () => {
     });
 
     test("marks/point/point2d.json with legend enabled", async () => {
-        const layout = await specToLayout({
-            ...specPoint2D,
-            config: {
-                ...specPoint2D.config,
-                legend: { disable: false },
-            },
-        });
+        const layout = await specToLayout(specPoint2D);
         const plot = findLayoutNode(layout, "grid0");
         const legend = findLayoutNode(layout, "legend_right");
 
@@ -73,7 +67,7 @@ describe("Test layout process", () => {
         expect(readCoord(plot.coords, "width")).toBe(200);
         expect(readCoord(plot.coords, "height")).toBe(200);
         expect(readCoord(legend.coords, "x")).toBe(
-            readCoord(plot.coords, "x") + readCoord(plot.coords, "width")
+            readCoord(plot.coords, "x") + readCoord(plot.coords, "width") + 18
         );
         expect(readCoord(legend.coords, "height")).toBe(
             readCoord(plot.coords, "height")

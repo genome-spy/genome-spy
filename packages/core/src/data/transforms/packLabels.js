@@ -11,6 +11,8 @@ const DEFAULT_AS = {
     entryHeight: "_legendEntryHeight",
     labelX: "_legendLabelX",
     labelY: "_legendLabelY",
+    entryY2: "_legendEntryY2",
+    labelY2: "_legendLabelY2",
 };
 
 export default class PackLabelsTransform extends Transform {
@@ -52,10 +54,14 @@ export default class PackLabelsTransform extends Transform {
         const columnPadding = params.columnPadding ?? 0;
         const labelOffset = params.labelOffset ?? 0;
         const fontSize = params.fontSize ?? 10;
+        const xOffset = params.xOffset ?? 0;
+        const yOffset = params.yOffset ?? 0;
+        const yExtent = params.yExtent;
         const symbolExtent = Math.ceil(
             Math.sqrt(params.symbolSize ?? 100) +
                 (params.symbolStrokeWidth ?? 0)
         );
+        const symbolCenterOffset = symbolExtent / 2;
         const entryHeight = Math.max(symbolExtent, fontSize);
 
         /** @type {number} */
@@ -114,12 +120,19 @@ export default class PackLabelsTransform extends Transform {
 
             datum[as.row] = entry.row;
             datum[as.column] = entry.column;
-            datum[as.entryX] = x;
-            datum[as.entryY] = y;
+            const entryY = y + yOffset;
+            const labelY = y + yOffset + rowHeights[entry.row] / 2;
+
+            datum[as.entryX] = x + xOffset + symbolCenterOffset;
+            datum[as.entryY] = entryY;
             datum[as.entryWidth] = columnWidths[entry.column];
             datum[as.entryHeight] = rowHeights[entry.row];
-            datum[as.labelX] = x + symbolExtent + labelOffset;
-            datum[as.labelY] = y + rowHeights[entry.row] / 2;
+            datum[as.labelX] = x + xOffset + symbolExtent + labelOffset;
+            datum[as.labelY] = labelY;
+            if (yExtent != null) {
+                datum[as.entryY2] = yExtent - entryY;
+                datum[as.labelY2] = yExtent - labelY;
+            }
 
             this._propagate(datum);
         }

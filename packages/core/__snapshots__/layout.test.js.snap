@@ -2220,12 +2220,33 @@ ViewCoords {
       "viewName": "axis_left",
     },
     ViewCoords {
+      "children": [
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
+          "viewName": "symbols",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
+          "viewName": "title",
+        },
+        ViewCoords {
+          "children": [],
+          "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
+          "viewName": "labels",
+        },
+      ],
+      "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
+      "viewName": "legend_right",
+    },
+    ViewCoords {
       "children": [],
       "coords": "Rectangle: x: 32, y: 0, width: 200, height: 200",
       "viewName": "grid0",
     },
   ],
-  "coords": "Rectangle: x: 0, y: 0, width: 232, height: 232",
+  "coords": "Rectangle: x: 0, y: 0, width: 330, height: 232",
   "viewName": "implicitRoot",
 }
 `;

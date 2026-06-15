@@ -25,9 +25,10 @@ describe("GridChild legend layout", () => {
         child.legends.right = /** @type {any} */ ({
             legendProps: { orient: "right" },
             getPerpendicularSize: () => 42,
+            getExternalPadding: () => 8,
         });
 
-        expect(child.getOverhang().right).toBe(42);
+        expect(child.getOverhang().right).toBe(50);
     });
 });
 

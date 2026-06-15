@@ -159,6 +159,7 @@ describe("translateLegendCoords", () => {
     test("places a right-oriented legend next to the viewport", () => {
         const legendView = /** @type {any} */ ({
             getPerpendicularSize: () => 80,
+            getExternalPadding: () => 12,
         });
 
         const coords = translateLegendCoords(
@@ -167,7 +168,7 @@ describe("translateLegendCoords", () => {
             legendView
         );
 
-        expect(coords.x).toBe(310);
+        expect(coords.x).toBe(322);
         expect(coords.y).toBe(20);
         expect(coords.width).toBe(80);
         expect(coords.height).toBe(200);

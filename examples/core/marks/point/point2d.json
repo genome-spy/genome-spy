@@ -7,6 +7,8 @@
 
   "width": 200,
 
+  "config": { "legend": { "disable": false, "padding": 18 } },
+
   "data": { "url": "vega-datasets/cars.json" },
 
   "mark": { "type": "point", "filled": false, "opacity": 0.7, "size": 30 },

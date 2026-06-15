@@ -1559,14 +1559,19 @@ export function translateAxisCoords(coords, orient, axisView) {
  */
 export function translateLegendCoords(coords, orient, legendView) {
     const ps = legendView.getPerpendicularSize();
+    const padding = legendView.getExternalPadding();
 
     if (orient == "bottom") {
-        return coords.translate(0, coords.height).modify({ height: ps });
+        return coords
+            .translate(0, coords.height + padding)
+            .modify({ height: ps });
     } else if (orient == "top") {
-        return coords.translate(0, -ps).modify({ height: ps });
+        return coords.translate(0, -ps - padding).modify({ height: ps });
     } else if (orient == "left") {
-        return coords.translate(-ps, 0).modify({ width: ps });
+        return coords.translate(-ps - padding, 0).modify({ width: ps });
     } else if (orient == "right") {
-        return coords.translate(coords.width, 0).modify({ width: ps });
+        return coords
+            .translate(coords.width + padding, 0)
+            .modify({ width: ps });
     }
 }
