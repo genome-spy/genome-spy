@@ -17,7 +17,7 @@ import { viewSettingsSlice } from "../viewSettingsSlice.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
-describe("MergeSampleFacets", () => {
+describe("MergeSampleFacets visibility", () => {
     /**
      * @param {import("@genome-spy/app/spec/sampleView.js").SampleSpec} spec
      * @param {{
@@ -286,106 +286,23 @@ describe("MergeSampleFacets", () => {
         };
     }
 
-    it("materializes hidden aggregate summaries when they become visible", async () => {
-        const { summaryView, showSummary } = await createMergeFacetsScenario(
-            createIdentitySummarySpec()
-        );
+    describe("hidden summaries", () => {
+        it("materializes hidden aggregate summaries when they become visible", async () => {
+            const { summaryView, showSummary } =
+                await createMergeFacetsScenario(createIdentitySummarySpec());
 
-        await showSummary();
+            await showSummary();
 
-        const collector = summaryView?.getCollector?.();
-        expect(collector).toBeDefined();
-        expect(collector?.completed).toBe(true);
-        expect(collector?.getItemCount()).toBeGreaterThan(0);
-    });
+            const collector = summaryView?.getCollector?.();
+            expect(collector).toBeDefined();
+            expect(collector?.completed).toBe(true);
+            expect(collector?.getItemCount()).toBeGreaterThan(0);
+        });
 
-    it("materializes summaries after sample state changed while the summary was hidden", async () => {
-        const { store, summaryView, showSummary } =
-            await createMergeFacetsScenario(createIdentitySummarySpec());
+        it("materializes summaries after sample state changed while the summary was hidden", async () => {
+            const { store, summaryView, showSummary } =
+                await createMergeFacetsScenario(createIdentitySummarySpec());
 
-        store.dispatch(
-            sampleSlice.actions.sortBy({
-                attribute: {
-                    type: "SAMPLE_ATTRIBUTE",
-                    specifier: "order",
-                },
-                [AUGMENTED_KEY]: {
-                    values: {
-                        A: 2,
-                        B: 1,
-                    },
-                },
-            })
-        );
-
-        await showSummary();
-
-        const collector = summaryView?.getCollector?.();
-        expect(collector).toBeDefined();
-        expect(collector?.completed).toBe(true);
-        expect(collector?.getItemCount()).toBeGreaterThan(0);
-    });
-
-    it("materializes layered coverage summaries after sample state changed while hidden", async () => {
-        const { store, view, showSummary } = await createMergeFacetsScenario(
-            createCoverageSummarySpec()
-        );
-
-        store.dispatch(
-            sampleSlice.actions.sortBy({
-                attribute: {
-                    type: "SAMPLE_ATTRIBUTE",
-                    specifier: "order",
-                },
-                [AUGMENTED_KEY]: {
-                    values: {
-                        A: 2,
-                        B: 1,
-                    },
-                },
-            })
-        );
-
-        await showSummary();
-
-        const coverageView = view.findDescendantByName("coverage");
-        const collector = coverageView?.getCollector?.();
-        expect(collector).toBeDefined();
-        expect(collector?.completed).toBe(true);
-        expect(collector?.getItemCount()).toBeGreaterThan(0);
-    });
-
-    it("materializes aggregated summaries for each sample group", async () => {
-        const { summaryView, showSummary } = await createMergeFacetsScenario(
-            createAggregateSummarySpec()
-        );
-
-        await showSummary();
-
-        const collector = summaryView?.getCollector?.();
-        expect(collector).toBeDefined();
-        expect(collector?.completed).toBe(true);
-        const summaryData = Array.from(collector?.getData() ?? []).map(
-            ({ _uniqueId, ...datum }) => datum
-        );
-        expect(summaryData).toEqual([
-            { sample: "A", total: 3 },
-            { sample: "B", total: 7 },
-        ]);
-    });
-
-    it("materializes layered coverage summaries when visibility is restored via store subscription", async () => {
-        const { store, context, view } = await createMergeFacetsScenario(
-            createCoverageSummarySpec(),
-            {
-                visibilityMode: "store",
-            }
-        );
-
-        const { visibilityUpdates, unsubscribe } =
-            createVisibilityUpdateTracker(store, view, context);
-
-        try {
             store.dispatch(
                 sampleSlice.actions.sortBy({
                     attribute: {
@@ -401,92 +318,176 @@ describe("MergeSampleFacets", () => {
                 })
             );
 
+            await showSummary();
+
+            const collector = summaryView?.getCollector?.();
+            expect(collector).toBeDefined();
+            expect(collector?.completed).toBe(true);
+            expect(collector?.getItemCount()).toBeGreaterThan(0);
+        });
+
+        it("materializes layered coverage summaries after sample state changed while hidden", async () => {
+            const { store, view, showSummary } =
+                await createMergeFacetsScenario(createCoverageSummarySpec());
+
             store.dispatch(
-                viewSettingsSlice.actions.setViewSettings({
-                    visibilities: {
-                        summary: true,
+                sampleSlice.actions.sortBy({
+                    attribute: {
+                        type: "SAMPLE_ATTRIBUTE",
+                        specifier: "order",
+                    },
+                    [AUGMENTED_KEY]: {
+                        values: {
+                            A: 2,
+                            B: 1,
+                        },
                     },
                 })
             );
 
-            await Promise.resolve();
-            await Promise.all(visibilityUpdates);
+            await showSummary();
 
             const coverageView = view.findDescendantByName("coverage");
             const collector = coverageView?.getCollector?.();
             expect(collector).toBeDefined();
             expect(collector?.completed).toBe(true);
             expect(collector?.getItemCount()).toBeGreaterThan(0);
-        } finally {
-            unsubscribe();
-        }
+        });
+
+        it("materializes aggregated summaries for each sample group", async () => {
+            const { summaryView, showSummary } =
+                await createMergeFacetsScenario(createAggregateSummarySpec());
+
+            await showSummary();
+
+            const collector = summaryView?.getCollector?.();
+            expect(collector).toBeDefined();
+            expect(collector?.completed).toBe(true);
+            const summaryData = Array.from(collector?.getData() ?? []).map(
+                ({ _uniqueId, ...datum }) => datum
+            );
+            expect(summaryData).toEqual([
+                { sample: "A", total: 3 },
+                { sample: "B", total: 7 },
+            ]);
+        });
     });
 
-    it("recomputes an initialized summary when it is shown after hidden sample-state changes", async () => {
-        const { store, context, view } = await createMergeFacetsScenario(
-            createCoverageSummarySpec(),
-            {
-                visibilityMode: "store",
-                summaryInitiallyVisible: true,
-            }
-        );
-
-        const { visibilityUpdates, unsubscribe } =
-            createVisibilityUpdateTracker(store, view, context);
-
-        try {
-            const coverageView = view.findDescendantByName("coverage");
-            const collector = coverageView?.getCollector?.();
-            expect(collector?.getItemCount()).toBeGreaterThan(0);
-
-            // Non-obvious: once the summary branch is initialized, showing it
-            // again does not go through lazy-init, so visibility must trigger
-            // a merge against the already-current sample hierarchy.
-            store.dispatch(
-                viewSettingsSlice.actions.setViewSettings({
-                    visibilities: {
-                        summary: false,
-                    },
-                })
+    describe("store visibility", () => {
+        it("materializes layered coverage summaries when visibility is restored via store subscription", async () => {
+            const { store, context, view } = await createMergeFacetsScenario(
+                createCoverageSummarySpec(),
+                {
+                    visibilityMode: "store",
+                }
             );
 
-            store.dispatch(
-                sampleSlice.actions.filterByNominal({
-                    attribute: {
-                        type: "SAMPLE_ATTRIBUTE",
-                        specifier: "group",
-                    },
-                    values: ["keep"],
-                    remove: false,
-                    [AUGMENTED_KEY]: {
-                        values: {
-                            A: "keep",
-                            B: "drop",
+            const { visibilityUpdates, unsubscribe } =
+                createVisibilityUpdateTracker(store, view, context);
+
+            try {
+                store.dispatch(
+                    sampleSlice.actions.sortBy({
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "order",
                         },
-                    },
-                })
+                        [AUGMENTED_KEY]: {
+                            values: {
+                                A: 2,
+                                B: 1,
+                            },
+                        },
+                    })
+                );
+
+                store.dispatch(
+                    viewSettingsSlice.actions.setViewSettings({
+                        visibilities: {
+                            summary: true,
+                        },
+                    })
+                );
+
+                await Promise.resolve();
+                await Promise.all(visibilityUpdates);
+
+                const coverageView = view.findDescendantByName("coverage");
+                const collector = coverageView?.getCollector?.();
+                expect(collector).toBeDefined();
+                expect(collector?.completed).toBe(true);
+                expect(collector?.getItemCount()).toBeGreaterThan(0);
+            } finally {
+                unsubscribe();
+            }
+        });
+
+        it("recomputes an initialized summary when it is shown after hidden sample-state changes", async () => {
+            const { store, context, view } = await createMergeFacetsScenario(
+                createCoverageSummarySpec(),
+                {
+                    visibilityMode: "store",
+                    summaryInitiallyVisible: true,
+                }
             );
 
-            store.dispatch(
-                viewSettingsSlice.actions.setViewSettings({
-                    visibilities: {
-                        summary: true,
-                    },
-                })
-            );
+            const { visibilityUpdates, unsubscribe } =
+                createVisibilityUpdateTracker(store, view, context);
 
-            await Promise.resolve();
-            await Promise.all(visibilityUpdates);
+            try {
+                const coverageView = view.findDescendantByName("coverage");
+                const collector = coverageView?.getCollector?.();
+                expect(collector?.getItemCount()).toBeGreaterThan(0);
 
-            const coverageData = Array.from(collector?.getData() ?? []);
-            expect(coverageData).toHaveLength(1);
-            expect(coverageData[0]).toMatchObject({
-                x: 1,
-                x2: 4,
-                coverage: 1,
-            });
-        } finally {
-            unsubscribe();
-        }
+                // Non-obvious: once the summary branch is initialized, showing it
+                // again does not go through lazy-init, so visibility must trigger
+                // a merge against the already-current sample hierarchy.
+                store.dispatch(
+                    viewSettingsSlice.actions.setViewSettings({
+                        visibilities: {
+                            summary: false,
+                        },
+                    })
+                );
+
+                store.dispatch(
+                    sampleSlice.actions.filterByNominal({
+                        attribute: {
+                            type: "SAMPLE_ATTRIBUTE",
+                            specifier: "group",
+                        },
+                        values: ["keep"],
+                        remove: false,
+                        [AUGMENTED_KEY]: {
+                            values: {
+                                A: "keep",
+                                B: "drop",
+                            },
+                        },
+                    })
+                );
+
+                store.dispatch(
+                    viewSettingsSlice.actions.setViewSettings({
+                        visibilities: {
+                            summary: true,
+                        },
+                    })
+                );
+
+                await Promise.resolve();
+                await Promise.all(visibilityUpdates);
+
+                const coverageData = Array.from(collector?.getData() ?? []);
+                expect(coverageData).toHaveLength(1);
+                expect(coverageData[0]).toMatchObject({
+                    x: 1,
+                    x2: 4,
+                    coverage: 1,
+                });
+            } finally {
+                unsubscribe();
+            }
+        });
     });
 });

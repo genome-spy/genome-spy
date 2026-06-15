@@ -8,7 +8,7 @@ import {
     LocationManager,
 } from "./locationManager.js";
 
-describe("LocationManager layout helpers", () => {
+describe("LocationManager defaults", () => {
     test("LocationManager uses default sample layout values", () => {
         // Exercise LocationManager defaults instead of calculateLocations inputs.
         const root = createRootGroup();
@@ -65,7 +65,9 @@ describe("LocationManager layout helpers", () => {
 
         expect(manager.getScrollableHeight()).toBe(72);
     });
+});
 
+describe("calculateLocations", () => {
     test("calculateLocations respects fixed sample height without padding", () => {
         // Build a minimal flattened hierarchy to control group/sample layout.
         /** @type {import("./state/sampleState.js").GroupGroup} */
@@ -392,7 +394,9 @@ describe("LocationManager layout helpers", () => {
         expect(groupByName.get("A1").n).toBe(2);
         expect(groupByName.has("B")).toBe(false);
     });
+});
 
+describe("scroll metrics", () => {
     test("computeScrollMetrics interpolates scroll offset", () => {
         const metrics = computeScrollMetrics({
             viewportHeight: 100,
@@ -420,7 +424,9 @@ describe("LocationManager layout helpers", () => {
         expect(metrics.contentHeight).toBe(100);
         expect(metrics.effectiveScrollOffset).toBe(0);
     });
+});
 
+describe("sample location lookup", () => {
     test("getSampleLocationAt returns the enclosing sample", () => {
         // Keep sampleHeight below padding threshold to avoid size adjustments.
         /** @type {import("./state/sampleState.js").GroupGroup} */
