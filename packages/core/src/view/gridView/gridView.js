@@ -27,6 +27,12 @@ import KeyboardZoomController from "./keyboardZoomController.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
+import {
+    clipCoords,
+    combineClipOptions,
+    createClipOptions,
+    normalizeClipOptions,
+} from "../renderingContext/clipOptions.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -744,9 +750,8 @@ export default class GridView extends ContainerView {
 
             gridChild.coords = viewportCoords;
 
-            const clippedChildCoords = options.clipRect
-                ? viewportCoords.intersect(options.clipRect)
-                : viewportCoords;
+            const parentClip = normalizeClipOptions(options);
+            const visibleChildCoords = clipCoords(viewportCoords, parentClip);
 
             renderItems.push({
                 col,
@@ -760,7 +765,8 @@ export default class GridView extends ContainerView {
                 selectionRect,
                 viewportCoords,
                 viewCoords,
-                clippedChildCoords,
+                parentClip,
+                visibleChildCoords,
                 viewWidth,
                 viewHeight,
                 scrollable,
@@ -815,7 +821,7 @@ export default class GridView extends ContainerView {
                     () =>
                         item.background?.render(
                             context,
-                            item.clippedChildCoords,
+                            item.visibleChildCoords,
                             {
                                 ...options,
                                 clipRect: undefined,
@@ -869,7 +875,8 @@ export default class GridView extends ContainerView {
                 selectionRect,
                 viewportCoords,
                 viewCoords,
-                clippedChildCoords,
+                parentClip,
+                visibleChildCoords,
                 viewWidth,
                 viewHeight,
                 scrollable,
@@ -878,7 +885,9 @@ export default class GridView extends ContainerView {
                 row,
             } = item;
 
-            const clipped = isClippedChildren(view) || scrollable;
+            const clippedChildren = isClippedChildren(view);
+            const clipped = clippedChildren || scrollable;
+            const clippedDecorations = hasClippedChildren(view) || scrollable;
 
             for (const gridLineView of Object.values(gridLines)) {
                 queueDecoration(
@@ -888,6 +897,19 @@ export default class GridView extends ContainerView {
                 );
             }
 
+            const childClip = clipped
+                ? combineClipOptions(
+                      parentClip,
+                      createClipOptions(
+                          visibleChildCoords,
+                          clippedChildren ||
+                              Boolean(gridChild.scrollbars.horizontal),
+                          clippedChildren ||
+                              Boolean(gridChild.scrollbars.vertical)
+                      )
+                  )
+                : options.clip;
+
             const renderContent = () =>
                 view.render(
                     context,
@@ -895,7 +917,8 @@ export default class GridView extends ContainerView {
                     clipped
                         ? {
                               ...options,
-                              clipRect: clippedChildCoords,
+                              clipRect: childClip?.rect,
+                              clip: childClip,
                           }
                         : options
                 );
@@ -906,11 +929,11 @@ export default class GridView extends ContainerView {
                 queueDecoration(
                     defaultBackgroundStrokeZindex(
                         gridChild.backgroundStrokeZindex,
-                        clipped
+                        clippedDecorations
                     ),
                     DECORATION_ORDER.backgroundStroke,
                     () =>
-                        backgroundStroke?.render(context, clippedChildCoords, {
+                        backgroundStroke?.render(context, visibleChildCoords, {
                             ...options,
                             clipRect: undefined,
                         })
@@ -948,35 +971,28 @@ export default class GridView extends ContainerView {
                     axisView
                 );
 
-                let clipRect = options.clipRect;
+                let clip = normalizeClipOptions(options);
+                let clipRect = clip?.rect;
 
                 // Scrollable axes must be clipped along the scroll direction.
                 if (scrollable) {
-                    clipRect = translatedCoords.intersect(clipRect).intersect(
-                        scrollable
-                            ? viewportCoords.modify(
-                                  // Ugly hack. Need to implement intersectX and intersectY.
-                                  direction == "vertical"
-                                      ? {
-                                            x: -100000,
-                                            width: 200000,
-                                        }
-                                      : {
-                                            y: -100000,
-                                            height: 200000,
-                                        }
-                              )
-                            : undefined
+                    const axisClip = createClipOptions(
+                        viewportCoords,
+                        direction == "horizontal",
+                        direction == "vertical"
                     );
+                    clip = combineClipOptions(clip, axisClip);
+                    clipRect = clip?.rect;
                 }
 
                 queueDecoration(
-                    defaultAxisZindex(axisView.axisProps, clipped),
+                    defaultAxisZindex(axisView.axisProps, clippedDecorations),
                     DECORATION_ORDER.axis,
                     () =>
                         axisView.render(context, translatedCoords, {
                             ...options,
                             clipRect,
+                            clip,
                         })
                 );
             }
@@ -994,7 +1010,10 @@ export default class GridView extends ContainerView {
                     (orient == "bottom" && row == grid.nRows - 1)
                 ) {
                     queueDecoration(
-                        defaultAxisZindex(axisView.axisProps, clipped),
+                        defaultAxisZindex(
+                            axisView.axisProps,
+                            clippedDecorations
+                        ),
                         DECORATION_ORDER.axis,
                         () =>
                             axisView.render(
@@ -1356,6 +1375,22 @@ export function isClippedChildren(view) {
     view.visit((v) => {
         if (v instanceof UnitView) {
             clipped &&= v.mark.properties.clip === true;
+        }
+    });
+
+    return clipped;
+}
+
+/**
+ * @param {View} view
+ */
+function hasClippedChildren(view) {
+    let clipped = false;
+
+    view.visit((v) => {
+        if (v instanceof UnitView) {
+            const clip = v.mark.properties.clip;
+            clipped ||= clip === true || clip === "x" || clip === "y";
         }
     });
 

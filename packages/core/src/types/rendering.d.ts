@@ -35,10 +35,25 @@ export interface RenderingOptions {
     sampleFacetRenderingOptions?: SampleFacetRenderingOptions;
 
     /**
-     * Clip rendering using the given rectangle.
-     * Mainly intended for clipping scrollable views.
+     * Convenience shorthand for clipping rendering to the given rectangle in
+     * both directions. Core rendering internals normalize this to `clip`.
+     *
+     * Mainly intended for existing callers that need ordinary rectangular
+     * clipping.
      */
     clipRect?: Rectangle;
+
+    /**
+     * Clip rendering using the given rectangle and direction flags. Prefer this
+     * option when clipping should apply only horizontally or vertically.
+     */
+    clip?: ClipOptions;
+}
+
+export interface ClipOptions {
+    rect: Rectangle;
+    clipX: boolean;
+    clipY: boolean;
 }
 
 /**
@@ -60,7 +75,7 @@ export interface BufferedRenderingRequest {
     mark: Mark;
     callback: () => void;
     coords: Rectangle;
-    clipRect?: Rectangle;
+    clip?: ClipOptions;
 }
 
 /**

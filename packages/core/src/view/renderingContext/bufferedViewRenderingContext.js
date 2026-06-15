@@ -2,6 +2,7 @@ import { group } from "d3-array";
 
 import ViewRenderingContext from "./viewRenderingContext.js";
 import { color } from "d3-color";
+import { prepareMarkClipOptions } from "./clipOptions.js";
 
 /**
  * @typedef {object} BufferedViewRenderingOptions
@@ -96,7 +97,11 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 mark,
                 callback,
                 coords: this.#coords,
-                clipRect: options.clipRect,
+                clip: prepareMarkClipOptions(
+                    options,
+                    mark.properties.clip,
+                    this.#coords
+                ),
             });
         }
     }
@@ -195,24 +200,30 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
 
             /** @type {import("../layout/rectangle.js").default} */
             let previousCoords;
+            /** @type {import("../../types/rendering.js").ClipOptions | undefined} */
+            let previousClip;
             for (const request of requests) {
                 const coords = request.coords;
                 // Render each facet
-                if (!coords.equals(previousCoords)) {
+                if (
+                    !coords.equals(previousCoords) ||
+                    request.clip !== previousClip
+                ) {
                     this.#batch.push(
                         ifEnabled(() => {
-                            // Suppress rendering if viewport is outside the clipRect
+                            // Suppress rendering if viewport is outside the clip.
                             viewportVisible = mark.setViewport(
                                 this.#canvasSize,
                                 this.#dpr,
                                 coords,
-                                request.clipRect
+                                request.clip
                             );
                         })
                     );
                 }
                 this.#batch.push(ifEnabledAndVisible(request.callback));
                 previousCoords = request.coords;
+                previousClip = request.clip;
             }
         }
     }

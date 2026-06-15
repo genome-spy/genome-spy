@@ -66,6 +66,11 @@ export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
 export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 
 /**
+ * @typedef {import("../types/rendering.js").ClipOptions} ClipOptions
+ * @typedef {import("../view/layout/rectangle.js").default} Rectangle
+ */
+
+/**
  *
  * @typedef {import("../types/rendering.js").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
@@ -184,19 +189,22 @@ export default class Mark {
             get clip() {
                 return getCachedOrCall(mark, "defaultClip", () => {
                     // TODO: Only check channels that are used
-                    // TODO: provide more fine-grained xClip and yClip props
-                    for (const channel of /** @type {import("../spec/channel.js").PositionalChannel[]} */ ([
-                        "x",
-                        "y",
-                    ])) {
-                        if (
-                            unitView.getScaleResolution(channel)?.isZoomable()
-                        ) {
-                            return true;
-                        }
-                    }
+                    const clipX = unitView
+                        .getScaleResolution("x")
+                        ?.isZoomable();
+                    const clipY = unitView
+                        .getScaleResolution("y")
+                        ?.isZoomable();
 
-                    return false;
+                    if (clipX && clipY) {
+                        return true;
+                    } else if (clipX) {
+                        return "x";
+                    } else if (clipY) {
+                        return "y";
+                    } else {
+                        return false;
+                    }
                 });
             },
             xOffset: 0,
@@ -1437,10 +1445,10 @@ export default class Mark {
      * @param {{width: number, height: number}} canvasSize Size of the canvas in logical pixels
      * @param {number} dpr Device pixel ratio
      * @param {import("../view/layout/rectangle.js").default} coords
-     * @param {import("../view/layout/rectangle.js").default} [clipRect]
+     * @param {ClipOptions} [clip]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
-    setViewport(canvasSize, dpr, coords, clipRect) {
+    setViewport(canvasSize, dpr, coords, clip) {
         coords = coords.flatten();
 
         const gl = this.gl;
@@ -1457,41 +1465,24 @@ export default class Mark {
         /** @type {object} */
         let uniforms;
 
-        let clippedCoords = coords;
+        const viewportScope = createViewportScope(
+            canvasSize,
+            coords,
+            props.clip === "never" ? undefined : clip,
+            false
+        );
+        const scopedCoords = viewportScope.coords;
 
-        if (props.clip !== "never" && (props.clip || clipRect)) {
-            let xClipOffset = 0;
-            let yClipOffset = 0;
-
-            /** @type {[number, number]} */
-            let uViewScale;
-
-            if (clipRect) {
-                // The following fails with axes that are handled by a GridView
-                // that itself is scrollable. The axes are clipped to the viewport
-                // but also to the axis view, resulting in clipped axes where
-                // not necessary.
-                clippedCoords = coords.intersect(clipRect).flatten();
-                if (!clippedCoords.isDefined()) {
-                    return false;
-                }
-
-                uViewScale = [
-                    coords.width / clippedCoords.width,
-                    coords.height / clippedCoords.height,
-                ];
-
-                yClipOffset = Math.max(0, coords.y2 - clipRect.y2);
-                xClipOffset = Math.min(0, coords.x - clipRect.x);
-            } else {
-                uViewScale = [1, 1];
+        if (viewportScope.requiresScissor) {
+            if (!scopedCoords.isDefined()) {
+                return false;
             }
 
             const physicalGlCoords = [
-                clippedCoords.x,
-                canvasSize.height - clippedCoords.y2,
-                clippedCoords.width,
-                clippedCoords.height,
+                scopedCoords.x,
+                canvasSize.height - scopedCoords.y2,
+                scopedCoords.width,
+                scopedCoords.height,
             ].map((x) => x * dpr);
 
             // Because glViewport accepts only integers, we subtract the rounding
@@ -1510,12 +1501,15 @@ export default class Mark {
 
             uniforms = {
                 uViewOffset: [
-                    (xOffset + xClipOffset + xError / dpr) /
-                        clippedCoords.width,
-                    -(yOffset + yClipOffset - yError / dpr) /
-                        clippedCoords.height,
+                    (coords.x - scopedCoords.x + xOffset + xError / dpr) /
+                        scopedCoords.width,
+                    (scopedCoords.y2 - coords.y2 - yOffset + yError / dpr) /
+                        scopedCoords.height,
                 ],
-                uViewScale,
+                uViewScale: [
+                    coords.width / scopedCoords.width,
+                    coords.height / scopedCoords.height,
+                ],
             };
         } else {
             if (!coords.isDefined()) {
@@ -1616,4 +1610,40 @@ class RangeMap extends InternMap {
             Object.assign(this.get(key), value);
         }
     }
+}
+
+/**
+ * @param {{ width: number, height: number }} canvasSize
+ * @param {Rectangle} coords
+ * @param {ClipOptions | undefined} clip
+ * @param {boolean} [clipSelf]
+ */
+export function createViewportScope(canvasSize, coords, clip, clipSelf = true) {
+    if (!clip || (!clip.clipX && !clip.clipY)) {
+        return {
+            requiresScissor: false,
+            coords,
+        };
+    }
+
+    let clippedCoords = clipSelf ? coords.intersect(clip.rect) : clip.rect;
+
+    if (!clip.clipX) {
+        clippedCoords = clippedCoords.modify({
+            x: 0,
+            width: canvasSize.width,
+        });
+    }
+
+    if (!clip.clipY) {
+        clippedCoords = clippedCoords.modify({
+            y: 0,
+            height: canvasSize.height,
+        });
+    }
+
+    return {
+        requiresScissor: true,
+        coords: clippedCoords.flatten(),
+    };
 }

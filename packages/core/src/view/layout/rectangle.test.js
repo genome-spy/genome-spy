@@ -114,6 +114,34 @@ test("intersect", () => {
     expect(x.intersect(y).isDefined()).toBeFalsy();
 });
 
+test("intersectX clips horizontal bounds and preserves vertical bounds", () => {
+    const a = Rectangle.create(1, 1, 6, 3);
+    const b = Rectangle.create(5, 2, 3, 4);
+    const c = Rectangle.create(5, 1, 2, 3);
+
+    expect(a.intersectX(b).equals(c)).toBeTruthy();
+    expect(a.intersectX(b).isDefined()).toBeTruthy();
+
+    const x = Rectangle.create(1, 1, 1, 1);
+    const y = Rectangle.create(3, 1, 1, 1);
+
+    expect(x.intersectX(y).isDefined()).toBeFalsy();
+});
+
+test("intersectY clips vertical bounds and preserves horizontal bounds", () => {
+    const a = Rectangle.create(1, 1, 6, 3);
+    const b = Rectangle.create(5, 2, 3, 4);
+    const c = Rectangle.create(1, 2, 6, 2);
+
+    expect(a.intersectY(b).equals(c)).toBeTruthy();
+    expect(a.intersectY(b).isDefined()).toBeTruthy();
+
+    const x = Rectangle.create(1, 1, 1, 1);
+    const y = Rectangle.create(1, 3, 1, 1);
+
+    expect(x.intersectY(y).isDefined()).toBeFalsy();
+});
+
 test("union", () => {
     const a = Rectangle.create(1, 1, 6, 3);
     const b = Rectangle.create(5, 2, 3, 4);

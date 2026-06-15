@@ -1035,7 +1035,7 @@ export function createBackgroundStroke(viewBackground) {
             strokeCap: "square",
             opacity: viewBackground.strokeOpacity ?? 1.0,
             type: "rule",
-            clip: false,
+            clip: "never",
             tooltip: null,
         },
         encoding: {
