@@ -11,6 +11,7 @@
 import { ExprRef } from "./parameter.js";
 import { Scale } from "./scale.js";
 import { GenomeAxis } from "./axis.js";
+import { Legend } from "./legend.js";
 
 // TODO: Rename Scalar to PrimitiveValue
 export type Scalar = string | number | boolean;
@@ -237,8 +238,15 @@ export type MarkPropDatumDef<T extends Type> = LegendMixins &
  *
  * __See also:__ [`legend`](https://vega.github.io/vega-lite/docs/legend.html) documentation.
  */
-// TODO: legend?: Legend<ExprRef | SignalRef> | null;
-export type LegendMixins = Record<string, never>;
+export interface LegendMixins {
+    /**
+     * An object defining properties of the legend. If `null`, the legend for
+     * the encoding channel is removed.
+     *
+     * __Default value:__ If undefined, configured legend defaults are applied.
+     */
+    legend?: Legend | null;
+}
 
 export type ConditionalTemplate =
     | FieldDef<any>

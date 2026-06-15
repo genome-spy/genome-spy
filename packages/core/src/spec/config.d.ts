@@ -11,6 +11,7 @@ import {
 import { Scale, SchemeParams } from "./scale.js";
 import { Title } from "./title.js";
 import { ViewBackgroundProps } from "./decoration.js";
+import { LegendConfig } from "./legend.js";
 
 export type BuiltInThemeName =
     | "genomespy"
@@ -137,7 +138,9 @@ type CombinedStyleConfig = MergeProps<
     MergeProps<MergeProps<LinkConfig, AxisConfig>, TitleConfig>
 >;
 
-export type StyleConfig = Partial<CombinedStyleConfig>;
+export type StyleConfig = Partial<
+    MergeProps<CombinedStyleConfig, LegendConfig>
+>;
 
 export interface GenomeSpyConfig {
     /**
@@ -185,6 +188,11 @@ export interface GenomeSpyConfig {
      * Defaults shared by all axes.
      */
     axis?: AxisConfig;
+
+    /**
+     * Defaults shared by all legends.
+     */
+    legend?: LegendConfig;
 
     /**
      * Defaults for x axes.

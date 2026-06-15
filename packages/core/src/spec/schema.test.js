@@ -60,4 +60,40 @@ describe("generated core schema", () => {
         expect(aggregateParams.properties.description).toBeTruthy();
         expect(selectionFilterParams.properties.description).toBeTruthy();
     });
+
+    test("accepts initial legend configuration and channel legend properties", () => {
+        const schema = createCoreSchema();
+        const validate = new Ajv.default({
+            allErrors: true,
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+
+        const spec = {
+            data: { values: [{ category: "A", value: 1 }] },
+            config: {
+                legend: {
+                    disable: false,
+                    orient: "right",
+                    labelLimit: 160,
+                },
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "value", type: "quantitative" },
+                color: {
+                    field: "category",
+                    type: "nominal",
+                    legend: {
+                        title: "Category",
+                        orient: "right",
+                    },
+                },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
 });
