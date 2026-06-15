@@ -723,7 +723,20 @@ export default class GridChild {
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,
-                    axisParent
+                    axisParent,
+                    {
+                        labelClipPolicy:
+                            (channel === "x" &&
+                                (view.spec.viewportWidth != null ||
+                                    this.layoutParent.spec.viewportWidth !=
+                                        null)) ||
+                            (channel === "y" &&
+                                (view.spec.viewportHeight != null ||
+                                    this.layoutParent.spec.viewportHeight !=
+                                        null))
+                                ? "anchor"
+                                : "pixel",
+                    }
                 );
                 axes[props.orient] ??= axisView;
                 this.axisCandidates.push({

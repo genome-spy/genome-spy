@@ -37,7 +37,7 @@ class NoOpRenderingContext extends ViewRenderingContext {
 class InspectRenderingContext extends ViewRenderingContext {
     #coordsStack = [];
 
-    /** @type {{ main: "x" | "y", logicalVisibleRect: [number, number, number, number] }[]} */
+    /** @type {{ main: "x" | "y", clip: import("../../spec/mark.js").MarkProps["clip"], cullByVisibleRange: import("../../spec/mark.js").MarkProps["cullByVisibleRange"], logicalVisibleRect: [number, number, number, number] }[]} */
     axisLabels = [];
 
     pushView(view, coords) {
@@ -56,6 +56,8 @@ class InspectRenderingContext extends ViewRenderingContext {
         const coords = this.#coordsStack.at(-1);
         this.axisLabels.push({
             main: mark.unitView.spec.encoding.x ? "x" : "y",
+            clip: mark.properties.clip,
+            cullByVisibleRange: mark.properties.cullByVisibleRange,
             logicalVisibleRect: createLogicalVisibleRect(
                 coords,
                 normalizeClipOptions(options)
@@ -1207,7 +1209,7 @@ describe("GridView scrollable clipping", () => {
         });
     });
 
-    test("passes inherited visible range to labels in vertically scrollable axes", async () => {
+    test("anchor-culls only scroll-direction axis labels", async () => {
         const view = await createAndInitialize(
             {
                 vconcat: [
@@ -1234,19 +1236,28 @@ describe("GridView scrollable clipping", () => {
             firstFacet: true,
         });
 
-        const culledXAxisLabel = context.axisLabels.find(
+        const verticallyClippedLabels = context.axisLabels.filter(
             (label) =>
-                label.main === "x" &&
-                (label.logicalVisibleRect[1] !== 0 ||
-                    label.logicalVisibleRect[3] !== 1)
+                label.logicalVisibleRect[1] !== 0 ||
+                label.logicalVisibleRect[3] !== 1
+        );
+        const xAxisLabels = verticallyClippedLabels.filter(
+            (label) => label.main === "x"
+        );
+        const yAxisLabels = verticallyClippedLabels.filter(
+            (label) => label.main === "y"
         );
 
-        expect(culledXAxisLabel?.logicalVisibleRect[0]).toBe(0);
-        expect(culledXAxisLabel?.logicalVisibleRect[2]).toBe(1);
-        expect([
-            culledXAxisLabel?.logicalVisibleRect[1],
-            culledXAxisLabel?.logicalVisibleRect[3],
-        ]).not.toEqual([0, 1]);
+        expect(xAxisLabels).not.toHaveLength(0);
+        expect(yAxisLabels).not.toHaveLength(0);
+        expect(xAxisLabels.every((label) => label.clip === false)).toBe(true);
+        expect(
+            xAxisLabels.every((label) => label.cullByVisibleRange === undefined)
+        ).toBe(true);
+        expect(yAxisLabels.every((label) => label.clip === "never")).toBe(true);
+        expect(
+            yAxisLabels.every((label) => label.cullByVisibleRange === "y")
+        ).toBe(true);
     });
 
     test("clips horizontally scrollable content only along x", async () => {
