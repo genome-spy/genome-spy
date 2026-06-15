@@ -75,6 +75,85 @@ legends hosted by the `GridChild` that owns the explained view.
 
 ## Remaining Near-Term Work
 
+### Gradient Legends For Quantitative Color
+
+Next milestone: support a Vega-like gradient legend for quantitative color
+scales. The first testbed should be
+`examples/core/marks/rect/heatmap.json`, which encodes the quantitative
+`measurement` field with `color`.
+
+Acceptance criterion:
+
+- `heatmap.json` can opt in to legends with `config.legend.disable: false`.
+- A right-oriented gradient legend appears beside the heatmap.
+- The legend title is derived from the encoded field, `measurement`, unless an
+  explicit legend title overrides it.
+- The gradient uses the same color scale as the rect marks.
+- The legend shows tick labels for the quantitative color domain.
+- Existing discrete symbol legends, including `point2d.json`, keep working.
+
+Vega-like implementation shape:
+
+- Keep `LegendView` as the generated-guide host, but split generated specs into
+  symbol and gradient builders.
+- Detect legend type from the explained scale/channel:
+  - nominal/ordinal non-position channels use symbol legends,
+  - quantitative color/fill/stroke color scales use gradient legends.
+- Generate gradient legends from ordinary marks:
+  - a narrow `rect` strip or stack of rects for the gradient ramp,
+  - `rule` marks for tick marks,
+  - `text` marks for tick labels,
+  - a text title.
+- Use the explained scale for color. The generated legend should not bake final
+  colors into data unless a sampled-gradient implementation turns out to be
+  necessary.
+- Use an internal data source or transform to produce gradient samples and tick
+  rows after the scale domain is known.
+
+Suggested implementation tasks:
+
+1. Add a test that `heatmap.json` with `config.legend.disable: false` creates
+   one local right-oriented legend for the quantitative color channel.
+2. Add a generated gradient legend spec helper beside
+   `createSymbolLegendSpec(...)`, for example `createGradientLegendSpec(...)`.
+3. Add an internal lazy source for gradient tick rows, or reuse scale tick
+   helpers if they can be called from guide dataflow without introducing a
+   dependency cycle.
+4. Add gradient ramp data. Start with a fixed sample count, such as 64 rows,
+   and revisit sampling density later.
+5. Encode ramp rectangles using a pixel-like legend coordinate system whose
+   x/y scale domains use the legend view `width` and `height` params, matching
+   the current symbol legend approach.
+6. Add generated tick labels. Prefer Vega-like defaults from config:
+   `gradientLength`, `gradientThickness`, `gradientLabelOffset`, `tickCount`,
+   and title padding. Add only the fields needed for the heatmap milestone.
+7. Extend `GridChild` legend creation so quantitative color/fill/stroke
+   channels create gradient legends instead of being filtered out.
+8. Add layout and generated-spec tests:
+   - default config still hides the heatmap legend,
+   - opt-in config creates one gradient legend,
+   - `legend: null` suppresses it,
+   - quantitative positional `x`/`y` still do not produce legends,
+   - discrete symbol legends still use the symbol path.
+9. Run focused checks:
+
+   ```bash
+   npx vitest run packages/core/src/view/legendView.test.js packages/core/src/view/gridView/gridView.test.js packages/core/layout.test.js
+   npm --workspaces run test:tsc --if-present
+   ```
+
+Open design points:
+
+- Whether to implement the gradient ramp as many small rect marks, one textured
+  rect, or a future shader-specific mark. The first version should prefer
+  ordinary `rect` marks unless performance or visual artifacts make that
+  impractical.
+- Whether gradient tick generation should reuse axis tick generation directly
+  or use a smaller legend-specific source. Reuse is attractive, but only if it
+  keeps dependencies clean.
+- How much Vega default surface to expose immediately. Keep the first milestone
+  narrow and add config fields only when they affect `heatmap.json`.
+
 ### Tighten Symbol Legend Behavior
 
 - Confirm the visual result of `point2d.json` in the dev app after the redundant
@@ -106,7 +185,8 @@ legends hosted by the `GridChild` that owns the explained view.
 
 - Continue with symbol legends first.
 - Add fill/stroke/shape/size/opacity combinations incrementally.
-- Defer gradient legends for continuous color scales.
+- Add gradient legends for quantitative color scales using `heatmap.json` as
+  the first fixture.
 - Defer interactive legend filtering.
 
 ### Shared and Complex Placement
@@ -166,6 +246,8 @@ Focused tests should continue to cover:
   `config.legend.disable` is `false`.
 - Legend spec generation for scale-backed symbol, title, and label layers.
 - Redundant color/shape encodings merge into one symbol legend.
+- Quantitative heatmap color produces a gradient legend when legends are
+  enabled.
 - `legend: null` disables generation.
 - Legend defaults are resolved through `config.legend`.
 - Horizontal packing handles labels with varying widths.
