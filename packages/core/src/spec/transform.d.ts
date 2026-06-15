@@ -474,6 +474,84 @@ export interface MeasureTextParams extends TransformParamsBase {
     as: string;
 }
 
+export interface PackLabelsParams extends TransformParamsBase {
+    type: "packLabels";
+
+    /**
+     * The field that contains measured label width in pixels.
+     */
+    labelWidth: Field;
+
+    /**
+     * The direction in which entries are laid out.
+     *
+     * **Default:** `"vertical"`
+     */
+    direction?: "vertical" | "horizontal";
+
+    /**
+     * The number of columns in which to arrange entries.
+     */
+    columns?: number;
+
+    /**
+     * Symbol size in pixels squared.
+     *
+     * **Default:** `100`
+     */
+    symbolSize?: number;
+
+    /**
+     * Symbol stroke width in pixels.
+     *
+     * **Default:** `0`
+     */
+    symbolStrokeWidth?: number;
+
+    /**
+     * Offset between the symbol and label in pixels.
+     *
+     * **Default:** `0`
+     */
+    labelOffset?: number;
+
+    /**
+     * Label font size in pixels.
+     *
+     * **Default:** `10`
+     */
+    fontSize?: number;
+
+    /**
+     * Padding between rows in pixels.
+     *
+     * **Default:** `0`
+     */
+    rowPadding?: number;
+
+    /**
+     * Padding between columns in pixels.
+     *
+     * **Default:** `0`
+     */
+    columnPadding?: number;
+
+    /**
+     * Output field names for generated layout values. This transform is
+     * intended for internally generated guide specs.
+     */
+    as?: Partial<{
+        row: Field;
+        column: Field;
+        entryX: Field;
+        entryY: Field;
+        entryWidth: Field;
+        entryHeight: Field;
+        labelX: Field;
+        labelY: Field;
+    }>;
+}
+
 export interface MergeFacetsParams extends TransformParamsBase {
     type: "mergeFacets";
 }
@@ -606,6 +684,7 @@ export type TransformParams =
     | IdentifierParams
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
+    | PackLabelsParams
     | MergeFacetsParams
     | PileupParams
     | ProjectParams

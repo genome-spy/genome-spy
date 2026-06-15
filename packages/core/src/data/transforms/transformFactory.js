@@ -8,6 +8,7 @@ import FlattenDelimitedTransform from "./flattenDelimited.js";
 import FormulaTransform from "./formula.js";
 import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate.js";
 import MeasureTextTransform from "./measureText.js";
+import PackLabelsTransform from "./packLabels.js";
 import PileupTransform from "./pileup.js";
 import ProjectTransform from "./project.js";
 import RegexExtractTransform from "./regexExtract.js";
@@ -37,6 +38,7 @@ export const transforms = {
     identifier: IdentifierTransform,
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,
+    packLabels: PackLabelsTransform,
     pileup: PileupTransform,
     project: ProjectTransform,
     regexExtract: RegexExtractTransform,
