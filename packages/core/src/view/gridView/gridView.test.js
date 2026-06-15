@@ -6,9 +6,11 @@ import Rectangle from "../layout/rectangle.js";
 import Point from "../layout/point.js";
 import Padding from "../layout/padding.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
+import { normalizeClipOptions } from "../renderingContext/clipOptions.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
+import { createVisibleRange } from "../../marks/mark.js";
 
 // Minimal context for layout-driven render calls without WebGL.
 class NoOpRenderingContext extends ViewRenderingContext {
@@ -29,6 +31,37 @@ class NoOpRenderingContext extends ViewRenderingContext {
 
     renderMark() {
         //
+    }
+}
+
+class InspectRenderingContext extends ViewRenderingContext {
+    #coordsStack = [];
+
+    /** @type {{ main: "x" | "y", visibleRange: import("../../types/rendering.js").VisibleRange | undefined }[]} */
+    axisLabels = [];
+
+    pushView(view, coords) {
+        this.#coordsStack.push(coords);
+    }
+
+    popView() {
+        this.#coordsStack.pop();
+    }
+
+    renderMark(mark, options) {
+        if (mark.unitView.explicitName !== "labels_main") {
+            return;
+        }
+
+        const coords = this.#coordsStack.at(-1);
+        this.axisLabels.push({
+            main: mark.unitView.spec.encoding.x ? "x" : "y",
+            visibleRange: createVisibleRange(
+                coords,
+                normalizeClipOptions(options),
+                mark.properties.cullByVisibleRange
+            ),
+        });
     }
 }
 
@@ -1173,6 +1206,44 @@ describe("GridView scrollable clipping", () => {
             clipX: false,
             clipY: true,
         });
+    });
+
+    test("passes inherited visible range to labels in vertically scrollable axes", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        viewportHeight: 50,
+                        vconcat: [
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const context = new InspectRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        const culledXAxisLabel = context.axisLabels.find(
+            (label) =>
+                label.main === "x" &&
+                label.visibleRange &&
+                (label.visibleRange.y[0] !== 0 || label.visibleRange.y[1] !== 1)
+        );
+
+        expect(culledXAxisLabel?.visibleRange?.x).toEqual([0, 1]);
+        expect(culledXAxisLabel?.visibleRange?.y).not.toEqual([0, 1]);
     });
 
     test("clips horizontally scrollable content only along x", async () => {

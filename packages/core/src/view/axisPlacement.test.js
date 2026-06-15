@@ -162,9 +162,9 @@ describe("axis placement", () => {
         const leftLabels = findUnitView(leftAxis, "labels_main");
 
         expect(bottomLabels.spec.mark.clip).toBe("never");
-        expect(bottomLabels.spec.mark.cullByVisibleRange).toBe("x");
+        expect(bottomLabels.spec.mark.cullByVisibleRange).toBe(true);
         expect(leftLabels.spec.mark.clip).toBe("never");
-        expect(leftLabels.spec.mark.cullByVisibleRange).toBe("y");
+        expect(leftLabels.spec.mark.cullByVisibleRange).toBe(true);
     });
 
     test("horizontal ranged axis title spans the axis and flushes horizontally", async () => {

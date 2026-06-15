@@ -531,7 +531,7 @@ function createAxis(axisProps, type) {
         mark: {
             type: "text",
             clip: "never",
-            cullByVisibleRange: main,
+            cullByVisibleRange: true,
             align: ap.labelAlign,
             angle: ap.labelAngle,
             baseline: ap.labelBaseline,
