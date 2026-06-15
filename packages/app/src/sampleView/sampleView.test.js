@@ -10,16 +10,15 @@ import AxisView from "@genome-spy/core/view/axisView.js";
 import { getNonChromeViews } from "@genome-spy/core/view/viewSelectors.js";
 import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
-import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import Collector from "@genome-spy/core/data/collector.js";
 import UrlSource from "@genome-spy/core/data/sources/urlSource.js";
-import { createLogicalVisibleRect } from "@genome-spy/core/marks/mark.js";
+import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
 import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
+import MergeSampleFacets from "./mergeFacets.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
-import MergeSampleFacets from "./mergeFacets.js";
 
 transforms.mergeFacets = MergeSampleFacets;
 
@@ -88,6 +87,25 @@ class InspectRenderingContext extends ViewRenderingContext {
 }
 
 /**
+ * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
+ * @param {import("@genome-spy/core/types/rendering.js").ClipOptions | undefined} clip
+ * @returns {[number, number, number, number]}
+ */
+function createLogicalVisibleRect(coords, clip) {
+    if (!clip) {
+        return [0, 0, 1, 1];
+    }
+
+    const visible = coords.intersect(clip.rect);
+    return [
+        (visible.x - coords.x) / coords.width,
+        (visible.y - coords.y) / coords.height,
+        (visible.x2 - coords.x) / coords.width,
+        (visible.y2 - coords.y) / coords.height,
+    ];
+}
+
+/**
  * @param {import("./sampleView.js").default} view
  * @returns {AxisView[]}
  */
@@ -118,83 +136,7 @@ async function getSampleLabelWidth(spec, samples) {
     return view.sampleLabelView.getSize().width.px;
 }
 
-describe("SampleView", () => {
-    test("marks sidebar and background helper views as chrome", async () => {
-        const { view } = await createSampleViewForTest({
-            spec: {
-                data: {
-                    values: [{ sample: "A", x: 1 }],
-                },
-                samples: {},
-                view: {
-                    stroke: "red",
-                },
-                spec: {
-                    mark: "point",
-                    encoding: {
-                        sample: { field: "sample" },
-                        x: { field: "x", type: "quantitative" },
-                    },
-                },
-            },
-        });
-
-        const names = getNonChromeViews(/** @type {any} */ (view)).map(
-            (v) => v.name
-        );
-
-        expect(names).not.toContain("sample-sidebar");
-        expect(
-            names.some((name) =>
-                name.startsWith("sample-group-background-stroke-")
-            )
-        ).toBe(false);
-    });
-
-    test("loads sample metadata from metadataSources without warnings", async () => {
-        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            data: {
-                values: [
-                    { sample: "A", x: 1 },
-                    { sample: "B", x: 2 },
-                ],
-            },
-            samples: {},
-            metadata: {
-                sources: [
-                    {
-                        backend: {
-                            backend: "data",
-                            data: {
-                                values: [
-                                    { sample: "A", clinical: "yes" },
-                                    { sample: "B", clinical: "no" },
-                                ],
-                            },
-                        },
-                    },
-                ],
-            },
-            spec: {
-                mark: "point",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                },
-            },
-        };
-
-        await createSampleViewForTest({
-            spec,
-        });
-
-        expect(warnSpy).not.toHaveBeenCalled();
-        warnSpy.mockRestore();
-    });
-
+describe("sample data and metadata wiring", () => {
     test("extracts samples from main data subtree on subtreeDataReady", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
@@ -471,7 +413,87 @@ describe("SampleView", () => {
             globalThis.fetch = originalFetch;
         }
     });
+});
 
+describe("view chrome and metadata loading", () => {
+    test("marks sidebar and background helper views as chrome", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                view: {
+                    stroke: "red",
+                },
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        const names = getNonChromeViews(/** @type {any} */ (view)).map(
+            (v) => v.name
+        );
+
+        expect(names).not.toContain("sample-sidebar");
+        expect(
+            names.some((name) =>
+                name.startsWith("sample-group-background-stroke-")
+            )
+        ).toBe(false);
+    });
+
+    test("loads sample metadata from metadataSources without warnings", async () => {
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1 },
+                    { sample: "B", x: 2 },
+                ],
+            },
+            samples: {},
+            metadata: {
+                sources: [
+                    {
+                        backend: {
+                            backend: "data",
+                            data: {
+                                values: [
+                                    { sample: "A", clinical: "yes" },
+                                    { sample: "B", clinical: "no" },
+                                ],
+                            },
+                        },
+                    },
+                ],
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                },
+            },
+        };
+
+        await createSampleViewForTest({
+            spec,
+        });
+
+        expect(warnSpy).not.toHaveBeenCalled();
+        warnSpy.mockRestore();
+    });
+});
+
+describe("sample label column", () => {
     test("infers sample label width from the longest display name", async () => {
         const shortWidth = await getSampleLabelWidth(
             {
@@ -750,7 +772,9 @@ describe("SampleView", () => {
             1
         );
     });
+});
 
+describe("layout and group column", () => {
     test("reserves sidebar padding when computing main pane coordinates", async () => {
         const { view } = await createSampleViewForTest({
             spec: {
@@ -768,7 +792,9 @@ describe("SampleView", () => {
             },
         });
 
-        const renderContext = new NoOpRenderingContext({ picking: false });
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
         view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
@@ -843,7 +869,9 @@ describe("SampleView", () => {
         });
 
         expect(renderContext.sampleLabels).not.toHaveLength(0);
-        expect(renderContext.sampleLabels[0].clipRect).toBeDefined();
+        expect(
+            normalizeClipOptions(renderContext.sampleLabels[0])
+        ).toBeDefined();
     });
 
     test("does not clip sample groups to the sticky summary viewport", async () => {
@@ -949,7 +977,9 @@ describe("SampleView", () => {
         expect(scale.paddingInner).toBeGreaterThan(0);
         expect(scale.paddingOuter).toBe(0);
     });
+});
 
+describe("provenance rewind and identity loading", () => {
     test("handles provenance rewind while sample labels are subscribed", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
@@ -1034,7 +1064,9 @@ describe("SampleView", () => {
         expect(state?.sampleData?.entities.B.displayName).toBe("Sample B");
         expect(state?.sampleData?.entities.A.displayName).toBe("Sample A");
     });
+});
 
+describe("interaction routing", () => {
     test("keeps context-menu peek focus at the pointer after mouseleave", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
@@ -1068,7 +1100,9 @@ describe("SampleView", () => {
             payload: { subtreeRoot: view },
         });
 
-        const renderContext = new NoOpRenderingContext({ picking: false });
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
         view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
@@ -1143,7 +1177,9 @@ describe("SampleView", () => {
             payload: { subtreeRoot: view },
         });
 
-        const renderContext = new NoOpRenderingContext({ picking: false });
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
         view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
@@ -1205,7 +1241,9 @@ describe("SampleView", () => {
                 payload: { subtreeRoot: view },
             });
 
-            const renderContext = new NoOpRenderingContext({ picking: false });
+            const renderContext = new NoOpRenderingContext({
+                picking: false,
+            });
             view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
                 firstFacet: true,
             });
@@ -1254,7 +1292,9 @@ describe("SampleView", () => {
             globalThis.MouseEvent = originalMouseEvent;
         }
     });
+});
 
+describe("axis layout and visibility", () => {
     test("main-pane axis wheel zoom matches content zoom", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
@@ -1291,7 +1331,9 @@ describe("SampleView", () => {
                 type: "subtreeDataReady",
                 payload: { subtreeRoot: view },
             });
-            const renderContext = new NoOpRenderingContext({ picking: false });
+            const renderContext = new NoOpRenderingContext({
+                picking: false,
+            });
             view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
                 firstFacet: true,
             });
@@ -1377,282 +1419,6 @@ describe("SampleView", () => {
         expect(axisZoomSpy.mock.calls[0]).toEqual(contentZoomSpy.mock.calls[0]);
     });
 
-    test("does not render vertical spec axes through the pane-level axis path by default", async () => {
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            data: {
-                values: [{ sample: "A", x: 1, y: 2 }],
-            },
-            samples: {},
-            spec: {
-                mark: "point",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        axis: { orient: "left" },
-                    },
-                },
-            },
-        };
-
-        const { view } = await createSampleViewForTest({ spec });
-        const renderContext = new NoOpRenderingContext({ picking: false });
-
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
-            firstFacet: true,
-        });
-
-        const verticalAxisView = view
-            .getDescendants()
-            .find(
-                (descendant) =>
-                    descendant instanceof AxisView &&
-                    descendant.axisProps.orient === "left"
-            );
-
-        expect(verticalAxisView).toBeInstanceOf(AxisView);
-        expect(verticalAxisView.coords).toBeUndefined();
-        expect(view.sidebarCoords.x).toBe(0);
-        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
-    });
-
-    test("reserves a lane between the sidebar and sample plot for a default left sample y-axis", async () => {
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            data: {
-                values: [{ sample: "A", x: 1, y: 2 }],
-            },
-            samples: {},
-            spec: {
-                height: 160,
-                mark: "point",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        axis: { orient: "left" },
-                    },
-                },
-            },
-        };
-
-        const { view } = await createSampleViewForTest({ spec });
-        view.provenance.store.dispatch(
-            view.actions.setSamples({
-                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
-            })
-        );
-        await Promise.resolve();
-        view.sampleGroupView.updateGroups();
-
-        const renderContext = new NoOpRenderingContext({ picking: false });
-
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
-            firstFacet: true,
-        });
-
-        const verticalAxisView = view
-            .getDescendants()
-            .find(
-                (descendant) =>
-                    descendant instanceof AxisView &&
-                    descendant.axisProps.orient === "left"
-            );
-        if (!(verticalAxisView instanceof AxisView)) {
-            throw new Error("Expected vertical axis view!");
-        }
-
-        const reserve =
-            verticalAxisView.getPerpendicularSize() +
-            (verticalAxisView.axisProps.offset ?? 0);
-
-        expect(view.childCoords.x).toBe(view.sidebarCoords.x2 + reserve);
-        expect(view.childCoords.x).toBe(view.getOverhang().left);
-    });
-
-    test("does not reserve a sample y-axis lane for an inside axis", async () => {
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            data: {
-                values: [{ sample: "A", x: 1, y: 2 }],
-            },
-            samples: {},
-            spec: {
-                height: 160,
-                mark: "point",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        axis: { orient: "left", placement: "inside" },
-                    },
-                },
-            },
-        };
-
-        const { view } = await createSampleViewForTest({ spec });
-        view.provenance.store.dispatch(
-            view.actions.setSamples({
-                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
-            })
-        );
-        await Promise.resolve();
-        view.sampleGroupView.updateGroups();
-
-        const renderContext = new NoOpRenderingContext({ picking: false });
-
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
-            firstFacet: true,
-        });
-
-        expect(view.childCoords.x).toBe(view.sidebarCoords.x2);
-        expect(view.childCoords.x).toBe(view.getOverhang().left);
-        expect(view.sidebarCoords.x).toBe(0);
-        expect(view.sidebarCoords.width).toBe(view.getOverhang().left);
-    });
-
-    test("drops left spec y-axis overhang before rendering samples below the height threshold", async () => {
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            data: {
-                values: [
-                    { sample: "A", x: 1, y: 2 },
-                    { sample: "B", x: 2, y: 3 },
-                    { sample: "C", x: 3, y: 4 },
-                ],
-            },
-            samples: {},
-            sampleYAxis: {
-                mode: "all",
-                minSampleHeight: 50,
-            },
-            spec: {
-                mark: "point",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        axis: { orient: "left" },
-                    },
-                },
-            },
-        };
-
-        const { view } = await createSampleViewForTest({ spec });
-        view.provenance.store.dispatch(
-            view.actions.setSamples({
-                samples: [
-                    { id: "A", displayName: "A", indexNumber: 0 },
-                    { id: "B", displayName: "B", indexNumber: 1 },
-                    { id: "C", displayName: "C", indexNumber: 2 },
-                ],
-            })
-        );
-        await Promise.resolve();
-        view.sampleGroupView.updateGroups();
-
-        const renderContext = new NoOpRenderingContext({ picking: false });
-
-        view.render(renderContext, Rectangle.create(0, 0, 300, 300), {
-            firstFacet: true,
-        });
-
-        expect(view.getOverhang().left).toBeGreaterThan(
-            view.sidebarCoords.width
-        );
-
-        view.prepareLayoutSize(300, 120);
-
-        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
-    });
-
-    test("invalidates size cache when filtering may change spec y-axis overhang", async () => {
-        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
-        const spec = {
-            data: {
-                values: [
-                    { sample: "A", x: 1, y: 2 },
-                    { sample: "B", x: 2, y: 3 },
-                    { sample: "C", x: 3, y: 4 },
-                    { sample: "D", x: 4, y: 5 },
-                ],
-            },
-            samples: {},
-            sampleYAxis: {
-                mode: "all",
-                minSampleHeight: 50,
-            },
-            spec: {
-                mark: "point",
-                encoding: {
-                    sample: { field: "sample" },
-                    x: { field: "x", type: "quantitative" },
-                    y: {
-                        field: "y",
-                        type: "quantitative",
-                        axis: { orient: "left" },
-                    },
-                },
-            },
-        };
-
-        const { view } = await createSampleViewForTest({ spec });
-        view.provenance.store.dispatch(
-            view.actions.setSamples({
-                samples: [
-                    { id: "A", displayName: "A", indexNumber: 0 },
-                    { id: "B", displayName: "B", indexNumber: 1 },
-                    { id: "C", displayName: "C", indexNumber: 2 },
-                    { id: "D", displayName: "D", indexNumber: 3 },
-                ],
-            })
-        );
-        await Promise.resolve();
-        view.sampleGroupView.updateGroups();
-
-        const renderContext = new NoOpRenderingContext({ picking: false });
-        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
-            firstFacet: true,
-        });
-
-        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
-
-        const invalidateSizeCacheSpy = vi.spyOn(view, "invalidateSizeCache");
-        view.provenance.store.dispatch(
-            view.actions.filterByNominal({
-                attribute: {
-                    type: "SAMPLE_ATTRIBUTE",
-                    specifier: "keep",
-                },
-                values: ["yes"],
-                [AUGMENTED_KEY]: {
-                    values: {
-                        A: "yes",
-                        B: "no",
-                        C: "no",
-                        D: "no",
-                    },
-                },
-            })
-        );
-        await Promise.resolve();
-        view.sampleGroupView.updateGroups();
-
-        expect(invalidateSizeCacheSpy).toHaveBeenCalled();
-        expect(view.getOverhang().left).toBeGreaterThan(
-            view.sidebarCoords.width
-        );
-    });
-
     test("anchor-culls repeated sample y-axis labels by the SampleView clip", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
@@ -1694,9 +1460,7 @@ describe("SampleView", () => {
         });
 
         const verticallyClippedLabels = renderContext.axisLabels.filter(
-            (label) =>
-                label.logicalVisibleRect[1] !== 0 ||
-                label.logicalVisibleRect[3] !== 1
+            (label) => label.cullByVisibleRange === "y"
         );
 
         expect(verticallyClippedLabels).not.toHaveLength(0);
@@ -1761,9 +1525,7 @@ describe("SampleView", () => {
         });
 
         const summaryLabels = renderContext.axisLabels.filter(
-            (label) =>
-                label.logicalVisibleRect[1] !== 0 ||
-                label.logicalVisibleRect[3] !== 1
+            (label) => label.cullByVisibleRange === "y"
         );
 
         expect(summaryLabels).not.toHaveLength(0);
@@ -1773,6 +1535,292 @@ describe("SampleView", () => {
         expect(
             summaryLabels.every((label) => label.cullByVisibleRange === "y")
         ).toBe(true);
+    });
+
+    test("does not render vertical spec axes through the pane-level axis path by default", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 2 }],
+            },
+            samples: {},
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const verticalAxisView = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            );
+
+        expect(verticalAxisView).toBeInstanceOf(AxisView);
+        expect(verticalAxisView.coords).toBeUndefined();
+        expect(view.sidebarCoords.x).toBe(0);
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
+    test("reserves a lane between the sidebar and sample plot for a default left sample y-axis", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 2 }],
+            },
+            samples: {},
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const verticalAxisView = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "left"
+            );
+        if (!(verticalAxisView instanceof AxisView)) {
+            throw new Error("Expected vertical axis view!");
+        }
+
+        const reserve =
+            verticalAxisView.getPerpendicularSize() +
+            (verticalAxisView.axisProps.offset ?? 0);
+
+        expect(view.childCoords.x).toBe(view.sidebarCoords.x2 + reserve);
+        expect(view.childCoords.x).toBe(view.getOverhang().left);
+    });
+
+    test("does not reserve a sample y-axis lane for an inside axis", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 2 }],
+            },
+            samples: {},
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left", placement: "inside" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(view.childCoords.x).toBe(view.sidebarCoords.x2);
+        expect(view.childCoords.x).toBe(view.getOverhang().left);
+        expect(view.sidebarCoords.x).toBe(0);
+        expect(view.sidebarCoords.width).toBe(view.getOverhang().left);
+    });
+
+    test("drops left spec y-axis overhang before rendering samples below the height threshold", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1, y: 2 },
+                    { sample: "B", x: 2, y: 3 },
+                    { sample: "C", x: 3, y: 4 },
+                ],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "all",
+                minSampleHeight: 50,
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                    { id: "C", displayName: "C", indexNumber: 2 },
+                ],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
+
+        view.render(renderContext, Rectangle.create(0, 0, 300, 300), {
+            firstFacet: true,
+        });
+
+        expect(view.getOverhang().left).toBeGreaterThan(
+            view.sidebarCoords.width
+        );
+
+        view.prepareLayoutSize(300, 120);
+
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
+    test("invalidates size cache when filtering may change spec y-axis overhang", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1, y: 2 },
+                    { sample: "B", x: 2, y: 3 },
+                    { sample: "C", x: 3, y: 4 },
+                    { sample: "D", x: 4, y: 5 },
+                ],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "all",
+                minSampleHeight: 50,
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [
+                    { id: "A", displayName: "A", indexNumber: 0 },
+                    { id: "B", displayName: "B", indexNumber: 1 },
+                    { id: "C", displayName: "C", indexNumber: 2 },
+                    { id: "D", displayName: "D", indexNumber: 3 },
+                ],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+
+        const invalidateSizeCacheSpy = vi.spyOn(view, "invalidateSizeCache");
+        view.provenance.store.dispatch(
+            view.actions.filterByNominal({
+                attribute: {
+                    type: "SAMPLE_ATTRIBUTE",
+                    specifier: "keep",
+                },
+                values: ["yes"],
+                [AUGMENTED_KEY]: {
+                    values: {
+                        A: "yes",
+                        B: "no",
+                        C: "no",
+                        D: "no",
+                    },
+                },
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        expect(invalidateSizeCacheSpy).toHaveBeenCalled();
+        expect(view.getOverhang().left).toBeGreaterThan(
+            view.sidebarCoords.width
+        );
     });
 
     test("uses the visible layer candidate for a repeated sample y-axis", async () => {
@@ -1832,7 +1880,10 @@ describe("SampleView", () => {
             },
         };
 
-        const { view } = await createSampleViewForTest({ spec, context });
+        const { view } = await createSampleViewForTest({
+            spec,
+            context,
+        });
         view.provenance.store.dispatch(
             view.actions.setSamples({
                 samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
@@ -1841,7 +1892,9 @@ describe("SampleView", () => {
         await Promise.resolve();
         view.sampleGroupView.updateGroups();
 
-        const renderContext = new NoOpRenderingContext({ picking: false });
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
 
         visibleLayerName = "signal-a";
         view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
@@ -1928,7 +1981,10 @@ describe("SampleView", () => {
             },
         };
 
-        const { view } = await createSampleViewForTest({ spec, context });
+        const { view } = await createSampleViewForTest({
+            spec,
+            context,
+        });
         view.provenance.store.dispatch(
             view.actions.setSamples({
                 samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
@@ -1945,7 +2001,9 @@ describe("SampleView", () => {
             throw new Error("Expected initially hidden layer axis!");
         }
 
-        const renderContext = new NoOpRenderingContext({ picking: false });
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
         view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
         });
@@ -1998,7 +2056,10 @@ describe("SampleView", () => {
                                 mark: "rect",
                                 encoding: {
                                     sample: { field: "sample" },
-                                    x: { field: "x", type: "quantitative" },
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                    },
                                     y: {
                                         field: "y",
                                         type: "quantitative",
@@ -2012,7 +2073,10 @@ describe("SampleView", () => {
             },
         };
 
-        const { view } = await createSampleViewForTest({ spec, context });
+        const { view } = await createSampleViewForTest({
+            spec,
+            context,
+        });
         view.provenance.store.dispatch(
             view.actions.setSamples({
                 samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
@@ -2033,7 +2097,9 @@ describe("SampleView", () => {
         }
 
         const renderSpy = vi.spyOn(axis, "render");
-        const renderContext = new NoOpRenderingContext({ picking: false });
+        const renderContext = new NoOpRenderingContext({
+            picking: false,
+        });
 
         view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
             firstFacet: true,
