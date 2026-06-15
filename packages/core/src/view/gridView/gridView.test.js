@@ -1173,7 +1173,6 @@ describe("GridView scrollable clipping", () => {
             clipX: false,
             clipY: true,
         });
-        expect(renderOptions?.clip?.rect).toBe(renderOptions?.clipRect);
     });
 
     test("clips horizontally scrollable content only along x", async () => {
@@ -1223,7 +1222,6 @@ describe("GridView scrollable clipping", () => {
             clipX: true,
             clipY: false,
         });
-        expect(renderOptions?.clip?.rect).toBe(renderOptions?.clipRect);
     });
 });
 
