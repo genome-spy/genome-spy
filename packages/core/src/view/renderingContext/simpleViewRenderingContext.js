@@ -1,6 +1,5 @@
 import ViewRenderingContext from "./viewRenderingContext.js";
 import { normalizeClipOptions, prepareMarkClipOptions } from "./clipOptions.js";
-import { createVisibleRange } from "../../marks/mark.js";
 
 /**
  * This class is mainly for illustrative purpose, i.e., how the rendering
@@ -71,17 +70,7 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
             this.coords
         );
 
-        mark.setViewport(
-            canvasSize,
-            dpr,
-            this.coords,
-            markClip,
-            createVisibleRange(
-                this.coords,
-                inheritedClip,
-                mark.properties.cullByVisibleRange
-            )
-        );
+        mark.setViewport(canvasSize, dpr, this.coords, markClip, inheritedClip);
         mark.render(options)();
     }
 }

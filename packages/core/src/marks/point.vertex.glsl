@@ -55,8 +55,8 @@ void main(void) {
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
     vec2 facetedPos = applySampleFacet(pos);
 
-    if ((uCullByVisibleRange.x > 0.5 && (facetedPos.x < uVisibleRangeX.x || facetedPos.x > uVisibleRangeX.y))
-        || (uCullByVisibleRange.y > 0.5 && (facetedPos.y < uVisibleRangeY.x || facetedPos.y > uVisibleRangeY.y))) {
+    if ((uCullByVisibleRange.x > 0.5 && (facetedPos.x < uLogicalVisibleRect.x || facetedPos.x > uLogicalVisibleRect.z))
+        || (uCullByVisibleRange.y > 0.5 && (facetedPos.y < uLogicalVisibleRect.y || facetedPos.y > uLogicalVisibleRect.w))) {
         gl_PointSize = 0.0;
         gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
         return;

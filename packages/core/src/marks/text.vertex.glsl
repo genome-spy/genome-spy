@@ -174,8 +174,8 @@ void main(void) {
     }
 #endif
 
-    if ((uCullByVisibleRange.x > 0.5 && (pos.x < uVisibleRangeX.x || pos.x > uVisibleRangeX.y))
-        || (uCullByVisibleRange.y > 0.5 && (pos.y < uVisibleRangeY.x || pos.y > uVisibleRangeY.y))) {
+    if ((uCullByVisibleRange.x > 0.5 && (pos.x < uLogicalVisibleRect.x || pos.x > uLogicalVisibleRect.z))
+        || (uCullByVisibleRange.y > 0.5 && (pos.y < uLogicalVisibleRect.y || pos.y > uLogicalVisibleRect.w))) {
         gl_Position = vec4(0.0);
         return;
     }

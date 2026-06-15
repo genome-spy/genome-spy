@@ -56,11 +56,6 @@ export interface ClipOptions {
     clipY: boolean;
 }
 
-export interface VisibleRange {
-    x: [number, number];
-    y: [number, number];
-}
-
 /**
  * Options that affect the whole rendering pass.
  */
@@ -81,7 +76,7 @@ export interface BufferedRenderingRequest {
     callback: () => void;
     coords: Rectangle;
     clip?: ClipOptions;
-    visibleRange?: VisibleRange;
+    cullClip?: ClipOptions;
 }
 
 /**

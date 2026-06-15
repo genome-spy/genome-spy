@@ -10,7 +10,7 @@ import { normalizeClipOptions } from "../renderingContext/clipOptions.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
-import { createVisibleRange } from "../../marks/mark.js";
+import { createLogicalVisibleRect } from "../../marks/mark.js";
 
 // Minimal context for layout-driven render calls without WebGL.
 class NoOpRenderingContext extends ViewRenderingContext {
@@ -37,7 +37,7 @@ class NoOpRenderingContext extends ViewRenderingContext {
 class InspectRenderingContext extends ViewRenderingContext {
     #coordsStack = [];
 
-    /** @type {{ main: "x" | "y", visibleRange: import("../../types/rendering.js").VisibleRange | undefined }[]} */
+    /** @type {{ main: "x" | "y", logicalVisibleRect: [number, number, number, number] }[]} */
     axisLabels = [];
 
     pushView(view, coords) {
@@ -56,10 +56,9 @@ class InspectRenderingContext extends ViewRenderingContext {
         const coords = this.#coordsStack.at(-1);
         this.axisLabels.push({
             main: mark.unitView.spec.encoding.x ? "x" : "y",
-            visibleRange: createVisibleRange(
+            logicalVisibleRect: createLogicalVisibleRect(
                 coords,
-                normalizeClipOptions(options),
-                mark.properties.cullByVisibleRange
+                normalizeClipOptions(options)
             ),
         });
     }
@@ -1238,12 +1237,16 @@ describe("GridView scrollable clipping", () => {
         const culledXAxisLabel = context.axisLabels.find(
             (label) =>
                 label.main === "x" &&
-                label.visibleRange &&
-                (label.visibleRange.y[0] !== 0 || label.visibleRange.y[1] !== 1)
+                (label.logicalVisibleRect[1] !== 0 ||
+                    label.logicalVisibleRect[3] !== 1)
         );
 
-        expect(culledXAxisLabel?.visibleRange?.x).toEqual([0, 1]);
-        expect(culledXAxisLabel?.visibleRange?.y).not.toEqual([0, 1]);
+        expect(culledXAxisLabel?.logicalVisibleRect[0]).toBe(0);
+        expect(culledXAxisLabel?.logicalVisibleRect[2]).toBe(1);
+        expect([
+            culledXAxisLabel?.logicalVisibleRect[1],
+            culledXAxisLabel?.logicalVisibleRect[3],
+        ]).not.toEqual([0, 1]);
     });
 
     test("clips horizontally scrollable content only along x", async () => {

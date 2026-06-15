@@ -67,7 +67,6 @@ export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 
 /**
  * @typedef {import("../types/rendering.js").ClipOptions} ClipOptions
- * @typedef {import("../types/rendering.js").VisibleRange} VisibleRange
  * @typedef {import("../view/layout/rectangle.js").default} Rectangle
  */
 
@@ -1447,10 +1446,10 @@ export default class Mark {
      * @param {number} dpr Device pixel ratio
      * @param {import("../view/layout/rectangle.js").default} coords
      * @param {ClipOptions} [clip]
-     * @param {VisibleRange} [visibleRange]
+     * @param {ClipOptions} [cullClip]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
-    setViewport(canvasSize, dpr, coords, clip, visibleRange) {
+    setViewport(canvasSize, dpr, coords, clip, cullClip) {
         coords = coords.flatten();
 
         const gl = this.gl;
@@ -1544,20 +1543,17 @@ export default class Mark {
         setBlockUniforms(this.viewUniformInfo, {
             ...uniforms,
             uViewportSize: [coords.width, coords.height],
-            uVisibleRangeX: visibleRange?.x ?? [0, 1],
-            uVisibleRangeY: visibleRange?.y ?? [0, 1],
-            uCullByVisibleRange: visibleRange
-                ? [
-                      props.cullByVisibleRange === true ||
-                      props.cullByVisibleRange === "x"
-                          ? 1
-                          : 0,
-                      props.cullByVisibleRange === true ||
-                      props.cullByVisibleRange === "y"
-                          ? 1
-                          : 0,
-                  ]
-                : [0, 0],
+            uLogicalVisibleRect: createLogicalVisibleRect(coords, cullClip),
+            uCullByVisibleRange: [
+                props.cullByVisibleRange === true ||
+                props.cullByVisibleRange === "x"
+                    ? 1
+                    : 0,
+                props.cullByVisibleRange === true ||
+                props.cullByVisibleRange === "y"
+                    ? 1
+                    : 0,
+            ],
             uDevicePixelRatio: dpr,
         });
 
@@ -1667,31 +1663,13 @@ export function createViewportScope(canvasSize, coords, clip, clipSelf = true) {
 /**
  * @param {Rectangle} coords
  * @param {ClipOptions | undefined} clip
- * @param {import("../spec/mark.js").MarkProps["cullByVisibleRange"]} cull
- * @returns {VisibleRange | undefined}
+ * @returns {[number, number, number, number]}
  */
-export function createVisibleRange(coords, clip, cull) {
-    if (!cull) {
-        return undefined;
-    }
+export function createLogicalVisibleRect(coords, clip) {
+    const x1 = clip?.clipX ? (clip.rect.x - coords.x) / coords.width : 0;
+    const x2 = clip?.clipX ? (clip.rect.x2 - coords.x) / coords.width : 1;
+    const y1 = clip?.clipY ? (coords.y2 - clip.rect.y2) / coords.height : 0;
+    const y2 = clip?.clipY ? (coords.y2 - clip.rect.y) / coords.height : 1;
 
-    const x =
-        clip?.clipX && (cull === true || cull === "x")
-            ? [
-                  (clip.rect.x - coords.x) / coords.width,
-                  (clip.rect.x2 - coords.x) / coords.width,
-              ]
-            : [0, 1];
-    const y =
-        clip?.clipY && (cull === true || cull === "y")
-            ? [
-                  (coords.y2 - clip.rect.y2) / coords.height,
-                  (coords.y2 - clip.rect.y) / coords.height,
-              ]
-            : [0, 1];
-
-    return {
-        x: /** @type {[number, number]} */ (x),
-        y: /** @type {[number, number]} */ (y),
-    };
+    return [x1, y1, x2, y2];
 }

@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import Rectangle from "../view/layout/rectangle.js";
 import { createSelfClipOptions } from "../view/renderingContext/clipOptions.js";
-import { createViewportScope, createVisibleRange } from "./mark.js";
+import { createLogicalVisibleRect, createViewportScope } from "./mark.js";
 
 describe("mark viewport scope", () => {
     test("clips only x when clipX is enabled", () => {
@@ -55,7 +55,7 @@ describe("mark viewport scope", () => {
     });
 });
 
-describe("mark visible range", () => {
+describe("mark logical visible rect", () => {
     test("maps inherited clip bounds to unit coordinates", () => {
         const coords = Rectangle.create(10, 20, 100, 50);
         const clip = {
@@ -64,10 +64,9 @@ describe("mark visible range", () => {
             clipY: true,
         };
 
-        expect(createVisibleRange(coords, clip, true)).toEqual({
-            x: [0.25, 0.75],
-            y: [0.4, 0.8],
-        });
+        expect(createLogicalVisibleRect(coords, clip)).toEqual([
+            0.25, 0.4, 0.75, 0.8,
+        ]);
     });
 
     test("keeps full range for unclipped directions", () => {
@@ -78,16 +77,17 @@ describe("mark visible range", () => {
             clipY: true,
         };
 
-        expect(createVisibleRange(coords, clip, "y")).toEqual({
-            x: [0, 1],
-            y: [0.4, 0.8],
-        });
+        expect(createLogicalVisibleRect(coords, clip)).toEqual([
+            0, 0.4, 1, 0.8,
+        ]);
     });
 
-    test("is disabled when no culling direction is configured", () => {
+    test("uses full rect when no clip is available", () => {
         const coords = Rectangle.create(10, 20, 100, 50);
 
-        expect(createVisibleRange(coords, undefined, false)).toBeUndefined();
+        expect(createLogicalVisibleRect(coords, undefined)).toEqual([
+            0, 0, 1, 1,
+        ]);
     });
 });
 

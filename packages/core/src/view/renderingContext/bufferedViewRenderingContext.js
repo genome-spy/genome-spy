@@ -3,7 +3,6 @@ import { group } from "d3-array";
 import ViewRenderingContext from "./viewRenderingContext.js";
 import { color } from "d3-color";
 import { normalizeClipOptions, prepareMarkClipOptions } from "./clipOptions.js";
-import { createVisibleRange } from "../../marks/mark.js";
 
 /**
  * @typedef {object} BufferedViewRenderingOptions
@@ -104,11 +103,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                     mark.properties.clip,
                     this.#coords
                 ),
-                visibleRange: createVisibleRange(
-                    this.#coords,
-                    inheritedClip,
-                    mark.properties.cullByVisibleRange
-                ),
+                cullClip: inheritedClip,
             });
         }
     }
@@ -209,15 +204,15 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
             let previousCoords;
             /** @type {import("../../types/rendering.js").ClipOptions | undefined} */
             let previousClip;
-            /** @type {import("../../types/rendering.js").VisibleRange | undefined} */
-            let previousVisibleRange;
+            /** @type {import("../../types/rendering.js").ClipOptions | undefined} */
+            let previousCullClip;
             for (const request of requests) {
                 const coords = request.coords;
                 // Render each facet
                 if (
                     !coords.equals(previousCoords) ||
                     request.clip !== previousClip ||
-                    request.visibleRange !== previousVisibleRange
+                    request.cullClip !== previousCullClip
                 ) {
                     this.#batch.push(
                         ifEnabled(() => {
@@ -227,7 +222,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                                 this.#dpr,
                                 coords,
                                 request.clip,
-                                request.visibleRange
+                                request.cullClip
                             );
                         })
                     );
@@ -235,7 +230,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 this.#batch.push(ifEnabledAndVisible(request.callback));
                 previousCoords = request.coords;
                 previousClip = request.clip;
-                previousVisibleRange = request.visibleRange;
+                previousCullClip = request.cullClip;
             }
         }
     }

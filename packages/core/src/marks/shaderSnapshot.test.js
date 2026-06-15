@@ -250,7 +250,7 @@ describe("generated shader snapshots", () => {
         });
 
         expect(sources.vertex).toContain("uCullByVisibleRange.x > 0.5");
-        expect(sources.vertex).toContain("uVisibleRangeX");
+        expect(sources.vertex).toContain("uLogicalVisibleRect");
     });
 
     test("point shader supports visible-range culling", async () => {
@@ -269,7 +269,7 @@ describe("generated shader snapshots", () => {
         });
 
         expect(sources.vertex).toContain("uCullByVisibleRange.y > 0.5");
-        expect(sources.vertex).toContain("uVisibleRangeY");
+        expect(sources.vertex).toContain("uLogicalVisibleRect");
     });
 
     test("penguins scatter plot example", async () => {
