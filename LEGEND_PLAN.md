@@ -473,6 +473,34 @@ Therefore, legend generation and legend placement should be treated separately:
 
 For the first version, guide hosting should stay local and conservative.
 
+## Initial Implementation Notes
+
+The first milestone implementation creates local symbol legends for simple unit
+views when either `config.legend.disable` is `false` or the channel has an
+explicit non-null `legend` object. The generated legend is attached to the
+`GridChild` that hosts the unit view, and it is rendered as grid-owned chrome in
+the configured external orientation.
+
+Legend rows are produced by an internal lazy data source rather than by copying
+the scale domain during view construction. This is necessary because guide views
+are created before data loading has populated scale domains. The lazy source
+listens to the explained view's scale resolution and publishes rows containing
+`value`, `label`, and `_legendIndex`.
+
+The first implementation reserves a fixed perpendicular legend extent of 80 px.
+That is enough for the `point2d.json` milestone, but a later iteration should
+measure the generated label layer and request layout reflow when labels require
+more space.
+
+The current automatic legend creation is intentionally narrow:
+
+- unit views only,
+- nominal and ordinal channels only,
+- local legends only,
+- no legend merging across siblings,
+- no global or named guide areas,
+- no gradient legends.
+
 ## Initial Scope
 
 The first implementation should support simple local symbol legends:
