@@ -46,6 +46,7 @@ const DECORATION_ORDER = Object.freeze({
     grid: 20,
     backgroundStroke: 30,
     axis: 40,
+    legend: 50,
     selectionRect: 80,
     scrollbar: 90,
     title: 100,
@@ -1029,6 +1030,24 @@ export default class GridView extends ContainerView {
                 );
             }
 
+            for (const [orient, legendView] of Object.entries(
+                gridChild.legends
+            )) {
+                queueDecoration(0, DECORATION_ORDER.legend, () =>
+                    legendView.render(
+                        context,
+                        translateLegendCoords(
+                            viewportCoords,
+                            /** @type {import("../../spec/legend.js").LegendOrient} */ (
+                                orient
+                            ),
+                            legendView
+                        ),
+                        options
+                    )
+                );
+            }
+
             // Axes shared between children
             // TODO: What if some have scrollable viewports?
             // Should throw an error because cannot have shared axes in such cases.
@@ -1530,5 +1549,24 @@ export function translateAxisCoords(coords, orient, axisView) {
                   width: ps,
               })
             : coords.translate(coords.width + offset, 0).modify({ width: ps });
+    }
+}
+
+/**
+ * @param {import("../layout/rectangle.js").default} coords
+ * @param {import("../../spec/legend.js").LegendOrient} orient
+ * @param {import("../legendView.js").default} legendView
+ */
+export function translateLegendCoords(coords, orient, legendView) {
+    const ps = legendView.getPerpendicularSize();
+
+    if (orient == "bottom") {
+        return coords.translate(0, coords.height).modify({ height: ps });
+    } else if (orient == "top") {
+        return coords.translate(0, -ps).modify({ height: ps });
+    } else if (orient == "left") {
+        return coords.translate(-ps, 0).modify({ width: ps });
+    } else if (orient == "right") {
+        return coords.translate(coords.width, 0).modify({ width: ps });
     }
 }

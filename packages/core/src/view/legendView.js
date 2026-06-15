@@ -3,6 +3,7 @@ import { FlexDimensions } from "./layout/flexLayout.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
+const DEFAULT_LEGEND_EXTENT = 80;
 
 /**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
@@ -138,7 +139,17 @@ export function createSymbolLegendSpec({
     };
 }
 
+/**
+ * @param {LegendView | undefined} legendView
+ * @returns {number}
+ */
+export function getExternalLegendOverhang(legendView) {
+    return legendView ? legendView.getPerpendicularSize() : 0;
+}
+
 export default class LegendView extends LayerView {
+    #effectiveExtent = DEFAULT_LEGEND_EXTENT;
+
     /**
      * @param {object} props
      * @param {LegendEntry[]} props.entries
@@ -176,8 +187,21 @@ export default class LegendView extends LayerView {
     }
 
     getSize() {
-        // Conservative placeholder until legend extent measurement is wired.
-        return new FlexDimensions({ px: 0 }, { px: 0 });
+        const mainSize = { grow: 1 };
+        const perpendicularSize = { px: this.getPerpendicularSize() };
+
+        if (
+            this.legendProps.orient == "top" ||
+            this.legendProps.orient == "bottom"
+        ) {
+            return new FlexDimensions(mainSize, perpendicularSize);
+        } else {
+            return new FlexDimensions(perpendicularSize, mainSize);
+        }
+    }
+
+    getPerpendicularSize() {
+        return this.#effectiveExtent;
     }
 
     isPickingSupported() {

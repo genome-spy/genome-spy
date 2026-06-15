@@ -9,6 +9,7 @@ import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import { normalizeClipOptions } from "../renderingContext/clipOptions.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
+import { translateLegendCoords } from "./gridView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
 import { createLogicalVisibleRect } from "../../marks/mark.js";
 
@@ -152,6 +153,25 @@ const recordRenderOrder = (spec, labels) => {
         return order;
     });
 };
+
+describe("translateLegendCoords", () => {
+    test("places a right-oriented legend next to the viewport", () => {
+        const legendView = /** @type {any} */ ({
+            getPerpendicularSize: () => 80,
+        });
+
+        const coords = translateLegendCoords(
+            Rectangle.create(10, 20, 300, 200),
+            "right",
+            legendView
+        );
+
+        expect(coords.x).toBe(310);
+        expect(coords.y).toBe(20);
+        expect(coords.width).toBe(80);
+        expect(coords.height).toBe(200);
+    });
+});
 
 describe("GridView incremental child management", () => {
     test("dynamic add/remove keeps shared axes in sync", async () => {

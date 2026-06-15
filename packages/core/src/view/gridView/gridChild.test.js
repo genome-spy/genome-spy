@@ -1,6 +1,35 @@
 import { describe, expect, test } from "vitest";
 
-import { resolveIntervalZoomEventConfig } from "./gridChild.js";
+import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
+import Padding from "../layout/padding.js";
+
+function createMinimalGridChild() {
+    const view = /** @type {any} */ ({
+        needsAxes: { x: false, y: false },
+        spec: {},
+        getOverhang: () => Padding.zero(),
+        getPadding: () => Padding.zero(),
+        paramRuntime: { paramConfigs: new Map() },
+    });
+    const layoutParent = /** @type {any} */ ({
+        context: {},
+        spec: {},
+    });
+
+    return new GridChild(view, layoutParent, 0);
+}
+
+describe("GridChild legend layout", () => {
+    test("right legend contributes to right overhang", () => {
+        const child = createMinimalGridChild();
+        child.legends.right = /** @type {any} */ ({
+            legendProps: { orient: "right" },
+            getPerpendicularSize: () => 42,
+        });
+
+        expect(child.getOverhang().right).toBe(42);
+    });
+});
 
 describe("resolveIntervalZoomEventConfig", () => {
     test("defaults to disabled on zoomable channels", () => {

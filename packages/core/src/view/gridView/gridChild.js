@@ -30,6 +30,7 @@ import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
+import { getExternalLegendOverhang } from "../legendView.js";
 
 /**
  * @typedef {{
@@ -73,6 +74,9 @@ export default class GridChild {
 
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
         this.gridLines = {};
+
+        /** @type {Partial<Record<import("../../spec/legend.js").LegendOrient, import("../legendView.js").default>>} */
+        this.legends = {};
 
         /** @type {Partial<Record<import("./scrollbar.js").ScrollDirection, Scrollbar>>} */
         this.scrollbars = {};
@@ -647,6 +651,7 @@ export default class GridChild {
         for (const candidate of this.axisCandidates) {
             yield candidate.axisView;
         }
+        yield* Object.values(this.legends);
         yield* Object.values(this.gridLines);
         yield this.view;
         yield* Object.values(this.scrollbars);
@@ -935,13 +940,16 @@ export default class GridChild {
         const calculate = (
             /** @type {import("../../spec/axis.js").AxisOrient} */ orient
         ) => getExternalAxisOverhang(this.axes[orient]);
+        const legend = (
+            /** @type {import("../../spec/legend.js").LegendOrient} */ orient
+        ) => getExternalLegendOverhang(this.legends[orient]);
 
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return new Padding(
-            calculate("top"),
-            calculate("right"),
-            calculate("bottom"),
-            calculate("left")
+            calculate("top") + legend("top"),
+            calculate("right") + legend("right"),
+            calculate("bottom") + legend("bottom"),
+            calculate("left") + legend("left")
         ).add(this.view.getOverhang());
     }
 
