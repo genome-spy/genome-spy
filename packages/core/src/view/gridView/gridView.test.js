@@ -371,6 +371,49 @@ describe("GridView legends", () => {
 
         expect(getLegends(view)).toHaveLength(0);
     });
+
+    test("creates an opt-in gradient legend for quantitative color", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, measurement: 0 },
+                            { x: 2, y: 3, measurement: 1 },
+                        ],
+                    },
+                    mark: "rect",
+                    encoding: {
+                        x: { field: "x", type: "index" },
+                        y: { field: "y", type: "index" },
+                        color: {
+                            field: "measurement",
+                            type: "quantitative",
+                        },
+                    },
+                },
+            ],
+        });
+        const legends = getLegends(view);
+        const legendSpec = legends[0].spec;
+        const ramp = /** @type {import("../../spec/view.js").UnitSpec} */ (
+            legendSpec.layer[0]
+        );
+
+        expect(legends).toHaveLength(1);
+        expect(legendSpec.data).toEqual({
+            lazy: { type: "legendGradient", channel: "color", count: 64 },
+        });
+        expect(ramp.mark).toMatchObject({ type: "rect" });
+        expect(ramp.encoding).toMatchObject({
+            color: {
+                field: "value",
+                type: "quantitative",
+                scale: { name: "color" },
+            },
+        });
+    });
 });
 
 describe("GridView incremental child management", () => {

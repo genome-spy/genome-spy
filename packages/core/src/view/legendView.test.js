@@ -1,5 +1,8 @@
 import { expect, test } from "vitest";
-import { createSymbolLegendSpec } from "./legendView.js";
+import {
+    createGradientLegendSpec,
+    createSymbolLegendSpec,
+} from "./legendView.js";
 
 test("createSymbolLegendSpec builds generated point and text legend layers", () => {
     const spec = createSymbolLegendSpec({
@@ -118,5 +121,41 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
         x: { field: "_legendLabelX", type: "quantitative" },
         y: { field: "_legendLabelY2", type: "quantitative" },
         text: { field: "label" },
+    });
+});
+
+test("createGradientLegendSpec builds generated rect ramp layer", () => {
+    const spec = createGradientLegendSpec({
+        scaleName: "color",
+        channel: "color",
+        legend: {
+            title: "measurement",
+            orient: "right",
+            titleFontSize: 11,
+            titlePadding: 5,
+        },
+    });
+    const ramp = /** @type {import("../spec/view.js").UnitSpec} */ (
+        spec.layer[0]
+    );
+
+    expect(spec.name).toBe("legend_right");
+    expect(spec.data).toEqual({
+        lazy: { type: "legendGradient", channel: "color", count: 64 },
+    });
+    expect(ramp.mark).toMatchObject({
+        type: "rect",
+        clip: false,
+    });
+    expect(ramp.encoding).toMatchObject({
+        x: { field: "_legendGradientX", type: "quantitative" },
+        x2: { field: "_legendGradientX2", type: "quantitative" },
+        y: { field: "_legendGradientY2", type: "quantitative" },
+        y2: { field: "_legendGradientY", type: "quantitative" },
+        color: {
+            field: "value",
+            type: "quantitative",
+            scale: { name: "color" },
+        },
     });
 });

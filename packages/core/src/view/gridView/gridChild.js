@@ -915,10 +915,15 @@ export default class GridChild {
                 return;
             }
 
-            if (
-                channelDef.type !== "nominal" &&
-                channelDef.type !== "ordinal"
-            ) {
+            const legendType =
+                channelDef.type === "nominal" || channelDef.type === "ordinal"
+                    ? "symbol"
+                    : channelDef.type === "quantitative" &&
+                        isColorChannel(channel)
+                      ? "gradient"
+                      : undefined;
+
+            if (!legendType) {
                 return;
             }
 
@@ -945,10 +950,11 @@ export default class GridChild {
                 {
                     scaleName: scaleResolution.name ?? channel,
                     channel,
-                    symbolChannels: getRedundantSymbolChannels(
-                        channel,
-                        legendParent
-                    ),
+                    type: legendType,
+                    symbolChannels:
+                        legendType == "symbol"
+                            ? getRedundantSymbolChannels(channel, legendParent)
+                            : undefined,
                     legend: {
                         title,
                         ...legendDefaults,

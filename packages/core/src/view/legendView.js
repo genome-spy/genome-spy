@@ -4,6 +4,7 @@ import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
 const DEFAULT_LEGEND_EXTENT = 80;
+const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
 
 /**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
@@ -212,6 +213,136 @@ export function createSymbolLegendSpec({
 }
 
 /**
+ * @param {object} options
+ * @param {string} options.scaleName
+ * @param {import("../spec/channel.js").ChannelWithScale} options.channel
+ * @param {LegendConfig} options.legend
+ * @returns {import("../spec/view.js").LayerSpec}
+ */
+export function createGradientLegendSpec({ scaleName, channel, legend }) {
+    const title = legend.title;
+    const orient = legend.orient ?? "right";
+    const titleFontSize = legend.titleFontSize ?? 11;
+    const horizontalPixelScale = {
+        domain: [0, { expr: "width" }],
+        zero: false,
+        nice: false,
+    };
+    const verticalSampleScale = {
+        domain: [0, DEFAULT_GRADIENT_SAMPLE_COUNT],
+        zero: false,
+        nice: false,
+    };
+
+    /** @type {import("../spec/view.js").UnitSpec[]} */
+    const layer = [
+        {
+            name: "gradientRamp",
+            mark: {
+                type: "rect",
+                clip: false,
+            },
+            encoding: {
+                x: {
+                    field: "_legendGradientX",
+                    type: "quantitative",
+                    scale: horizontalPixelScale,
+                    axis: null,
+                    buildIndex: false,
+                },
+                x2: {
+                    field: "_legendGradientX2",
+                    type: "quantitative",
+                },
+                y: {
+                    field: "_legendGradientY2",
+                    type: "quantitative",
+                    scale: verticalSampleScale,
+                    axis: null,
+                },
+                y2: {
+                    field: "_legendGradientY",
+                    type: "quantitative",
+                },
+                [channel]: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: { name: scaleName },
+                },
+            },
+        },
+    ];
+
+    if (title) {
+        layer.push({
+            name: "title",
+            data: {
+                values: [
+                    {
+                        _legendTitleX: 0,
+                        _legendTitleOffset: titleFontSize / 2,
+                    },
+                ],
+            },
+            transform: [
+                {
+                    type: "formula",
+                    expr: "height - datum._legendTitleOffset",
+                    as: "_legendTitleY2",
+                },
+            ],
+            mark: {
+                type: "text",
+                clip: false,
+                align: legend.labelAlign ?? "left",
+                baseline: legend.labelBaseline ?? "middle",
+                color: legend.titleColor,
+                font: legend.titleFont,
+                fontStyle: legend.titleFontStyle,
+                fontWeight: legend.titleFontWeight,
+                size: titleFontSize,
+                text: title,
+            },
+            encoding: {
+                x: {
+                    field: "_legendTitleX",
+                    type: "quantitative",
+                    scale: horizontalPixelScale,
+                    axis: null,
+                    buildIndex: false,
+                },
+                y: {
+                    field: "_legendTitleY2",
+                    type: "quantitative",
+                    scale: {
+                        domain: [0, { expr: "height" }],
+                        zero: false,
+                        nice: false,
+                    },
+                    axis: null,
+                },
+            },
+        });
+    }
+
+    return {
+        name: "legend_" + orient,
+        resolve: {
+            scale: { x: "excluded", y: "excluded" },
+            axis: { x: "excluded", y: "excluded" },
+        },
+        data: {
+            lazy: {
+                type: "legendGradient",
+                channel,
+                count: DEFAULT_GRADIENT_SAMPLE_COUNT,
+            },
+        },
+        layer,
+    };
+}
+
+/**
  * @param {LegendView | undefined} legendView
  * @returns {number}
  */
@@ -230,6 +361,7 @@ export default class LegendView extends LayerView {
      * @param {string} props.scaleName
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
      * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
+     * @param {"symbol" | "gradient"} [props.type]
      * @param {LegendConfig} props.legend
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent
@@ -237,20 +369,22 @@ export default class LegendView extends LayerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(
-        { entries, scaleName, channel, symbolChannels, legend },
+        { entries, scaleName, channel, symbolChannels, type, legend },
         context,
         layoutParent,
         dataParent,
         options
     ) {
         super(
-            createSymbolLegendSpec({
-                entries,
-                scaleName,
-                channel,
-                symbolChannels,
-                legend,
-            }),
+            type == "gradient"
+                ? createGradientLegendSpec({ scaleName, channel, legend })
+                : createSymbolLegendSpec({
+                      entries,
+                      scaleName,
+                      channel,
+                      symbolChannels,
+                      legend,
+                  }),
             context,
             layoutParent,
             dataParent,
