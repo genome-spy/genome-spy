@@ -59,7 +59,6 @@ import {
     isSinglePointSelection,
 } from "../selection/selection.js";
 import { getConfiguredMarkDefaults } from "../config/markConfig.js";
-import Rectangle from "../view/layout/rectangle.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -68,6 +67,7 @@ export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
 
 /**
  * @typedef {import("../types/rendering.js").ClipOptions} ClipOptions
+ * @typedef {import("../view/layout/rectangle.js").default} Rectangle
  */
 
 /**
@@ -103,76 +103,6 @@ export function createViewportScope(canvasSize, coords, clip, clipSelf = true) {
     return {
         requiresScissor: true,
         coords: clippedCoords.flatten(),
-    };
-}
-
-/**
- * @param {ClipOptions | Rectangle | undefined} clip
- * @returns {ClipOptions | undefined}
- */
-function normalizeViewportClip(clip) {
-    if (!clip) {
-        return undefined;
-    } else if ("rect" in clip) {
-        return clip;
-    } else {
-        return { rect: clip, clipX: true, clipY: true };
-    }
-}
-
-/**
- * @param {import("../spec/mark.js").MarkProps["clip"]} clip
- * @param {Rectangle} coords
- * @returns {ClipOptions | undefined}
- */
-export function createSelfClipOptions(clip, coords) {
-    if (clip === true) {
-        return { rect: coords, clipX: true, clipY: true };
-    } else if (clip === "x") {
-        return { rect: coords, clipX: true, clipY: false };
-    } else if (clip === "y") {
-        return { rect: coords, clipX: false, clipY: true };
-    } else {
-        return undefined;
-    }
-}
-
-/**
- * @param {ClipOptions | undefined} current
- * @param {ClipOptions | undefined} next
- * @returns {ClipOptions | undefined}
- */
-function combineClipOptions(current, next) {
-    if (!current) {
-        return next;
-    } else if (!next) {
-        return current;
-    }
-
-    const clipX = current.clipX || next.clipX;
-    const clipY = current.clipY || next.clipY;
-    const xRect =
-        current.clipX && next.clipX
-            ? current.rect.intersectX(next.rect)
-            : next.clipX
-              ? next.rect
-              : current.rect;
-    const yRect =
-        current.clipY && next.clipY
-            ? current.rect.intersectY(next.rect)
-            : next.clipY
-              ? next.rect
-              : current.rect;
-
-    return {
-        rect: new Rectangle(
-            () => xRect.x,
-            () => yRect.y,
-            () => xRect.width,
-            () => yRect.height
-        ),
-        clipX,
-        clipY,
     };
 }
 
@@ -1551,7 +1481,7 @@ export default class Mark {
      * @param {{width: number, height: number}} canvasSize Size of the canvas in logical pixels
      * @param {number} dpr Device pixel ratio
      * @param {import("../view/layout/rectangle.js").default} coords
-     * @param {ClipOptions | Rectangle} [clip]
+     * @param {ClipOptions} [clip]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
     setViewport(canvasSize, dpr, coords, clip) {
@@ -1571,17 +1501,10 @@ export default class Mark {
         /** @type {object} */
         let uniforms;
 
-        const normalizedClip =
-            props.clip === "never"
-                ? undefined
-                : combineClipOptions(
-                      normalizeViewportClip(clip),
-                      createSelfClipOptions(props.clip, coords)
-                  );
         const viewportScope = createViewportScope(
             canvasSize,
             coords,
-            normalizedClip,
+            props.clip === "never" ? undefined : clip,
             false
         );
         const scopedCoords = viewportScope.coords;

@@ -27,7 +27,12 @@ import KeyboardZoomController from "./keyboardZoomController.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
-import { normalizeClipOptions } from "../../types/rendering.js";
+import {
+    clipCoords,
+    combineClipOptions,
+    createClipOptions,
+    normalizeClipOptions,
+} from "../../types/rendering.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -966,8 +971,8 @@ export default class GridView extends ContainerView {
                     axisView
                 );
 
-                let clipRect = options.clipRect;
-                let clip = options.clip;
+                let clip = normalizeClipOptions(options);
+                let clipRect = clip?.rect;
 
                 // Scrollable axes must be clipped along the scroll direction.
                 if (scrollable) {
@@ -1457,64 +1462,6 @@ function defaultAxisZindex(axisProps, clipped) {
  */
 function defaultBackgroundStrokeZindex(zindex, clipped) {
     return zindex ?? (clipped ? CLIPPED_DECORATION_ZINDEX : 0);
-}
-
-/**
- * @param {Rectangle} rect
- * @param {boolean} clipX
- * @param {boolean} clipY
- * @returns {import("../../types/rendering.js").ClipOptions | undefined}
- */
-function createClipOptions(rect, clipX, clipY) {
-    return clipX || clipY ? { rect, clipX, clipY } : undefined;
-}
-
-/**
- * @param {Rectangle} coords
- * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
- * @returns {Rectangle}
- */
-function clipCoords(coords, clip) {
-    if (!clip) {
-        return coords;
-    } else if (clip.clipX && clip.clipY) {
-        return coords.intersect(clip.rect);
-    } else if (clip.clipX) {
-        return coords.intersectX(clip.rect);
-    } else if (clip.clipY) {
-        return coords.intersectY(clip.rect);
-    } else {
-        return coords;
-    }
-}
-
-/**
- * @param {import("../../types/rendering.js").ClipOptions | undefined} current
- * @param {import("../../types/rendering.js").ClipOptions | undefined} next
- * @returns {import("../../types/rendering.js").ClipOptions | undefined}
- */
-function combineClipOptions(current, next) {
-    if (!current) {
-        return next;
-    } else if (!next) {
-        return current;
-    }
-
-    const clipX = current.clipX || next.clipX;
-    const clipY = current.clipY || next.clipY;
-    const xRect = next.clipX ? next.rect : current.rect;
-    const yRect = next.clipY ? next.rect : current.rect;
-
-    return createClipOptions(
-        new Rectangle(
-            () => xRect.x,
-            () => yRect.y,
-            () => xRect.width,
-            () => yRect.height
-        ),
-        clipX,
-        clipY
-    );
 }
 
 /**

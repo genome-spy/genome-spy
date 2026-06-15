@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 
 import Rectangle from "../view/layout/rectangle.js";
-import { createSelfClipOptions, createViewportScope } from "./mark.js";
+import { createSelfClipOptions } from "../types/rendering.js";
+import { createViewportScope } from "./mark.js";
 
 describe("mark viewport scope", () => {
     test("clips only x when clipX is enabled", () => {

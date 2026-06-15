@@ -1,4 +1,5 @@
 import Mark from "../marks/mark.js";
+import { MarkProps } from "../spec/mark.js";
 import { LocSize } from "../view/layout/flexLayout.js";
 import Rectangle from "../view/layout/rectangle.js";
 import ViewRenderingContext from "../view/renderingContext/viewRenderingContext.js";
@@ -71,12 +72,38 @@ export interface BufferedRenderingRequest {
     mark: Mark;
     callback: () => void;
     coords: Rectangle;
-    clipRect?: Rectangle;
     clip?: ClipOptions;
 }
 
 export function normalizeClipOptions(
     options: RenderingOptions
+): ClipOptions | undefined;
+
+export function createClipOptions(
+    rect: Rectangle,
+    clipX: boolean,
+    clipY: boolean
+): ClipOptions | undefined;
+
+export function clipCoords(
+    coords: Rectangle,
+    clip: ClipOptions | undefined
+): Rectangle;
+
+export function combineClipOptions(
+    current: ClipOptions | undefined,
+    next: ClipOptions | undefined
+): ClipOptions | undefined;
+
+export function createSelfClipOptions(
+    clip: MarkProps["clip"],
+    coords: Rectangle
+): ClipOptions | undefined;
+
+export function prepareMarkClipOptions(
+    options: RenderingOptions,
+    markClip: MarkProps["clip"],
+    coords: Rectangle
 ): ClipOptions | undefined;
 
 /**

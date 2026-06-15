@@ -44,6 +44,7 @@ describe("SimpleViewRenderingContext", () => {
         );
         const mark = /** @type {import("../../marks/mark.js").default} */ (
             /** @type {unknown} */ ({
+                properties: { clip: false },
                 isPickingParticipant,
                 prepareRender,
                 setViewport,

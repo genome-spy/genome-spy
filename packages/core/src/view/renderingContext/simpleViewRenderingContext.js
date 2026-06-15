@@ -1,5 +1,5 @@
 import ViewRenderingContext from "./viewRenderingContext.js";
-import { normalizeClipOptions } from "../../types/rendering.js";
+import { prepareMarkClipOptions } from "../../types/rendering.js";
 
 /**
  * This class is mainly for illustrative purpose, i.e., how the rendering
@@ -67,7 +67,7 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
             canvasSize,
             dpr,
             this.coords,
-            normalizeClipOptions(options)
+            prepareMarkClipOptions(options, mark.properties.clip, this.coords)
         );
         mark.render(options)();
     }
