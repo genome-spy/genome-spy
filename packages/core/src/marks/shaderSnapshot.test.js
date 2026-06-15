@@ -253,6 +253,25 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("uVisibleRangeX");
     });
 
+    test("point shader supports visible-range culling", async () => {
+        const sources = await captureShaderSources({
+            data: {
+                values: [{ x: 1, y: 2 }],
+            },
+            mark: {
+                type: "point",
+                cullByVisibleRange: "y",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        });
+
+        expect(sources.vertex).toContain("uCullByVisibleRange.y > 0.5");
+        expect(sources.vertex).toContain("uVisibleRangeY");
+    });
+
     test("penguins scatter plot example", async () => {
         const sources = await captureShaderSources(
             loadSpec(
