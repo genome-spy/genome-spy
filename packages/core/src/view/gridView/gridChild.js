@@ -9,6 +9,7 @@ import {
 } from "../../selection/selection.js";
 import {
     findChannelDefWithScale,
+    isColorChannel,
     isFieldDef,
     isValueDef,
 } from "../../encoder/encoder.js";
@@ -796,11 +797,97 @@ export default class GridChild {
         /**
          * @param {import("../../spec/channel.js").ChannelWithScale} channel
          * @param {import("../unitView.js").default} legendParent
+         * @returns {import("../../spec/channel.js").ChannelDefWithScale | undefined}
+         */
+        const getLegendChannelDef = (channel, legendParent) =>
+            findChannelDefWithScale(legendParent.spec.encoding?.[channel]);
+
+        /**
+         * @param {import("../../spec/channel.js").ChannelWithScale} channel
+         * @param {import("../unitView.js").default} legendParent
+         * @returns {boolean}
+         */
+        const isExplicitLegendNull = (channel, legendParent) => {
+            const channelDef = getLegendChannelDef(channel, legendParent);
+            return Boolean(
+                channelDef &&
+                "legend" in channelDef &&
+                channelDef.legend === null
+            );
+        };
+
+        /**
+         * @param {import("../../spec/channel.js").ChannelWithScale} channel
+         * @param {import("../unitView.js").default} legendParent
+         * @returns {boolean}
+         */
+        const hasRedundantPrimaryLegend = (channel, legendParent) => {
+            if (channel !== "shape") {
+                return false;
+            }
+
+            const channelDef = getLegendChannelDef(channel, legendParent);
+            if (!isFieldDef(channelDef)) {
+                return false;
+            }
+
+            for (const primary of /** @type {const} */ ([
+                "color",
+                "fill",
+                "stroke",
+            ])) {
+                const primaryDef = getLegendChannelDef(primary, legendParent);
+                if (
+                    isFieldDef(primaryDef) &&
+                    primaryDef.field === channelDef.field &&
+                    !isExplicitLegendNull(primary, legendParent)
+                ) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        /**
+         * @param {import("../../spec/channel.js").ChannelWithScale} channel
+         * @param {import("../unitView.js").default} legendParent
+         * @returns {Partial<Record<import("../../spec/channel.js").ChannelWithScale, string>>}
+         */
+        const getRedundantSymbolChannels = (channel, legendParent) => {
+            if (!isColorChannel(channel)) {
+                return {};
+            }
+
+            const channelDef = getLegendChannelDef(channel, legendParent);
+            const shapeDef = getLegendChannelDef("shape", legendParent);
+            const shapeResolution = legendParent.getScaleResolution("shape");
+
+            if (
+                isFieldDef(channelDef) &&
+                isFieldDef(shapeDef) &&
+                channelDef.field === shapeDef.field &&
+                shapeResolution &&
+                !isExplicitLegendNull("shape", legendParent)
+            ) {
+                return {
+                    shape: shapeResolution.name ?? "shape",
+                };
+            }
+
+            return {};
+        };
+
+        /**
+         * @param {import("../../spec/channel.js").ChannelWithScale} channel
+         * @param {import("../unitView.js").default} legendParent
          */
         const createLegend = async (channel, legendParent) => {
-            const channelDef = findChannelDefWithScale(
-                legendParent.spec.encoding?.[channel]
-            );
+            if (hasRedundantPrimaryLegend(channel, legendParent)) {
+                return;
+            }
+
+            const channelDef = getLegendChannelDef(channel, legendParent);
             if (!channelDef || isValueDef(channelDef)) {
                 return;
             }
@@ -816,7 +903,9 @@ export default class GridChild {
                     ? undefined
                     : /** @type {import("../../spec/legend.js").LegendConfig} */ ({
                           disable: false,
-                          ...explicitLegend,
+                          .../** @type {import("../../spec/legend.js").Legend} */ (
+                              explicitLegend
+                          ),
                       });
             const legendDefaults = getConfiguredLegendDefaults(
                 legendParent.getConfigScopes(),
@@ -845,19 +934,23 @@ export default class GridChild {
                 );
             }
 
+            const title =
+                legendDefaults.title ??
+                /** @type {import("../../spec/legend.js").Legend["title"]} */ (
+                    "title" in channelDef ? channelDef.title : undefined
+                ) ??
+                (isFieldDef(channelDef) ? channelDef.field : undefined);
+
             const legend = new LegendView(
                 {
                     scaleName: scaleResolution.name ?? channel,
                     channel,
+                    symbolChannels: getRedundantSymbolChannels(
+                        channel,
+                        legendParent
+                    ),
                     legend: {
-                        title:
-                            legendDefaults.title ??
-                            ("title" in channelDef
-                                ? channelDef.title
-                                : undefined) ??
-                            (isFieldDef(channelDef)
-                                ? channelDef.field
-                                : undefined),
+                        title,
                         ...legendDefaults,
                     },
                 },

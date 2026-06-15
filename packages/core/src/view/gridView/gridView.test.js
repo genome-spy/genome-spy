@@ -250,6 +250,47 @@ describe("GridView legends", () => {
         });
     });
 
+    test("merges redundant color and shape channels into one symbol legend", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: { field: "Origin", type: "nominal" },
+                        shape: { field: "Origin", type: "nominal" },
+                    },
+                },
+            ],
+        });
+        const legends = getLegends(view);
+        const symbols = /** @type {import("../../spec/view.js").UnitSpec} */ (
+            legends[0].spec.layer[0]
+        );
+
+        expect(legends).toHaveLength(1);
+        expect(symbols.encoding).toMatchObject({
+            color: {
+                field: "value",
+                type: "nominal",
+                scale: { name: "color" },
+            },
+            shape: {
+                field: "value",
+                type: "nominal",
+                scale: { name: "shape" },
+            },
+        });
+    });
+
     test("creates an explicit channel legend even when defaults are disabled", async () => {
         const view = await createLegendTestView({
             vconcat: [

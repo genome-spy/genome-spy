@@ -15,6 +15,7 @@ const DEFAULT_LEGEND_EXTENT = 80;
  * @param {LegendEntry[]} [options.entries]
  * @param {string} options.scaleName
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
+ * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [options.symbolChannels]
  * @param {LegendConfig} options.legend
  * @returns {import("../spec/view.js").LayerSpec}
  */
@@ -22,6 +23,7 @@ export function createSymbolLegendSpec({
     entries,
     scaleName,
     channel,
+    symbolChannels = {},
     legend,
 }) {
     const title = legend.title;
@@ -75,6 +77,18 @@ export function createSymbolLegendSpec({
                     type: "nominal",
                     scale: { name: scaleName },
                 },
+                ...Object.fromEntries(
+                    Object.entries(symbolChannels).map(
+                        ([channel, scaleName]) => [
+                            channel,
+                            {
+                                field: "value",
+                                type: "nominal",
+                                scale: { name: scaleName },
+                            },
+                        ]
+                    )
+                ),
             },
         },
     ];
@@ -215,6 +229,7 @@ export default class LegendView extends LayerView {
      * @param {LegendEntry[]} [props.entries]
      * @param {string} props.scaleName
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
+     * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
      * @param {LegendConfig} props.legend
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent
@@ -222,14 +237,20 @@ export default class LegendView extends LayerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(
-        { entries, scaleName, channel, legend },
+        { entries, scaleName, channel, symbolChannels, legend },
         context,
         layoutParent,
         dataParent,
         options
     ) {
         super(
-            createSymbolLegendSpec({ entries, scaleName, channel, legend }),
+            createSymbolLegendSpec({
+                entries,
+                scaleName,
+                channel,
+                symbolChannels,
+                legend,
+            }),
             context,
             layoutParent,
             dataParent,

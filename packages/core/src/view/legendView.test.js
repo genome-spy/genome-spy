@@ -9,6 +9,7 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
         ],
         scaleName: "color",
         channel: "color",
+        symbolChannels: { shape: "shape" },
         legend: {
             title: "Origin",
             orient: "right",
@@ -76,6 +77,7 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
         x: { field: "_legendEntryX", type: "quantitative" },
         y: { field: "_legendLabelY2", type: "quantitative" },
         color: { field: "value", type: "nominal", scale: { name: "color" } },
+        shape: { field: "value", type: "nominal", scale: { name: "shape" } },
     });
     expect(title.mark).toMatchObject({
         type: "text",
