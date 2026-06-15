@@ -90,6 +90,13 @@ export function createSymbolLegendSpec({
                     },
                 ],
             },
+            transform: [
+                {
+                    type: "formula",
+                    expr: "height - datum._legendTitleOffset",
+                    as: "_legendTitleY2",
+                },
+            ],
             mark: {
                 type: "text",
                 clip: false,
@@ -111,7 +118,7 @@ export function createSymbolLegendSpec({
                     buildIndex: false,
                 },
                 y: {
-                    expr: "height - datum._legendTitleOffset",
+                    field: "_legendTitleY2",
                     type: "quantitative",
                     scale: verticalPixelScale,
                     axis: null,

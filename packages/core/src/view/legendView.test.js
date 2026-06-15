@@ -87,9 +87,16 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
     expect(title.data).toEqual({
         values: [{ _legendTitleX: 0, _legendTitleOffset: 5.5 }],
     });
+    expect(title.transform).toEqual([
+        {
+            type: "formula",
+            expr: "height - datum._legendTitleOffset",
+            as: "_legendTitleY2",
+        },
+    ]);
     expect(title.encoding).toMatchObject({
         x: { field: "_legendTitleX", type: "quantitative" },
-        y: { expr: "height - datum._legendTitleOffset" },
+        y: { field: "_legendTitleY2", type: "quantitative" },
     });
     expect(/** @type {any} */ (symbols.encoding.x).scale.domain).toEqual([
         0,
