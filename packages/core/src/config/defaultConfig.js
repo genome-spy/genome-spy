@@ -8,6 +8,7 @@ import {
     TEXT_MARK_DEFAULTS,
 } from "./defaults/markDefaults.js";
 import { AXIS_DEFAULTS, LOCUS_AXIS_DEFAULTS } from "./defaults/axisDefaults.js";
+import { LEGEND_DEFAULTS } from "./defaults/legendDefaults.js";
 import { RANGE_DEFAULTS, SCALE_DEFAULTS } from "./defaults/scaleDefaults.js";
 import {
     TITLE_DEFAULTS,
@@ -29,6 +30,7 @@ export const INTERNAL_DEFAULT_CONFIG = {
 
     axis: AXIS_DEFAULTS,
     axisLocus: LOCUS_AXIS_DEFAULTS,
+    legend: LEGEND_DEFAULTS,
 
     scale: SCALE_DEFAULTS,
     range: RANGE_DEFAULTS,
