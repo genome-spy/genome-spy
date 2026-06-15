@@ -338,6 +338,7 @@ export type LazyDataParams =
     | AxisTicksData
     | LegendEntriesData
     | LegendGradientData
+    | LegendGradientTicksData
     | AxisGenomeData
     | IndexedFastaData
     | BigWigData
@@ -411,6 +412,21 @@ export interface LegendGradientData {
     channel: ChannelWithScale;
 
     /** Number of ramp samples to generate */
+    count?: number;
+}
+
+/**
+ * Internal data source for generated gradient legend ticks.
+ *
+ * @internal
+ */
+export interface LegendGradientTicksData {
+    type: "legendGradientTicks";
+
+    /** Which channel's scale domain to use */
+    channel: ChannelWithScale;
+
+    /** Number of ticks to generate */
     count?: number;
 }
 

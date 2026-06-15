@@ -138,11 +138,18 @@ test("createGradientLegendSpec builds generated rect ramp layer", () => {
     const ramp = /** @type {import("../spec/view.js").UnitSpec} */ (
         spec.layer[0]
     );
+    const ticks = /** @type {import("../spec/view.js").UnitSpec} */ (
+        spec.layer[1]
+    );
+    const labels = /** @type {import("../spec/view.js").UnitSpec} */ (
+        spec.layer[2]
+    );
 
     expect(spec.name).toBe("legend_right");
     expect(spec.data).toEqual({
         lazy: { type: "legendGradient", channel: "color", count: 64 },
     });
+    expect(spec.layer).toHaveLength(4);
     expect(ramp.mark).toMatchObject({
         type: "rect",
         clip: false,
@@ -157,5 +164,55 @@ test("createGradientLegendSpec builds generated rect ramp layer", () => {
             type: "quantitative",
             scale: { name: "color" },
         },
+    });
+    expect(ramp.transform).toEqual([
+        { type: "formula", expr: "0", as: "_legendGradientX" },
+        { type: "formula", expr: "12", as: "_legendGradientX2" },
+        {
+            type: "formula",
+            expr: "(height - 16) * datum._legendGradientT0",
+            as: "_legendGradientY",
+        },
+        {
+            type: "formula",
+            expr: "(height - 16) * datum._legendGradientT1",
+            as: "_legendGradientY2",
+        },
+    ]);
+    expect(/** @type {any} */ (ramp.encoding.x).scale.domain).toEqual([
+        0,
+        { expr: "width" },
+    ]);
+    expect(/** @type {any} */ (ramp.encoding.y).scale.domain).toEqual([
+        0,
+        { expr: "height" },
+    ]);
+    expect(/** @type {any} */ (ramp.encoding.y2).scale.domain).toEqual([
+        0,
+        { expr: "height" },
+    ]);
+    expect(ticks.data).toEqual({
+        lazy: { type: "legendGradientTicks", channel: "color", count: 5 },
+    });
+    expect(ticks.mark).toMatchObject({ type: "rule", clip: false });
+    expect(ticks.encoding).toMatchObject({
+        x: { field: "_legendGradientTickX", type: "quantitative" },
+        x2: { field: "_legendGradientTickX2", type: "quantitative" },
+        y: { field: "_legendGradientTickY", type: "quantitative" },
+        y2: { field: "_legendGradientTickY", type: "quantitative" },
+    });
+    expect(labels.data).toEqual({
+        lazy: { type: "legendGradientTicks", channel: "color", count: 5 },
+    });
+    expect(labels.mark).toMatchObject({
+        type: "text",
+        clip: false,
+        align: "left",
+        baseline: "middle",
+    });
+    expect(labels.encoding).toMatchObject({
+        x: { field: "_legendGradientLabelX", type: "quantitative" },
+        y: { field: "_legendGradientTickY", type: "quantitative" },
+        text: { field: "label" },
     });
 });
