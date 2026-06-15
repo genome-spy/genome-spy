@@ -133,6 +133,22 @@ export class SampleLabelView extends UnitView {
     }
 
     /**
+     * @type {import("@genome-spy/core/types/rendering.js").RenderMethod}
+     */
+    render(context, coords, options = {}) {
+        if (!this.isConfiguredVisible()) {
+            return;
+        }
+
+        super.render(context, coords, {
+            ...options,
+            // Labels should disappear behind the sticky summary area, but the
+            // rest of the sidebar, such as group markers, must remain visible.
+            clipRect: this.#sampleView.locationManager.clipBySummary(coords),
+        });
+    }
+
+    /**
      * Infers the label column width from the measured sample labels and title.
      */
     #setAutoLabelWidth() {

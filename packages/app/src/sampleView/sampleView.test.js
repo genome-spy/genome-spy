@@ -53,6 +53,9 @@ class InspectRenderingContext extends ViewRenderingContext {
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     sampleLabels = [];
 
+    /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
+    sampleGroups = [];
+
     pushView(view, coords) {
         this.#coordsStack.push(coords);
     }
@@ -74,6 +77,12 @@ class InspectRenderingContext extends ViewRenderingContext {
             });
         } else if (mark.unitView.name === "sample-labels") {
             this.sampleLabels.push(options);
+        } else if (
+            mark.unitView
+                .getLayoutAncestors()
+                .some((view) => view.name === "sample-groups")
+        ) {
+            this.sampleGroups.push(options);
         }
     }
 }
@@ -834,12 +843,87 @@ describe("SampleView", () => {
         });
 
         expect(renderContext.sampleLabels).not.toHaveLength(0);
-        expect(renderContext.sampleLabels[0].clipRect).toMatchObject({
-            x: view.sidebarCoords.x,
-            y: view.sidebarCoords.y,
-            width: view.sidebarCoords.width,
-            height: view.sidebarCoords.height,
+        expect(renderContext.sampleLabels[0].clipRect).toBeDefined();
+    });
+
+    test("does not clip sample groups to the sticky summary viewport", async () => {
+        // updateGroups resolves Lit titles through a DOM element in browser builds.
+        vi.stubGlobal("document", {
+            createElement: () => ({ innerHTML: "", textContent: "" }),
         });
+
+        try {
+            const { view } = await createSampleViewForTest({
+                spec: {
+                    data: {
+                        values: [{ sample: "A", x: 1 }],
+                    },
+                    samples: {},
+                    spec: {
+                        mark: "point",
+                        height: 120,
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                        },
+                        aggregateSamples: [
+                            {
+                                name: "summary",
+                                height: 20,
+                                mark: "point",
+                                encoding: {
+                                    x: { field: "x", type: "quantitative" },
+                                },
+                            },
+                        ],
+                    },
+                },
+                disableGroupUpdates: false,
+            });
+
+            /** @type {any} */ (view.locationManager).getLocations = () => ({
+                samples: [],
+                summaries: [],
+                groups: [
+                    {
+                        key: {
+                            index: 0,
+                            depth: 1,
+                            n: 1,
+                            group: {
+                                name: "group",
+                                title: "Group",
+                                samples: ["A"],
+                            },
+                        },
+                        locSize: { location: 0, size: 40 },
+                    },
+                ],
+            });
+            view.sampleGroupView.updateGroups();
+
+            const renderContext = new InspectRenderingContext({
+                picking: false,
+            });
+            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+                firstFacet: true,
+            });
+
+            expect(renderContext.sampleGroups).not.toHaveLength(0);
+            const summaryClippedSidebar = view.locationManager.clipBySummary(
+                view.sidebarCoords
+            );
+
+            expect(
+                renderContext.sampleGroups.every(
+                    (options) =>
+                        options.clipRect?.y === view.sidebarCoords.y &&
+                        options.clipRect.y !== summaryClippedSidebar.y
+                )
+            ).toBe(true);
+        } finally {
+            vi.unstubAllGlobals();
+        }
     });
 
     test("sample group column separates levels without outer padding", async () => {

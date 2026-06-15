@@ -1122,10 +1122,7 @@ export default class SampleView extends ContainerView {
             locations
         );
 
-        this.#sidebarView.render(context, this.sidebarCoords, {
-            ...options,
-            clipRect: this.locationManager.clipBySummary(this.sidebarCoords),
-        });
+        this.#sidebarView.render(context, this.sidebarCoords, options);
 
         this.#renderChild(context, this.childCoords, options);
 
