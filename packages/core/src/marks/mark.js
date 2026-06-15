@@ -71,42 +71,6 @@ export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
  */
 
 /**
- * @param {{ width: number, height: number }} canvasSize
- * @param {Rectangle} coords
- * @param {ClipOptions | undefined} clip
- * @param {boolean} [clipSelf]
- */
-export function createViewportScope(canvasSize, coords, clip, clipSelf = true) {
-    if (!clip || (!clip.clipX && !clip.clipY)) {
-        return {
-            requiresScissor: false,
-            coords,
-        };
-    }
-
-    let clippedCoords = clipSelf ? coords.intersect(clip.rect) : clip.rect;
-
-    if (!clip.clipX) {
-        clippedCoords = clippedCoords.modify({
-            x: 0,
-            width: canvasSize.width,
-        });
-    }
-
-    if (!clip.clipY) {
-        clippedCoords = clippedCoords.modify({
-            y: 0,
-            height: canvasSize.height,
-        });
-    }
-
-    return {
-        requiresScissor: true,
-        coords: clippedCoords.flatten(),
-    };
-}
-
-/**
  *
  * @typedef {import("../types/rendering.js").RenderingOptions} RenderingOptions
  * @typedef {object} _MarkRenderingOptions
@@ -1646,4 +1610,40 @@ class RangeMap extends InternMap {
             Object.assign(this.get(key), value);
         }
     }
+}
+
+/**
+ * @param {{ width: number, height: number }} canvasSize
+ * @param {Rectangle} coords
+ * @param {ClipOptions | undefined} clip
+ * @param {boolean} [clipSelf]
+ */
+export function createViewportScope(canvasSize, coords, clip, clipSelf = true) {
+    if (!clip || (!clip.clipX && !clip.clipY)) {
+        return {
+            requiresScissor: false,
+            coords,
+        };
+    }
+
+    let clippedCoords = clipSelf ? coords.intersect(clip.rect) : clip.rect;
+
+    if (!clip.clipX) {
+        clippedCoords = clippedCoords.modify({
+            x: 0,
+            width: canvasSize.width,
+        });
+    }
+
+    if (!clip.clipY) {
+        clippedCoords = clippedCoords.modify({
+            y: 0,
+            height: canvasSize.height,
+        });
+    }
+
+    return {
+        requiresScissor: true,
+        coords: clippedCoords.flatten(),
+    };
 }
