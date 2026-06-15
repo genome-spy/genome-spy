@@ -62,7 +62,7 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
             rowPadding: 2,
             columnPadding: 10,
             yOffset: 16,
-            yExtent: 80,
+            yExtent: { expr: "height" },
         },
     ]);
     expect(spec.layer).toHaveLength(3);
@@ -85,12 +85,20 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
         text: "Origin",
     });
     expect(title.data).toEqual({
-        values: [{ _legendTitleX: 0, _legendTitleY: 74.5 }],
+        values: [{ _legendTitleX: 0, _legendTitleOffset: 5.5 }],
     });
     expect(title.encoding).toMatchObject({
         x: { field: "_legendTitleX", type: "quantitative" },
-        y: { field: "_legendTitleY", type: "quantitative" },
+        y: { expr: "height - datum._legendTitleOffset" },
     });
+    expect(/** @type {any} */ (symbols.encoding.x).scale.domain).toEqual([
+        0,
+        { expr: "width" },
+    ]);
+    expect(/** @type {any} */ (symbols.encoding.y).scale.domain).toEqual([
+        0,
+        { expr: "height" },
+    ]);
     expect(labels.mark).toMatchObject({
         type: "text",
         clip: false,

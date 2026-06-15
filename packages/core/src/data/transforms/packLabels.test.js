@@ -107,3 +107,52 @@ test("PackLabelsTransform applies entry offsets", () => {
         _legendLabelY2: 54,
     });
 });
+
+test("PackLabelsTransform accepts expression-backed y extent", () => {
+    const provider = makeParamRuntimeProvider();
+    provider.paramRuntime.allocateSetter("height", 80);
+    const transform = new PackLabelsTransform(
+        {
+            type: "packLabels",
+            labelWidth: "_labelWidth",
+            symbolSize: 100,
+            labelOffset: 4,
+            fontSize: 12,
+            yOffset: 20,
+            yExtent: { expr: "height" },
+        },
+        provider
+    );
+
+    let data = processData(transform, [
+        { label: "USA", _labelWidth: 18, _legendIndex: 0 },
+    ]);
+
+    expect(data[0]).toMatchObject({
+        _legendEntryY2: 60,
+        _legendLabelY2: 54,
+    });
+
+    const provider2 = makeParamRuntimeProvider();
+    provider2.paramRuntime.allocateSetter("height", 120);
+    const transform2 = new PackLabelsTransform(
+        {
+            type: "packLabels",
+            labelWidth: "_labelWidth",
+            symbolSize: 100,
+            labelOffset: 4,
+            fontSize: 12,
+            yOffset: 20,
+            yExtent: { expr: "height" },
+        },
+        provider2
+    );
+    data = processData(transform2, [
+        { label: "USA", _labelWidth: 18, _legendIndex: 0 },
+    ]);
+
+    expect(data[0]).toMatchObject({
+        _legendEntryY2: 100,
+        _legendLabelY2: 94,
+    });
+});

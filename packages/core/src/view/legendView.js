@@ -33,12 +33,12 @@ export function createSymbolLegendSpec({
     const titlePadding = legend.titlePadding ?? 5;
     const entryYOffset = title ? titleFontSize + titlePadding : 0;
     const horizontalPixelScale = {
-        domain: [0, DEFAULT_LEGEND_EXTENT],
+        domain: [0, { expr: "width" }],
         zero: false,
         nice: false,
     };
     const verticalPixelScale = {
-        domain: [0, DEFAULT_LEGEND_EXTENT],
+        domain: [0, { expr: "height" }],
         zero: false,
         nice: false,
     };
@@ -86,8 +86,7 @@ export function createSymbolLegendSpec({
                 values: [
                     {
                         _legendTitleX: 0,
-                        _legendTitleY:
-                            DEFAULT_LEGEND_EXTENT - titleFontSize / 2,
+                        _legendTitleOffset: titleFontSize / 2,
                     },
                 ],
             },
@@ -112,7 +111,7 @@ export function createSymbolLegendSpec({
                     buildIndex: false,
                 },
                 y: {
-                    field: "_legendTitleY",
+                    expr: "height - datum._legendTitleOffset",
                     type: "quantitative",
                     scale: verticalPixelScale,
                     axis: null,
@@ -184,7 +183,7 @@ export function createSymbolLegendSpec({
                 rowPadding: legend.rowPadding,
                 columnPadding: legend.columnPadding,
                 yOffset: entryYOffset,
-                yExtent: DEFAULT_LEGEND_EXTENT,
+                yExtent: { expr: "height" },
             },
         ],
         layer,

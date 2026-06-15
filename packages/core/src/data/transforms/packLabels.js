@@ -1,6 +1,7 @@
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 const DEFAULT_AS = {
     row: "_legendRow",
@@ -29,6 +30,26 @@ export default class PackLabelsTransform extends Transform {
 
         this.params = params;
         this.labelWidthAccessor = field(params.labelWidth);
+        /** @type {number | undefined} */
+        this.yExtent = undefined;
+
+        if (isExprRef(params.yExtent)) {
+            const yExtentExpr = this.paramRuntime.watchExpression(
+                params.yExtent.expr,
+                () => {
+                    this.yExtent = yExtentExpr();
+                    this.repropagate();
+                },
+                {
+                    scopeOwned: false,
+                    registerDisposer: (disposer) =>
+                        this.registerDisposer(disposer),
+                }
+            );
+            this.yExtent = yExtentExpr();
+        } else {
+            this.yExtent = params.yExtent;
+        }
 
         /** @type {any[]} */
         this.buffer = [];
@@ -56,7 +77,7 @@ export default class PackLabelsTransform extends Transform {
         const fontSize = params.fontSize ?? 10;
         const xOffset = params.xOffset ?? 0;
         const yOffset = params.yOffset ?? 0;
-        const yExtent = params.yExtent;
+        const yExtent = this.yExtent;
         const symbolExtent = Math.ceil(
             Math.sqrt(params.symbolSize ?? 100) +
                 (params.symbolStrokeWidth ?? 0)

@@ -554,7 +554,7 @@ export interface PackLabelsParams extends TransformParamsBase {
      * Height of the pixel-space layout area. When provided, the transform also
      * emits inverted y coordinates for GenomeSpy's unit y range.
      */
-    yExtent?: number;
+    yExtent?: number | ExprRef;
 
     /**
      * Output field names for generated layout values. This transform is
