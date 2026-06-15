@@ -35,11 +35,16 @@ class NoOpRenderingContext extends ViewRenderingContext {
 }
 
 class InspectRenderingContext extends ViewRenderingContext {
+    /** @type {import("../layout/rectangle.js").default[]} */
     #coordsStack = [];
 
     /** @type {{ main: "x" | "y", clip: import("../../spec/mark.js").MarkProps["clip"], cullByVisibleRange: import("../../spec/mark.js").MarkProps["cullByVisibleRange"], logicalVisibleRect: [number, number, number, number] }[]} */
     axisLabels = [];
 
+    /**
+     * @param {import("../view.js").default} view
+     * @param {import("../layout/rectangle.js").default} coords
+     */
     pushView(view, coords) {
         this.#coordsStack.push(coords);
     }
@@ -48,12 +53,19 @@ class InspectRenderingContext extends ViewRenderingContext {
         this.#coordsStack.pop();
     }
 
+    /**
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {import("../../types/rendering.js").RenderingOptions} [options]
+     */
     renderMark(mark, options) {
         if (mark.unitView.explicitName !== "labels_main") {
             return;
         }
 
         const coords = this.#coordsStack.at(-1);
+        if (!coords) {
+            throw new Error("Expected a pushed view before rendering a mark.");
+        }
         this.axisLabels.push({
             main: mark.unitView.spec.encoding.x ? "x" : "y",
             clip: mark.properties.clip,

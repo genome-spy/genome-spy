@@ -85,6 +85,8 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {"own" | "inherit"} [layoutSizeParams]
  *      Whether the view should introduce local layout-driven width/height params.
  *      Default: "own".
+ * @prop {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("./axisView.js").AxisLabelClipPolicy>>} [axisLabelClipPolicy]
+ *      Overrides the label clipping policy for axes created for this view.
  */
 /**
  * @template {import("../spec/view.js").ViewSpec} [TSpec=import("../spec/view.js").ViewSpec]

@@ -15,6 +15,10 @@ const Y_AXIS_LABEL_HEURISTIC_PX = 10;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 
 /**
+ * @typedef {"pixel" | "anchor"} AxisLabelClipPolicy
+ */
+
+/**
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
  * @returns {import("../spec/channel.js").PrimaryPositionalChannel}
  */
@@ -132,7 +136,6 @@ export default class AxisView extends LayerView {
      * @typedef {import("../spec/axis.js").GenomeAxis} GenomeAxis
      * @typedef {import("../spec/axis.js").AxisOrient} AxisOrient
      * @typedef {import("./layout/flexLayout.js").SizeDef} SizeDef
-     * @typedef {"pixel" | "anchor"} AxisLabelClipPolicy
      * @typedef {import("./view.js").ViewOptions & {
      *     labelClipPolicy?: AxisLabelClipPolicy
      * }} AxisViewOptions

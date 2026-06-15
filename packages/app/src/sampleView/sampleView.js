@@ -1034,7 +1034,10 @@ export default class SampleView extends ContainerView {
             context,
             coords,
             locations,
-            options
+            {
+                ...options,
+                clipRect,
+            }
         );
 
         // Summary rendering --------
@@ -1119,7 +1122,10 @@ export default class SampleView extends ContainerView {
             locations
         );
 
-        this.#sidebarView.render(context, this.sidebarCoords, options);
+        this.#sidebarView.render(context, this.sidebarCoords, {
+            ...options,
+            clipRect: this.locationManager.clipBySummary(this.sidebarCoords),
+        });
 
         this.#renderChild(context, this.childCoords, options);
 
@@ -1691,7 +1697,11 @@ export default class SampleView extends ContainerView {
                         aggSpec,
                         this.#gridChild.summaryViews,
                         view,
-                        "summaryView"
+                        "summaryView",
+                        undefined,
+                        {
+                            axisLabelClipPolicy: { y: "anchor" },
+                        }
                     )
                 );
 
@@ -1855,6 +1865,22 @@ class SampleGridChild extends GridChild {
      */
     allowDuplicateAxes() {
         return true;
+    }
+
+    /**
+     * SampleView scrolls repeated rows vertically outside the regular GridView
+     * viewport mechanism. Its y-axis labels should be culled by their anchor
+     * point against the SampleView clip, while other axes keep the default
+     * GridView behavior.
+     *
+     * @param {import("@genome-spy/core/spec/channel.js").PrimaryPositionalChannel} channel
+     * @param {View} view
+     * @returns {import("@genome-spy/core/view/axisView.js").AxisLabelClipPolicy}
+     */
+    getAxisLabelClipPolicy(channel, view) {
+        return channel === "y"
+            ? "anchor"
+            : super.getAxisLabelClipPolicy(channel, view);
     }
 
     /**
