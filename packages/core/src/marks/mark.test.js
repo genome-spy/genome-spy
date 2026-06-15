@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import Rectangle from "../view/layout/rectangle.js";
-import { createSelfClipOptions } from "../types/rendering.js";
+import { createSelfClipOptions } from "../view/renderingContext/clipOptions.js";
 import { createViewportScope } from "./mark.js";
 
 describe("mark viewport scope", () => {

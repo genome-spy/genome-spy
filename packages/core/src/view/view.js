@@ -21,7 +21,10 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
 import { InternMap } from "internmap";
 import { endWithSlash } from "../utils/addBaseUrl.js";
 import { mergeConfigScopes } from "../config/mergeConfig.js";
-import { clipCoords, normalizeClipOptions } from "../types/rendering.js";
+import {
+    clipCoords,
+    normalizeClipOptions,
+} from "./renderingContext/clipOptions.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to

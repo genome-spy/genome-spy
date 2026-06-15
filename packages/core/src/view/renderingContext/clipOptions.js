@@ -1,6 +1,6 @@
 /**
- * @param {import("./rendering.js").RenderingOptions} options
- * @returns {import("./rendering.js").ClipOptions | undefined}
+ * @param {import("../../types/rendering.js").RenderingOptions} options
+ * @returns {import("../../types/rendering.js").ClipOptions | undefined}
  */
 export function normalizeClipOptions(options) {
     if (options.clip) {
@@ -17,19 +17,19 @@ export function normalizeClipOptions(options) {
 }
 
 /**
- * @param {import("../view/layout/rectangle.js").default} rect
+ * @param {import("../layout/rectangle.js").default} rect
  * @param {boolean} clipX
  * @param {boolean} clipY
- * @returns {import("./rendering.js").ClipOptions | undefined}
+ * @returns {import("../../types/rendering.js").ClipOptions | undefined}
  */
 export function createClipOptions(rect, clipX, clipY) {
     return clipX || clipY ? { rect, clipX, clipY } : undefined;
 }
 
 /**
- * @param {import("../view/layout/rectangle.js").default} coords
- * @param {import("./rendering.js").ClipOptions | undefined} clip
- * @returns {import("../view/layout/rectangle.js").default}
+ * @param {import("../layout/rectangle.js").default} coords
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} clip
+ * @returns {import("../layout/rectangle.js").default}
  */
 export function clipCoords(coords, clip) {
     if (!clip) {
@@ -46,9 +46,9 @@ export function clipCoords(coords, clip) {
 }
 
 /**
- * @param {import("./rendering.js").ClipOptions | undefined} current
- * @param {import("./rendering.js").ClipOptions | undefined} next
- * @returns {import("./rendering.js").ClipOptions | undefined}
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} current
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} next
+ * @returns {import("../../types/rendering.js").ClipOptions | undefined}
  */
 export function combineClipOptions(current, next) {
     if (!current) {
@@ -85,9 +85,9 @@ export function combineClipOptions(current, next) {
 }
 
 /**
- * @param {import("../spec/mark.js").MarkProps["clip"]} clip
- * @param {import("../view/layout/rectangle.js").default} coords
- * @returns {import("./rendering.js").ClipOptions | undefined}
+ * @param {import("../../spec/mark.js").MarkProps["clip"]} clip
+ * @param {import("../layout/rectangle.js").default} coords
+ * @returns {import("../../types/rendering.js").ClipOptions | undefined}
  */
 export function createSelfClipOptions(clip, coords) {
     if (clip === true) {
@@ -102,10 +102,10 @@ export function createSelfClipOptions(clip, coords) {
 }
 
 /**
- * @param {import("./rendering.js").RenderingOptions} options
- * @param {import("../spec/mark.js").MarkProps["clip"]} markClip
- * @param {import("../view/layout/rectangle.js").default} coords
- * @returns {import("./rendering.js").ClipOptions | undefined}
+ * @param {import("../../types/rendering.js").RenderingOptions} options
+ * @param {import("../../spec/mark.js").MarkProps["clip"]} markClip
+ * @param {import("../layout/rectangle.js").default} coords
+ * @returns {import("../../types/rendering.js").ClipOptions | undefined}
  */
 export function prepareMarkClipOptions(options, markClip, coords) {
     if (markClip === "never") {

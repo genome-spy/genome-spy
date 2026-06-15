@@ -2,7 +2,7 @@ import { group } from "d3-array";
 
 import ViewRenderingContext from "./viewRenderingContext.js";
 import { color } from "d3-color";
-import { prepareMarkClipOptions } from "../../types/rendering.js";
+import { prepareMarkClipOptions } from "./clipOptions.js";
 
 /**
  * @typedef {object} BufferedViewRenderingOptions

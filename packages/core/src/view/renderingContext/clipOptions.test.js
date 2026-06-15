@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import Rectangle from "../view/layout/rectangle.js";
+import Rectangle from "../layout/rectangle.js";
 import {
     combineClipOptions,
     normalizeClipOptions,
     prepareMarkClipOptions,
-} from "./rendering.js";
+} from "./clipOptions.js";
 
 describe("rendering clip options", () => {
     test("normalizes legacy clipRect to both-direction clipping", () => {

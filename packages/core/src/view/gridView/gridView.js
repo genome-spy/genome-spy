@@ -32,7 +32,7 @@ import {
     combineClipOptions,
     createClipOptions,
     normalizeClipOptions,
-} from "../../types/rendering.js";
+} from "../renderingContext/clipOptions.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the

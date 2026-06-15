@@ -1,5 +1,5 @@
 import ViewRenderingContext from "./viewRenderingContext.js";
-import { prepareMarkClipOptions } from "../../types/rendering.js";
+import { prepareMarkClipOptions } from "./clipOptions.js";
 
 /**
  * This class is mainly for illustrative purpose, i.e., how the rendering
