@@ -723,7 +723,13 @@ export default class GridChild {
                     r.scaleResolution.type,
                     this.layoutParent.context,
                     this.layoutParent,
-                    axisParent
+                    axisParent,
+                    {
+                        labelClipPolicy: this.getAxisLabelClipPolicy(
+                            channel,
+                            view
+                        ),
+                    }
                 );
                 axes[props.orient] ??= axisView;
                 this.axisCandidates.push({
@@ -902,6 +908,27 @@ export default class GridChild {
         this.axes = {};
         this.axisCandidates = [];
         this.gridLines = {};
+    }
+
+    /**
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+     * @param {import("../view.js").default} view
+     * @returns {import("../axisView.js").AxisLabelClipPolicy}
+     */
+    getAxisLabelClipPolicy(channel, view) {
+        const configuredPolicy = view.options.axisLabelClipPolicy?.[channel];
+        if (configuredPolicy) {
+            return configuredPolicy;
+        }
+
+        return (channel === "x" &&
+            (view.spec.viewportWidth != null ||
+                this.layoutParent.spec.viewportWidth != null)) ||
+            (channel === "y" &&
+                (view.spec.viewportHeight != null ||
+                    this.layoutParent.spec.viewportHeight != null))
+            ? "anchor"
+            : "pixel";
     }
 
     getOverhang() {

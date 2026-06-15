@@ -174,6 +174,13 @@ void main(void) {
     }
 #endif
 
+#ifdef VISIBLE_RANGE_CULLING
+    if (isOutsideVisibleRange(pos)) {
+        gl_Position = vec4(0.0);
+        return;
+    }
+#endif
+
     if (scale < 1.0) {
         if (uSqueeze) {
             vec2 scaleFadeExtent = vec2(3.0, 6.0) / size;

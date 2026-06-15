@@ -501,8 +501,14 @@ export default class Mark {
         const shaderChannels = this.getAttributes();
         const encoders = this.encoders;
         const sampleFacetMode = this.getSampleFacetMode();
+        const useVisibleRangeCulling = Boolean(
+            this.properties.cullByVisibleRange
+        );
         if (sampleFacetMode) {
             extraHeaders.push(`#define ${sampleFacetMode}`);
+        }
+        if (useVisibleRangeCulling) {
+            extraHeaders.push("#define VISIBLE_RANGE_CULLING");
         }
 
         // For debugging
@@ -1446,9 +1452,10 @@ export default class Mark {
      * @param {number} dpr Device pixel ratio
      * @param {import("../view/layout/rectangle.js").default} coords
      * @param {ClipOptions} [clip]
+     * @param {ClipOptions} [cullClip]
      * @returns {boolean} true if the viewport is renderable (size > 0)
      */
-    setViewport(canvasSize, dpr, coords, clip) {
+    setViewport(canvasSize, dpr, coords, clip, cullClip) {
         coords = coords.flatten();
 
         const gl = this.gl;
@@ -1542,6 +1549,17 @@ export default class Mark {
         setBlockUniforms(this.viewUniformInfo, {
             ...uniforms,
             uViewportSize: [coords.width, coords.height],
+            uLogicalVisibleRect: createLogicalVisibleRect(coords, cullClip),
+            uCullByVisibleRange: [
+                props.cullByVisibleRange === true ||
+                props.cullByVisibleRange === "x"
+                    ? 1
+                    : 0,
+                props.cullByVisibleRange === true ||
+                props.cullByVisibleRange === "y"
+                    ? 1
+                    : 0,
+            ],
             uDevicePixelRatio: dpr,
         });
 
@@ -1646,4 +1664,18 @@ export function createViewportScope(canvasSize, coords, clip, clipSelf = true) {
         requiresScissor: true,
         coords: clippedCoords.flatten(),
     };
+}
+
+/**
+ * @param {Rectangle} coords
+ * @param {ClipOptions | undefined} clip
+ * @returns {[number, number, number, number]}
+ */
+export function createLogicalVisibleRect(coords, clip) {
+    const x1 = clip?.clipX ? (clip.rect.x - coords.x) / coords.width : 0;
+    const x2 = clip?.clipX ? (clip.rect.x2 - coords.x) / coords.width : 1;
+    const y1 = clip?.clipY ? (coords.y2 - clip.rect.y2) / coords.height : 0;
+    const y2 = clip?.clipY ? (coords.y2 - clip.rect.y) / coords.height : 1;
+
+    return [x1, y1, x2, y2];
 }

@@ -6,9 +6,11 @@ import Rectangle from "../layout/rectangle.js";
 import Point from "../layout/point.js";
 import Padding from "../layout/padding.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
+import { normalizeClipOptions } from "../renderingContext/clipOptions.js";
 import UnitView from "../unitView.js";
 import AxisView from "../axisView.js";
 import { createAndInitialize, createTestViewContext } from "../testUtils.js";
+import { createLogicalVisibleRect } from "../../marks/mark.js";
 
 // Minimal context for layout-driven render calls without WebGL.
 class NoOpRenderingContext extends ViewRenderingContext {
@@ -29,6 +31,50 @@ class NoOpRenderingContext extends ViewRenderingContext {
 
     renderMark() {
         //
+    }
+}
+
+class InspectRenderingContext extends ViewRenderingContext {
+    /** @type {import("../layout/rectangle.js").default[]} */
+    #coordsStack = [];
+
+    /** @type {{ main: "x" | "y", clip: import("../../spec/mark.js").MarkProps["clip"], cullByVisibleRange: import("../../spec/mark.js").MarkProps["cullByVisibleRange"], logicalVisibleRect: [number, number, number, number] }[]} */
+    axisLabels = [];
+
+    /**
+     * @param {import("../view.js").default} view
+     * @param {import("../layout/rectangle.js").default} coords
+     */
+    pushView(view, coords) {
+        this.#coordsStack.push(coords);
+    }
+
+    popView() {
+        this.#coordsStack.pop();
+    }
+
+    /**
+     * @param {import("../../marks/mark.js").default} mark
+     * @param {import("../../types/rendering.js").RenderingOptions} [options]
+     */
+    renderMark(mark, options) {
+        if (mark.unitView.explicitName !== "labels_main") {
+            return;
+        }
+
+        const coords = this.#coordsStack.at(-1);
+        if (!coords) {
+            throw new Error("Expected a pushed view before rendering a mark.");
+        }
+        this.axisLabels.push({
+            main: mark.unitView.spec.encoding.x ? "x" : "y",
+            clip: mark.properties.clip,
+            cullByVisibleRange: mark.properties.cullByVisibleRange,
+            logicalVisibleRect: createLogicalVisibleRect(
+                coords,
+                normalizeClipOptions(options)
+            ),
+        });
     }
 }
 
@@ -1173,6 +1219,57 @@ describe("GridView scrollable clipping", () => {
             clipX: false,
             clipY: true,
         });
+    });
+
+    test("anchor-culls only scroll-direction axis labels", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        viewportHeight: 50,
+                        vconcat: [
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                            {
+                                height: 100,
+                                ...makeUnitSpec(),
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const context = new InspectRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        const verticallyClippedLabels = context.axisLabels.filter(
+            (label) =>
+                label.logicalVisibleRect[1] !== 0 ||
+                label.logicalVisibleRect[3] !== 1
+        );
+        const xAxisLabels = verticallyClippedLabels.filter(
+            (label) => label.main === "x"
+        );
+        const yAxisLabels = verticallyClippedLabels.filter(
+            (label) => label.main === "y"
+        );
+
+        expect(xAxisLabels).not.toHaveLength(0);
+        expect(yAxisLabels).not.toHaveLength(0);
+        expect(xAxisLabels.every((label) => label.clip === false)).toBe(true);
+        expect(
+            xAxisLabels.every((label) => label.cullByVisibleRange === undefined)
+        ).toBe(true);
+        expect(yAxisLabels.every((label) => label.clip === "never")).toBe(true);
+        expect(
+            yAxisLabels.every((label) => label.cullByVisibleRange === "y")
+        ).toBe(true);
     });
 
     test("clips horizontally scrollable content only along x", async () => {

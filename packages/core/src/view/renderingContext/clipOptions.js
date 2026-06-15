@@ -17,6 +17,23 @@ export function normalizeClipOptions(options) {
 }
 
 /**
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} a
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} b
+ * @returns {boolean}
+ */
+export function clipOptionsEqual(a, b) {
+    if (a === b) {
+        return true;
+    } else if (!a || !b) {
+        return false;
+    } else {
+        return (
+            a.clipX === b.clipX && a.clipY === b.clipY && a.rect.equals(b.rect)
+        );
+    }
+}
+
+/**
  * @param {import("../layout/rectangle.js").default} rect
  * @param {boolean} clipX
  * @param {boolean} clipY

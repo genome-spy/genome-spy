@@ -5,17 +5,23 @@ import Interaction from "@genome-spy/core/utils/interaction.js";
 import Point from "@genome-spy/core/view/layout/point.js";
 import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
+import { normalizeClipOptions } from "@genome-spy/core/view/renderingContext/clipOptions.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
 import { getNonChromeViews } from "@genome-spy/core/view/viewSelectors.js";
 import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
+import { transforms } from "@genome-spy/core/data/transforms/transformFactory.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
 import Collector from "@genome-spy/core/data/collector.js";
 import UrlSource from "@genome-spy/core/data/sources/urlSource.js";
+import { createLogicalVisibleRect } from "@genome-spy/core/marks/mark.js";
 import { AUGMENTED_KEY } from "../state/provenanceReducerBuilder.js";
 import { createSampleViewForTest } from "../testUtils/appTestUtils.js";
 import Provenance from "../state/provenance.js";
 import { SAMPLE_SLICE_NAME } from "./state/sampleSlice.js";
+import MergeSampleFacets from "./mergeFacets.js";
+
+transforms.mergeFacets = MergeSampleFacets;
 
 class NoOpRenderingContext extends ViewRenderingContext {
     /**
@@ -35,6 +41,49 @@ class NoOpRenderingContext extends ViewRenderingContext {
 
     renderMark() {
         //
+    }
+}
+
+class InspectRenderingContext extends ViewRenderingContext {
+    #coordsStack = [];
+
+    /** @type {{ clip: import("@genome-spy/core/spec/mark.js").MarkProps["clip"], cullByVisibleRange: import("@genome-spy/core/spec/mark.js").MarkProps["cullByVisibleRange"], logicalVisibleRect: [number, number, number, number] }[]} */
+    axisLabels = [];
+
+    /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
+    sampleLabels = [];
+
+    /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
+    sampleGroups = [];
+
+    pushView(view, coords) {
+        this.#coordsStack.push(coords);
+    }
+
+    popView() {
+        this.#coordsStack.pop();
+    }
+
+    renderMark(mark, options = {}) {
+        if (mark.unitView.explicitName === "labels_main") {
+            const coords = this.#coordsStack.at(-1);
+            this.axisLabels.push({
+                clip: mark.properties.clip,
+                cullByVisibleRange: mark.properties.cullByVisibleRange,
+                logicalVisibleRect: createLogicalVisibleRect(
+                    coords,
+                    normalizeClipOptions(options)
+                ),
+            });
+        } else if (mark.unitView.name === "sample-labels") {
+            this.sampleLabels.push(options);
+        } else if (
+            mark.unitView
+                .getLayoutAncestors()
+                .some((view) => view.name === "sample-groups")
+        ) {
+            this.sampleGroups.push(options);
+        }
     }
 }
 
@@ -755,6 +804,126 @@ describe("SampleView", () => {
             view.sidebarCoords.width
         );
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
+    test("clips sample labels to the sidebar viewport", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.getScaleResolution = () =>
+            /** @type {any} */ ({
+                getDataDomain: () => ["A"],
+            });
+        view.handleBroadcast({
+            type: "subtreeDataReady",
+            payload: { subtreeRoot: view },
+        });
+
+        const renderContext = new InspectRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderContext.sampleLabels).not.toHaveLength(0);
+        expect(renderContext.sampleLabels[0].clipRect).toBeDefined();
+    });
+
+    test("does not clip sample groups to the sticky summary viewport", async () => {
+        // updateGroups resolves Lit titles through a DOM element in browser builds.
+        vi.stubGlobal("document", {
+            createElement: () => ({ innerHTML: "", textContent: "" }),
+        });
+
+        try {
+            const { view } = await createSampleViewForTest({
+                spec: {
+                    data: {
+                        values: [{ sample: "A", x: 1 }],
+                    },
+                    samples: {},
+                    spec: {
+                        mark: "point",
+                        height: 120,
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                        },
+                        aggregateSamples: [
+                            {
+                                name: "summary",
+                                height: 20,
+                                mark: "point",
+                                encoding: {
+                                    x: { field: "x", type: "quantitative" },
+                                },
+                            },
+                        ],
+                    },
+                },
+                disableGroupUpdates: false,
+            });
+
+            /** @type {any} */ (view.locationManager).getLocations = () => ({
+                samples: [],
+                summaries: [],
+                groups: [
+                    {
+                        key: {
+                            index: 0,
+                            depth: 1,
+                            n: 1,
+                            group: {
+                                name: "group",
+                                title: "Group",
+                                samples: ["A"],
+                            },
+                        },
+                        locSize: { location: 0, size: 40 },
+                    },
+                ],
+            });
+            view.sampleGroupView.updateGroups();
+
+            const renderContext = new InspectRenderingContext({
+                picking: false,
+            });
+            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+                firstFacet: true,
+            });
+
+            expect(renderContext.sampleGroups).not.toHaveLength(0);
+            const summaryClippedSidebar = view.locationManager.clipBySummary(
+                view.sidebarCoords
+            );
+
+            expect(
+                renderContext.sampleGroups.every(
+                    (options) =>
+                        options.clipRect?.y === view.sidebarCoords.y &&
+                        options.clipRect.y !== summaryClippedSidebar.y
+                )
+            ).toBe(true);
+        } finally {
+            vi.unstubAllGlobals();
+        }
     });
 
     test("sample group column separates levels without outer padding", async () => {
@@ -1482,6 +1651,128 @@ describe("SampleView", () => {
         expect(view.getOverhang().left).toBeGreaterThan(
             view.sidebarCoords.width
         );
+    });
+
+    test("anchor-culls repeated sample y-axis labels by the SampleView clip", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [{ sample: "A", x: 1, y: 2 }],
+            },
+            samples: {},
+            sampleYAxis: {
+                mode: "middle",
+                minSampleHeight: 1,
+            },
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.provenance.store.dispatch(
+            view.actions.setSamples({
+                samples: [{ id: "A", displayName: "A", indexNumber: 0 }],
+            })
+        );
+        await Promise.resolve();
+        view.sampleGroupView.updateGroups();
+
+        const renderContext = new InspectRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const verticallyClippedLabels = renderContext.axisLabels.filter(
+            (label) =>
+                label.logicalVisibleRect[1] !== 0 ||
+                label.logicalVisibleRect[3] !== 1
+        );
+
+        expect(verticallyClippedLabels).not.toHaveLength(0);
+        expect(
+            verticallyClippedLabels.every((label) => label.clip === "never")
+        ).toBe(true);
+        expect(
+            verticallyClippedLabels.every(
+                (label) => label.cullByVisibleRange === "y"
+            )
+        ).toBe(true);
+    });
+
+    test("anchor-culls summary y-axis labels by the SampleView clip", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1, y: 2 },
+                    { sample: "B", x: 2, y: 3 },
+                ],
+            },
+            samples: {},
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                },
+                aggregateSamples: [
+                    {
+                        name: "summary",
+                        height: 40,
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: { orient: "left" },
+                            },
+                        },
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        view.getScaleResolution = () =>
+            /** @type {any} */ ({
+                getDataDomain: () => ["A", "B"],
+            });
+        view.handleBroadcast({
+            type: "subtreeDataReady",
+            payload: { subtreeRoot: view },
+        });
+
+        const renderContext = new InspectRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        const summaryLabels = renderContext.axisLabels.filter(
+            (label) =>
+                label.logicalVisibleRect[1] !== 0 ||
+                label.logicalVisibleRect[3] !== 1
+        );
+
+        expect(summaryLabels).not.toHaveLength(0);
+        expect(summaryLabels.every((label) => label.clip === "never")).toBe(
+            true
+        );
+        expect(
+            summaryLabels.every((label) => label.cullByVisibleRange === "y")
+        ).toBe(true);
     });
 
     test("uses the visible layer candidate for a repeated sample y-axis", async () => {

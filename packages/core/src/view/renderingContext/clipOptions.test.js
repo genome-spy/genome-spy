@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import Rectangle from "../layout/rectangle.js";
 import {
+    clipOptionsEqual,
     combineClipOptions,
     normalizeClipOptions,
     prepareMarkClipOptions,
@@ -16,6 +17,38 @@ describe("rendering clip options", () => {
             clipX: true,
             clipY: true,
         });
+    });
+
+    test("compares clip options by value", () => {
+        expect(
+            clipOptionsEqual(
+                {
+                    rect: Rectangle.create(1, 2, 3, 4),
+                    clipX: true,
+                    clipY: false,
+                },
+                {
+                    rect: Rectangle.create(1, 2, 3, 4),
+                    clipX: true,
+                    clipY: false,
+                }
+            )
+        ).toBe(true);
+
+        expect(
+            clipOptionsEqual(
+                {
+                    rect: Rectangle.create(1, 2, 3, 4),
+                    clipX: true,
+                    clipY: false,
+                },
+                {
+                    rect: Rectangle.create(1, 2, 3, 4),
+                    clipX: false,
+                    clipY: true,
+                }
+            )
+        ).toBe(false);
     });
 
     test("combines overlapping same-direction clips by intersecting ranges", () => {

@@ -53,8 +53,17 @@ void main(void) {
 
     float size = getScaled_size();
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
+    vec2 facetedPos = applySampleFacet(pos);
 
-    gl_Position = unitToNdc(applySampleFacet(pos));
+#ifdef VISIBLE_RANGE_CULLING
+    if (isOutsideVisibleRange(facetedPos)) {
+        gl_PointSize = 0.0;
+        gl_Position = vec4(100.0, 0.0, 0.0, 0.0);
+        return;
+    }
+#endif
+
+    gl_Position = unitToNdc(facetedPos);
 
     float strokeWidth = getScaled_strokeWidth();
 

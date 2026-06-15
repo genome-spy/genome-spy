@@ -76,6 +76,7 @@ export interface BufferedRenderingRequest {
     callback: () => void;
     coords: Rectangle;
     clip?: ClipOptions;
+    cullClip?: ClipOptions;
 }
 
 /**

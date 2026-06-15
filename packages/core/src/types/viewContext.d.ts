@@ -10,6 +10,8 @@ import { Datum } from "../data/flowNode.js";
 import { ImportSpec, ViewSpec } from "../spec/view.js";
 import ContainerView from "../view/containerView.js";
 import { BroadcastEventType } from "../genomeSpy.js";
+import { AxisLabelClipPolicy } from "../view/axisView.js";
+import { PrimaryPositionalChannel } from "../spec/channel.js";
 
 export interface Hover {
     mark: Mark;
@@ -20,6 +22,9 @@ export type DataLoadingStatus = "loading" | "complete" | "error";
 
 export interface CreateViewOptions {
     layoutSizeParams?: "own" | "inherit";
+    axisLabelClipPolicy?: Partial<
+        Record<PrimaryPositionalChannel, AxisLabelClipPolicy>
+    >;
 }
 
 /**

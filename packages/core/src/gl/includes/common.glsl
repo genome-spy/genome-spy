@@ -6,6 +6,8 @@ uniform View {
     mediump vec2 uViewScale;
     /** Size of the logical viewport in pixels, i.e., the view */
     mediump vec2 uViewportSize;
+    mediump vec4 uLogicalVisibleRect;
+    lowp vec2 uCullByVisibleRange;
     lowp float uDevicePixelRatio;
     // TODO: Views with opacity less than 1.0 should be rendered into a texture
     // that is rendered with the specified opacity.
@@ -32,6 +34,15 @@ vec4 pixelsToNdc(vec2 coord) {
 
 vec4 pixelsToNdc(float x, float y) {
     return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
 }
 
 float linearstep(float edge0, float edge1, float x) {

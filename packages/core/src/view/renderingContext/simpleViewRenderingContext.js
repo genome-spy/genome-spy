@@ -1,5 +1,5 @@
 import ViewRenderingContext from "./viewRenderingContext.js";
-import { prepareMarkClipOptions } from "./clipOptions.js";
+import { normalizeClipOptions, prepareMarkClipOptions } from "./clipOptions.js";
 
 /**
  * This class is mainly for illustrative purpose, i.e., how the rendering
@@ -63,12 +63,14 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
         const canvasSize = { width: 100, height: 100 }; // Placeholder, should be replaced with actual canvas size
         const dpr = this.getDevicePixelRatio();
 
-        mark.setViewport(
-            canvasSize,
-            dpr,
-            this.coords,
-            prepareMarkClipOptions(options, mark.properties.clip, this.coords)
+        const inheritedClip = normalizeClipOptions(options);
+        const markClip = prepareMarkClipOptions(
+            options,
+            mark.properties.clip,
+            this.coords
         );
+
+        mark.setViewport(canvasSize, dpr, this.coords, markClip, inheritedClip);
         mark.render(options)();
     }
 }

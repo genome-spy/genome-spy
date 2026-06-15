@@ -15,6 +15,10 @@ const Y_AXIS_LABEL_HEURISTIC_PX = 10;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 
 /**
+ * @typedef {"pixel" | "anchor"} AxisLabelClipPolicy
+ */
+
+/**
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
  * @returns {import("../spec/channel.js").PrimaryPositionalChannel}
  */
@@ -132,6 +136,9 @@ export default class AxisView extends LayerView {
      * @typedef {import("../spec/axis.js").GenomeAxis} GenomeAxis
      * @typedef {import("../spec/axis.js").AxisOrient} AxisOrient
      * @typedef {import("./layout/flexLayout.js").SizeDef} SizeDef
+     * @typedef {import("./view.js").ViewOptions & {
+     *     labelClipPolicy?: AxisLabelClipPolicy
+     * }} AxisViewOptions
      */
 
     /**
@@ -140,7 +147,7 @@ export default class AxisView extends LayerView {
      * @param {string} type Data type (quantitative, ..., locus)
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent
-     * @param {import("./view.js").ViewOptions} [options]
+     * @param {AxisViewOptions} [options]
      */
     constructor(axisProps, type, context, layoutParent, dataParent, options) {
         const channel = orient2channel(axisProps.orient);
@@ -175,7 +182,11 @@ export default class AxisView extends LayerView {
         super(
             genomeAxis
                 ? createGenomeAxis(fullAxisProps, type)
-                : createAxis(fullAxisProps, type),
+                : createAxis(
+                      fullAxisProps,
+                      type,
+                      options?.labelClipPolicy ?? "pixel"
+                  ),
             context,
             layoutParent,
             dataParent,
@@ -478,9 +489,10 @@ function getDefaultAngleAndAlign(type, axisProps) {
 /**
  * @param {Axis} axisProps
  * @param {string} type
+ * @param {"pixel" | "anchor"} labelClipPolicy
  * @returns {LayerSpec}
  */
-function createAxis(axisProps, type) {
+function createAxis(axisProps, type, labelClipPolicy = "pixel") {
     // TODO: Ensure that no channels except the positional ones are shared
 
     const ap = axisProps;
@@ -530,7 +542,8 @@ function createAxis(axisProps, type) {
         ],
         mark: {
             type: "text",
-            clip: false,
+            clip: labelClipPolicy === "anchor" ? "never" : false,
+            cullByVisibleRange: labelClipPolicy === "anchor" ? main : undefined,
             align: ap.labelAlign,
             angle: ap.labelAngle,
             baseline: ap.labelBaseline,

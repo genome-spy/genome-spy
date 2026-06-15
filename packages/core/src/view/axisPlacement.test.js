@@ -155,6 +155,18 @@ describe("axis placement", () => {
         expect(title.spec.mark.flushX).toBeUndefined();
     });
 
+    test("axis labels use pixel clipping by default", async () => {
+        const bottomAxis = await createAxis("bottom", {});
+        const bottomLabels = findUnitView(bottomAxis, "labels_main");
+        const leftAxis = await createAxis("left", {});
+        const leftLabels = findUnitView(leftAxis, "labels_main");
+
+        expect(bottomLabels.spec.mark.clip).toBe(false);
+        expect(bottomLabels.spec.mark.cullByVisibleRange).toBeUndefined();
+        expect(leftLabels.spec.mark.clip).toBe(false);
+        expect(leftLabels.spec.mark.cullByVisibleRange).toBeUndefined();
+    });
+
     test("horizontal ranged axis title spans the axis and flushes horizontally", async () => {
         const axis = await createAxis("bottom", {
             title: "Signal",

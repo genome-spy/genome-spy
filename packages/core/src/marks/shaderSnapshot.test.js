@@ -187,6 +187,7 @@ describe("generated shader snapshots", () => {
         });
 
         expect(sources).toMatchSnapshot();
+        expect(sources.vertex).not.toContain("#define VISIBLE_RANGE_CULLING");
     });
 
     test("interval selection example", async () => {
@@ -231,6 +232,47 @@ describe("generated shader snapshots", () => {
         });
 
         expect(sources).toMatchSnapshot();
+    });
+
+    test("text shader supports visible-range culling", async () => {
+        const sources = await captureShaderSources({
+            data: {
+                values: [{ x: 1, y: 2, label: "A" }],
+            },
+            mark: {
+                type: "text",
+                cullByVisibleRange: "x",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                text: { field: "label" },
+            },
+        });
+
+        expect(sources.vertex).toContain("#define VISIBLE_RANGE_CULLING");
+        expect(sources.vertex).toContain("bool isOutsideVisibleRange");
+        expect(sources.vertex).toContain("isOutsideVisibleRange(pos)");
+    });
+
+    test("point shader supports visible-range culling", async () => {
+        const sources = await captureShaderSources({
+            data: {
+                values: [{ x: 1, y: 2 }],
+            },
+            mark: {
+                type: "point",
+                cullByVisibleRange: "y",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        });
+
+        expect(sources.vertex).toContain("#define VISIBLE_RANGE_CULLING");
+        expect(sources.vertex).toContain("bool isOutsideVisibleRange");
+        expect(sources.vertex).toContain("isOutsideVisibleRange(facetedPos)");
     });
 
     test("penguins scatter plot example", async () => {
