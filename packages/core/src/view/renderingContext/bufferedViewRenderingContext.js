@@ -2,7 +2,11 @@ import { group } from "d3-array";
 
 import ViewRenderingContext from "./viewRenderingContext.js";
 import { color } from "d3-color";
-import { normalizeClipOptions, prepareMarkClipOptions } from "./clipOptions.js";
+import {
+    clipOptionsEqual,
+    normalizeClipOptions,
+    prepareMarkClipOptions,
+} from "./clipOptions.js";
 
 /**
  * @typedef {object} BufferedViewRenderingOptions
@@ -212,7 +216,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 if (
                     !coords.equals(previousCoords) ||
                     request.clip !== previousClip ||
-                    request.cullClip !== previousCullClip
+                    !clipOptionsEqual(request.cullClip, previousCullClip)
                 ) {
                     this.#batch.push(
                         ifEnabled(() => {
