@@ -174,6 +174,12 @@ void main(void) {
     }
 #endif
 
+    if ((uCullByVisibleRange.x > 0.5 && (pos.x < uVisibleRangeX.x || pos.x > uVisibleRangeX.y))
+        || (uCullByVisibleRange.y > 0.5 && (pos.y < uVisibleRangeY.x || pos.y > uVisibleRangeY.y))) {
+        gl_Position = vec4(0.0);
+        return;
+    }
+
     if (scale < 1.0) {
         if (uSqueeze) {
             vec2 scaleFadeExtent = vec2(3.0, 6.0) / size;

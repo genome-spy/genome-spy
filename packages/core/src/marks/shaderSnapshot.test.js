@@ -233,6 +233,26 @@ describe("generated shader snapshots", () => {
         expect(sources).toMatchSnapshot();
     });
 
+    test("text shader supports visible-range culling", async () => {
+        const sources = await captureShaderSources({
+            data: {
+                values: [{ x: 1, y: 2, label: "A" }],
+            },
+            mark: {
+                type: "text",
+                cullByVisibleRange: "x",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                text: { field: "label" },
+            },
+        });
+
+        expect(sources.vertex).toContain("uCullByVisibleRange.x > 0.5");
+        expect(sources.vertex).toContain("uVisibleRangeX");
+    });
+
     test("penguins scatter plot example", async () => {
         const sources = await captureShaderSources(
             loadSpec(

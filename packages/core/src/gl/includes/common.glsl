@@ -6,6 +6,9 @@ uniform View {
     mediump vec2 uViewScale;
     /** Size of the logical viewport in pixels, i.e., the view */
     mediump vec2 uViewportSize;
+    mediump vec2 uVisibleRangeX;
+    mediump vec2 uVisibleRangeY;
+    lowp vec2 uCullByVisibleRange;
     lowp float uDevicePixelRatio;
     // TODO: Views with opacity less than 1.0 should be rendered into a texture
     // that is rendered with the specified opacity.

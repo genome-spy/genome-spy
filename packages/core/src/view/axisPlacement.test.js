@@ -155,6 +155,18 @@ describe("axis placement", () => {
         expect(title.spec.mark.flushX).toBeUndefined();
     });
 
+    test("axis labels use visible-range culling along the axis direction", async () => {
+        const bottomAxis = await createAxis("bottom", {});
+        const bottomLabels = findUnitView(bottomAxis, "labels_main");
+        const leftAxis = await createAxis("left", {});
+        const leftLabels = findUnitView(leftAxis, "labels_main");
+
+        expect(bottomLabels.spec.mark.clip).toBe("never");
+        expect(bottomLabels.spec.mark.cullByVisibleRange).toBe("x");
+        expect(leftLabels.spec.mark.clip).toBe("never");
+        expect(leftLabels.spec.mark.cullByVisibleRange).toBe("y");
+    });
+
     test("horizontal ranged axis title spans the axis and flushes horizontally", async () => {
         const axis = await createAxis("bottom", {
             title: "Signal",

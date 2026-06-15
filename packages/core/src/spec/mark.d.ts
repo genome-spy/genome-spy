@@ -89,6 +89,14 @@ export interface MarkPropsBase {
     buildIndex?: boolean;
 
     /**
+     * Hide point-like mark instances whose anchor falls outside the inherited
+     * visible range in the given screen-space direction.
+     *
+     * @internal
+     */
+    cullByVisibleRange?: boolean | "x" | "y";
+
+    /**
      * Tooltip handler. If `null`, no tooltip is shown. If string, specifies
      * the [tooltip handler](https://genomespy.app/docs/api/#custom-tooltip-handlers)
      * to use.
