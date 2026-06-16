@@ -191,6 +191,12 @@ export default class View {
              * @type {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("../scales/axisResolution.js").default>>}
              */
             axis: {},
+            /**
+             * Channel-specific legend resolutions. Internal only; not exposed
+             * through the public resolve spec yet.
+             * @type {Partial<Record<import("../spec/channel.js").ChannelWithScale, import("../scales/legendResolution.js").default>>}
+             */
+            legend: {},
         };
 
         initPropertyCache(this);

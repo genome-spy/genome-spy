@@ -6,9 +6,17 @@ import {
 } from "../encoder/encoder.js";
 import { getConfiguredLegendDefaults } from "../config/legendConfig.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
+import { orderResolutionMembers } from "./resolutionMemberOrder.js";
+import { isChromeView } from "../view/viewSelectors.js";
 
 /**
  * @typedef {"symbol" | "gradient"} LegendType
+ * @typedef {object} LegendResolutionMember
+ * @prop {import("../view/unitView.js").default} view
+ * @prop {import("../spec/channel.js").ChannelWithScale} channel
+ * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
+ * @prop {import("../spec/channel.js").ChannelWithScale} targetChannel
+ *
  * @typedef {{
  *     channel: import("../spec/channel.js").ChannelWithScale,
  *     type: LegendType,
@@ -28,6 +36,62 @@ const SYMBOL_LEGEND_CHANNELS = new Set([
     "size",
 ]);
 const GRADIENT_LEGEND_CHANNELS = new Set(["color", "fill", "stroke"]);
+
+export default class LegendResolution {
+    /** @type {Set<LegendResolutionMember>} */
+    #members = new Set();
+
+    /**
+     * @param {import("../spec/channel.js").ChannelWithScale} channel
+     */
+    constructor(channel) {
+        this.channel = channel;
+    }
+
+    /**
+     * @param {LegendResolutionMember} member
+     * @returns {() => boolean}
+     */
+    registerMember(member) {
+        this.#members.add(member);
+        return () => this.removeMember(member) && this.#members.size === 0;
+    }
+
+    /**
+     * @param {LegendResolutionMember} member
+     * @returns {boolean}
+     */
+    removeMember(member) {
+        return this.#members.delete(member);
+    }
+
+    /**
+     * @returns {LegendDefinition[]}
+     */
+    getLegendDefs() {
+        return orderResolutionMembers(this.#members)
+            .map((member) =>
+                createLegendDefinition(member.channel, member.view)
+            )
+            .filter((definition) => definition !== undefined);
+    }
+
+    /**
+     * @returns {boolean}
+     */
+    hasVisibleNonChromeMember() {
+        for (const member of this.#members) {
+            if (
+                member.view.isVisible() &&
+                !member.view.getLayoutAncestors().some(isChromeView)
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
 
 /**
  * Classifies currently implemented legend support. Deferred and unsupported
