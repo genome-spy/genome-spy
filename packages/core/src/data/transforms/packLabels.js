@@ -107,8 +107,12 @@ export default class PackLabelsTransform extends Transform {
         /** @type {number[]} */
         const columnWidths = Array.from({ length: columns }, () => 0);
         /** @type {number[]} */
+        const columnSymbolExtents = Array.from({ length: columns }, () => 0);
+        /** @type {number[]} */
+        const columnLabelWidths = Array.from({ length: columns }, () => 0);
+        /** @type {number[]} */
         const rowHeights = Array.from({ length: rows }, () => 0);
-        /** @type {Array<{ row: number, column: number, width: number, symbolExtent: number }>} */
+        /** @type {Array<{ row: number, column: number, symbolExtent: number }>} */
         const entries = [];
 
         for (let index = 0; index < n; index++) {
@@ -125,12 +129,25 @@ export default class PackLabelsTransform extends Transform {
                 this.symbolSizeAccessor(datum),
                 symbolStrokeWidth
             );
-            const width =
-                symbolExtent + labelOffset + this.labelWidthAccessor(datum);
+            const labelWidth = this.labelWidthAccessor(datum);
 
-            entries.push({ row, column, width, symbolExtent });
-            columnWidths[column] = Math.max(columnWidths[column], width);
+            entries.push({ row, column, symbolExtent });
+            columnSymbolExtents[column] = Math.max(
+                columnSymbolExtents[column],
+                symbolExtent
+            );
+            columnLabelWidths[column] = Math.max(
+                columnLabelWidths[column],
+                labelWidth
+            );
             rowHeights[row] = Math.max(rowHeights[row], symbolExtent, fontSize);
+        }
+
+        for (let column = 0; column < columns; column++) {
+            columnWidths[column] =
+                columnSymbolExtents[column] +
+                labelOffset +
+                columnLabelWidths[column];
         }
 
         /** @type {number[]} */
@@ -152,7 +169,8 @@ export default class PackLabelsTransform extends Transform {
             const entry = entries[index];
             const x = columnX[entry.column];
             const y = rowY[entry.row];
-            const symbolCenterOffset = entry.symbolExtent / 2;
+            const symbolSlotWidth = columnSymbolExtents[entry.column];
+            const symbolCenterOffset = symbolSlotWidth / 2;
 
             datum[as.row] = entry.row;
             datum[as.column] = entry.column;
@@ -163,7 +181,7 @@ export default class PackLabelsTransform extends Transform {
             datum[as.entryY] = entryY;
             datum[as.entryWidth] = columnWidths[entry.column];
             datum[as.entryHeight] = rowHeights[entry.row];
-            datum[as.labelX] = x + xOffset + entry.symbolExtent + labelOffset;
+            datum[as.labelX] = x + xOffset + symbolSlotWidth + labelOffset;
             datum[as.labelY] = labelY;
             if (yExtent != null) {
                 datum[as.entryY2] = yExtent - entryY;

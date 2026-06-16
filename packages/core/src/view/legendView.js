@@ -762,6 +762,7 @@ export default class LegendView extends ContainerView {
 /**
  * @typedef {object} MeasuredLabels
  * @prop {number} maxWidth
+ * @prop {number} maxEntryWidth
  * @prop {number} maxY
  */
 
@@ -771,6 +772,7 @@ export default class LegendView extends ContainerView {
  */
 function getMeasuredLabels(labelViews) {
     let maxWidth = 0;
+    let maxEntryWidth = 0;
     let maxY = 0;
     let completed = false;
 
@@ -786,12 +788,20 @@ function getMeasuredLabels(labelViews) {
                 maxWidth,
                 Number(datum[LABEL_WIDTH_FIELD]) || 0
             );
+            maxEntryWidth = Math.max(
+                maxEntryWidth,
+                Number(datum._legendEntryWidth) || 0
+            );
             maxY = Math.max(maxY, Number(datum._legendLabelY) || 0);
         });
     }
 
     return completed
-        ? { maxWidth: Math.ceil(maxWidth), maxY: Math.ceil(maxY) }
+        ? {
+              maxWidth: Math.ceil(maxWidth),
+              maxEntryWidth: Math.ceil(maxEntryWidth),
+              maxY: Math.ceil(maxY),
+          }
         : undefined;
 }
 
@@ -814,10 +824,11 @@ function getLegendExtent(legend, type, measuredLabels, context) {
               DEFAULT_GRADIENT_TICK_SIZE +
               labelOffset +
               measuredLabels.maxWidth
-            : Math.sqrt(legend.symbolSize ?? 100) +
-              (legend.symbolStrokeWidth ?? 1.5) +
-              labelOffset +
-              measuredLabels.maxWidth;
+            : measuredLabels.maxEntryWidth ||
+              Math.sqrt(legend.symbolSize ?? 100) +
+                  (legend.symbolStrokeWidth ?? 1.5) +
+                  labelOffset +
+                  measuredLabels.maxWidth;
 
     return Math.ceil(
         Math.max(getMinimumLegendExtent(type, legend), labelExtent, titleWidth)

@@ -101,8 +101,8 @@ test("PackLabelsTransform uses per-entry symbol sizes for row height", () => {
 
     expect(data.map((datum) => datum._legendEntryHeight)).toEqual([10, 20]);
     expect(data.map((datum) => datum._legendEntryY)).toEqual([0, 12]);
-    expect(data.map((datum) => datum._legendEntryX)).toEqual([2.5, 10]);
-    expect(data.map((datum) => datum._legendLabelX)).toEqual([9, 24]);
+    expect(data.map((datum) => datum._legendEntryX)).toEqual([10, 10]);
+    expect(data.map((datum) => datum._legendLabelX)).toEqual([24, 24]);
 });
 
 test("PackLabelsTransform applies entry offsets", () => {
