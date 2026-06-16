@@ -34,6 +34,7 @@ import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
 import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
+import { shallowArrayEquals } from "../../utils/arrayUtils.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 import { getConfiguredLegendDefaults } from "../../config/legendConfig.js";
@@ -847,6 +848,32 @@ export default class GridChild {
         };
 
         /**
+         * @param {import("../../spec/channel.js").ChannelWithScale} primary
+         * @param {import("../../spec/channel.js").ChannelWithScale} secondary
+         * @param {import("../unitView.js").default} legendParent
+         * @returns {boolean}
+         */
+        const canMergeSymbolChannels = (primary, secondary, legendParent) => {
+            const primaryDef = getLegendChannelDef(primary, legendParent);
+            const secondaryDef = getLegendChannelDef(secondary, legendParent);
+            const primaryResolution = legendParent.getScaleResolution(primary);
+            const secondaryResolution =
+                legendParent.getScaleResolution(secondary);
+
+            return (
+                isFieldDef(primaryDef) &&
+                isFieldDef(secondaryDef) &&
+                primaryDef.field === secondaryDef.field &&
+                primaryResolution &&
+                secondaryResolution &&
+                shallowArrayEquals(
+                    primaryResolution.getDomain(),
+                    secondaryResolution.getDomain()
+                )
+            );
+        };
+
+        /**
          * @param {import("../../spec/channel.js").ChannelWithScale} channel
          * @param {import("../unitView.js").default} legendParent
          * @returns {boolean}
@@ -866,10 +893,8 @@ export default class GridChild {
                 "fill",
                 "stroke",
             ])) {
-                const primaryDef = getLegendChannelDef(primary, legendParent);
                 if (
-                    isFieldDef(primaryDef) &&
-                    primaryDef.field === channelDef.field &&
+                    canMergeSymbolChannels(primary, channel, legendParent) &&
                     !isExplicitLegendNull(primary, legendParent)
                 ) {
                     return true;
@@ -896,8 +921,8 @@ export default class GridChild {
             if (
                 isFieldDef(channelDef) &&
                 isFieldDef(shapeDef) &&
-                channelDef.field === shapeDef.field &&
                 shapeResolution &&
+                canMergeSymbolChannels(channel, "shape", legendParent) &&
                 !isExplicitLegendNull("shape", legendParent)
             ) {
                 return {

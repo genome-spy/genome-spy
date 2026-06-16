@@ -156,6 +156,71 @@ describe("GridView legends", () => {
         expect(legends).toHaveLength(1);
     });
 
+    test("does not merge shape when its legend is null", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: { field: "Origin", type: "nominal" },
+                        shape: {
+                            field: "Origin",
+                            type: "nominal",
+                            legend: null,
+                        },
+                    },
+                },
+            ],
+        });
+        const legends = getLegends(view);
+        const symbols = legends[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "symbols");
+
+        expect(legends).toHaveLength(1);
+        expect(
+            /** @type {UnitView} */ (symbols).spec.encoding
+        ).not.toHaveProperty("shape");
+    });
+
+    test("does not merge redundant-looking channels with different domains", async () => {
+        await expect(
+            createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: { field: "Origin", type: "nominal" },
+                            shape: {
+                                field: "Origin",
+                                type: "nominal",
+                                scale: { domain: ["Japan", "Europe"] },
+                            },
+                        },
+                    },
+                ],
+            })
+        ).rejects.toThrow('A legend with the orient "right" already exists!');
+    });
+
     test("creates a shape-only symbol legend", async () => {
         const view = await createLegendTestView({
             config: { legend: { disable: false } },
