@@ -231,6 +231,30 @@ describe("GridView legends", () => {
         expect(getLegends(view)).toHaveLength(0);
     });
 
+    test("does not create accidental legends for deferred channels", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, SizeClass: "small" },
+                            { x: 2, y: 3, SizeClass: "large" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        size: { field: "SizeClass", type: "ordinal" },
+                    },
+                },
+            ],
+        });
+
+        expect(getLegends(view)).toHaveLength(0);
+    });
+
     test("creates an opt-in gradient legend for quantitative color", async () => {
         const view = await createLegendTestView({
             config: { legend: { disable: false } },

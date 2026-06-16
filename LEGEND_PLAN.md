@@ -11,14 +11,13 @@ more ambitious placement models.
 The current implementation targets simple local legends hosted by the
 `GridChild` that owns the explained view. Testbed examples include:
 
-- `examples/core/marks/point/point2d.json` for discrete symbol legends.
-- `examples/core/marks/rect/heatmap.json` for linear quantitative color
-  legends.
-- `examples/core/lazy-data/bigwig.json` for dynamic quantitative color domains.
 - `examples/core/legends/linear-gradient.json`,
   `examples/core/legends/log-gradient.json`, and
   `examples/core/legends/threshold-gradient.json` for scale-specific gradient
   behavior.
+- `examples/core/legends/redundant-encoding.json` for discrete symbol legends
+  that merge redundant color and shape encodings.
+- `examples/core/lazy-data/bigwig.json` for dynamic quantitative color domains.
 
 Completed pieces:
 
@@ -36,7 +35,8 @@ Completed pieces:
 - `measureText` and the internal `packLabels` transform compute entry layout.
 - Generated legend scales use view `width` and `height` params so pixel-like
   positions are not stretched by the unit coordinate range.
-- Right-oriented local legends are placed as `GridChild` chrome beside the plot.
+- Right-, left-, top-, and bottom-oriented local legends are placed as
+  `GridChild` chrome around the plot.
 - Redundant `shape` is merged into a primary color/fill/stroke symbol legend
   when both encode the same field.
 - Quantitative color/fill/stroke legends render as gradient legends built from
@@ -44,8 +44,8 @@ Completed pieces:
 - Gradient legends use the actual source scale for color and a local
   normalized positional scale for ramp/tick placement.
 - Linear, logarithmic, and threshold quantitative color scales have dedicated
-  examples. Threshold legends include the two outer color buckets and align
-  tick labels with threshold boundaries.
+  examples. Log tick positions follow log spacing. Threshold legends include
+  the two outer color buckets and align tick labels with threshold boundaries.
 - Legend data sources listen to source scale domain changes so legends follow
   dynamic domains.
 - Generated legend views suppress ordinary view strokes.
@@ -96,7 +96,7 @@ Acceptance criteria:
 
 - Simple symbol and gradient legends keep working with local right-oriented
   placement.
-- `orient: "left"`, `"right"`, `"top"`, and `"bottom"` are supported by the
+- `orient: "left"`, `"right"`, `"top"`, and `"bottom"` remain supported by the
   generated legend specs and `GridChild` overhang/placement.
 - The implemented channel and scale coverage is explicit and tested.
 - Missing or unsupported combinations fail clearly or intentionally do not
@@ -150,7 +150,7 @@ Legend creation should consider non-positional scale-backed channels only.
 Positional `x`, `y`, `x2`, and `y2` continue to be explained by axes, not
 legends.
 
-Target channels:
+Active channels:
 
 - `color`: primary color legend channel. Supports symbol legends for discrete
   fields and gradient legends for quantitative color scales.
@@ -158,13 +158,19 @@ Target channels:
 - `stroke`: same legend behavior as `color` where marks use stroke directly.
 - `shape`: symbol legend for discrete fields. If it is redundant with
   `color`, `fill`, or `stroke`, it may merge into that primary symbol legend.
+
+Deferred channels:
+
 - `size`: symbol legend for discrete and quantitative fields. Quantitative size
   should use representative sampled values, not a gradient legend.
 - `opacity`, `fillOpacity`, `strokeOpacity`: symbol legend candidates. Treat as
   lower priority than color/shape/size because legibility and base styling need
   careful defaults.
-- Other scale-backed non-position channels should be listed explicitly as
-  unsupported until a clear legend representation exists.
+
+Unsupported scale-backed non-position channels:
+
+- `strokeWidth`, `angle`, `dx`, and `dy` do not currently have a clear legend
+  representation.
 
 Channel behavior to document and test:
 
@@ -219,40 +225,35 @@ Implement remaining channel and scale support in small, verifiable slices. Each
 slice should add one or two behavioral tests or stable example specs before the
 implementation change.
 
-1. Audit scale-backed channels in the encoder/spec types:
-   - list every non-position channel that can have a scale resolution,
-   - classify each as `symbol`, `gradient`, `deferred`, or `unsupported`,
-   - update `GridChild` legend creation to use this classification instead of
-     ad hoc channel checks.
-2. Generalize color-like channel handling:
+1. Generalize color-like channel handling:
    - treat `color`, `fill`, and `stroke` as color-like legend channels,
    - keep quantitative color-like channels on the gradient path,
    - keep nominal/ordinal color-like channels on the symbol path,
    - verify that base symbol fill/stroke values are applied when only one of
      fill or stroke is scale-backed.
-3. Tighten redundant channel merging:
+2. Tighten redundant channel merging:
    - keep merging `shape` into `color`/`fill`/`stroke` only when the fields and
      scale domains match,
    - respect `legend: null` on either the primary or redundant channel,
    - add a test for non-redundant `color` plus `shape` so the behavior is
      explicit.
-4. Add `shape`-only symbol legends:
+3. Add `shape`-only symbol legends:
    - generate entries from the actual shape scale resolution,
    - render symbols with stable base fill/stroke defaults,
    - verify ordinary point shapes and configured `symbolType` behavior do not
      conflict.
-5. Add discrete `size` symbol legends:
+4. Add discrete `size` symbol legends:
    - use the size scale as a scale-backed symbol property,
    - keep base fill/stroke readable,
    - measure label widths normally with `measureText` and `packLabels`,
    - add a small example where nominal categories map to different sizes.
-6. Add quantitative `size` symbol legends:
+5. Add quantitative `size` symbol legends:
    - generate representative values from the source size scale using tick
      helpers where possible,
    - render multiple symbol entries with scale-backed sizes,
    - confirm that zero or near-zero sizes do not make entries invisible without
      an intentional fallback.
-7. Investigate opacity legends before enabling them:
+6. Investigate opacity legends before enabling them:
    - check `opacity`, `fillOpacity`, and `strokeOpacity` encoder behavior,
    - choose base fill/stroke colors that remain visible over the default
      background,

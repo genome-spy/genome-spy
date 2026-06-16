@@ -46,7 +46,37 @@ import LegendView, { getExternalLegendOverhang } from "../legendView.js";
  *     orient: import("../../spec/axis.js").AxisOrient,
  *     resolution: import("../../scales/axisResolution.js").default,
  * }} AxisCandidate
+ *
+ * @typedef {"symbol" | "gradient"} LegendType
  */
+
+const SYMBOL_LEGEND_CHANNELS = new Set(["color", "fill", "stroke", "shape"]);
+const GRADIENT_LEGEND_CHANNELS = new Set(["color", "fill", "stroke"]);
+
+/**
+ * Classifies currently implemented legend support. Deferred and unsupported
+ * channels intentionally return undefined so accidental legends are not
+ * generated before their visual representation is designed.
+ *
+ * @param {import("../../spec/channel.js").ChannelWithScale} channel
+ * @param {import("../../spec/channel.js").ChannelDefWithScale} channelDef
+ * @returns {LegendType | undefined}
+ */
+function getLegendType(channel, channelDef) {
+    if (
+        (channelDef.type === "nominal" || channelDef.type === "ordinal") &&
+        SYMBOL_LEGEND_CHANNELS.has(channel)
+    ) {
+        return "symbol";
+    } else if (
+        channelDef.type === "quantitative" &&
+        GRADIENT_LEGEND_CHANNELS.has(channel)
+    ) {
+        return "gradient";
+    } else {
+        return undefined;
+    }
+}
 
 export default class GridChild {
     /**
@@ -915,13 +945,7 @@ export default class GridChild {
                 return;
             }
 
-            const legendType =
-                channelDef.type === "nominal" || channelDef.type === "ordinal"
-                    ? "symbol"
-                    : channelDef.type === "quantitative" &&
-                        isColorChannel(channel)
-                      ? "gradient"
-                      : undefined;
+            const legendType = getLegendType(channel, channelDef);
 
             if (!legendType) {
                 return;
