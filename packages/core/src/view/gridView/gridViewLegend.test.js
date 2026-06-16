@@ -459,33 +459,38 @@ describe("GridView legends", () => {
         ).not.toHaveProperty("shape");
     });
 
-    test("does not merge redundant-looking channels with different domains", async () => {
-        await expect(
-            createLegendTestView({
-                config: { legend: { disable: false } },
-                vconcat: [
-                    {
-                        data: {
-                            values: [
-                                { x: 1, y: 2, Origin: "Europe" },
-                                { x: 2, y: 3, Origin: "Japan" },
-                            ],
-                        },
-                        mark: "point",
-                        encoding: {
-                            x: { field: "x", type: "quantitative" },
-                            y: { field: "y", type: "quantitative" },
-                            color: { field: "Origin", type: "nominal" },
-                            shape: {
-                                field: "Origin",
-                                type: "nominal",
-                                scale: { domain: ["Japan", "Europe"] },
-                            },
+    test("keeps non-redundant same-orient legends separate", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: { field: "Origin", type: "nominal" },
+                        shape: {
+                            field: "Origin",
+                            type: "nominal",
+                            scale: { domain: ["Japan", "Europe"] },
                         },
                     },
-                ],
-            })
-        ).rejects.toThrow('A legend with the orient "right" already exists!');
+                },
+            ],
+        });
+        const legends = getLegends(view);
+
+        expect(legends).toHaveLength(2);
+        expect(legends.map((legend) => legend.legendProps.title)).toEqual([
+            "Origin",
+            "Origin",
+        ]);
     });
 
     test("creates a shape-only symbol legend", async () => {

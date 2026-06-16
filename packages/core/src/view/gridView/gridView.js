@@ -22,6 +22,7 @@ import {
     propagateInteractionSurface,
 } from "../interactionRouting.js";
 import LayerView from "../layerView.js";
+import { getExternalLegendOverhang } from "../legendView.js";
 import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
@@ -1030,30 +1031,30 @@ export default class GridView extends ContainerView {
                 );
             }
 
-            for (const [orient, legendView] of Object.entries(
+            for (const [orient, legendViews] of Object.entries(
                 gridChild.legends
             )) {
-                const axisOffset = getExternalAxisOverhang(
+                let offset = getExternalAxisOverhang(
                     axes[
                         /** @type {import("../../spec/axis.js").AxisOrient} */ (
                             orient
                         )
                     ]
                 );
-                queueDecoration(0, DECORATION_ORDER.legend, () =>
-                    legendView.render(
-                        context,
-                        translateLegendCoords(
-                            viewportCoords,
-                            /** @type {import("../../spec/legend.js").LegendOrient} */ (
-                                orient
-                            ),
-                            legendView,
-                            axisOffset
+                for (const legendView of legendViews) {
+                    const legendCoords = translateLegendCoords(
+                        viewportCoords,
+                        /** @type {import("../../spec/legend.js").LegendOrient} */ (
+                            orient
                         ),
-                        options
-                    )
-                );
+                        legendView,
+                        offset
+                    );
+                    queueDecoration(0, DECORATION_ORDER.legend, () =>
+                        legendView.render(context, legendCoords, options)
+                    );
+                    offset += getExternalLegendOverhang(legendView);
+                }
             }
 
             // Axes shared between children

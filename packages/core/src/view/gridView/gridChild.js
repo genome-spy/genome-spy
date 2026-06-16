@@ -166,7 +166,7 @@ export default class GridChild {
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
         this.gridLines = {};
 
-        /** @type {Partial<Record<import("../../spec/legend.js").LegendOrient, import("../legendView.js").default>>} */
+        /** @type {Partial<Record<import("../../spec/legend.js").LegendOrient, import("../legendView.js").default[]>>} */
         this.legends = {};
 
         /** @type {Partial<Record<import("./scrollbar.js").ScrollDirection, Scrollbar>>} */
@@ -742,7 +742,9 @@ export default class GridChild {
         for (const candidate of this.axisCandidates) {
             yield candidate.axisView;
         }
-        yield* Object.values(this.legends);
+        for (const legendViews of Object.values(this.legends)) {
+            yield* legendViews;
+        }
         yield* Object.values(this.gridLines);
         yield this.view;
         yield* Object.values(this.scrollbars);
@@ -884,12 +886,6 @@ export default class GridChild {
          */
         const createLegend = async (definition, legendParent) => {
             const orient = definition.legend.orient ?? "right";
-            if (this.legends[orient] && !this.allowDuplicateAxes()) {
-                throw new Error(
-                    `A legend with the orient "${orient}" already exists!`
-                );
-            }
-
             const symbolStyle =
                 definition.type == "symbol"
                     ? createInheritedSymbolStyle(
@@ -916,7 +912,8 @@ export default class GridChild {
                 legendParent
             );
 
-            this.legends[orient] ??= legend;
+            this.legends[orient] ??= [];
+            this.legends[orient].push(legend);
             await legend.initializeChildren();
         };
 
@@ -998,7 +995,7 @@ export default class GridChild {
         [
             ...this.axisCandidates.map((candidate) => candidate.axisView),
             ...Object.values(gridLines),
-            ...Object.values(this.legends),
+            ...Object.values(this.legends).flat(),
         ].forEach((v) =>
             v.visit((view) => {
                 if (view instanceof UnitView) {
@@ -1052,8 +1049,10 @@ export default class GridChild {
             gridView.disposeSubtree();
         }
 
-        for (const legendView of Object.values(this.legends)) {
-            legendView.disposeSubtree();
+        for (const legendViews of Object.values(this.legends)) {
+            for (const legendView of legendViews) {
+                legendView.disposeSubtree();
+            }
         }
 
         this.axes = {};
@@ -1089,7 +1088,12 @@ export default class GridChild {
         ) => getExternalAxisOverhang(this.axes[orient]);
         const legend = (
             /** @type {import("../../spec/legend.js").LegendOrient} */ orient
-        ) => getExternalLegendOverhang(this.legends[orient]);
+        ) =>
+            (this.legends[orient] ?? []).reduce(
+                (sum, legendView) =>
+                    sum + getExternalLegendOverhang(legendView),
+                0
+            );
 
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return new Padding(

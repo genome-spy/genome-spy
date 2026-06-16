@@ -22,13 +22,20 @@ function createMinimalGridChild() {
 describe("GridChild legend layout", () => {
     test("right legend contributes to right overhang", () => {
         const child = createMinimalGridChild();
-        child.legends.right = /** @type {any} */ ({
-            legendProps: { orient: "right" },
-            getPerpendicularSize: () => 42,
-            getExternalPadding: () => 8,
-        });
+        child.legends.right = /** @type {any} */ ([
+            {
+                legendProps: { orient: "right" },
+                getPerpendicularSize: () => 42,
+                getExternalPadding: () => 8,
+            },
+            {
+                legendProps: { orient: "right" },
+                getPerpendicularSize: () => 20,
+                getExternalPadding: () => 4,
+            },
+        ]);
 
-        expect(child.getOverhang().right).toBe(50);
+        expect(child.getOverhang().right).toBe(74);
     });
 });
 
