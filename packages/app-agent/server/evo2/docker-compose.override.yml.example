@@ -1,0 +1,10 @@
+# Copy to docker-compose.override.yml and adjust paths for your machine.
+# This file is merged automatically by Docker Compose — no extra flags needed.
+
+services:
+  evo2-server:
+    volumes:
+      # Live source mount for development — comment out in production.
+      - "/path/to/evo2/src:/app"
+      # Optional: local dataset directories.
+      # - "/path/to/your/data:/data/mydata:ro"

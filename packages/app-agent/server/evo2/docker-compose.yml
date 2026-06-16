@@ -1,0 +1,59 @@
+# GenomeSpy EVO2 inference server
+#
+# Prerequisites:
+#   1. NVIDIA Container Toolkit installed on the host
+#   2. Copy .env.example → .env and fill in values
+#
+# Reference genome (optional): set REF_GENOME_PATH in .env to enable coordinate
+# mode. Without it the server still handles raw-sequence requests normally.
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose up             # start server (downloads weights on first run)
+#   docker compose up --build     # rebuild image after Dockerfile changes
+#
+# For local development overrides (live source mounts, dataset mounts, etc.)
+# create a docker-compose.override.yml — Docker Compose merges it automatically.
+# See docker-compose.override.yml.example for a template.
+#
+# Model weights are preserved across restarts in a named Docker volume.
+
+name: genomespy-evo2
+
+services:
+  evo2-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: genomespy-evo2-server:latest
+    command: python server.py
+    ports:
+      - "${EVO2_PORT:-8001}:8001"
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    environment:
+      EVO2_MODEL_NAME: ${EVO2_MODEL_NAME:-evo2_7b}
+      EVO2_PORT: ${EVO2_PORT:-8001}
+      HF_TOKEN: ${HF_TOKEN}
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s  # model download + load can take several minutes on first run
+
+volumes:
+  hf_cache:
+    name: genomespy-evo2-hf-cache
