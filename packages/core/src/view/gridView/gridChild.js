@@ -7,12 +7,7 @@ import {
     isIntervalSelectionConfig,
     selectionContainsPoint,
 } from "../../selection/selection.js";
-import {
-    findChannelDefWithScale,
-    isColorChannel,
-    isFieldDef,
-    isValueDef,
-} from "../../encoder/encoder.js";
+import { isValueDef } from "../../encoder/encoder.js";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import AxisGridView from "../axisGridView.js";
 import AxisView, {
@@ -34,10 +29,9 @@ import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
 import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
-import { shallowArrayEquals } from "../../utils/arrayUtils.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
-import { getConfiguredLegendDefaults } from "../../config/legendConfig.js";
+import { createLegendDefinition } from "../../scales/legendResolution.js";
 import LegendView, { getExternalLegendOverhang } from "../legendView.js";
 
 /**
@@ -47,18 +41,7 @@ import LegendView, { getExternalLegendOverhang } from "../legendView.js";
  *     orient: import("../../spec/axis.js").AxisOrient,
  *     resolution: import("../../scales/axisResolution.js").default,
  * }} AxisCandidate
- *
- * @typedef {"symbol" | "gradient"} LegendType
  */
-
-const SYMBOL_LEGEND_CHANNELS = new Set([
-    "color",
-    "fill",
-    "stroke",
-    "shape",
-    "size",
-]);
-const GRADIENT_LEGEND_CHANNELS = new Set(["color", "fill", "stroke"]);
 const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
     "color",
     "fill",
@@ -69,33 +52,6 @@ const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
     "strokeWidth",
     "shape",
 ]);
-
-/**
- * Classifies currently implemented legend support. Deferred and unsupported
- * channels intentionally return undefined so accidental legends are not
- * generated before their visual representation is designed.
- *
- * @param {import("../../spec/channel.js").ChannelWithScale} channel
- * @param {import("../../spec/channel.js").ChannelDefWithScale} channelDef
- * @returns {LegendType | undefined}
- */
-function getLegendType(channel, channelDef) {
-    if (channel == "size" && channelDef.type == "quantitative") {
-        return "symbol";
-    } else if (
-        (channelDef.type === "nominal" || channelDef.type === "ordinal") &&
-        SYMBOL_LEGEND_CHANNELS.has(channel)
-    ) {
-        return "symbol";
-    } else if (
-        channelDef.type === "quantitative" &&
-        GRADIENT_LEGEND_CHANNELS.has(channel)
-    ) {
-        return "gradient";
-    } else {
-        return undefined;
-    }
-}
 
 /**
  * @param {import("../../spec/channel.js").ChannelDef | undefined} channelDef
@@ -926,207 +882,40 @@ export default class GridChild {
         /**
          * @param {import("../../spec/channel.js").ChannelWithScale} channel
          * @param {import("../unitView.js").default} legendParent
-         * @returns {import("../../spec/channel.js").ChannelDefWithScale | undefined}
-         */
-        const getLegendChannelDef = (channel, legendParent) =>
-            findChannelDefWithScale(legendParent.spec.encoding?.[channel]);
-
-        /**
-         * @param {import("../../spec/channel.js").ChannelWithScale} channel
-         * @param {import("../unitView.js").default} legendParent
-         * @returns {boolean}
-         */
-        const isExplicitLegendNull = (channel, legendParent) => {
-            const channelDef = getLegendChannelDef(channel, legendParent);
-            return Boolean(
-                channelDef &&
-                "legend" in channelDef &&
-                channelDef.legend === null
-            );
-        };
-
-        /**
-         * @param {import("../../spec/channel.js").ChannelWithScale} primary
-         * @param {import("../../spec/channel.js").ChannelWithScale} secondary
-         * @param {import("../unitView.js").default} legendParent
-         * @returns {boolean}
-         */
-        const canMergeSymbolChannels = (primary, secondary, legendParent) => {
-            const primaryDef = getLegendChannelDef(primary, legendParent);
-            const secondaryDef = getLegendChannelDef(secondary, legendParent);
-            const primaryResolution = legendParent.getScaleResolution(primary);
-            const secondaryResolution =
-                legendParent.getScaleResolution(secondary);
-
-            return (
-                isFieldDef(primaryDef) &&
-                isFieldDef(secondaryDef) &&
-                primaryDef.field === secondaryDef.field &&
-                primaryResolution &&
-                secondaryResolution &&
-                shallowArrayEquals(
-                    primaryResolution.getDomain(),
-                    secondaryResolution.getDomain()
-                )
-            );
-        };
-
-        /**
-         * @param {import("../../spec/channel.js").ChannelWithScale} channel
-         * @param {import("../unitView.js").default} legendParent
-         * @returns {boolean}
-         */
-        const hasRedundantPrimaryLegend = (channel, legendParent) => {
-            if (channel !== "shape") {
-                return false;
-            }
-
-            const channelDef = getLegendChannelDef(channel, legendParent);
-            if (!isFieldDef(channelDef)) {
-                return false;
-            }
-
-            for (const primary of /** @type {const} */ ([
-                "color",
-                "fill",
-                "stroke",
-            ])) {
-                if (
-                    canMergeSymbolChannels(primary, channel, legendParent) &&
-                    !isExplicitLegendNull(primary, legendParent)
-                ) {
-                    return true;
-                }
-            }
-
-            return false;
-        };
-
-        /**
-         * @param {import("../../spec/channel.js").ChannelWithScale} channel
-         * @param {import("../unitView.js").default} legendParent
-         * @returns {Partial<Record<import("../../spec/channel.js").ChannelWithScale, string>>}
-         */
-        const getRedundantSymbolChannels = (channel, legendParent) => {
-            if (!isColorChannel(channel)) {
-                return {};
-            }
-
-            const channelDef = getLegendChannelDef(channel, legendParent);
-            const shapeDef = getLegendChannelDef("shape", legendParent);
-            const shapeResolution = legendParent.getScaleResolution("shape");
-
-            if (
-                isFieldDef(channelDef) &&
-                isFieldDef(shapeDef) &&
-                shapeResolution &&
-                canMergeSymbolChannels(channel, "shape", legendParent) &&
-                !isExplicitLegendNull("shape", legendParent)
-            ) {
-                return {
-                    shape: shapeResolution.name ?? "shape",
-                };
-            }
-
-            return {};
-        };
-
-        /**
-         * @param {import("../../spec/channel.js").ChannelWithScale} channel
-         * @param {import("../unitView.js").default} legendParent
          */
         const createLegend = async (channel, legendParent) => {
-            if (hasRedundantPrimaryLegend(channel, legendParent)) {
+            const definition = createLegendDefinition(channel, legendParent);
+            if (!definition) {
                 return;
             }
 
-            const channelDef = getLegendChannelDef(channel, legendParent);
-            if (!channelDef || isValueDef(channelDef)) {
-                return;
-            }
-
-            const explicitLegend =
-                "legend" in channelDef ? channelDef.legend : undefined;
-            if (explicitLegend === null) {
-                return;
-            }
-
-            const legendOverrides =
-                explicitLegend === undefined
-                    ? undefined
-                    : /** @type {import("../../spec/legend.js").LegendConfig} */ ({
-                          disable: false,
-                          .../** @type {import("../../spec/legend.js").Legend} */ (
-                              explicitLegend
-                          ),
-                      });
-            const legendDefaults = getConfiguredLegendDefaults(
-                legendParent.getConfigScopes(),
-                legendOverrides
-            );
-            if (legendDefaults.disable) {
-                return;
-            }
-
-            const legendType = getLegendType(channel, channelDef);
-
-            if (!legendType) {
-                return;
-            }
-
-            const scaleResolution = legendParent.getScaleResolution(channel);
-            if (!scaleResolution) {
-                return;
-            }
-
-            const orient = legendDefaults.orient ?? "right";
+            const orient = definition.legend.orient ?? "right";
             if (this.legends[orient] && !this.allowDuplicateAxes()) {
                 throw new Error(
                     `A legend with the orient "${orient}" already exists!`
                 );
             }
 
-            const channelTitle =
-                /** @type {import("../../spec/legend.js").Legend["title"] | undefined} */ (
-                    "title" in channelDef ? channelDef.title : undefined
-                );
-            const title =
-                legendDefaults.title !== undefined
-                    ? legendDefaults.title
-                    : channelTitle !== undefined
-                      ? channelTitle
-                      : isFieldDef(channelDef)
-                        ? channelDef.field
-                        : undefined;
-            const format =
-                "format" in channelDef ? channelDef.format : undefined;
-            const symbolChannels =
-                legendType == "symbol"
-                    ? getRedundantSymbolChannels(channel, legendParent)
-                    : undefined;
             const symbolStyle =
-                legendType == "symbol"
+                definition.type == "symbol"
                     ? createInheritedSymbolStyle(
-                          channel,
-                          symbolChannels ?? {},
+                          definition.channel,
+                          definition.symbolChannels ?? {},
                           // Multi-view arbitration is intentionally simple for
                           // now: use the first deterministic contributor.
-                          scaleResolution.getOrderedMembers()[0].view
+                          definition.scaleResolution.getOrderedMembers()[0].view
                       )
                     : undefined;
 
             const legend = new LegendView(
                 {
-                    channel,
-                    type: legendType,
-                    symbolChannels,
+                    channel: definition.channel,
+                    type: definition.type,
+                    symbolChannels: definition.symbolChannels,
                     symbolStyle,
-                    legend: {
-                        ...legendDefaults,
-                        title,
-                    },
-                    format,
-                    dataType: channelDef.type,
+                    legend: definition.legend,
+                    format: definition.format,
+                    dataType: definition.dataType,
                 },
                 this.layoutParent.context,
                 this.layoutParent,
