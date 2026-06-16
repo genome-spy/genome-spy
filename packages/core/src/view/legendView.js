@@ -1,4 +1,4 @@
-import LayerView from "./layerView.js";
+import ContainerView from "./containerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
@@ -220,7 +220,7 @@ export function createSymbolLegendSpec({
  * @param {string} options.scaleName
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {LegendConfig} options.legend
- * @returns {import("../spec/view.js").LayerSpec}
+ * @returns {import("../spec/view.js").VConcatSpec}
  */
 export function createGradientLegendSpec({ scaleName, channel, legend }) {
     const title = legend.title;
@@ -434,20 +434,10 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
         layer: bodyLayer,
     });
 
-    /** @type {import("../spec/view.js").LayerSpec["layer"][number]} */
-    const layout = /** @type {any} */ ({
-        name: "gradientLayout",
-        spacing: 0,
-        vconcat: children,
-    });
-
     return {
         name: "legend_" + orient,
-        resolve: {
-            scale: { x: "excluded", y: "excluded" },
-            axis: { x: "excluded", y: "excluded" },
-        },
-        layer: [layout],
+        spacing: 0,
+        vconcat: children,
     };
 }
 
@@ -461,8 +451,11 @@ export function getExternalLegendOverhang(legendView) {
         : 0;
 }
 
-export default class LegendView extends LayerView {
+export default class LegendView extends ContainerView {
     #effectiveExtent = DEFAULT_LEGEND_EXTENT;
+
+    /** @type {import("./view.js").default | undefined} */
+    #child;
 
     /**
      * @param {object} props
@@ -484,7 +477,7 @@ export default class LegendView extends LayerView {
         dataParent,
         options
     ) {
-        super(
+        const spec =
             type == "gradient"
                 ? createGradientLegendSpec({ scaleName, channel, legend })
                 : createSymbolLegendSpec({
@@ -493,7 +486,10 @@ export default class LegendView extends LayerView {
                       channel,
                       symbolChannels,
                       legend,
-                  }),
+                  });
+
+        super(
+            spec,
             context,
             layoutParent,
             dataParent,
@@ -509,6 +505,30 @@ export default class LegendView extends LayerView {
 
         markViewAsNonAddressable(this, { skipSubtree: true });
         markViewAsChrome(this, { skipSubtree: true });
+    }
+
+    async initializeChildren() {
+        const childSpec = { ...this.spec };
+        delete childSpec.name;
+
+        this.#child = await this.context.createOrImportView(
+            childSpec,
+            this,
+            this,
+            this.getNextAutoName("legend")
+        );
+
+        markViewAsNonAddressable(this.#child, { skipSubtree: true });
+        markViewAsChrome(this.#child, { skipSubtree: true });
+    }
+
+    /**
+     * @returns {IterableIterator<import("./view.js").default>}
+     */
+    *[Symbol.iterator]() {
+        if (this.#child) {
+            yield this.#child;
+        }
     }
 
     getSize() {
@@ -535,5 +555,31 @@ export default class LegendView extends LayerView {
 
     isPickingSupported() {
         return false;
+    }
+
+    /**
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("./layout/rectangle.js").default} coords
+     * @param {import("../types/rendering.js").RenderingOptions} [options]
+     */
+    render(context, coords, options = {}) {
+        super.render(context, coords, options);
+
+        if (!this.isConfiguredVisible()) {
+            return;
+        }
+
+        context.pushView(this, coords);
+        this.#child?.render(context, coords, options);
+        context.popView(this);
+    }
+
+    /**
+     * @param {import("../utils/interaction.js").default} event
+     */
+    propagateInteraction(event) {
+        this.handleInteraction(event, true);
+        this.#child?.propagateInteraction(event);
+        this.handleInteraction(event, false);
     }
 }

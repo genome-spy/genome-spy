@@ -2222,19 +2222,25 @@ ViewCoords {
     ViewCoords {
       "children": [
         ViewCoords {
-          "children": [],
+          "children": [
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
+              "viewName": "symbols",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
+              "viewName": "title",
+            },
+            ViewCoords {
+              "children": [],
+              "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
+              "viewName": "labels",
+            },
+          ],
           "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
-          "viewName": "symbols",
-        },
-        ViewCoords {
-          "children": [],
-          "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
-          "viewName": "title",
-        },
-        ViewCoords {
-          "children": [],
-          "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
-          "viewName": "labels",
+          "viewName": "legend0",
         },
       ],
       "coords": "Rectangle: x: 250, y: 0, width: 80, height: 200",
