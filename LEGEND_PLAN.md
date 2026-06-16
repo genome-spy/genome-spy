@@ -53,10 +53,11 @@ Completed pieces:
   ordinary `rect`, `rule`, and `text` marks.
 - Gradient legends use the actual source scale for color and a local
   normalized positional scale for ramp/tick placement.
-- Linear, logarithmic, threshold, square-root, power, and symlog quantitative
-  color scales are covered by examples or focused tests. Non-linear tick and
-  ramp positions follow the same normalized scale. Threshold legends include
-  the two outer color buckets and align tick labels with threshold boundaries.
+- Linear, logarithmic, threshold, quantize, square-root, power, and symlog
+  quantitative color scales are covered by examples or focused tests.
+  Non-linear tick and ramp positions follow the same normalized scale.
+  Threshold legends include the two outer color buckets and align tick labels
+  with threshold boundaries.
 - Legend data sources listen to source scale domain changes so legends follow
   dynamic domains.
 - Generated legend views suppress ordinary view strokes.
@@ -219,9 +220,8 @@ Quantitative gradient legends:
 
 Discretizing gradient legends:
 
-- `quantize` should be checked against GenomeSpy's actual scale behavior. If
-  supported for color legends, the ramp should use bucket boundaries from the
-  scale and labels should align with those boundaries.
+- `quantize` color legends use bucket boundaries from the scale and align
+  labels with those boundaries.
 
 Quantitative symbol legends:
 
@@ -252,6 +252,8 @@ Unsupported or deferred:
   aggregate-plus-stack testbed for this behavior.
 - Continuous gradient legend positions are covered for `sqrt`, `pow`, and
   `symlog`, including non-default power exponents and symlog constants.
+- Quantize gradient legends use one ramp segment per scale bucket and place
+  labels on quantize thresholds.
 - Discrete and quantitative `size` symbol legends are supported. Quantitative
   size legends use representative tick values from the source scale. The
   `bubble-health-income.json` example has been manually checked and is a good
@@ -299,22 +301,17 @@ implementation change.
    background,
    - decide whether quantitative opacity should use sampled symbol entries or
    stay deferred.
-2. Check `quantize` support:
-   - determine whether GenomeSpy's scale runtime exposes quantize thresholds or
-   invert extents in a usable way,
-   - if yes, implement a discrete gradient ramp similar to threshold legends,
-   - if no, fail clearly or leave `quantize` documented as deferred.
-3. Harden threshold legends:
+2. Harden threshold legends:
     - keep outer buckets visible,
     - align labels with threshold boundaries,
     - decide whether labels should remain plain boundary labels or become
       Vega-like range labels such as `< 20` and `>= 100`.
-4. Add a supported-matrix test group:
+3. Add a supported-matrix test group:
     - one focused test for each supported channel/type combination,
     - one suppression test for `legend: null`,
     - one unsupported/deferred case that verifies no misleading legend is
       created.
-5. Update examples only when they serve as useful manual testbeds:
+4. Update examples only when they serve as useful manual testbeds:
     - keep `examples/core/legends/` small and test-like,
     - avoid broad example churn outside explicit legend fixtures.
 

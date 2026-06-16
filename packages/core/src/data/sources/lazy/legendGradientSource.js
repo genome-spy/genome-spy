@@ -11,6 +11,11 @@ const DEFAULT_TICK_COUNT = 5;
 /**
  * @typedef {((value: number) => number) & { invert: (position: number) => number }} NormalizedPositionScale
  * @typedef {import("../../../spec/data.js").LegendGradientData | import("../../../spec/data.js").LegendGradientTicksData} LegendGradientSourceData
+ * @typedef {import("../../../types/encoder.js").VegaScale & {
+ *     range: () => unknown[],
+ *     invertExtent: (value: unknown) => [unknown, unknown],
+ *     thresholds: () => unknown[]
+ * }} QuantizeScale
  */
 
 /**
@@ -102,6 +107,34 @@ function extendThresholdDomain(domain) {
     return [start - adjust, stop + adjust];
 }
 
+/**
+ * @param {import("../../../types/encoder.js").VegaScale} scale
+ * @returns {scale is QuantizeScale}
+ */
+function isQuantizeScale(scale) {
+    return (
+        scale.type == "quantize" &&
+        "range" in scale &&
+        typeof scale.range == "function" &&
+        "invertExtent" in scale &&
+        typeof scale.invertExtent == "function" &&
+        "thresholds" in scale &&
+        typeof scale.thresholds == "function"
+    );
+}
+
+/**
+ * @param {unknown} value
+ */
+function finiteNumber(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+        throw new Error("Quantize legend boundaries must be finite numbers.");
+    }
+
+    return number;
+}
+
 class LegendGradientBaseSource extends DataSource {
     /** @type {import("../../../spec/channel.js").Scalar[] | undefined} */
     #domain = undefined;
@@ -178,6 +211,9 @@ export default class LegendGradientSource extends LegendGradientBaseSource {
         if (scale.type == "threshold") {
             this.#publishThresholdGradient();
             return;
+        } else if (isQuantizeScale(scale)) {
+            this.#publishQuantizeGradient(start, stop, scale);
+            return;
         }
 
         const count = this.params.count ?? DEFAULT_SAMPLE_COUNT;
@@ -194,6 +230,30 @@ export default class LegendGradientSource extends LegendGradientBaseSource {
                 position1,
                 position,
                 value: invertPosition(position),
+                _legendGradientIndex: index,
+            });
+        }
+    }
+
+    /**
+     * @param {number} start
+     * @param {number} stop
+     * @param {QuantizeScale} scale
+     */
+    #publishQuantizeGradient(start, stop, scale) {
+        const positionScale = createLinearPositionScale(start, stop);
+
+        for (const [index, rangeValue] of scale.range().entries()) {
+            const [extentStart, extentStop] = scale
+                .invertExtent(rangeValue)
+                .map(finiteNumber);
+            const value = (extentStart + extentStop) / 2;
+
+            this._propagate({
+                position0: positionScale(extentStart),
+                position1: positionScale(extentStop),
+                position: positionScale(value),
+                value,
                 _legendGradientIndex: index,
             });
         }
@@ -245,8 +305,11 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
         const requestedCount = this.params.count ?? DEFAULT_TICK_COUNT;
         const count = tickCount(scale, requestedCount, undefined);
         const format = tickFormat(scale, requestedCount, this.params.format);
+        const values = isQuantizeScale(scale)
+            ? scale.thresholds().map(finiteNumber)
+            : tickValues(scale, count);
 
-        for (const value of tickValues(scale, count)) {
+        for (const value of values) {
             const label = format(value);
             if (!label) {
                 continue;

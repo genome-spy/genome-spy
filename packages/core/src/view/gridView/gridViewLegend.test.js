@@ -1147,6 +1147,65 @@ describe("GridView legends", () => {
         );
     });
 
+    test("quantize gradient legends use discrete color buckets", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 1, measurement: 0 },
+                            { x: 2, y: 2, measurement: 100 },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "measurement",
+                            type: "quantitative",
+                            scale: {
+                                type: "quantize",
+                                domain: [0, 100],
+                                scheme: { name: "viridis", count: 4 },
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+        const legend = getLegends(view)[0];
+        const ramp = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientRamp");
+        const labels = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientLabels");
+        const rampData = Array.from(
+            /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
+        );
+        const labelData = Array.from(
+            /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+        );
+
+        expect(
+            rampData.map(({ position0, position1 }) => [position0, position1])
+        ).toEqual([
+            [0, 0.25],
+            [0.25, 0.5],
+            [0.5, 0.75],
+            [0.75, 1],
+        ]);
+        expect(labelData).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ value: 25, position: 0.25 }),
+                expect.objectContaining({ value: 50, position: 0.5 }),
+                expect.objectContaining({ value: 75, position: 0.75 }),
+            ])
+        );
+    });
+
     test("does not draw configured view strokes inside legends", async () => {
         const view = await createLegendTestView({
             config: {
