@@ -485,6 +485,71 @@ describe("GridView legends", () => {
         );
     });
 
+    test("threshold gradient legends include outer color buckets", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 1, measurement: 10 },
+                            { x: 2, y: 2, measurement: 110 },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "measurement",
+                            type: "quantitative",
+                            scale: {
+                                type: "threshold",
+                                domain: [20, 40, 60, 80, 100],
+                                scheme: "turbo",
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+        const legend = getLegends(view)[0];
+        const ramp = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientRamp");
+        const labels = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientLabels");
+
+        expect(ramp).toBeInstanceOf(UnitView);
+        expect(labels).toBeInstanceOf(UnitView);
+
+        const rampData = Array.from(
+            /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
+        );
+        const labelData = Array.from(
+            /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+        );
+
+        expect(rampData).toHaveLength(6);
+        expect(rampData[0].position0).toBe(0);
+        expect(rampData[0].value).toBeLessThan(20);
+        expect(rampData.at(-1).position1).toBe(1);
+        expect(rampData.at(-1).value).toBeGreaterThan(100);
+        expect(labelData[0]).toEqual(
+            expect.objectContaining({
+                value: 20,
+                position: rampData[0].position1,
+            })
+        );
+        expect(labelData.at(-1)).toEqual(
+            expect.objectContaining({
+                value: 100,
+                position: rampData.at(-2).position1,
+            })
+        );
+    });
+
     test("does not draw configured view strokes inside legends", async () => {
         const view = await createLegendTestView({
             config: {

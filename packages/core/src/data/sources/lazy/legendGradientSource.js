@@ -54,6 +54,20 @@ function createLinearPositionScale(start, stop) {
     return scale;
 }
 
+/**
+ * @param {number[]} domain
+ * @returns {[number, number]}
+ */
+function extendThresholdDomain(domain) {
+    const start = domain[0];
+    const stop = domain.at(-1);
+    const span = stop - start;
+    const count = domain.length - 1;
+    const adjust = count ? span / count : 0.1;
+
+    return [start - adjust, stop + adjust];
+}
+
 class LegendGradientBaseSource extends DataSource {
     /** @type {import("../../../spec/channel.js").Scalar[] | undefined} */
     #domain = undefined;
@@ -126,12 +140,14 @@ export default class LegendGradientSource extends LegendGradientBaseSource {
      * @param {number} stop
      */
     publishData(start, stop) {
+        const scale = this.scaleResolution.getScale();
+        if (scale.type == "threshold") {
+            this.#publishThresholdGradient();
+            return;
+        }
+
         const count = this.params.count ?? DEFAULT_SAMPLE_COUNT;
-        const positionScale = createNormalizedScale(
-            this.scaleResolution.getScale(),
-            start,
-            stop
-        );
+        const positionScale = createNormalizedScale(scale, start, stop);
         const invertPosition = (/** @type {number} */ position) =>
             positionScale.invert(position);
 
@@ -144,6 +160,26 @@ export default class LegendGradientSource extends LegendGradientBaseSource {
                 position1,
                 position,
                 value: invertPosition(position),
+                _legendGradientIndex: index,
+            });
+        }
+    }
+
+    #publishThresholdGradient() {
+        const domain = this.scaleResolution.getDomain().map(Number);
+        const [start, stop] = extendThresholdDomain(domain);
+        const positionScale = createLinearPositionScale(start, stop);
+        const extendedDomain = [start, ...domain, stop];
+
+        for (let index = 0; index < extendedDomain.length - 1; index++) {
+            const value0 = extendedDomain[index];
+            const value1 = extendedDomain[index + 1];
+            const value = (value0 + value1) / 2;
+            this._propagate({
+                position0: positionScale(value0),
+                position1: positionScale(value1),
+                position: positionScale(value),
+                value,
                 _legendGradientIndex: index,
             });
         }
@@ -161,10 +197,23 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
      */
     publishData(start, stop) {
         const scale = this.scaleResolution.getScale();
+        const positionExtent =
+            scale.type == "threshold"
+                ? extendThresholdDomain(
+                      this.scaleResolution.getDomain().map(Number)
+                  )
+                : [start, stop];
         const positionScale =
             "invert" in scale && typeof scale.invert == "function"
-                ? createNormalizedScale(scale, start, stop)
-                : createLinearPositionScale(start, stop);
+                ? createNormalizedScale(
+                      scale,
+                      positionExtent[0],
+                      positionExtent[1]
+                  )
+                : createLinearPositionScale(
+                      positionExtent[0],
+                      positionExtent[1]
+                  );
         const requestedCount = this.params.count ?? DEFAULT_TICK_COUNT;
         const count = tickCount(scale, requestedCount, undefined);
         const format = tickFormat(scale, requestedCount);
