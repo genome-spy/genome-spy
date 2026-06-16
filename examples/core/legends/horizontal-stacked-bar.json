@@ -1,0 +1,82 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Legend test case adapted from Vega-Lite's horizontal stacked barley bar chart.",
+
+  "background": "#fafafa",
+
+  "width": 500,
+  "height": 300,
+
+  "config": { "legend": { "disable": false, "padding": 18 } },
+
+  "data": { "url": "vega-datasets/barley.json" },
+
+  "transform": [
+    {
+      "type": "aggregate",
+      "groupby": ["variety", "site"],
+      "fields": ["yield"],
+      "ops": ["sum"],
+      "as": ["yieldSum"]
+    },
+    {
+      "type": "stack",
+      "field": "yieldSum",
+      "groupby": ["variety"],
+      "sort": { "field": "site", "order": "ascending" },
+      "as": ["yieldStart", "yieldEnd"]
+    }
+  ],
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "yieldStart",
+      "type": "quantitative",
+      "title": "Sum of yield"
+    },
+    "x2": { "field": "yieldEnd" },
+    "y": {
+      "field": "variety",
+      "type": "nominal",
+      "scale": {
+        "domain": [
+          "Glabron",
+          "Manchuria",
+          "No. 457",
+          "No. 462",
+          "No. 475",
+          "Peatland",
+          "Svansota",
+          "Trebi",
+          "Velvet",
+          "Wisconsin No. 38"
+        ]
+      }
+    },
+    "color": {
+      "field": "site",
+      "type": "nominal",
+      "scale": {
+        "domain": [
+          "Crookston",
+          "Duluth",
+          "Grand Rapids",
+          "Morris",
+          "University Farm",
+          "Waseca"
+        ],
+        "range": [
+          "#4C78A8",
+          "#F58518",
+          "#E45756",
+          "#72B7B2",
+          "#54A24B",
+          "#EECA3B"
+        ]
+      }
+    }
+  }
+}
