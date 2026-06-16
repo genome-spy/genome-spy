@@ -1,5 +1,6 @@
 import ContainerView from "./containerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
+import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
@@ -8,6 +9,7 @@ const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
 const DEFAULT_GRADIENT_TICK_COUNT = 5;
 const DEFAULT_GRADIENT_THICKNESS = 12;
 const DEFAULT_GRADIENT_TICK_SIZE = 4;
+const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 /** @type {import("../spec/view.js").ViewBackground} */
 const LEGEND_VIEW_BACKGROUND = {
     fillOpacity: 0,
@@ -369,7 +371,18 @@ export function createGradientLegendSpec({ channel, legend }) {
         {
             name: "gradientLabels",
             data: tickData,
-            transform: tickTransform,
+            transform: [
+                ...tickTransform,
+                {
+                    type: "measureText",
+                    field: "label",
+                    as: LABEL_WIDTH_FIELD,
+                    fontSize: labelFontSize,
+                    font: legend.labelFont,
+                    fontStyle: legend.labelFontStyle,
+                    fontWeight: legend.labelFontWeight,
+                },
+            ],
             mark: {
                 type: "text",
                 clip: false,
@@ -439,6 +452,17 @@ export default class LegendView extends ContainerView {
     /** @type {import("./view.js").default | undefined} */
     #child;
 
+    /** @type {"symbol" | "gradient"} */
+    #type;
+
+    /** @type {UnitView[]} */
+    #labelViews = [];
+
+    /** @type {Set<import("../data/collector.js").default>} */
+    #observedCollectors = new Set();
+
+    #measurementScheduled = false;
+
     /**
      * @param {object} props
      * @param {LegendEntry[]} [props.entries]
@@ -485,6 +509,7 @@ export default class LegendView extends ContainerView {
 
         this.needsAxes = { x: false, y: false };
         this.legendProps = legend;
+        this.#type = type ?? "symbol";
 
         markViewAsNonAddressable(this, { skipSubtree: true });
         markViewAsChrome(this, { skipSubtree: true });
@@ -503,6 +528,24 @@ export default class LegendView extends ContainerView {
 
         markViewAsNonAddressable(this.#child, { skipSubtree: true });
         markViewAsChrome(this.#child, { skipSubtree: true });
+
+        this.#labelViews = [];
+        for (const view of this.getDescendants()) {
+            if (
+                view instanceof UnitView &&
+                (view.name === "labels" || view.name === "gradientLabels")
+            ) {
+                this.#labelViews.push(view);
+            }
+        }
+
+        if (this.#labelViews.length > 0) {
+            this.registerDisposer(
+                this._addBroadcastHandler("subtreeDataReady", () =>
+                    this.#ensureLabelObservers()
+                )
+            );
+        }
     }
 
     /**
@@ -536,6 +579,67 @@ export default class LegendView extends ContainerView {
         return this.legendProps.padding ?? 0;
     }
 
+    #scheduleAutoExtentMeasurement() {
+        if (this.#measurementScheduled) {
+            return;
+        }
+
+        this.#measurementScheduled = true;
+        queueMicrotask(() => {
+            this.#measurementScheduled = false;
+            this.#updateAutoExtent();
+        });
+    }
+
+    #ensureLabelObservers() {
+        for (const labelsView of this.#labelViews) {
+            const collector = labelsView.getCollector();
+            if (!collector || this.#observedCollectors.has(collector)) {
+                continue;
+            }
+
+            this.#observedCollectors.add(collector);
+            this.registerDisposer(
+                collector.observe(() => this.#scheduleAutoExtentMeasurement())
+            );
+
+            if (collector.completed) {
+                this.#scheduleAutoExtentMeasurement();
+            }
+        }
+    }
+
+    #updateAutoExtent() {
+        if (
+            this.legendProps.orient == "top" ||
+            this.legendProps.orient == "bottom"
+        ) {
+            return;
+        }
+
+        const measuredLabelWidth = getMeasuredLabelWidth(this.#labelViews);
+        if (measuredLabelWidth === undefined) {
+            return;
+        }
+
+        const nextExtent = getLegendExtent(
+            this.legendProps,
+            this.#type,
+            measuredLabelWidth,
+            this.context
+        );
+        const willGrow =
+            nextExtent >= this.#effectiveExtent + AUTO_EXTENT_GROW_THRESHOLD_PX;
+
+        if (!willGrow) {
+            return;
+        }
+
+        this.#effectiveExtent = nextExtent;
+        this.invalidateSizeCache();
+        this.context.requestLayoutReflow();
+    }
+
     isPickingSupported() {
         return false;
     }
@@ -565,4 +669,77 @@ export default class LegendView extends ContainerView {
         this.#child?.propagateInteraction(event);
         this.handleInteraction(event, false);
     }
+}
+
+/**
+ * @param {UnitView[]} labelViews
+ * @returns {number | undefined}
+ */
+function getMeasuredLabelWidth(labelViews) {
+    let maxWidth = 0;
+    let completed = false;
+
+    for (const labelsView of labelViews) {
+        const collector = labelsView.getCollector();
+        if (!collector?.completed) {
+            return undefined;
+        }
+
+        completed = true;
+        collector.visitData((datum) => {
+            maxWidth = Math.max(
+                maxWidth,
+                Number(datum[LABEL_WIDTH_FIELD]) || 0
+            );
+        });
+    }
+
+    return completed ? Math.ceil(maxWidth) : undefined;
+}
+
+/**
+ * @param {LegendConfig} legend
+ * @param {"symbol" | "gradient"} type
+ * @param {number} measuredLabelWidth
+ * @param {import("../types/viewContext.js").default} context
+ */
+function getLegendExtent(legend, type, measuredLabelWidth, context) {
+    const titleWidth = getTitleWidth(legend, context);
+    const labelOffset = legend.labelOffset ?? 4;
+    const labelExtent =
+        type == "gradient"
+            ? DEFAULT_GRADIENT_THICKNESS +
+              DEFAULT_GRADIENT_TICK_SIZE +
+              labelOffset +
+              measuredLabelWidth
+            : Math.sqrt(legend.symbolSize ?? 100) +
+              (legend.symbolStrokeWidth ?? 1.5) +
+              labelOffset +
+              measuredLabelWidth;
+
+    return Math.ceil(Math.max(DEFAULT_LEGEND_EXTENT, labelExtent, titleWidth));
+}
+
+/**
+ * @param {LegendConfig} legend
+ * @param {import("../types/viewContext.js").default} context
+ */
+function getTitleWidth(legend, context) {
+    if (!legend.title) {
+        return 0;
+    }
+
+    const font = legend.titleFont
+        ? context.fontManager.getFont(
+              legend.titleFont,
+              legend.titleFontStyle,
+              legend.titleFontWeight
+          )
+        : context.fontManager.getDefaultFont();
+    const metrics = font.metrics;
+    if (!metrics) {
+        return 0;
+    }
+
+    return metrics.measureWidth(legend.title, legend.titleFontSize ?? 11);
 }
