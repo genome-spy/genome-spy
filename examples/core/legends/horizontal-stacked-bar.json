@@ -5,8 +5,8 @@
 
   "background": "#fafafa",
 
-  "width": 500,
-  "height": 300,
+  "width": 300,
+  "height": 200,
 
   "config": { "legend": { "disable": false, "padding": 18 } },
 
@@ -41,42 +41,11 @@
     "y": {
       "field": "variety",
       "type": "nominal",
-      "scale": {
-        "domain": [
-          "Glabron",
-          "Manchuria",
-          "No. 457",
-          "No. 462",
-          "No. 475",
-          "Peatland",
-          "Svansota",
-          "Trebi",
-          "Velvet",
-          "Wisconsin No. 38"
-        ]
-      }
+      "scale": { "padding": 0.1 }
     },
     "color": {
       "field": "site",
-      "type": "nominal",
-      "scale": {
-        "domain": [
-          "Crookston",
-          "Duluth",
-          "Grand Rapids",
-          "Morris",
-          "University Farm",
-          "Waseca"
-        ],
-        "range": [
-          "#4C78A8",
-          "#F58518",
-          "#E45756",
-          "#72B7B2",
-          "#54A24B",
-          "#EECA3B"
-        ]
-      }
+      "type": "nominal"
     }
   }
 }
