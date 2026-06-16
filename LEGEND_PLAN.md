@@ -55,6 +55,9 @@ Completed pieces:
 - Legend data sources listen to source scale domain changes so legends follow
   dynamic domains.
 - Generated legend views suppress ordinary view strokes.
+- Symbol legend labels and gradient tick labels use the channel `format`
+  property where applicable. Gradient tick formatting reuses the same
+  `tickFormat` machinery as axes.
 
 ## Vega/Vega-Lite Summary
 
@@ -124,8 +127,8 @@ in the local-legend milestone:
 - Label behavior:
   - `labelLimit`, `labelOffset`, `labelFont*`, `labelColor`,
     `labelAlign`, and `labelBaseline` are applied consistently.
-  - Gradient labels use suitable formatting for linear, log, and threshold
-    scales.
+  - Gradient labels use the channel `format` and the existing axis tick
+    formatter for linear, log, and threshold scales.
   - Discrete threshold labels should describe boundaries/ranges in a
     Vega-like way if plain boundary labels are not sufficient.
 - Symbol behavior:
@@ -238,30 +241,33 @@ Unsupported or deferred:
 - Deferred channels such as `size` do not create accidental legends before
   their representation is designed.
 
-### Title And Label Implementation Steps
+### Completed Title And Label Steps
 
-Implement legend title/label parity next, using behavioral tests and generated
-hierarchy inspection where rendering is not needed.
+Completed with behavioral tests and generated hierarchy inspection:
 
-1. Tighten title derivation:
+- Title derivation:
    - `legend.title` overrides channel field title and field name,
    - channel `title` is used before raw field name,
    - `title: null` suppresses the title.
-2. Verify title styling and spacing:
+- Title styling and spacing:
    - `titlePadding` affects generated title view height,
    - `titleColor`, `titleFont`, `titleFontStyle`, `titleFontWeight`, and
      `titleFontSize` pass through to the title text mark.
-3. Verify label styling:
+- Label styling:
    - `labelFontSize`, `labelColor`, `labelFont`, `labelFontStyle`,
      `labelFontWeight`, `labelAlign`, and `labelBaseline` pass through to
-     generated label marks,
-   - `labelLimit` is either implemented or documented as deferred if text marks
-     do not yet support truncation.
-4. Check formatting:
-   - determine whether channel `format` should affect symbol labels, gradient
-     tick labels, or both,
-   - implement only if the existing formatting helpers can be reused without
-     broad guide refactoring.
+     generated label marks.
+- Formatting:
+   - channel `format` affects symbol legend labels,
+   - channel `format` affects gradient tick labels through the existing
+     axis-style `tickFormat` helper.
+
+Deferred:
+
+- `labelLimit` and `titleLimit` truncation. The corresponding spec/config
+  fields exist, but axes and text marks do not yet provide a reusable
+  truncation/ellipsis mechanism. Implement this as a text-mark or guide-label
+  capability first instead of adding legend-only string chopping.
 
 ### Remaining Channel And Scale Implementation Steps
 

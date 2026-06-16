@@ -10,6 +10,7 @@ const DEFAULT_TICK_COUNT = 5;
 
 /**
  * @typedef {((value: number) => number) & { invert: (position: number) => number }} NormalizedPositionScale
+ * @typedef {import("../../../spec/data.js").LegendGradientData | import("../../../spec/data.js").LegendGradientTicksData} LegendGradientSourceData
  */
 
 /**
@@ -96,7 +97,7 @@ class LegendGradientBaseSource extends DataSource {
     #domain = undefined;
 
     /**
-     * @param {import("../../../spec/data.js").LegendGradientData} params
+     * @param {LegendGradientSourceData} params
      * @param {import("../../../view/view.js").default} view
      */
     constructor(params, view) {
@@ -233,7 +234,7 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
         );
         const requestedCount = this.params.count ?? DEFAULT_TICK_COUNT;
         const count = tickCount(scale, requestedCount, undefined);
-        const format = tickFormat(scale, requestedCount);
+        const format = tickFormat(scale, requestedCount, this.params.format);
 
         for (const value of tickValues(scale, count)) {
             const label = format(value);

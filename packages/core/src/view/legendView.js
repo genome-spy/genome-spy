@@ -109,6 +109,8 @@ function createBaseColorEncoding(value) {
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [options.symbolChannels]
  * @param {LegendConfig} options.legend
+ * @param {string} [options.format]
+ * @param {import("../spec/channel.js").Type} options.dataType
  * @returns {import("../spec/view.js").VConcatSpec}
  */
 export function createSymbolLegendSpec({
@@ -116,6 +118,8 @@ export function createSymbolLegendSpec({
     channel,
     symbolChannels = {},
     legend,
+    format,
+    dataType,
 }) {
     const horizontalLegend = isHorizontalLegend(legend);
     const labelAlign = legend.labelAlign ?? "left";
@@ -179,7 +183,7 @@ export function createSymbolLegendSpec({
                 },
                 [channel]: {
                     field: "value",
-                    type: "nominal",
+                    type: dataType,
                     domainInert: true,
                 },
                 ...baseSymbolEncoding,
@@ -188,7 +192,7 @@ export function createSymbolLegendSpec({
                         channel,
                         {
                             field: "value",
-                            type: "nominal",
+                            type: dataType,
                             domainInert: true,
                         },
                     ])
@@ -241,7 +245,7 @@ export function createSymbolLegendSpec({
             },
             data: entries
                 ? { values: entries }
-                : { lazy: { type: "legendEntries", channel } },
+                : { lazy: { type: "legendEntries", channel, format } },
             transform: [
                 {
                     type: "measureText",
@@ -279,9 +283,10 @@ export function createSymbolLegendSpec({
  * @param {object} options
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {LegendConfig} options.legend
+ * @param {string} [options.format]
  * @returns {import("../spec/view.js").VConcatSpec}
  */
-export function createGradientLegendSpec({ channel, legend }) {
+export function createGradientLegendSpec({ channel, legend, format }) {
     const h = isHorizontalLegend(legend);
     const labelAlign = h ? "center" : (legend.labelAlign ?? "left");
     const labelBaseline = h ? "top" : (legend.labelBaseline ?? "middle");
@@ -342,6 +347,7 @@ export function createGradientLegendSpec({ channel, legend }) {
             type: "legendGradientTicks",
             channel,
             count: DEFAULT_GRADIENT_TICK_COUNT,
+            format,
         },
     };
     /** @type {import("../spec/transform.js").FormulaParams[]} */
@@ -520,13 +526,15 @@ export default class LegendView extends ContainerView {
      * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
      * @param {"symbol" | "gradient"} [props.type]
      * @param {LegendConfig} props.legend
+     * @param {string} [props.format]
+     * @param {import("../spec/channel.js").Type} props.dataType
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(
-        { entries, channel, symbolChannels, type, legend },
+        { entries, channel, symbolChannels, type, legend, format, dataType },
         context,
         layoutParent,
         dataParent,
@@ -537,12 +545,15 @@ export default class LegendView extends ContainerView {
                 ? createGradientLegendSpec({
                       channel,
                       legend,
+                      format,
                   })
                 : createSymbolLegendSpec({
                       entries,
                       channel,
                       symbolChannels,
                       legend,
+                      format,
+                      dataType,
                   });
 
         super(

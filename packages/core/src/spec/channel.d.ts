@@ -218,7 +218,8 @@ export interface ExprDef
  * Field definition of a mark property, which can contain a legend.
  */
 export type MarkPropFieldDef<T extends Type = Type> = ScaleFieldDef<T> &
-    LegendMixins;
+    LegendMixins &
+    FormatMixins;
 
 export type MarkPropExprDef<T extends Type = Type> = ExprDef &
     TypeMixins<T> &
@@ -437,7 +438,11 @@ export type ChannelDef = Exclude<
 // TODO: Does this make sense?
 export type ChannelDefWithScale = ScaleMixins &
     TypeMixins<Type> &
-    DomainContributionMixins;
+    DomainContributionMixins &
+    TitleMixins &
+    Partial<FormatMixins> & {
+        axis?: GenomeAxis | null;
+    };
 
 export interface XIndexDef {
     /**

@@ -398,6 +398,9 @@ export interface LegendEntriesData {
 
     /** Which channel's scale domain to use */
     channel: ChannelWithScale;
+
+    /** D3 number format specifier for labels */
+    format?: string;
 }
 
 /**
@@ -413,6 +416,9 @@ export interface LegendGradientData {
 
     /** Number of ramp samples to generate */
     count?: number;
+
+    /** D3 number format specifier for labels derived from this source */
+    format?: string;
 }
 
 /**
@@ -428,6 +434,9 @@ export interface LegendGradientTicksData {
 
     /** Number of ticks to generate */
     count?: number;
+
+    /** D3 number format specifier for tick labels */
+    format?: string;
 }
 
 export interface AxisGenomeData {

@@ -1000,6 +1000,8 @@ export default class GridChild {
                       : isFieldDef(channelDef)
                         ? channelDef.field
                         : undefined;
+            const format =
+                "format" in channelDef ? channelDef.format : undefined;
 
             const legend = new LegendView(
                 {
@@ -1013,6 +1015,8 @@ export default class GridChild {
                         ...legendDefaults,
                         title,
                     },
+                    format,
+                    dataType: channelDef.type,
                 },
                 this.layoutParent.context,
                 this.layoutParent,

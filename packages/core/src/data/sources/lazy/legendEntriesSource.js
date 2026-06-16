@@ -1,3 +1,5 @@
+import { format as numberFormat } from "d3-format";
+
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { createDiscreteLegendEntries } from "../../../view/legend/legendEntries.js";
 import { isChromeView } from "../../../view/viewSelectors.js";
@@ -47,8 +49,16 @@ export default class LegendEntriesSource extends DataSource {
             this.reset();
             this.beginBatch({ type: "file" });
 
+            const format = this.params.format;
+            const formatter = format
+                ? (
+                      /** @type {import("../../../spec/channel.js").Scalar} */ value
+                  ) => numberFormat(format)(Number(value))
+                : undefined;
+
             for (const datum of createDiscreteLegendEntries(
-                this.scaleResolution
+                this.scaleResolution,
+                formatter
             )) {
                 this._propagate(datum);
             }

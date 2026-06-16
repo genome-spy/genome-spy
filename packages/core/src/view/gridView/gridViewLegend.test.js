@@ -226,6 +226,40 @@ describe("GridView legends", () => {
         expect(getLegendTitle(legend)).toBeUndefined();
     });
 
+    test("formats symbol legend labels with the channel format", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, class: 0.125 },
+                            { x: 2, y: 3, class: 0.5 },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "class",
+                            type: "ordinal",
+                            format: ".1f",
+                        },
+                    },
+                },
+            ],
+        });
+        const labels = getLegends(view)[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "labels");
+        const labelData = Array.from(
+            /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+        );
+
+        expect(labelData.map(({ label }) => label)).toEqual(["0.1", "0.5"]);
+    });
+
     test("passes legend title and label styling to generated marks", async () => {
         const view = await createLegendTestView({
             config: {
@@ -692,6 +726,46 @@ describe("GridView legends", () => {
                 "gradientRamp",
                 "gradientTicks",
                 "gradientLabels",
+            ])
+        );
+    });
+
+    test("formats gradient legend tick labels with the channel format", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, measurement: 0 },
+                            { x: 2, y: 3, measurement: 1 },
+                        ],
+                    },
+                    mark: "rect",
+                    encoding: {
+                        x: { field: "x", type: "index" },
+                        y: { field: "y", type: "index" },
+                        color: {
+                            field: "measurement",
+                            type: "quantitative",
+                            format: ".1f",
+                            scale: { domain: [0, 1] },
+                        },
+                    },
+                },
+            ],
+        });
+        const labels = getLegends(view)[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientLabels");
+        const labelData = Array.from(
+            /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+        );
+
+        expect(labelData).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ value: 0, label: "0.0" }),
+                expect.objectContaining({ value: 1, label: "1.0" }),
             ])
         );
     });
