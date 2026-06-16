@@ -44,7 +44,7 @@ Completed pieces:
 - Redundant `shape` is merged into a primary color/fill/stroke symbol legend
   when both encode the same field and resolved scale domain.
 - Redundant shape merging respects `legend: null`, and non-redundant same-
-  orient legends fail clearly until local stacking exists.
+  orient legends are kept separate and stacked locally.
 - Shape-only, fill-only, stroke-only, and redundant color/shape symbol legends
   are covered by focused tests. Symbol base fill/stroke handling avoids
   unsupported CSS `transparent` constants in shader code while preserving
@@ -70,6 +70,11 @@ Completed pieces:
   mark styling, keep differently sized symbols center-aligned, and line up
   labels against a shared column label position.
 - Rect mark color legends use square symbol swatches.
+- Legend candidates are collected through an internal `LegendResolution`,
+  modeled after `AxisResolution`, before `GridChild` materializes them as
+  local legends.
+- Multiple legends with the same local orient are stacked outward from the
+  plot, after any axis on the same side.
 
 ## Vega/Vega-Lite Summary
 
@@ -161,8 +166,7 @@ in the local-legend milestone:
   - Legend views do not inherit ordinary view strokes.
   - Top/bottom legends use horizontal layout and reserve vertical overhang.
   - Left/right legends use vertical layout and reserve horizontal overhang.
-  - Multiple legends targeting the same local orient either stack/pack
-    predictably or fail with a clear message.
+  - Multiple legends targeting the same local orient stack predictably.
 
 ### Channel Coverage To Support
 
@@ -197,9 +201,8 @@ Channel behavior to document and test:
 - `legend: null` suppresses the legend for the specific channel.
 - Redundant channels respect `legend: null`; for example, `shape` should not
   merge into a color legend when `shape.legend` is `null`.
-- Non-redundant channels with the same orient need an intentional policy:
-  local stacking is the preferred next behavior. The current implementation
-  should not silently drop a second legend.
+- Non-redundant channels with the same orient are kept as separate local
+  legends and stacked outward from the plot.
 
 ### Scale Type Coverage To Support
 
@@ -285,79 +288,46 @@ Completed with behavioral tests and generated hierarchy inspection:
 
 ### Internal Legend Resolution
 
-The current implementation creates legends imperatively in
-`GridChild.createAxes()`. That path now handles channel classification, legend
-config/default merging, title arbitration, redundant channel merging, source
-scale lookup, inherited symbol styling, and duplicate-orient handling. This is
-becoming too much responsibility for `GridChild`.
+The first internal legend-resolution pass is implemented. It is modeled more
+closely after `AxisResolution` than `ScaleResolution`: scales still own domain
+and scale-instance behavior, while legend resolution owns guide-member
+aggregation and arbitration.
 
-The next structural step should be an internal `LegendResolution`, modeled more
-closely after `AxisResolution` than `ScaleResolution`.
+This follows the Vega-Lite architecture at a high level. Vega-Lite resolves axes
+and legends separately from scales, even though guide resolution depends on the
+resolved scale. GenomeSpy keeps the same conceptual split while using its own
+runtime view/dataflow architecture.
 
-This also follows the Vega-Lite architecture at a high level: Vega-Lite resolves
-axes and legends separately from scales, even though guide resolution depends on
-the resolved scale. GenomeSpy should keep the same conceptual split while using
-its own runtime view/dataflow architecture.
-
-Do not add a public `resolve.legend` spec surface yet. The first goal is an
-internal resolution object that organizes the existing local-legend behavior and
-makes same-orient stacking clean. A public legend resolution API can be designed
-later if shared/root/named-area legends need it.
-
-Proposed responsibilities:
+Implemented behavior:
 
 - `resolutionPlanner` collects non-positional scale-backed legend candidates
-  for supported channels and registers them with a legend resolution.
-- `LegendResolution` owns member aggregation and arbitration, including:
-   - `legend: null` suppression for the specific channel,
-   - configured/default legend props,
-   - title derivation from `legend.title`, channel `title`, field name, or
-     expression,
-   - legend type classification (`symbol` or `gradient`),
-   - source `ScaleResolution` lookup,
-   - redundant `shape` merging into compatible color/fill/stroke legends,
-   - deterministic source view choice for inherited symbol styling,
-   - visible-member filtering where needed.
-- `GridChild` materializes resolved legend outputs into `LegendView`s and only
-  manages placement/overhang.
+  for supported channels and registers them with an internal legend resolution.
+- `LegendResolution` owns `legend: null` suppression, default/config merging,
+  title derivation, legend type classification, source scale lookup, and
+  redundant `shape` merging into compatible color/fill/stroke legends.
+- Legend candidates are registered after scales are resolved, so legend
+  resolution can use the actual `ScaleResolution`.
+- `GridChild` materializes resolved legend definitions into `LegendView`s and
+  remains responsible for local placement and overhang.
+- Local placement remains unchanged conceptually: each `GridChild` hosts
+  legends for the views it owns.
+- Multiple resolved legends with the same orient are stacked locally instead of
+  rejected.
 
-Candidate member shape:
+Do not add a public `resolve.legend` spec surface yet. A public legend
+resolution API can be designed later if shared/root/named-area legends need it.
 
-```js
-{
-  view,
-  channel,
-  channelDef,
-  scaleResolution,
-  legendType,
-  legendProps
-}
-```
+Remaining resolution follow-ups:
 
-Candidate resolution API:
-
-- `registerMember(member)` / `removeMember(member)`.
-- `getLegendDefs()` returning one or more materializable legend definitions.
-- `getTitle(def)` for title arbitration.
-- `getMergedSymbolChannels(def)` for redundant channel merging.
-- `getSymbolStyleSourceView(def)` for first-deterministic-contributor styling.
-- `hasVisibleNonChromeMember()` if hidden-view filtering becomes necessary.
-
-Initial implementation steps:
-
-1. Extract the existing legend-channel support classifier and title/default
-   arbitration from `GridChild` into a new `legendResolution.js`.
-2. Extend `View.resolutions` and `resolutionPlanner` with an internal
-   `legend` target without exposing it in `ResolveSpec` yet.
-3. Register legend candidates after scales are resolved, because legend
-   resolution needs the actual `ScaleResolution`.
-4. Keep current local behavior: each `GridChild` hosts legends for the views it
-   owns. Do not move legends to root or shared guide areas.
-5. Replace same-orient fail-fast with local stacking of multiple resolved
-   legends for that orient.
-6. Add one focused behavior test for two non-redundant same-orient legends,
-   such as `color` plus quantitative `size`, and avoid exhaustive generated
-   spec assertions.
+1. Add visible-member filtering if hidden or dynamically removed views can still
+   contribute stale legend members.
+2. Decide whether shared non-position scales should eventually merge legends
+   across sibling `GridChild`s or remain local until named guide areas exist.
+3. Keep inherited symbol styling deterministic by using the first contributing
+   source view for now; revisit only if real multi-view conflicts appear.
+4. Add one focused behavior test for a non-redundant same-orient pair such as
+   color plus quantitative size if the existing same-orient test does not cover
+   enough user-visible behavior.
 
 ### Remaining Channel And Scale Implementation Steps
 
@@ -409,8 +379,8 @@ implementation change.
 1. Audit legend creation against all scale-backed channels and decide whether
    each should create a symbol legend, gradient legend, or no legend.
 2. Add test examples or focused specs for the supported channel/scale matrix.
-3. Add failure tests for unsupported same-orient duplicate legends or implement
-   local stacking before allowing them.
+3. Add focused tests for same-orient stacking if real examples reveal gaps in
+   current coverage.
 4. Verify dynamic domains with a scale that updates after initial render.
 5. Verify legends do not contribute to source scale domains while still using
    the actual source scale.
