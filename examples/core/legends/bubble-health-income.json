@@ -12,7 +12,12 @@
 
   "data": { "url": "vega-datasets/gapminder-health-income.csv" },
 
-  "mark": { "type": "point", "filled": true, "shape": "circle", "opacity": 0.7 },
+  "mark": {
+    "type": "point",
+    "filled": true,
+    "shape": "circle",
+    "opacity": 0.7
+  },
 
   "encoding": {
     "x": {
@@ -28,9 +33,7 @@
     },
     "size": {
       "field": "population",
-      "type": "quantitative",
-      "format": ".2s",
-      "legend": { "title": "Population" }
+      "type": "quantitative"
     },
     "color": { "value": "#000" }
   }

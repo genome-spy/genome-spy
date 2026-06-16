@@ -748,8 +748,17 @@ describe("GridView legends", () => {
         ).toBe(/** @type {UnitView} */ (plot).getScaleResolution("size"));
         expect(labelData).toEqual(
             expect.arrayContaining([
-                expect.objectContaining({ value: 0, label: "0.0" }),
-                expect.objectContaining({ value: 100, label: "100.0" }),
+                expect.objectContaining({
+                    value: 0,
+                    label: "0.0",
+                    _legendSymbolSize: 0,
+                }),
+                expect.objectContaining({
+                    value: 100,
+                    label: "100.0",
+                    _legendSymbolSize: 400,
+                    _legendEntryHeight: 22,
+                }),
             ])
         );
         expect(labelData.length).toBeGreaterThan(2);

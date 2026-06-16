@@ -4,6 +4,7 @@ import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
+const SYMBOL_SIZE_FIELD = "_legendSymbolSize";
 const DEFAULT_SYMBOL_LEGEND_EXTENT = 80;
 const DEFAULT_GRADIENT_LEGEND_EXTENT = 40;
 const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
@@ -275,7 +276,10 @@ export function createSymbolLegendSpec({
                     type: "packLabels",
                     labelWidth: LABEL_WIDTH_FIELD,
                     columns: legend.columns,
-                    symbolSize: legend.symbolSize,
+                    symbolSize:
+                        channel == "size"
+                            ? SYMBOL_SIZE_FIELD
+                            : legend.symbolSize,
                     symbolStrokeWidth: legend.symbolStrokeWidth,
                     labelOffset: legend.labelOffset,
                     fontSize: labelFontSize,

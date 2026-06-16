@@ -8,6 +8,7 @@ import DataSource from "../dataSource.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
 const DEFAULT_QUANTITATIVE_ENTRY_COUNT = 5;
+const LEGEND_SYMBOL_SIZE_FIELD = "_legendSymbolSize";
 
 export default class LegendEntriesSource extends DataSource {
     /** @type {import("../../../spec/channel.js").Scalar[] | undefined} */
@@ -61,18 +62,32 @@ export default class LegendEntriesSource extends DataSource {
     }
 
     #createEntries() {
-        if (this.params.dataType == "quantitative") {
-            return this.#createQuantitativeEntries();
-        } else {
-            const format = this.params.format;
-            const formatter = format
-                ? (
-                      /** @type {import("../../../spec/channel.js").Scalar} */ value
-                  ) => numberFormat(format)(Number(value))
-                : undefined;
+        const entries =
+            this.params.dataType == "quantitative"
+                ? this.#createQuantitativeEntries()
+                : this.#createDiscreteEntries();
 
-            return createDiscreteLegendEntries(this.scaleResolution, formatter);
+        if (this.params.channel == "size") {
+            const scale = this.scaleResolution.getScale();
+            for (const entry of entries) {
+                /** @type {Record<string, any>} */ (entry)[
+                    LEGEND_SYMBOL_SIZE_FIELD
+                ] = scale(entry.value);
+            }
         }
+
+        return entries;
+    }
+
+    #createDiscreteEntries() {
+        const format = this.params.format;
+        const formatter = format
+            ? (
+                  /** @type {import("../../../spec/channel.js").Scalar} */ value
+              ) => numberFormat(format)(Number(value))
+            : undefined;
+
+        return createDiscreteLegendEntries(this.scaleResolution, formatter);
     }
 
     #createQuantitativeEntries() {

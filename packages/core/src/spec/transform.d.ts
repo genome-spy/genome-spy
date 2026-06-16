@@ -495,11 +495,12 @@ export interface PackLabelsParams extends TransformParamsBase {
     columns?: number;
 
     /**
-     * Symbol size in pixels squared.
+     * Symbol size in pixels squared, or a field containing per-entry symbol
+     * sizes in pixels squared.
      *
      * **Default:** `100`
      */
-    symbolSize?: number;
+    symbolSize?: number | Field;
 
     /**
      * Symbol stroke width in pixels.

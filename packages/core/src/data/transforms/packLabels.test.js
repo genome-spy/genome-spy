@@ -79,6 +79,32 @@ test("PackLabelsTransform packs horizontal legend entries by measured label widt
     expect(data.map((datum) => datum._legendLabelY)).toEqual([6, 6, 6]);
 });
 
+test("PackLabelsTransform uses per-entry symbol sizes for row height", () => {
+    const transform = new PackLabelsTransform(
+        {
+            type: "packLabels",
+            labelWidth: "_labelWidth",
+            direction: "vertical",
+            symbolSize: "_symbolSize",
+            symbolStrokeWidth: 0,
+            labelOffset: 4,
+            fontSize: 10,
+            rowPadding: 2,
+        },
+        makeParamRuntimeProvider()
+    );
+
+    const data = processData(transform, [
+        { label: "small", _labelWidth: 30, _symbolSize: 25 },
+        { label: "large", _labelWidth: 30, _symbolSize: 400 },
+    ]);
+
+    expect(data.map((datum) => datum._legendEntryHeight)).toEqual([10, 20]);
+    expect(data.map((datum) => datum._legendEntryY)).toEqual([0, 12]);
+    expect(data.map((datum) => datum._legendEntryX)).toEqual([2.5, 10]);
+    expect(data.map((datum) => datum._legendLabelX)).toEqual([9, 24]);
+});
+
 test("PackLabelsTransform applies entry offsets", () => {
     const transform = new PackLabelsTransform(
         {

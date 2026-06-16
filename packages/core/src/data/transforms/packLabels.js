@@ -16,6 +16,16 @@ const DEFAULT_AS = {
     labelY2: "_legendLabelY2",
 };
 
+/**
+ * @param {unknown} symbolSize
+ * @param {number} symbolStrokeWidth
+ */
+function getSymbolExtent(symbolSize, symbolStrokeWidth) {
+    const size = Number(symbolSize);
+    const area = Number.isFinite(size) && size >= 0 ? size : 100;
+    return Math.ceil(Math.sqrt(area) + symbolStrokeWidth);
+}
+
 export default class PackLabelsTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
@@ -30,6 +40,10 @@ export default class PackLabelsTransform extends Transform {
 
         this.params = params;
         this.labelWidthAccessor = field(params.labelWidth);
+        this.symbolSizeAccessor =
+            typeof params.symbolSize == "string"
+                ? field(params.symbolSize)
+                : () => params.symbolSize ?? 100;
         /** @type {number | undefined} */
         this.yExtent = undefined;
 
@@ -78,12 +92,7 @@ export default class PackLabelsTransform extends Transform {
         const xOffset = params.xOffset ?? 0;
         const yOffset = params.yOffset ?? 0;
         const yExtent = this.yExtent;
-        const symbolExtent = Math.ceil(
-            Math.sqrt(params.symbolSize ?? 100) +
-                (params.symbolStrokeWidth ?? 0)
-        );
-        const symbolCenterOffset = symbolExtent / 2;
-        const entryHeight = Math.max(symbolExtent, fontSize);
+        const symbolStrokeWidth = params.symbolStrokeWidth ?? 0;
 
         /** @type {number} */
         const n = this.buffer.length;
@@ -98,8 +107,8 @@ export default class PackLabelsTransform extends Transform {
         /** @type {number[]} */
         const columnWidths = Array.from({ length: columns }, () => 0);
         /** @type {number[]} */
-        const rowHeights = Array.from({ length: rows }, () => entryHeight);
-        /** @type {Array<{ row: number, column: number, width: number }>} */
+        const rowHeights = Array.from({ length: rows }, () => 0);
+        /** @type {Array<{ row: number, column: number, width: number, symbolExtent: number }>} */
         const entries = [];
 
         for (let index = 0; index < n; index++) {
@@ -112,11 +121,16 @@ export default class PackLabelsTransform extends Transform {
                 direction == "horizontal"
                     ? index % columns
                     : Math.floor(index / rows);
+            const symbolExtent = getSymbolExtent(
+                this.symbolSizeAccessor(datum),
+                symbolStrokeWidth
+            );
             const width =
                 symbolExtent + labelOffset + this.labelWidthAccessor(datum);
 
-            entries.push({ row, column, width });
+            entries.push({ row, column, width, symbolExtent });
             columnWidths[column] = Math.max(columnWidths[column], width);
+            rowHeights[row] = Math.max(rowHeights[row], symbolExtent, fontSize);
         }
 
         /** @type {number[]} */
@@ -138,6 +152,7 @@ export default class PackLabelsTransform extends Transform {
             const entry = entries[index];
             const x = columnX[entry.column];
             const y = rowY[entry.row];
+            const symbolCenterOffset = entry.symbolExtent / 2;
 
             datum[as.row] = entry.row;
             datum[as.column] = entry.column;
@@ -148,7 +163,7 @@ export default class PackLabelsTransform extends Transform {
             datum[as.entryY] = entryY;
             datum[as.entryWidth] = columnWidths[entry.column];
             datum[as.entryHeight] = rowHeights[entry.row];
-            datum[as.labelX] = x + xOffset + symbolExtent + labelOffset;
+            datum[as.labelX] = x + xOffset + entry.symbolExtent + labelOffset;
             datum[as.labelY] = labelY;
             if (yExtent != null) {
                 datum[as.entryY2] = yExtent - entryY;
