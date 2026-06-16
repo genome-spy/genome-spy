@@ -249,32 +249,22 @@ export function createSymbolLegendSpec({
  * @returns {import("../spec/view.js").VConcatSpec}
  */
 export function createGradientLegendSpec({ channel, legend }) {
-    const horizontalLegend = isHorizontalLegend(legend);
-    const labelAlign = horizontalLegend
-        ? "center"
-        : (legend.labelAlign ?? "left");
-    const labelBaseline = horizontalLegend
-        ? "top"
-        : (legend.labelBaseline ?? "middle");
+    const h = isHorizontalLegend(legend);
+    const labelAlign = h ? "center" : (legend.labelAlign ?? "left");
+    const labelBaseline = h ? "top" : (legend.labelBaseline ?? "middle");
     const labelFontSize = legend.labelFontSize ?? 10;
     const labelOffset = legend.labelOffset ?? 4;
-    const horizontalPixelScale = {
+    const xs = {
         domain: [0, { expr: "width" }],
         zero: false,
         nice: false,
     };
-    const verticalPixelScale = {
+    const ys = {
         domain: [0, { expr: "height" }],
         zero: false,
         nice: false,
     };
-    const verticalPositionScale = {
-        domain: [0, 1],
-        domainTransition: false,
-        zero: false,
-        nice: false,
-    };
-    const horizontalPositionScale = {
+    const ps = {
         domain: [0, 1],
         domainTransition: false,
         zero: false,
@@ -288,6 +278,27 @@ export function createGradientLegendSpec({ channel, legend }) {
     const tickX = DEFAULT_GRADIENT_THICKNESS;
     const tickX2 = DEFAULT_GRADIENT_THICKNESS + DEFAULT_GRADIENT_TICK_SIZE;
     const labelX = tickX2 + labelOffset;
+    const p = h ? "x" : "y";
+    const p2 = /** @type {"x2" | "y2"} */ (p + "2");
+    const q = h ? "y" : "x";
+    const q2 = /** @type {"x2" | "y2"} */ (q + "2");
+    const qs = h ? ys : xs;
+    const band0 = "_legendGradientBandStart";
+    const band1 = "_legendGradientBandStop";
+    const tick0 = "_legendGradientTickStart";
+    const tick1 = "_legendGradientTickStop";
+    const label = "_legendGradientLabelPosition";
+    const enc = (
+        /** @type {string} */ field,
+        /** @type {typeof ps} */ scale,
+        /** @type {boolean} */ indexed
+    ) => ({
+        field,
+        type: "quantitative",
+        scale,
+        axis: null,
+        ...(indexed ? { buildIndex: false } : {}),
+    });
     /** @type {import("../spec/data.js").Data} */
     const tickData = {
         lazy: {
@@ -300,285 +311,124 @@ export function createGradientLegendSpec({ channel, legend }) {
     const tickTransform = [
         {
             type: "formula",
-            expr: "" + (horizontalLegend ? tickY : tickX),
-            as: "_legendGradientTickStart",
+            expr: "" + (h ? tickY : tickX),
+            as: tick0,
         },
         {
             type: "formula",
-            expr: "" + (horizontalLegend ? tickY2 : tickX2),
-            as: "_legendGradientTickStop",
+            expr: "" + (h ? tickY2 : tickX2),
+            as: tick1,
         },
         {
             type: "formula",
-            expr: "" + (horizontalLegend ? labelY : labelX),
-            as: "_legendGradientLabelPosition",
+            expr: "" + (h ? labelY : labelX),
+            as: label,
+        },
+    ];
+    const bandTransform = [
+        {
+            type: "formula",
+            expr: "" + (h ? gradientY : 0),
+            as: band0,
+        },
+        {
+            type: "formula",
+            expr: "" + (h ? gradientY2 : DEFAULT_GRADIENT_THICKNESS),
+            as: band1,
         },
     ];
 
     /** @type {import("../spec/view.js").UnitSpec[]} */
-    const bodyLayer = horizontalLegend
-        ? [
-              {
-                  name: "gradientRamp",
-                  transform: [
-                      {
-                          type: "formula",
-                          expr: "" + gradientY,
-                          as: "_legendGradientY",
-                      },
-                      {
-                          type: "formula",
-                          expr: "" + gradientY2,
-                          as: "_legendGradientY2",
-                      },
-                  ],
-                  mark: {
-                      type: "rect",
-                      clip: false,
-                  },
-                  encoding: {
-                      x: {
-                          field: "position0",
-                          type: "quantitative",
-                          scale: horizontalPositionScale,
-                          axis: null,
-                          buildIndex: false,
-                      },
-                      x2: {
-                          field: "position1",
-                          type: "quantitative",
-                          scale: horizontalPositionScale,
-                      },
-                      y: {
-                          field: "_legendGradientY",
-                          type: "quantitative",
-                          scale: verticalPixelScale,
-                          axis: null,
-                      },
-                      y2: {
-                          field: "_legendGradientY2",
-                          type: "quantitative",
-                          scale: verticalPixelScale,
-                      },
-                      [channel]: {
-                          field: "value",
-                          type: "quantitative",
-                          domainInert: true,
-                      },
-                  },
-              },
-              {
-                  name: "gradientTicks",
-                  data: tickData,
-                  transform: tickTransform,
-                  mark: {
-                      type: "rule",
-                      clip: false,
-                  },
-                  encoding: {
-                      x: {
-                          field: "position",
-                          type: "quantitative",
-                          scale: horizontalPositionScale,
-                          axis: null,
-                          buildIndex: false,
-                      },
-                      x2: {
-                          field: "position",
-                          type: "quantitative",
-                          scale: horizontalPositionScale,
-                      },
-                      y: {
-                          field: "_legendGradientTickStart",
-                          type: "quantitative",
-                          scale: verticalPixelScale,
-                          axis: null,
-                      },
-                      y2: {
-                          field: "_legendGradientTickStop",
-                          type: "quantitative",
-                          scale: verticalPixelScale,
-                      },
-                  },
-              },
-              {
-                  name: "gradientLabels",
-                  data: tickData,
-                  transform: [
-                      ...tickTransform,
-                      {
-                          type: "measureText",
-                          field: "label",
-                          as: LABEL_WIDTH_FIELD,
-                          fontSize: labelFontSize,
-                          font: legend.labelFont,
-                          fontStyle: legend.labelFontStyle,
-                          fontWeight: legend.labelFontWeight,
-                      },
-                  ],
-                  mark: {
-                      type: "text",
-                      clip: false,
-                      align: labelAlign,
-                      baseline: labelBaseline,
-                      color: legend.labelColor,
-                      font: legend.labelFont,
-                      fontStyle: legend.labelFontStyle,
-                      fontWeight: legend.labelFontWeight,
-                      size: labelFontSize,
-                  },
-                  encoding: {
-                      x: {
-                          field: "position",
-                          type: "quantitative",
-                          scale: horizontalPositionScale,
-                          axis: null,
-                          buildIndex: false,
-                      },
-                      y: {
-                          field: "_legendGradientLabelPosition",
-                          type: "quantitative",
-                          scale: verticalPixelScale,
-                          axis: null,
-                      },
-                      text: { field: "label" },
-                  },
-              },
-          ]
-        : [
-              {
-                  name: "gradientRamp",
-                  transform: [
-                      {
-                          type: "formula",
-                          expr: "0",
-                          as: "_legendGradientX",
-                      },
-                      {
-                          type: "formula",
-                          expr: "" + DEFAULT_GRADIENT_THICKNESS,
-                          as: "_legendGradientX2",
-                      },
-                  ],
-                  mark: {
-                      type: "rect",
-                      clip: false,
-                  },
-                  encoding: {
-                      x: {
-                          field: "_legendGradientX",
-                          type: "quantitative",
-                          scale: horizontalPixelScale,
-                          axis: null,
-                          buildIndex: false,
-                      },
-                      x2: {
-                          field: "_legendGradientX2",
-                          type: "quantitative",
-                          scale: horizontalPixelScale,
-                      },
-                      y: {
-                          field: "position1",
-                          type: "quantitative",
-                          scale: verticalPositionScale,
-                          axis: null,
-                      },
-                      y2: {
-                          field: "position0",
-                          type: "quantitative",
-                          scale: verticalPositionScale,
-                      },
-                      [channel]: {
-                          field: "value",
-                          type: "quantitative",
-                          domainInert: true,
-                      },
-                  },
-              },
-              {
-                  name: "gradientTicks",
-                  data: tickData,
-                  transform: tickTransform,
-                  mark: {
-                      type: "rule",
-                      clip: false,
-                  },
-                  encoding: {
-                      x: {
-                          field: "_legendGradientTickStart",
-                          type: "quantitative",
-                          scale: horizontalPixelScale,
-                          axis: null,
-                          buildIndex: false,
-                      },
-                      x2: {
-                          field: "_legendGradientTickStop",
-                          type: "quantitative",
-                          scale: horizontalPixelScale,
-                      },
-                      y: {
-                          field: "position",
-                          type: "quantitative",
-                          scale: verticalPositionScale,
-                          axis: null,
-                      },
-                      y2: {
-                          field: "position",
-                          type: "quantitative",
-                          scale: verticalPositionScale,
-                      },
-                  },
-              },
-              {
-                  name: "gradientLabels",
-                  data: tickData,
-                  transform: [
-                      ...tickTransform,
-                      {
-                          type: "measureText",
-                          field: "label",
-                          as: LABEL_WIDTH_FIELD,
-                          fontSize: labelFontSize,
-                          font: legend.labelFont,
-                          fontStyle: legend.labelFontStyle,
-                          fontWeight: legend.labelFontWeight,
-                      },
-                  ],
-                  mark: {
-                      type: "text",
-                      clip: false,
-                      align: labelAlign,
-                      baseline: labelBaseline,
-                      color: legend.labelColor,
-                      font: legend.labelFont,
-                      fontStyle: legend.labelFontStyle,
-                      fontWeight: legend.labelFontWeight,
-                      size: labelFontSize,
-                  },
-                  encoding: {
-                      x: {
-                          field: "_legendGradientLabelPosition",
-                          type: "quantitative",
-                          scale: horizontalPixelScale,
-                          axis: null,
-                          buildIndex: false,
-                      },
-                      y: {
-                          field: "position",
-                          type: "quantitative",
-                          scale: verticalPositionScale,
-                          axis: null,
-                      },
-                      text: { field: "label" },
-                  },
-              },
-          ];
+    const bodyLayer = [
+        {
+            name: "gradientRamp",
+            transform: bandTransform,
+            mark: {
+                type: "rect",
+                clip: false,
+            },
+            encoding: {
+                [p]: enc(h ? "position0" : "position1", ps, p == "x"),
+                [p2]: {
+                    field: h ? "position1" : "position0",
+                    type: "quantitative",
+                    scale: ps,
+                },
+                [q]: enc(band0, qs, q == "x"),
+                [q2]: {
+                    field: band1,
+                    type: "quantitative",
+                    scale: qs,
+                },
+                [channel]: {
+                    field: "value",
+                    type: "quantitative",
+                    domainInert: true,
+                },
+            },
+        },
+        {
+            name: "gradientTicks",
+            data: tickData,
+            transform: tickTransform,
+            mark: {
+                type: "rule",
+                clip: false,
+            },
+            encoding: {
+                [p]: enc("position", ps, p == "x"),
+                [p2]: {
+                    field: "position",
+                    type: "quantitative",
+                    scale: ps,
+                },
+                [q]: enc(tick0, qs, q == "x"),
+                [q2]: {
+                    field: tick1,
+                    type: "quantitative",
+                    scale: qs,
+                },
+            },
+        },
+        {
+            name: "gradientLabels",
+            data: tickData,
+            transform: [
+                ...tickTransform,
+                {
+                    type: "measureText",
+                    field: "label",
+                    as: LABEL_WIDTH_FIELD,
+                    fontSize: labelFontSize,
+                    font: legend.labelFont,
+                    fontStyle: legend.labelFontStyle,
+                    fontWeight: legend.labelFontWeight,
+                },
+            ],
+            mark: {
+                type: "text",
+                clip: false,
+                align: labelAlign,
+                baseline: labelBaseline,
+                color: legend.labelColor,
+                font: legend.labelFont,
+                fontStyle: legend.labelFontStyle,
+                fontWeight: legend.labelFontWeight,
+                size: labelFontSize,
+            },
+            encoding: {
+                [p]: enc("position", ps, p == "x"),
+                [q]: enc(label, qs, q == "x"),
+                text: { field: "label" },
+            },
+        },
+    ];
 
     return createLegendRootSpec(
         legend,
         {
             name: "gradientBody",
-            width: horizontalLegend ? { grow: 1 } : undefined,
+            width: h ? { grow: 1 } : undefined,
             height: { grow: 1 },
             view: LEGEND_VIEW_BACKGROUND,
             resolve: {
