@@ -97,6 +97,11 @@ describe("GridView legends", () => {
             .getDescendants()
             .filter((descendant) => descendant instanceof LegendView);
 
+    const getLegendTitle = (/** @type {LegendView} */ legend) =>
+        legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "title");
+
     test("keeps legends hidden by default", async () => {
         const view = await createLegendTestView();
 
@@ -128,6 +133,169 @@ describe("GridView legends", () => {
             { value: "Europe", label: "Europe", _legendIndex: 0 },
             { value: "Japan", label: "Japan", _legendIndex: 1 },
         ]);
+    });
+
+    test("derives legend titles from legend, channel title, or field", async () => {
+        const explicitLegendTitle = await createLegendTestView({
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "Origin",
+                            type: "nominal",
+                            title: "Channel title",
+                            legend: { title: "Legend title" },
+                        },
+                    },
+                },
+            ],
+        });
+        expect(getLegends(explicitLegendTitle)[0].legendProps.title).toBe(
+            "Legend title"
+        );
+
+        const channelTitle = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "Origin",
+                            type: "nominal",
+                            title: "Channel title",
+                        },
+                    },
+                },
+            ],
+        });
+        expect(getLegends(channelTitle)[0].legendProps.title).toBe(
+            "Channel title"
+        );
+
+        const fieldTitle = await createLegendTestView({
+            config: { legend: { disable: false } },
+        });
+        expect(getLegends(fieldTitle)[0].legendProps.title).toBe("Origin");
+    });
+
+    test("suppresses legend title with title null", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "Origin",
+                            type: "nominal",
+                            title: null,
+                        },
+                    },
+                },
+            ],
+        });
+        const legend = getLegends(view)[0];
+
+        expect(legend.legendProps.title).toBeNull();
+        expect(getLegendTitle(legend)).toBeUndefined();
+    });
+
+    test("passes legend title and label styling to generated marks", async () => {
+        const view = await createLegendTestView({
+            config: {
+                legend: {
+                    disable: false,
+                    titleColor: "firebrick",
+                    titleFont: "serif",
+                    titleFontSize: 17,
+                    titleFontStyle: "italic",
+                    titleFontWeight: "bold",
+                    titlePadding: 9,
+                    labelColor: "navy",
+                    labelFontSize: 13,
+                    labelFontStyle: "italic",
+                    labelFontWeight: "bold",
+                    labelAlign: "right",
+                    labelBaseline: "bottom",
+                },
+            },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "Origin",
+                            type: "nominal",
+                            legend: {
+                                title: "Styled",
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+        const legend = getLegends(view)[0];
+        const title = getLegendTitle(legend);
+        const labels = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "labels");
+
+        expect(title).toBeInstanceOf(UnitView);
+        expect(/** @type {UnitView} */ (title).spec.height).toBe(26);
+        expect(/** @type {UnitView} */ (title).spec.mark).toEqual(
+            expect.objectContaining({
+                color: "firebrick",
+                font: "serif",
+                fontStyle: "italic",
+                fontWeight: "bold",
+                size: 17,
+                text: "Styled",
+            })
+        );
+        expect(/** @type {UnitView} */ (labels).spec.mark).toEqual(
+            expect.objectContaining({
+                align: "right",
+                baseline: "bottom",
+                color: "navy",
+                fontStyle: "italic",
+                fontWeight: "bold",
+                size: 13,
+            })
+        );
     });
 
     test("merges redundant color and shape channels into one symbol legend", async () => {

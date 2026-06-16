@@ -988,12 +988,18 @@ export default class GridChild {
                 );
             }
 
-            const title =
-                legendDefaults.title ??
-                /** @type {import("../../spec/legend.js").Legend["title"]} */ (
+            const channelTitle =
+                /** @type {import("../../spec/legend.js").Legend["title"] | undefined} */ (
                     "title" in channelDef ? channelDef.title : undefined
-                ) ??
-                (isFieldDef(channelDef) ? channelDef.field : undefined);
+                );
+            const title =
+                legendDefaults.title !== undefined
+                    ? legendDefaults.title
+                    : channelTitle !== undefined
+                      ? channelTitle
+                      : isFieldDef(channelDef)
+                        ? channelDef.field
+                        : undefined;
 
             const legend = new LegendView(
                 {
@@ -1004,8 +1010,8 @@ export default class GridChild {
                             ? getRedundantSymbolChannels(channel, legendParent)
                             : undefined,
                     legend: {
-                        title,
                         ...legendDefaults,
+                        title,
                     },
                 },
                 this.layoutParent.context,
