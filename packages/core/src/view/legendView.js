@@ -278,6 +278,7 @@ export function createGradientLegendSpec({ channel, legend }) {
     const tickX = DEFAULT_GRADIENT_THICKNESS;
     const tickX2 = DEFAULT_GRADIENT_THICKNESS + DEFAULT_GRADIENT_TICK_SIZE;
     const labelX = tickX2 + labelOffset;
+    // p is the gradient axis; q is the cross axis.
     const p = h ? "x" : "y";
     const p2 = /** @type {"x2" | "y2"} */ (p + "2");
     const q = h ? "y" : "x";
@@ -288,17 +289,20 @@ export function createGradientLegendSpec({ channel, legend }) {
     const tick0 = "_legendGradientTickStart";
     const tick1 = "_legendGradientTickStop";
     const label = "_legendGradientLabelPosition";
-    const enc = (
-        /** @type {string} */ field,
-        /** @type {typeof ps} */ scale,
-        /** @type {boolean} */ indexed
-    ) => ({
-        field,
-        type: "quantitative",
-        scale,
-        axis: null,
-        ...(indexed ? { buildIndex: false } : {}),
-    });
+    /**
+     * @param {string} field
+     * @param {import("../spec/scale.js").Scale} scale
+     * @param {boolean} indexed
+     * @returns {import("../spec/channel.js").PositionFieldDef}
+     */
+    const enc = (field, scale, indexed) =>
+        /** @type {import("../spec/channel.js").PositionFieldDef} */ ({
+            field,
+            type: "quantitative",
+            scale,
+            axis: null,
+            ...(indexed ? { buildIndex: false } : {}),
+        });
     /** @type {import("../spec/data.js").Data} */
     const tickData = {
         lazy: {
@@ -307,7 +311,7 @@ export function createGradientLegendSpec({ channel, legend }) {
             count: DEFAULT_GRADIENT_TICK_COUNT,
         },
     };
-    /** @type {import("../spec/transform.js").TransformParams[]} */
+    /** @type {import("../spec/transform.js").FormulaParams[]} */
     const tickTransform = [
         {
             type: "formula",
@@ -325,6 +329,7 @@ export function createGradientLegendSpec({ channel, legend }) {
             as: label,
         },
     ];
+    /** @type {import("../spec/transform.js").FormulaParams[]} */
     const bandTransform = [
         {
             type: "formula",
