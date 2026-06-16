@@ -17,6 +17,8 @@ The current implementation targets simple local legends hosted by the
   behavior.
 - `examples/core/legends/redundant-encoding.json` for discrete symbol legends
   that merge redundant color and shape encodings.
+- `examples/core/legends/horizontal-stacked-bar.json` for discrete color
+  legends on rect marks using aggregate and stack transforms.
 - `examples/core/legends/bubble-health-income.json` for quantitative size
   legends using representative symbol sizes.
 - `examples/core/lazy-data/bigwig.json` for dynamic quantitative color domains.
@@ -63,6 +65,7 @@ Completed pieces:
 - Quantitative size legends use variable symbol sizes, inherit relevant point
   mark styling, keep differently sized symbols center-aligned, and line up
   labels against a shared column label position.
+- Rect mark color legends use square symbol swatches.
 
 ## Vega/Vega-Lite Summary
 
@@ -243,6 +246,9 @@ Unsupported or deferred:
 - Shape-only symbol legends are supported.
 - Redundant `shape` merging checks matching fields and matching resolved
   domains, and respects `legend: null`.
+- Rect-based color legends use square symbol swatches. The
+  `horizontal-stacked-bar.json` example has been manually checked as a compact
+  aggregate-plus-stack testbed for this behavior.
 - Discrete and quantitative `size` symbol legends are supported. Quantitative
   size legends use representative tick values from the source scale. The
   `bubble-health-income.json` example has been manually checked and is a good
@@ -291,7 +297,7 @@ implementation change.
    - decide whether quantitative opacity should use sampled symbol entries or
    stay deferred.
 2. Verify continuous color scale types:
-   - add focused examples for `pow`, `sqrt`, and `symlog` color scales,
+   - add small Vitest coverage for `pow`, `sqrt`, and `symlog` color scales,
    - confirm ramp sampling uses the actual source scale inverse when available,
    - confirm ticks and labels use the same normalized positional scale as the
    ramp.
