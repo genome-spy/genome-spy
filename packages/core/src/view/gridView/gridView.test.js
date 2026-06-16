@@ -397,6 +397,24 @@ describe("GridView legends", () => {
             true
         );
     });
+
+    test("does not draw configured view strokes inside legends", async () => {
+        const view = await createLegendTestView({
+            config: {
+                legend: { disable: false },
+                view: { stroke: "lightgray" },
+            },
+        });
+        const legends = getLegends(view);
+        const legendBackgroundStrokes = legends[0]
+            .getDescendants()
+            .filter((descendant) =>
+                descendant.name.startsWith("backgroundStroke")
+            );
+
+        expect(legends).toHaveLength(1);
+        expect(legendBackgroundStrokes).toHaveLength(0);
+    });
 });
 
 describe("GridView incremental child management", () => {

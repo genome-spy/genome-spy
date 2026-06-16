@@ -8,6 +8,12 @@ const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
 const DEFAULT_GRADIENT_TICK_COUNT = 5;
 const DEFAULT_GRADIENT_THICKNESS = 12;
 const DEFAULT_GRADIENT_TICK_SIZE = 4;
+/** @type {import("../spec/view.js").ViewBackground} */
+const LEGEND_VIEW_BACKGROUND = {
+    fillOpacity: 0,
+    shadowOpacity: 0,
+    strokeOpacity: 0,
+};
 
 /**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
@@ -31,6 +37,7 @@ function createLegendTitleSpec(legend) {
     return {
         name: "title",
         height: titleFontSize + titlePadding,
+        view: LEGEND_VIEW_BACKGROUND,
         data: {
             values: [{}],
         },
@@ -179,6 +186,7 @@ export function createSymbolLegendSpec({
     return createLegendRootSpec(legend, {
         name: "legendBody",
         height: { grow: 1 },
+        view: LEGEND_VIEW_BACKGROUND,
         resolve: {
             scale: { x: "excluded", y: "excluded" },
             axis: { x: "excluded", y: "excluded" },
@@ -388,6 +396,7 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
     return createLegendRootSpec(legend, {
         name: "gradientBody",
         height: { grow: 1 },
+        view: LEGEND_VIEW_BACKGROUND,
         resolve: {
             scale: { x: "excluded", y: "excluded" },
             axis: { x: "excluded", y: "excluded" },
