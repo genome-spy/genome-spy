@@ -20,6 +20,18 @@ const DEFAULT_TICK_COUNT = 5;
  * @returns {NormalizedPositionScale}
  */
 function createNormalizedScale(scale, start, stop) {
+    if (
+        "copy" in scale &&
+        typeof scale.copy == "function" &&
+        "invert" in scale &&
+        typeof scale.invert == "function"
+    ) {
+        const normalizedScale = scale.copy();
+        normalizedScale.domain([start, stop]);
+        normalizedScale.range([0, 1]);
+        return /** @type {NormalizedPositionScale} */ (normalizedScale);
+    }
+
     const props =
         /** @type {{ props?: import("../../../spec/scale.js").Scale }} */ (
             scale
@@ -27,7 +39,16 @@ function createNormalizedScale(scale, start, stop) {
     const type = props?.type;
 
     if (type) {
+        const positionProps = { ...props };
+        const extraPositionProps = /** @type {Record<string, unknown>} */ (
+            positionProps
+        );
+        delete positionProps.range;
+        delete positionProps.scheme;
+        delete extraPositionProps.schemeExtent;
+        delete extraPositionProps.schemeCount;
         const positionScale = createScale({
+            ...positionProps,
             type,
             domain: [start, stop],
             range: [0, 1],
@@ -42,18 +63,7 @@ function createNormalizedScale(scale, start, stop) {
         }
     }
 
-    if (
-        "copy" in scale &&
-        typeof scale.copy == "function" &&
-        "invert" in scale &&
-        typeof scale.invert == "function"
-    ) {
-        const normalizedScale = scale.copy();
-        normalizedScale.range([0, 1]);
-        return /** @type {NormalizedPositionScale} */ (normalizedScale);
-    } else {
-        return createLinearPositionScale(start, stop);
-    }
+    return createLinearPositionScale(start, stop);
 }
 
 /**

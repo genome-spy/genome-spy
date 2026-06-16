@@ -7,6 +7,7 @@ import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import { createAndInitialize } from "../testUtils.js";
 import { translateLegendCoords } from "./gridView.js";
+import createScale from "../../scale/scale.js";
 
 // Minimal context for layout-driven render calls without WebGL.
 class NoOpRenderingContext extends ViewRenderingContext {
@@ -1016,6 +1017,69 @@ describe("GridView legends", () => {
                 expect.objectContaining({ value: 100, position: 1 }),
             ])
         );
+    });
+
+    test("gradient legend positions follow continuous scale types", async () => {
+        /** @type {Array<import("../../spec/scale.js").Scale & { domain: [number, number] }>} */
+        const scales = [
+            { type: "sqrt", domain: [0, 100] },
+            { type: "pow", exponent: 3, domain: [0, 1000] },
+            { type: "symlog", constant: 10, domain: [-100, 100] },
+        ];
+
+        for (const scale of scales) {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: scale.domain[0] },
+                                { x: 2, y: 2, measurement: scale.domain[1] },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "measurement",
+                                type: "quantitative",
+                                scale: {
+                                    ...scale,
+                                    scheme: "turbo",
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            const ramp = legend
+                .getDescendants()
+                .find((descendant) => descendant.name == "gradientRamp");
+            const labels = legend
+                .getDescendants()
+                .find((descendant) => descendant.name == "gradientLabels");
+            const expectedPosition = createScale({
+                ...scale,
+                range: [0, 1],
+                zero: false,
+                nice: false,
+            });
+            const rampData = Array.from(
+                /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
+            );
+            const labelData = Array.from(
+                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+            );
+
+            for (const datum of [...rampData, ...labelData]) {
+                expect(datum.position).toBeCloseTo(
+                    expectedPosition(datum.value)
+                );
+            }
+        }
     });
 
     test("threshold gradient legends include outer color buckets", async () => {
