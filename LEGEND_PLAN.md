@@ -77,6 +77,12 @@ Vega-Lite mostly decides whether legends exist, applies defaults, merges
 compatible legends, and emits Vega legend definitions. Vega handles final mark
 generation and layout.
 
+Vega-Lite has explicit guide resolution for both axes and legends. Its
+`resolve` model includes `scale`, `axis`, and `legend`; legend parsing in
+`tmp/vega-lite/src/compile/legend/parse.ts` mirrors the axis parser by parsing
+unit legend components, resolving child legends as shared or independent, and
+falling back to independent legends when merging fails.
+
 Vega builds symbol legends from ordinary scenegraph marks: a legend group
 contains optional title and entry groups; each entry group contains a symbol and
 label. Symbol properties can be scale-backed for channels such as fill, stroke,
@@ -192,8 +198,8 @@ Channel behavior to document and test:
 - Redundant channels respect `legend: null`; for example, `shape` should not
   merge into a color legend when `shape.legend` is `null`.
 - Non-redundant channels with the same orient need an intentional policy:
-  stacking, packing, or fail-fast. The current implementation should not
-  silently drop a second legend.
+  local stacking is the preferred next behavior. The current implementation
+  should not silently drop a second legend.
 
 ### Scale Type Coverage To Support
 
@@ -277,12 +283,81 @@ Completed with behavioral tests and generated hierarchy inspection:
    - channel `format` affects gradient tick labels through the existing
      axis-style `tickFormat` helper.
 
-Deferred:
+### Internal Legend Resolution
 
-- `labelLimit` and `titleLimit` truncation. The corresponding spec/config
-  fields exist, but axes and text marks do not yet provide a reusable
-  truncation/ellipsis mechanism. Implement this as a text-mark or guide-label
-  capability first instead of adding legend-only string chopping.
+The current implementation creates legends imperatively in
+`GridChild.createAxes()`. That path now handles channel classification, legend
+config/default merging, title arbitration, redundant channel merging, source
+scale lookup, inherited symbol styling, and duplicate-orient handling. This is
+becoming too much responsibility for `GridChild`.
+
+The next structural step should be an internal `LegendResolution`, modeled more
+closely after `AxisResolution` than `ScaleResolution`.
+
+This also follows the Vega-Lite architecture at a high level: Vega-Lite resolves
+axes and legends separately from scales, even though guide resolution depends on
+the resolved scale. GenomeSpy should keep the same conceptual split while using
+its own runtime view/dataflow architecture.
+
+Do not add a public `resolve.legend` spec surface yet. The first goal is an
+internal resolution object that organizes the existing local-legend behavior and
+makes same-orient stacking clean. A public legend resolution API can be designed
+later if shared/root/named-area legends need it.
+
+Proposed responsibilities:
+
+- `resolutionPlanner` collects non-positional scale-backed legend candidates
+  for supported channels and registers them with a legend resolution.
+- `LegendResolution` owns member aggregation and arbitration, including:
+   - `legend: null` suppression for the specific channel,
+   - configured/default legend props,
+   - title derivation from `legend.title`, channel `title`, field name, or
+     expression,
+   - legend type classification (`symbol` or `gradient`),
+   - source `ScaleResolution` lookup,
+   - redundant `shape` merging into compatible color/fill/stroke legends,
+   - deterministic source view choice for inherited symbol styling,
+   - visible-member filtering where needed.
+- `GridChild` materializes resolved legend outputs into `LegendView`s and only
+  manages placement/overhang.
+
+Candidate member shape:
+
+```js
+{
+  view,
+  channel,
+  channelDef,
+  scaleResolution,
+  legendType,
+  legendProps
+}
+```
+
+Candidate resolution API:
+
+- `registerMember(member)` / `removeMember(member)`.
+- `getLegendDefs()` returning one or more materializable legend definitions.
+- `getTitle(def)` for title arbitration.
+- `getMergedSymbolChannels(def)` for redundant channel merging.
+- `getSymbolStyleSourceView(def)` for first-deterministic-contributor styling.
+- `hasVisibleNonChromeMember()` if hidden-view filtering becomes necessary.
+
+Initial implementation steps:
+
+1. Extract the existing legend-channel support classifier and title/default
+   arbitration from `GridChild` into a new `legendResolution.js`.
+2. Extend `View.resolutions` and `resolutionPlanner` with an internal
+   `legend` target without exposing it in `ResolveSpec` yet.
+3. Register legend candidates after scales are resolved, because legend
+   resolution needs the actual `ScaleResolution`.
+4. Keep current local behavior: each `GridChild` hosts legends for the views it
+   owns. Do not move legends to root or shared guide areas.
+5. Replace same-orient fail-fast with local stacking of multiple resolved
+   legends for that orient.
+6. Add one focused behavior test for two non-redundant same-orient legends,
+   such as `color` plus quantitative `size`, and avoid exhaustive generated
+   spec assertions.
 
 ### Remaining Channel And Scale Implementation Steps
 
