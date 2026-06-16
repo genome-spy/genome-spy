@@ -3,10 +3,17 @@
 
   "description": "Legend test case for a linear color scale.",
 
-  "width": 360,
-  "height": 240,
+  "background": "#fafafa",
+
+  "width": 700,
+  "height": 300,
 
   "config": { "legend": { "disable": false, "padding": 18 } },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "axis": { "color": "independent" }
+  },
 
   "data": {
     "sequence": { "start": 0, "stop": 241, "step": 1, "as": "x" }
@@ -20,8 +27,6 @@
     }
   ],
 
-  "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
-
   "encoding": {
     "x": {
       "field": "x",
@@ -33,13 +38,34 @@
       "type": "quantitative",
       "title": "Linear y",
       "scale": { "type": "linear", "zero": false }
-    },
-    "color": {
-      "field": "value",
-      "type": "quantitative",
-      "title": "Linear color",
-      "scale": { "type": "linear", "zero": false },
-      "legend": { "title": "Linear" }
     }
-  }
+  },
+
+  "hconcat": [
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Linear color",
+          "scale": { "type": "linear", "zero": false },
+          "legend": { "title": "Right", "orient": "right" }
+        }
+      }
+    },
+
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Linear color",
+          "scale": { "type": "linear", "zero": false },
+          "legend": { "title": "Bottom", "orient": "bottom" }
+        }
+      }
+    }
+  ]
 }
