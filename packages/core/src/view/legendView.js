@@ -245,7 +245,14 @@ export function createSymbolLegendSpec({
             },
             data: entries
                 ? { values: entries }
-                : { lazy: { type: "legendEntries", channel, format } },
+                : {
+                      lazy: {
+                          type: "legendEntries",
+                          channel,
+                          dataType,
+                          format,
+                      },
+                  },
             transform: [
                 {
                     type: "measureText",

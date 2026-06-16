@@ -17,6 +17,7 @@ import {
     FieldName,
     PrimaryPositionalChannel,
     Scalar,
+    Type as ChannelType,
 } from "./channel.js";
 import { ExprRef } from "./parameter.js";
 
@@ -399,8 +400,14 @@ export interface LegendEntriesData {
     /** Which channel's scale domain to use */
     channel: ChannelWithScale;
 
+    /** The data type of the source channel */
+    dataType?: ChannelType;
+
     /** D3 number format specifier for labels */
     format?: string;
+
+    /** Number of representative entries to generate for quantitative scales */
+    count?: number;
 }
 
 /**

@@ -51,7 +51,13 @@ import LegendView, { getExternalLegendOverhang } from "../legendView.js";
  * @typedef {"symbol" | "gradient"} LegendType
  */
 
-const SYMBOL_LEGEND_CHANNELS = new Set(["color", "fill", "stroke", "shape"]);
+const SYMBOL_LEGEND_CHANNELS = new Set([
+    "color",
+    "fill",
+    "stroke",
+    "shape",
+    "size",
+]);
 const GRADIENT_LEGEND_CHANNELS = new Set(["color", "fill", "stroke"]);
 
 /**
@@ -64,7 +70,9 @@ const GRADIENT_LEGEND_CHANNELS = new Set(["color", "fill", "stroke"]);
  * @returns {LegendType | undefined}
  */
 function getLegendType(channel, channelDef) {
-    if (
+    if (channel == "size" && channelDef.type == "quantitative") {
+        return "symbol";
+    } else if (
         (channelDef.type === "nominal" || channelDef.type === "ordinal") &&
         SYMBOL_LEGEND_CHANNELS.has(channel)
     ) {

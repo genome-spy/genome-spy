@@ -2578,7 +2578,7 @@ exports[`shared examples > initializes examples/core/layout/size_expr.json 1`] =
 }
 `;
 
-exports[`shared examples > initializes examples/core/legends/linear-gradient.json 1`] = `
+exports[`shared examples > initializes examples/core/legends/bubble-health-income.json 1`] = `
 {
   "assemblies": [],
   "dataSources": [
@@ -2612,7 +2612,104 @@ exports[`shared examples > initializes examples/core/legends/linear-gradient.jso
     },
     {
       "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": "{"params":{"url":"vega-datasets/gapminder-health-income.csv"},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/core/legends/linear-gradient.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,
@@ -2628,7 +2725,7 @@ exports[`shared examples > initializes examples/core/legends/linear-gradient.jso
     },
   ],
   "hierarchy": {
-    "baseUrl": null,
+    "baseUrl": "examples/",
     "children": [
       {
         "baseUrl": "examples/",
@@ -2636,8 +2733,14 @@ exports[`shared examples > initializes examples/core/legends/linear-gradient.jso
         "name": "grid0",
         "type": "UnitView",
       },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
     ],
-    "name": "implicitRoot",
+    "name": "viewRoot",
     "type": "ConcatView",
   },
 }
@@ -2657,6 +2760,34 @@ exports[`shared examples > initializes examples/core/legends/log-gradient.json 1
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -2681,6 +2812,18 @@ exports[`shared examples > initializes examples/core/legends/log-gradient.json 1
     },
     {
       "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
       "type": "LegendGradientTicksSource",
     },
     {
@@ -2693,7 +2836,7 @@ exports[`shared examples > initializes examples/core/legends/log-gradient.json 1
     },
   ],
   "hierarchy": {
-    "baseUrl": null,
+    "baseUrl": "examples/",
     "children": [
       {
         "baseUrl": "examples/",
@@ -2701,8 +2844,109 @@ exports[`shared examples > initializes examples/core/legends/log-gradient.json 1
         "name": "grid0",
         "type": "UnitView",
       },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
     ],
-    "name": "implicitRoot",
+    "name": "viewRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/core/legends/redundant-encoding.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": "{"params":{"url":"vega-datasets/cars.json"},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": "examples/",
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
+    ],
+    "name": "viewRoot",
     "type": "ConcatView",
   },
 }
@@ -2722,6 +2966,34 @@ exports[`shared examples > initializes examples/core/legends/threshold-gradient.
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -2746,6 +3018,18 @@ exports[`shared examples > initializes examples/core/legends/threshold-gradient.
     },
     {
       "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
       "type": "LegendGradientTicksSource",
     },
     {
@@ -2758,7 +3042,7 @@ exports[`shared examples > initializes examples/core/legends/threshold-gradient.
     },
   ],
   "hierarchy": {
-    "baseUrl": null,
+    "baseUrl": "examples/",
     "children": [
       {
         "baseUrl": "examples/",
@@ -2766,8 +3050,14 @@ exports[`shared examples > initializes examples/core/legends/threshold-gradient.
         "name": "grid0",
         "type": "UnitView",
       },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
     ],
-    "name": "implicitRoot",
+    "name": "viewRoot",
     "type": "ConcatView",
   },
 }
@@ -2880,6 +3170,14 @@ exports[`shared examples > initializes examples/core/marks/point/point2d.json 1`
       "type": "InlineSource",
     },
     {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
       "identifier": "{"params":{"url":"vega-datasets/cars.json"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
@@ -2989,6 +3287,22 @@ exports[`shared examples > initializes examples/core/marks/rect/heatmap.json 1`]
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,

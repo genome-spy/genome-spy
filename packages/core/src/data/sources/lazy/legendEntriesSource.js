@@ -1,10 +1,13 @@
 import { format as numberFormat } from "d3-format";
 
+import { tickFormat, tickValues } from "../../../scale/ticks.js";
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { createDiscreteLegendEntries } from "../../../view/legend/legendEntries.js";
 import { isChromeView } from "../../../view/viewSelectors.js";
 import DataSource from "../dataSource.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
+
+const DEFAULT_QUANTITATIVE_ENTRY_COUNT = 5;
 
 export default class LegendEntriesSource extends DataSource {
     /** @type {import("../../../spec/channel.js").Scalar[] | undefined} */
@@ -49,6 +52,18 @@ export default class LegendEntriesSource extends DataSource {
             this.reset();
             this.beginBatch({ type: "file" });
 
+            for (const datum of this.#createEntries()) {
+                this._propagate(datum);
+            }
+
+            this.complete();
+        }
+    }
+
+    #createEntries() {
+        if (this.params.dataType == "quantitative") {
+            return this.#createQuantitativeEntries();
+        } else {
             const format = this.params.format;
             const formatter = format
                 ? (
@@ -56,15 +71,20 @@ export default class LegendEntriesSource extends DataSource {
                   ) => numberFormat(format)(Number(value))
                 : undefined;
 
-            for (const datum of createDiscreteLegendEntries(
-                this.scaleResolution,
-                formatter
-            )) {
-                this._propagate(datum);
-            }
-
-            this.complete();
+            return createDiscreteLegendEntries(this.scaleResolution, formatter);
         }
+    }
+
+    #createQuantitativeEntries() {
+        const scale = this.scaleResolution.getScale();
+        const count = this.params.count ?? DEFAULT_QUANTITATIVE_ENTRY_COUNT;
+        const format = tickFormat(scale, count, this.params.format);
+
+        return tickValues(scale, count).map((value, index) => ({
+            value,
+            label: format(value),
+            _legendIndex: index,
+        }));
     }
 }
 

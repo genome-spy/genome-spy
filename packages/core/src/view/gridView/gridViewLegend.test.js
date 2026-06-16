@@ -635,13 +635,111 @@ describe("GridView legends", () => {
                     encoding: {
                         x: { field: "x", type: "quantitative" },
                         y: { field: "y", type: "quantitative" },
-                        size: { field: "SizeClass", type: "ordinal" },
+                        opacity: { field: "SizeClass", type: "ordinal" },
                     },
                 },
             ],
         });
 
         expect(getLegends(view)).toHaveLength(0);
+    });
+
+    test("creates a discrete size symbol legend", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, SizeClass: "small" },
+                            { x: 2, y: 3, SizeClass: "large" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        size: { field: "SizeClass", type: "ordinal" },
+                    },
+                },
+            ],
+        });
+        const legends = getLegends(view);
+        const symbols = legends[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "symbols");
+
+        expect(legends).toHaveLength(1);
+        expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
+            expect.objectContaining({
+                fill: { value: null },
+                stroke: { value: "#888" },
+                size: expect.objectContaining({
+                    field: "value",
+                    type: "ordinal",
+                }),
+            })
+        );
+    });
+
+    test("creates a quantitative size symbol legend with representative values", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, population: 0 },
+                            { x: 2, y: 3, population: 100 },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        size: {
+                            field: "population",
+                            type: "quantitative",
+                            format: ".1f",
+                            scale: { domain: [0, 100] },
+                        },
+                    },
+                },
+            ],
+        });
+        const legends = getLegends(view);
+        const symbols = legends[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "symbols");
+        const labels = legends[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "labels");
+        const plot = view
+            .getDescendants()
+            .find((descendant) => descendant.name == "grid0");
+        const labelData = Array.from(
+            /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+        );
+
+        expect(legends).toHaveLength(1);
+        expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
+            expect.objectContaining({
+                size: expect.objectContaining({
+                    field: "value",
+                    type: "quantitative",
+                }),
+            })
+        );
+        expect(
+            /** @type {UnitView} */ (symbols).getScaleResolution("size")
+        ).toBe(/** @type {UnitView} */ (plot).getScaleResolution("size"));
+        expect(labelData).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ value: 0, label: "0.0" }),
+                expect.objectContaining({ value: 100, label: "100.0" }),
+            ])
+        );
+        expect(labelData.length).toBeGreaterThan(2);
     });
 
     test("creates an opt-in gradient legend for quantitative color", async () => {

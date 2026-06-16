@@ -167,11 +167,11 @@ Active channels:
 - `stroke`: same legend behavior as `color` where marks use stroke directly.
 - `shape`: symbol legend for discrete fields. If it is redundant with
   `color`, `fill`, or `stroke`, it may merge into that primary symbol legend.
+- `size`: symbol legend for discrete and quantitative fields. Quantitative size
+  uses representative tick values, not a gradient legend.
 
 Deferred channels:
 
-- `size`: symbol legend for discrete and quantitative fields. Quantitative size
-  should use representative sampled values, not a gradient legend.
 - `opacity`, `fillOpacity`, `strokeOpacity`: symbol legend candidates. Treat as
   lower priority than color/shape/size because legibility and base styling need
   careful defaults.
@@ -238,7 +238,9 @@ Unsupported or deferred:
 - Shape-only symbol legends are supported.
 - Redundant `shape` merging checks matching fields and matching resolved
   domains, and respects `legend: null`.
-- Deferred channels such as `size` do not create accidental legends before
+- Discrete and quantitative `size` symbol legends are supported. Quantitative
+  size legends use representative tick values from the source scale.
+- Deferred channels such as opacity do not create accidental legends before
   their representation is designed.
 
 ### Completed Title And Label Steps
@@ -275,44 +277,33 @@ Implement remaining channel and scale support in small, verifiable slices. Each
 slice should add one or two behavioral tests or stable example specs before the
 implementation change.
 
-1. Add discrete `size` symbol legends:
-   - use the size scale as a scale-backed symbol property,
-   - keep base fill/stroke readable,
-   - measure label widths normally with `measureText` and `packLabels`,
-   - add a small example where nominal categories map to different sizes.
-2. Add quantitative `size` symbol legends:
-   - generate representative values from the source size scale using tick
-     helpers where possible,
-   - render multiple symbol entries with scale-backed sizes,
-   - confirm that zero or near-zero sizes do not make entries invisible without
-     an intentional fallback.
-3. Investigate opacity legends before enabling them:
+1. Investigate opacity legends before enabling them:
    - check `opacity`, `fillOpacity`, and `strokeOpacity` encoder behavior,
    - choose base fill/stroke colors that remain visible over the default
-     background,
+   background,
    - decide whether quantitative opacity should use sampled symbol entries or
-     stay deferred.
-4. Verify continuous color scale types:
+   stay deferred.
+2. Verify continuous color scale types:
    - add focused examples for `pow`, `sqrt`, and `symlog` color scales,
    - confirm ramp sampling uses the actual source scale inverse when available,
    - confirm ticks and labels use the same normalized positional scale as the
-     ramp.
-5. Check `quantize` support:
+   ramp.
+3. Check `quantize` support:
    - determine whether GenomeSpy's scale runtime exposes quantize thresholds or
-     invert extents in a usable way,
+   invert extents in a usable way,
    - if yes, implement a discrete gradient ramp similar to threshold legends,
    - if no, fail clearly or leave `quantize` documented as deferred.
-6. Harden threshold legends:
+4. Harden threshold legends:
     - keep outer buckets visible,
     - align labels with threshold boundaries,
     - decide whether labels should remain plain boundary labels or become
       Vega-like range labels such as `< 20` and `>= 100`.
-7. Add a supported-matrix test group:
+5. Add a supported-matrix test group:
     - one focused test for each supported channel/type combination,
     - one suppression test for `legend: null`,
     - one unsupported/deferred case that verifies no misleading legend is
       created.
-8. Update examples only when they serve as useful manual testbeds:
+6. Update examples only when they serve as useful manual testbeds:
     - keep `examples/core/legends/` small and test-like,
     - avoid broad example churn outside explicit legend fixtures.
 
