@@ -1,0 +1,55 @@
+# GenomeSpy AlphaGenome inference server
+#
+# Prerequisites:
+#   1. NVIDIA Container Toolkit installed on the host
+#   2. Copy .env.example → .env and fill in values
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose up             # start server (downloads weights on first run ~5 GB)
+#   docker compose up --build     # rebuild image after Dockerfile changes
+#
+# For local development overrides (live source mounts, etc.) create a
+# docker-compose.override.yml — Docker Compose merges it automatically.
+# See docker-compose.override.yml.example for a template.
+#
+# Model weights are preserved across restarts in a named Docker volume.
+
+name: genomespy-alphagenome
+
+services:
+  alphagenome-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: genomespy-alphagenome-server:latest
+    command: python server.py
+    ports:
+      - "${AG_PORT:-8002}:8002"
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    environment:
+      AG_PORT: ${AG_PORT:-8002}
+      HF_TOKEN: ${HF_TOKEN}
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s  # weight download + load on first run
+
+volumes:
+  hf_cache:
+    name: genomespy-alphagenome-hf-cache

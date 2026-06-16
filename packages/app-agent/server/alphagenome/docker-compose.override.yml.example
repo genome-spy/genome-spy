@@ -1,0 +1,8 @@
+# Copy to docker-compose.override.yml and adjust paths for your machine.
+# This file is merged automatically by Docker Compose — no extra flags needed.
+
+services:
+  alphagenome-server:
+    volumes:
+      # Live source mount for development — comment out in production.
+      - "/path/to/alphagenome/src:/app"
