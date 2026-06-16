@@ -160,12 +160,18 @@ const collectAxisResolutionMembers = (view) => {
 const collectLegendResolutionMembers = (view) => {
     /** @type {ResolutionMember[]} */
     const legendMembers = [];
-    forEachEncodedChannel(view, (channel, channelDef) => {
+    for (const [channel, channelDef] of Object.entries(
+        view.spec.encoding ?? {}
+    )) {
+        if (!channelDef || Array.isArray(channelDef)) {
+            continue;
+        }
+
         const member = getResolutionMember(view, "legend", channel, channelDef);
         if (member && !isPositionalChannel(member.channel)) {
             legendMembers.push(member);
         }
-    });
+    }
 
     return legendMembers;
 };

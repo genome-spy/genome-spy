@@ -53,7 +53,7 @@ export const markTypes = {
 export default class UnitView extends View {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
-     * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionTarget
+     * @typedef {import("../spec/view.js").ResolutionTarget | "legend"} ResolutionTarget
      * @typedef {((datum: import("../data/flowNode.js").Datum) => import("../spec/channel.js").Scalar) & { fieldDef: import("../spec/channel.js").FieldDef}} FieldAccessor
      *
      */
@@ -293,8 +293,8 @@ export default class UnitView extends View {
     }
 
     /**
-     * Pulls scales and axes up in the view hierarcy according to the resolution rules, using dataParents.
-     * TODO: legends
+     * Pulls scales and axes up in the view hierarchy according to the resolution rules, using dataParents.
+     * Legends are registered after scales so their resolution can refer to the source scale.
      *
      * @param {ResolutionTarget} [type] If not specified, both scales and axes are resolved.
      */
@@ -302,6 +302,9 @@ export default class UnitView extends View {
         if (!type) {
             this.resolve("scale");
             this.resolve("axis");
+            if (!this.options.blockEncodingInheritance) {
+                this.resolve("legend");
+            }
             return;
         }
         resolveViewResolutions(this, type);

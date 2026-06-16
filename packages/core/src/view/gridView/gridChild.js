@@ -31,7 +31,6 @@ import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
-import { createLegendDefinition } from "../../scales/legendResolution.js";
 import LegendView, { getExternalLegendOverhang } from "../legendView.js";
 
 /**
@@ -880,15 +879,10 @@ export default class GridChild {
         };
 
         /**
-         * @param {import("../../spec/channel.js").ChannelWithScale} channel
+         * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
          * @param {import("../unitView.js").default} legendParent
          */
-        const createLegend = async (channel, legendParent) => {
-            const definition = createLegendDefinition(channel, legendParent);
-            if (!definition) {
-                return;
-            }
-
+        const createLegend = async (definition, legendParent) => {
             const orient = definition.legend.orient ?? "right";
             if (this.legends[orient] && !this.allowDuplicateAxes()) {
                 throw new Error(
@@ -993,13 +987,10 @@ export default class GridChild {
         }
 
         if (view instanceof UnitView) {
-            for (const channel of Object.keys(view.spec.encoding ?? {})) {
-                await createLegend(
-                    /** @type {import("../../spec/channel.js").ChannelWithScale} */ (
-                        channel
-                    ),
-                    view
-                );
+            for (const resolution of Object.values(view.resolutions.legend)) {
+                for (const definition of resolution.getLegendDefs()) {
+                    await createLegend(definition, view);
+                }
             }
         }
 
