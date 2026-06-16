@@ -32,7 +32,7 @@
         "y": {
           "field": "score",
           "type": "quantitative",
-          "scale": { "nice": true, "zero": false },
+          "scale": { "nice": true, "zero": false, "clamp": true },
           "axis": {
             "title": "GC (%)",
             "grid": true,
