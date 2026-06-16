@@ -1,0 +1,32 @@
+[project]
+name = "genomespy-evo2-server"
+version = "0.1.0"
+description = "EVO2 variant effect prediction inference server for GenomeSpy"
+requires-python = ">=3.11"
+dependencies = [
+    "litserve",
+    "pydantic>=2.9.0",
+    "numpy>=1.23",
+    "pyfaidx>=0.8.0",
+    # evo2 and its transitive deps (torch, flash-attn, vortex) are installed
+    # separately — see the Dockerfile for GPU-specific instructions.
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "httpx>=0.28.0",
+    "ruff>=0.7.0",
+    "mypy>=1.13.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
