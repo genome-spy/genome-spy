@@ -17,6 +17,8 @@ The current implementation targets simple local legends hosted by the
   behavior.
 - `examples/core/legends/redundant-encoding.json` for discrete symbol legends
   that merge redundant color and shape encodings.
+- `examples/core/legends/bubble-health-income.json` for quantitative size
+  legends using representative symbol sizes.
 - `examples/core/lazy-data/bigwig.json` for dynamic quantitative color domains.
 
 Completed pieces:
@@ -58,6 +60,9 @@ Completed pieces:
 - Symbol legend labels and gradient tick labels use the channel `format`
   property where applicable. Gradient tick formatting reuses the same
   `tickFormat` machinery as axes.
+- Quantitative size legends use variable symbol sizes, inherit relevant point
+  mark styling, keep differently sized symbols center-aligned, and line up
+  labels against a shared column label position.
 
 ## Vega/Vega-Lite Summary
 
@@ -239,7 +244,9 @@ Unsupported or deferred:
 - Redundant `shape` merging checks matching fields and matching resolved
   domains, and respects `legend: null`.
 - Discrete and quantitative `size` symbol legends are supported. Quantitative
-  size legends use representative tick values from the source scale.
+  size legends use representative tick values from the source scale. The
+  `bubble-health-income.json` example has been manually checked and is a good
+  local testbed for size-based legends.
 - Deferred channels such as opacity do not create accidental legends before
   their representation is designed.
 
