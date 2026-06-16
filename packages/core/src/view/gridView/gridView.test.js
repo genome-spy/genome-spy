@@ -375,6 +375,10 @@ describe("GridView legends", () => {
         expect(legends).toHaveLength(1);
         expect(ramp).toBeInstanceOf(UnitView);
         expect(labels).toBeInstanceOf(UnitView);
+        expect(
+            /** @type {UnitView} */ (ramp).getScaleResolution("y").getScale()
+                .props
+        ).toEqual(expect.objectContaining({ domainTransition: false }));
         const rampData = Array.from(
             /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
         );

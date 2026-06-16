@@ -241,6 +241,7 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
         nice: false,
     };
     const verticalDomainScale = {
+        domainTransition: false,
         zero: false,
         nice: false,
     };
