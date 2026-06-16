@@ -4,6 +4,36 @@ import {
     createSymbolLegendSpec,
 } from "./legendView.js";
 
+/**
+ * @param {import("../spec/view.js").LayerSpec} spec
+ * @param {string} name
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function getLayer(spec, name) {
+    const layer = spec.layer.find((layer) => layer.name == name);
+    if (!layer || !("mark" in layer)) {
+        throw new Error(`Expected unit layer "${name}".`);
+    }
+
+    return layer;
+}
+
+/**
+ * @param {import("../spec/view.js").UnitSpec} layer
+ * @param {string} field
+ * @returns {string}
+ */
+function getFormula(layer, field) {
+    const formula = layer.transform?.find(
+        (transform) => transform.type == "formula" && transform.as == field
+    );
+    if (!formula || formula.type != "formula") {
+        throw new Error(`Expected formula for "${field}".`);
+    }
+
+    return formula.expr;
+}
+
 test("createSymbolLegendSpec builds generated point and text legend layers", () => {
     const spec = createSymbolLegendSpec({
         entries: [
@@ -124,7 +154,7 @@ test("createSymbolLegendSpec builds generated point and text legend layers", () 
     });
 });
 
-test("createGradientLegendSpec builds generated rect ramp layer", () => {
+test("gradient legend uses generated ramp samples and tick samples", () => {
     const spec = createGradientLegendSpec({
         scaleName: "color",
         channel: "color",
@@ -135,21 +165,14 @@ test("createGradientLegendSpec builds generated rect ramp layer", () => {
             titlePadding: 5,
         },
     });
-    const ramp = /** @type {import("../spec/view.js").UnitSpec} */ (
-        spec.layer[0]
-    );
-    const ticks = /** @type {import("../spec/view.js").UnitSpec} */ (
-        spec.layer[1]
-    );
-    const labels = /** @type {import("../spec/view.js").UnitSpec} */ (
-        spec.layer[2]
-    );
+    const ramp = getLayer(spec, "gradientRamp");
+    const ticks = getLayer(spec, "gradientTicks");
+    const labels = getLayer(spec, "gradientLabels");
 
     expect(spec.name).toBe("legend_right");
     expect(spec.data).toEqual({
         lazy: { type: "legendGradient", channel: "color", count: 64 },
     });
-    expect(spec.layer).toHaveLength(4);
     expect(ramp.mark).toMatchObject({
         type: "rect",
         clip: false,
@@ -165,32 +188,6 @@ test("createGradientLegendSpec builds generated rect ramp layer", () => {
             scale: { name: "color" },
         },
     });
-    expect(ramp.transform).toEqual([
-        { type: "formula", expr: "0", as: "_legendGradientX" },
-        { type: "formula", expr: "12", as: "_legendGradientX2" },
-        {
-            type: "formula",
-            expr: "(height - 16) * datum._legendGradientT0",
-            as: "_legendGradientY",
-        },
-        {
-            type: "formula",
-            expr: "(height - 16) * datum._legendGradientT1",
-            as: "_legendGradientY2",
-        },
-    ]);
-    expect(/** @type {any} */ (ramp.encoding.x).scale.domain).toEqual([
-        0,
-        { expr: "width" },
-    ]);
-    expect(/** @type {any} */ (ramp.encoding.y).scale.domain).toEqual([
-        0,
-        { expr: "height" },
-    ]);
-    expect(/** @type {any} */ (ramp.encoding.y2).scale.domain).toEqual([
-        0,
-        { expr: "height" },
-    ]);
     expect(ticks.data).toEqual({
         lazy: { type: "legendGradientTicks", channel: "color", count: 5 },
     });
@@ -215,4 +212,49 @@ test("createGradientLegendSpec builds generated rect ramp layer", () => {
         y: { field: "_legendGradientTickY", type: "quantitative" },
         text: { field: "label" },
     });
+});
+
+test("gradient legend positions ramp and ticks in legend pixel space", () => {
+    const spec = createGradientLegendSpec({
+        scaleName: "color",
+        channel: "color",
+        legend: {
+            title: "measurement",
+            orient: "right",
+            titleFontSize: 11,
+            titlePadding: 5,
+        },
+    });
+    const ramp = getLayer(spec, "gradientRamp");
+    const ticks = getLayer(spec, "gradientTicks");
+    const labels = getLayer(spec, "gradientLabels");
+
+    expect(getFormula(ramp, "_legendGradientY")).toBe(
+        "(height - 16) * datum._legendGradientT0"
+    );
+    expect(getFormula(ramp, "_legendGradientY2")).toBe(
+        "(height - 16) * datum._legendGradientT1"
+    );
+    expect(getFormula(ticks, "_legendGradientTickY")).toBe(
+        "(height - 16) * datum._legendGradientT"
+    );
+    expect(getFormula(labels, "_legendGradientTickY")).toBe(
+        "(height - 16) * datum._legendGradientT"
+    );
+    expect(/** @type {any} */ (ramp.encoding.x).scale.domain).toEqual([
+        0,
+        { expr: "width" },
+    ]);
+    expect(/** @type {any} */ (ramp.encoding.y).scale.domain).toEqual([
+        0,
+        { expr: "height" },
+    ]);
+    expect(/** @type {any} */ (ticks.encoding.y).scale.domain).toEqual([
+        0,
+        { expr: "height" },
+    ]);
+    expect(/** @type {any} */ (labels.encoding.y).scale.domain).toEqual([
+        0,
+        { expr: "height" },
+    ]);
 });
