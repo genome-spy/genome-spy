@@ -38,7 +38,13 @@ Completed pieces:
 - Right-, left-, top-, and bottom-oriented local legends are placed as
   `GridChild` chrome around the plot.
 - Redundant `shape` is merged into a primary color/fill/stroke symbol legend
-  when both encode the same field.
+  when both encode the same field and resolved scale domain.
+- Redundant shape merging respects `legend: null`, and non-redundant same-
+  orient legends fail clearly until local stacking exists.
+- Shape-only, fill-only, stroke-only, and redundant color/shape symbol legends
+  are covered by focused tests. Symbol base fill/stroke handling avoids
+  unsupported CSS `transparent` constants in shader code while preserving
+  color-driven strokes.
 - Quantitative color/fill/stroke legends render as gradient legends built from
   ordinary `rect`, `rule`, and `text` marks.
 - Gradient legends use the actual source scale for color and a local
@@ -219,67 +225,88 @@ Unsupported or deferred:
 - Shared legends for intentionally shared scales.
 - Root-level or named-area legend placement.
 
-### Channel And Scale Implementation Steps
+### Completed Channel And Scale Steps
+
+- Legend creation now uses an explicit channel classifier instead of ad hoc
+  type checks.
+- `color`, `fill`, and `stroke` are handled as color-like legend channels.
+- Quantitative color-like channels use gradient legends; nominal/ordinal
+  color-like channels use symbol legends.
+- Shape-only symbol legends are supported.
+- Redundant `shape` merging checks matching fields and matching resolved
+  domains, and respects `legend: null`.
+- Deferred channels such as `size` do not create accidental legends before
+  their representation is designed.
+
+### Title And Label Implementation Steps
+
+Implement legend title/label parity next, using behavioral tests and generated
+hierarchy inspection where rendering is not needed.
+
+1. Tighten title derivation:
+   - `legend.title` overrides channel field title and field name,
+   - channel `title` is used before raw field name,
+   - `title: null` suppresses the title.
+2. Verify title styling and spacing:
+   - `titlePadding` affects generated title view height,
+   - `titleColor`, `titleFont`, `titleFontStyle`, `titleFontWeight`, and
+     `titleFontSize` pass through to the title text mark.
+3. Verify label styling:
+   - `labelFontSize`, `labelColor`, `labelFont`, `labelFontStyle`,
+     `labelFontWeight`, `labelAlign`, and `labelBaseline` pass through to
+     generated label marks,
+   - `labelLimit` is either implemented or documented as deferred if text marks
+     do not yet support truncation.
+4. Check formatting:
+   - determine whether channel `format` should affect symbol labels, gradient
+     tick labels, or both,
+   - implement only if the existing formatting helpers can be reused without
+     broad guide refactoring.
+
+### Remaining Channel And Scale Implementation Steps
 
 Implement remaining channel and scale support in small, verifiable slices. Each
 slice should add one or two behavioral tests or stable example specs before the
 implementation change.
 
-1. Generalize color-like channel handling:
-   - treat `color`, `fill`, and `stroke` as color-like legend channels,
-   - keep quantitative color-like channels on the gradient path,
-   - keep nominal/ordinal color-like channels on the symbol path,
-   - verify that base symbol fill/stroke values are applied when only one of
-     fill or stroke is scale-backed.
-2. Tighten redundant channel merging:
-   - keep merging `shape` into `color`/`fill`/`stroke` only when the fields and
-     scale domains match,
-   - respect `legend: null` on either the primary or redundant channel,
-   - add a test for non-redundant `color` plus `shape` so the behavior is
-     explicit.
-3. Add `shape`-only symbol legends:
-   - generate entries from the actual shape scale resolution,
-   - render symbols with stable base fill/stroke defaults,
-   - verify ordinary point shapes and configured `symbolType` behavior do not
-     conflict.
-4. Add discrete `size` symbol legends:
+1. Add discrete `size` symbol legends:
    - use the size scale as a scale-backed symbol property,
    - keep base fill/stroke readable,
    - measure label widths normally with `measureText` and `packLabels`,
    - add a small example where nominal categories map to different sizes.
-5. Add quantitative `size` symbol legends:
+2. Add quantitative `size` symbol legends:
    - generate representative values from the source size scale using tick
      helpers where possible,
    - render multiple symbol entries with scale-backed sizes,
    - confirm that zero or near-zero sizes do not make entries invisible without
      an intentional fallback.
-6. Investigate opacity legends before enabling them:
+3. Investigate opacity legends before enabling them:
    - check `opacity`, `fillOpacity`, and `strokeOpacity` encoder behavior,
    - choose base fill/stroke colors that remain visible over the default
      background,
    - decide whether quantitative opacity should use sampled symbol entries or
      stay deferred.
-8. Verify continuous color scale types:
+4. Verify continuous color scale types:
    - add focused examples for `pow`, `sqrt`, and `symlog` color scales,
    - confirm ramp sampling uses the actual source scale inverse when available,
    - confirm ticks and labels use the same normalized positional scale as the
      ramp.
-9. Check `quantize` support:
+5. Check `quantize` support:
    - determine whether GenomeSpy's scale runtime exposes quantize thresholds or
      invert extents in a usable way,
    - if yes, implement a discrete gradient ramp similar to threshold legends,
    - if no, fail clearly or leave `quantize` documented as deferred.
-10. Harden threshold legends:
+6. Harden threshold legends:
     - keep outer buckets visible,
     - align labels with threshold boundaries,
     - decide whether labels should remain plain boundary labels or become
       Vega-like range labels such as `< 20` and `>= 100`.
-11. Add a supported-matrix test group:
+7. Add a supported-matrix test group:
     - one focused test for each supported channel/type combination,
     - one suppression test for `legend: null`,
     - one unsupported/deferred case that verifies no misleading legend is
       created.
-12. Update examples only when they serve as useful manual testbeds:
+8. Update examples only when they serve as useful manual testbeds:
     - keep `examples/core/legends/` small and test-like,
     - avoid broad example churn outside explicit legend fixtures.
 
