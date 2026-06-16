@@ -2,6 +2,7 @@ import ContainerView from "./containerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
+import { truncateText } from "../data/transforms/truncateText.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
 const SYMBOL_SIZE_FIELD = "_legendSymbolSize";
@@ -47,8 +48,19 @@ function createLegendTitleSpec(legend) {
         height: titleFontSize + titlePadding,
         view: LEGEND_VIEW_BACKGROUND,
         data: {
-            values: [{}],
+            values: [{ label: title }],
         },
+        transform: [
+            {
+                type: "truncateText",
+                field: "label",
+                limit: legend.titleLimit,
+                fontSize: titleFontSize,
+                font: legend.titleFont,
+                fontStyle: legend.titleFontStyle,
+                fontWeight: legend.titleFontWeight,
+            },
+        ],
         mark: {
             type: "text",
             clip: false,
@@ -61,7 +73,9 @@ function createLegendTitleSpec(legend) {
             fontStyle: legend.titleFontStyle,
             fontWeight: legend.titleFontWeight,
             size: titleFontSize,
-            text: title,
+        },
+        encoding: {
+            text: { field: "label" },
         },
     };
 }
@@ -264,6 +278,15 @@ export function createSymbolLegendSpec({
                   },
             transform: [
                 {
+                    type: "truncateText",
+                    field: "label",
+                    limit: legend.labelLimit,
+                    fontSize: labelFontSize,
+                    font: legend.labelFont,
+                    fontStyle: legend.labelFontStyle,
+                    fontWeight: legend.labelFontWeight,
+                },
+                {
                     type: "measureText",
                     field: "label",
                     as: LABEL_WIDTH_FIELD,
@@ -458,6 +481,15 @@ export function createGradientLegendSpec({ channel, legend, format }) {
             data: tickData,
             transform: [
                 ...tickTransform,
+                {
+                    type: "truncateText",
+                    field: "label",
+                    limit: legend.labelLimit,
+                    fontSize: labelFontSize,
+                    font: legend.labelFont,
+                    fontStyle: legend.labelFontStyle,
+                    fontWeight: legend.labelFontWeight,
+                },
                 {
                     type: "measureText",
                     field: "label",
@@ -902,5 +934,14 @@ function getTitleWidth(legend, context) {
         return 0;
     }
 
-    return metrics.measureWidth(legend.title, legend.titleFontSize ?? 11);
+    const fontSize = legend.titleFontSize ?? 11;
+    const text = truncateText(
+        legend.title,
+        legend.titleLimit,
+        metrics.measureWidth,
+        fontSize,
+        "..."
+    );
+
+    return metrics.measureWidth(text, fontSize);
 }

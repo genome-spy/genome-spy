@@ -64,6 +64,8 @@ Completed pieces:
 - Symbol legend labels and gradient tick labels use the channel `format`
   property where applicable. Gradient tick formatting reuses the same
   `tickFormat` machinery as axes.
+- Legend title and label text limits are applied using the same font metrics as
+  rendered text. Symbol label packing measures the limited label text.
 - Quantitative size legends use variable symbol sizes, inherit relevant point
   mark styling, keep differently sized symbols center-aligned, and line up
   labels against a shared column label position.
@@ -129,16 +131,9 @@ Compare current behavior against Vega/Vega-Lite and decide which pieces belong
 in the local-legend milestone:
 
 - Title behavior:
-  - `title: null` removes the title.
-  - Explicit title overrides field title and field name.
-  - Default title derivation matches existing GenomeSpy guide conventions.
-  - `titlePadding`, `titleFont*`, `titleColor`, and `titleLimit` are applied
-    consistently.
+  - `titleOrient` is not implemented; generated legends currently place titles
+    above the legend body.
 - Label behavior:
-  - `labelLimit`, `labelOffset`, `labelFont*`, `labelColor`,
-    `labelAlign`, and `labelBaseline` are applied consistently.
-  - Gradient labels use the channel `format` and the existing axis tick
-    formatter for linear, log, and threshold scales.
   - Discrete threshold labels should describe boundaries/ranges in a
     Vega-like way if plain boundary labels are not sufficient.
 - Symbol behavior:

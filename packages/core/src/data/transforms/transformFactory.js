@@ -18,6 +18,7 @@ import StackTransform from "./stack.js";
 import FlattenSequenceTransform from "./flattenSequence.js";
 import AggregateTransform from "./aggregate.js";
 import IdentifierTransform from "./identifier.js";
+import TruncateTextTransform from "./truncateText.js";
 
 /**
  * TODO: Make this dynamic
@@ -44,6 +45,7 @@ export const transforms = {
     regexExtract: RegexExtractTransform,
     regexFold: RegexFoldTransform,
     sample: SampleTransform,
+    truncateText: TruncateTextTransform,
     stack: StackTransform,
 };
 

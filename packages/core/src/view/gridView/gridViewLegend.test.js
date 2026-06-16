@@ -318,9 +318,11 @@ describe("GridView legends", () => {
                 fontStyle: "italic",
                 fontWeight: "bold",
                 size: 17,
-                text: "Styled",
             })
         );
+        expect(/** @type {UnitView} */ (title).spec.encoding).toEqual({
+            text: { field: "label" },
+        });
         expect(/** @type {UnitView} */ (labels).spec.mark).toEqual(
             expect.objectContaining({
                 align: "right",
@@ -331,6 +333,56 @@ describe("GridView legends", () => {
                 size: 13,
             })
         );
+    });
+
+    test("applies configured title and label text limits", async () => {
+        const view = await createLegendTestView({
+            config: {
+                legend: {
+                    disable: false,
+                    titleLimit: 0,
+                    labelLimit: 0,
+                },
+            },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "Origin",
+                            type: "nominal",
+                            legend: {
+                                title: "Long title",
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+        const legend = getLegends(view)[0];
+        const title = getLegendTitle(legend);
+        const labels = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "labels");
+
+        expect(
+            Array.from(
+                /** @type {UnitView} */ (title).flowHandle.collector.getData()
+            ).map(({ label }) => label)
+        ).toEqual([""]);
+        expect(
+            Array.from(
+                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+            ).map(({ label }) => label)
+        ).toEqual(["", ""]);
     });
 
     test("merges redundant color and shape channels into one symbol legend", async () => {

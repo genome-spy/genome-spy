@@ -474,6 +474,61 @@ export interface MeasureTextParams extends TransformParamsBase {
     as: string;
 }
 
+export interface TruncateTextParams extends TransformParamsBase {
+    type: "truncateText";
+
+    /**
+     * The field that contains the text to be truncated.
+     */
+    field: Field;
+
+    /**
+     * Maximum text width in pixels.
+     */
+    limit?: number;
+
+    /**
+     * The font size in pixels.
+     */
+    fontSize: number;
+
+    /**
+     * The font typeface. Uses the same asynchronously loaded SDF fonts as the
+     * `"text"` mark.
+     *
+     * **Default:** `"Lato"`
+     */
+    font?: string;
+
+    /**
+     * The font style. Valid values: `"normal"` and `"italic"`.
+     *
+     * **Default:** `"normal"`
+     */
+    fontStyle?: FontStyle;
+
+    /**
+     * The font weight.
+     *
+     * **Default:** `"regular"`
+     */
+    fontWeight?: FontWeight;
+
+    /**
+     * Text appended after truncation.
+     *
+     * **Default:** `"..."`.
+     */
+    ellipsis?: string;
+
+    /**
+     * The output field where the truncated text is written.
+     *
+     * **Default:** Same as `field`.
+     */
+    as?: string;
+}
+
 export interface PackLabelsParams extends TransformParamsBase {
     type: "packLabels";
 
@@ -707,6 +762,7 @@ export type TransformParams =
     | IdentifierParams
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
+    | TruncateTextParams
     | PackLabelsParams
     | MergeFacetsParams
     | PileupParams
