@@ -950,6 +950,7 @@ export default class GridChild {
                 {
                     scaleName: scaleResolution.name ?? channel,
                     channel,
+                    scaleProps: scaleResolution.getScale().props,
                     type: legendType,
                     symbolChannels:
                         legendType == "symbol"

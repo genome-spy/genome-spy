@@ -8,6 +8,14 @@ const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
 const DEFAULT_GRADIENT_TICK_COUNT = 5;
 const DEFAULT_GRADIENT_THICKNESS = 12;
 const DEFAULT_GRADIENT_TICK_SIZE = 4;
+const CONTINUOUS_GRADIENT_SCALE_TYPES = new Set([
+    "linear",
+    "log",
+    "pow",
+    "sqrt",
+    "symlog",
+]);
+const DISCRETIZING_GRADIENT_SCALE_TYPES = new Set(["quantize", "threshold"]);
 /** @type {import("../spec/view.js").ViewBackground} */
 const LEGEND_VIEW_BACKGROUND = {
     fillOpacity: 0,
@@ -70,6 +78,66 @@ function createLegendRootSpec(legend, body) {
         name: "legend_" + (legend.orient ?? "right"),
         spacing: 0,
         vconcat: title ? [title, body] : [body],
+    };
+}
+
+/**
+ * @param {import("../spec/scale.js").Scale | undefined} scaleProps
+ * @returns {import("../spec/scale.js").Scale}
+ */
+function createGradientPositionScale(scaleProps) {
+    const type = scaleProps?.type;
+    /** @type {import("../spec/scale.js").Scale} */
+    const copiedProps = {};
+    if (type && CONTINUOUS_GRADIENT_SCALE_TYPES.has(type)) {
+        copiedProps.type = type;
+        if (scaleProps.base !== undefined) {
+            copiedProps.base = scaleProps.base;
+        }
+        if (scaleProps.exponent !== undefined) {
+            copiedProps.exponent = scaleProps.exponent;
+        }
+        if (scaleProps.constant !== undefined) {
+            copiedProps.constant = scaleProps.constant;
+        }
+        if (scaleProps.clamp !== undefined) {
+            copiedProps.clamp = scaleProps.clamp;
+        }
+        if (scaleProps.reverse !== undefined) {
+            copiedProps.reverse = scaleProps.reverse;
+        }
+    }
+
+    return {
+        ...copiedProps,
+        domainTransition: false,
+        zero: false,
+        nice: false,
+    };
+}
+
+/**
+ * @param {object} options
+ * @param {string} options.scaleName
+ * @param {import("../spec/scale.js").Scale | undefined} options.scaleProps
+ * @returns {import("../spec/scale.js").Scale}
+ */
+function createGradientColorScale({ scaleName, scaleProps }) {
+    /** @type {import("../spec/scale.js").Scale} */
+    const copiedProps = scaleProps ? { ...scaleProps } : {};
+    if (!DISCRETIZING_GRADIENT_SCALE_TYPES.has(copiedProps.type ?? "")) {
+        delete copiedProps.domain;
+        delete copiedProps.domainMin;
+        delete copiedProps.domainMax;
+    }
+    delete copiedProps.name;
+
+    return {
+        ...copiedProps,
+        name: scaleName,
+        domainTransition: false,
+        zero: false,
+        nice: false,
     };
 }
 
@@ -227,10 +295,16 @@ export function createSymbolLegendSpec({
  * @param {object} options
  * @param {string} options.scaleName
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
+ * @param {import("../spec/scale.js").Scale} [options.scaleProps]
  * @param {LegendConfig} options.legend
  * @returns {import("../spec/view.js").VConcatSpec}
  */
-export function createGradientLegendSpec({ scaleName, channel, legend }) {
+export function createGradientLegendSpec({
+    scaleName,
+    channel,
+    scaleProps,
+    legend,
+}) {
     const labelAlign = legend.labelAlign ?? "left";
     const labelBaseline = legend.labelBaseline ?? "middle";
     const labelFontSize = legend.labelFontSize ?? 10;
@@ -240,17 +314,11 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
         zero: false,
         nice: false,
     };
-    const verticalDomainScale = {
-        domainTransition: false,
-        zero: false,
-        nice: false,
-    };
-    const colorDomainScale = {
-        name: scaleName,
-        domainTransition: false,
-        zero: false,
-        nice: false,
-    };
+    const verticalDomainScale = createGradientPositionScale(scaleProps);
+    const colorDomainScale = createGradientColorScale({
+        scaleName,
+        scaleProps,
+    });
     const tickX = DEFAULT_GRADIENT_THICKNESS;
     const tickX2 = DEFAULT_GRADIENT_THICKNESS + DEFAULT_GRADIENT_TICK_SIZE;
     const labelX = tickX2 + labelOffset;
@@ -440,6 +508,7 @@ export default class LegendView extends ContainerView {
      * @param {LegendEntry[]} [props.entries]
      * @param {string} props.scaleName
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
+     * @param {import("../spec/scale.js").Scale} [props.scaleProps]
      * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
      * @param {"symbol" | "gradient"} [props.type]
      * @param {LegendConfig} props.legend
@@ -449,7 +518,15 @@ export default class LegendView extends ContainerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(
-        { entries, scaleName, channel, symbolChannels, type, legend },
+        {
+            entries,
+            scaleName,
+            channel,
+            scaleProps,
+            symbolChannels,
+            type,
+            legend,
+        },
         context,
         layoutParent,
         dataParent,
@@ -457,7 +534,12 @@ export default class LegendView extends ContainerView {
     ) {
         const spec =
             type == "gradient"
-                ? createGradientLegendSpec({ scaleName, channel, legend })
+                ? createGradientLegendSpec({
+                      scaleName,
+                      channel,
+                      scaleProps,
+                      legend,
+                  })
                 : createSymbolLegendSpec({
                       entries,
                       scaleName,

@@ -413,6 +413,51 @@ describe("GridView legends", () => {
         );
     });
 
+    test("gradient legends mirror source scale type and color scheme", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 1, measurement: 1 },
+                            { x: 2, y: 2, measurement: 100 },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "measurement",
+                            type: "quantitative",
+                            scale: {
+                                type: "log",
+                                domain: [1, 100],
+                                scheme: "turbo",
+                            },
+                        },
+                    },
+                },
+            ],
+        });
+        const legend = getLegends(view)[0];
+        const ramp = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientRamp");
+
+        expect(ramp).toBeInstanceOf(UnitView);
+        expect(
+            /** @type {UnitView} */ (ramp).getScaleResolution("y").getScale()
+                .props
+        ).toEqual(expect.objectContaining({ type: "log" }));
+        expect(
+            /** @type {UnitView} */ (ramp)
+                .getScaleResolution("color")
+                .getScale().props
+        ).toEqual(expect.objectContaining({ type: "log", scheme: "turbo" }));
+    });
+
     test("does not draw configured view strokes inside legends", async () => {
         const view = await createLegendTestView({
             config: {
