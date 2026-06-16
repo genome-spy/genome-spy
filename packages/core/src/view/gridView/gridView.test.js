@@ -474,14 +474,29 @@ describe("GridView legends", () => {
         const ramp = legend
             .getDescendants()
             .find((descendant) => descendant.name == "gradientRamp");
+        const labels = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientLabels");
         const plot = view
             .getDescendants()
             .find((descendant) => descendant.name == "grid0");
 
         expect(ramp).toBeInstanceOf(UnitView);
+        expect(labels).toBeInstanceOf(UnitView);
         expect(plot).toBeInstanceOf(UnitView);
         expect(/** @type {UnitView} */ (ramp).getScaleResolution("color")).toBe(
             /** @type {UnitView} */ (plot).getScaleResolution("color")
+        );
+
+        const labelData = Array.from(
+            /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+        );
+        expect(labelData).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ value: 1, position: 0 }),
+                expect.objectContaining({ value: 10, position: 0.5 }),
+                expect.objectContaining({ value: 100, position: 1 }),
+            ])
         );
     });
 

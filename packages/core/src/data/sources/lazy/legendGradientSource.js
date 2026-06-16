@@ -1,4 +1,5 @@
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
+import createScale from "../../../scale/scale.js";
 import { tickCount, tickFormat, tickValues } from "../../../scale/ticks.js";
 import { findLegendScaleResolution } from "./legendEntriesSource.js";
 import DataSource from "../dataSource.js";
@@ -18,6 +19,28 @@ const DEFAULT_TICK_COUNT = 5;
  * @returns {NormalizedPositionScale}
  */
 function createNormalizedScale(scale, start, stop) {
+    const props =
+        /** @type {{ props?: import("../../../spec/scale.js").Scale }} */ (
+            scale
+        ).props;
+    const type = props?.type;
+
+    if (type) {
+        const positionScale = createScale({
+            type,
+            domain: [start, stop],
+            range: [0, 1],
+            zero: false,
+            nice: false,
+        });
+        if (
+            "invert" in positionScale &&
+            typeof positionScale.invert == "function"
+        ) {
+            return /** @type {NormalizedPositionScale} */ (positionScale);
+        }
+    }
+
     if (
         "copy" in scale &&
         typeof scale.copy == "function" &&
@@ -203,26 +226,25 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
                       this.scaleResolution.getDomain().map(Number)
                   )
                 : [start, stop];
-        const positionScale =
-            "invert" in scale && typeof scale.invert == "function"
-                ? createNormalizedScale(
-                      scale,
-                      positionExtent[0],
-                      positionExtent[1]
-                  )
-                : createLinearPositionScale(
-                      positionExtent[0],
-                      positionExtent[1]
-                  );
+        const positionScale = createNormalizedScale(
+            scale,
+            positionExtent[0],
+            positionExtent[1]
+        );
         const requestedCount = this.params.count ?? DEFAULT_TICK_COUNT;
         const count = tickCount(scale, requestedCount, undefined);
         const format = tickFormat(scale, requestedCount);
 
         for (const value of tickValues(scale, count)) {
+            const label = format(value);
+            if (!label) {
+                continue;
+            }
+
             this._propagate({
                 value,
                 position: positionScale(value),
-                label: format(value),
+                label,
             });
         }
     }
