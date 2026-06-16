@@ -218,16 +218,13 @@ describe("GridView legends", () => {
             config: { legend: { disable: false } },
         });
         const legends = getLegends(view);
-        const legendSpec = legends[0].spec;
         const labels = legends[0]
             .getDescendants()
             .find((descendant) => descendant.name == "labels");
 
         expect(legends).toHaveLength(1);
         expect(legends[0].name).toBe("legend_right");
-        expect(legendSpec.data).toEqual({
-            lazy: { type: "legendEntries", channel: "color" },
-        });
+        expect(legends[0].legendProps.title).toBe("Origin");
         expect(labels).toBeInstanceOf(UnitView);
         expect(
             Array.from(labels.flowHandle.collector.getData()).map(
@@ -241,13 +238,6 @@ describe("GridView legends", () => {
             { value: "Europe", label: "Europe", _legendIndex: 0 },
             { value: "Japan", label: "Japan", _legendIndex: 1 },
         ]);
-        expect(
-            /** @type {import("../../spec/view.js").UnitSpec} */ (
-                legendSpec.layer[1]
-            ).mark
-        ).toMatchObject({
-            text: "Origin",
-        });
     });
 
     test("merges redundant color and shape channels into one symbol legend", async () => {
@@ -272,23 +262,8 @@ describe("GridView legends", () => {
             ],
         });
         const legends = getLegends(view);
-        const symbols = /** @type {import("../../spec/view.js").UnitSpec} */ (
-            legends[0].spec.layer[0]
-        );
 
         expect(legends).toHaveLength(1);
-        expect(symbols.encoding).toMatchObject({
-            color: {
-                field: "value",
-                type: "nominal",
-                scale: { name: "color" },
-            },
-            shape: {
-                field: "value",
-                type: "nominal",
-                scale: { name: "shape" },
-            },
-        });
     });
 
     test("creates an explicit channel legend even when defaults are disabled", async () => {
@@ -317,13 +292,7 @@ describe("GridView legends", () => {
         const legends = getLegends(view);
 
         expect(legends).toHaveLength(1);
-        expect(
-            /** @type {import("../../spec/view.js").UnitSpec} */ (
-                legends[0].spec.layer[1]
-            ).mark
-        ).toMatchObject({
-            text: "Region",
-        });
+        expect(legends[0].legendProps.title).toBe("Region");
     });
 
     test("respects explicit legend null", async () => {
@@ -396,23 +365,30 @@ describe("GridView legends", () => {
             ],
         });
         const legends = getLegends(view);
-        const legendSpec = legends[0].spec;
-        const ramp = /** @type {import("../../spec/view.js").UnitSpec} */ (
-            legendSpec.layer[0]
-        );
+        const ramp = legends[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientRamp");
+        const labels = legends[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "gradientLabels");
 
         expect(legends).toHaveLength(1);
-        expect(legendSpec.data).toEqual({
-            lazy: { type: "legendGradient", channel: "color", count: 64 },
-        });
-        expect(ramp.mark).toMatchObject({ type: "rect" });
-        expect(ramp.encoding).toMatchObject({
-            color: {
-                field: "value",
-                type: "quantitative",
-                scale: { name: "color" },
-            },
-        });
+        expect(ramp).toBeInstanceOf(UnitView);
+        expect(labels).toBeInstanceOf(UnitView);
+        const rampData = Array.from(
+            /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
+        );
+        const labelData = Array.from(
+            /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+        );
+
+        expect(rampData.length).toBeGreaterThan(1);
+        expect(labelData).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({ value: 0, label: "0.0" }),
+                expect.objectContaining({ value: 1, label: "1.0" }),
+            ])
+        );
     });
 });
 

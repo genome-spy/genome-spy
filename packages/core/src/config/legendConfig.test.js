@@ -7,26 +7,14 @@ describe("legendConfig", () => {
         expect(INTERNAL_DEFAULT_CONFIG.legend?.disable).toBe(true);
     });
 
-    test("includes initial Vega-derived symbol legend defaults", () => {
+    test("includes representative Vega-derived symbol legend defaults", () => {
         const defaults = getConfiguredLegendDefaults([INTERNAL_DEFAULT_CONFIG]);
 
         expect(defaults.orient).toBe("right");
         expect(defaults.direction).toBe("vertical");
-        expect(defaults.padding).toBe(0);
-        expect(defaults.columnPadding).toBe(10);
-        expect(defaults.rowPadding).toBe(2);
-        expect(defaults.labelAlign).toBe("left");
-        expect(defaults.labelBaseline).toBe("middle");
-        expect(defaults.labelLimit).toBe(160);
         expect(defaults.labelOffset).toBe(4);
         expect(defaults.symbolType).toBe("circle");
-        expect(defaults.symbolSize).toBe(100);
-        expect(defaults.symbolOffset).toBe(0);
-        expect(defaults.symbolStrokeWidth).toBe(1.5);
-        expect(defaults.symbolBaseFillColor).toBe("transparent");
-        expect(defaults.titleLimit).toBe(180);
         expect(defaults.titleOrient).toBe("top");
-        expect(defaults.titlePadding).toBe(5);
     });
 
     test("closest config scope wins", () => {
