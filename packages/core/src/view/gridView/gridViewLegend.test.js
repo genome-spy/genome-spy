@@ -534,9 +534,6 @@ describe("GridView legends", () => {
             .getDescendants()
             .find((descendant) => descendant.name == "symbols");
 
-        expect(/** @type {UnitView} */ (strokeSymbols).spec.mark).toEqual(
-            expect.objectContaining({ filled: false })
-        );
         expect(/** @type {UnitView} */ (strokeSymbols).spec.encoding).toEqual(
             expect.objectContaining({
                 fill: { value: null },
@@ -693,7 +690,12 @@ describe("GridView legends", () => {
                             { x: 2, y: 3, population: 100 },
                         ],
                     },
-                    mark: "point",
+                    mark: {
+                        type: "point",
+                        filled: true,
+                        opacity: 0.7,
+                        shape: "circle",
+                    },
                     encoding: {
                         x: { field: "x", type: "quantitative" },
                         y: { field: "y", type: "quantitative" },
@@ -703,6 +705,7 @@ describe("GridView legends", () => {
                             format: ".1f",
                             scale: { domain: [0, 100] },
                         },
+                        color: { value: "#000" },
                     },
                 },
             ],
@@ -724,10 +727,20 @@ describe("GridView legends", () => {
         expect(legends).toHaveLength(1);
         expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
             expect.objectContaining({
+                fill: { value: "#000" },
+                stroke: { value: null },
+                strokeWidth: { value: 0 },
                 size: expect.objectContaining({
                     field: "value",
                     type: "quantitative",
                 }),
+            })
+        );
+        expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
+            expect.objectContaining({
+                filled: true,
+                opacity: 0.7,
+                shape: "circle",
             })
         );
         expect(

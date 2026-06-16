@@ -59,6 +59,16 @@ const SYMBOL_LEGEND_CHANNELS = new Set([
     "size",
 ]);
 const GRADIENT_LEGEND_CHANNELS = new Set(["color", "fill", "stroke"]);
+const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
+    "color",
+    "fill",
+    "stroke",
+    "opacity",
+    "fillOpacity",
+    "strokeOpacity",
+    "strokeWidth",
+    "shape",
+]);
 
 /**
  * Classifies currently implemented legend support. Deferred and unsupported
@@ -85,6 +95,84 @@ function getLegendType(channel, channelDef) {
     } else {
         return undefined;
     }
+}
+
+/**
+ * @param {import("../../spec/channel.js").ChannelDef | undefined} channelDef
+ * @returns {channelDef is import("../../spec/channel.js").ValueDef}
+ */
+function isConstantValueDef(channelDef) {
+    return isValueDef(channelDef) && !("condition" in channelDef);
+}
+
+/**
+ * @param {import("../../spec/channel.js").ChannelWithScale} channel
+ * @param {Partial<Record<import("../../spec/channel.js").ChannelWithScale, string>>} symbolChannels
+ * @param {import("../unitView.js").default} sourceView
+ */
+function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
+    const scaledChannels = new Set([channel, ...Object.keys(symbolChannels)]);
+
+    /** @type {import("../legendView.js").SymbolLegendStyle} */
+    const style = { mark: {}, encoding: {} };
+    const sourceProps =
+        /** @type {Partial<import("../../spec/mark.js").PointProps>} */ (
+            sourceView.mark.properties
+        );
+    const styleEncoding =
+        /** @type {Record<string, import("../../spec/channel.js").ValueDef<any>>} */ (
+            style.encoding
+        );
+    const styleMark =
+        /** @type {Partial<import("../../spec/mark.js").PointProps>} */ (
+            style.mark
+        );
+
+    if (sourceProps.filled !== undefined) {
+        styleMark.filled = sourceProps.filled;
+    }
+    if (sourceProps.opacity !== undefined) {
+        styleMark.opacity = sourceProps.opacity;
+    }
+    if (sourceProps.fillOpacity !== undefined) {
+        styleMark.fillOpacity = sourceProps.fillOpacity;
+    }
+    if (sourceProps.strokeOpacity !== undefined) {
+        styleMark.strokeOpacity = sourceProps.strokeOpacity;
+    }
+    if (sourceProps.strokeWidth !== undefined) {
+        styleMark.strokeWidth = sourceProps.strokeWidth;
+    }
+    if (sourceProps.shape !== undefined) {
+        styleMark.shape = sourceProps.shape;
+    }
+
+    const colorDef = sourceView.spec.encoding?.color;
+    const filled = sourceProps.filled;
+    if (isConstantValueDef(colorDef) && !scaledChannels.has("color")) {
+        if (filled) {
+            styleEncoding.fill = { value: colorDef.value };
+            styleEncoding.stroke = { value: null };
+            styleEncoding.strokeWidth = { value: 0 };
+        } else {
+            styleEncoding.stroke = { value: colorDef.value };
+            styleEncoding.fill = { value: colorDef.value };
+            styleEncoding.fillOpacity = { value: 0 };
+        }
+    }
+
+    for (const channel of INHERITED_SYMBOL_ENCODING_CHANNELS) {
+        if (channel == "color" || scaledChannels.has(channel)) {
+            continue;
+        }
+
+        const channelDef = sourceView.spec.encoding?.[channel];
+        if (isConstantValueDef(channelDef)) {
+            styleEncoding[channel] = { value: channelDef.value };
+        }
+    }
+
+    return style;
 }
 
 export default class GridChild {
@@ -1010,15 +1098,27 @@ export default class GridChild {
                         : undefined;
             const format =
                 "format" in channelDef ? channelDef.format : undefined;
+            const symbolChannels =
+                legendType == "symbol"
+                    ? getRedundantSymbolChannels(channel, legendParent)
+                    : undefined;
+            const symbolStyle =
+                legendType == "symbol"
+                    ? createInheritedSymbolStyle(
+                          channel,
+                          symbolChannels ?? {},
+                          // Multi-view arbitration is intentionally simple for
+                          // now: use the first deterministic contributor.
+                          scaleResolution.getOrderedMembers()[0].view
+                      )
+                    : undefined;
 
             const legend = new LegendView(
                 {
                     channel,
                     type: legendType,
-                    symbolChannels:
-                        legendType == "symbol"
-                            ? getRedundantSymbolChannels(channel, legendParent)
-                            : undefined,
+                    symbolChannels,
+                    symbolStyle,
                     legend: {
                         ...legendDefaults,
                         title,

@@ -21,6 +21,10 @@ const LEGEND_VIEW_BACKGROUND = {
 /**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
  * @typedef {import("./legend/legendEntries.js").LegendEntry} LegendEntry
+ * @typedef {{
+ *     mark?: Partial<import("../spec/mark.js").PointProps>,
+ *     encoding?: Partial<import("../spec/channel.js").Encoding>
+ * }} SymbolLegendStyle
  */
 
 /**
@@ -108,6 +112,7 @@ function createBaseColorEncoding(value) {
  * @param {LegendEntry[]} [options.entries]
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [options.symbolChannels]
+ * @param {SymbolLegendStyle} [options.symbolStyle]
  * @param {LegendConfig} options.legend
  * @param {string} [options.format]
  * @param {import("../spec/channel.js").Type} options.dataType
@@ -117,6 +122,7 @@ export function createSymbolLegendSpec({
     entries,
     channel,
     symbolChannels = {},
+    symbolStyle = {},
     legend,
     format,
     dataType,
@@ -166,6 +172,7 @@ export function createSymbolLegendSpec({
                 shape: legend.symbolType,
                 size: legend.symbolSize,
                 strokeWidth: legend.symbolStrokeWidth,
+                ...symbolStyle.mark,
             },
             encoding: {
                 x: {
@@ -187,6 +194,7 @@ export function createSymbolLegendSpec({
                     domainInert: true,
                 },
                 ...baseSymbolEncoding,
+                ...symbolStyle.encoding,
                 ...Object.fromEntries(
                     Object.entries(symbolChannels).map(([channel]) => [
                         channel,
@@ -531,6 +539,7 @@ export default class LegendView extends ContainerView {
      * @param {LegendEntry[]} [props.entries]
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
      * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
+     * @param {SymbolLegendStyle} [props.symbolStyle]
      * @param {"symbol" | "gradient"} [props.type]
      * @param {LegendConfig} props.legend
      * @param {string} [props.format]
@@ -541,7 +550,16 @@ export default class LegendView extends ContainerView {
      * @param {import("./view.js").ViewOptions} [options]
      */
     constructor(
-        { entries, channel, symbolChannels, type, legend, format, dataType },
+        {
+            entries,
+            channel,
+            symbolChannels,
+            symbolStyle,
+            type,
+            legend,
+            format,
+            dataType,
+        },
         context,
         layoutParent,
         dataParent,
@@ -558,6 +576,7 @@ export default class LegendView extends ContainerView {
                       entries,
                       channel,
                       symbolChannels,
+                      symbolStyle,
                       legend,
                       format,
                       dataType,
