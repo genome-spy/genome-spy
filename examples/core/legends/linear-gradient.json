@@ -1,0 +1,45 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Legend test case for a linear color scale.",
+
+  "width": 360,
+  "height": 240,
+
+  "config": { "legend": { "disable": false, "padding": 18 } },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 241, "step": 1, "as": "x" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "datum.x / 2 + 12 * sin(datum.x / 14)",
+      "as": "value"
+    }
+  ],
+
+  "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "title": "Continuous x"
+    },
+    "y": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Linear y",
+      "scale": { "type": "linear", "zero": false }
+    },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Linear color",
+      "scale": { "type": "linear", "zero": false },
+      "legend": { "title": "Linear" }
+    }
+  }
+}

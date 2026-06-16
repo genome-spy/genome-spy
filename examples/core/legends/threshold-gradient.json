@@ -1,0 +1,52 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Legend test case for a threshold color scale.",
+
+  "width": 360,
+  "height": 240,
+
+  "config": { "legend": { "disable": false, "padding": 18 } },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 241, "step": 1, "as": "x" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "datum.x / 2 + 12 * sin(datum.x / 14)",
+      "as": "value"
+    }
+  ],
+
+  "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "title": "Continuous x"
+    },
+    "y": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Threshold y",
+      "scale": {
+        "type": "threshold",
+        "domain": [20, 40, 60, 80, 100]
+      }
+    },
+    "color": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Threshold color",
+      "scale": {
+        "type": "threshold",
+        "domain": [20, 40, 60, 80, 100],
+        "scheme": "turbo"
+      },
+      "legend": { "title": "Threshold" }
+    }
+  }
+}
