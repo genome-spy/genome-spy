@@ -756,7 +756,7 @@ function getLegendExtent(legend, type, measuredLabels, context) {
  */
 function getMinimumLegendExtent(type, legend) {
     if (isHorizontalLegend(legend)) {
-        return type == "gradient" ? 44 : 32;
+        return type == "gradient" ? 32 : 32;
     } else {
         return type == "gradient"
             ? DEFAULT_GRADIENT_LEGEND_EXTENT
@@ -779,9 +779,7 @@ function getHorizontalLegendExtent(legend, type, measuredLabels) {
               labelOffset +
               DEFAULT_GRADIENT_TICK_SIZE +
               DEFAULT_GRADIENT_THICKNESS +
-              DEFAULT_GRADIENT_TICK_SIZE +
-              labelOffset +
-              labelFontSize
+              2
             : measuredLabels.maxY + labelFontSize / 2;
 
     return Math.ceil(

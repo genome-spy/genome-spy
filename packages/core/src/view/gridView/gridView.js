@@ -1033,6 +1033,13 @@ export default class GridView extends ContainerView {
             for (const [orient, legendView] of Object.entries(
                 gridChild.legends
             )) {
+                const axisOffset = getExternalAxisOverhang(
+                    axes[
+                        /** @type {import("../../spec/axis.js").AxisOrient} */ (
+                            orient
+                        )
+                    ]
+                );
                 queueDecoration(0, DECORATION_ORDER.legend, () =>
                     legendView.render(
                         context,
@@ -1041,7 +1048,8 @@ export default class GridView extends ContainerView {
                             /** @type {import("../../spec/legend.js").LegendOrient} */ (
                                 orient
                             ),
-                            legendView
+                            legendView,
+                            axisOffset
                         ),
                         options
                     )
@@ -1556,22 +1564,27 @@ export function translateAxisCoords(coords, orient, axisView) {
  * @param {import("../layout/rectangle.js").default} coords
  * @param {import("../../spec/legend.js").LegendOrient} orient
  * @param {import("../legendView.js").default} legendView
+ * @param {number} [offset]
  */
-export function translateLegendCoords(coords, orient, legendView) {
+export function translateLegendCoords(coords, orient, legendView, offset = 0) {
     const ps = legendView.getPerpendicularSize();
     const padding = legendView.getExternalPadding();
 
     if (orient == "bottom") {
         return coords
-            .translate(0, coords.height + padding)
+            .translate(0, coords.height + offset + padding)
             .modify({ height: ps });
     } else if (orient == "top") {
-        return coords.translate(0, -ps - padding).modify({ height: ps });
+        return coords
+            .translate(0, -ps - offset - padding)
+            .modify({ height: ps });
     } else if (orient == "left") {
-        return coords.translate(-ps - padding, 0).modify({ width: ps });
+        return coords
+            .translate(-ps - offset - padding, 0)
+            .modify({ width: ps });
     } else if (orient == "right") {
         return coords
-            .translate(coords.width + padding, 0)
+            .translate(coords.width + offset + padding, 0)
             .modify({ width: ps });
     }
 }
