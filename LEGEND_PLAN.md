@@ -1,15 +1,24 @@
 # Legend Plan
 
 This document tracks the current legend implementation direction for GenomeSpy
-Core. The initial milestone is now mostly implemented: simple local symbol
-legends are generated from ordinary GenomeSpy marks and can be shown beside
-simple plots.
+Core. The first implementation pass exists: local legends are generated from
+ordinary GenomeSpy marks and can be shown beside simple plots. The next focus is
+to make this local-placement behavior robust before adding shared guide areas or
+more ambitious placement models.
 
 ## Current State
 
-The first milestone targets `examples/core/marks/point/point2d.json`. The
-example opts in to legends through config, encodes `Origin` redundantly with
-`color` and `shape`, and renders a local right-oriented symbol legend.
+The current implementation targets simple local legends hosted by the
+`GridChild` that owns the explained view. Testbed examples include:
+
+- `examples/core/marks/point/point2d.json` for discrete symbol legends.
+- `examples/core/marks/rect/heatmap.json` for linear quantitative color
+  legends.
+- `examples/core/lazy-data/bigwig.json` for dynamic quantitative color domains.
+- `examples/core/legends/linear-gradient.json`,
+  `examples/core/legends/log-gradient.json`, and
+  `examples/core/legends/threshold-gradient.json` for scale-specific gradient
+  behavior.
 
 Completed pieces:
 
@@ -30,12 +39,16 @@ Completed pieces:
 - Right-oriented local legends are placed as `GridChild` chrome beside the plot.
 - Redundant `shape` is merged into a primary color/fill/stroke symbol legend
   when both encode the same field.
-
-Relevant commits include:
-
-- `d1499ebf fix(core): use view size for generated legend layout`
-- `1023084e fix(core): place generated legend titles at top`
-- `28530d14 feat(core): merge redundant shape into symbol legends`
+- Quantitative color/fill/stroke legends render as gradient legends built from
+  ordinary `rect`, `rule`, and `text` marks.
+- Gradient legends use the actual source scale for color and a local
+  normalized positional scale for ramp/tick placement.
+- Linear, logarithmic, and threshold quantitative color scales have dedicated
+  examples. Threshold legends include the two outer color buckets and align
+  tick labels with threshold boundaries.
+- Legend data sources listen to source scale domain changes so legends follow
+  dynamic domains.
+- Generated legend views suppress ordinary view strokes.
 
 ## Vega/Vega-Lite Summary
 
@@ -73,121 +86,240 @@ ancestors. A single root-level legend panel would often detach a legend from the
 marks it explains. The current implementation therefore starts with local
 legends hosted by the `GridChild` that owns the explained view.
 
-## Remaining Near-Term Work
+## Next Milestone: Robust Local Legends
 
-### Gradient Legends For Quantitative Color
+The next milestone is to make the existing local `GridChild` placement model
+reliable and Vega-like where the concepts apply. This should happen before
+adding named guide areas, shared legend panels, or app-level legend placement.
 
-Next milestone: support a Vega-like gradient legend for quantitative color
-scales. The first testbed should be
-`examples/core/marks/rect/heatmap.json`, which encodes the quantitative
-`measurement` field with `color`.
+Acceptance criteria:
 
-Acceptance criterion:
+- Simple symbol and gradient legends keep working with local right-oriented
+  placement.
+- `orient: "left"`, `"right"`, `"top"`, and `"bottom"` are supported by the
+  generated legend specs and `GridChild` overhang/placement.
+- The implemented channel and scale coverage is explicit and tested.
+- Missing or unsupported combinations fail clearly or intentionally do not
+  create a legend; they should not silently produce misleading legends.
+- Legend defaults, labels, titles, symbols, and gradient ticks are close to
+  Vega behavior where GenomeSpy has matching concepts.
 
-- `heatmap.json` can opt in to legends with `config.legend.disable: false`.
-- A right-oriented gradient legend appears beside the heatmap.
-- The legend title is derived from the encoded field, `measurement`, unless an
-  explicit legend title overrides it.
-- The gradient uses the same color scale as the rect marks.
-- The legend shows tick labels for the quantitative color domain.
-- Existing discrete symbol legends, including `point2d.json`, keep working.
+### Vega Parity Gaps To Check
 
-Vega-like implementation shape:
+Compare current behavior against Vega/Vega-Lite and decide which pieces belong
+in the local-legend milestone:
 
-- Keep `LegendView` as the generated-guide host, but split generated specs into
-  symbol and gradient builders.
-- Detect legend type from the explained scale/channel:
-  - nominal/ordinal non-position channels use symbol legends,
-  - quantitative color/fill/stroke color scales use gradient legends.
-- Generate gradient legends from ordinary marks:
-  - a narrow `rect` strip or stack of rects for the gradient ramp,
-  - `rule` marks for tick marks,
-  - `text` marks for tick labels,
-  - a text title.
-- Use the explained scale for color. The generated legend should not bake final
-  colors into data unless a sampled-gradient implementation turns out to be
-  necessary.
-- Use an internal data source or transform to produce gradient samples and tick
-  rows after the scale domain is known.
+- Title behavior:
+  - `title: null` removes the title.
+  - Explicit title overrides field title and field name.
+  - Default title derivation matches existing GenomeSpy guide conventions.
+  - `titlePadding`, `titleFont*`, `titleColor`, and `titleLimit` are applied
+    consistently.
+- Label behavior:
+  - `labelLimit`, `labelOffset`, `labelFont*`, `labelColor`,
+    `labelAlign`, and `labelBaseline` are applied consistently.
+  - Gradient labels use suitable formatting for linear, log, and threshold
+    scales.
+  - Discrete threshold labels should describe boundaries/ranges in a
+    Vega-like way if plain boundary labels are not sufficient.
+- Symbol behavior:
+  - Base symbol fill/stroke defaults are applied when the explained channel
+    does not provide that property.
+  - Shape-only, fill-only, stroke-only, and redundant color/shape legends are
+    visually sensible.
+  - Symbol size, stroke width, and shape defaults are compatible with point
+    mark defaults and Vega-inspired legend defaults.
+- Gradient behavior:
+  - Linear and log ramps use the source scale for color and stable local
+    positioning.
+  - Threshold ramps show all buckets, including values below the first
+    threshold and above the last threshold.
+  - Tick values and tick labels align with ramp color boundaries.
+  - Domain updates follow source scale changes without adding a second smooth
+    transition.
+- Layout behavior:
+  - Legend views do not inherit ordinary view strokes.
+  - Top/bottom legends use horizontal layout and reserve vertical overhang.
+  - Left/right legends use vertical layout and reserve horizontal overhang.
+  - Multiple legends targeting the same local orient either stack/pack
+    predictably or fail with a clear message.
 
-Suggested implementation tasks:
+### Channel Coverage To Support
 
-1. Add a test that `heatmap.json` with `config.legend.disable: false` creates
-   one local right-oriented legend for the quantitative color channel.
-2. Add a generated gradient legend spec helper beside
-   `createSymbolLegendSpec(...)`, for example `createGradientLegendSpec(...)`.
-3. Add an internal lazy source for gradient tick rows, or reuse scale tick
-   helpers if they can be called from guide dataflow without introducing a
-   dependency cycle.
-4. Add gradient ramp data. Start with a fixed sample count, such as 64 rows,
-   and revisit sampling density later.
-5. Encode ramp rectangles using a pixel-like legend coordinate system whose
-   x/y scale domains use the legend view `width` and `height` params, matching
-   the current symbol legend approach.
-6. Add generated tick labels. Prefer Vega-like defaults from config:
-   `gradientLength`, `gradientThickness`, `gradientLabelOffset`, `tickCount`,
-   and title padding. Add only the fields needed for the heatmap milestone.
-7. Extend `GridChild` legend creation so quantitative color/fill/stroke
-   channels create gradient legends instead of being filtered out.
-8. Add layout and generated-spec tests:
-   - default config still hides the heatmap legend,
-   - opt-in config creates one gradient legend,
-   - `legend: null` suppresses it,
-   - quantitative positional `x`/`y` still do not produce legends,
-   - discrete symbol legends still use the symbol path.
-9. Run focused checks:
+Legend creation should consider non-positional scale-backed channels only.
+Positional `x`, `y`, `x2`, and `y2` continue to be explained by axes, not
+legends.
 
-   ```bash
-   npx vitest run packages/core/src/view/legendView.test.js packages/core/src/view/gridView/gridView.test.js packages/core/layout.test.js
-   npm --workspaces run test:tsc --if-present
-   ```
+Target channels:
 
-Open design points:
+- `color`: primary color legend channel. Supports symbol legends for discrete
+  fields and gradient legends for quantitative color scales.
+- `fill`: same legend behavior as `color` where marks use fill directly.
+- `stroke`: same legend behavior as `color` where marks use stroke directly.
+- `shape`: symbol legend for discrete fields. If it is redundant with
+  `color`, `fill`, or `stroke`, it may merge into that primary symbol legend.
+- `size`: symbol legend for discrete and quantitative fields. Quantitative size
+  should use representative sampled values, not a gradient legend.
+- `opacity`, `fillOpacity`, `strokeOpacity`: symbol legend candidates. Treat as
+  lower priority than color/shape/size because legibility and base styling need
+  careful defaults.
+- Other scale-backed non-position channels should be listed explicitly as
+  unsupported until a clear legend representation exists.
 
-- Whether to implement the gradient ramp as many small rect marks, one textured
-  rect, or a future shader-specific mark. The first version should prefer
-  ordinary `rect` marks unless performance or visual artifacts make that
-  impractical.
-- Whether gradient tick generation should reuse axis tick generation directly
-  or use a smaller legend-specific source. Reuse is attractive, but only if it
-  keeps dependencies clean.
-- How much Vega default surface to expose immediately. Keep the first milestone
-  narrow and add config fields only when they affect `heatmap.json`.
+Channel behavior to document and test:
 
-### Tighten Symbol Legend Behavior
+- `legend: null` suppresses the legend for the specific channel.
+- Redundant channels respect `legend: null`; for example, `shape` should not
+  merge into a color legend when `shape.legend` is `null`.
+- Non-redundant channels with the same orient need an intentional policy:
+  stacking, packing, or fail-fast. The current implementation should not
+  silently drop a second legend.
 
-- Confirm the visual result of `point2d.json` in the dev app after the redundant
-  shape encoding.
-- Improve base symbol styling for channels that do not encode both fill and
-  stroke. The config already has `symbolBaseFillColor` and
-  `symbolBaseStrokeColor`, but generated legends should apply them consistently.
-- Decide whether `shape`-only legends should use `color`/`stroke` defaults that
-  match point mark defaults.
-- Add tests for explicit `legend: null` on redundant `shape` so it does not
-  merge into the primary legend.
-- Add tests for non-redundant color and shape fields. For now these should
-  either create separate legends when orientations differ or fail clearly when
-  they both target the same local orient.
+### Scale Type Coverage To Support
 
-### Legend Extent and Layout
+Discrete symbol legends:
 
-- Replace the fixed perpendicular legend extent of 80 px with measured extent.
-- Observe label/title bounds after data is ready, similar to the axis auto-
-  extent pattern.
-- Request layout reflow when measured legend extent changes.
-- Keep right-oriented legends stable while adding support for left, top, and
-  bottom orientations.
-- Revisit horizontal legends once extent measurement is available. The current
-  `packLabels` transform supports measured-width packing, but wrapping by
-  available width should wait because it introduces layout feedback.
+- `nominal` and `ordinal` fields using ordinal, point, or band-like discrete
+  scales.
+- Discrete color/fill/stroke/shape scales should use scale domain values as
+  entries and scale outputs as mark encodings.
 
-### Supported Legend Types
+Quantitative gradient legends:
 
-- Continue with symbol legends first.
-- Add fill/stroke/shape/size/opacity combinations incrementally.
-- Add gradient legends for quantitative color scales using `heatmap.json` as
-  the first fixture.
-- Defer interactive legend filtering.
+- `linear`
+- `log`
+- `pow`
+- `sqrt`
+- `symlog`
+- `threshold`, with explicit outer buckets and boundary-aligned labels.
+
+Discretizing gradient legends:
+
+- `quantize` should be checked against GenomeSpy's actual scale behavior. If
+  supported for color legends, the ramp should use bucket boundaries from the
+  scale and labels should align with those boundaries.
+
+Quantitative symbol legends:
+
+- `size` with representative values and variable symbol sizes.
+- `opacity` and related opacity channels only after base styling is readable.
+
+Unsupported or deferred:
+
+- `quantile`, which GenomeSpy does not currently support as a scale type.
+- `time` and `utc` scales, which GenomeSpy does not currently support.
+- Binned legends, unless existing scale metadata exposes bin boundaries cleanly.
+- Interactive legend filtering.
+- Shared legends for intentionally shared scales.
+- Root-level or named-area legend placement.
+
+### Channel And Scale Implementation Steps
+
+Implement remaining channel and scale support in small, verifiable slices. Each
+slice should add one or two behavioral tests or stable example specs before the
+implementation change.
+
+1. Audit scale-backed channels in the encoder/spec types:
+   - list every non-position channel that can have a scale resolution,
+   - classify each as `symbol`, `gradient`, `deferred`, or `unsupported`,
+   - update `GridChild` legend creation to use this classification instead of
+     ad hoc channel checks.
+2. Generalize color-like channel handling:
+   - treat `color`, `fill`, and `stroke` as color-like legend channels,
+   - keep quantitative color-like channels on the gradient path,
+   - keep nominal/ordinal color-like channels on the symbol path,
+   - verify that base symbol fill/stroke values are applied when only one of
+     fill or stroke is scale-backed.
+3. Tighten redundant channel merging:
+   - keep merging `shape` into `color`/`fill`/`stroke` only when the fields and
+     scale domains match,
+   - respect `legend: null` on either the primary or redundant channel,
+   - add a test for non-redundant `color` plus `shape` so the behavior is
+     explicit.
+4. Add `shape`-only symbol legends:
+   - generate entries from the actual shape scale resolution,
+   - render symbols with stable base fill/stroke defaults,
+   - verify ordinary point shapes and configured `symbolType` behavior do not
+     conflict.
+5. Add discrete `size` symbol legends:
+   - use the size scale as a scale-backed symbol property,
+   - keep base fill/stroke readable,
+   - measure label widths normally with `measureText` and `packLabels`,
+   - add a small example where nominal categories map to different sizes.
+6. Add quantitative `size` symbol legends:
+   - generate representative values from the source size scale using tick
+     helpers where possible,
+   - render multiple symbol entries with scale-backed sizes,
+   - confirm that zero or near-zero sizes do not make entries invisible without
+     an intentional fallback.
+7. Investigate opacity legends before enabling them:
+   - check `opacity`, `fillOpacity`, and `strokeOpacity` encoder behavior,
+   - choose base fill/stroke colors that remain visible over the default
+     background,
+   - decide whether quantitative opacity should use sampled symbol entries or
+     stay deferred.
+8. Verify continuous color scale types:
+   - add focused examples for `pow`, `sqrt`, and `symlog` color scales,
+   - confirm ramp sampling uses the actual source scale inverse when available,
+   - confirm ticks and labels use the same normalized positional scale as the
+     ramp.
+9. Check `quantize` support:
+   - determine whether GenomeSpy's scale runtime exposes quantize thresholds or
+     invert extents in a usable way,
+   - if yes, implement a discrete gradient ramp similar to threshold legends,
+   - if no, fail clearly or leave `quantize` documented as deferred.
+10. Harden threshold legends:
+    - keep outer buckets visible,
+    - align labels with threshold boundaries,
+    - decide whether labels should remain plain boundary labels or become
+      Vega-like range labels such as `< 20` and `>= 100`.
+11. Add a supported-matrix test group:
+    - one focused test for each supported channel/type combination,
+    - one suppression test for `legend: null`,
+    - one unsupported/deferred case that verifies no misleading legend is
+      created.
+12. Update examples only when they serve as useful manual testbeds:
+    - keep `examples/core/legends/` small and test-like,
+    - avoid broad example churn outside explicit legend fixtures.
+
+### Orientation And Layout Tasks
+
+1. Make `LegendView` generate orientation-aware body specs:
+   - right/left: vertical title plus vertical body,
+   - top/bottom: horizontal body, with title placement matching the supported
+     `titleOrient` subset.
+2. Ensure `GridChild` places left/right/top/bottom legends outside the plot
+   area and includes their overhang in layout.
+3. Replace the fixed perpendicular legend extent with measured or derived
+   extent:
+   - short term: derive extent from configured gradient thickness/labels and
+     measured symbol labels,
+   - longer term: observe bounds after data is ready and request reflow, similar
+     to axis auto-extent.
+4. Keep horizontal symbol packing deterministic. The current `packLabels`
+   transform can measure varying label widths; wrapping by available width
+   should wait until layout feedback is explicit.
+5. Add layout snapshots for all four orientations using small stable examples.
+
+### Robustness Tasks
+
+1. Audit legend creation against all scale-backed channels and decide whether
+   each should create a symbol legend, gradient legend, or no legend.
+2. Add test examples or focused specs for the supported channel/scale matrix.
+3. Add failure tests for unsupported same-orient duplicate legends or implement
+   local stacking before allowing them.
+4. Verify dynamic domains with a scale that updates after initial render.
+5. Verify legends do not contribute to source scale domains while still using
+   the actual source scale.
+6. Keep tests behavioral. Prefer layout snapshots and rendered hierarchy checks
+   over tests that duplicate generated spec internals.
+
+Suggested focused checks:
+
+```bash
+npx vitest run packages/core/src/view/gridView/gridView.test.js packages/core/layout.test.js packages/core/examples.test.js --testNamePattern 'examples/core/legends'
+npm --workspaces run test:tsc --if-present
+```
 
 ### Shared and Complex Placement
 
