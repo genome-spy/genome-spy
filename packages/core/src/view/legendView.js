@@ -21,7 +21,7 @@ const DEFAULT_GRADIENT_TICK_SIZE = 4;
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [options.symbolChannels]
  * @param {LegendConfig} options.legend
- * @returns {import("../spec/view.js").LayerSpec}
+ * @returns {import("../spec/view.js").VConcatSpec}
  */
 export function createSymbolLegendSpec({
     entries,
@@ -37,7 +37,6 @@ export function createSymbolLegendSpec({
     const labelFontSize = legend.labelFontSize ?? 10;
     const titleFontSize = legend.titleFontSize ?? 11;
     const titlePadding = legend.titlePadding ?? 5;
-    const entryYOffset = title ? titleFontSize + titlePadding : 0;
     const horizontalPixelScale = {
         domain: [0, { expr: "width" }],
         zero: false,
@@ -97,54 +96,6 @@ export function createSymbolLegendSpec({
         },
     ];
 
-    if (title) {
-        layer.push({
-            name: "title",
-            data: {
-                values: [
-                    {
-                        _legendTitleX: 0,
-                        _legendTitleOffset: titleFontSize / 2,
-                    },
-                ],
-            },
-            transform: [
-                {
-                    type: "formula",
-                    expr: "height - datum._legendTitleOffset",
-                    as: "_legendTitleY2",
-                },
-            ],
-            mark: {
-                type: "text",
-                clip: false,
-                align: labelAlign,
-                baseline: labelBaseline,
-                color: legend.titleColor,
-                font: legend.titleFont,
-                fontStyle: legend.titleFontStyle,
-                fontWeight: legend.titleFontWeight,
-                size: titleFontSize,
-                text: title,
-            },
-            encoding: {
-                x: {
-                    field: "_legendTitleX",
-                    type: "quantitative",
-                    scale: horizontalPixelScale,
-                    axis: null,
-                    buildIndex: false,
-                },
-                y: {
-                    field: "_legendTitleY2",
-                    type: "quantitative",
-                    scale: verticalPixelScale,
-                    axis: null,
-                },
-            },
-        });
-    }
-
     layer.push({
         name: "labels",
         mark: {
@@ -177,8 +128,36 @@ export function createSymbolLegendSpec({
         },
     });
 
-    return {
-        name: "legend_" + orient,
+    /** @type {import("../spec/view.js").ViewSpec[]} */
+    const children = [];
+
+    if (title) {
+        children.push({
+            name: "title",
+            height: titleFontSize + titlePadding,
+            data: {
+                values: [{}],
+            },
+            mark: {
+                type: "text",
+                clip: false,
+                x: 0,
+                y: 0.5,
+                align: "left",
+                baseline: "middle",
+                color: legend.titleColor,
+                font: legend.titleFont,
+                fontStyle: legend.titleFontStyle,
+                fontWeight: legend.titleFontWeight,
+                size: titleFontSize,
+                text: title,
+            },
+        });
+    }
+
+    children.push({
+        name: "legendBody",
+        height: { grow: 1 },
         resolve: {
             scale: { x: "excluded", y: "excluded" },
             axis: { x: "excluded", y: "excluded" },
@@ -207,11 +186,17 @@ export function createSymbolLegendSpec({
                 fontSize: labelFontSize,
                 rowPadding: legend.rowPadding,
                 columnPadding: legend.columnPadding,
-                yOffset: entryYOffset,
+                yOffset: 0,
                 yExtent: { expr: "height" },
             },
         ],
         layer,
+    });
+
+    return {
+        name: "legend_" + orient,
+        spacing: 0,
+        vconcat: children,
     };
 }
 
@@ -403,10 +388,9 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
                 type: "text",
                 clip: false,
                 x: 0,
-                y: 1,
-                yOffset: -titleFontSize / 2,
-                align: labelAlign,
-                baseline: labelBaseline,
+                y: 0.5,
+                align: "left",
+                baseline: "middle",
                 color: legend.titleColor,
                 font: legend.titleFont,
                 fontStyle: legend.titleFontStyle,
