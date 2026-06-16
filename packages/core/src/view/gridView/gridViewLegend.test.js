@@ -152,8 +152,20 @@ describe("GridView legends", () => {
             ],
         });
         const legends = getLegends(view);
+        const symbols = legends[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "symbols");
 
         expect(legends).toHaveLength(1);
+        expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
+            expect.objectContaining({
+                color: expect.objectContaining({ field: "value" }),
+                shape: expect.objectContaining({ field: "value" }),
+            })
+        );
+        expect(
+            /** @type {UnitView} */ (symbols).spec.encoding
+        ).not.toHaveProperty("stroke");
     });
 
     test("does not merge shape when its legend is null", async () => {
@@ -325,7 +337,7 @@ describe("GridView legends", () => {
         );
         expect(/** @type {UnitView} */ (strokeSymbols).spec.encoding).toEqual(
             expect.objectContaining({
-                fill: { value: "transparent" },
+                fill: { value: null },
                 stroke: expect.objectContaining({ field: "value" }),
             })
         );

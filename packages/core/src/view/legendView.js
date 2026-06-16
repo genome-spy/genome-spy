@@ -90,6 +90,20 @@ function isHorizontalLegend(legend) {
 }
 
 /**
+ * @param {string | undefined} value
+ * @returns {import("../spec/channel.js").ValueDef | undefined}
+ */
+function createBaseColorEncoding(value) {
+    if (value === undefined) {
+        return undefined;
+    } else if (value == "transparent") {
+        return { value: null };
+    } else {
+        return { value };
+    }
+}
+
+/**
  * @param {object} options
  * @param {LegendEntry[]} [options.entries]
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
@@ -111,16 +125,19 @@ export function createSymbolLegendSpec({
         channel,
         ...Object.keys(symbolChannels),
     ]);
+    const isBaseColorChannelScaled = (
+        /** @type {import("../spec/channel.js").ChannelWithScale} */ channel
+    ) => scaledSymbolChannels.has(channel) || scaledSymbolChannels.has("color");
     const baseSymbolEncoding = Object.fromEntries(
         /** @type {const} */ ([
-            ["fill", legend.symbolBaseFillColor],
-            ["stroke", legend.symbolBaseStrokeColor],
+            ["fill", createBaseColorEncoding(legend.symbolBaseFillColor)],
+            ["stroke", createBaseColorEncoding(legend.symbolBaseStrokeColor)],
         ])
             .filter(
-                ([channel, value]) =>
-                    !scaledSymbolChannels.has(channel) && value !== undefined
+                ([channel, encoding]) =>
+                    !isBaseColorChannelScaled(channel) && encoding !== undefined
             )
-            .map(([channel, value]) => [channel, { value }])
+            .map(([channel, encoding]) => [channel, encoding])
     );
     const horizontalPixelScale = {
         domain: [0, { expr: "width" }],
