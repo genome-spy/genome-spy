@@ -31,7 +31,10 @@ class NoOpRenderingContext extends ViewRenderingContext {
         //
     }
 
-    renderMark() {
+    /**
+     * @param {import("../../marks/mark.js").default} _mark
+     */
+    renderMark(_mark) {
         //
     }
 }
@@ -77,6 +80,18 @@ class InspectRenderingContext extends ViewRenderingContext {
                 normalizeClipOptions(options)
             ),
         });
+    }
+}
+
+class MarkRecordingRenderingContext extends NoOpRenderingContext {
+    /** @type {string[]} */
+    markNames = [];
+
+    /**
+     * @param {import("../../marks/mark.js").default} mark
+     */
+    renderMark(mark) {
+        this.markNames.push(mark.unitView.name);
     }
 }
 
@@ -412,6 +427,18 @@ describe("GridView legends", () => {
         ).toBe(true);
         expect(labelData.every(({ label }) => typeof label == "string")).toBe(
             true
+        );
+
+        const context = new MarkRecordingRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 700, 300), {
+            firstFacet: true,
+        });
+        expect(context.markNames).toEqual(
+            expect.arrayContaining([
+                "gradientRamp",
+                "gradientTicks",
+                "gradientLabels",
+            ])
         );
     });
 

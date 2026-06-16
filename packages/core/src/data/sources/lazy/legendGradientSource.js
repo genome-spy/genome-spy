@@ -8,16 +8,28 @@ const DEFAULT_SAMPLE_COUNT = 64;
 const DEFAULT_TICK_COUNT = 5;
 
 /**
- * @param {import("../../../types/encoder.js").VegaScale} scale
- * @returns {import("../../../types/encoder.js").VegaScale}
+ * @typedef {((value: number) => number) & { invert: (position: number) => number }} NormalizedPositionScale
  */
-function createNormalizedScale(scale) {
-    const normalizedScale =
-        "copy" in scale && typeof scale.copy == "function"
-            ? scale.copy()
-            : scale;
-    normalizedScale.range([0, 1]);
-    return normalizedScale;
+
+/**
+ * @param {import("../../../types/encoder.js").VegaScale} scale
+ * @param {number} start
+ * @param {number} stop
+ * @returns {NormalizedPositionScale}
+ */
+function createNormalizedScale(scale, start, stop) {
+    if (
+        "copy" in scale &&
+        typeof scale.copy == "function" &&
+        "invert" in scale &&
+        typeof scale.invert == "function"
+    ) {
+        const normalizedScale = scale.copy();
+        normalizedScale.range([0, 1]);
+        return /** @type {NormalizedPositionScale} */ (normalizedScale);
+    } else {
+        return createLinearPositionScale(start, stop);
+    }
 }
 
 /**
@@ -27,6 +39,19 @@ function createNormalizedScale(scale) {
  */
 function createLinearPositionInverter(start, stop) {
     return (position) => start + (stop - start) * position;
+}
+
+/**
+ * @param {number} start
+ * @param {number} stop
+ * @returns {NormalizedPositionScale}
+ */
+function createLinearPositionScale(start, stop) {
+    const scale = /** @type {NormalizedPositionScale} */ (
+        (/** @type {number} */ value) => (value - start) / (stop - start)
+    );
+    scale.invert = createLinearPositionInverter(start, stop);
+    return scale;
 }
 
 class LegendGradientBaseSource extends DataSource {
@@ -103,14 +128,12 @@ export default class LegendGradientSource extends LegendGradientBaseSource {
     publishData(start, stop) {
         const count = this.params.count ?? DEFAULT_SAMPLE_COUNT;
         const positionScale = createNormalizedScale(
-            this.scaleResolution.getScale()
+            this.scaleResolution.getScale(),
+            start,
+            stop
         );
-        const invertPosition =
-            "invert" in positionScale &&
-            typeof positionScale.invert == "function"
-                ? (/** @type {number} */ position) =>
-                      /** @type {number} */ (positionScale.invert(position))
-                : createLinearPositionInverter(start, stop);
+        const invertPosition = (/** @type {number} */ position) =>
+            positionScale.invert(position);
 
         for (let index = 0; index < count; index++) {
             const position0 = index / count;
@@ -138,7 +161,10 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
      */
     publishData(start, stop) {
         const scale = this.scaleResolution.getScale();
-        const positionScale = createNormalizedScale(scale);
+        const positionScale =
+            "invert" in scale && typeof scale.invert == "function"
+                ? createNormalizedScale(scale, start, stop)
+                : createLinearPositionScale(start, stop);
         const requestedCount = this.params.count ?? DEFAULT_TICK_COUNT;
         const count = tickCount(scale, requestedCount, undefined);
         const format = tickFormat(scale, requestedCount);

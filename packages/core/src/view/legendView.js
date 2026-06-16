@@ -69,7 +69,6 @@ function createLegendRootSpec(legend, body, forcedScaleChannels = []) {
 
     return {
         name: "legend_" + (legend.orient ?? "right"),
-        domainInert: true,
         resolve: {
             scale: Object.fromEntries(
                 forcedScaleChannels.map((channel) => [channel, "forced"])
@@ -138,6 +137,7 @@ export function createSymbolLegendSpec({
                 [channel]: {
                     field: "value",
                     type: "nominal",
+                    domainInert: true,
                 },
                 ...Object.fromEntries(
                     Object.entries(symbolChannels).map(([channel]) => [
@@ -145,6 +145,7 @@ export function createSymbolLegendSpec({
                         {
                             field: "value",
                             type: "nominal",
+                            domainInert: true,
                         },
                     ])
                 ),
@@ -327,6 +328,7 @@ export function createGradientLegendSpec({ channel, legend }) {
                 [channel]: {
                     field: "value",
                     type: "quantitative",
+                    domainInert: true,
                 },
             },
         },
