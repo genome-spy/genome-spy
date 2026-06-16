@@ -15,6 +15,58 @@ const DEFAULT_GRADIENT_TICK_SIZE = 4;
  */
 
 /**
+ * @param {LegendConfig} legend
+ * @returns {import("../spec/view.js").UnitSpec | undefined}
+ */
+function createLegendTitleSpec(legend) {
+    const title = legend.title;
+
+    if (!title) {
+        return undefined;
+    }
+
+    const titleFontSize = legend.titleFontSize ?? 11;
+    const titlePadding = legend.titlePadding ?? 5;
+
+    return {
+        name: "title",
+        height: titleFontSize + titlePadding,
+        data: {
+            values: [{}],
+        },
+        mark: {
+            type: "text",
+            clip: false,
+            x: 0,
+            y: 0.5,
+            align: "left",
+            baseline: "middle",
+            color: legend.titleColor,
+            font: legend.titleFont,
+            fontStyle: legend.titleFontStyle,
+            fontWeight: legend.titleFontWeight,
+            size: titleFontSize,
+            text: title,
+        },
+    };
+}
+
+/**
+ * @param {LegendConfig} legend
+ * @param {import("../spec/view.js").ViewSpec} body
+ * @returns {import("../spec/view.js").VConcatSpec}
+ */
+function createLegendRootSpec(legend, body) {
+    const title = createLegendTitleSpec(legend);
+
+    return {
+        name: "legend_" + (legend.orient ?? "right"),
+        spacing: 0,
+        vconcat: title ? [title, body] : [body],
+    };
+}
+
+/**
  * @param {object} options
  * @param {LegendEntry[]} [options.entries]
  * @param {string} options.scaleName
@@ -30,13 +82,9 @@ export function createSymbolLegendSpec({
     symbolChannels = {},
     legend,
 }) {
-    const title = legend.title;
-    const orient = legend.orient ?? "right";
     const labelAlign = legend.labelAlign ?? "left";
     const labelBaseline = legend.labelBaseline ?? "middle";
     const labelFontSize = legend.labelFontSize ?? 10;
-    const titleFontSize = legend.titleFontSize ?? 11;
-    const titlePadding = legend.titlePadding ?? 5;
     const horizontalPixelScale = {
         domain: [0, { expr: "width" }],
         zero: false,
@@ -128,34 +176,7 @@ export function createSymbolLegendSpec({
         },
     });
 
-    /** @type {import("../spec/view.js").ViewSpec[]} */
-    const children = [];
-
-    if (title) {
-        children.push({
-            name: "title",
-            height: titleFontSize + titlePadding,
-            data: {
-                values: [{}],
-            },
-            mark: {
-                type: "text",
-                clip: false,
-                x: 0,
-                y: 0.5,
-                align: "left",
-                baseline: "middle",
-                color: legend.titleColor,
-                font: legend.titleFont,
-                fontStyle: legend.titleFontStyle,
-                fontWeight: legend.titleFontWeight,
-                size: titleFontSize,
-                text: title,
-            },
-        });
-    }
-
-    children.push({
+    return createLegendRootSpec(legend, {
         name: "legendBody",
         height: { grow: 1 },
         resolve: {
@@ -192,12 +213,6 @@ export function createSymbolLegendSpec({
         ],
         layer,
     });
-
-    return {
-        name: "legend_" + orient,
-        spacing: 0,
-        vconcat: children,
-    };
 }
 
 /**
@@ -208,13 +223,9 @@ export function createSymbolLegendSpec({
  * @returns {import("../spec/view.js").VConcatSpec}
  */
 export function createGradientLegendSpec({ scaleName, channel, legend }) {
-    const title = legend.title;
-    const orient = legend.orient ?? "right";
     const labelAlign = legend.labelAlign ?? "left";
     const labelBaseline = legend.labelBaseline ?? "middle";
     const labelFontSize = legend.labelFontSize ?? 10;
-    const titleFontSize = legend.titleFontSize ?? 11;
-    const titlePadding = legend.titlePadding ?? 5;
     const labelOffset = legend.labelOffset ?? 4;
     const horizontalPixelScale = {
         domain: [0, { expr: "width" }],
@@ -374,34 +385,7 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
         },
     ];
 
-    /** @type {import("../spec/view.js").ViewSpec[]} */
-    const children = [];
-
-    if (title) {
-        children.push({
-            name: "title",
-            height: titleFontSize + titlePadding,
-            data: {
-                values: [{}],
-            },
-            mark: {
-                type: "text",
-                clip: false,
-                x: 0,
-                y: 0.5,
-                align: "left",
-                baseline: "middle",
-                color: legend.titleColor,
-                font: legend.titleFont,
-                fontStyle: legend.titleFontStyle,
-                fontWeight: legend.titleFontWeight,
-                size: titleFontSize,
-                text: title,
-            },
-        });
-    }
-
-    children.push({
+    return createLegendRootSpec(legend, {
         name: "gradientBody",
         height: { grow: 1 },
         resolve: {
@@ -417,12 +401,6 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
         },
         layer: bodyLayer,
     });
-
-    return {
-        name: "legend_" + orient,
-        spacing: 0,
-        vconcat: children,
-    };
 }
 
 /**
