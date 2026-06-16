@@ -145,6 +145,8 @@ function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
     }
     if (sourceProps.shape !== undefined) {
         styleMark.shape = sourceProps.shape;
+    } else if (sourceView.getMarkType() == "rect") {
+        styleMark.shape = "square";
     }
 
     const colorDef = sourceView.spec.encoding?.color;

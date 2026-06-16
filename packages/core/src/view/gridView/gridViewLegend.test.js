@@ -542,6 +542,36 @@ describe("GridView legends", () => {
         );
     });
 
+    test("uses square symbols for rect mark color legends", async () => {
+        const view = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 0, x2: 1, y: "A", site: "Crookston" },
+                            { x: 1, x2: 2, y: "A", site: "Duluth" },
+                        ],
+                    },
+                    mark: "rect",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        x2: { field: "x2" },
+                        y: { field: "y", type: "nominal" },
+                        color: { field: "site", type: "nominal" },
+                    },
+                },
+            ],
+        });
+        const symbols = getLegends(view)[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "symbols");
+
+        expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
+            expect.objectContaining({ shape: "square" })
+        );
+    });
+
     test("creates an explicit channel legend even when defaults are disabled", async () => {
         const view = await createLegendTestView({
             vconcat: [
