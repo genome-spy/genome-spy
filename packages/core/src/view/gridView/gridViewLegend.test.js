@@ -263,6 +263,74 @@ describe("GridView legends", () => {
         );
     });
 
+    test("creates readable fill and stroke symbol legends", async () => {
+        const fillView = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        fill: { field: "Origin", type: "nominal" },
+                    },
+                },
+            ],
+        });
+        const fillSymbols = getLegends(fillView)[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "symbols");
+
+        expect(/** @type {UnitView} */ (fillSymbols).spec.mark).toEqual(
+            expect.objectContaining({ filled: true })
+        );
+        expect(/** @type {UnitView} */ (fillSymbols).spec.encoding).toEqual(
+            expect.objectContaining({
+                fill: expect.objectContaining({ field: "value" }),
+                stroke: { value: "#888" },
+            })
+        );
+
+        const strokeView = await createLegendTestView({
+            config: { legend: { disable: false } },
+            vconcat: [
+                {
+                    data: {
+                        values: [
+                            { x: 1, y: 2, Origin: "Europe" },
+                            { x: 2, y: 3, Origin: "Japan" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        stroke: { field: "Origin", type: "nominal" },
+                    },
+                },
+            ],
+        });
+        const strokeSymbols = getLegends(strokeView)[0]
+            .getDescendants()
+            .find((descendant) => descendant.name == "symbols");
+
+        expect(/** @type {UnitView} */ (strokeSymbols).spec.mark).toEqual(
+            expect.objectContaining({ filled: false })
+        );
+        expect(/** @type {UnitView} */ (strokeSymbols).spec.encoding).toEqual(
+            expect.objectContaining({
+                fill: { value: "transparent" },
+                stroke: expect.objectContaining({ field: "value" }),
+            })
+        );
+    });
+
     test("creates an explicit channel legend even when defaults are disabled", async () => {
         const view = await createLegendTestView({
             vconcat: [
@@ -446,6 +514,46 @@ describe("GridView legends", () => {
                 "gradientLabels",
             ])
         );
+    });
+
+    test("creates gradient legends for quantitative fill and stroke", async () => {
+        for (const channel of /** @type {const} */ (["fill", "stroke"])) {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: 0 },
+                                { x: 2, y: 2, measurement: 1 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            [channel]: {
+                                field: "measurement",
+                                type: "quantitative",
+                            },
+                        },
+                    },
+                ],
+            });
+            const legends = getLegends(view);
+            const ramp = legends[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "gradientRamp");
+            const plot = view
+                .getDescendants()
+                .find((descendant) => descendant.name == "grid0");
+
+            expect(legends).toHaveLength(1);
+            expect(ramp).toBeInstanceOf(UnitView);
+            expect(
+                /** @type {UnitView} */ (ramp).getScaleResolution(channel)
+            ).toBe(/** @type {UnitView} */ (plot).getScaleResolution(channel));
+        }
     });
 
     test("gradient legends mirror source scale type and color scheme", async () => {

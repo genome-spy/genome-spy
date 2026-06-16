@@ -107,6 +107,21 @@ export function createSymbolLegendSpec({
     const labelAlign = legend.labelAlign ?? "left";
     const labelBaseline = legend.labelBaseline ?? "middle";
     const labelFontSize = legend.labelFontSize ?? 10;
+    const scaledSymbolChannels = new Set([
+        channel,
+        ...Object.keys(symbolChannels),
+    ]);
+    const baseSymbolEncoding = Object.fromEntries(
+        /** @type {const} */ ([
+            ["fill", legend.symbolBaseFillColor],
+            ["stroke", legend.symbolBaseStrokeColor],
+        ])
+            .filter(
+                ([channel, value]) =>
+                    !scaledSymbolChannels.has(channel) && value !== undefined
+            )
+            .map(([channel, value]) => [channel, { value }])
+    );
     const horizontalPixelScale = {
         domain: [0, { expr: "width" }],
         zero: false,
@@ -126,7 +141,7 @@ export function createSymbolLegendSpec({
                 type: "point",
                 clip: false,
                 cullByVisibleRange: false,
-                filled: false,
+                filled: channel == "fill",
                 shape: legend.symbolType,
                 size: legend.symbolSize,
                 strokeWidth: legend.symbolStrokeWidth,
@@ -150,6 +165,7 @@ export function createSymbolLegendSpec({
                     type: "nominal",
                     domainInert: true,
                 },
+                ...baseSymbolEncoding,
                 ...Object.fromEntries(
                     Object.entries(symbolChannels).map(([channel]) => [
                         channel,
