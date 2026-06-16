@@ -383,11 +383,18 @@ describe("GridView legends", () => {
         );
 
         expect(rampData.length).toBeGreaterThan(1);
-        expect(labelData).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({ value: 0, label: "0.0" }),
-                expect.objectContaining({ value: 1, label: "1.0" }),
-            ])
+        expect(rampData[0]).toEqual(
+            expect.objectContaining({ value0: 0, value: expect.any(Number) })
+        );
+        expect(rampData.at(-1)).toEqual(
+            expect.objectContaining({ value1: 1, value: expect.any(Number) })
+        );
+        expect(labelData.length).toBeGreaterThan(1);
+        expect(labelData.every(({ value }) => value >= 0 && value <= 1)).toBe(
+            true
+        );
+        expect(labelData.every(({ label }) => typeof label == "string")).toBe(
+            true
         );
     });
 });

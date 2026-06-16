@@ -85,11 +85,10 @@ export default class LegendGradientSource extends LegendGradientBaseSource {
             const t1 = (index + 1) / count;
             const t = (index + 0.5) / count;
             this._propagate({
+                value0: start + (stop - start) * t0,
+                value1: start + (stop - start) * t1,
                 value: start + (stop - start) * t,
                 _legendGradientIndex: index,
-                _legendGradientT: t,
-                _legendGradientT0: t0,
-                _legendGradientT1: t1,
             });
         }
     }
@@ -111,11 +110,9 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
         const format = tickFormat(scale, requestedCount);
 
         for (const value of tickValues(scale, count)) {
-            const denominator = stop - start || 1;
             this._propagate({
                 value,
                 label: format(value),
-                _legendGradientT: (Number(value) - start) / denominator,
             });
         }
     }

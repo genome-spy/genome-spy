@@ -230,19 +230,16 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
     const labelFontSize = legend.labelFontSize ?? 10;
     const titleFontSize = legend.titleFontSize ?? 11;
     const titlePadding = legend.titlePadding ?? 5;
-    const entryYOffset = title ? titleFontSize + titlePadding : 0;
     const labelOffset = legend.labelOffset ?? 4;
     const horizontalPixelScale = {
         domain: [0, { expr: "width" }],
         zero: false,
         nice: false,
     };
-    const verticalPixelScale = {
-        domain: [0, { expr: "height" }],
+    const verticalDomainScale = {
         zero: false,
         nice: false,
     };
-    const rampHeightExpr = `(height - ${entryYOffset})`;
     const tickX = DEFAULT_GRADIENT_THICKNESS;
     const tickX2 = DEFAULT_GRADIENT_THICKNESS + DEFAULT_GRADIENT_TICK_SIZE;
     const labelX = tickX2 + labelOffset;
@@ -256,11 +253,6 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
     };
     /** @type {import("../spec/transform.js").TransformParams[]} */
     const tickTransform = [
-        {
-            type: "formula",
-            expr: `${rampHeightExpr} * datum._legendGradientT`,
-            as: "_legendGradientTickY",
-        },
         {
             type: "formula",
             expr: "" + tickX,
@@ -279,7 +271,7 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
     ];
 
     /** @type {import("../spec/view.js").UnitSpec[]} */
-    const layer = [
+    const bodyLayer = [
         {
             name: "gradientRamp",
             transform: [
@@ -292,16 +284,6 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
                     type: "formula",
                     expr: "" + DEFAULT_GRADIENT_THICKNESS,
                     as: "_legendGradientX2",
-                },
-                {
-                    type: "formula",
-                    expr: `${rampHeightExpr} * datum._legendGradientT0`,
-                    as: "_legendGradientY",
-                },
-                {
-                    type: "formula",
-                    expr: `${rampHeightExpr} * datum._legendGradientT1`,
-                    as: "_legendGradientY2",
                 },
             ],
             mark: {
@@ -322,15 +304,15 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
                     scale: horizontalPixelScale,
                 },
                 y: {
-                    field: "_legendGradientY2",
+                    field: "value1",
                     type: "quantitative",
-                    scale: verticalPixelScale,
+                    scale: verticalDomainScale,
                     axis: null,
                 },
                 y2: {
-                    field: "_legendGradientY",
+                    field: "value0",
                     type: "quantitative",
-                    scale: verticalPixelScale,
+                    scale: verticalDomainScale,
                 },
                 [channel]: {
                     field: "value",
@@ -361,15 +343,15 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
                     scale: horizontalPixelScale,
                 },
                 y: {
-                    field: "_legendGradientTickY",
+                    field: "value",
                     type: "quantitative",
-                    scale: verticalPixelScale,
+                    scale: verticalDomainScale,
                     axis: null,
                 },
                 y2: {
-                    field: "_legendGradientTickY",
+                    field: "value",
                     type: "quantitative",
-                    scale: verticalPixelScale,
+                    scale: verticalDomainScale,
                 },
             },
         },
@@ -397,9 +379,9 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
                     buildIndex: false,
                 },
                 y: {
-                    field: "_legendGradientTickY",
+                    field: "value",
                     type: "quantitative",
-                    scale: verticalPixelScale,
+                    scale: verticalDomainScale,
                     axis: null,
                 },
                 text: { field: "label" },
@@ -407,27 +389,22 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
         },
     ];
 
+    /** @type {import("../spec/view.js").ViewSpec[]} */
+    const children = [];
+
     if (title) {
-        layer.push({
+        children.push({
             name: "title",
+            height: titleFontSize + titlePadding,
             data: {
-                values: [
-                    {
-                        _legendTitleX: 0,
-                        _legendTitleOffset: titleFontSize / 2,
-                    },
-                ],
+                values: [{}],
             },
-            transform: [
-                {
-                    type: "formula",
-                    expr: "height - datum._legendTitleOffset",
-                    as: "_legendTitleY2",
-                },
-            ],
             mark: {
                 type: "text",
                 clip: false,
+                x: 0,
+                y: 1,
+                yOffset: -titleFontSize / 2,
                 align: labelAlign,
                 baseline: labelBaseline,
                 color: legend.titleColor,
@@ -437,26 +414,12 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
                 size: titleFontSize,
                 text: title,
             },
-            encoding: {
-                x: {
-                    field: "_legendTitleX",
-                    type: "quantitative",
-                    scale: horizontalPixelScale,
-                    axis: null,
-                    buildIndex: false,
-                },
-                y: {
-                    field: "_legendTitleY2",
-                    type: "quantitative",
-                    scale: verticalPixelScale,
-                    axis: null,
-                },
-            },
         });
     }
 
-    return {
-        name: "legend_" + orient,
+    children.push({
+        name: "gradientBody",
+        height: { grow: 1 },
         resolve: {
             scale: { x: "excluded", y: "excluded" },
             axis: { x: "excluded", y: "excluded" },
@@ -468,7 +431,23 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
                 count: DEFAULT_GRADIENT_SAMPLE_COUNT,
             },
         },
-        layer,
+        layer: bodyLayer,
+    });
+
+    /** @type {import("../spec/view.js").LayerSpec["layer"][number]} */
+    const layout = /** @type {any} */ ({
+        name: "gradientLayout",
+        spacing: 0,
+        vconcat: children,
+    });
+
+    return {
+        name: "legend_" + orient,
+        resolve: {
+            scale: { x: "excluded", y: "excluded" },
+            axis: { x: "excluded", y: "excluded" },
+        },
+        layer: [layout],
     };
 }
 
