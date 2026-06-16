@@ -379,6 +379,17 @@ describe("GridView legends", () => {
             /** @type {UnitView} */ (ramp).getScaleResolution("y").getScale()
                 .props
         ).toEqual(expect.objectContaining({ domainTransition: false }));
+        expect(
+            /** @type {UnitView} */ (ramp)
+                .getScaleResolution("color")
+                .getScale().props
+        ).toEqual(
+            expect.objectContaining({
+                domainTransition: false,
+                nice: false,
+                zero: false,
+            })
+        );
         const rampData = Array.from(
             /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
         );

@@ -245,6 +245,12 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
         zero: false,
         nice: false,
     };
+    const colorDomainScale = {
+        name: scaleName,
+        domainTransition: false,
+        zero: false,
+        nice: false,
+    };
     const tickX = DEFAULT_GRADIENT_THICKNESS;
     const tickX2 = DEFAULT_GRADIENT_THICKNESS + DEFAULT_GRADIENT_TICK_SIZE;
     const labelX = tickX2 + labelOffset;
@@ -322,7 +328,7 @@ export function createGradientLegendSpec({ scaleName, channel, legend }) {
                 [channel]: {
                     field: "value",
                     type: "quantitative",
-                    scale: { name: scaleName },
+                    scale: colorDomainScale,
                 },
             },
         },
