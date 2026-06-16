@@ -948,9 +948,7 @@ export default class GridChild {
 
             const legend = new LegendView(
                 {
-                    scaleName: scaleResolution.name ?? channel,
                     channel,
-                    scaleProps: scaleResolution.getScale().props,
                     type: legendType,
                     symbolChannels:
                         legendType == "symbol"

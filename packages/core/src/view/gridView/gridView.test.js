@@ -371,24 +371,20 @@ describe("GridView legends", () => {
         const labels = legends[0]
             .getDescendants()
             .find((descendant) => descendant.name == "gradientLabels");
+        const plot = view
+            .getDescendants()
+            .find((descendant) => descendant.name == "grid0");
 
         expect(legends).toHaveLength(1);
         expect(ramp).toBeInstanceOf(UnitView);
         expect(labels).toBeInstanceOf(UnitView);
+        expect(plot).toBeInstanceOf(UnitView);
         expect(
             /** @type {UnitView} */ (ramp).getScaleResolution("y").getScale()
                 .props
         ).toEqual(expect.objectContaining({ domainTransition: false }));
-        expect(
-            /** @type {UnitView} */ (ramp)
-                .getScaleResolution("color")
-                .getScale().props
-        ).toEqual(
-            expect.objectContaining({
-                domainTransition: false,
-                nice: false,
-                zero: false,
-            })
+        expect(/** @type {UnitView} */ (ramp).getScaleResolution("color")).toBe(
+            /** @type {UnitView} */ (plot).getScaleResolution("color")
         );
         const rampData = Array.from(
             /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
@@ -399,15 +395,21 @@ describe("GridView legends", () => {
 
         expect(rampData.length).toBeGreaterThan(1);
         expect(rampData[0]).toEqual(
-            expect.objectContaining({ value0: 0, value: expect.any(Number) })
+            expect.objectContaining({
+                position0: 0,
+                value: expect.any(Number),
+            })
         );
         expect(rampData.at(-1)).toEqual(
-            expect.objectContaining({ value1: 1, value: expect.any(Number) })
+            expect.objectContaining({
+                position1: 1,
+                value: expect.any(Number),
+            })
         );
         expect(labelData.length).toBeGreaterThan(1);
-        expect(labelData.every(({ value }) => value >= 0 && value <= 1)).toBe(
-            true
-        );
+        expect(
+            labelData.every(({ position }) => position >= 0 && position <= 1)
+        ).toBe(true);
         expect(labelData.every(({ label }) => typeof label == "string")).toBe(
             true
         );
@@ -445,17 +447,15 @@ describe("GridView legends", () => {
         const ramp = legend
             .getDescendants()
             .find((descendant) => descendant.name == "gradientRamp");
+        const plot = view
+            .getDescendants()
+            .find((descendant) => descendant.name == "grid0");
 
         expect(ramp).toBeInstanceOf(UnitView);
-        expect(
-            /** @type {UnitView} */ (ramp).getScaleResolution("y").getScale()
-                .props
-        ).toEqual(expect.objectContaining({ type: "log" }));
-        expect(
-            /** @type {UnitView} */ (ramp)
-                .getScaleResolution("color")
-                .getScale().props
-        ).toEqual(expect.objectContaining({ type: "log", scheme: "turbo" }));
+        expect(plot).toBeInstanceOf(UnitView);
+        expect(/** @type {UnitView} */ (ramp).getScaleResolution("color")).toBe(
+            /** @type {UnitView} */ (plot).getScaleResolution("color")
+        );
     });
 
     test("does not draw configured view strokes inside legends", async () => {
