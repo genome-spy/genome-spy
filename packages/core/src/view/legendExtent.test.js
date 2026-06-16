@@ -158,4 +158,35 @@ describe("Legend extent measurement", () => {
 
         expect(legend.getPerpendicularSize()).toBeGreaterThan(80);
     });
+
+    test("compact gradient legends do not reserve symbol legend extent", async () => {
+        const context = createBroadcastingTestViewContext();
+        const root = await createAndInitializeRoot(
+            {
+                config: { legend: { disable: false } },
+                data: {
+                    values: [
+                        { x: 1, y: 1, gc: 35 },
+                        { x: 2, y: 2, gc: 55 },
+                    ],
+                },
+                mark: "rect",
+                encoding: {
+                    x: { field: "x", type: "index" },
+                    y: { field: "y", type: "index" },
+                    color: {
+                        field: "gc",
+                        type: "quantitative",
+                        legend: { title: "GC (%)" },
+                    },
+                },
+            },
+            context
+        );
+        const legend = findLegendView(root);
+
+        await settleLayout(root, context);
+
+        expect(legend.getPerpendicularSize()).toBeLessThan(80);
+    });
 });

@@ -4,7 +4,8 @@ import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
-const DEFAULT_LEGEND_EXTENT = 80;
+const DEFAULT_SYMBOL_LEGEND_EXTENT = 80;
+const DEFAULT_GRADIENT_LEGEND_EXTENT = 40;
 const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
 const DEFAULT_GRADIENT_TICK_COUNT = 5;
 const DEFAULT_GRADIENT_THICKNESS = 12;
@@ -447,7 +448,7 @@ export function getExternalLegendOverhang(legendView) {
 }
 
 export default class LegendView extends ContainerView {
-    #effectiveExtent = DEFAULT_LEGEND_EXTENT;
+    #effectiveExtent;
 
     /** @type {import("./view.js").default | undefined} */
     #child;
@@ -510,6 +511,7 @@ export default class LegendView extends ContainerView {
         this.needsAxes = { x: false, y: false };
         this.legendProps = legend;
         this.#type = type ?? "symbol";
+        this.#effectiveExtent = getMinimumLegendExtent(this.#type);
 
         markViewAsNonAddressable(this, { skipSubtree: true });
         markViewAsChrome(this, { skipSubtree: true });
@@ -717,7 +719,18 @@ function getLegendExtent(legend, type, measuredLabelWidth, context) {
               labelOffset +
               measuredLabelWidth;
 
-    return Math.ceil(Math.max(DEFAULT_LEGEND_EXTENT, labelExtent, titleWidth));
+    return Math.ceil(
+        Math.max(getMinimumLegendExtent(type), labelExtent, titleWidth)
+    );
+}
+
+/**
+ * @param {"symbol" | "gradient"} type
+ */
+function getMinimumLegendExtent(type) {
+    return type == "gradient"
+        ? DEFAULT_GRADIENT_LEGEND_EXTENT
+        : DEFAULT_SYMBOL_LEGEND_EXTENT;
 }
 
 /**
