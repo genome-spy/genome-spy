@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Literal
+from typing import ClassVar, Literal
 
 import numpy as np
 import torch
@@ -39,6 +39,7 @@ class Evo2Batch:
       seqs[n_forward:]  — RC sequences in the same order (only if rc_averaging)
     """
 
+    task: ClassVar[Literal["score"]] = "score"
     seqs: list[str]
     n_forward: int
     reduce: Literal["mean", "sum"]
@@ -84,7 +85,8 @@ def _decode_pairs(req: ScoreRequest) -> Evo2Batch:
     to its deduplicated entry. When rc_averaging is set, RC sequences are
     appended after all forward sequences in the same ref-then-alt order.
     """
-    assert req.pairs is not None
+    if req.pairs is None:
+        raise ValueError("_decode_pairs called with req.pairs=None")
     ref_seqs: list[str] = []
     ref_seq_to_idx: dict[str, int] = {}
     ref_indexes: list[int] = []
@@ -137,8 +139,8 @@ def _decode_coords(
             "Server has no reference genome configured. "
             "Send sequences directly via 'pairs' instead."
         )
-    assert req.variants is not None
-
+    if req.variants is None:
+        raise ValueError("_decode_coords called with req.variants=None")
     ref_seqs: list[str] = []
     ref_seq_to_idx: dict[str, int] = {}
     ref_indexes: list[int] = []
@@ -201,7 +203,10 @@ def _avg_strands(fwd: list, rc: list | None) -> list:
 
 
 def _compute_scores(
-    logits, seq_lengths, input_ids, meta: Evo2Batch
+    logits: torch.Tensor,
+    seq_lengths: list[int],
+    input_ids: torch.Tensor,
+    meta: Evo2Batch,
 ) -> tuple[list[float], list[float]]:
     """Compute log-likelihood scores for all unique sequences, RC-averaged if needed.
 
@@ -224,7 +229,9 @@ def _compute_scores(
 
 
 def _compute_entropies(
-    logits, seq_lengths, meta: Evo2Batch
+    logits: torch.Tensor,
+    seq_lengths: list[int],
+    meta: Evo2Batch,
 ) -> tuple[list | None, list | None]:
     """Compute per-position Shannon entropy, RC-averaged if needed.
 
@@ -274,7 +281,12 @@ def _pair_score(
 # ── encode ────────────────────────────────────────────────────────────────────
 
 
-def encode_score(logits, seq_lengths, input_ids, meta: Evo2Batch) -> ScoreResponse:
+def encode_score(
+    logits: torch.Tensor,
+    seq_lengths: list[int],
+    input_ids: torch.Tensor,
+    meta: Evo2Batch,
+) -> ScoreResponse:
     """Build a ScoreResponse from raw model logits.
 
     Computes per-sequence scores and optionally per-position entropy, then maps

@@ -6,6 +6,7 @@ Adapted from the Goodfire Evo-2-Layer-26-Mixed notebook.
 from __future__ import annotations
 
 from math import prod
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -28,8 +29,10 @@ class BatchTopKTiedSAE(nn.Module):
         self.d_hidden = d_hidden
         self.k = k
 
+        _INIT_SCALE = 0.1
         w_mat = torch.randn((d_in, d_hidden))
-        w_mat = 0.1 * w_mat / torch.linalg.norm(w_mat, dim=0, ord=2, keepdim=True)
+        norms = torch.linalg.norm(w_mat, dim=0, ord=2, keepdim=True)
+        w_mat = _INIT_SCALE * w_mat / norms
         self.W = nn.Parameter(w_mat)
         self.b_enc = nn.Parameter(torch.zeros(self.d_hidden))
         self.b_dec = nn.Parameter(torch.zeros(self.d_in))
@@ -56,15 +59,22 @@ class BatchTopKTiedSAE(nn.Module):
         )
 
     def decode(self, feat: torch.Tensor) -> torch.Tensor:
+        """Decode sparse features back to the input space."""
         return feat @ self.W.T + self.b_dec
 
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return (reconstruction, sparse_features) for input x."""
         f = self.encode(x)
         return self.decode(f), f
 
 
-def load_sae(path: str, device: str) -> BatchTopKTiedSAE:
-    """Load a BatchTopKTiedSAE checkpoint, inferring dimensions from the state dict."""
+def load_sae(path: str | Path, device: str) -> BatchTopKTiedSAE:
+    """Load a BatchTopKTiedSAE checkpoint, inferring dimensions from the state dict.
+
+    Args:
+        path: Filesystem path to the ``.pt`` checkpoint file.
+        device: PyTorch device string to move the loaded model to.
+    """
     raw = torch.load(path, weights_only=True, map_location="cpu")
     state = {
         k.replace("_orig_mod.", "").replace("module.", ""): v for k, v in raw.items()

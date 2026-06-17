@@ -16,6 +16,10 @@ _ORGANISM_INDEX: dict[str, int] = {"human": 0, "mouse": 1}
 def seq_to_tensor(seq: str, device: str) -> torch.Tensor:
     """Convert a DNA string to a batched one-hot tensor.
 
+    Args:
+        seq: Uppercase DNA string of any length.
+        device: PyTorch device string (e.g. ``"cuda:0"``).
+
     Returns:
         Float32 tensor of shape ``(1, L, 4)`` on the requested device.
     """
@@ -145,6 +149,12 @@ def splice_score(
 
     The ``/ 5`` down-weights junctions because they produce larger magnitudes.
 
+    Args:
+        ref_out: Forward-pass output dict for the reference sequence.
+        alt_out: Forward-pass output dict for the alternate sequence.
+        resolution: Which resolution tensor to use within each head (1 or 128).
+        window_size: Center window width in base pairs for alt − ref scoring.
+
     Returns:
         Dict with per-channel floats for each splice head that was present,
         plus ``"splice_score": [composite]`` (single-element list).
@@ -246,6 +256,12 @@ def extract_embeddings(
     organism: str,
 ) -> np.ndarray:
     """Return 128 bp trunk embeddings for a single sequence.
+
+    Args:
+        model: Loaded AlphaGenome instance in eval mode.
+        device: PyTorch device string (e.g. ``"cuda:0"``).
+        seq: Uppercase DNA string, exactly 131 072 bp.
+        organism: ``"human"`` or ``"mouse"``.
 
     Returns:
         Float32 numpy array of shape ``(1024, 3072)``.

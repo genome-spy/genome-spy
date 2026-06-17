@@ -93,16 +93,16 @@ class Evo2API(ls.LitAPI):
             return decode_sae(SaeRequest.model_validate(request))
         raise ValueError(f"Unknown task: {task!r}.")
 
-    def predict(self, x: Evo2Batch | EmbedBatch):
+    def predict(self, x: Evo2Batch | EmbedBatch) -> tuple:
         layer_names = x.layer_names if isinstance(x, EmbedBatch) else []
         logits, seq_lengths, input_ids, embeddings = run_forward(
             self.model, self.tokenizer, self.device, x.seqs, layer_names=layer_names
         )
         return (logits, seq_lengths, input_ids, embeddings), x
 
-    def encode_response(self, output: tuple):
+    def encode_response(self, output: tuple) -> object:
         (logits, seq_lengths, input_ids, embeddings), meta = output
-        if isinstance(meta, Evo2Batch):
+        if meta.task == "score":
             return encode_score(logits, seq_lengths, input_ids, meta)
         elif meta.task == "embed":
             return encode_embed(embeddings, seq_lengths, meta)
@@ -110,4 +110,5 @@ class Evo2API(ls.LitAPI):
             return encode_exon(embeddings, seq_lengths, meta, self.exon_classifier)
         elif meta.task == "sae":
             return encode_sae(embeddings, seq_lengths, meta, self.sae)
-        raise ValueError(f"Unknown task: {meta.task!r}.")
+        else:
+            raise ValueError(f"Unknown task: {meta.task!r}.")

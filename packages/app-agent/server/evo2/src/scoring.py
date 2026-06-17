@@ -6,6 +6,8 @@ so they can be unit-tested without a GPU.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import torch
 
@@ -19,7 +21,7 @@ def reverse_complement(seq: str) -> str:
 
 def prepare_batch(
     seqs: list[str],
-    tokenizer,
+    tokenizer: Any,
     prepend_bos: bool = False,
     device: str = "cuda:0",
 ) -> tuple[torch.Tensor, list[int]]:
@@ -46,8 +48,8 @@ def prepare_batch(
 
 
 def run_forward(
-    model,
-    tokenizer,
+    model: Any,
+    tokenizer: Any,
     device: str,
     seqs: list[str],
     layer_names: list[str] | None = None,

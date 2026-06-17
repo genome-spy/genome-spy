@@ -71,5 +71,8 @@ def extract_snp_windows(
         )
 
     alt_seq = ref_seq[:snv_pos] + alt_allele.upper() + ref_seq[snv_pos + 1 :]
-    assert len(alt_seq) == len(ref_seq)
+    if len(alt_seq) != len(ref_seq):
+        raise ValueError(
+            f"alt_seq length {len(alt_seq)} != ref_seq length {len(ref_seq)}"
+        )
     return ref_seq, alt_seq
