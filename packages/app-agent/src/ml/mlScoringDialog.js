@@ -10,7 +10,7 @@
 
 import { css, html, nothing } from "lit";
 import { BaseDialog, showDialog } from "@genome-spy/app/dialog";
-import { runAlphaGenomeFlow, runEvo2Flow } from "./mlScoring.js";
+import { inspectAlphaGenomeFlow, inspectEvo2Flow } from "./mlScoring.js";
 
 /** @typedef {"alphagenome" | "evo2"} ModelChoice */
 /** @typedef {"idle" | "running" | "done" | "error"} DialogState */
@@ -57,6 +57,7 @@ class MlScoringDialog extends BaseDialog {
         _progressMessage: { state: true },
         _resultMessage: { state: true },
         _errorMessage: { state: true },
+        _debugResult: { state: true },
     };
 
     static styles = [
@@ -121,6 +122,45 @@ class MlScoringDialog extends BaseDialog {
                 color: #b00;
                 word-break: break-word;
             }
+
+            .result-stack {
+                display: flex;
+                flex-direction: column;
+                gap: 0.8em;
+                width: min(80vw, 72em);
+            }
+
+            .result-note {
+                color: #444;
+            }
+
+            .json-section h4 {
+                margin: 0 0 0.35em;
+                font-size: 0.95rem;
+            }
+
+            .json-block {
+                max-height: 18em;
+                overflow: auto;
+                padding: 0.75em;
+                margin: 0;
+                border: 1px solid #d8d8d8;
+                border-radius: 4px;
+                background: #f7f7f7;
+                font-family:
+                    ui-monospace,
+                    SFMono-Regular,
+                    SF Mono,
+                    Menlo,
+                    Monaco,
+                    Consolas,
+                    Liberation Mono,
+                    monospace;
+                font-size: 12px;
+                line-height: 1.4;
+                white-space: pre-wrap;
+                word-break: break-word;
+            }
         `,
     ];
 
@@ -160,6 +200,9 @@ class MlScoringDialog extends BaseDialog {
 
         /** @type {string} */
         this._errorMessage = "";
+
+        /** @type {{ summary: string; requestText: string; responseText: string; extraText?: string } | null} */
+        this._debugResult = null;
 
         /** @type {AbortController | null} */
         this._abortController = null;
@@ -208,8 +251,32 @@ class MlScoringDialog extends BaseDialog {
                 <div class="progress-area">${this._progressMessage}</div>
             </div>`;
         } else if (this._status === "done") {
-            return html`<div class="ml-dialog-body">
+            return html`<div class="result-stack">
                 <div class="result-area">${this._resultMessage}</div>
+                <div class="result-note">
+                    Raw request and response shown below for debugging. No
+                    sample metadata columns were added.
+                </div>
+                ${this._debugResult?.extraText
+                    ? html`<div class="json-section">
+                          <h4>Resolved context</h4>
+                          <pre class="json-block">
+${this._debugResult.extraText}</pre
+                          >
+                      </div>`
+                    : nothing}
+                <div class="json-section">
+                    <h4>Request JSON</h4>
+                    <pre class="json-block">
+${this._debugResult?.requestText ?? ""}</pre
+                    >
+                </div>
+                <div class="json-section">
+                    <h4>Response JSON</h4>
+                    <pre class="json-block">
+${this._debugResult?.responseText ?? ""}</pre
+                    >
+                </div>
             </div>`;
         } else if (this._status === "error") {
             return html`<div class="ml-dialog-body">
@@ -315,6 +382,7 @@ class MlScoringDialog extends BaseDialog {
     _run() {
         this._status = "running";
         this._progressMessage = "Preparing…";
+        this._debugResult = null;
         this._abortController = new AbortController();
         const signal = this._abortController.signal;
 
@@ -337,30 +405,58 @@ class MlScoringDialog extends BaseDialog {
         };
         if (this._model === "alphagenome") {
             const heads = [...this._selectedHeads];
-            const result = await runAlphaGenomeFlow(
-                this.agentApi,
+            onProgress("Fetching reference sequence…");
+            const result = await inspectAlphaGenomeFlow(
                 { baseUrl: this.baseUrl, fastaUrl: this.fastaUrl },
                 this.variantCollection,
                 heads,
-                { signal, onProgress, submissionKind: "user" }
+                signal
             );
-            const colNames = result.colNames.join(", ");
+            onProgress("Formatting response…");
+            this._debugResult = {
+                summary: `Received raw AlphaGenome response for ${heads.length} head${heads.length !== 1 ? "s" : ""}.`,
+                requestText: _stringifyJson(result.requestPayload),
+                responseText: _stringifyJson(result.response),
+                extraText: _stringifyJson({
+                    referenceWindow: {
+                        chromosome: result.referenceWindow.chromosome,
+                        windowStart: result.referenceWindow.windowStart,
+                        windowEnd: result.referenceWindow.windowEnd,
+                    },
+                    uniqueVariantCount:
+                        this.variantCollection.uniqueVariants.size,
+                }),
+            };
             this._status = "done";
-            this._resultMessage = `Added ${heads.length} column${heads.length !== 1 ? "s" : ""} (${colNames}) for ${this._sampleCount} sample${this._sampleCount !== 1 ? "s" : ""}.`;
+            this._resultMessage = this._debugResult.summary;
         } else if (this._model === "evo2") {
-            await runEvo2Flow(
-                this.agentApi,
+            onProgress("Querying Evo2…");
+            const result = await inspectEvo2Flow(
                 { baseUrl: this.baseUrl, fastaUrl: this.fastaUrl },
                 this.variantCollection,
-                { signal, onProgress, submissionKind: "user" }
+                signal
             );
+            onProgress("Formatting response…");
+            this._debugResult = {
+                summary: "Received raw Evo2 response.",
+                requestText: _stringifyJson(result.requestPayload),
+                responseText: _stringifyJson(result.response),
+            };
             this._status = "done";
-            this._resultMessage = `Added ev2_delta_max column for ${this._sampleCount} sample${this._sampleCount !== 1 ? "s" : ""}.`;
+            this._resultMessage = this._debugResult.summary;
         } else {
             throw new Error(`Unknown model: ${this._model}`);
         }
         this.requestUpdate();
     }
+}
+
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+function _stringifyJson(value) {
+    return JSON.stringify(value, null, 2);
 }
 
 customElements.define("gs-ml-scoring-dialog", MlScoringDialog);
@@ -369,9 +465,15 @@ customElements.define("gs-ml-scoring-dialog", MlScoringDialog);
  * @param {import("@genome-spy/app/agentApi").AgentApi} agentApi
  * @param {import("./mlVariantCollector.js").VariantCollection} variantCollection
  * @param {{ baseUrl: string; fastaUrl: string }} options
+ * @param {{ initialModel?: ModelChoice }} [dialogOptions]
  * @returns {Promise<{ ok: boolean; reason?: string; data?: unknown }>}
  */
-export function showMlScoringDialog(agentApi, variantCollection, options) {
+export function showMlScoringDialog(
+    agentApi,
+    variantCollection,
+    options,
+    dialogOptions = {}
+) {
     return showDialog(
         "gs-ml-scoring-dialog",
         (/** @type {MlScoringDialog} */ el) => {
@@ -379,6 +481,9 @@ export function showMlScoringDialog(agentApi, variantCollection, options) {
             el.variantCollection = variantCollection;
             el.baseUrl = options.baseUrl;
             el.fastaUrl = options.fastaUrl;
+            if (dialogOptions.initialModel) {
+                el._model = dialogOptions.initialModel;
+            }
         }
     );
 }

@@ -40,6 +40,140 @@ function _buildSnvList(uniqueVariants, windowStart) {
 }
 
 /**
+ * Build the AlphaGenome score request for a brushed variant collection and
+ * return the resolved reference window used to construct it.
+ *
+ * @param {{ baseUrl: string; fastaUrl: string }} config
+ * @param {import("./mlVariantCollector.js").VariantCollection} collection
+ * @param {string[]} heads
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<{
+ *   requestPayload: {
+ *     task: "score";
+ *     seq: string;
+ *     snvs: { offset: number; ref_base: string; alt_base: string }[];
+ *     heads: string[];
+ *     organism: "human";
+ *   };
+ *   referenceWindow: import("./mlSequenceFetcher.js").ReferenceWindow;
+ * }>}
+ */
+export async function buildAlphaGenomeDebugRequest(
+    config,
+    collection,
+    heads,
+    signal
+) {
+    const refWindow = await fetchReferenceWindow(
+        config.fastaUrl,
+        collection.allRows,
+        signal
+    );
+
+    return {
+        requestPayload: {
+            task: "score",
+            seq: refWindow.seq,
+            snvs: _buildSnvList(
+                collection.uniqueVariants,
+                refWindow.windowStart
+            ),
+            heads,
+            organism: "human",
+        },
+        referenceWindow: refWindow,
+    };
+}
+
+/**
+ * Run AlphaGenome in raw debug mode and return the exact request/response
+ * payloads without aggregating them into sample metadata.
+ *
+ * @param {{ baseUrl: string; fastaUrl: string }} config
+ * @param {import("./mlVariantCollector.js").VariantCollection} collection
+ * @param {string[]} heads
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<{
+ *   requestPayload: {
+ *     task: "score";
+ *     seq: string;
+ *     snvs: { offset: number; ref_base: string; alt_base: string }[];
+ *     heads: string[];
+ *     organism: "human";
+ *   };
+ *   response: { scores: Array<Record<string, number[]>> };
+ *   referenceWindow: import("./mlSequenceFetcher.js").ReferenceWindow;
+ * }>}
+ */
+export async function inspectAlphaGenomeFlow(
+    config,
+    collection,
+    heads,
+    signal
+) {
+    const { requestPayload, referenceWindow } =
+        await buildAlphaGenomeDebugRequest(config, collection, heads, signal);
+    const response = await scoreWithAlphaGenome(
+        config.baseUrl,
+        requestPayload,
+        signal
+    );
+
+    return {
+        requestPayload,
+        response,
+        referenceWindow,
+    };
+}
+
+/**
+ * Build the Evo2 score request for a brushed variant collection.
+ *
+ * @param {import("./mlVariantCollector.js").VariantCollection} collection
+ * @returns {{
+ *   variants: { chrom: string; pos: number; ref: string; alt: string }[];
+ * }}
+ */
+export function buildEvo2DebugRequest(collection) {
+    return {
+        variants: [...collection.uniqueVariants.values()].map((v) => ({
+            chrom: "chr" + v.Chromosome,
+            pos: v.Start_Position,
+            ref: v.Reference_Allele,
+            alt: v.Tumor_Seq_Allele2,
+        })),
+    };
+}
+
+/**
+ * Run Evo2 in raw debug mode and return the exact request/response payloads
+ * without aggregating them into sample metadata.
+ *
+ * @param {{ baseUrl: string; fastaUrl: string }} config
+ * @param {import("./mlVariantCollector.js").VariantCollection} collection
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<{
+ *   requestPayload: {
+ *     variants: { chrom: string; pos: number; ref: string; alt: string }[];
+ *   };
+ *   response: { scores: Array<{ delta: number | null }> };
+ * }>}
+ */
+export async function inspectEvo2Flow(config, collection, signal) {
+    const requestPayload = buildEvo2DebugRequest(collection);
+    const response = await scoreWithEvo2(
+        config.baseUrl,
+        requestPayload,
+        signal
+    );
+
+    return {
+        requestPayload,
+        response,
+    };
+}
+
+/**
  * Run the full AlphaGenome scoring pipeline for a variant collection:
  * fetch reference window → score all SNVs in one request → dispatch metadata.
  *
