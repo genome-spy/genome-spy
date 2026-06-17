@@ -162,6 +162,7 @@ export async function addLegendView(legends, legend, resolution) {
     if (!region) {
         const regionView = new LegendRegionView(
             orient,
+            legend.legendProps.spacing ?? 0,
             legend.context,
             legend.layoutParent,
             legend.dataParent

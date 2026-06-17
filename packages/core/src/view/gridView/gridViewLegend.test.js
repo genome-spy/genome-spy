@@ -226,6 +226,77 @@ describe("GridView legends", () => {
             ).toEqual(["Group", "Difference"]);
             expect(getLegendRegions(view)).toHaveLength(1);
         });
+
+        test("stacks same-region legends with a gap and data-driven height", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                {
+                                    x: 1,
+                                    signal: 2,
+                                    trend: 3,
+                                    group: "alpha",
+                                    difference: 0,
+                                },
+                                {
+                                    x: 2,
+                                    signal: 3,
+                                    trend: 4,
+                                    group: "beta",
+                                    difference: 100,
+                                },
+                            ],
+                        },
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                        },
+                        layer: [
+                            {
+                                mark: "point",
+                                encoding: {
+                                    y: {
+                                        field: "signal",
+                                        type: "quantitative",
+                                    },
+                                    color: {
+                                        field: "group",
+                                        type: "nominal",
+                                        legend: { title: "Group" },
+                                    },
+                                },
+                            },
+                            {
+                                mark: "point",
+                                encoding: {
+                                    y: {
+                                        field: "trend",
+                                        type: "quantitative",
+                                    },
+                                    size: {
+                                        field: "difference",
+                                        type: "quantitative",
+                                        scale: { range: [100, 2500] },
+                                        legend: { title: "Difference" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+            const [region] = getLegendRegions(view);
+            const legendHeights = getLegends(view).map((legend) =>
+                legend.getStackedParallelSize()
+            );
+
+            expect(region.getParallelSize()).toBe(
+                legendHeights.reduce((sum, height) => sum + height, 0) + 10
+            );
+            expect(legendHeights.at(-1)).toBeGreaterThan(100);
+        });
     });
 
     describe("titles and labels", () => {

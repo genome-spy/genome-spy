@@ -71,6 +71,11 @@ export interface LegendConfig extends Legend {
     padding?: number;
 
     /**
+     * Spacing in pixels between legends collected into the same legend region.
+     */
+    spacing?: number;
+
+    /**
      * Padding between legend rows in pixels.
      */
     rowPadding?: number;

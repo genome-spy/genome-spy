@@ -9,6 +9,7 @@ export const LEGEND_DEFAULTS = {
     orient: "right",
     direction: "vertical",
     padding: 0,
+    spacing: 10,
     columnPadding: 10,
     rowPadding: 2,
     labelAlign: "left",

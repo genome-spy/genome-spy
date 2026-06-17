@@ -6,8 +6,7 @@ import { truncateText } from "../data/transforms/truncateText.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
 const SYMBOL_SIZE_FIELD = "_legendSymbolSize";
-const DEFAULT_SYMBOL_LEGEND_EXTENT = 80;
-const DEFAULT_GRADIENT_LEGEND_EXTENT = 40;
+const DEFAULT_GRADIENT_LEGEND_LENGTH = 200;
 const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
 const DEFAULT_GRADIENT_TICK_COUNT = 5;
 const DEFAULT_GRADIENT_THICKNESS = 12;
@@ -563,17 +562,20 @@ export class LegendRegionView extends ContainerView {
     /** @type {LegendView[]} */
     #legendViews = [];
 
+    #stackSpacing;
+
     /**
      * @param {import("../spec/legend.js").LegendOrient} orient
+     * @param {number} stackSpacing
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent
      */
-    constructor(orient, context, layoutParent, dataParent) {
+    constructor(orient, stackSpacing, context, layoutParent, dataParent) {
         super(
             {
                 name: "legend_region_" + orient,
-                spacing: 0,
+                spacing: stackSpacing,
                 vconcat: [],
             },
             context,
@@ -587,6 +589,7 @@ export class LegendRegionView extends ContainerView {
 
         this.needsAxes = { x: false, y: false };
         this.orient = orient;
+        this.#stackSpacing = stackSpacing;
 
         markViewAsNonAddressable(this, { skipSubtree: true });
         markViewAsChrome(this, { skipSubtree: true });
@@ -596,7 +599,7 @@ export class LegendRegionView extends ContainerView {
         this.#child = await this.context.createOrImportView(
             {
                 name: "legendStack",
-                spacing: 0,
+                spacing: this.#stackSpacing,
                 vconcat: [],
             },
             this,
@@ -670,7 +673,10 @@ export class LegendRegionView extends ContainerView {
 
     getParallelSize() {
         return this.#legendViews.reduce(
-            (sum, legendView) => sum + legendView.getStackedParallelSize(),
+            (sum, legendView, index) =>
+                sum +
+                legendView.getStackedParallelSize() +
+                (index > 0 ? this.#stackSpacing : 0),
             0
         );
     }
@@ -716,6 +722,11 @@ export default class LegendView extends ContainerView {
     #type;
 
     #stacked = false;
+
+    /** @type {MeasuredLabels | undefined} */
+    #measuredLabels;
+
+    #stackedParallelSize = 0;
 
     /** @type {UnitView[]} */
     #labelViews = [];
@@ -875,20 +886,18 @@ export default class LegendView extends ContainerView {
 
     setStacked() {
         this.#stacked = true;
+        this.#stackedParallelSize = this.getStackedParallelSize();
         this.invalidateSizeCache();
     }
 
     getStackedParallelSize() {
-        const title = this.legendProps.title
-            ? (this.legendProps.titleFontSize ?? 11) +
-              (this.legendProps.titlePadding ?? 5)
-            : 0;
+        const measuredLabels =
+            this.#measuredLabels ?? getMeasuredLabels(this.#labelViews);
 
-        return (
-            title +
-            (this.#type == "gradient"
-                ? getMinimumLegendExtent(this.#type, this.legendProps)
-                : DEFAULT_SYMBOL_LEGEND_EXTENT)
+        return getStackedLegendParallelSize(
+            this.legendProps,
+            this.#type,
+            measuredLabels
         );
     }
 
@@ -928,6 +937,9 @@ export default class LegendView extends ContainerView {
             return;
         }
 
+        const previousStackedParallelSize = this.#stackedParallelSize;
+        this.#measuredLabels = measuredLabels;
+
         const nextExtent = getLegendExtent(
             this.legendProps,
             this.#type,
@@ -936,12 +948,20 @@ export default class LegendView extends ContainerView {
         );
         const willGrow =
             nextExtent >= this.#effectiveExtent + AUTO_EXTENT_GROW_THRESHOLD_PX;
+        const nextStackedParallelSize = this.getStackedParallelSize();
+        const willResizeStack =
+            this.#stacked &&
+            Math.abs(nextStackedParallelSize - previousStackedParallelSize) >=
+                AUTO_EXTENT_GROW_THRESHOLD_PX;
 
-        if (!willGrow) {
+        if (!willGrow && !willResizeStack) {
             return;
         }
 
-        this.#effectiveExtent = nextExtent;
+        if (willGrow) {
+            this.#effectiveExtent = nextExtent;
+        }
+        this.#stackedParallelSize = nextStackedParallelSize;
         this.invalidateSizeCache();
         this.context.requestLayoutReflow();
     }
@@ -1061,9 +1081,29 @@ function getMinimumLegendExtent(type, legend) {
     if (isHorizontalLegend(legend)) {
         return type == "gradient" ? 32 : 32;
     } else {
-        return type == "gradient"
-            ? DEFAULT_GRADIENT_LEGEND_EXTENT
-            : DEFAULT_SYMBOL_LEGEND_EXTENT;
+        return 0;
+    }
+}
+
+/**
+ * @param {LegendConfig} legend
+ * @param {"symbol" | "gradient"} type
+ * @param {MeasuredLabels | undefined} measuredLabels
+ */
+function getStackedLegendParallelSize(legend, type, measuredLabels) {
+    const titleExtent = getTitleHeight(legend);
+
+    if (type == "gradient") {
+        return titleExtent + DEFAULT_GRADIENT_LEGEND_LENGTH;
+    } else if (measuredLabels) {
+        const labelFontSize = legend.labelFontSize ?? 10;
+        return Math.ceil(titleExtent + measuredLabels.maxY + labelFontSize / 2);
+    } else {
+        return Math.ceil(
+            titleExtent +
+                Math.sqrt(legend.symbolSize ?? 100) +
+                (legend.symbolStrokeWidth ?? 1.5)
+        );
     }
 }
 
