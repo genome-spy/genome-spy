@@ -11,7 +11,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
-_DEFAULT_PORT = 8001
+_DEFAULT_PORT = 8011
 
 if __name__ == "__main__":
     port = int(os.environ.get("EVO2_PORT", _DEFAULT_PORT))

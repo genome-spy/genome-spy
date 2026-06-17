@@ -28,12 +28,12 @@ services:
     image: genomespy-evo2-server:latest
     command: python server.py
     ports:
-      - "${EVO2_PORT:-8001}:8001"
+      - "${EVO2_PORT:-8011}:${EVO2_PORT:-8011}"
     volumes:
       - hf_cache:/root/.cache/huggingface
     environment:
       EVO2_MODEL_NAME: ${EVO2_MODEL_NAME:-evo2_7b}
-      EVO2_PORT: ${EVO2_PORT:-8001}
+      EVO2_PORT: ${EVO2_PORT:-8011}
       HF_TOKEN: ${HF_TOKEN}
     ipc: host
     ulimits:
@@ -48,7 +48,7 @@ services:
               capabilities: [gpu]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "sh", "-c", "curl -f http://localhost:${EVO2_PORT:-8011}/health"]
       interval: 30s
       timeout: 10s
       retries: 5

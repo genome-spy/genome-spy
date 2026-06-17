@@ -20,6 +20,9 @@ class Settings:
     prefer_responses_role_compat: bool
     enable_token_debug_logs: bool
     enable_throughput_debug_logs: bool
+    evo2_base_url: str
+    alphagenome_base_url: str
+    cors_origins: tuple[str, ...]
 
 
 def describe_api_key_for_logs(api_key: str) -> str:
@@ -35,7 +38,7 @@ def describe_api_key_for_logs(api_key: str) -> str:
         Log-safe key description that includes the key length and digest prefix.
     """
     digest = hashlib.sha256(api_key.encode("utf-8")).hexdigest()
-    return "len=" + str(len(api_key)) + " sha256=" + digest[:12]
+    return f"len={len(api_key)} sha256={digest[:12]}"
 
 
 def load_default_system_prompt() -> str:
@@ -85,6 +88,13 @@ def load_settings() -> Settings:
         enable_throughput_debug_logs=_load_bool_env(
             "GENOMESPY_AGENT_ENABLE_THROUGHPUT_DEBUG_LOGS", True
         ),
+        evo2_base_url=os.environ.get(
+            "ML_EVO2_BASE_URL", "http://127.0.0.1:8011"
+        ).rstrip("/"),
+        alphagenome_base_url=os.environ.get(
+            "ML_ALPHAGENOME_BASE_URL", "http://127.0.0.1:8002"
+        ).rstrip("/"),
+        cors_origins=load_cors_origins(),
     )
 
     logger.info(
@@ -92,7 +102,8 @@ def load_settings() -> Settings:
             "Loaded GenomeSpy agent settings: "
             "base_url=%s model=%s api_key_source=%s api_key=%s "
             "streaming=%s responses_role_compat=%s timeout_seconds=%s "
-            "token_debug_logs=%s throughput_debug_logs=%s"
+            "token_debug_logs=%s throughput_debug_logs=%s "
+            "evo2_base_url=%s alphagenome_base_url=%s cors_origins=%s"
         ),
         settings.base_url,
         settings.model,
@@ -103,12 +114,32 @@ def load_settings() -> Settings:
         settings.timeout_seconds,
         settings.enable_token_debug_logs,
         settings.enable_throughput_debug_logs,
+        settings.evo2_base_url,
+        settings.alphagenome_base_url,
+        settings.cors_origins,
     )
 
     return settings
 
 
+def load_cors_origins() -> tuple[str, ...]:
+    """Load allowed CORS origins from the environment.
+
+    Reads a comma-separated list from ``GENOMESPY_AGENT_CORS_ORIGINS``.
+    Defaults to ``localhost:8080`` and ``127.0.0.1:8080`` when unset.
+    """
+    raw = os.environ.get("GENOMESPY_AGENT_CORS_ORIGINS", "")
+    if raw.strip():
+        return tuple(o.strip() for o in raw.split(",") if o.strip())
+    return ("http://localhost:8080", "http://127.0.0.1:8080")
+
+
 def _load_bool_env(name: str, default: bool) -> bool:
+    """Load a boolean from an environment variable.
+
+    Accepts "1", "true", "yes", "on" as truthy and "0", "false", "no", "off"
+    as falsy (case-insensitive). Returns default when the variable is unset.
+    """
     raw_value = os.environ.get(name)
     if raw_value is None:
         return default
