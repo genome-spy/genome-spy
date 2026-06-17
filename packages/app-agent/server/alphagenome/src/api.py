@@ -44,13 +44,16 @@ class AlphaGenomeAPI(ls.LitAPI):
         task = request.get("task", "predict")
         if task == "predict":
             return decode_predict(PredictRequest.model_validate(request))
-        if task == "score":
+        elif task == "score":
             return decode_score(ScoreRequest.model_validate(request))
-        if task == "embed":
+        elif task == "embed":
             return decode_embed(EmbedRequest.model_validate(request))
-        if task == "ism":
+        elif task == "ism":
             return decode_ism(ISMRequest.model_validate(request))
-        raise ValueError(f"Unknown task: {task!r}. Valid: predict, score, embed, ism.")
+        else:
+            raise ValueError(
+                f"Unknown task: {task!r}. Valid: predict, score, embed, ism."
+            )
 
     def predict(self, batch: AlphaGenomeBatch) -> tuple:
         """Run the model forward pass(es) and return (raw_output, batch).
@@ -64,21 +67,32 @@ class AlphaGenomeAPI(ls.LitAPI):
         if batch.task == "embed":
             emb = extract_embeddings(self.model, self.device, batch.seqs[0], batch.organism)
             return emb, batch
-        if batch.task == "ism":
+        elif batch.task == "ism":
             # seqs[0] is ref; seqs[1:] are the 3×window_length alternates.
             ref_out = run_forward(self.model, self.device, [batch.seqs[0]], batch.organism)[0]
             alt_outs = run_forward(self.model, self.device, batch.seqs[1:], batch.organism)
             return (ref_out, alt_outs), batch
-        outputs_list = run_forward(self.model, self.device, batch.seqs, batch.organism)
-        return outputs_list, batch
+        elif batch.snvs_mode:
+            # seq+snvs: run the shared reference once, then all alts, and
+            # assemble [ref, alt0, ref, alt1, …] so encode_score works unchanged.
+            ref_out = run_forward(self.model, self.device, [batch.seqs[0]], batch.organism)[0]
+            alt_outs = run_forward(self.model, self.device, batch.seqs[1:], batch.organism)
+            outputs_list = [item for alt in alt_outs for item in (ref_out, alt)]
+            return outputs_list, batch
+        else:
+            outputs_list = run_forward(self.model, self.device, batch.seqs, batch.organism)
+            return outputs_list, batch
 
-    def encode_response(self, output: tuple):
+    def encode_response(self, output: tuple) -> object:
         """Convert raw model outputs to the appropriate response model."""
         result, meta = output
         if meta.task == "predict":
             return encode_predict(result, meta)
-        if meta.task == "score":
+        elif meta.task == "score":
             return encode_score(result, meta)
-        if meta.task == "ism":
+        elif meta.task == "ism":
             return encode_ism(result, meta)
-        return encode_embed(result, meta)
+        elif meta.task == "embed":
+            return encode_embed(result, meta)
+        else:
+            raise ValueError(f"Unknown task: {meta.task!r}.")

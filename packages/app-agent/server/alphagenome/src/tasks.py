@@ -34,6 +34,10 @@ class AlphaGenomeBatch:
     n_pairs: int = 0
     window_size: int = 501
     scorer: str = "window"
+    # True when the client sent seq+snvs instead of full pairs;
+    # seqs[0] is the reference and seqs[1:] are the alternates so predict()
+    # can run the reference exactly once regardless of variant count.
+    snvs_mode: bool = False
     # ISM-only fields
     ism_start: int = 0
     ism_end: int = 0
@@ -57,23 +61,45 @@ def decode_predict(req: PredictRequest) -> AlphaGenomeBatch:
 def decode_score(req: ScoreRequest) -> AlphaGenomeBatch:
     """Build a batch for variant effect scoring.
 
-    Interleaves ref and alt so they pair up in encode_score:
-    ``[ref0, alt0, ref1, alt1, …]``.
+    **Pairs mode** (``req.pairs`` set): interleaves ref and alt sequences as
+    ``[ref0, alt0, ref1, alt1, …]`` so ``encode_score`` can index them with
+    ``outputs_list[i * 2]`` / ``outputs_list[i * 2 + 1]``.
+
+    **seq+snvs mode** (``req.seq`` + ``req.snvs`` set): stores the single
+    reference at ``seqs[0]`` and one alt per SNV at ``seqs[1:]``, then sets
+    ``snvs_mode=True`` so ``api.predict()`` runs the reference exactly once.
 
     When ``scorer == "splice"``, heads are overridden to the three splice heads
     regardless of what the caller specified.
     """
-    seqs = [s for pair in req.pairs for s in (pair.ref, pair.alt)]
     heads = _SPLICE_HEADS if req.scorer == "splice" else req.heads
+    if req.pairs is not None:
+        seqs = [s for pair in req.pairs for s in (pair.ref, pair.alt)]
+        return AlphaGenomeBatch(
+            seqs=seqs,
+            organism=req.organism,
+            heads=heads,
+            resolution=req.resolution,
+            task="score",
+            n_pairs=len(req.pairs),
+            window_size=req.window_size,
+            scorer=req.scorer,
+        )
+    ref = req.seq.upper()
+    alt_seqs = [
+        ref[: snv.offset] + snv.alt_base.upper() + ref[snv.offset + 1 :]
+        for snv in req.snvs
+    ]
     return AlphaGenomeBatch(
-        seqs=seqs,
+        seqs=[ref] + alt_seqs,
         organism=req.organism,
         heads=heads,
         resolution=req.resolution,
         task="score",
-        n_pairs=len(req.pairs),
+        n_pairs=len(req.snvs),
         window_size=req.window_size,
         scorer=req.scorer,
+        snvs_mode=True,
     )
 
 
@@ -122,7 +148,12 @@ def decode_embed(req: EmbedRequest) -> AlphaGenomeBatch:
 def encode_predict(
     outputs_list: list[dict[str, Any]], meta: AlphaGenomeBatch
 ) -> PredictResponse:
-    """Convert raw model outputs to a PredictResponse."""
+    """Convert raw model outputs to a PredictResponse.
+
+    Args:
+        outputs_list: One output dict per sequence from run_forward.
+        meta: Batch descriptor produced by decode_predict.
+    """
     tracks: dict[str, list[list[list[float]]]] = {h: [] for h in meta.heads}
     for out in outputs_list:
         for head in meta.heads:
@@ -135,7 +166,12 @@ def encode_predict(
 def encode_score(
     outputs_list: list[dict[str, Any]], meta: AlphaGenomeBatch
 ) -> ScoreResponse:
-    """Convert interleaved ref/alt outputs to a ScoreResponse."""
+    """Convert interleaved ref/alt outputs to a ScoreResponse.
+
+    Args:
+        outputs_list: Forward-pass outputs interleaved as [ref0, alt0, ref1, alt1, …].
+        meta: Batch descriptor produced by decode_score.
+    """
     if meta.scorer == "splice":
         scores = [
             splice_score(
@@ -161,7 +197,12 @@ def encode_score(
 
 
 def encode_ism(output: tuple, meta: AlphaGenomeBatch) -> ISMResponse:
-    """Convert (ref_out, alt_outs) to an ISMResponse."""
+    """Convert (ref_out, alt_outs) to an ISMResponse.
+
+    Args:
+        output: Tuple of (ref_out, alt_outs) from the predict step.
+        meta: Batch descriptor produced by decode_ism.
+    """
     ref_out, alt_outs = output
     matrix = compute_ism_matrix(
         ref_out,

@@ -55,9 +55,28 @@ class SeqPair(BaseModel):
     _check_alt = field_validator("alt", mode="before")(_validate_seq)
 
 
+class SNV(BaseModel):
+    """A single-nucleotide substitution described as an offset into a reference window.
+
+    Used with ``ScoreRequest``'s ``seq + snvs`` input mode so the browser can send
+    one 131 K reference window plus a list of variant descriptors, rather than
+    ``N × 131 K`` full sequence pairs.  The server builds each ref/alt pair by
+    substituting ``alt_base`` at ``seq[offset]``.
+    """
+
+    offset: int    # 0-based position within the provided ``seq``
+    ref_base: str  # base expected at ``seq[offset]``; validated against the sequence
+    alt_base: str  # the alternate base to substitute
+
+
 class ScoreRequest(BaseModel):
     task: Literal["score"] = "score"
-    pairs: list[SeqPair]
+    # Mode 1: client sends full 131 K ref/alt sequence pairs.
+    pairs: list[SeqPair] | None = None
+    # Mode 2: client sends one reference window plus SNV descriptors.
+    # The server builds each ref/alt pair internally (ref runs only once).
+    seq: str | None = None
+    snvs: list[SNV] | None = None
     organism: Literal["human", "mouse"] = "human"
     heads: list[str] = ["atac", "dnase", "cage"]
     resolution: Literal[1, 128] = 128
@@ -68,6 +87,37 @@ class ScoreRequest(BaseModel):
     scorer: Literal["window", "splice"] = "window"
 
     _check_heads = field_validator("heads")(_validate_heads)
+
+    @model_validator(mode="after")
+    def _check_input_mode(self) -> "ScoreRequest":
+        has_pairs = self.pairs is not None
+        has_seq = self.seq is not None
+        if has_pairs and has_seq:
+            raise ValueError(
+                "Provide either 'pairs' (full sequences) or 'seq' + 'snvs', not both."
+            )
+        if not has_pairs and not has_seq:
+            raise ValueError(
+                "Provide either 'pairs' (full sequences) or 'seq' + 'snvs' "
+                "(one reference window plus substitution descriptors)."
+            )
+        if has_seq:
+            seq = self.seq.upper()
+            if len(seq) != _SEQ_LENGTH:
+                raise ValueError(f"seq must be exactly {_SEQ_LENGTH} bp, got {len(seq)}")
+            if not self.snvs:
+                raise ValueError("'snvs' must be non-empty when 'seq' is provided.")
+            for i, snv in enumerate(self.snvs):
+                if not (0 <= snv.offset < _SEQ_LENGTH):
+                    raise ValueError(
+                        f"snvs[{i}].offset {snv.offset} is out of range [0, {_SEQ_LENGTH})"
+                    )
+                if seq[snv.offset] != snv.ref_base.upper():
+                    raise ValueError(
+                        f"snvs[{i}]: seq[{snv.offset}]='{seq[snv.offset]}' "
+                        f"does not match ref_base='{snv.ref_base.upper()}'"
+                    )
+        return self
 
 
 class ScoreResponse(BaseModel):
