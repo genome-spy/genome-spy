@@ -68,10 +68,88 @@ export default class LegendResolution {
      */
     getLegendDefs() {
         return orderResolutionMembers(this.#members)
-            .map((member) =>
-                createLegendDefinition(member.channel, member.view)
-            )
+            .map((member) => this.#createLegendDefinition(member))
             .filter((definition) => definition !== undefined);
+    }
+
+    /**
+     * @param {LegendResolutionMember} member
+     * @returns {LegendDefinition | undefined}
+     */
+    #createLegendDefinition(member) {
+        const { channel, view: legendParent } = member;
+        if (hasRedundantPrimaryLegend(channel, legendParent)) {
+            return undefined;
+        }
+
+        const channelDef = getLegendChannelDef(channel, legendParent);
+        if (!channelDef || isValueDef(channelDef)) {
+            return undefined;
+        }
+
+        const explicitLegend =
+            "legend" in channelDef ? channelDef.legend : undefined;
+        if (explicitLegend === null) {
+            return undefined;
+        }
+
+        const legendOverrides =
+            explicitLegend === undefined
+                ? undefined
+                : /** @type {import("../spec/legend.js").LegendConfig} */ ({
+                      disable: false,
+                      .../** @type {import("../spec/legend.js").Legend} */ (
+                          explicitLegend
+                      ),
+                  });
+        const legendDefaults = getConfiguredLegendDefaults(
+            legendParent.getConfigScopes(),
+            legendOverrides
+        );
+        if (legendDefaults.disable) {
+            return undefined;
+        }
+
+        const legendType = getLegendType(channel, channelDef);
+        if (!legendType) {
+            return undefined;
+        }
+
+        const scaleResolution = legendParent.getScaleResolution(channel);
+        if (!scaleResolution) {
+            return undefined;
+        }
+
+        const channelTitle =
+            /** @type {import("../spec/legend.js").Legend["title"] | undefined} */ (
+                "title" in channelDef ? channelDef.title : undefined
+            );
+        const title =
+            legendDefaults.title !== undefined
+                ? legendDefaults.title
+                : channelTitle !== undefined
+                  ? channelTitle
+                  : isFieldDef(channelDef)
+                    ? channelDef.field
+                    : undefined;
+        const format = "format" in channelDef ? channelDef.format : undefined;
+        const symbolChannels =
+            legendType == "symbol"
+                ? getRedundantSymbolChannels(channel, legendParent)
+                : undefined;
+
+        return {
+            channel,
+            type: legendType,
+            symbolChannels,
+            legend: {
+                ...legendDefaults,
+                title,
+            },
+            format,
+            dataType: channelDef.type,
+            scaleResolution,
+        };
     }
 
     /**
@@ -100,7 +178,7 @@ export default class LegendResolution {
  * @param {import("../spec/channel.js").ChannelDefWithScale} channelDef
  * @returns {LegendType | undefined}
  */
-export function getLegendType(channel, channelDef) {
+function getLegendType(channel, channelDef) {
     if (channel == "size" && channelDef.type == "quantitative") {
         return "symbol";
     } else if (
@@ -218,84 +296,4 @@ function getRedundantSymbolChannels(channel, legendParent) {
     }
 
     return {};
-}
-
-/**
- * @param {import("../spec/channel.js").ChannelWithScale} channel
- * @param {import("../view/unitView.js").default} legendParent
- * @returns {LegendDefinition | undefined}
- */
-export function createLegendDefinition(channel, legendParent) {
-    if (hasRedundantPrimaryLegend(channel, legendParent)) {
-        return undefined;
-    }
-
-    const channelDef = getLegendChannelDef(channel, legendParent);
-    if (!channelDef || isValueDef(channelDef)) {
-        return undefined;
-    }
-
-    const explicitLegend =
-        "legend" in channelDef ? channelDef.legend : undefined;
-    if (explicitLegend === null) {
-        return undefined;
-    }
-
-    const legendOverrides =
-        explicitLegend === undefined
-            ? undefined
-            : /** @type {import("../spec/legend.js").LegendConfig} */ ({
-                  disable: false,
-                  .../** @type {import("../spec/legend.js").Legend} */ (
-                      explicitLegend
-                  ),
-              });
-    const legendDefaults = getConfiguredLegendDefaults(
-        legendParent.getConfigScopes(),
-        legendOverrides
-    );
-    if (legendDefaults.disable) {
-        return undefined;
-    }
-
-    const legendType = getLegendType(channel, channelDef);
-    if (!legendType) {
-        return undefined;
-    }
-
-    const scaleResolution = legendParent.getScaleResolution(channel);
-    if (!scaleResolution) {
-        return undefined;
-    }
-
-    const channelTitle =
-        /** @type {import("../spec/legend.js").Legend["title"] | undefined} */ (
-            "title" in channelDef ? channelDef.title : undefined
-        );
-    const title =
-        legendDefaults.title !== undefined
-            ? legendDefaults.title
-            : channelTitle !== undefined
-              ? channelTitle
-              : isFieldDef(channelDef)
-                ? channelDef.field
-                : undefined;
-    const format = "format" in channelDef ? channelDef.format : undefined;
-    const symbolChannels =
-        legendType == "symbol"
-            ? getRedundantSymbolChannels(channel, legendParent)
-            : undefined;
-
-    return {
-        channel,
-        type: legendType,
-        symbolChannels,
-        legend: {
-            ...legendDefaults,
-            title,
-        },
-        format,
-        dataType: channelDef.type,
-        scaleResolution,
-    };
 }
