@@ -993,6 +993,38 @@ describe("GridView legends", () => {
             expect(getLegends(view)).toHaveLength(0);
         });
 
+        test("does not create legends for unsupported scale-backed channels", async () => {
+            for (const channel of /** @type {const} */ ([
+                "strokeWidth",
+                "angle",
+            ])) {
+                const view = await createLegendTestView({
+                    config: { legend: { disable: false } },
+                    vconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 1, y: 2, measurement: 1 },
+                                    { x: 2, y: 3, measurement: 2 },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                [channel]: {
+                                    field: "measurement",
+                                    type: "quantitative",
+                                },
+                            },
+                        },
+                    ],
+                });
+
+                expect(getLegends(view)).toHaveLength(0);
+            }
+        });
+
         test("creates symbol legends for opacity-like channels", async () => {
             for (const channel of /** @type {const} */ ([
                 "opacity",
@@ -1113,6 +1145,44 @@ describe("GridView legends", () => {
                         type: "ordinal",
                     }),
                 })
+            );
+        });
+
+        test("uses source scales without contributing legend entries to their domains", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: { field: "Origin", type: "nominal" },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            const symbols = legend
+                .getDescendants()
+                .find((descendant) => descendant.name == "symbols");
+            const plot = view
+                .getDescendants()
+                .find((descendant) => descendant.name == "grid0");
+            const symbolEncoding = /** @type {UnitView} */ (symbols).spec
+                .encoding.color;
+
+            expect(
+                /** @type {UnitView} */ (symbols).getScaleResolution("color")
+            ).toBe(/** @type {UnitView} */ (plot).getScaleResolution("color"));
+            expect(symbolEncoding).toEqual(
+                expect.objectContaining({ domainInert: true })
             );
         });
 
@@ -1252,6 +1322,56 @@ describe("GridView legends", () => {
             const large = readMaxSymbolSize();
 
             expect(large).toBeGreaterThan(small);
+        });
+
+        test("updates quantitative symbol legends when the source domain changes", async () => {
+            const view = await createLegendTestView({
+                params: [{ name: "upperBound", value: 1 }],
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, confidence: 0 },
+                                { x: 2, y: 3, confidence: 1 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            opacity: {
+                                field: "confidence",
+                                type: "quantitative",
+                                scale: {
+                                    domain: {
+                                        expr: "[0, upperBound]",
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const labels = getLegends(view)[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "labels");
+            const readMaxValue = () =>
+                Math.max(
+                    ...Array.from(
+                        /** @type {UnitView} */ (
+                            labels
+                        ).flowHandle.collector.getData(),
+                        (datum) => datum.value
+                    )
+                );
+
+            expect(readMaxValue()).toBe(1);
+
+            view.paramRuntime.setValue("upperBound", 2);
+            await view.paramRuntime.whenPropagated();
+
+            expect(readMaxValue()).toBe(2);
         });
     });
 

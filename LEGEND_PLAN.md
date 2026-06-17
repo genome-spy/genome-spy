@@ -219,12 +219,7 @@ internals unless that exact structure is an intentional contract.
 Useful next checks:
 
 - one compact supported-matrix test group for active channel/type combinations,
-- one suppression check for `legend: null`,
-- one unsupported/deferred case that verifies no misleading legend is created,
 - focused checks for same-region stacking where examples reveal gaps,
-- dynamic-domain behavior with a scale that updates after initial render,
-- legends do not contribute to source scale domains while still using the
-  actual source scale,
 - layout snapshots for stable side/corner examples if the structures are
   suitable.
 
