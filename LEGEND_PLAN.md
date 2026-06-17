@@ -454,19 +454,10 @@ Completed:
 - Extracted `GridChild` legend construction and per-orient legend bookkeeping
   into `gridChildLegends.js`.
 - Extracted local legend placement and rendering into `legendLayout.js`.
-
-Remaining:
-
-1. Split `gridViewLegend.test.js` by behavior.
-   - Separate symbol legend, gradient legend, and resolution/visibility
-     behavior.
-   - Tentative commit: `test(core): split grid view legend tests`.
-2. Prune overly internal legend assertions.
-   - Replace brittle generated-spec assertions with representative behavioral
-     assertions where easy.
-   - Leave internal assertions where the generated structure is the intended
-     contract.
-   - Tentative commit: `test(core): streamline legend assertions`.
+- Organized `gridViewLegend.test.js` into behavior-focused `describe` blocks
+  without splitting it into more files.
+- Pruned the most exhaustive generated-mark style assertions to representative
+  checks.
 
 ## Testing Notes
 
