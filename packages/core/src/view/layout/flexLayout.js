@@ -140,7 +140,7 @@ export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
     let minimumSize = 0;
     for (const size of items) {
         minimumSize +=
-            clampSize(z(size.px), size) + (isZeroSizeDef(size) ? 0 : spacing);
+            getSizeDefMinPx(size) + (isZeroSizeDef(size) ? 0 : spacing);
     }
     return Math.max(0, minimumSize - spacing);
 }
@@ -154,16 +154,27 @@ export function getLargestSize(items) {
     let grow = 0;
     let minPx = 0;
     let maxPx = undefined;
+    let hasMaxPx = true;
     for (const s of items) {
         px = Math.max(px, s.px ?? 0);
         grow = Math.max(grow, s.grow ?? 0);
-        minPx = Math.max(minPx, s.minPx ?? 0);
-        if (s.maxPx !== undefined) {
-            maxPx = maxPx === undefined ? s.maxPx : Math.max(maxPx, s.maxPx);
+        minPx = Math.max(minPx, getSizeDefMinPx(s));
+
+        const sizeMaxPx = getSizeDefMaxPx(s);
+        if (sizeMaxPx === undefined) {
+            hasMaxPx = false;
+        } else {
+            maxPx =
+                maxPx === undefined ? sizeMaxPx : Math.max(maxPx, sizeMaxPx);
         }
     }
 
-    return createSizeDef({ px, grow, minPx, maxPx });
+    return createSizeDef({
+        px,
+        grow,
+        minPx,
+        maxPx: hasMaxPx ? maxPx : undefined,
+    });
 }
 
 /**
@@ -180,18 +191,20 @@ export function isStretching(items) {
  */
 export function sumSizeDefs(sizeDefs) {
     const sum = { px: 0, grow: 0, minPx: 0, maxPx: 0 };
-    let hasMaxSize = true;
+    let hasMaxPx = true;
     for (const size of sizeDefs) {
         sum.px += z(size.px);
         sum.grow += z(size.grow);
-        sum.minPx += size.minPx ?? 0;
-        if (size.maxPx === undefined) {
-            hasMaxSize = false;
+        sum.minPx += getSizeDefMinPx(size);
+
+        const sizeMaxPx = getSizeDefMaxPx(size);
+        if (sizeMaxPx === undefined) {
+            hasMaxPx = false;
         } else {
-            sum.maxPx += size.maxPx;
+            sum.maxPx += sizeMaxPx;
         }
     }
-    if (!hasMaxSize) {
+    if (!hasMaxPx) {
         delete sum.maxPx;
     }
     return createSizeDef(sum);
@@ -509,6 +522,24 @@ function clampSize(size, sizeDef) {
 /**
  * @param {SizeDef} sizeDef
  */
+export function getSizeDefMinPx(sizeDef) {
+    return clampSize(z(sizeDef.px), sizeDef);
+}
+
+/**
+ * @param {SizeDef} sizeDef
+ * @returns {number | undefined}
+ */
+export function getSizeDefMaxPx(sizeDef) {
+    return (
+        sizeDef.maxPx ??
+        (z(sizeDef.grow) ? undefined : getSizeDefMinPx(sizeDef))
+    );
+}
+
+/**
+ * @param {SizeDef} sizeDef
+ */
 function hasSizeConstraints(sizeDef) {
     return sizeDef.minPx !== undefined || sizeDef.maxPx !== undefined;
 }
@@ -558,11 +589,14 @@ function createSizeDef(sizeDef) {
         result.grow = 1;
     }
 
-    if (sizeDef.minPx) {
+    if (sizeDef.minPx && sizeDef.minPx > z(sizeDef.px)) {
         result.minPx = sizeDef.minPx;
     }
 
-    if (sizeDef.maxPx !== undefined) {
+    if (
+        sizeDef.maxPx !== undefined &&
+        (z(result.grow) || sizeDef.maxPx < z(sizeDef.px))
+    ) {
         result.maxPx = sizeDef.maxPx;
     }
 

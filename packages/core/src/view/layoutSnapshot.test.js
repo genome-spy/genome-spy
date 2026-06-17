@@ -207,4 +207,164 @@ describe("layout snapshot helper", () => {
             coords: "Rectangle: x: 80, y: 0, width: 120, height: 120",
         });
     });
+
+    test("includes px children in nested concat minimum size", async () => {
+        const layout = await specToLayout(
+            {
+                spacing: 0,
+                vconcat: [
+                    {
+                        spacing: 0,
+                        vconcat: [
+                            {
+                                height: 40,
+                                data: { values: [{ x: 1, y: 2 }] },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                },
+                            },
+                            {
+                                height: { minPx: 80 },
+                                data: { values: [{ x: 3, y: 4 }] },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        data: { values: [{ x: 5, y: 6 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 200, 100)
+        );
+
+        // The nested vconcat should report fixed px children as part of its
+        // minimum, so the parent lets it overflow instead of compressing it.
+        expect(
+            layout.children.find((child) => child.viewName == "grid0")
+        ).toMatchObject({
+            coords: "Rectangle: x: 0, y: 0, width: 200, height: 120",
+        });
+        expect(
+            layout.children.find((child) => child.viewName == "grid1")
+        ).toMatchObject({
+            coords: "Rectangle: x: 0, y: 120, width: 200, height: 0",
+        });
+    });
+
+    test("includes px children in nested concat maximum size", async () => {
+        const layout = await specToLayout(
+            {
+                spacing: 0,
+                hconcat: [
+                    {
+                        spacing: 0,
+                        hconcat: [
+                            {
+                                width: 40,
+                                data: { values: [{ x: 1, y: 2 }] },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                },
+                            },
+                            {
+                                width: { maxPx: 80 },
+                                data: { values: [{ x: 3, y: 4 }] },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        data: { values: [{ x: 5, y: 6 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 200, 120)
+        );
+
+        // The nested hconcat's max includes the fixed-width child and the
+        // constrained child, so the parent caps it at 40 + 80.
+        expect(
+            layout.children.find((child) => child.viewName == "grid0")
+        ).toMatchObject({
+            coords: "Rectangle: x: 0, y: 0, width: 120, height: 120",
+        });
+        expect(
+            layout.children.find((child) => child.viewName == "grid1")
+        ).toMatchObject({
+            coords: "Rectangle: x: 120, y: 0, width: 80, height: 120",
+        });
+    });
 });

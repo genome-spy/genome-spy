@@ -2,6 +2,8 @@ import { primaryPositionalChannels } from "../../encoder/encoder.js";
 import {
     FlexDimensions,
     getLargestSize,
+    getSizeDefMaxPx,
+    getSizeDefMinPx,
     mapToPixelCoords,
     parseSizeDef,
     ZERO_SIZEDEF,
@@ -483,7 +485,7 @@ export default class GridView extends ContainerView {
         let px = 0;
         let minPx = 0;
         let maxPx = 0;
-        let hasMaxSize = true;
+        let hasMaxPx = true;
 
         const explicitSize =
             direction == "row" ? this.spec.height : this.spec.width;
@@ -514,11 +516,13 @@ export default class GridView extends ContainerView {
             // View
             px += size.view.px ?? 0;
             grow += size.view.grow ?? 0;
-            minPx += size.view.minPx ?? 0;
-            if (size.view.maxPx === undefined) {
-                hasMaxSize = false;
+            minPx += getSizeDefMinPx(size.view);
+
+            const viewMaxPx = getSizeDefMaxPx(size.view);
+            if (viewMaxPx === undefined) {
+                hasMaxPx = false;
             } else {
-                maxPx += size.view.maxPx;
+                maxPx += viewMaxPx;
             }
 
             // Axis/padding
@@ -536,7 +540,7 @@ export default class GridView extends ContainerView {
             px,
             grow,
             minPx: minPx || undefined,
-            maxPx: sizes.length && hasMaxSize ? maxPx : undefined,
+            maxPx: sizes.length && hasMaxPx ? maxPx : undefined,
         };
     }
 
