@@ -1,5 +1,8 @@
 import { isValueDef } from "../../encoder/encoder.js";
-import LegendView, { getExternalLegendOverhang } from "../legendView.js";
+import LegendView, {
+    LegendRegionView,
+    getExternalLegendOverhang,
+} from "../legendView.js";
 
 /**
  * @typedef {{
@@ -7,7 +10,12 @@ import LegendView, { getExternalLegendOverhang } from "../legendView.js";
  *     resolution: import("../../scales/legendResolution.js").default,
  * }} GridChildLegendEntry
  *
- * @typedef {Partial<Record<import("../../spec/legend.js").LegendOrient, GridChildLegendEntry[]>>} GridChildLegends
+ * @typedef {{
+ *     legendView: LegendRegionView,
+ *     entries: GridChildLegendEntry[],
+ * }} GridChildLegendRegion
+ *
+ * @typedef {Partial<Record<import("../../spec/legend.js").LegendOrient, GridChildLegendRegion>>} GridChildLegends
  */
 
 const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
@@ -147,20 +155,32 @@ export async function createGridChildLegend(
  * @param {LegendView} legend
  * @param {import("../../scales/legendResolution.js").default} resolution
  */
-export function addLegendView(legends, legend, resolution) {
+export async function addLegendView(legends, legend, resolution) {
     const orient = legend.legendProps.orient ?? "right";
-    legends[orient] ??= [];
-    legends[orient].push({ legendView: legend, resolution });
+    let region = legends[orient];
+
+    if (!region) {
+        const regionView = new LegendRegionView(
+            orient,
+            legend.context,
+            legend.layoutParent,
+            legend.dataParent
+        );
+        await regionView.initializeChildren();
+        region = { legendView: regionView, entries: [] };
+        legends[orient] = region;
+    }
+
+    region.legendView.addLegendView(legend);
+    region.entries.push({ legendView: legend, resolution });
 }
 
 /**
  * @param {GridChildLegends} legends
  */
 export function* iterateLegendViews(legends) {
-    for (const legendEntries of Object.values(legends)) {
-        for (const entry of legendEntries) {
-            yield entry.legendView;
-        }
+    for (const region of Object.values(legends)) {
+        yield region.legendView;
     }
 }
 
@@ -178,13 +198,10 @@ export function disposeLegendViews(legends) {
  * @param {import("../../spec/legend.js").LegendOrient} orient
  */
 export function getLegendOverhang(legends, orient) {
-    return (legends[orient] ?? []).reduce(
-        (sum, entry) =>
-            isActiveLegendEntry(entry)
-                ? sum + getExternalLegendOverhang(entry.legendView)
-                : sum,
-        0
-    );
+    const region = legends[orient];
+    return region && isActiveLegendRegion(region)
+        ? getExternalLegendOverhang(region.legendView)
+        : 0;
 }
 
 /**
@@ -192,4 +209,11 @@ export function getLegendOverhang(legends, orient) {
  */
 export function isActiveLegendEntry(entry) {
     return entry.resolution.hasVisibleNonChromeMember();
+}
+
+/**
+ * @param {GridChildLegendRegion} region
+ */
+export function isActiveLegendRegion(region) {
+    return region.entries.some(isActiveLegendEntry);
 }

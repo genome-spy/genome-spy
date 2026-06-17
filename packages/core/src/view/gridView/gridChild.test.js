@@ -36,35 +36,60 @@ function createLegendEntry(
     };
 }
 
+function createLegendRegion(
+    /** @type {ReturnType<typeof createLegendEntry>[]} */ entries
+) {
+    return {
+        legendView: {
+            getPerpendicularSize: () =>
+                Math.max(
+                    0,
+                    ...entries.map((entry) =>
+                        entry.legendView.getPerpendicularSize()
+                    )
+                ),
+            getExternalPadding: () => 8,
+        },
+        entries,
+    };
+}
+
 describe("GridChild legend layout", () => {
     test("right legend contributes to right overhang", () => {
         const child = createMinimalGridChild();
-        child.legends.right = /** @type {any} */ ([
-            createLegendEntry(42, true),
-            createLegendEntry(20, true),
-        ]);
+        child.legends.right = /** @type {any} */ (
+            createLegendRegion([
+                createLegendEntry(42, true),
+                createLegendEntry(20, true),
+            ])
+        );
 
-        expect(child.getOverhang().right).toBe(78);
+        expect(child.getOverhang().right).toBe(50);
     });
 
     test("hidden legend participants do not contribute overhang", () => {
         const child = createMinimalGridChild();
-        child.legends.right = /** @type {any} */ ([
-            createLegendEntry(42, true),
-            createLegendEntry(20, false),
-        ]);
+        child.legends.right = /** @type {any} */ (
+            createLegendRegion([
+                createLegendEntry(42, true),
+                createLegendEntry(20, false),
+            ])
+        );
 
         expect(child.getOverhang().right).toBe(50);
     });
 
     test("hidden legend participants keep their legend views", () => {
         const child = createMinimalGridChild();
-        child.legends.right = /** @type {any} */ ([
-            createLegendEntry(42, true),
-            createLegendEntry(20, false),
-        ]);
+        child.legends.right = /** @type {any} */ (
+            createLegendRegion([
+                createLegendEntry(42, true),
+                createLegendEntry(20, false),
+            ])
+        );
 
-        expect(Array.from(iterateLegendViews(child.legends))).toHaveLength(2);
+        expect(child.legends.right.entries).toHaveLength(2);
+        expect(Array.from(iterateLegendViews(child.legends))).toHaveLength(1);
     });
 });
 

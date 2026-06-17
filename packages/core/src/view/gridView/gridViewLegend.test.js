@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import ConcatView from "../concatView.js";
-import LegendView from "../legendView.js";
+import LegendView, { LegendRegionView } from "../legendView.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
@@ -83,25 +83,6 @@ describe("legend layout helpers", () => {
             expect(coords.width).toBe(80);
             expect(coords.height).toBe(176);
         });
-
-        test("stacks top-right legends inward from the corner", () => {
-            const legendView = /** @type {any} */ ({
-                getPerpendicularSize: () => 80,
-                getExternalPadding: () => 12,
-            });
-
-            const coords = translateLegendCoords(
-                Rectangle.create(10, 20, 300, 200),
-                "top-right",
-                legendView,
-                92
-            );
-
-            expect(coords.x).toBe(126);
-            expect(coords.y).toBe(32);
-            expect(coords.width).toBe(80);
-            expect(coords.height).toBe(176);
-        });
     });
 });
 
@@ -136,6 +117,11 @@ describe("GridView legends", () => {
         view
             .getDescendants()
             .filter((descendant) => descendant instanceof LegendView);
+
+    const getLegendRegions = (/** @type {ConcatView} */ view) =>
+        view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof LegendRegionView);
 
     const getLegendTitle = (/** @type {LegendView} */ legend) =>
         legend
@@ -238,6 +224,7 @@ describe("GridView legends", () => {
             expect(
                 getLegends(view).map((legend) => legend.legendProps.title)
             ).toEqual(["Group", "Difference"]);
+            expect(getLegendRegions(view)).toHaveLength(1);
         });
     });
 

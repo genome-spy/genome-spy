@@ -886,7 +886,7 @@ export default class GridChild {
                         legendOwner,
                         this.layoutParent
                     );
-                    addLegendView(this.legends, legend, resolution);
+                    await addLegendView(this.legends, legend, resolution);
                 }
             }
         }

@@ -544,13 +544,166 @@ export function createGradientLegendSpec({ channel, legend, format }) {
 }
 
 /**
- * @param {LegendView | undefined} legendView
+ * @param {{
+ *     getPerpendicularSize: () => number,
+ *     getExternalPadding: () => number
+ * } | undefined} legendView
  * @returns {number}
  */
 export function getExternalLegendOverhang(legendView) {
     return legendView
         ? legendView.getPerpendicularSize() + legendView.getExternalPadding()
         : 0;
+}
+
+export class LegendRegionView extends ContainerView {
+    /** @type {import("./view.js").default | undefined} */
+    #child;
+
+    /** @type {LegendView[]} */
+    #legendViews = [];
+
+    /**
+     * @param {import("../spec/legend.js").LegendOrient} orient
+     * @param {import("../types/viewContext.js").default} context
+     * @param {import("./containerView.js").default} layoutParent
+     * @param {import("./view.js").default} dataParent
+     */
+    constructor(orient, context, layoutParent, dataParent) {
+        super(
+            {
+                name: "legend_region_" + orient,
+                spacing: 0,
+                vconcat: [],
+            },
+            context,
+            layoutParent,
+            dataParent,
+            "legend_region_" + orient,
+            {
+                blockEncodingInheritance: true,
+            }
+        );
+
+        this.needsAxes = { x: false, y: false };
+        this.orient = orient;
+
+        markViewAsNonAddressable(this, { skipSubtree: true });
+        markViewAsChrome(this, { skipSubtree: true });
+    }
+
+    async initializeChildren() {
+        this.#child = await this.context.createOrImportView(
+            {
+                name: "legendStack",
+                spacing: 0,
+                vconcat: [],
+            },
+            this,
+            this,
+            this.getNextAutoName("legendStack")
+        );
+
+        markViewAsNonAddressable(this.#child, { skipSubtree: true });
+        markViewAsChrome(this.#child, { skipSubtree: true });
+    }
+
+    /**
+     * @param {LegendView} legendView
+     */
+    addLegendView(legendView) {
+        if (!this.#child) {
+            throw new Error("Legend region has not been initialized!");
+        }
+
+        legendView.layoutParent =
+            /** @type {import("./containerView.js").default} */ (this.#child);
+        legendView.setStacked();
+        this.#legendViews.push(legendView);
+        /** @type {any} */ (this.#child).appendChildView(legendView);
+    }
+
+    /**
+     * @returns {IterableIterator<import("./view.js").default>}
+     */
+    *[Symbol.iterator]() {
+        if (this.#child) {
+            yield this.#child;
+        }
+    }
+
+    getSize() {
+        const mainSize = { grow: 1 };
+        const perpendicularSize = { px: this.getPerpendicularSize() };
+
+        if (this.orient == "top" || this.orient == "bottom") {
+            return new FlexDimensions(mainSize, perpendicularSize);
+        } else {
+            return new FlexDimensions(perpendicularSize, mainSize);
+        }
+    }
+
+    getPerpendicularSize() {
+        if (this.orient == "top" || this.orient == "bottom") {
+            return this.#legendViews.reduce(
+                (sum, legendView) => sum + legendView.getPerpendicularSize(),
+                0
+            );
+        } else {
+            return Math.max(
+                0,
+                ...this.#legendViews.map((legendView) =>
+                    legendView.getPerpendicularSize()
+                )
+            );
+        }
+    }
+
+    getExternalPadding() {
+        return Math.max(
+            0,
+            ...this.#legendViews.map((legendView) =>
+                legendView.getExternalPadding()
+            )
+        );
+    }
+
+    getParallelSize() {
+        return this.#legendViews.reduce(
+            (sum, legendView) => sum + legendView.getStackedParallelSize(),
+            0
+        );
+    }
+
+    isPickingSupported() {
+        return false;
+    }
+
+    /**
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("./layout/rectangle.js").default} coords
+     * @param {import("../types/rendering.js").RenderingOptions} [options]
+     */
+    render(context, coords, options = {}) {
+        super.render(context, coords, options);
+
+        if (!this.isConfiguredVisible()) {
+            return;
+        }
+
+        context.pushView(this, coords);
+        this.#child?.render(context, coords, options);
+        context.popView(this);
+    }
+
+    /**
+     * @param {import("../utils/interaction.js").default} event
+     */
+    propagateInteraction(event) {
+        this.handleInteraction(event, true);
+        this.#child?.propagateInteraction(event);
+        this.handleInteraction(event, false);
+    }
 }
 
 export default class LegendView extends ContainerView {
@@ -561,6 +714,8 @@ export default class LegendView extends ContainerView {
 
     /** @type {"symbol" | "gradient"} */
     #type;
+
+    #stacked = false;
 
     /** @type {UnitView[]} */
     #labelViews = [];
@@ -688,6 +843,18 @@ export default class LegendView extends ContainerView {
         const mainSize = { grow: 1 };
         const perpendicularSize = { px: this.getPerpendicularSize() };
 
+        if (this.#stacked) {
+            const parallelSize = { px: this.getStackedParallelSize() };
+            if (
+                this.legendProps.orient == "top" ||
+                this.legendProps.orient == "bottom"
+            ) {
+                return new FlexDimensions(mainSize, perpendicularSize);
+            } else {
+                return new FlexDimensions(perpendicularSize, parallelSize);
+            }
+        }
+
         if (
             this.legendProps.orient == "top" ||
             this.legendProps.orient == "bottom"
@@ -704,6 +871,25 @@ export default class LegendView extends ContainerView {
 
     getExternalPadding() {
         return this.legendProps.padding ?? 0;
+    }
+
+    setStacked() {
+        this.#stacked = true;
+        this.invalidateSizeCache();
+    }
+
+    getStackedParallelSize() {
+        const title = this.legendProps.title
+            ? (this.legendProps.titleFontSize ?? 11) +
+              (this.legendProps.titlePadding ?? 5)
+            : 0;
+
+        return (
+            title +
+            (this.#type == "gradient"
+                ? getMinimumLegendExtent(this.#type, this.legendProps)
+                : DEFAULT_SYMBOL_LEGEND_EXTENT)
+        );
     }
 
     #scheduleAutoExtentMeasurement() {
