@@ -313,19 +313,20 @@ Implemented behavior:
   legends for the views it owns.
 - Multiple resolved legends with the same orient are stacked locally instead of
   rejected.
+- Legend views remain materialized, but their local overhang and rendering are
+  linked to the current visibility of the non-chrome participants in their
+  `LegendResolution`.
 
 Do not add a public `resolve.legend` spec surface yet. A public legend
 resolution API can be designed later if shared/root/named-area legends need it.
 
 Remaining resolution follow-ups:
 
-1. Add visible-member filtering if hidden or dynamically removed views can still
-   contribute stale legend members.
-2. Decide whether shared non-position scales should eventually merge legends
+1. Decide whether shared non-position scales should eventually merge legends
    across sibling `GridChild`s or remain local until named guide areas exist.
-3. Keep inherited symbol styling deterministic by using the first contributing
+2. Keep inherited symbol styling deterministic by using the first contributing
    source view for now; revisit only if real multi-view conflicts appear.
-4. Add one focused behavior test for a non-redundant same-orient pair such as
+3. Add one focused behavior test for a non-redundant same-orient pair such as
    color plus quantitative size if the existing same-orient test does not cover
    enough user-visible behavior.
 
