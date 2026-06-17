@@ -20,6 +20,7 @@ import Rectangle from "../layout/rectangle.js";
 import createTitle, { resolveTitleSpec } from "../title.js";
 import UnitView from "../unitView.js";
 import {
+    isChromeView,
     markViewAsChrome,
     markViewAsNonAddressable,
 } from "../viewSelectors.js";
@@ -46,6 +47,23 @@ import {
  *     resolution: import("../../scales/axisResolution.js").default,
  * }} AxisCandidate
  */
+
+/**
+ * @param {import("../view.js").default} view
+ * @returns {UnitView[]}
+ */
+function getLegendOwners(view) {
+    if (isChromeView(view) || view.getLayoutAncestors().some(isChromeView)) {
+        return [];
+    } else if (view instanceof UnitView) {
+        return [view];
+    } else if (view instanceof LayerView) {
+        return Array.from(view).flatMap((child) => getLegendOwners(child));
+    } else {
+        return [];
+    }
+}
+
 export default class GridChild {
     /**
      * Users guide:
@@ -858,12 +876,14 @@ export default class GridChild {
             // TODO: Axis grid
         }
 
-        if (view instanceof UnitView) {
-            for (const resolution of Object.values(view.resolutions.legend)) {
+        for (const legendOwner of getLegendOwners(view)) {
+            for (const resolution of Object.values(
+                legendOwner.resolutions.legend
+            )) {
                 for (const definition of resolution.getLegendDefs()) {
                     const legend = await createGridChildLegend(
                         definition,
-                        view,
+                        legendOwner,
                         this.layoutParent
                     );
                     addLegendView(this.legends, legend, resolution);

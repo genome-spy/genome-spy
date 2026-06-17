@@ -137,6 +137,71 @@ describe("GridView legends", () => {
                 { value: "Japan", label: "Japan" },
             ]);
         });
+
+        test("creates legends for layer children", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                {
+                                    x: 1,
+                                    signal: 2,
+                                    trend: 3,
+                                    group: "alpha",
+                                    difference: 1,
+                                },
+                                {
+                                    x: 2,
+                                    signal: 3,
+                                    trend: 4,
+                                    group: "beta",
+                                    difference: 2,
+                                },
+                            ],
+                        },
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                        },
+                        layer: [
+                            {
+                                mark: "point",
+                                encoding: {
+                                    y: {
+                                        field: "signal",
+                                        type: "quantitative",
+                                    },
+                                    color: {
+                                        field: "group",
+                                        type: "nominal",
+                                        legend: { title: "Group" },
+                                    },
+                                },
+                            },
+                            {
+                                mark: "point",
+                                encoding: {
+                                    y: {
+                                        field: "trend",
+                                        type: "quantitative",
+                                    },
+                                    size: {
+                                        field: "difference",
+                                        type: "quantitative",
+                                        legend: { title: "Difference" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            expect(
+                getLegends(view).map((legend) => legend.legendProps.title)
+            ).toEqual(["Group", "Difference"]);
+        });
     });
 
     describe("titles and labels", () => {
