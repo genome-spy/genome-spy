@@ -12,6 +12,13 @@ if (specUrl) {
         plugins.push(appAgent({ baseUrl: agentBaseUrl }));
     }
 
+    const mlBaseUrl = import.meta.env.VITE_ML_BASE_URL;
+    const mlFastaUrl = import.meta.env.VITE_ML_FASTA_URL;
+    if (mlBaseUrl && mlFastaUrl) {
+        const { mlPlugin } = await import("@genome-spy/app-agent");
+        plugins.push(mlPlugin({ baseUrl: mlBaseUrl, fastaUrl: mlFastaUrl }));
+    }
+
     embed(document.body, specUrl, { plugins });
 } else {
     document.body.innerHTML = `
