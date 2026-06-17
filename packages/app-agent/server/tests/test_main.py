@@ -77,6 +77,32 @@ class StreamingProvider:
         )
 
 
+class StubMlResponse:
+    def __init__(self, url: str, payload: dict) -> None:
+        self._url = url
+        self._payload = payload
+        self.status_code = 200
+        self.text = ""
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict:
+        return {
+            "proxiedUrl": self._url,
+            "payload": self._payload,
+        }
+
+
+class StubMlClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict]] = []
+
+    async def post(self, url: str, json: dict) -> StubMlResponse:
+        self.calls.append((url, json))
+        return StubMlResponse(url, json)
+
+
 def reset_settings_cache() -> None:
     get_settings.cache_clear()
 
@@ -124,6 +150,55 @@ def test_agent_turn_endpoint_returns_normalized_response(monkeypatch) -> None:
         "type": "answer",
         "message": "The beta-value track encodes it.",
     }
+
+
+def test_evo2_proxy_posts_to_evo2_endpoint(monkeypatch) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    monkeypatch.setenv("ML_EVO2_BASE_URL", "http://dgx.example:8011")
+    reset_settings_cache()
+    client = TestClient(app)
+    ml_client = StubMlClient()
+    client.app.state.ml_client = ml_client
+
+    response = client.post(
+        "/v1/evo2",
+        json={"task": "score", "variants": [{"chrom": "chr17", "pos": 1}]},
+    )
+
+    assert response.status_code == 200
+    assert ml_client.calls == [
+        (
+            "http://dgx.example:8011/evo2",
+            {"task": "score", "variants": [{"chrom": "chr17", "pos": 1}]},
+        )
+    ]
+
+
+def test_alphagenome_proxy_posts_to_alphagenome_endpoint(monkeypatch) -> None:
+    monkeypatch.setenv("GENOMESPY_AGENT_MODEL", "test-model")
+    monkeypatch.setenv("ML_ALPHAGENOME_BASE_URL", "http://dgx.example:8002")
+    reset_settings_cache()
+    client = TestClient(app)
+    ml_client = StubMlClient()
+    client.app.state.ml_client = ml_client
+
+    response = client.post(
+        "/v1/alphagenome",
+        json={"task": "score", "seq": "ACGT", "snvs": [], "heads": ["atac"]},
+    )
+
+    assert response.status_code == 200
+    assert ml_client.calls == [
+        (
+            "http://dgx.example:8002/alphagenome",
+            {
+                "task": "score",
+                "seq": "ACGT",
+                "snvs": [],
+                "heads": ["atac"],
+            },
+        )
+    ]
 
 
 def test_agent_turn_endpoint_logs_token_summary(

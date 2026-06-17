@@ -123,10 +123,11 @@ class ScoreRequest(BaseModel):
 class ScoreResponse(BaseModel):
     """Per-track alt − ref scores for one or more variant pairs.
 
-    ``scores[pair_idx][head]`` is a list of floats, one per output track channel.
+    Most heads return a flat list of per-track-channel floats. Matrix-valued
+    heads such as ``contact_maps`` return a nested list instead.
     """
 
-    scores: list[dict[str, list[float]]]
+    scores: list[dict[str, list[float] | list[list[float]]]]
 
 
 class EmbedRequest(BaseModel):

@@ -120,7 +120,7 @@ async def proxy_evo2(request: Request) -> dict:
     friendly message instead of an opaque network failure.
     """
     body = await request.json()
-    url = get_settings().evo2_base_url + "/predict"
+    url = get_settings().evo2_base_url + "/evo2"
     try:
         resp = await request.app.state.ml_client.post(url, json=body)
         resp.raise_for_status()
@@ -146,7 +146,7 @@ async def proxy_alphagenome(request: Request) -> dict:
     context window take roughly 1–2 seconds per sequence on a single GPU.
     """
     body = await request.json()
-    url = get_settings().alphagenome_base_url + "/predict"
+    url = get_settings().alphagenome_base_url + "/alphagenome"
     try:
         resp = await request.app.state.ml_client.post(url, json=body)
         resp.raise_for_status()

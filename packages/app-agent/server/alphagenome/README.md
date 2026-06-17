@@ -113,7 +113,9 @@ Valid heads: `atac`, `dnase`, `procap`, `cage`, `rna_seq`, `chip_tf`, `chip_hist
 }
 ```
 
-`scores[pair_idx][head]` is a list of floats, one per track channel (including padding).
+`scores[pair_idx][head]` is usually a list of floats, one per track channel
+(including padding). Matrix-valued heads such as `contact_maps` return a nested
+list instead.
 `window_size` controls how many bp around the center of the sequence are summed when
 computing the alt − ref delta. Default 501 bp matches the AlphaGenome paper's
 `CenterMaskScorer`.
