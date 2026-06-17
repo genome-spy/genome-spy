@@ -14,8 +14,6 @@ import { isChromeView } from "../view/viewSelectors.js";
  * @typedef {object} LegendResolutionMember
  * @prop {import("../view/unitView.js").default} view
  * @prop {import("../spec/channel.js").ChannelWithScale} channel
- * @prop {import("../spec/channel.js").ChannelDefWithScale} channelDef
- * @prop {import("../spec/channel.js").ChannelWithScale} targetChannel
  *
  * @typedef {{
  *     channel: import("../spec/channel.js").ChannelWithScale,

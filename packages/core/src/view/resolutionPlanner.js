@@ -254,7 +254,6 @@ const registerLegendResolutionMembers = (view, legendMembers) => {
     for (const {
         view: resolutionView,
         channel,
-        channelDef,
         targetChannel,
     } of legendMembers) {
         if (isPositionalChannel(channel)) {
@@ -277,8 +276,6 @@ const registerLegendResolutionMembers = (view, legendMembers) => {
                 /** @type {import("../spec/channel.js").ChannelWithScale} */ (
                     channel
                 ),
-            channelDef,
-            targetChannel: legendChannel,
         });
         view.registerDisposer(() => {
             if (
