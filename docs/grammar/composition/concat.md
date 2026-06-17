@@ -65,8 +65,10 @@ between the child views is added to the total absolute width.
 
 Views' size properties (`width` and `height`) accept both SizeDef objects and
 shorthands. The SizeDef objects contain either or both of `px` and `grow`
-properties. Numbers are interpreted as as absolute sizes, and `"container"` is
-the same as `{ grow: 1 }`. Undefined sizes generally default to `"container"`.
+properties, and may constrain the final size with `minPx` and `maxPx`.
+Numbers are interpreted as absolute sizes, and `"container"` is the same as
+`{ grow: 1 }`. A SizeDef with only `minPx` or `maxPx` also uses `{ grow: 1 }`.
+Undefined sizes generally default to `"container"`.
 
 Concatenation operators can nested flexibly to build complex layouts as in the
 following example.

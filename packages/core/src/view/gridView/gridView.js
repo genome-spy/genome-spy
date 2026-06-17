@@ -392,6 +392,14 @@ export default class GridView extends ContainerView {
             return {
                 px: Math.max((size.px ?? 0) - overhangSize, 0),
                 grow: size.grow,
+                minPx:
+                    size.minPx === undefined
+                        ? undefined
+                        : Math.max(size.minPx - overhangSize, 0),
+                maxPx:
+                    size.maxPx === undefined
+                        ? undefined
+                        : Math.max(size.maxPx - overhangSize, 0),
             };
         };
 
@@ -473,6 +481,9 @@ export default class GridView extends ContainerView {
     #getFlexSize(direction) {
         let grow = 0;
         let px = 0;
+        let minPx = 0;
+        let maxPx = 0;
+        let hasMaxSize = true;
 
         const explicitSize =
             direction == "row" ? this.spec.height : this.spec.width;
@@ -486,6 +497,8 @@ export default class GridView extends ContainerView {
             if (i > 0) {
                 // Spacing
                 px += this.#spacing;
+                minPx += this.#spacing;
+                maxPx += this.#spacing;
             }
 
             if (i == 0 || this.wrappingFacet) {
@@ -495,13 +508,23 @@ export default class GridView extends ContainerView {
 
             // Axis/padding
             px += size.axisBefore;
+            minPx += size.axisBefore;
+            maxPx += size.axisBefore;
 
             // View
             px += size.view.px ?? 0;
             grow += size.view.grow ?? 0;
+            minPx += size.view.minPx ?? 0;
+            if (size.view.maxPx === undefined) {
+                hasMaxSize = false;
+            } else {
+                maxPx += size.view.maxPx;
+            }
 
             // Axis/padding
             px += size.axisAfter;
+            minPx += size.axisAfter;
+            maxPx += size.axisAfter;
 
             if (i == sizes.length - 1 || this.wrappingFacet) {
                 //Footer
@@ -509,7 +532,12 @@ export default class GridView extends ContainerView {
             }
         }
 
-        return { px, grow };
+        return {
+            px,
+            grow,
+            minPx: minPx || undefined,
+            maxPx: sizes.length && hasMaxSize ? maxPx : undefined,
+        };
     }
 
     /**

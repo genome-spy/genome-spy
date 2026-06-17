@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { specToLayout } from "./testUtils.js";
+import Rectangle from "./layout/rectangle.js";
 
 describe("layout snapshot helper", () => {
     test("captures a shared-axis concat layout", async () => {
@@ -89,5 +90,121 @@ describe("layout snapshot helper", () => {
             "viewName": "viewRoot",
           }
         `);
+    });
+
+    test("applies SizeDef constraints in concat child layout", async () => {
+        const layout = await specToLayout(
+            {
+                spacing: 0,
+                vconcat: [
+                    {
+                        height: { grow: 1, minPx: 80 },
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                    {
+                        height: { grow: 1 },
+                        data: { values: [{ x: 3, y: 4 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 200, 120)
+        );
+
+        // Public vconcat specs should pass SizeDef constraints to flex layout.
+        expect(
+            layout.children.find((child) => child.viewName == "grid0")
+        ).toMatchObject({
+            coords: "Rectangle: x: 0, y: 0, width: 200, height: 80",
+        });
+        expect(
+            layout.children.find((child) => child.viewName == "grid1")
+        ).toMatchObject({
+            coords: "Rectangle: x: 0, y: 80, width: 200, height: 40",
+        });
+    });
+
+    test("applies SizeDef constraints in hconcat child layout", async () => {
+        const layout = await specToLayout(
+            {
+                spacing: 0,
+                hconcat: [
+                    {
+                        width: { grow: 1, maxPx: 80 },
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                    {
+                        width: { grow: 1 },
+                        data: { values: [{ x: 3, y: 4 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 200, 120)
+        );
+
+        // Public hconcat specs should pass SizeDef constraints to flex layout.
+        expect(
+            layout.children.find((child) => child.viewName == "grid0")
+        ).toMatchObject({
+            coords: "Rectangle: x: 0, y: 0, width: 80, height: 120",
+        });
+        expect(
+            layout.children.find((child) => child.viewName == "grid1")
+        ).toMatchObject({
+            coords: "Rectangle: x: 80, y: 0, width: 120, height: 120",
+        });
     });
 });

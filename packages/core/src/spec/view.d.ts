@@ -27,6 +27,16 @@ export interface SizeDef {
      * for details.
      */
     grow?: number;
+
+    /**
+     * Minimum size in pixels.
+     */
+    minPx?: number;
+
+    /**
+     * Maximum size in pixels.
+     */
+    maxPx?: number;
 }
 
 // TODO: Perhaps this should be in "utils"

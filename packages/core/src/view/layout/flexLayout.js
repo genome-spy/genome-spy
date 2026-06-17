@@ -12,6 +12,8 @@ import { isStepSize } from "../view.js";
  * @typedef {object} SizeDef Size definition inspired by CSS flexbox
  * @prop {number} [px] Size in pixels
  * @prop {number} [grow] Share of remaining space
+ * @prop {number} [minPx] Minimum size in pixels
+ * @prop {number} [maxPx] Maximum size in pixels
  *
  * @typedef {object} LocSize One-dimensional location and size
  * @prop {number} location
@@ -37,16 +39,17 @@ export function mapToPixelCoords(
     spacing = spacing || 0;
     offset = offset || 0;
 
-    let totalPx = 0;
-    let totalGrow = 0;
+    const itemSizes = resolveItemSizes(items, containerSize, spacing);
 
-    for (const size of items) {
-        totalPx += z(size.px) + (isZeroSizeDef(size) ? 0 : spacing);
-        totalGrow += z(size.grow);
+    let totalSize = 0;
+    let nonZeroCount = 0;
+    for (let i = 0; i < items.length; i++) {
+        totalSize += itemSizes[i];
+        if (!isZeroSizeDef(items[i])) {
+            nonZeroCount++;
+        }
     }
-    totalPx -= spacing;
-
-    const remainingSpace = Math.max(0, containerSize - totalPx);
+    const totalPx = totalSize + Math.max(0, nonZeroCount - 1) * spacing;
 
     /** @type {function(number):number} x */
     const round =
@@ -57,9 +60,8 @@ export function mapToPixelCoords(
     /**
      * Buffer zero-sized items so that their locations can be spread evenly.
      * They can then be interpolated nicely.
-     * @type {SizeDef[]}
      */
-    const zeroBuffer = [];
+    let zeroCount = 0;
 
     /** @type {LocSize[]} */
     const results = [];
@@ -70,7 +72,7 @@ export function mapToPixelCoords(
      * @param {boolean} inMiddle
      */
     const flushZeroBuffer = (inMiddle) => {
-        const n = zeroBuffer.length;
+        const n = zeroCount;
         if (!n) {
             return;
         }
@@ -86,7 +88,7 @@ export function mapToPixelCoords(
         }
         x += s;
 
-        zeroBuffer.length = 0;
+        zeroCount = 0;
     };
 
     let x = reverse ? Math.max(containerSize, totalPx) : 0 + offset;
@@ -100,13 +102,11 @@ export function mapToPixelCoords(
         const size = items[i];
 
         if (isZeroSizeDef(size)) {
-            zeroBuffer.push(size);
+            zeroCount++;
         } else {
             flushZeroBuffer(results.length > 0);
 
-            const advance =
-                z(size.px) +
-                (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
+            const advance = itemSizes[i];
 
             if (reverse) {
                 x -= advance;
@@ -139,7 +139,8 @@ export function mapToPixelCoords(
 export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
     let minimumSize = 0;
     for (const size of items) {
-        minimumSize += z(size.px) + (isZeroSizeDef(size) ? 0 : spacing);
+        minimumSize +=
+            clampSize(z(size.px), size) + (isZeroSizeDef(size) ? 0 : spacing);
     }
     return Math.max(0, minimumSize - spacing);
 }
@@ -151,12 +152,18 @@ export function getMinimumSize(items, { spacing } = { spacing: 0 }) {
 export function getLargestSize(items) {
     let px = 0;
     let grow = 0;
+    let minPx = 0;
+    let maxPx = undefined;
     for (const s of items) {
         px = Math.max(px, s.px ?? 0);
         grow = Math.max(grow, s.grow ?? 0);
+        minPx = Math.max(minPx, s.minPx ?? 0);
+        if (s.maxPx !== undefined) {
+            maxPx = maxPx === undefined ? s.maxPx : Math.max(maxPx, s.maxPx);
+        }
     }
 
-    return { px, grow };
+    return createSizeDef({ px, grow, minPx, maxPx });
 }
 
 /**
@@ -172,12 +179,22 @@ export function isStretching(items) {
  * @param {SizeDef[]} sizeDefs
  */
 export function sumSizeDefs(sizeDefs) {
-    const sum = { px: 0, grow: 0 };
+    const sum = { px: 0, grow: 0, minPx: 0, maxPx: 0 };
+    let hasMaxSize = true;
     for (const size of sizeDefs) {
         sum.px += z(size.px);
         sum.grow += z(size.grow);
+        sum.minPx += size.minPx ?? 0;
+        if (size.maxPx === undefined) {
+            hasMaxSize = false;
+        } else {
+            sum.maxPx += size.maxPx;
+        }
     }
-    return sum;
+    if (!hasMaxSize) {
+        delete sum.maxPx;
+    }
+    return createSizeDef(sum);
 }
 
 export class FlexDimensions {
@@ -218,14 +235,8 @@ export class FlexDimensions {
      */
     #addPx(width, height) {
         return new FlexDimensions(
-            {
-                px: (this.width.px ?? 0) + width,
-                grow: this.width.grow,
-            },
-            {
-                px: (this.height.px ?? 0) + height,
-                grow: this.height.grow,
-            }
+            addPxToSizeDef(this.width, width),
+            addPxToSizeDef(this.height, height)
         );
     }
 
@@ -260,7 +271,7 @@ export const ZERO_FLEXDIMENSIONS = new FlexDimensions(
  * @param {SizeDef} sizeDef
  */
 export function isZeroSizeDef(sizeDef) {
-    return !sizeDef.px && !sizeDef.grow;
+    return !sizeDef.px && !sizeDef.grow && !sizeDef.minPx;
 }
 
 /**
@@ -278,7 +289,13 @@ function z(value) {
  * @returns {spec is SizeDef}
  */
 export function isSizeDef(spec) {
-    return spec && (isNumber(spec.px) || isNumber(spec.grow));
+    return (
+        spec &&
+        (isNumber(spec.px) ||
+            isNumber(spec.grow) ||
+            isNumber(spec.minPx) ||
+            isNumber(spec.maxPx))
+    );
 }
 
 /**
@@ -290,7 +307,8 @@ export function parseSizeDef(size) {
     if (isStepSize(size)) {
         throw new Error("parseSizeDef does not accept step-based sizes.");
     } else if (isSizeDef(size)) {
-        return size;
+        validateSizeDef(size);
+        return createSizeDef(size);
     } else if (isNumber(size)) {
         return { px: size, grow: 0 };
     } else if (size === "container") {
@@ -301,4 +319,252 @@ export function parseSizeDef(size) {
     }
 
     throw new Error(`Invalid sizeDef: ${size}`);
+}
+
+/**
+ * Resolves final item sizes using GenomeSpy's simplified flex model. It is
+ * inspired by CSS Flexbox §9.7 "Resolving Flexible Lengths", but only covers
+ * grow-based free-space distribution and min/max constraints.
+ *
+ * https://www.w3.org/TR/css-flexbox-1/#resolve-flexible-lengths
+ *
+ * @param {SizeDef[]} items
+ * @param {number} containerSize
+ * @param {number} spacing
+ * @returns {number[]}
+ */
+function resolveItemSizes(items, containerSize, spacing) {
+    let hasConstraints = false;
+    for (const item of items) {
+        validateSizeDef(item);
+        hasConstraints ||= hasSizeConstraints(item);
+    }
+
+    if (!hasConstraints) {
+        return resolveUnconstrainedItemSizes(items, containerSize, spacing);
+    }
+
+    /** @type {number[]} */
+    const sizes = Array(items.length).fill(0);
+    /** @type {number[]} */
+    const flexIndices = [];
+    for (let i = 0; i < items.length; i++) {
+        if (!isZeroSizeDef(items[i])) {
+            flexIndices.push(i);
+        }
+    }
+
+    const gapSize = Math.max(0, flexIndices.length - 1) * spacing;
+    const availableSize = Math.max(0, containerSize - gapSize);
+
+    // Fixed-size items do not participate in flex growth, but min/max still
+    // clamp them just like flex items with flex-grow: 0.
+    /** @type {Set<number>} */
+    const frozen = new Set();
+
+    for (const index of flexIndices) {
+        const item = items[index];
+        if (!z(item.grow)) {
+            sizes[index] = clampSize(z(item.px), item);
+            frozen.add(index);
+        }
+    }
+
+    while (true) {
+        let totalBase = 0;
+        let totalGrow = 0;
+        let frozenSize = 0;
+
+        // Frozen items have their final size. Unfrozen items still contribute
+        // their base px size and grow factor to the next free-space pass.
+        for (const index of flexIndices) {
+            if (frozen.has(index)) {
+                frozenSize += sizes[index];
+            } else {
+                totalBase += z(items[index].px);
+                totalGrow += z(items[index].grow);
+            }
+        }
+
+        if (!totalGrow) {
+            for (const index of flexIndices) {
+                if (!frozen.has(index)) {
+                    sizes[index] = clampSize(z(items[index].px), items[index]);
+                    frozen.add(index);
+                }
+            }
+            break;
+        }
+
+        const remainingSize = Math.max(
+            0,
+            availableSize - frozenSize - totalBase
+        );
+        let totalViolation = 0;
+        /** @type {number[]} */
+        const minViolations = [];
+        /** @type {number[]} */
+        const maxViolations = [];
+
+        // CSS Flexbox §9.7 first clamps every unfrozen item, then uses the
+        // aggregate violation to decide which side freezes. We follow that
+        // part so mixed min/max violations converge the same way.
+        for (const index of flexIndices) {
+            if (frozen.has(index)) {
+                continue;
+            }
+
+            const item = items[index];
+            const targetSize =
+                z(item.px) + (z(item.grow) / totalGrow) * remainingSize;
+            const clampedSize = clampSize(targetSize, item);
+            sizes[index] = clampedSize;
+
+            const violation = clampedSize - targetSize;
+            totalViolation += violation;
+            if (violation > 0) {
+                minViolations.push(index);
+            } else if (violation < 0) {
+                maxViolations.push(index);
+            }
+        }
+
+        if (!minViolations.length && !maxViolations.length) {
+            break;
+        } else if (totalViolation > 0) {
+            for (const index of minViolations) {
+                frozen.add(index);
+            }
+        } else if (totalViolation < 0) {
+            for (const index of maxViolations) {
+                frozen.add(index);
+            }
+        } else {
+            for (const index of flexIndices) {
+                frozen.add(index);
+            }
+        }
+    }
+
+    return sizes;
+}
+
+/**
+ * Fast path for the common SizeDef shape that only uses px and grow.
+ *
+ * @param {SizeDef[]} items
+ * @param {number} containerSize
+ * @param {number} spacing
+ * @returns {number[]}
+ */
+function resolveUnconstrainedItemSizes(items, containerSize, spacing) {
+    let totalPx = 0;
+    let totalGrow = 0;
+
+    for (const size of items) {
+        totalPx += z(size.px) + (isZeroSizeDef(size) ? 0 : spacing);
+        totalGrow += z(size.grow);
+    }
+    totalPx -= spacing;
+
+    const remainingSpace = Math.max(0, containerSize - totalPx);
+
+    /** @type {number[]} */
+    const sizes = Array(items.length);
+    for (let i = 0; i < items.length; i++) {
+        const size = items[i];
+        sizes[i] = isZeroSizeDef(size)
+            ? 0
+            : z(size.px) +
+              (totalGrow ? (z(size.grow) / totalGrow) * remainingSpace : 0);
+    }
+
+    return sizes;
+}
+
+/**
+ * @param {SizeDef} size
+ */
+function validateSizeDef(size) {
+    if (
+        size.minPx !== undefined &&
+        size.maxPx !== undefined &&
+        size.minPx > size.maxPx
+    ) {
+        throw new Error("SizeDef minPx cannot be greater than maxPx.");
+    }
+}
+
+/**
+ * @param {number} size
+ * @param {SizeDef} sizeDef
+ */
+function clampSize(size, sizeDef) {
+    return Math.min(
+        Math.max(size, sizeDef.minPx ?? 0),
+        sizeDef.maxPx ?? Infinity
+    );
+}
+
+/**
+ * @param {SizeDef} sizeDef
+ */
+function hasSizeConstraints(sizeDef) {
+    return sizeDef.minPx !== undefined || sizeDef.maxPx !== undefined;
+}
+
+/**
+ * @param {SizeDef} sizeDef
+ * @param {number} px
+ * @returns {SizeDef}
+ */
+function addPxToSizeDef(sizeDef, px) {
+    return createSizeDef({
+        px: (sizeDef.px ?? 0) + px,
+        grow: sizeDef.grow,
+        minPx:
+            sizeDef.minPx === undefined
+                ? undefined
+                : Math.max(0, sizeDef.minPx + px),
+        maxPx:
+            sizeDef.maxPx === undefined
+                ? undefined
+                : Math.max(0, sizeDef.maxPx + px),
+    });
+}
+
+/**
+ * @param {SizeDef} sizeDef
+ * @returns {SizeDef}
+ */
+function createSizeDef(sizeDef) {
+    /** @type {SizeDef} */
+    const result = {};
+    const hasPx = sizeDef.px !== undefined;
+    const hasGrow = sizeDef.grow !== undefined;
+    const hasConstraints = hasSizeConstraints(sizeDef);
+
+    if (sizeDef.px) {
+        result.px = sizeDef.px;
+    } else if (sizeDef.px === 0) {
+        result.px = 0;
+    }
+
+    if (sizeDef.grow) {
+        result.grow = sizeDef.grow;
+    } else if (sizeDef.grow === 0) {
+        result.grow = 0;
+    } else if (!hasPx && !hasGrow && hasConstraints) {
+        result.grow = 1;
+    }
+
+    if (sizeDef.minPx) {
+        result.minPx = sizeDef.minPx;
+    }
+
+    if (sizeDef.maxPx !== undefined) {
+        result.maxPx = sizeDef.maxPx;
+    }
+
+    return result;
 }
