@@ -83,6 +83,25 @@ describe("legend layout helpers", () => {
             expect(coords.width).toBe(80);
             expect(coords.height).toBe(176);
         });
+
+        test("stacks top-right legends inward from the corner", () => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 80,
+                getExternalPadding: () => 12,
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "top-right",
+                legendView,
+                92
+            );
+
+            expect(coords.x).toBe(126);
+            expect(coords.y).toBe(32);
+            expect(coords.width).toBe(80);
+            expect(coords.height).toBe(176);
+        });
     });
 });
 
