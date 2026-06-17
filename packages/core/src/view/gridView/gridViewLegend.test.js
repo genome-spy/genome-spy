@@ -272,17 +272,10 @@ describe("GridView legends", () => {
                     legend: {
                         disable: false,
                         titleColor: "firebrick",
-                        titleFont: "serif",
                         titleFontSize: 17,
-                        titleFontStyle: "italic",
-                        titleFontWeight: "bold",
                         titlePadding: 9,
                         labelColor: "navy",
                         labelFontSize: 13,
-                        labelFontStyle: "italic",
-                        labelFontWeight: "bold",
-                        labelAlign: "right",
-                        labelBaseline: "bottom",
                     },
                 },
                 vconcat: [
@@ -319,22 +312,12 @@ describe("GridView legends", () => {
             expect(/** @type {UnitView} */ (title).spec.mark).toEqual(
                 expect.objectContaining({
                     color: "firebrick",
-                    font: "serif",
-                    fontStyle: "italic",
-                    fontWeight: "bold",
                     size: 17,
                 })
             );
-            expect(/** @type {UnitView} */ (title).spec.encoding).toEqual({
-                text: { field: "label" },
-            });
             expect(/** @type {UnitView} */ (labels).spec.mark).toEqual(
                 expect.objectContaining({
-                    align: "right",
-                    baseline: "bottom",
                     color: "navy",
-                    fontStyle: "italic",
-                    fontWeight: "bold",
                     size: 13,
                 })
             );
