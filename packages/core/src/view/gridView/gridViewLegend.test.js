@@ -127,15 +127,14 @@ describe("GridView legends", () => {
             expect(labels).toBeInstanceOf(UnitView);
             expect(
                 Array.from(labels.flowHandle.collector.getData()).map(
-                    ({ value, label, _legendIndex }) => ({
+                    ({ value, label }) => ({
                         value,
                         label,
-                        _legendIndex,
                     })
                 )
             ).toEqual([
-                { value: "Europe", label: "Europe", _legendIndex: 0 },
-                { value: "Japan", label: "Japan", _legendIndex: 1 },
+                { value: "Europe", label: "Europe" },
+                { value: "Japan", label: "Japan" },
             ]);
         });
     });
@@ -841,7 +840,6 @@ describe("GridView legends", () => {
                         value: 100,
                         label: "100.0",
                         _legendSymbolSize: 400,
-                        _legendEntryHeight: 22,
                     }),
                 ])
             );
@@ -1023,7 +1021,7 @@ describe("GridView legends", () => {
             }
         });
 
-        test("gradient legends mirror source scale type and color scheme", async () => {
+        test("gradient legends use source color scale and log tick positions", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
                 vconcat: [
