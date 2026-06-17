@@ -3,8 +3,9 @@
 This document tracks the current legend implementation direction for GenomeSpy
 Core. The first implementation pass exists: local legends are generated from
 ordinary GenomeSpy marks and can be shown beside simple plots. The next focus is
-to make this local-placement behavior robust before adding shared guide areas or
-more ambitious placement models.
+to prove and harden `GridChild` as the local legend host for layered plots,
+including both outside-plot and inside-plot legend regions, before adding shared
+guide areas or more ambitious placement models.
 
 ## Current State
 
@@ -39,8 +40,8 @@ Completed pieces:
 - `measureText` and the internal `packLabels` transform compute entry layout.
 - Generated legend scales use view `width` and `height` params so pixel-like
   positions are not stretched by the unit coordinate range.
-- Right-, left-, top-, and bottom-oriented local legends are placed as
-  `GridChild` chrome around the plot.
+- Right-, left-, top-, and bottom-oriented local legends are placed outside the
+  plot as `GridChild` chrome.
 - Redundant `shape` is merged into a primary color/fill/stroke symbol legend
   when both encode the same field and resolved scale domain.
 - Redundant shape merging respects `legend: null`, and non-redundant same-
@@ -73,8 +74,8 @@ Completed pieces:
 - Legend candidates are collected through an internal `LegendResolution`,
   modeled after `AxisResolution`, before `GridChild` materializes them as
   local legends.
-- Multiple legends with the same local orient are stacked outward from the
-  plot, after any axis on the same side.
+- Multiple outside legends with the same local side orient are stacked outward
+  from the plot, after any axis on the same side.
 
 ## Vega/Vega-Lite Summary
 
@@ -92,6 +93,18 @@ Vega builds symbol legends from ordinary scenegraph marks: a legend group
 contains optional title and entry groups; each entry group contains a symbol and
 label. Symbol properties can be scale-backed for channels such as fill, stroke,
 shape, size, and opacity.
+
+Vega supports side legend orients (`left`, `right`, `top`, `bottom`), inside
+corner orients (`top-left`, `top-right`, `bottom-left`, `bottom-right`), and
+`none`. Side orients are placed outside the chart area. Corner orients are
+placed inside the chart area using an inward offset. Vega does not stack corner
+legends by default; multiple legends targeting the same corner can be
+superimposed unless legend layout config changes that behavior.
+
+Vega-Lite passes these orients through to Vega and sets direction defaults:
+top/bottom legends default to horizontal, left/right and `none` use Vega's
+vertical default, and corner legends default to horizontal for gradient legends
+but vertical for symbol legends.
 
 Horizontal layout in Vega relies on scenegraph bounds. Entry groups are
 measured, then a grid layout computes column widths and row heights. With
@@ -116,20 +129,35 @@ GenomeSpy view hierarchies can be complex, with hidden tracks, dynamically added
 tracks, sample views, imported subtrees, and scales that are pulled toward
 ancestors. A single root-level legend panel would often detach a legend from the
 marks it explains. The current implementation therefore starts with local
-legends hosted by the `GridChild` that owns the explained view.
+legends hosted by the `GridChild` that owns the explained plot area.
 
-## Next Milestone: Robust Local Legends
+`GridChild` should remain the default legend host because it already owns plot
+chrome and local plot geometry: axes, gridlines, scrollbars, padding, overhang,
+and the viewport rectangle. This is especially important for `LayerView`: a
+layered plot represents one plot area with multiple visual contributors, and
+the surrounding `GridChild` is the natural place to host legends for all views
+inside that layer.
 
-The next milestone is to make the existing local `GridChild` placement model
-reliable and Vega-like where the concepts apply. This should happen before
-adding named guide areas, shared legend panels, or app-level legend placement.
+## Next Milestone: GridChild-Hosted Layered Legends
+
+The next milestone is to demonstrate that the existing local `GridChild`
+placement model works for layered plots, then add inside-plot corner legend
+regions to the same host. This should happen before adding named guide areas,
+shared legend panels, or app-level legend placement.
 
 Acceptance criteria:
 
 - Simple symbol and gradient legends keep working with local right-oriented
   placement.
-- `orient: "left"`, `"right"`, `"top"`, and `"bottom"` remain supported by the
-  generated legend specs and `GridChild` overhang/placement.
+- A root or nested `LayerView` can contribute legends through the surrounding
+  `GridChild`.
+- `orient: "left"`, `"right"`, `"top"`, and `"bottom"` remain outside-plot
+  regions that reserve `GridChild` overhang.
+- `orient: "top-left"`, `"top-right"`, `"bottom-left"`, and `"bottom-right"`
+  become inside-plot regions that reserve no external overhang.
+- Multiple legends targeting the same `GridChild` region are stacked or
+  concatted predictably. GenomeSpy should not copy Vega's default corner
+  superimposition behavior.
 - The implemented channel and scale coverage is explicit and tested.
 - Missing or unsupported combinations fail clearly or intentionally do not
   create a legend; they should not silently produce misleading legends.
@@ -166,7 +194,9 @@ in the local-legend milestone:
   - Legend views do not inherit ordinary view strokes.
   - Top/bottom legends use horizontal layout and reserve vertical overhang.
   - Left/right legends use vertical layout and reserve horizontal overhang.
-  - Multiple legends targeting the same local orient stack predictably.
+  - Corner legends are not implemented yet; they should render inside the plot
+    area and reserve no overhang.
+  - Multiple legends targeting the same local region stack predictably.
 
 ### Channel Coverage To Support
 
@@ -311,8 +341,8 @@ Implemented behavior:
   remains responsible for local placement and overhang.
 - Local placement remains unchanged conceptually: each `GridChild` hosts
   legends for the views it owns.
-- Multiple resolved legends with the same orient are stacked locally instead of
-  rejected.
+- Multiple resolved outside legends with the same side orient are stacked
+  locally instead of rejected.
 - Legend views remain materialized, but their local overhang and rendering are
   linked to the current visibility of the non-chrome participants in their
   `LegendResolution`.
@@ -358,22 +388,41 @@ implementation change.
 
 ### Orientation And Layout Tasks
 
-1. Make `LegendView` generate orientation-aware body specs:
+1. Add a layered-plot legend example and focused tests:
+   - root `LayerView` inside the implicit root `GridView`,
+   - one outside legend hosted by the surrounding `GridChild`,
+   - one inside-corner legend hosted by the same `GridChild`,
+   - enough manual-test styling to see whether legends are stacked and placed
+     correctly.
+2. Extend `LegendOrient` with the inside-corner values:
+   - `top-left`,
+   - `top-right`,
+   - `bottom-left`,
+   - `bottom-right`.
+   Defer `none` until custom absolute legend positioning is explicitly needed.
+3. Make `LegendView` generate orientation-aware body specs:
    - right/left: vertical title plus vertical body,
    - top/bottom: horizontal body, with title placement matching the supported
-     `titleOrient` subset.
-2. Ensure `GridChild` places left/right/top/bottom legends outside the plot
-   area and includes their overhang in layout.
-3. Replace the fixed perpendicular legend extent with measured or derived
+     `titleOrient` subset,
+   - corner symbol legends: vertical by default,
+   - corner gradient legends: horizontal by default, following Vega-Lite.
+4. Teach `GridChild` to distinguish side and corner regions:
+   - side regions place legends outside the plot and reserve overhang,
+   - corner regions place legends inside `viewportCoords` and reserve no
+     overhang,
+   - multiple legends in the same side or corner region are stacked using the
+     existing concat-like legend composition approach.
+5. Replace the fixed perpendicular legend extent with measured or derived
    extent:
    - short term: derive extent from configured gradient thickness/labels and
      measured symbol labels,
    - longer term: observe bounds after data is ready and request reflow, similar
      to axis auto-extent.
-4. Keep horizontal symbol packing deterministic. The current `packLabels`
+6. Keep horizontal symbol packing deterministic. The current `packLabels`
    transform can measure varying label widths; wrapping by available width
    should wait until layout feedback is explicit.
-5. Add layout snapshots for all four orientations using small stable examples.
+7. Add layout snapshots for side and corner orientations using small stable
+   examples.
 
 ### Robustness Tasks
 
@@ -398,7 +447,12 @@ npm --workspaces run test:tsc --if-present
 ### Shared and Complex Placement
 
 The current model intentionally does not append every legend to a shared root
-container. Later versions can add:
+container. For now, a root `vconcat` with multiple unit children should keep
+local child legends unless the spec later gains an explicit way to request a
+container-level guide host. Do not infer collected placement merely because
+multiple children happen to have legends.
+
+Later versions can add:
 
 - Merged legends for intentionally shared non-position scales.
 - A computed common guide host for shared legends.
