@@ -1181,6 +1181,36 @@ describe("GridView legends", () => {
             }
         });
 
+        test("lets stacked vertical gradient legends fill available height", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: 0 },
+                                { x: 2, y: 2, measurement: 1 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "measurement",
+                                type: "quantitative",
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            const region = getLegendRegions(view)[0];
+
+            expect(legend.getSize().height).toEqual({ grow: 1 });
+            expect(region.getParallelSize()).toBeUndefined();
+        });
+
         test("gradient legends use source color scale and log tick positions", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

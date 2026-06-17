@@ -9,7 +9,7 @@ const LEGEND_ZINDEX = 1;
  * @param {{
  *     getPerpendicularSize: () => number,
  *     getExternalPadding: () => number,
- *     getParallelSize?: () => number
+ *     getParallelSize?: () => number | undefined
  * }} legendView
  * @param {number} [offset]
  */

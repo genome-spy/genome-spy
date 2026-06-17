@@ -695,6 +695,14 @@ export class LegendRegionView extends ContainerView {
     }
 
     getParallelSize() {
+        if (
+            this.#legendViews.some((legendView) =>
+                legendView.hasFlexibleParallelSize()
+            )
+        ) {
+            return undefined;
+        }
+
         return this.#legendViews.reduce(
             (sum, legendView, index) =>
                 sum +
@@ -878,7 +886,9 @@ export default class LegendView extends ContainerView {
         const perpendicularSize = { px: this.getPerpendicularSize() };
 
         if (this.#stacked) {
-            const parallelSize = { px: this.getStackedParallelSize() };
+            const parallelSize = this.hasFlexibleParallelSize()
+                ? { grow: 1 }
+                : { px: this.getStackedParallelSize() };
             if (
                 this.legendProps.orient == "top" ||
                 this.legendProps.orient == "bottom"
@@ -897,6 +907,12 @@ export default class LegendView extends ContainerView {
         } else {
             return new FlexDimensions(perpendicularSize, mainSize);
         }
+    }
+
+    hasFlexibleParallelSize() {
+        return (
+            this.#type == "gradient" && !isHorizontalLegend(this.legendProps)
+        );
     }
 
     getPerpendicularSize() {
