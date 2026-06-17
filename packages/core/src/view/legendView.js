@@ -898,6 +898,14 @@ export default class LegendView extends ContainerView {
             undefined,
             {
                 blockEncodingInheritance: true,
+                // Generated legend internals use `width`/`height` expressions
+                // for pixel-aware helper transforms and scales. Force local
+                // layout params so authored specs that intentionally overload
+                // these names, such as SampleView's sample-facet `height`, do
+                // not leak into packLabels or gradient scales. This should
+                // become unnecessary once unit coordinate space has been
+                // migrated to pixel space.
+                layoutSizeParams: "force",
             }
         );
 

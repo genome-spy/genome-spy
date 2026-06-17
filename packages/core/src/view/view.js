@@ -82,9 +82,12 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @typedef {object} ViewOptions
  * @prop {boolean} [blockEncodingInheritance]
  *      Don't inherit encodings from parent. Default: false.
- * @prop {"own" | "inherit"} [layoutSizeParams]
+ * @prop {"own" | "inherit" | "force"} [layoutSizeParams]
  *      Whether the view should introduce local layout-driven width/height params.
- *      Default: "own".
+ *      "own" preserves explicit ancestor params named `width` or `height`,
+ *      "inherit" disables local layout params, and "force" allocates local
+ *      layout params even when an ancestor has configured params with the same
+ *      names. Default: "own".
  * @prop {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("./axisView.js").AxisLabelClipPolicy>>} [axisLabelClipPolicy]
  *      Overrides the label clipping policy for axes created for this view.
  */
@@ -247,7 +250,8 @@ export default class View {
     #createLayoutSizeSetter(name) {
         if (
             this.paramRuntime.hasLocalParam(name) ||
-            this.paramRuntime.hasConfiguredParamInScopeChain(name)
+            (this.options.layoutSizeParams != "force" &&
+                this.paramRuntime.hasConfiguredParamInScopeChain(name))
         ) {
             return undefined;
         }

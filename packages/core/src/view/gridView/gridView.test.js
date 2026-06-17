@@ -628,6 +628,35 @@ describe("GridView separators", () => {
         expect(child.paramRuntime.createExpression("height")()).toBe(123);
     });
 
+    test("forced layout size params shadow configured ancestor params", async () => {
+        const context = createTestViewContext({ wrapRoot: false });
+        const parent = await context.createOrImportView(
+            {
+                params: [{ name: "height", value: 123 }],
+                vconcat: [],
+            },
+            null,
+            null,
+            "parent"
+        );
+        const child = await context.createOrImportView(
+            makeUnitSpec(),
+            /** @type {ConcatView} */ (parent),
+            parent,
+            "child",
+            undefined,
+            { layoutSizeParams: "force" }
+        );
+
+        child.render(
+            new NoOpRenderingContext({ picking: false }),
+            Rectangle.create(0, 0, 50, 77),
+            { firstFacet: true }
+        );
+
+        expect(child.paramRuntime.createExpression("height")()).toBe(77);
+    });
+
     test("concat grid draws both horizontal and vertical separators", async () => {
         const view = await createAndInitialize(
             {

@@ -873,6 +873,17 @@ describe("layout and group column", () => {
         });
 
         expect(renderContext.legendMarks).not.toHaveLength(0);
+
+        const legendBody = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "legendBody");
+        if (!legendBody) {
+            throw new Error("Legend body was not rendered");
+        }
+
+        expect(legendBody.paramRuntime.createExpression("height")()).toBe(
+            legendBody.coords.height
+        );
     });
 
     test("rejects left-oriented child legends because the sidebar owns the left side", async () => {

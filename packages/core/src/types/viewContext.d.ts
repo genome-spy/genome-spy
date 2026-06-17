@@ -21,7 +21,8 @@ export interface Hover {
 export type DataLoadingStatus = "loading" | "complete" | "error";
 
 export interface CreateViewOptions {
-    layoutSizeParams?: "own" | "inherit";
+    blockEncodingInheritance?: boolean;
+    layoutSizeParams?: "own" | "inherit" | "force";
     axisLabelClipPolicy?: Partial<
         Record<PrimaryPositionalChannel, AxisLabelClipPolicy>
     >;

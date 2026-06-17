@@ -50,6 +50,12 @@ export default class ConcatView extends GridView {
             : isVConcatSpec(spec)
               ? spec.vconcat
               : spec.hconcat;
+        const childOptions =
+            this.options.layoutSizeParams == "force"
+                ? /** @type {import("./view.js").ViewOptions} */ ({
+                      layoutSizeParams: "force",
+                  })
+                : undefined;
 
         this.setChildren(
             await Promise.all(
@@ -58,7 +64,9 @@ export default class ConcatView extends GridView {
                         childSpec,
                         this,
                         this,
-                        this.getNextAutoName("grid")
+                        this.getNextAutoName("grid"),
+                        undefined,
+                        childOptions
                     )
                 )
             )
