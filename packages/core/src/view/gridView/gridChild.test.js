@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
+import { iterateLegendViews } from "./gridChildLegends.js";
 import Padding from "../layout/padding.js";
 
 function createMinimalGridChild() {
@@ -19,23 +20,51 @@ function createMinimalGridChild() {
     return new GridChild(view, layoutParent, 0);
 }
 
+function createLegendEntry(
+    /** @type {number} */ size,
+    /** @type {boolean} */ visible
+) {
+    return {
+        legendView: {
+            legendProps: { orient: "right" },
+            getPerpendicularSize: () => size,
+            getExternalPadding: () => 8,
+        },
+        resolution: {
+            hasVisibleNonChromeMember: () => visible,
+        },
+    };
+}
+
 describe("GridChild legend layout", () => {
     test("right legend contributes to right overhang", () => {
         const child = createMinimalGridChild();
         child.legends.right = /** @type {any} */ ([
-            {
-                legendProps: { orient: "right" },
-                getPerpendicularSize: () => 42,
-                getExternalPadding: () => 8,
-            },
-            {
-                legendProps: { orient: "right" },
-                getPerpendicularSize: () => 20,
-                getExternalPadding: () => 4,
-            },
+            createLegendEntry(42, true),
+            createLegendEntry(20, true),
         ]);
 
-        expect(child.getOverhang().right).toBe(74);
+        expect(child.getOverhang().right).toBe(78);
+    });
+
+    test("hidden legend participants do not contribute overhang", () => {
+        const child = createMinimalGridChild();
+        child.legends.right = /** @type {any} */ ([
+            createLegendEntry(42, true),
+            createLegendEntry(20, false),
+        ]);
+
+        expect(child.getOverhang().right).toBe(50);
+    });
+
+    test("hidden legend participants keep their legend views", () => {
+        const child = createMinimalGridChild();
+        child.legends.right = /** @type {any} */ ([
+            createLegendEntry(42, true),
+            createLegendEntry(20, false),
+        ]);
+
+        expect(Array.from(iterateLegendViews(child.legends))).toHaveLength(2);
     });
 });
 

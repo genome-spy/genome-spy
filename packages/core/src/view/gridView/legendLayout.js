@@ -1,5 +1,6 @@
 import { getExternalAxisOverhang } from "../axisView.js";
 import { getExternalLegendOverhang } from "../legendView.js";
+import { isActiveLegendEntry } from "./gridChildLegends.js";
 
 /**
  * @param {import("../layout/rectangle.js").default} coords
@@ -54,7 +55,12 @@ export function renderLocalLegends(
                 /** @type {import("../../spec/axis.js").AxisOrient} */ (orient)
             ]
         );
-        for (const legendView of legendViews) {
+        for (const entry of legendViews) {
+            if (!isActiveLegendEntry(entry)) {
+                continue;
+            }
+
+            const legendView = entry.legendView;
             const legendCoords = translateLegendCoords(
                 viewportCoords,
                 /** @type {import("../../spec/legend.js").LegendOrient} */ (

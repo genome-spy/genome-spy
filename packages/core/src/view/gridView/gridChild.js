@@ -866,7 +866,7 @@ export default class GridChild {
                         view,
                         this.layoutParent
                     );
-                    addLegendView(this.legends, legend);
+                    addLegendView(this.legends, legend, resolution);
                 }
             }
         }
