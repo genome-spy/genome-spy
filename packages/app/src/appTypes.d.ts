@@ -41,6 +41,8 @@ export interface SidePanelHandle {
 export interface AppPluginHost {
     readonly ui: AppUiHost;
     getAgentApi(): Promise<import("./agentApi/index.js").AgentApi>;
+    getSampleView(): import("./sampleView/sampleView.js").default | undefined;
+    onAfterLaunch(callback: () => void | Promise<void>): () => void;
 }
 
 export interface AppPlugin {

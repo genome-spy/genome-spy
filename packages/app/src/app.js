@@ -58,6 +58,11 @@ transforms.mergeFacets = MergeSampleFacets;
  * A wrapper for the GenomeSpy core. Provides SampleView, provenance, a toolbar, etc.
  */
 export default class App {
+    /** @type {Set<() => void | Promise<void>>} */
+    #afterLaunchCallbacks = new Set();
+
+    #hasLaunched = false;
+
     /**
      * Lazily created agent boundary.
      * @type {Promise<import("./agentApi/index.js").AgentApi> | undefined}
@@ -408,6 +413,11 @@ export default class App {
             }
         }
 
+        this.#hasLaunched = true;
+        for (const callback of this.#afterLaunchCallbacks) {
+            await callback();
+        }
+
         // Make it focusable so that keyboard shortcuts can be caught
         this.appContainer
             .querySelector("canvas")
@@ -735,6 +745,27 @@ export default class App {
         });
 
         return sampleView;
+    }
+
+    /**
+     * Registers a callback that runs after the app launch sequence completes.
+     *
+     * Plugins install before `launch()`, so this gives them a safe way to
+     * access runtime objects such as SampleView once they exist.
+     *
+     * @param {() => void | Promise<void>} callback
+     * @returns {() => void}
+     */
+    onAfterLaunch(callback) {
+        if (this.#hasLaunched) {
+            void callback();
+            return () => undefined;
+        }
+
+        this.#afterLaunchCallbacks.add(callback);
+        return () => {
+            this.#afterLaunchCallbacks.delete(callback);
+        };
     }
 }
 

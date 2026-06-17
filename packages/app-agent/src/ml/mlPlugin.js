@@ -1,9 +1,9 @@
 /**
  * Browser-side ML scoring plugin for GenomeSpy.
  *
- * Attaches a right-click context menu to the GenomeSpy canvas that lets users
- * score brushed SNVs with AlphaGenome or Evo2.  Results are injected as new
- * per-sample metadata columns visible in the sample attribute sidebar.
+ * Adds ML scoring actions to the SampleView context menu so users can score
+ * brushed SNVs with AlphaGenome or Evo2. Results are injected as new per-sample
+ * metadata columns visible in the sample attribute sidebar.
  *
  * Usage:
  *   import { mlPlugin } from "@genome-spy/app-agent";
@@ -43,8 +43,25 @@ export function mlPlugin(options) {
                 fastaUrl: options.fastaUrl,
             });
             const agentApi = await app.getAgentApi();
-            const { destroy } = installMlContextMenu(agentApi, options);
-            return destroy;
+            /** @type {() => void} */
+            let removeContextMenu = () => undefined;
+            const removeAfterLaunch = app.onAfterLaunch(() => {
+                const sampleView = app.getSampleView();
+                if (!sampleView) {
+                    throw new Error(
+                        "mlPlugin requires a SampleView to register ML scoring actions."
+                    );
+                }
+                removeContextMenu = installMlContextMenu(
+                    sampleView,
+                    agentApi,
+                    options
+                );
+            });
+            return () => {
+                removeAfterLaunch();
+                removeContextMenu();
+            };
         },
     };
 }

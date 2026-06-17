@@ -85,6 +85,7 @@ import SampleChromeLayout from "./sampleChromeLayout.js";
 
 /** @type {import("./types.js").AttributeIdentifierType} */
 const VALUE_AT_LOCUS = "VALUE_AT_LOCUS";
+
 /**
  * Implements faceting of multiple samples. The samples are displayed
  * as tracks and optional metadata.
@@ -154,6 +155,16 @@ export default class SampleView extends ContainerView {
     #sampleRenderLocationSource;
 
     #selectionExpansionMultiParamWarningShown = false;
+
+    /** @type {Set<(context: {
+     *   mouseEvent: MouseEvent,
+     *   sample: import("./state/sampleState.js").Sample | undefined,
+     *   complexX: import("@genome-spy/core/spec/channel.js").Scalar | import("@genome-spy/core/spec/genome.js").ChromosomalLocus,
+     *   selectionInterval?: [number, number],
+     *   selectionIntervalComplex?: import("./types.js").Interval,
+     *   selectionIntervalLabel?: string,
+     * }) => import("../utils/ui/contextMenu.js").MenuItem[] | undefined>} */
+    #contextMenuAugmenters = new Set();
 
     /**
      *
@@ -1202,6 +1213,27 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * Registers a callback that can append items to the default sample-view
+     * context menu without replacing the built-in menu behavior.
+     *
+     * @param {(context: {
+     *   mouseEvent: MouseEvent,
+     *   sample: import("./state/sampleState.js").Sample | undefined,
+     *   complexX: import("@genome-spy/core/spec/channel.js").Scalar | import("@genome-spy/core/spec/genome.js").ChromosomalLocus,
+     *   selectionInterval?: [number, number],
+     *   selectionIntervalComplex?: import("./types.js").Interval,
+     *   selectionIntervalLabel?: string,
+     * }) => import("../utils/ui/contextMenu.js").MenuItem[] | undefined} augmenter
+     * @returns {() => void}
+     */
+    registerContextMenuAugmenter(augmenter) {
+        this.#contextMenuAugmenters.add(augmenter);
+        return () => {
+            this.#contextMenuAugmenters.delete(augmenter);
+        };
+    }
+
+    /**
      * @param {number} pos
      */
     #getPeekFocusSampleAt(pos) {
@@ -1504,6 +1536,26 @@ export default class SampleView extends ContainerView {
                 label: html`Actions unavailable.<br />
                     Add a unique explicit "name" to this view.`,
             });
+        }
+
+        const augmentationContext = {
+            mouseEvent,
+            sample,
+            complexX,
+            selectionInterval,
+            selectionIntervalComplex,
+            selectionIntervalLabel,
+        };
+        for (const augmenter of this.#contextMenuAugmenters) {
+            const extraItems = augmenter(augmentationContext);
+            if (!extraItems?.length) {
+                continue;
+            }
+
+            if (items.at(-1)?.type !== "divider") {
+                items.push(DIVIDER);
+            }
+            items.push(...extraItems);
         }
 
         contextMenu({ items }, mouseEvent);

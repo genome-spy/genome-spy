@@ -101,7 +101,7 @@ vconcat
 ```
 Browser (GenomeSpy app)
   └── app-agent plugin (packages/app-agent/src/)
-        ├── mlContextMenu.js       — contextmenu hook on "genomic-data" view
+        ├── mlContextMenu.js       — SampleView context-menu augmentation for brushed variants
         ├── MlScoringDialog.js     — BaseDialog subclass
         ├── mlVariantCollector.js  — reads brush + mutations data, deduplicates
         ├── mlSequenceFetcher.js   — fetches one reference window via indexedFasta
@@ -324,7 +324,7 @@ but batches can run longer.
 
 | File | Purpose |
 |------|---------|
-| `ml/mlContextMenu.js` | Registers contextmenu listener on "genomic-data" view; checks brush; shows menu item |
+| `ml/mlContextMenu.js` | Appends ML scoring entries to the built-in SampleView context menu when a brushed interval contains SNVs |
 | `ml/MlScoringDialog.js` | `BaseDialog` subclass: model selector, options, estimated time, progress |
 | `ml/mlVariantCollector.js` | Reads mutations from brush interval; deduplicates; filters SNP only |
 | `ml/mlSequenceFetcher.js` | Wraps `@gmod/indexedfasta`; computes window center; handles chunking |
