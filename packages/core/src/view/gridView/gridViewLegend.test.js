@@ -1392,10 +1392,46 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
+            const body = legend
+                .getDescendants()
+                .find((descendant) => descendant.name == "gradientBody");
             const region = getLegendRegions(view)[0];
 
             expect(legend.getSize().height).toEqual({ grow: 1 });
+            expect(body.getSize().height).toEqual({ grow: 1, minPx: 40 });
             expect(region.getParallelSize()).toBeUndefined();
+        });
+
+        test("uses horizontal gradient legend minimum width", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: 0 },
+                                { x: 2, y: 2, measurement: 1 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "measurement",
+                                type: "quantitative",
+                                legend: { orient: "bottom" },
+                            },
+                        },
+                    },
+                ],
+            });
+            const body = getLegends(view)[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "gradientBody");
+
+            expect(body.getSize().width).toEqual({ grow: 1, minPx: 40 });
+            expect(body.getSize().height).toEqual({ grow: 1 });
         });
 
         test("gradient legends use source color scale and log tick positions", async () => {

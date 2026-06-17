@@ -11,6 +11,7 @@ const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
 const DEFAULT_GRADIENT_TICK_COUNT = 5;
 const DEFAULT_GRADIENT_THICKNESS = 12;
 const DEFAULT_GRADIENT_TICK_SIZE = 4;
+const MIN_GRADIENT_LEGEND_LENGTH = 40;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
 /** @type {import("../spec/view.js").ViewBackground} */
 const LEGEND_VIEW_BACKGROUND = {
@@ -592,8 +593,12 @@ export function createGradientLegendSpec({ channel, legend, format }) {
         legend,
         {
             name: "gradientBody",
-            width: h ? { grow: 1 } : undefined,
-            height: { grow: 1 },
+            width: h
+                ? { grow: 1, minPx: MIN_GRADIENT_LEGEND_LENGTH }
+                : undefined,
+            height: h
+                ? { grow: 1 }
+                : { grow: 1, minPx: MIN_GRADIENT_LEGEND_LENGTH },
             view: LEGEND_VIEW_BACKGROUND,
             resolve: {
                 scale: { x: "excluded", y: "excluded" },
