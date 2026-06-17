@@ -17,6 +17,25 @@ import {
  */
 
 /**
+ * @typedef {{
+ *   scopeOwned?: boolean,
+ *   registerDisposer?: (disposer: () => void) => void
+ * }} WatchExpressionOptions
+ */
+
+/**
+ * @typedef {{
+ *   createExpression: (expr: string) => ExprRefFunction,
+ *   watchExpression?: (
+ *     expr: string,
+ *     listener: () => void,
+ *     options?: WatchExpressionOptions
+ *   ) => ExprRefFunction,
+ *   whenPropagated?: () => Promise<void>
+ * }} ExprRefRuntime
+ */
+
+/**
  * @param {any} x
  * @returns {x is import("../spec/parameter.js").ExprRef}
  */
@@ -133,7 +152,7 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
  * ExprRefs to getters and setups a listener that is called when any of the
  * expressions (upstream parameters) change.
  *
- * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void, options?: { scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }) => ExprRefFunction, whenPropagated?: () => Promise<void> }} paramRuntime
+ * @param {ExprRefRuntime} paramRuntime
  * @param {T} props The properties object
  * @param {(props: ReadonlySet<keyof T>) => void} [listener] Listener to be called when any of the expressions change
  * @param {(disposer: () => void) => void} [registerDisposer]
@@ -261,7 +280,7 @@ export function activateExprRefProps(
  * value change would require rebuilding part of the view hierarchy. ExprRefs
  * are evaluated once and subscribed with a fail-fast listener.
  *
- * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void, options?: { scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }) => ExprRefFunction }} paramRuntime
+ * @param {ExprRefRuntime} paramRuntime
  * @param {T | import("../spec/parameter.js").ExprRef} value
  * @param {string} errorMessage Error thrown if an ExprRef changes after initialization
  * @param {(disposer: () => void) => void} [registerDisposer]
