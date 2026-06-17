@@ -1,6 +1,14 @@
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 
-export type LegendOrient = "left" | "right" | "top" | "bottom";
+export type LegendOrient =
+    | "left"
+    | "right"
+    | "top"
+    | "bottom"
+    | "top-left"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-right";
 
 export type LegendDirection = "vertical" | "horizontal";
 
@@ -17,7 +25,7 @@ export interface Legend {
     title?: string | null;
 
     /**
-     * The side of the plot where the legend is placed.
+     * The plot side or inside corner where the legend is placed.
      */
     orient?: LegendOrient;
 

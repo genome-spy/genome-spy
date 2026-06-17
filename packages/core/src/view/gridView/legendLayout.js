@@ -28,6 +28,24 @@ export function translateLegendCoords(coords, orient, legendView, offset = 0) {
         return coords
             .translate(coords.width + offset + padding, 0)
             .modify({ width: ps });
+    } else if (orient == "top-left") {
+        return coords
+            .translate(padding, padding)
+            .modify({ width: ps, height: coords.height - 2 * padding });
+    } else if (orient == "top-right") {
+        return coords
+            .translate(coords.width - ps - padding, padding)
+            .modify({ width: ps, height: coords.height - 2 * padding });
+    } else if (orient == "bottom-left") {
+        return coords
+            .translate(padding, padding)
+            .modify({ width: ps, height: coords.height - 2 * padding });
+    } else if (orient == "bottom-right") {
+        return coords
+            .translate(coords.width - ps - padding, padding)
+            .modify({ width: ps, height: coords.height - 2 * padding });
+    } else {
+        throw new Error(`Invalid legend orientation: ${orient}`);
     }
 }
 

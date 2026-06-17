@@ -65,6 +65,24 @@ describe("legend layout helpers", () => {
             expect(coords.width).toBe(80);
             expect(coords.height).toBe(200);
         });
+
+        test("places a top-right legend inside the viewport", () => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 80,
+                getExternalPadding: () => 12,
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "top-right",
+                legendView
+            );
+
+            expect(coords.x).toBe(218);
+            expect(coords.y).toBe(32);
+            expect(coords.width).toBe(80);
+            expect(coords.height).toBe(176);
+        });
     });
 });
 
