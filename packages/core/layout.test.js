@@ -60,7 +60,7 @@ describe("Test layout process", () => {
     test("marks/point/point2d.json with legend enabled", async () => {
         const layout = await specToLayout(specPoint2D);
         const plot = findLayoutNode(layout, "grid0");
-        const legend = findLayoutNode(layout, "legend_right");
+        const legend = findLayoutNode(layout, "legend_region_right");
 
         expect(plot).toBeDefined();
         expect(legend).toBeDefined();
@@ -69,7 +69,8 @@ describe("Test layout process", () => {
         expect(readCoord(legend.coords, "x")).toBe(
             readCoord(plot.coords, "x") + readCoord(plot.coords, "width") + 18
         );
-        expect(readCoord(legend.coords, "height")).toBe(
+        expect(readCoord(legend.coords, "height")).toBeGreaterThan(0);
+        expect(readCoord(legend.coords, "height")).toBeLessThanOrEqual(
             readCoord(plot.coords, "height")
         );
     });
