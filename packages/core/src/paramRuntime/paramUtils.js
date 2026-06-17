@@ -255,6 +255,47 @@ export function activateExprRefProps(
 }
 
 /**
+ * Resolves a literal or ExprRef for properties that may be parameterized during
+ * view construction but are not safe to update reactively. This is intended for
+ * structural options, such as layout regions or view ownership, where a later
+ * value change would require rebuilding part of the view hierarchy. ExprRefs
+ * are evaluated once and subscribed with a fail-fast listener.
+ *
+ * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void, options?: { scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }) => ExprRefFunction }} paramRuntime
+ * @param {T | import("../spec/parameter.js").ExprRef} value
+ * @param {string} errorMessage Error thrown if an ExprRef changes after initialization
+ * @param {(disposer: () => void) => void} [registerDisposer]
+ * @returns {T}
+ * @template T
+ */
+export function resolveInitOnlyExprRef(
+    paramRuntime,
+    value,
+    errorMessage,
+    registerDisposer
+) {
+    if (!isExprRef(value)) {
+        return value;
+    }
+
+    const throwUnsupportedChange = () => {
+        throw new Error(errorMessage);
+    };
+    const fn = paramRuntime.watchExpression
+        ? paramRuntime.watchExpression(value.expr, throwUnsupportedChange, {
+              scopeOwned: false,
+              registerDisposer,
+          })
+        : paramRuntime.createExpression(value.expr);
+    if (!paramRuntime.watchExpression) {
+        const unsubscribe = fn.subscribe(throwUnsupportedChange);
+        registerDisposer?.(unsubscribe);
+    }
+
+    return fn();
+}
+
+/**
  * Creates a function that always returns the same value.
  *
  * @param {any} value

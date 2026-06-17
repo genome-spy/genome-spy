@@ -1,5 +1,5 @@
 import { isValueDef } from "../../encoder/encoder.js";
-import { isExprRef } from "../../paramRuntime/paramUtils.js";
+import { resolveInitOnlyExprRef } from "../../paramRuntime/paramUtils.js";
 import LegendView, {
     LegendRegionView,
     getExternalLegendOverhang,
@@ -143,33 +143,19 @@ function assertLegendOrient(orient) {
  * @returns {ResolvedLegendConfig}
  */
 function resolveLegendOrient(legend, legendParent, registerDisposer) {
-    if (!isExprRef(legend.orient)) {
-        if (legend.orient !== undefined) {
-            assertLegendOrient(legend.orient);
-        }
-        return /** @type {ResolvedLegendConfig} */ (legend);
+    const orient = resolveInitOnlyExprRef(
+        legendParent.paramRuntime,
+        legend.orient,
+        "Reactive legend orient changes are not supported.",
+        registerDisposer
+    );
+    if (orient !== undefined) {
+        assertLegendOrient(orient);
     }
 
-    const orientRef = legend.orient;
-    const orient = legendParent.paramRuntime.evaluateAndGet(orientRef.expr);
-    assertLegendOrient(orient);
-    legendParent.paramRuntime.watchExpression(
-        orientRef.expr,
-        () => {
-            throw new Error(
-                "Reactive legend orient changes are not supported."
-            );
-        },
-        {
-            scopeOwned: false,
-            registerDisposer,
-        }
-    );
-
-    return /** @type {ResolvedLegendConfig} */ ({
-        ...legend,
-        orient,
-    });
+    return orient === legend.orient
+        ? /** @type {ResolvedLegendConfig} */ (legend)
+        : /** @type {ResolvedLegendConfig} */ ({ ...legend, orient });
 }
 
 /**
