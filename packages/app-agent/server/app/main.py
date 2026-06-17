@@ -8,11 +8,12 @@ from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import AsyncIterator
 
+import httpx
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from app.config import Settings, describe_api_key_for_logs, load_settings
+from app.config import Settings, describe_api_key_for_logs, load_cors_origins, load_settings
 from app.models import (
     AgentServerInfoResponse,
     AgentTurnRequest,
@@ -31,13 +32,33 @@ from app.throughput_debugger import (
 logger = logging.getLogger(__name__)
 startup_logger = logging.getLogger("uvicorn.error")
 
+_ML_PROXY_TIMEOUT = httpx.Timeout(600.0)
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Return the cached relay settings.
+
+    Loads the settings once per process and reuses the same immutable settings
+    object across request handling.
+    """
+    return load_settings()
+
+
+@lru_cache
+def get_provider() -> BaseProvider:
+    """Return the cached provider implementation for current settings."""
+    return OpenAIResponsesProvider(get_settings())
+
 
 @asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Log the relay startup configuration summary.
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Log the relay startup configuration summary and manage shared resources.
 
     Emits a single startup log line that captures the selected provider, model,
     base URL, and sanitized API-key metadata for debugging deployment issues.
+    Creates a persistent httpx client for ML proxy requests so the connection
+    pool is reused across calls.
     """
     settings = get_settings()
     provider = get_provider()
@@ -64,7 +85,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         settings.enable_token_debug_logs,
         settings.enable_throughput_debug_logs,
     )
+    app.state.ml_client = httpx.AsyncClient(timeout=_ML_PROXY_TIMEOUT)
     yield
+    await app.state.ml_client.aclose()
 
 
 app = FastAPI(
@@ -74,36 +97,70 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-    ],
+    allow_origins=list(load_cors_origins()),
     allow_credentials=False,
     allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
 )
 
 
-@lru_cache
-def get_settings() -> Settings:
-    """Return the cached relay settings.
-
-    Loads the settings once per process and reuses the same immutable settings
-    object across request handling.
-    """
-    return load_settings()
-
-
-@lru_cache
-def get_provider() -> BaseProvider:
-    """Return the cached provider implementation for current settings."""
-    return OpenAIResponsesProvider(get_settings())
-
-
 @app.get("/health")
 async def health() -> dict[str, str]:
     """Return the relay health status."""
     return {"status": "ok"}
+
+
+@app.post("/v1/evo2")
+async def proxy_evo2(request: Request) -> dict:
+    """Proxy a scoring request to the EVO2 LitServe inference server.
+
+    Forwards the raw JSON body verbatim and returns the LitServe response.
+    A 600-second timeout accommodates single-GPU forward passes on 7B-parameter
+    sequences; connection errors surface as 502s so the browser can display a
+    friendly message instead of an opaque network failure.
+    """
+    body = await request.json()
+    url = get_settings().evo2_base_url + "/predict"
+    try:
+        resp = await request.app.state.ml_client.post(url, json=body)
+        resp.raise_for_status()
+        return resp.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=exc.response.text,
+        ) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="EVO2 server unreachable: " + str(exc),
+        ) from exc
+
+
+@app.post("/v1/alphagenome")
+async def proxy_alphagenome(request: Request) -> dict:
+    """Proxy a scoring request to the AlphaGenome LitServe inference server.
+
+    Forwards the raw JSON body verbatim and returns the LitServe response.
+    The same 600-second timeout applies; AlphaGenome forward passes on a 131K
+    context window take roughly 1–2 seconds per sequence on a single GPU.
+    """
+    body = await request.json()
+    url = get_settings().alphagenome_base_url + "/predict"
+    try:
+        resp = await request.app.state.ml_client.post(url, json=body)
+        resp.raise_for_status()
+        return resp.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=exc.response.text,
+        ) from exc
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="AlphaGenome server unreachable: " + str(exc),
+        ) from exc
 
 
 @app.get("/v1/server-info", response_model=AgentServerInfoResponse)
