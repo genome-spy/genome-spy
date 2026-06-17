@@ -64,6 +64,9 @@ async def test_generate_retries_with_unexpected_role_fallback(monkeypatch) -> No
             prefer_responses_role_compat=False,
             enable_token_debug_logs=True,
             enable_throughput_debug_logs=True,
+            evo2_base_url="http://127.0.0.1:8001",
+            alphagenome_base_url="http://127.0.0.1:8002",
+            cors_origins=("http://localhost:8080",),
         )
     )
     request = ProviderRequest(
@@ -122,6 +125,9 @@ async def test_generate_prefers_role_compat_payload_when_enabled(
             prefer_responses_role_compat=True,
             enable_token_debug_logs=True,
             enable_throughput_debug_logs=True,
+            evo2_base_url="http://127.0.0.1:8001",
+            alphagenome_base_url="http://127.0.0.1:8002",
+            cors_origins=("http://localhost:8080",),
         )
     )
     request = ProviderRequest(

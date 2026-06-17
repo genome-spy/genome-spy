@@ -45,6 +45,9 @@ def test_provider_auth_diagnostic_logs_masked_api_key(
         prefer_responses_role_compat=False,
         enable_token_debug_logs=True,
         enable_throughput_debug_logs=True,
+        evo2_base_url="http://127.0.0.1:8001",
+        alphagenome_base_url="http://127.0.0.1:8002",
+        cors_origins=("http://localhost:8080",),
     )
 
     with caplog.at_level(logging.WARNING):
