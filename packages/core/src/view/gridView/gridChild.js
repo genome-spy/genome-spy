@@ -7,7 +7,6 @@ import {
     isIntervalSelectionConfig,
     selectionContainsPoint,
 } from "../../selection/selection.js";
-import { isValueDef } from "../../encoder/encoder.js";
 import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import AxisGridView from "../axisGridView.js";
 import AxisView, {
@@ -31,7 +30,13 @@ import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
-import LegendView, { getExternalLegendOverhang } from "../legendView.js";
+import {
+    addLegendView,
+    createGridChildLegend,
+    disposeLegendViews,
+    getLegendOverhang,
+    iterateLegendViews,
+} from "./gridChildLegends.js";
 
 /**
  * @typedef {{
@@ -41,97 +46,6 @@ import LegendView, { getExternalLegendOverhang } from "../legendView.js";
  *     resolution: import("../../scales/axisResolution.js").default,
  * }} AxisCandidate
  */
-const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
-    "color",
-    "fill",
-    "stroke",
-    "opacity",
-    "fillOpacity",
-    "strokeOpacity",
-    "strokeWidth",
-    "shape",
-]);
-
-/**
- * @param {import("../../spec/channel.js").ChannelDef | undefined} channelDef
- * @returns {channelDef is import("../../spec/channel.js").ValueDef}
- */
-function isConstantValueDef(channelDef) {
-    return isValueDef(channelDef) && !("condition" in channelDef);
-}
-
-/**
- * @param {import("../../spec/channel.js").ChannelWithScale} channel
- * @param {Partial<Record<import("../../spec/channel.js").ChannelWithScale, string>>} symbolChannels
- * @param {import("../unitView.js").default} sourceView
- */
-function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
-    const scaledChannels = new Set([channel, ...Object.keys(symbolChannels)]);
-
-    /** @type {import("../legendView.js").SymbolLegendStyle} */
-    const style = { mark: {}, encoding: {} };
-    const sourceProps =
-        /** @type {Partial<import("../../spec/mark.js").PointProps>} */ (
-            sourceView.mark.properties
-        );
-    const styleEncoding =
-        /** @type {Record<string, import("../../spec/channel.js").ValueDef<any>>} */ (
-            style.encoding
-        );
-    const styleMark =
-        /** @type {Partial<import("../../spec/mark.js").PointProps>} */ (
-            style.mark
-        );
-
-    if (sourceProps.filled !== undefined) {
-        styleMark.filled = sourceProps.filled;
-    }
-    if (sourceProps.opacity !== undefined) {
-        styleMark.opacity = sourceProps.opacity;
-    }
-    if (sourceProps.fillOpacity !== undefined) {
-        styleMark.fillOpacity = sourceProps.fillOpacity;
-    }
-    if (sourceProps.strokeOpacity !== undefined) {
-        styleMark.strokeOpacity = sourceProps.strokeOpacity;
-    }
-    if (sourceProps.strokeWidth !== undefined) {
-        styleMark.strokeWidth = sourceProps.strokeWidth;
-    }
-    if (sourceProps.shape !== undefined) {
-        styleMark.shape = sourceProps.shape;
-    } else if (sourceView.getMarkType() == "rect") {
-        styleMark.shape = "square";
-    }
-
-    const colorDef = sourceView.spec.encoding?.color;
-    const filled = sourceProps.filled;
-    if (isConstantValueDef(colorDef) && !scaledChannels.has("color")) {
-        if (filled) {
-            styleEncoding.fill = { value: colorDef.value };
-            styleEncoding.stroke = { value: null };
-            styleEncoding.strokeWidth = { value: 0 };
-        } else {
-            styleEncoding.stroke = { value: colorDef.value };
-            styleEncoding.fill = { value: colorDef.value };
-            styleEncoding.fillOpacity = { value: 0 };
-        }
-    }
-
-    for (const channel of INHERITED_SYMBOL_ENCODING_CHANNELS) {
-        if (channel == "color" || scaledChannels.has(channel)) {
-            continue;
-        }
-
-        const channelDef = sourceView.spec.encoding?.[channel];
-        if (isConstantValueDef(channelDef)) {
-            styleEncoding[channel] = { value: channelDef.value };
-        }
-    }
-
-    return style;
-}
-
 export default class GridChild {
     /**
      * Users guide:
@@ -166,7 +80,7 @@ export default class GridChild {
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
         this.gridLines = {};
 
-        /** @type {Partial<Record<import("../../spec/legend.js").LegendOrient, import("../legendView.js").default[]>>} */
+        /** @type {import("./gridChildLegends.js").GridChildLegends} */
         this.legends = {};
 
         /** @type {Partial<Record<import("./scrollbar.js").ScrollDirection, Scrollbar>>} */
@@ -742,9 +656,7 @@ export default class GridChild {
         for (const candidate of this.axisCandidates) {
             yield candidate.axisView;
         }
-        for (const legendViews of Object.values(this.legends)) {
-            yield* legendViews;
-        }
+        yield* iterateLegendViews(this.legends);
         yield* Object.values(this.gridLines);
         yield this.view;
         yield* Object.values(this.scrollbars);
@@ -880,43 +792,6 @@ export default class GridChild {
             }
         };
 
-        /**
-         * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
-         * @param {import("../unitView.js").default} legendParent
-         */
-        const createLegend = async (definition, legendParent) => {
-            const orient = definition.legend.orient ?? "right";
-            const symbolStyle =
-                definition.type == "symbol"
-                    ? createInheritedSymbolStyle(
-                          definition.channel,
-                          definition.symbolChannels ?? {},
-                          // Multi-view arbitration is intentionally simple for
-                          // now: use the first deterministic contributor.
-                          definition.scaleResolution.getOrderedMembers()[0].view
-                      )
-                    : undefined;
-
-            const legend = new LegendView(
-                {
-                    channel: definition.channel,
-                    type: definition.type,
-                    symbolChannels: definition.symbolChannels,
-                    symbolStyle,
-                    legend: definition.legend,
-                    format: definition.format,
-                    dataType: definition.dataType,
-                },
-                this.layoutParent.context,
-                this.layoutParent,
-                legendParent
-            );
-
-            this.legends[orient] ??= [];
-            this.legends[orient].push(legend);
-            await legend.initializeChildren();
-        };
-
         // Handle children that have caught axis resolutions. Create axes for them.
         for (const channel of /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
             "x",
@@ -986,7 +861,12 @@ export default class GridChild {
         if (view instanceof UnitView) {
             for (const resolution of Object.values(view.resolutions.legend)) {
                 for (const definition of resolution.getLegendDefs()) {
-                    await createLegend(definition, view);
+                    const legend = await createGridChildLegend(
+                        definition,
+                        view,
+                        this.layoutParent
+                    );
+                    addLegendView(this.legends, legend);
                 }
             }
         }
@@ -995,7 +875,7 @@ export default class GridChild {
         [
             ...this.axisCandidates.map((candidate) => candidate.axisView),
             ...Object.values(gridLines),
-            ...Object.values(this.legends).flat(),
+            ...iterateLegendViews(this.legends),
         ].forEach((v) =>
             v.visit((view) => {
                 if (view instanceof UnitView) {
@@ -1049,11 +929,7 @@ export default class GridChild {
             gridView.disposeSubtree();
         }
 
-        for (const legendViews of Object.values(this.legends)) {
-            for (const legendView of legendViews) {
-                legendView.disposeSubtree();
-            }
-        }
+        disposeLegendViews(this.legends);
 
         this.axes = {};
         this.axisCandidates = [];
@@ -1088,12 +964,7 @@ export default class GridChild {
         ) => getExternalAxisOverhang(this.axes[orient]);
         const legend = (
             /** @type {import("../../spec/legend.js").LegendOrient} */ orient
-        ) =>
-            (this.legends[orient] ?? []).reduce(
-                (sum, legendView) =>
-                    sum + getExternalLegendOverhang(legendView),
-                0
-            );
+        ) => getLegendOverhang(this.legends, orient);
 
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return new Padding(
