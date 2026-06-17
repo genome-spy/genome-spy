@@ -2,3 +2,4 @@
 docker-compose.override.yml
 activations_debug.log
 SETUP_LOCAL.md
+src/client.py

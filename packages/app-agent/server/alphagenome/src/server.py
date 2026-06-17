@@ -11,8 +11,10 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
+_DEFAULT_PORT = 8002
+
 if __name__ == "__main__":
-    port = int(os.environ.get("AG_PORT", 8002))
+    port = int(os.environ.get("AG_PORT", _DEFAULT_PORT))
 
     api = AlphaGenomeAPI(api_path="/alphagenome")
     server = ls.LitServer(
