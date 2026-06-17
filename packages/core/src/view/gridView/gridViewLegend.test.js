@@ -1138,6 +1138,60 @@ describe("GridView legends", () => {
             );
             expect(labelData.length).toBeGreaterThan(2);
         });
+
+        test("updates quantitative size entries when a dynamic range changes", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, population: 0 },
+                                { x: 2, y: 3, population: 100 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            size: {
+                                field: "population",
+                                type: "quantitative",
+                                scale: {
+                                    domain: [0, 100],
+                                    range: [0, { expr: "height * 2" }],
+                                },
+                            },
+                            color: { value: "#000" },
+                        },
+                    },
+                ],
+            });
+            const labels = getLegends(view)[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "labels");
+            const readMaxSymbolSize = () =>
+                Array.from(
+                    /** @type {UnitView} */ (
+                        labels
+                    ).flowHandle.collector.getData()
+                ).find((datum) => datum.value == 100)._legendSymbolSize;
+            const context = new NoOpRenderingContext({ picking: false });
+
+            view.render(context, Rectangle.create(0, 0, 400, 160), {
+                firstFacet: true,
+            });
+            await view.paramRuntime.whenPropagated();
+            const small = readMaxSymbolSize();
+
+            view.render(context, Rectangle.create(0, 0, 400, 320), {
+                firstFacet: true,
+            });
+            await view.paramRuntime.whenPropagated();
+            const large = readMaxSymbolSize();
+
+            expect(large).toBeGreaterThan(small);
+        });
     });
 
     describe("gradient legends", () => {

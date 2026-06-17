@@ -31,6 +31,19 @@ export default class LegendEntriesSource extends DataSource {
 
         const publish = () => this.#publishEntries();
         this.scaleResolution.addEventListener("domain", publish);
+        if (params.channel == "size") {
+            const publishSizeEntries = () => {
+                this.#domain = undefined;
+                this.#publishEntries();
+            };
+            this.scaleResolution.addEventListener("range", publishSizeEntries);
+            this.view.registerDisposer(() =>
+                this.scaleResolution.removeEventListener(
+                    "range",
+                    publishSizeEntries
+                )
+            );
+        }
         this.view.registerDisposer(() =>
             this.scaleResolution.removeEventListener("domain", publish)
         );

@@ -23,7 +23,7 @@ const DEFAULT_AS = {
 function getSymbolExtent(symbolSize, symbolStrokeWidth) {
     const size = Number(symbolSize);
     const area = Number.isFinite(size) && size >= 0 ? size : 100;
-    return Math.ceil(Math.sqrt(area) + symbolStrokeWidth);
+    return Math.sqrt(area) + symbolStrokeWidth;
 }
 
 export default class PackLabelsTransform extends Transform {
