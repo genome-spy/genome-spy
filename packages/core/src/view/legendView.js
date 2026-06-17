@@ -23,6 +23,26 @@ const LEGEND_VIEW_BACKGROUND = {
  * Legend internals use scale-backed helper marks but must not create their own
  * axes or legends from inherited configuration.
  *
+ * This must be applied to every generated child spec, not just the LegendView
+ * root. The generated subtree contains ordinary unit views, including text
+ * views and helper marks with internal x/y placement channels. Those channels
+ * are implementation details of the legend, even when they are value-backed and
+ * not semantically scale-backed data encodings.
+ *
+ * Without this exclusion, a generated child can still end up with an axis
+ * resolution and inherit axis defaults such as `grid: true`, creating an
+ * AxisGridView inside the legend. This has been observed with the title view:
+ * the authored title encoding only had `text`, but the unexcluded generated
+ * title still received an x-axis resolution through the normal guide machinery.
+ *
+ * The legend may still force the represented source scale, e.g. color/size, but
+ * generated helper x/y channels and nested legend channels must stay out of the
+ * normal guide resolution machinery.
+ *
+ * See:
+ * - https://github.com/genome-spy/genome-spy/issues/412
+ * - https://github.com/genome-spy/genome-spy/issues/413
+ *
  * @template {import("../spec/view.js").ViewSpec & {
  *     resolve?: any,
  *     layer?: any[],
@@ -874,7 +894,11 @@ export default class LegendView extends ContainerView {
             childSpec,
             this,
             this,
-            this.getNextAutoName("legend")
+            this.getNextAutoName("legend"),
+            undefined,
+            {
+                blockEncodingInheritance: true,
+            }
         );
 
         markViewAsNonAddressable(this.#child, { skipSubtree: true });

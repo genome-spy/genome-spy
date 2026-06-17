@@ -198,6 +198,38 @@ describe("GridView legends", () => {
             expect(legendAxisGrids).toHaveLength(0);
         });
 
+        test("does not inherit plot position encodings into legend title", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "Origin",
+                                type: "nominal",
+                                legend: { title: "Origin" },
+                            },
+                        },
+                    },
+                ],
+            });
+
+            const title = getLegendTitle(getLegends(view)[0]);
+
+            expect(title.getEncoding()).toEqual({
+                text: { field: "label" },
+            });
+        });
+
         test("evaluates legend orient ExprRef when legends are created", async () => {
             const view = await createLegendTestView({
                 params: [{ name: "legendSide", value: "bottom" }],
