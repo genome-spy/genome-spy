@@ -6,7 +6,7 @@ import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
 import { createAndInitialize } from "../testUtils.js";
-import { translateLegendCoords } from "./gridView.js";
+import { translateLegendCoords } from "./legendLayout.js";
 import createScale from "../../scale/scale.js";
 
 // Minimal context for layout-driven render calls without WebGL.

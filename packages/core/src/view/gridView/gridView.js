@@ -22,11 +22,11 @@ import {
     propagateInteractionSurface,
 } from "../interactionRouting.js";
 import LayerView from "../layerView.js";
-import { getExternalLegendOverhang } from "../legendView.js";
 import UnitView from "../unitView.js";
 import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
+import { renderLocalLegends } from "./legendLayout.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
@@ -1031,31 +1031,15 @@ export default class GridView extends ContainerView {
                 );
             }
 
-            for (const [orient, legendViews] of Object.entries(
-                gridChild.legends
-            )) {
-                let offset = getExternalAxisOverhang(
-                    axes[
-                        /** @type {import("../../spec/axis.js").AxisOrient} */ (
-                            orient
-                        )
-                    ]
-                );
-                for (const legendView of legendViews) {
-                    const legendCoords = translateLegendCoords(
-                        viewportCoords,
-                        /** @type {import("../../spec/legend.js").LegendOrient} */ (
-                            orient
-                        ),
-                        legendView,
-                        offset
-                    );
-                    queueDecoration(0, DECORATION_ORDER.legend, () =>
-                        legendView.render(context, legendCoords, options)
-                    );
-                    offset += getExternalLegendOverhang(legendView);
-                }
-            }
+            renderLocalLegends(
+                gridChild.legends,
+                axes,
+                viewportCoords,
+                context,
+                options,
+                queueDecoration,
+                DECORATION_ORDER.legend
+            );
 
             // Axes shared between children
             // TODO: What if some have scrollable viewports?
@@ -1558,34 +1542,5 @@ export function translateAxisCoords(coords, orient, axisView) {
                   width: ps,
               })
             : coords.translate(coords.width + offset, 0).modify({ width: ps });
-    }
-}
-
-/**
- * @param {import("../layout/rectangle.js").default} coords
- * @param {import("../../spec/legend.js").LegendOrient} orient
- * @param {import("../legendView.js").default} legendView
- * @param {number} [offset]
- */
-export function translateLegendCoords(coords, orient, legendView, offset = 0) {
-    const ps = legendView.getPerpendicularSize();
-    const padding = legendView.getExternalPadding();
-
-    if (orient == "bottom") {
-        return coords
-            .translate(0, coords.height + offset + padding)
-            .modify({ height: ps });
-    } else if (orient == "top") {
-        return coords
-            .translate(0, -ps - offset - padding)
-            .modify({ height: ps });
-    } else if (orient == "left") {
-        return coords
-            .translate(-ps - offset - padding, 0)
-            .modify({ width: ps });
-    } else if (orient == "right") {
-        return coords
-            .translate(coords.width + offset + padding, 0)
-            .modify({ width: ps });
     }
 }
