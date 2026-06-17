@@ -220,6 +220,54 @@ describe("Axes resolve properly", () => {
         expect(view.getAxisResolution("x").getTitle()).toEqual("a");
     });
 
+    test("Plain positional values do not create axis resolutions", async () => {
+        const view = await createAndInitialize(
+            {
+                config: { axis: { grid: true } },
+                data: { values: [{ label: "A" }] },
+                mark: "text",
+                encoding: {
+                    x: { value: 0 },
+                    y: { value: 0.5 },
+                    text: { field: "label" },
+                },
+            },
+            UnitView
+        );
+
+        expect(view.getScaleResolution("x")).toBeUndefined();
+        expect(view.getScaleResolution("y")).toBeUndefined();
+        expect(view.getAxisResolution("x")).toBeUndefined();
+        expect(view.getAxisResolution("y")).toBeUndefined();
+    });
+
+    test("Conditional positional field arrays contribute axis titles", async () => {
+        /** @type {any} */
+        const spec = {
+            params: [{ name: "p" }, { name: "q" }],
+            data: { values: [{ a: 1 }, { b: 2 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    value: 0,
+                    condition: [
+                        { param: "p", value: 1 },
+                        {
+                            param: "q",
+                            field: "a",
+                            type: "quantitative",
+                        },
+                    ],
+                },
+                y: { value: 1 },
+            },
+        };
+
+        const view = await createAndInitialize(spec, UnitView);
+
+        expect(view.getAxisResolution("x").getTitle()).toEqual("a");
+    });
+
     test("Primary and secondary channels are included in the title", async () => {
         let view = await createAndInitialize(
             {

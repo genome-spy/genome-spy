@@ -362,11 +362,12 @@ export function isChannelDefWithScale(channelDef) {
 export function findChannelDefWithScale(channelDef) {
     if (isValueDefWithCondition(channelDef)) {
         const condition = channelDef.condition;
-        if (!Array.isArray(condition) && isChannelDefWithScale(condition)) {
-            return condition;
+        const conditions = Array.isArray(condition) ? condition : [condition];
+        return conditions.find((condition) => isChannelDefWithScale(condition));
+    } else {
+        if (isChannelDefWithScale(channelDef)) {
+            return channelDef;
         }
-    } else if (isChannelDefWithScale(channelDef)) {
-        return channelDef;
     }
 }
 

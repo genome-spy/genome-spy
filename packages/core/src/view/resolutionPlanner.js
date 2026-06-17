@@ -2,11 +2,10 @@ import ScaleResolution from "../scales/scaleResolution.js";
 import AxisResolution from "../scales/axisResolution.js";
 import {
     isPositionalChannel,
-    isChannelDefWithScale,
+    findChannelDefWithScale,
     getPrimaryChannel,
     isChannelWithScale,
     isPrimaryPositionalChannel,
-    isValueDefWithCondition,
 } from "../encoder/encoder.js";
 
 /**
@@ -20,25 +19,6 @@ import {
 /**
  * @typedef {Map<import("../scales/scaleResolution.js").default, ResolutionMember[]>} ScaleResolutionMemberMap
  */
-
-/**
- * @param {unknown} channelDef
- * @returns {import("../spec/channel.js").ChannelDefWithScale | undefined}
- */
-const getChannelDefWithScale = (channelDef) => {
-    if (isChannelDefWithScale(channelDef)) {
-        return channelDef;
-    }
-
-    if (isValueDefWithCondition(channelDef)) {
-        const condition = channelDef.condition;
-        if (!Array.isArray(condition) && isChannelDefWithScale(condition)) {
-            return condition;
-        }
-    }
-
-    return undefined;
-};
 
 /**
  * @param {import("./unitView.js").default} view
@@ -106,7 +86,7 @@ const ensureScaleResolution = (ownerView, resolutionView, targetChannel) => {
  * @returns {ResolutionMember | undefined}
  */
 const getResolutionMember = (view, type, channel, channelDef) => {
-    const channelDefWithScale = getChannelDefWithScale(channelDef);
+    const channelDefWithScale = findChannelDefWithScale(channelDef);
     if (!channelDefWithScale) {
         return undefined;
     }
