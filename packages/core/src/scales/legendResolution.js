@@ -30,6 +30,9 @@ const SYMBOL_LEGEND_CHANNELS = new Set([
     "color",
     "fill",
     "stroke",
+    "opacity",
+    "fillOpacity",
+    "strokeOpacity",
     "shape",
     "size",
 ]);
@@ -179,7 +182,10 @@ export default class LegendResolution {
  * @returns {LegendType | undefined}
  */
 function getLegendType(channel, channelDef) {
-    if (channel == "size" && channelDef.type == "quantitative") {
+    if (
+        ["opacity", "fillOpacity", "strokeOpacity", "size"].includes(channel) &&
+        channelDef.type == "quantitative"
+    ) {
         return "symbol";
     } else if (
         (channelDef.type === "nominal" || channelDef.type === "ordinal") &&

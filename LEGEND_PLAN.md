@@ -48,7 +48,8 @@ Supported legend channels:
   gradient legends for quantitative fields.
 - `shape` creates symbol legends for discrete fields and can merge into a
   compatible color/fill/stroke legend when field and resolved domain match.
-- `size` creates symbol legends for discrete and quantitative fields.
+- `size`, `opacity`, `fillOpacity`, and `strokeOpacity` create symbol legends
+  for discrete and quantitative fields.
 - Rect mark color legends use square swatches.
 - Quantitative size legends use representative tick values, variable symbol
   sizes, center-aligned symbols, and a shared label column.
@@ -173,19 +174,15 @@ Active channels:
 - `stroke`
 - `shape`
 - `size`
-
-Deferred channels:
-
 - `opacity`
 - `fillOpacity`
 - `strokeOpacity`
 
-Opacity legends need a small design pass before enabling:
-
-- inspect encoder behavior for opacity-like channels,
-- choose readable base fill/stroke defaults,
-- decide whether quantitative opacity should use sampled symbol entries,
-- verify opacity legends do not create misleading low-contrast output.
+Opacity-like legends use symbol entries. Quantitative opacity legends use
+representative tick values, matching `size` legend behavior, rather than
+gradient ramps. Vega-Lite supports legends for `opacity` but not
+`fillOpacity` or `strokeOpacity`; GenomeSpy supports all three because its mark
+encoders expose separate fill and stroke opacity channels.
 
 Unsupported scale-backed non-position channels:
 
