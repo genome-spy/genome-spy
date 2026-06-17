@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import ConcatView from "../concatView.js";
+import AxisGridView from "../axisGridView.js";
 import LegendView, { LegendRegionView } from "../legendView.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
@@ -159,6 +160,42 @@ describe("GridView legends", () => {
                 { value: "Europe", label: "Europe" },
                 { value: "Japan", label: "Japan" },
             ]);
+        });
+
+        test("does not inherit axis grids into generated legend views", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: { grid: true },
+                            },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "Origin",
+                                type: "nominal",
+                            },
+                        },
+                    },
+                ],
+            });
+
+            const legend = getLegends(view)[0];
+            const legendAxisGrids = legend
+                .getDescendants()
+                .filter((descendant) => descendant instanceof AxisGridView);
+
+            expect(legendAxisGrids).toHaveLength(0);
         });
 
         test("evaluates legend orient ExprRef when legends are created", async () => {

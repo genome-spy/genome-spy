@@ -20,6 +20,33 @@ const LEGEND_VIEW_BACKGROUND = {
 };
 
 /**
+ * Legend internals use scale-backed helper marks but must not create their own
+ * axes or legends from inherited configuration.
+ *
+ * @template {import("../spec/view.js").ViewSpec & {
+ *     resolve?: any,
+ *     layer?: any[],
+ *     vconcat?: any[],
+ *     hconcat?: any[]
+ * }} T
+ * @param {T} spec
+ * @returns {T}
+ */
+function excludeLegendGuideResolutions(spec) {
+    spec.resolve = {
+        ...spec.resolve,
+        axis: { default: "excluded", ...spec.resolve?.axis },
+        legend: { default: "excluded", ...spec.resolve?.legend },
+    };
+
+    for (const children of [spec.layer, spec.vconcat, spec.hconcat]) {
+        children?.forEach(excludeLegendGuideResolutions);
+    }
+
+    return spec;
+}
+
+/**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
  * @typedef {import("./legend/legendEntries.js").LegendEntry} LegendEntry
  * @typedef {import("../spec/view.js").VConcatSpec & {
@@ -110,7 +137,7 @@ function createLegendTitleSpec(legend) {
 function createLegendRootSpec(legend, body, forcedScaleChannels = []) {
     const title = createLegendTitleSpec(legend);
 
-    return {
+    return excludeLegendGuideResolutions({
         name: "legend_" + (legend.orient ?? "right"),
         view: createLegendViewBackground(legend),
         resolve: {
@@ -120,7 +147,7 @@ function createLegendRootSpec(legend, body, forcedScaleChannels = []) {
         },
         spacing: 0,
         vconcat: title ? [title, body] : [body],
-    };
+    });
 }
 
 /**

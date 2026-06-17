@@ -110,6 +110,15 @@ const getResolutionMember = (view, type, channel, channelDef) => {
     if (type == "legend" && isPositionalChannel(targetChannel)) {
         return undefined;
     }
+    if (
+        type == "legend" &&
+        view.getConfiguredOrDefaultResolution(
+            targetChannel,
+            /** @type {any} */ (type)
+        ) == "excluded"
+    ) {
+        return undefined;
+    }
 
     return {
         view: getResolutionView(view, type, targetChannel),
