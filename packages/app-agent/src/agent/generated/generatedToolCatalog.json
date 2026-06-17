@@ -438,5 +438,31 @@
       ]
     },
     "strict": true
+  },
+  {
+    "toolName": "scoreVariantsWithMl",
+    "kind": "do",
+    "subkind": "state_change",
+    "description": "Score the variants in the currently brushed genomic region using an ML model (AlphaGenome or Evo2).",
+    "inputType": "ScoreVariantsWithMlToolInput",
+    "inputFields": [
+      {
+        "name": "model",
+        "type": "\"alphagenome\" | \"evo2\"",
+        "description": "ML model to use for scoring. \"alphagenome\" scores chromatin accessibility and gene expression effects; \"evo2\" scores evolutionary likelihood delta.",
+        "required": true
+      },
+      {
+        "name": "heads",
+        "type": "string[]",
+        "description": "AlphaGenome scoring heads to compute. Only used when model is \"alphagenome\". Valid values: \"atac\", \"dnase\", \"cage\", \"procap\", \"rna_seq\", \"chip_tf\", \"chip_histone\", \"contact_maps\". Defaults to [\"atac\", \"dnase\", \"cage\"].",
+        "required": false
+      }
+    ],
+    "exampleInput": {
+      "model": "alphagenome",
+      "heads": ["atac", "dnase", "cage"]
+    },
+    "strict": true
   }
 ]

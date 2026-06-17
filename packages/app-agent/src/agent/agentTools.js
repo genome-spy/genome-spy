@@ -9,6 +9,7 @@ import { getIntentActionTypeDocs as getIntentActionTypeDocsContent } from "./int
 import { resolveAgentAttributeCandidateRecord } from "./attributeCandidate.js";
 import { normalizeAgentIntentActionAttributes } from "./agentIntentActionAttributes.js";
 import { formatAgentToolErrorMessage } from "./missingAttributeGuidance.js";
+import { scoreVariantsWithMlTool } from "./mlScoringTool.js";
 
 /*
  * Tool behavior lives here. The input shapes and user-facing descriptions are
@@ -202,6 +203,7 @@ export const agentTools = {
     getSelectionFeatureFieldSummary: getSelectionFeatureFieldSummaryTool,
     resolveMetadataAttributeValues: resolveMetadataAttributeValuesTool,
     searchViewDatums: searchViewDatumsTool,
+    scoreVariantsWithMl: scoreVariantsWithMlTool,
 
     /**
      * @param {AgentToolRuntime} _runtime

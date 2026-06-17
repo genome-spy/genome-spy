@@ -555,6 +555,36 @@ export interface ShowAttributeRelationshipPlotToolInput {
 }
 
 /**
+ * Score the variants in the currently brushed genomic region using an ML model
+ * (AlphaGenome or Evo2). Results are added as new per-sample metadata columns
+ * visible in the sample attribute sidebar. Requires an active genomic brush
+ * with SNVs in the brushed region and the ML scoring plugin to be configured.
+ * @toolKind do
+ * @toolSubkind state_change
+ *
+ * @example
+ * {
+ *   "model": "alphagenome",
+ *   "heads": ["atac", "dnase", "cage"]
+ * }
+ */
+export interface ScoreVariantsWithMlToolInput {
+    /**
+     * ML model to use for scoring. "alphagenome" scores chromatin accessibility
+     * and gene expression effects; "evo2" scores evolutionary likelihood delta.
+     */
+    model: "alphagenome" | "evo2";
+
+    /**
+     * AlphaGenome scoring heads to compute. Only used when model is
+     * "alphagenome". Valid values: "atac", "dnase", "cage", "procap",
+     * "rna_seq", "chip_tf", "chip_histone", "contact_maps".
+     * Defaults to ["atac", "dnase", "cage"].
+     */
+    heads?: string[];
+}
+
+/**
  * Tool inputs exposed to the agent.
  */
 export interface AgentToolInputs {
@@ -574,4 +604,5 @@ export interface AgentToolInputs {
     showCategoryCountsPlot: ShowCategoryCountsPlotToolInput;
     showAttributeDistributionPlot: ShowAttributeDistributionPlotToolInput;
     showAttributeRelationshipPlot: ShowAttributeRelationshipPlotToolInput;
+    scoreVariantsWithMl: ScoreVariantsWithMlToolInput;
 }

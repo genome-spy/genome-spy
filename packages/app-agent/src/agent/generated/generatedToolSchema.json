@@ -344,6 +344,9 @@
         "resolveMetadataAttributeValues": {
           "$ref": "#/definitions/ResolveMetadataAttributeValuesToolInput"
         },
+        "scoreVariantsWithMl": {
+          "$ref": "#/definitions/ScoreVariantsWithMlToolInput"
+        },
         "searchViewDatums": {
           "$ref": "#/definitions/SearchViewDatumsToolInput"
         },
@@ -382,7 +385,8 @@
         "submitIntentAction",
         "showCategoryCountsPlot",
         "showAttributeDistributionPlot",
-        "showAttributeRelationshipPlot"
+        "showAttributeRelationshipPlot",
+        "scoreVariantsWithMl"
       ],
       "type": "object"
     },
@@ -1938,6 +1942,32 @@
         }
       },
       "required": ["name"],
+      "type": "object"
+    },
+    "ScoreVariantsWithMlToolInput": {
+      "additionalProperties": false,
+      "description": "Score the variants in the currently brushed genomic region using an ML model (AlphaGenome or Evo2). Results are added as new per-sample metadata columns visible in the sample attribute sidebar. Requires an active genomic brush with SNVs in the brushed region and the ML scoring plugin to be configured.",
+      "examples": [
+        {
+          "heads": ["atac", "dnase", "cage"],
+          "model": "alphagenome"
+        }
+      ],
+      "properties": {
+        "heads": {
+          "description": "AlphaGenome scoring heads to compute. Only used when model is \"alphagenome\". Valid values: \"atac\", \"dnase\", \"cage\", \"procap\", \"rna_seq\", \"chip_tf\", \"chip_histone\", \"contact_maps\". Defaults to [\"atac\", \"dnase\", \"cage\"].",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "model": {
+          "description": "ML model to use for scoring. \"alphagenome\" scores chromatin accessibility and gene expression effects; \"evo2\" scores evolutionary likelihood delta.",
+          "enum": ["alphagenome", "evo2"],
+          "type": "string"
+        }
+      },
+      "required": ["model"],
       "type": "object"
     },
     "SearchViewDatumsToolInput": {
