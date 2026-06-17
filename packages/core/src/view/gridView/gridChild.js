@@ -122,11 +122,14 @@ export default class GridChild {
         /** @type {Rectangle} */
         this.coords = Rectangle.ZERO;
 
-        if (view.needsAxes.x || view.needsAxes.y) {
-            const spec = view.spec;
+        const needsAxes = view.needsAxes.x || view.needsAxes.y;
+        const spec = view.spec;
+        const explicitViewBackground = "view" in spec ? spec.view : undefined;
+
+        if (needsAxes || explicitViewBackground) {
             const viewBackground = getConfiguredViewBackground(
                 view.getConfigScopes(),
-                "view" in spec ? spec.view : undefined
+                explicitViewBackground
             );
             this.backgroundZindex = viewBackground?.zindex ?? 0;
             this.backgroundStrokeZindex = viewBackground?.strokeZindex;
@@ -168,7 +171,9 @@ export default class GridChild {
                     skipSubtree: true,
                 });
             }
+        }
 
+        if (needsAxes) {
             const titleSpec = resolveTitleSpec(
                 view.spec.title,
                 view.getConfigScopes()
@@ -1048,10 +1053,11 @@ function normalizeIntervalForChannel(scaleResolution, interval) {
  * @returns {import("../../spec/view.js").UnitSpec}
  */
 export function createBackground(viewBackground) {
+    const fillOpacity =
+        viewBackground?.fillOpacity ?? (viewBackground?.fill ? 1.0 : 0.0);
+    const shadowOpacity = viewBackground?.shadowOpacity ?? 0.0;
     const required =
-        viewBackground?.fill ||
-        viewBackground?.fillOpacity ||
-        viewBackground?.shadowOpacity;
+        (viewBackground?.fill && fillOpacity !== 0) || shadowOpacity !== 0;
     if (!required) {
         return;
     }
@@ -1060,8 +1066,7 @@ export function createBackground(viewBackground) {
         data: { values: [{}] },
         mark: {
             color: viewBackground.fill,
-            opacity:
-                viewBackground.fillOpacity ?? (viewBackground.fill ? 1.0 : 0.0),
+            opacity: fillOpacity,
             type: "rect",
             clip: false, // Shouldn't be needed
             tooltip: null,

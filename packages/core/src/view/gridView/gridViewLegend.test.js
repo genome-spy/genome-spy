@@ -1460,5 +1460,91 @@ describe("GridView legends", () => {
             expect(legends).toHaveLength(1);
             expect(legendBackgroundStrokes).toHaveLength(0);
         });
+
+        test("draws configured backgrounds for stacked legends", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: {
+                        disable: false,
+                        backgroundFill: "white",
+                        backgroundFillOpacity: 0.8,
+                    },
+                    view: { stroke: "lightgray" },
+                },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                {
+                                    x: 1,
+                                    signal: 2,
+                                    trend: 3,
+                                    group: "alpha",
+                                    difference: 1,
+                                },
+                                {
+                                    x: 2,
+                                    signal: 3,
+                                    trend: 4,
+                                    group: "beta",
+                                    difference: 2,
+                                },
+                            ],
+                        },
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                        },
+                        layer: [
+                            {
+                                mark: "point",
+                                encoding: {
+                                    y: {
+                                        field: "signal",
+                                        type: "quantitative",
+                                    },
+                                    color: {
+                                        field: "group",
+                                        type: "nominal",
+                                        legend: { title: "Group" },
+                                    },
+                                },
+                            },
+                            {
+                                mark: "point",
+                                encoding: {
+                                    y: {
+                                        field: "trend",
+                                        type: "quantitative",
+                                    },
+                                    size: {
+                                        field: "difference",
+                                        type: "quantitative",
+                                        legend: { title: "Difference" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+            const legendBackgrounds = getLegendRegions(view)[0]
+                .getDescendants()
+                .filter((descendant) =>
+                    descendant.name.startsWith("background")
+                );
+
+            expect(
+                legendBackgrounds.map((background) => background.name)
+            ).toEqual(["background0", "background1"]);
+            expect(
+                legendBackgrounds.map(
+                    (background) =>
+                        /** @type {UnitView} */ (background).spec.mark
+                )
+            ).toEqual([
+                expect.objectContaining({ color: "white", opacity: 0.8 }),
+                expect.objectContaining({ color: "white", opacity: 0.8 }),
+            ]);
+        });
     });
 });

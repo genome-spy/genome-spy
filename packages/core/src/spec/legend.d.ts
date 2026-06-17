@@ -45,6 +45,31 @@ export interface Legend {
     labelLimit?: number;
 
     /**
+     * Fill color of the legend background.
+     */
+    backgroundFill?: string;
+
+    /**
+     * Opacity of the legend background fill.
+     */
+    backgroundFillOpacity?: number;
+
+    /**
+     * Stroke color of the legend background.
+     */
+    backgroundStroke?: string;
+
+    /**
+     * Stroke width of the legend background border.
+     */
+    backgroundStrokeWidth?: number;
+
+    /**
+     * Opacity of the legend background stroke.
+     */
+    backgroundStrokeOpacity?: number;
+
+    /**
      * Symbol size in pixels squared.
      */
     symbolSize?: number;

@@ -22,11 +22,33 @@ const LEGEND_VIEW_BACKGROUND = {
 /**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
  * @typedef {import("./legend/legendEntries.js").LegendEntry} LegendEntry
+ * @typedef {import("../spec/view.js").VConcatSpec & {
+ *     view: import("../spec/view.js").ViewBackground
+ * }} LegendRootSpec
  * @typedef {{
  *     mark?: Partial<import("../spec/mark.js").PointProps>,
  *     encoding?: Partial<import("../spec/channel.js").Encoding>
  * }} SymbolLegendStyle
  */
+
+/**
+ * @param {LegendConfig} legend
+ * @returns {import("../spec/view.js").ViewBackground}
+ */
+function createLegendViewBackground(legend) {
+    return {
+        fill: legend.backgroundFill,
+        fillOpacity: legend.backgroundFill
+            ? (legend.backgroundFillOpacity ?? 1)
+            : 0,
+        stroke: legend.backgroundStroke,
+        strokeWidth: legend.backgroundStrokeWidth,
+        strokeOpacity: legend.backgroundStroke
+            ? (legend.backgroundStrokeOpacity ?? 1)
+            : 0,
+        shadowOpacity: 0,
+    };
+}
 
 /**
  * @param {LegendConfig} legend
@@ -83,13 +105,14 @@ function createLegendTitleSpec(legend) {
  * @param {LegendConfig} legend
  * @param {import("../spec/view.js").ViewSpec} body
  * @param {import("../spec/channel.js").ChannelWithScale[]} [forcedScaleChannels]
- * @returns {import("../spec/view.js").VConcatSpec}
+ * @returns {LegendRootSpec}
  */
 function createLegendRootSpec(legend, body, forcedScaleChannels = []) {
     const title = createLegendTitleSpec(legend);
 
     return {
         name: "legend_" + (legend.orient ?? "right"),
+        view: createLegendViewBackground(legend),
         resolve: {
             scale: Object.fromEntries(
                 forcedScaleChannels.map((channel) => [channel, "forced"])
@@ -130,7 +153,7 @@ function createBaseColorEncoding(value) {
  * @param {LegendConfig} options.legend
  * @param {string} [options.format]
  * @param {import("../spec/channel.js").Type} options.dataType
- * @returns {import("../spec/view.js").VConcatSpec}
+ * @returns {LegendRootSpec}
  */
 export function createSymbolLegendSpec({
     entries,
@@ -325,7 +348,7 @@ export function createSymbolLegendSpec({
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {LegendConfig} options.legend
  * @param {string} [options.format]
- * @returns {import("../spec/view.js").VConcatSpec}
+ * @returns {LegendRootSpec}
  */
 export function createGradientLegendSpec({ channel, legend, format }) {
     const h = isHorizontalLegend(legend);
