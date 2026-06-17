@@ -770,6 +770,46 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["child", "axis_bottom", "axis_left"]);
     });
 
+    test("renders legends above marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        name: "child",
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "alpha" },
+                                { x: 2, y: 3, group: "beta" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: { orient: "top-right" },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["child", "legend_region_top-right"]
+        );
+
+        expect(order).toEqual(["child", "legend_region_top-right"]);
+    });
+
     test("defaults inside axes above marks", async () => {
         const order = await recordRenderOrder(
             {

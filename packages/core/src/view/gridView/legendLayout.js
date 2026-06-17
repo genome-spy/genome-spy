@@ -1,6 +1,8 @@
 import { getExternalAxisOverhang } from "../axisView.js";
 import { isActiveLegendRegion } from "./gridChildLegends.js";
 
+const LEGEND_ZINDEX = 1;
+
 /**
  * @param {import("../layout/rectangle.js").default} coords
  * @param {import("../../spec/legend.js").LegendOrient} orient
@@ -91,7 +93,7 @@ export function renderLocalLegends(
             legendView,
             offset
         );
-        queueDecoration(0, order, () =>
+        queueDecoration(LEGEND_ZINDEX, order, () =>
             legendView.render(context, legendCoords, options)
         );
     }
