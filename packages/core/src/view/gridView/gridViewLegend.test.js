@@ -161,6 +161,70 @@ describe("GridView legends", () => {
             ]);
         });
 
+        test("evaluates legend orient ExprRef when legends are created", async () => {
+            const view = await createLegendTestView({
+                params: [{ name: "legendSide", value: "bottom" }],
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "Origin",
+                                type: "nominal",
+                                legend: { orient: { expr: "legendSide" } },
+                            },
+                        },
+                    },
+                ],
+            });
+            const [legend] = getLegends(view);
+            const [region] = getLegendRegions(view);
+
+            expect(legend.legendProps.orient).toBe("bottom");
+            expect(legend.name).toBe("legend_bottom");
+            expect(region.name).toBe("legend_region_bottom");
+        });
+
+        test("rejects reactive changes to legend orient ExprRefs", async () => {
+            const view = await createLegendTestView({
+                params: [{ name: "legendSide", value: "right" }],
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "Origin",
+                                type: "nominal",
+                                legend: { orient: { expr: "legendSide" } },
+                            },
+                        },
+                    },
+                ],
+            });
+
+            expect(() =>
+                view.paramRuntime.setValue("legendSide", "bottom")
+            ).toThrow("Reactive legend orient changes are not supported");
+        });
+
         test("creates legends for layer children", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

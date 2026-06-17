@@ -1,4 +1,5 @@
 import { isValueDef } from "../../encoder/encoder.js";
+import { isExprRef } from "../../paramRuntime/paramUtils.js";
 import LegendView, {
     LegendRegionView,
     getExternalLegendOverhang,
@@ -16,6 +17,9 @@ import LegendView, {
  * }} GridChildLegendRegion
  *
  * @typedef {Partial<Record<import("../../spec/legend.js").LegendOrient, GridChildLegendRegion>>} GridChildLegends
+ * @typedef {Omit<import("../../spec/legend.js").LegendConfig, "orient"> & {
+ *     orient?: import("../../spec/legend.js").LegendOrient
+ * }} ResolvedLegendConfig
  */
 
 const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
@@ -28,6 +32,19 @@ const INHERITED_SYMBOL_ENCODING_CHANNELS = /** @type {const} */ ([
     "strokeWidth",
     "shape",
 ]);
+
+const LEGEND_ORIENTS = new Set(
+    /** @type {const} */ ([
+        "left",
+        "right",
+        "top",
+        "bottom",
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right",
+    ])
+);
 
 /**
  * @param {import("../../spec/channel.js").ChannelDef | undefined} channelDef
@@ -110,6 +127,52 @@ function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
 }
 
 /**
+ * @param {any} orient
+ * @returns {asserts orient is import("../../spec/legend.js").LegendOrient}
+ */
+function assertLegendOrient(orient) {
+    if (!LEGEND_ORIENTS.has(orient)) {
+        throw new Error(`Invalid legend orientation "${orient}"!`);
+    }
+}
+
+/**
+ * @param {import("../../spec/legend.js").LegendConfig} legend
+ * @param {import("../unitView.js").default} legendParent
+ * @param {(disposer: () => void) => void} registerDisposer
+ * @returns {ResolvedLegendConfig}
+ */
+function resolveLegendOrient(legend, legendParent, registerDisposer) {
+    if (!isExprRef(legend.orient)) {
+        if (legend.orient !== undefined) {
+            assertLegendOrient(legend.orient);
+        }
+        return /** @type {ResolvedLegendConfig} */ (legend);
+    }
+
+    const orientRef = legend.orient;
+    const orient = legendParent.paramRuntime.evaluateAndGet(orientRef.expr);
+    assertLegendOrient(orient);
+    legendParent.paramRuntime.watchExpression(
+        orientRef.expr,
+        () => {
+            throw new Error(
+                "Reactive legend orient changes are not supported."
+            );
+        },
+        {
+            scopeOwned: false,
+            registerDisposer,
+        }
+    );
+
+    return /** @type {ResolvedLegendConfig} */ ({
+        ...legend,
+        orient,
+    });
+}
+
+/**
  * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
  * @param {import("../unitView.js").default} legendParent
  * @param {import("../containerView.js").default} layoutParent
@@ -120,6 +183,13 @@ export async function createGridChildLegend(
     legendParent,
     layoutParent
 ) {
+    /** @type {(() => void)[]} */
+    const orientDisposers = [];
+    const legendProps = resolveLegendOrient(
+        definition.legend,
+        legendParent,
+        (disposer) => orientDisposers.push(disposer)
+    );
     const symbolStyle =
         definition.type == "symbol"
             ? createInheritedSymbolStyle(
@@ -137,7 +207,7 @@ export async function createGridChildLegend(
             type: definition.type,
             symbolChannels: definition.symbolChannels,
             symbolStyle,
-            legend: definition.legend,
+            legend: legendProps,
             format: definition.format,
             dataType: definition.dataType,
         },
@@ -145,6 +215,10 @@ export async function createGridChildLegend(
         layoutParent,
         legendParent
     );
+
+    for (const dispose of orientDisposers) {
+        legend.registerDisposer(dispose);
+    }
 
     await legend.initializeChildren();
     return legend;
@@ -156,7 +230,9 @@ export async function createGridChildLegend(
  * @param {import("../../scales/legendResolution.js").default} resolution
  */
 export async function addLegendView(legends, legend, resolution) {
-    const orient = legend.legendProps.orient ?? "right";
+    const orient = /** @type {import("../../spec/legend.js").LegendOrient} */ (
+        legend.legendProps.orient ?? "right"
+    );
     let region = legends[orient];
 
     if (!region) {
