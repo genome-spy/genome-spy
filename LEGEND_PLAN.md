@@ -447,41 +447,21 @@ This should not be required for the simple local-legend milestone.
 These refactors should stay behavior-preserving and small enough to commit one
 at a time.
 
-1. Simplify legend resolution member shape.
-   - Remove unused `channelDef` and `targetChannel` from
-     `LegendResolutionMember` if they remain unused, or make
-     `LegendResolution` consume them directly.
-   - Tentative commit: `refactor(core): simplify legend resolution members`.
-2. Move legend definition creation fully into `LegendResolution`.
-   - Turn `createLegendDefinition(...)` and nearby helper functions into
-     resolution logic that works from registered members.
-   - Goal: make `LegendResolution` more than a thin ordered-map wrapper.
-   - Tentative commit: `refactor(core): centralize legend definition arbitration`.
-3. Extract legend materialization from `GridChild`.
-   - Move `createInheritedSymbolStyle` and `LegendView` construction into a
-     focused `gridChildLegends.js` helper module.
-   - Keep `GridChild` responsible for calling the helper and storing created
-     legend views.
-   - Tentative commit: `refactor(core): extract grid child legend construction`.
-4. Extract legend overhang helpers if they reduce repetition.
-   - Add small helpers for iterating, disposing, and summing per-orient legend
-     arrays only if they remove repeated nested loops cleanly.
-   - Tentative commit: `refactor(core): simplify grid child legend bookkeeping`.
-5. Move legend coordinate translation out of `GridView`.
-   - Move `translateLegendCoords` to a focused local module, probably
-     `gridView/legendLayout.js`.
-   - Keep the module limited to placement math; avoid a broad guide manager.
-   - Tentative commit: `refactor(core): isolate legend placement math`.
-6. Extract local legend rendering only if the call site improves.
-   - After placement math is isolated, consider moving the same-orient stacking
-     render loop out of `GridView`.
-   - Do this only if the result is simpler, not merely shorter.
-   - Tentative commit: `refactor(core): extract local legend rendering`.
-7. Split `gridViewLegend.test.js` by behavior.
+Completed:
+
+- Simplified legend resolution member shape.
+- Moved legend definition creation into `LegendResolution`.
+- Extracted `GridChild` legend construction and per-orient legend bookkeeping
+  into `gridChildLegends.js`.
+- Extracted local legend placement and rendering into `legendLayout.js`.
+
+Remaining:
+
+1. Split `gridViewLegend.test.js` by behavior.
    - Separate symbol legend, gradient legend, and resolution/visibility
      behavior.
    - Tentative commit: `test(core): split grid view legend tests`.
-8. Prune overly internal legend assertions.
+2. Prune overly internal legend assertions.
    - Replace brittle generated-spec assertions with representative behavioral
      assertions where easy.
    - Leave internal assertions where the generated structure is the intended
