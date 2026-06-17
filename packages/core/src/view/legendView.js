@@ -702,6 +702,15 @@ export class LegendRegionView extends ContainerView {
     }
 
     /**
+     * @returns {LegendView[]}
+     */
+    #getVisibleLegendViews() {
+        return this.#legendViews.filter((legendView) =>
+            legendView.isConfiguredVisible()
+        );
+    }
+
+    /**
      * @returns {IterableIterator<import("./view.js").default>}
      */
     *[Symbol.iterator]() {
@@ -722,15 +731,16 @@ export class LegendRegionView extends ContainerView {
     }
 
     getPerpendicularSize() {
+        const legendViews = this.#getVisibleLegendViews();
         if (this.orient == "top" || this.orient == "bottom") {
-            return this.#legendViews.reduce(
+            return legendViews.reduce(
                 (sum, legendView) => sum + legendView.getPerpendicularSize(),
                 0
             );
         } else {
             return Math.max(
                 0,
-                ...this.#legendViews.map((legendView) =>
+                ...legendViews.map((legendView) =>
                     legendView.getPerpendicularSize()
                 )
             );
@@ -740,22 +750,23 @@ export class LegendRegionView extends ContainerView {
     getExternalPadding() {
         return Math.max(
             0,
-            ...this.#legendViews.map((legendView) =>
+            ...this.#getVisibleLegendViews().map((legendView) =>
                 legendView.getExternalPadding()
             )
         );
     }
 
     getParallelSize() {
+        const legendViews = this.#getVisibleLegendViews();
         if (
-            this.#legendViews.some((legendView) =>
+            legendViews.some((legendView) =>
                 legendView.hasFlexibleParallelSize()
             )
         ) {
             return undefined;
         }
 
-        return this.#legendViews.reduce(
+        return legendViews.reduce(
             (sum, legendView, index) =>
                 sum +
                 legendView.getStackedParallelSize() +
@@ -805,6 +816,9 @@ export default class LegendView extends ContainerView {
     #type;
 
     #stacked = false;
+
+    /** @type {() => boolean} */
+    #activePredicate = () => true;
 
     /** @type {MeasuredLabels | undefined} */
     #measuredLabels;
@@ -985,6 +999,17 @@ export default class LegendView extends ContainerView {
 
     getExternalPadding() {
         return this.legendProps.padding ?? 0;
+    }
+
+    /**
+     * @param {() => boolean} predicate
+     */
+    setActivePredicate(predicate) {
+        this.#activePredicate = predicate;
+    }
+
+    isConfiguredVisible() {
+        return super.isConfiguredVisible() && this.#activePredicate();
     }
 
     setStacked() {

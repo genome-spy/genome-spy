@@ -234,6 +234,7 @@ export async function addLegendView(legends, legend, resolution) {
         legends[orient] = region;
     }
 
+    legend.setActivePredicate(() => resolution.hasVisibleNonChromeMember());
     region.legendView.addLegendView(legend);
     region.entries.push({ legendView: legend, resolution });
 }

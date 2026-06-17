@@ -6,9 +6,13 @@ import LegendView, { LegendRegionView } from "../legendView.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
-import { createAndInitialize } from "../testUtils.js";
+import { createAndInitialize, createTestViewContext } from "../testUtils.js";
 import { translateLegendCoords } from "./legendLayout.js";
 import createScale from "../../scale/scale.js";
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../../data/flowInit.js";
 
 // Minimal context for layout-driven render calls without WebGL.
 class NoOpRenderingContext extends ViewRenderingContext {
@@ -114,6 +118,36 @@ describe("GridView legends", () => {
             ConcatView
         );
 
+    /**
+     * Uses an explicit context so tests can model configured view visibility.
+     *
+     * @param {Partial<import("../../spec/root.js").RootSpec>} spec
+     * @param {import("../../types/viewContext.js").default} context
+     * @returns {Promise<ConcatView>}
+     */
+    const createLegendTestViewWithContext = async (spec, context) => {
+        const view = await context.createOrImportView(
+            /** @type {import("../../spec/root.js").RootSpec} */ (spec),
+            null,
+            null,
+            "viewRoot"
+        );
+        if (!(view instanceof ConcatView)) {
+            throw new Error("Expected a concat root view!");
+        }
+
+        view.visit((descendant) => {
+            if (descendant instanceof UnitView) {
+                descendant.mark.initializeEncoders();
+            }
+        });
+
+        const { dataSources } = initializeViewSubtree(view, context.dataFlow);
+        await loadViewSubtreeData(view, dataSources);
+
+        return view;
+    };
+
     const getLegends = (/** @type {ConcatView} */ view) =>
         view
             .getDescendants()
@@ -160,6 +194,107 @@ describe("GridView legends", () => {
                 { value: "Europe", label: "Europe" },
                 { value: "Japan", label: "Japan" },
             ]);
+        });
+
+        test("hides a stacked legend when its contributing view is hidden", async () => {
+            let sizeLayerVisible = true;
+            const context = createTestViewContext();
+            context.isViewConfiguredVisible = (view) =>
+                view.spec.name !== "size-layer" || sizeLayerVisible;
+            const view = await createLegendTestViewWithContext(
+                {
+                    config: { legend: { disable: false } },
+                    vconcat: [
+                        {
+                            layer: [
+                                {
+                                    name: "color-layer",
+                                    data: {
+                                        values: [
+                                            {
+                                                x: 1,
+                                                y: 2,
+                                                group: "alpha",
+                                            },
+                                            {
+                                                x: 2,
+                                                y: 3,
+                                                group: "beta",
+                                            },
+                                        ],
+                                    },
+                                    mark: "point",
+                                    encoding: {
+                                        x: {
+                                            field: "x",
+                                            type: "quantitative",
+                                        },
+                                        y: {
+                                            field: "y",
+                                            type: "quantitative",
+                                        },
+                                        color: {
+                                            field: "group",
+                                            type: "nominal",
+                                            legend: { orient: "right" },
+                                        },
+                                    },
+                                },
+                                {
+                                    name: "size-layer",
+                                    data: {
+                                        values: [
+                                            { x: 1, y: 2, amount: 1 },
+                                            { x: 2, y: 3, amount: 2 },
+                                        ],
+                                    },
+                                    mark: "point",
+                                    encoding: {
+                                        x: {
+                                            field: "x",
+                                            type: "quantitative",
+                                        },
+                                        y: {
+                                            field: "y",
+                                            type: "quantitative",
+                                        },
+                                        size: {
+                                            field: "amount",
+                                            type: "quantitative",
+                                            legend: { orient: "right" },
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+                context
+            );
+            const legendRegion = getLegendRegions(view)[0];
+            const renderContext = new MarkRecordingRenderingContext({
+                picking: false,
+            });
+
+            legendRegion.render(
+                renderContext,
+                Rectangle.create(0, 0, 120, 160)
+            );
+            expect(
+                renderContext.markNames.filter((name) => name === "symbols")
+            ).toHaveLength(2);
+
+            sizeLayerVisible = false;
+            renderContext.markNames = [];
+            legendRegion.render(
+                renderContext,
+                Rectangle.create(0, 0, 120, 160)
+            );
+
+            expect(renderContext.markNames).toContain("symbols");
+            expect(
+                renderContext.markNames.filter((name) => name === "symbols")
+            ).toHaveLength(1);
         });
 
         test("does not inherit axis grids into generated legend views", async () => {
