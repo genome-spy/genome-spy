@@ -55,6 +55,9 @@ class InspectRenderingContext extends ViewRenderingContext {
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     sampleGroups = [];
 
+    /** @type {string[]} */
+    legendMarks = [];
+
     pushView(view, coords) {
         this.#coordsStack.push(coords);
     }
@@ -82,6 +85,12 @@ class InspectRenderingContext extends ViewRenderingContext {
                 .some((view) => view.name === "sample-groups")
         ) {
             this.sampleGroups.push(options);
+        } else if (
+            mark.unitView
+                .getLayoutAncestors()
+                .some((view) => view.name?.startsWith("legend_region_"))
+        ) {
+            this.legendMarks.push(mark.unitView.name);
         }
     }
 }
@@ -830,6 +839,67 @@ describe("layout and group column", () => {
             view.sidebarCoords.width
         );
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
+    test("renders child legends in the sample pane", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            config: { legend: { disable: false } },
+            data: {
+                values: [
+                    { sample: "A", x: 1, group: "alpha" },
+                    { sample: "B", x: 2, group: "beta" },
+                ],
+            },
+            samples: {},
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    color: {
+                        field: "group",
+                        type: "nominal",
+                        legend: { orient: "right" },
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        const renderContext = new InspectRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 360, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderContext.legendMarks).not.toHaveLength(0);
+    });
+
+    test("rejects left-oriented child legends because the sidebar owns the left side", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            config: { legend: { disable: false } },
+            data: {
+                values: [{ sample: "A", x: 1, group: "alpha" }],
+            },
+            samples: {},
+            spec: {
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                    color: {
+                        field: "group",
+                        type: "nominal",
+                        legend: { orient: "left" },
+                    },
+                },
+            },
+        };
+
+        await expect(createSampleViewForTest({ spec })).rejects.toThrow(
+            "SampleView child legends do not support left orientation"
+        );
     });
 
     test("clips sample labels to the sidebar viewport", async () => {
