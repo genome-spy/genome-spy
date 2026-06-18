@@ -1307,6 +1307,45 @@ describe("GridView legends", () => {
             ]);
         });
 
+        test("uses explicit column count for symbol legend packing", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "A" },
+                                { x: 2, y: 3, Origin: "B" },
+                                { x: 3, y: 4, Origin: "C" },
+                                { x: 4, y: 5, Origin: "D" },
+                                { x: 5, y: 6, Origin: "E" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "Origin",
+                                type: "nominal",
+                                legend: { columns: 2 },
+                            },
+                        },
+                    },
+                ],
+            });
+            const labels = getLegends(view)[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "labels");
+            const labelData = Array.from(
+                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+            );
+
+            expect(labelData.map(({ _legendColumn }) => _legendColumn)).toEqual(
+                [0, 0, 0, 1, 1]
+            );
+        });
+
         test("does not create legends for positional quantitative channels", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
