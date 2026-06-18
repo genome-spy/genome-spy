@@ -190,7 +190,8 @@ export interface GenomeSpyConfig {
     axis?: AxisConfig;
 
     /**
-     * Defaults shared by all legends.
+     * Defaults shared by all legends. Set `disable` to `true` to suppress
+     * automatic legend creation by default.
      */
     legend?: LegendConfig;
 

@@ -241,8 +241,9 @@ export type MarkPropDatumDef<T extends Type> = LegendMixins &
  */
 export interface LegendMixins {
     /**
-     * An object defining properties of the legend. If `null`, the legend for
-     * the encoding channel is removed.
+     * Legend properties for the encoding channel. If `null`, the legend for
+     * the channel is removed. If an object is provided, a legend is created
+     * even when legends are disabled by default in the config.
      *
      * __Default value:__ If undefined, configured legend defaults are applied.
      */

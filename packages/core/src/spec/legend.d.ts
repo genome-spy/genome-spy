@@ -21,8 +21,8 @@ export type LegendTitleOrient = "top" | "bottom" | "left" | "right";
  */
 export interface Legend {
     /**
-     * Named style reference(s) resolved from `config.style`.
-     * If an array is provided, later styles override earlier ones.
+     * Named style reference or references resolved from `config.style`. If an
+     * array is provided, later styles override earlier ones.
      */
     style?: string | string[];
 
@@ -32,7 +32,9 @@ export interface Legend {
     title?: string | null;
 
     /**
-     * The plot side or inside corner where the legend is placed.
+     * The plot side or inside corner where the legend is placed. Side legends
+     * are placed outside the plot area. Corner legends are placed inside the
+     * plot area.
      */
     orient?: LegendOrient | ExprRef;
 
@@ -42,12 +44,12 @@ export interface Legend {
     direction?: LegendDirection;
 
     /**
-     * Offset in pixels by which to displace the legend from the plot edge.
+     * External gap in pixels between the legend and the plot edge.
      */
     offset?: number;
 
     /**
-     * Padding around the legend content in pixels.
+     * Internal padding in pixels around the legend content and background.
      */
     padding?: number;
 
@@ -57,7 +59,10 @@ export interface Legend {
     columns?: number;
 
     /**
-     * Explicit values to show in the legend.
+     * Explicit values to show in the legend. For discrete symbol legends, the
+     * values define an ordered subset of entries. For quantitative symbol and
+     * gradient legends, the values define the shown representative values or
+     * ticks.
      */
     values?: (string | number | boolean)[];
 
@@ -113,7 +118,9 @@ export interface Legend {
  */
 export interface LegendConfig extends Legend {
     /**
-     * Disable legends by default.
+     * Disable automatic legend creation by default. A channel-level legend
+     * object can still request a legend explicitly. Use `legend: null` on an
+     * encoding channel to remove that channel's legend.
      */
     disable?: boolean;
 
@@ -223,7 +230,7 @@ export interface LegendConfig extends Legend {
     titleLimit?: number;
 
     /**
-     * Padding between the legend title and entries in pixels.
+     * Padding in pixels between the legend title and the legend body.
      */
     titlePadding?: number;
 }
