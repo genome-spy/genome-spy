@@ -657,7 +657,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
         },
     ];
 
-    /** @type {import("../spec/view.js").UnitSpec[]} */
+    /** @type {(import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec)[]} */
     const bodyLayer = [
         {
             name: "gradientRamp",
@@ -687,68 +687,71 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             },
         },
         {
-            name: "gradientTicks",
+            name: "gradientGuide",
             data: tickData,
             transform: tickTransform,
-            mark: {
-                type: "rule",
-                clip: false,
-            },
-            encoding: {
-                [p]: enc("position", ps, p == "x"),
-                [p2]: {
-                    field: "position",
-                    type: "quantitative",
-                    scale: ps,
-                },
-                [q]: enc(tick0, qs, q == "x"),
-                [q2]: {
-                    field: tick1,
-                    type: "quantitative",
-                    scale: qs,
-                },
-            },
-        },
-        {
-            name: "gradientLabels",
-            data: tickData,
-            transform: [
-                ...tickTransform,
+            layer: [
                 {
-                    type: "truncateText",
-                    field: "label",
-                    limit: legend.labelLimit,
-                    fontSize: labelFontSize,
-                    font: legend.labelFont,
-                    fontStyle: legend.labelFontStyle,
-                    fontWeight: legend.labelFontWeight,
+                    name: "gradientTicks",
+                    mark: {
+                        type: "rule",
+                        clip: false,
+                    },
+                    encoding: {
+                        [p]: enc("position", ps, p == "x"),
+                        [p2]: {
+                            field: "position",
+                            type: "quantitative",
+                            scale: ps,
+                        },
+                        [q]: enc(tick0, qs, q == "x"),
+                        [q2]: {
+                            field: tick1,
+                            type: "quantitative",
+                            scale: qs,
+                        },
+                    },
                 },
                 {
-                    type: "measureText",
-                    field: "label",
-                    as: LABEL_WIDTH_FIELD,
-                    fontSize: labelFontSize,
-                    font: legend.labelFont,
-                    fontStyle: legend.labelFontStyle,
-                    fontWeight: legend.labelFontWeight,
+                    name: "gradientLabels",
+                    transform: [
+                        {
+                            type: "truncateText",
+                            field: "label",
+                            limit: legend.labelLimit,
+                            fontSize: labelFontSize,
+                            font: legend.labelFont,
+                            fontStyle: legend.labelFontStyle,
+                            fontWeight: legend.labelFontWeight,
+                        },
+                        {
+                            type: "measureText",
+                            field: "label",
+                            as: LABEL_WIDTH_FIELD,
+                            fontSize: labelFontSize,
+                            font: legend.labelFont,
+                            fontStyle: legend.labelFontStyle,
+                            fontWeight: legend.labelFontWeight,
+                        },
+                    ],
+                    mark: {
+                        type: "text",
+                        clip: false,
+                        align: labelAlign,
+                        baseline: labelBaseline,
+                        color: legend.labelColor,
+                        font: legend.labelFont,
+                        fontStyle: legend.labelFontStyle,
+                        fontWeight: legend.labelFontWeight,
+                        size: labelFontSize,
+                    },
+                    encoding: {
+                        [p]: enc("position", ps, p == "x"),
+                        [q]: enc(label, qs, q == "x"),
+                        text: { field: "label" },
+                    },
                 },
             ],
-            mark: {
-                type: "text",
-                clip: false,
-                align: labelAlign,
-                baseline: labelBaseline,
-                color: legend.labelColor,
-                font: legend.labelFont,
-                fontStyle: legend.labelFontStyle,
-                fontWeight: legend.labelFontWeight,
-                size: labelFontSize,
-            },
-            encoding: {
-                [p]: enc("position", ps, p == "x"),
-                [q]: enc(label, qs, q == "x"),
-                text: { field: "label" },
-            },
         },
     ];
 
