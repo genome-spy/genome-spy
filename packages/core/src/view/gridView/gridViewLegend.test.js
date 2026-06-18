@@ -88,6 +88,25 @@ describe("legend layout helpers", () => {
             expect(coords.width).toBe(80);
             expect(coords.height).toBe(176);
         });
+
+        test("places a bottom-right legend inside the viewport", () => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 80,
+                getOffset: () => 12,
+                getParallelSize: () => 60,
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "bottom-right",
+                legendView
+            );
+
+            expect(coords.x).toBe(218);
+            expect(coords.y).toBe(148);
+            expect(coords.width).toBe(80);
+            expect(coords.height).toBe(60);
+        });
     });
 });
 

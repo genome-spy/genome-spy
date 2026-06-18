@@ -51,11 +51,17 @@ export function translateLegendCoords(
             .modify({ width: ps, height: cornerParallelSize });
     } else if (orient == "bottom-left") {
         return coords
-            .translate(axisOffset + offset, offset)
+            .translate(
+                axisOffset + offset,
+                coords.height - cornerParallelSize - offset
+            )
             .modify({ width: ps, height: cornerParallelSize });
     } else if (orient == "bottom-right") {
         return coords
-            .translate(coords.width - ps - axisOffset - offset, offset)
+            .translate(
+                coords.width - ps - axisOffset - offset,
+                coords.height - cornerParallelSize - offset
+            )
             .modify({ width: ps, height: cornerParallelSize });
     } else {
         throw new Error(`Invalid legend orientation: ${orient}`);
