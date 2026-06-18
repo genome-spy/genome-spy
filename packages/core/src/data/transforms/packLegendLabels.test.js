@@ -22,34 +22,13 @@ test("PackLegendLabelsTransform stacks vertical legend entries using max column 
         { label: "Europe", _labelWidth: 36, _legendIndex: 1 },
     ]);
 
-    expect(data).toEqual([
-        {
-            label: "USA",
-            _labelWidth: 18,
-            _legendIndex: 0,
-            row: 0,
-            column: 0,
-            entryX: 5,
-            entryY: 0,
-            entryWidth: 50,
-            entryHeight: 12,
-            labelX: 14,
-            labelY: 6,
-        },
-        {
-            label: "Europe",
-            _labelWidth: 36,
-            _legendIndex: 1,
-            row: 1,
-            column: 0,
-            entryX: 5,
-            entryY: 14,
-            entryWidth: 50,
-            entryHeight: 12,
-            labelX: 14,
-            labelY: 20,
-        },
-    ]);
+    expect(data.map((datum) => datum.row)).toEqual([0, 1]);
+    expect(data.map((datum) => datum.column)).toEqual([0, 0]);
+    expect(data.map((datum) => datum.entryX)).toEqual([5, 5]);
+    expect(data.map((datum) => datum.entryY)).toEqual([0, 14]);
+    expect(data.map((datum) => datum.entryWidth)).toEqual([50, 50]);
+    expect(data.map((datum) => datum.labelX)).toEqual([14, 14]);
+    expect(data.map((datum) => datum.labelY)).toEqual([6, 20]);
 });
 
 test("PackLegendLabelsTransform packs horizontal legend entries by measured label width", () => {

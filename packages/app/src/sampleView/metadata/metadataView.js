@@ -737,7 +737,7 @@ export class MetadataView extends ConcatView {
      * @returns {import("@genome-spy/core/spec/view.js").ResolutionBehavior}
      */
     getDefaultResolution(channel, resolutionType) {
-        return "independent";
+        return resolutionType == "legend" ? "excluded" : "independent";
     }
 
     /**
@@ -846,6 +846,10 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
                 field: escapedEncodingField,
                 type: attributeDef.type,
                 scale: attributeDef.scale,
+                // Metadata sidebar colors are explained by the sidebar itself,
+                // not by plot legends. Suppress generated legends to avoid
+                // allocating dynamic legend subtrees during metadata rebuilds.
+                legend: null,
             },
         },
         opacity: 1,
