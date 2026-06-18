@@ -1,3 +1,21 @@
+/**
+ * Legend generation is largely modeled after Vega and Vega-Lite legends,
+ * including the public properties, default values, and legend-type/entry
+ * logic. The most relevant references are:
+ *
+ * - vega-lite/src/legend.ts
+ * - vega-lite/src/compile/legend/*
+ * - vega/packages/vega-parser/src/parsers/legend.js
+ * - vega/packages/vega-parser/src/parsers/guides/legend-*.js
+ * - vega/packages/vega-view-transforms/src/layout/legend.js
+ *
+ * GenomeSpy's implementation is intentionally different. Vega emits a Vega
+ * legend definition and relies on the scenegraph plus legend layout transform
+ * for final mark bounds and placement. GenomeSpy instead builds legends from
+ * ordinary internal views and marks, uses `measureText`/`packLabels` for symbol
+ * entry layout, and lets `GridChild` own local side/corner placement and
+ * stacked legend regions.
+ */
 import ContainerView from "./containerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
