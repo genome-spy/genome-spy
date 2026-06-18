@@ -55,6 +55,52 @@ function isConstantValueDef(channelDef) {
 }
 
 /**
+ * @param {any} value
+ * @returns {value is string}
+ */
+function isConstantColor(value) {
+    return typeof value === "string";
+}
+
+/**
+ * @param {Record<string, import("../../spec/channel.js").ValueDef<any>>} encoding
+ * @param {Set<string>} scaledChannels
+ * @param {Partial<import("../../spec/mark.js").PointProps>} sourceProps
+ */
+function applyConstantMarkColorStyle(encoding, scaledChannels, sourceProps) {
+    if (isConstantColor(sourceProps.fill) && !scaledChannels.has("fill")) {
+        encoding.fill = { value: sourceProps.fill };
+    }
+    if (isConstantColor(sourceProps.stroke) && !scaledChannels.has("stroke")) {
+        encoding.stroke = { value: sourceProps.stroke };
+    }
+
+    if (isConstantColor(sourceProps.color) && !scaledChannels.has("color")) {
+        if (sourceProps.filled) {
+            if (!scaledChannels.has("fill")) {
+                encoding.fill = { value: sourceProps.color };
+            }
+            if (!scaledChannels.has("stroke")) {
+                encoding.stroke = { value: null };
+            }
+            if (!scaledChannels.has("strokeWidth")) {
+                encoding.strokeWidth = { value: 0 };
+            }
+        } else {
+            if (!scaledChannels.has("stroke")) {
+                encoding.stroke = { value: sourceProps.color };
+            }
+            if (!scaledChannels.has("fill")) {
+                encoding.fill = { value: sourceProps.color };
+            }
+            if (!scaledChannels.has("fillOpacity")) {
+                encoding.fillOpacity = { value: 0 };
+            }
+        }
+    }
+}
+
+/**
  * @param {import("../../spec/channel.js").ChannelWithScale} channel
  * @param {Partial<Record<import("../../spec/channel.js").ChannelWithScale, string>>} symbolChannels
  * @param {import("../unitView.js").default} sourceView
@@ -97,6 +143,8 @@ function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
     } else if (sourceView.getMarkType() == "rect") {
         styleMark.shape = "square";
     }
+
+    applyConstantMarkColorStyle(styleEncoding, scaledChannels, sourceProps);
 
     const colorDef = sourceView.spec.encoding?.color;
     const filled = sourceProps.filled;
