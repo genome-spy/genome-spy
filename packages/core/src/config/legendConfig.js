@@ -1,5 +1,5 @@
 import { mergeConfigScopes } from "./mergeConfig.js";
-import { normalizeStyle } from "./styleUtils.js";
+import { getConfiguredStyleConfig, normalizeStyle } from "./styleUtils.js";
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
@@ -11,17 +11,15 @@ export function getConfiguredLegendDefaults(scopes, legend) {
 
     return /** @type {import("../spec/legend.js").LegendConfig} */ (
         mergeConfigScopes([
-            ...scopes.flatMap((scope) => {
+            ...scopes.flatMap((scope, index) => {
                 const config = scope.legend;
-                const configStyles = normalizeStyle(config?.style);
+                const configStyle = getConfiguredStyleConfig(
+                    scopes.slice(0, index + 1),
+                    config?.style
+                );
 
                 return [
-                    ...configStyles.map(
-                        (styleName) =>
-                            /** @type {Record<string, any> | undefined} */ (
-                                scope.style?.[styleName]
-                            )
-                    ),
+                    configStyle,
                     config,
                     ...styles.map(
                         (styleName) =>

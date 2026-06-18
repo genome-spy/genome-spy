@@ -53,6 +53,34 @@ describe("legendConfig", () => {
         expect(defaults.offset).toBe(3);
     });
 
+    test("config legend style resolves inherited style buckets", () => {
+        const defaults = getConfiguredLegendDefaults([
+            INTERNAL_DEFAULT_CONFIG,
+            { legend: { style: "track-bottom" } },
+        ]);
+
+        expect(defaults.orient).toBe("bottom");
+        expect(defaults.titleOrient).toBe("left");
+        expect(defaults.spacing).toBe(3);
+        expect(defaults.offset).toBe(3);
+    });
+
+    test("local style buckets override inherited config legend styles", () => {
+        const defaults = getConfiguredLegendDefaults([
+            INTERNAL_DEFAULT_CONFIG,
+            {
+                legend: { style: "track-bottom" },
+                style: {
+                    "track-bottom": { orient: "left", spacing: 7 },
+                },
+            },
+        ]);
+
+        expect(defaults.orient).toBe("left");
+        expect(defaults.titleOrient).toBe("left");
+        expect(defaults.spacing).toBe(7);
+    });
+
     test("explicit legend properties override style defaults", () => {
         const defaults = getConfiguredLegendDefaults(
             [INTERNAL_DEFAULT_CONFIG],

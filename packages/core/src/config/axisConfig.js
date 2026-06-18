@@ -1,5 +1,5 @@
 import { mergeConfigScopes } from "./mergeConfig.js";
-import { normalizeStyle } from "./styleUtils.js";
+import { getConfiguredStyleConfig, normalizeStyle } from "./styleUtils.js";
 
 /** @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, keyof import("../spec/config.js").GenomeSpyConfig>} */
 const CHANNEL_BUCKETS = {
@@ -41,7 +41,7 @@ export function getConfiguredAxisDefaults(
 
     return /** @type {import("../spec/config.js").AxisConfig} */ (
         mergeConfigScopes(
-            scopes.flatMap((scope) => {
+            scopes.flatMap((scope, index) => {
                 const channelBucket = CHANNEL_BUCKETS[channel];
                 const orientBucket = orient
                     ? ORIENT_BUCKETS[orient]
@@ -59,17 +59,13 @@ export function getConfiguredAxisDefaults(
                         typeBucket ? scope[typeBucket] : undefined
                     ),
                 ];
-                const bucketStyles = bucketConfigs.flatMap((config) =>
-                    normalizeStyle(config?.style)
+                const precedingScopes = scopes.slice(0, index + 1);
+                const bucketStyleConfigs = bucketConfigs.map((config) =>
+                    getConfiguredStyleConfig(precedingScopes, config?.style)
                 );
 
                 return [
-                    ...bucketStyles.map(
-                        (styleName) =>
-                            /** @type {Record<string, any> | undefined} */ (
-                                scope.style?.[styleName]
-                            )
-                    ),
+                    ...bucketStyleConfigs,
                     ...bucketConfigs,
                     ...styles.map(
                         (styleName) =>

@@ -103,6 +103,54 @@ describe("axisConfig", () => {
         expect(defaults.labelColor).toBe("orange");
     });
 
+    test("axis bucket styles resolve inherited style buckets", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    style: {
+                        emphasis: { tickColor: "purple" },
+                    },
+                },
+                { axisX: { style: "emphasis" } },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+            }
+        );
+
+        expect(defaults.tickColor).toBe("purple");
+    });
+
+    test("local style buckets override inherited axis bucket styles", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    style: {
+                        emphasis: { tickColor: "purple" },
+                    },
+                },
+                {
+                    axisX: { style: "emphasis" },
+                    style: {
+                        emphasis: { tickColor: "red", labelColor: "orange" },
+                    },
+                },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+            }
+        );
+
+        expect(defaults.tickColor).toBe("red");
+        expect(defaults.labelColor).toBe("orange");
+    });
+
     test("axis bucket properties override axis bucket style", () => {
         const defaults = getConfiguredAxisDefaults(
             [
