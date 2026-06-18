@@ -25,6 +25,9 @@ const DEFAULT_TICK_COUNT = 5;
  * @returns {NormalizedPositionScale}
  */
 function createNormalizedScale(scale, start, stop) {
+    const domain = getNumericScaleDomain(scale, start, stop);
+    const range = createNormalizedRange(domain.length);
+
     if (
         "copy" in scale &&
         typeof scale.copy == "function" &&
@@ -32,8 +35,8 @@ function createNormalizedScale(scale, start, stop) {
         typeof scale.invert == "function"
     ) {
         const normalizedScale = scale.copy();
-        normalizedScale.domain([start, stop]);
-        normalizedScale.range([0, 1]);
+        normalizedScale.domain(domain);
+        normalizedScale.range(range);
         return /** @type {NormalizedPositionScale} */ (normalizedScale);
     }
 
@@ -50,13 +53,16 @@ function createNormalizedScale(scale, start, stop) {
         );
         delete positionProps.range;
         delete positionProps.scheme;
+        delete extraPositionProps.domainMin;
+        delete extraPositionProps.domainMid;
+        delete extraPositionProps.domainMax;
         delete extraPositionProps.schemeExtent;
         delete extraPositionProps.schemeCount;
         const positionScale = createScale({
             ...positionProps,
             type,
-            domain: [start, stop],
-            range: [0, 1],
+            domain,
+            range,
             zero: false,
             nice: false,
         });
@@ -69,6 +75,32 @@ function createNormalizedScale(scale, start, stop) {
     }
 
     return createLinearPositionScale(start, stop);
+}
+
+/**
+ * @param {import("../../../types/encoder.js").VegaScale} scale
+ * @param {number} start
+ * @param {number} stop
+ * @returns {number[]}
+ */
+function getNumericScaleDomain(scale, start, stop) {
+    if ("domain" in scale && typeof scale.domain == "function") {
+        const domain = scale.domain().map(finiteNumber);
+        if (domain.length >= 2) {
+            return [start, ...domain.slice(1, -1), stop];
+        }
+    }
+
+    return [start, stop];
+}
+
+/**
+ * @param {number} length
+ * @returns {number[]}
+ */
+function createNormalizedRange(length) {
+    const last = length - 1;
+    return Array.from({ length }, (_, index) => index / last);
 }
 
 /**
@@ -129,7 +161,7 @@ function isQuantizeScale(scale) {
 function finiteNumber(value) {
     const number = Number(value);
     if (!Number.isFinite(number)) {
-        throw new Error("Quantize legend boundaries must be finite numbers.");
+        throw new Error("Gradient legend boundaries must be finite numbers.");
     }
 
     return number;

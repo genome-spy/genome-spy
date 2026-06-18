@@ -2566,6 +2566,50 @@ describe("GridView legends", () => {
             );
         });
 
+        test("gradient legends sample both sides of a domainMid scale", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: -5 },
+                                { x: 2, y: 2, measurement: 10 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "measurement",
+                                type: "quantitative",
+                                scale: {
+                                    scheme: "blueorange",
+                                    domainMid: 0,
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const rampData = getLegendData(getLegends(view)[0], "gradientRamp");
+            const nearestMid = rampData.reduce((nearest, datum) =>
+                Math.abs(datum.value) < Math.abs(nearest.value)
+                    ? datum
+                    : nearest
+            );
+
+            expect(
+                Math.min(...rampData.map(({ value }) => value))
+            ).toBeLessThan(-4.5);
+            expect(
+                Math.max(...rampData.map(({ value }) => value))
+            ).toBeGreaterThan(9);
+            expect(nearestMid.value).toBeCloseTo(0, 0);
+            expect(nearestMid.position).toBeCloseTo(0.5, 1);
+        });
+
         test("gradient legend positions follow continuous scale types", async () => {
             /** @type {Array<import("../../spec/scale.js").Scale & { domain: [number, number] }>} */
             const scales = [
