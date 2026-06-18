@@ -13,8 +13,8 @@ root-level guide areas until there is a concrete need.
 
 Implemented behavior:
 
-- Legends are disabled by default for compatibility and enabled through
-  `config.legend.disable: false` or explicit non-null channel legends.
+- Legends are visible by default. Use `config.legend.disable: true` to disable
+  automatic legends globally, or `legend: null` to suppress a channel legend.
 - Legend defaults are resolved through the config machinery.
 - `legend: null` suppresses automatic legend creation for that channel.
 - Legend candidates are collected by an internal `LegendResolution`, modeled
@@ -183,6 +183,16 @@ resolution API can be designed later if shared/root/named-area legends need it.
   the inherited style-resolution fix in #414.
 - Verify unsupported or deferred combinations fail clearly or intentionally do
   not create a legend.
+
+### Review Cleanup
+
+- Keep an eye on `legendView.js` size. The file is coherent but owns several
+  responsibilities: generated legend specs, `LegendView`, `LegendRegionView`,
+  label measurement, and extent estimation. If it grows further, split symbol
+  and gradient spec construction into a cohesive helper module.
+- Keep `gridViewLegend.test.js` behavior-focused. It is large, but the coverage
+  is valuable. Prefer small shared spec builders for repeated setup only when
+  they do not hide the behavior under test.
 
 ### Vega/Vega-Lite Property Gaps
 
