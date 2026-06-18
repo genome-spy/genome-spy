@@ -52,7 +52,7 @@
   ],
 
   "config": {
-    "legend": { "disable": false, "offset": 10 },
+    "legend": { "offset": 10 },
     "scale": { "quantitative": { "zero": false } },
     "point": { "filled": true, "size": 40, "opacity": 0.75 }
   }

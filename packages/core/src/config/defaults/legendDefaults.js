@@ -5,7 +5,7 @@
  * @type {import("../../spec/legend.js").LegendConfig}
  */
 export const LEGEND_DEFAULTS = {
-    disable: true,
+    disable: false,
     orient: "right",
     direction: "vertical",
     offset: 18,

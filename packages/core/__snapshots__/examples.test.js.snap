@@ -277,6 +277,54 @@ exports[`shared examples > initializes examples/core/config/config-crazy-theme-s
       "identifier": null,
       "type": "InlineSource",
     },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
   ],
   "hierarchy": {
     "baseUrl": "examples/",
@@ -515,6 +563,30 @@ exports[`shared examples > initializes examples/core/config/config-scale-schemes
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
   ],
   "hierarchy": {
@@ -898,6 +970,14 @@ exports[`shared examples > initializes examples/core/genomic/bedBlocks.json 1`] 
       "type": "InlineSource",
     },
     {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
       "identifier": "{"params":{"url":"data/bedBlocks.bed","format":{"type":"bed"}},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
@@ -947,6 +1027,14 @@ exports[`shared examples > initializes examples/core/genomic/bedpeColumns.json 1
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": "{"params":{"url":"data/eventsCustomColumns.tsv","format":{"type":"bedpe","columns":["chrom1","start1","end1","chrom2","start2","end2","name","strand1","strand2","score"]}},"baseUrl":"examples/"}",
@@ -1903,6 +1991,22 @@ exports[`shared examples > initializes examples/core/layout/grid/concat_points_t
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
     {
@@ -2343,6 +2447,38 @@ exports[`shared examples > initializes examples/core/layout/layer/heatmap_with_t
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -2416,6 +2552,14 @@ exports[`shared examples > initializes examples/core/layout/layer/lollipop.json 
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": null,
@@ -3503,6 +3647,22 @@ exports[`shared examples > initializes examples/core/marks/point/point.json 1`] 
   "dataSources": [
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -3733,6 +3893,22 @@ exports[`shared examples > initializes examples/core/marks/rect/index_bars.json 
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,
@@ -3996,6 +4172,22 @@ exports[`shared examples > initializes examples/core/marks/rule/rules.json 1`] =
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -4228,6 +4420,14 @@ exports[`shared examples > initializes examples/core/marks/text/text_sequence.js
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
@@ -4469,6 +4669,22 @@ exports[`shared examples > initializes examples/core/scales/diverging_test.json 
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -4523,6 +4739,22 @@ exports[`shared examples > initializes examples/core/scales/index_scale_test.jso
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
@@ -4750,6 +4982,38 @@ exports[`shared examples > initializes examples/core/scales/parameterized_range_
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -4784,6 +5048,22 @@ exports[`shared examples > initializes examples/core/scales/piecewise_test.json 
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,
@@ -4870,6 +5150,30 @@ exports[`shared examples > initializes examples/core/scales/threshold_test.json 
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,
@@ -5543,6 +5847,30 @@ exports[`shared examples > initializes examples/core/techniques/geometric_zoom_e
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -5731,6 +6059,14 @@ exports[`shared examples > initializes examples/core/techniques/semantic_zoom.js
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": null,
@@ -6915,6 +7251,14 @@ exports[`shared examples > initializes examples/docs/grammar/composition/layer/l
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -7289,6 +7633,14 @@ exports[`shared examples > initializes examples/docs/grammar/data/eager/bed.json
       "type": "InlineSource",
     },
     {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
       "identifier": "{"params":{"url":"data/bedRegions.bed","format":{"type":"bed"}},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
@@ -7338,6 +7690,14 @@ exports[`shared examples > initializes examples/docs/grammar/data/eager/bedpe.js
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": "{"params":{"url":"data/events.bedpe","format":{"type":"bedpe"}},"baseUrl":"examples/"}",
@@ -7670,6 +8030,14 @@ exports[`shared examples > initializes examples/docs/grammar/index/single-view-s
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": "{"params":{"url":"data/sincos.csv"},"baseUrl":"examples/"}",
@@ -8209,6 +8577,22 @@ exports[`shared examples > initializes examples/docs/grammar/mark/point/plenty-o
   "dataSources": [
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -8255,6 +8639,14 @@ exports[`shared examples > initializes examples/docs/grammar/mark/point/point-ma
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": "{"params":{"url":"data/sincos.csv"},"baseUrl":"examples/"}",
@@ -8307,6 +8699,14 @@ exports[`shared examples > initializes examples/docs/grammar/mark/point/semantic
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -8353,6 +8753,22 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rect/bars.json
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,
@@ -8430,6 +8846,22 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rect/heatmap.j
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -8476,6 +8908,22 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rect/rect-mark
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,
@@ -8667,6 +9115,14 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rule/rule-mark
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -8736,6 +9192,14 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rule/synteny-h
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": "{"params":{"url":"data/synteny-hg38-mm10.tsv"},"baseUrl":"examples/"}",
@@ -8852,6 +9316,14 @@ exports[`shared examples > initializes examples/docs/grammar/mark/text/sequence-
       "identifier": null,
       "type": "InlineSource",
     },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
   ],
   "hierarchy": {
     "baseUrl": null,
@@ -8888,6 +9360,14 @@ exports[`shared examples > initializes examples/docs/grammar/mark/text/text-mark
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
@@ -9029,6 +9509,14 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/genome-o
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
@@ -9244,6 +9732,14 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/penguins
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": "{"params":{"url":"vega-datasets/penguins.json"},"baseUrl":"examples/"}",
@@ -9527,6 +10023,14 @@ exports[`shared examples > initializes examples/docs/grammar/scale/numbering-off
       "identifier": null,
       "type": "InlineSource",
     },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
   ],
   "hierarchy": {
     "baseUrl": null,
@@ -9576,6 +10080,14 @@ exports[`shared examples > initializes examples/docs/grammar/scale/point-indices
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
@@ -9627,6 +10139,14 @@ exports[`shared examples > initializes examples/docs/grammar/scale/point-indices
       "identifier": null,
       "type": "InlineSource",
     },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
   ],
   "hierarchy": {
     "baseUrl": null,
@@ -9663,6 +10183,14 @@ exports[`shared examples > initializes examples/docs/grammar/scale/range-indices
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
@@ -9721,6 +10249,14 @@ exports[`shared examples > initializes examples/docs/grammar/transform/aggregate
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
     {
       "identifier": "{"params":{"url":"vega-datasets/penguins.json"},"baseUrl":"examples/"}",
@@ -10217,6 +10753,14 @@ exports[`shared examples > initializes examples/docs/grammar/transform/stack/seq
       "identifier": null,
       "type": "InlineSource",
     },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
   ],
   "hierarchy": {
     "baseUrl": null,
@@ -10265,6 +10809,14 @@ exports[`shared examples > initializes examples/docs/grammar/transform/stack/sta
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {

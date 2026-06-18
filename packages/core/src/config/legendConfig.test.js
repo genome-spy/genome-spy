@@ -3,8 +3,8 @@ import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
 import { getConfiguredLegendDefaults } from "./legendConfig.js";
 
 describe("legendConfig", () => {
-    test("internal defaults keep legends disabled", () => {
-        expect(INTERNAL_DEFAULT_CONFIG.legend?.disable).toBe(true);
+    test("internal defaults keep legends visible", () => {
+        expect(INTERNAL_DEFAULT_CONFIG.legend?.disable).toBe(false);
     });
 
     test("includes representative Vega-derived symbol legend defaults", () => {

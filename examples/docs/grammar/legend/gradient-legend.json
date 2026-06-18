@@ -6,7 +6,7 @@
   "width": 250,
   "height": 250,
 
-  "config": { "legend": { "disable": false, "offset": 12 } },
+  "config": { "legend": { "offset": 12 } },
 
   "data": {
     "url": "vega-datasets/penguins.json"

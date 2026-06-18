@@ -164,16 +164,14 @@ describe("GridView legends", () => {
             .find((descendant) => descendant.name == "title");
 
     describe("basic creation", () => {
-        test("keeps legends hidden by default", async () => {
+        test("creates legends by default", async () => {
             const view = await createLegendTestView();
 
-            expect(getLegends(view)).toHaveLength(0);
+            expect(getLegends(view)).toHaveLength(1);
         });
 
-        test("creates an opt-in right legend for a nominal color scale", async () => {
-            const view = await createLegendTestView({
-                config: { legend: { disable: false } },
-            });
+        test("creates a right legend for a nominal color scale", async () => {
+            const view = await createLegendTestView();
             const legends = getLegends(view);
             const labels = legends[0]
                 .getDescendants()
@@ -194,6 +192,36 @@ describe("GridView legends", () => {
                 { value: "Europe", label: "Europe" },
                 { value: "Japan", label: "Japan" },
             ]);
+        });
+
+        test("does not create a legend for a disabled scale", async () => {
+            const view = await createAndInitialize(
+                /** @type {import("../../spec/root.js").RootSpec} */ ({
+                    vconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 1, y: 2 },
+                                    { x: 2, y: 3 },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                size: {
+                                    field: "y",
+                                    type: "quantitative",
+                                    scale: null,
+                                },
+                            },
+                        },
+                    ],
+                }),
+                ConcatView
+            );
+
+            expect(getLegends(view)).toHaveLength(0);
         });
 
         test("collects a shared hconcat legend into one region", async () => {

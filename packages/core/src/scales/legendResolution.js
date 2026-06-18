@@ -111,6 +111,10 @@ export default class LegendResolution {
             return undefined;
         }
 
+        if ("scale" in channelDef && channelDef.scale === null) {
+            return undefined;
+        }
+
         const legendOverrides =
             explicitLegend === undefined
                 ? undefined

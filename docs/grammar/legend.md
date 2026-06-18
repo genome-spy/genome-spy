@@ -4,32 +4,6 @@ Legends explain how visual channels such as `color`, `fill`, `stroke`, `shape`,
 `size`, and `opacity` map data values to visual values. GenomeSpy creates
 legends from encoding channels in the same spirit as Vega-Lite.
 
-Legends are disabled by default in GenomeSpy to avoid changing existing
-visualizations. Enable automatic legends with `config.legend.disable: false`, or
-provide a channel-level legend object.
-
-```json title="Enable legends globally"
-{
-  "config": {
-    "legend": { "disable": false }
-  }
-}
-```
-
-Set `legend` to `null` on a channel to remove that channel's legend.
-
-```json title="Remove one channel legend"
-{
-  "encoding": {
-    "color": {
-      "field": "group",
-      "type": "nominal",
-      "legend": null
-    }
-  }
-}
-```
-
 ## Symbol legends
 
 Discrete encodings, such as nominal `color`, `fill`, `stroke`, and `shape`,
@@ -113,6 +87,33 @@ with `titleOrient`.
     "title": "Sample group",
     "titleOrient": "left",
     "titlePadding": 3
+  }
+}
+```
+
+## Disabling legends
+
+Legends are created automatically for encodings that support them. Disable all
+automatic legends with `config.legend.disable: true` in the root specification.
+
+```json title="Disable legends globally"
+{
+  "config": {
+    "legend": { "disable": true }
+  }
+}
+```
+
+Set `legend` to `null` on a channel to remove that channel's legend.
+
+```json title="Remove one channel legend"
+{
+  "encoding": {
+    "color": {
+      "field": "group",
+      "type": "nominal",
+      "legend": null
+    }
   }
 }
 ```

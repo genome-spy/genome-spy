@@ -118,9 +118,10 @@ export interface Legend {
  */
 export interface LegendConfig extends Legend {
     /**
-     * Disable automatic legend creation by default. A channel-level legend
-     * object can still request a legend explicitly. Use `legend: null` on an
-     * encoding channel to remove that channel's legend.
+     * Disable automatic legend creation. Use `legend: null` on an encoding
+     * channel to remove that channel's legend.
+     *
+     * __Default value:__ `false`
      */
     disable?: boolean;
 
