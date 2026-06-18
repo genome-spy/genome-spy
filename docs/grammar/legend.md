@@ -85,6 +85,8 @@ legend or create independent legends.
 When `resolve.legend` is not configured, legend resolution follows the
 corresponding scale resolution.
 
+### `shared` legend
+
 ```json
 {
   "resolve": {
