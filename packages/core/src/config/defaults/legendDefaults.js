@@ -27,3 +27,13 @@ export const LEGEND_DEFAULTS = {
     titleOrient: "top",
     titlePadding: 5,
 };
+
+/** @type {Record<string, import("../../spec/config.js").StyleConfig>} */
+export const LEGEND_STYLE_DEFAULTS = {
+    "track-bottom": {
+        orient: "bottom",
+        titleOrient: "left",
+        spacing: 3,
+        offset: 3,
+    },
+};

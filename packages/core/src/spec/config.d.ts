@@ -265,8 +265,8 @@ export interface GenomeSpyConfig {
     title?: TitleConfig;
 
     /**
-     * Named reusable style buckets that marks, axes, titles, and views can
-     * reference through their `style` properties.
+     * Named reusable style buckets that marks, axes, legends, titles, and
+     * views can reference through their `style` properties.
      */
     style?: Record<string, StyleConfig>;
 }

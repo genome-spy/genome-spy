@@ -40,4 +40,26 @@ describe("legendConfig", () => {
         expect(defaults.orient).toBe("bottom");
         expect(defaults.labelLimit).toBe(40);
     });
+
+    test("built-in track-bottom style configures compact bottom legends", () => {
+        const defaults = getConfiguredLegendDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            { style: "track-bottom" }
+        );
+
+        expect(defaults.orient).toBe("bottom");
+        expect(defaults.titleOrient).toBe("left");
+        expect(defaults.spacing).toBe(3);
+        expect(defaults.offset).toBe(3);
+    });
+
+    test("explicit legend properties override style defaults", () => {
+        const defaults = getConfiguredLegendDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            { style: "track-bottom", orient: "right" }
+        );
+
+        expect(defaults.orient).toBe("right");
+        expect(defaults.titleOrient).toBe("left");
+    });
 });

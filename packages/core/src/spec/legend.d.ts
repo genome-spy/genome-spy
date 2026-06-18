@@ -21,6 +21,12 @@ export type LegendTitleOrient = "top" | "bottom" | "left" | "right";
  */
 export interface Legend {
     /**
+     * Named style reference(s) resolved from `config.style`.
+     * If an array is provided, later styles override earlier ones.
+     */
+    style?: string | string[];
+
+    /**
      * Title text for the legend. If `null`, the title is removed.
      */
     title?: string | null;
