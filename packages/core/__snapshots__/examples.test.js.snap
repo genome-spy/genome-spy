@@ -3333,101 +3333,6 @@ exports[`shared examples > initializes examples/core/legends/redundant-encoding.
 }
 `;
 
-exports[`shared examples > initializes examples/core/legends/shared-hconcat-legend.json 1`] = `
-{
-  "assemblies": [],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendEntriesSource",
-    },
-    {
-      "identifier": "{"params":{"url":"vega-datasets/penguins.json"},"baseUrl":"examples/"}",
-      "type": "UrlSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": "examples/",
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid0",
-        "type": "UnitView",
-      },
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid1",
-        "type": "UnitView",
-      },
-    ],
-    "name": "viewRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
 exports[`shared examples > initializes examples/core/legends/threshold-gradient.json 1`] = `
 {
   "assemblies": [],
@@ -7847,6 +7752,101 @@ exports[`shared examples > initializes examples/docs/grammar/legend/gradient-leg
       },
     ],
     "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/legend/shared-hconcat-legend.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendEntriesSource",
+    },
+    {
+      "identifier": "{"params":{"url":"vega-datasets/penguins.json"},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": "examples/",
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
+    ],
+    "name": "viewRoot",
     "type": "ConcatView",
   },
 }

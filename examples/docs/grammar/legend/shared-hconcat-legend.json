@@ -3,24 +3,14 @@
 
   "description": "Legend test case for a shared color scale and shared legend across hconcat children.",
 
-  "background": "#fafafa",
-
-  "width": 360,
-  "height": 250,
-
-  "config": { "legend": { "disable": false, "offset": 18 } },
+  "config": { "legend": { "disable": false, "offset": 10 } },
 
   "data": { "url": "vega-datasets/penguins.json" },
 
   "resolve": {
     "scale": {
-      "x": "independent",
       "y": "independent",
       "color": "shared"
-    },
-    "axis": {
-      "x": "independent",
-      "y": "independent"
     },
     "legend": {
       "color": "shared"
@@ -61,12 +51,12 @@
         "y": {
           "field": "Body Mass (g)",
           "type": "quantitative",
-          "scale": { "zero": false, "nice": true }
+          "scale": { "nice": true }
         },
         "color": {
           "field": "Species",
           "type": "nominal",
-          "legend": { "title": "Species", "orient": "bottom" }
+          "legend": { "orient": "bottom" }
         }
       }
     }

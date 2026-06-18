@@ -12,10 +12,11 @@
  * GenomeSpy's implementation is intentionally different. Vega emits a Vega
  * legend definition and relies on the scenegraph plus legend layout transform
  * for final mark bounds and placement. GenomeSpy instead builds legends from
- * ordinary internal views and marks, uses `measureText`/`packLegendLabels` for symbol
- * entry layout, and lets `GridChild` own local side/corner placement and
+ * ordinary internal views and marks, uses `measureText`/`packLegendLabels` for
+ * symbol entry layout, and lets `GridChild` own local side/corner placement and
  * stacked legend regions.
  */
+
 import ContainerView from "./containerView.js";
 import { FlexDimensions } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";

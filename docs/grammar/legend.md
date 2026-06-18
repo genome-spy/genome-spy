@@ -97,6 +97,8 @@ corresponding scale resolution.
 Shared legend resolution is most useful when sibling views encode the same field
 with a shared scale and should show a single collected legend.
 
+EXAMPLE examples/docs/grammar/legend/shared-hconcat-legend.json height=360
+
 ## Titles
 
 The legend title defaults to the channel title. Set `title` to override it, or
