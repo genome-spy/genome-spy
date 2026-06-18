@@ -27,6 +27,13 @@ import { interactionToZoom } from "../zoom.js";
 import GridChild from "./gridChild.js";
 import KeyboardZoomController from "./keyboardZoomController.js";
 import { renderLocalLegends } from "./legendLayout.js";
+import {
+    addLegendView,
+    createGridChildLegend,
+    disposeLegendViews,
+    getLegendOverhang,
+    iterateLegendViews,
+} from "./gridChildLegends.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
@@ -110,6 +117,9 @@ export default class GridView extends ContainerView {
      * @type { Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, AxisView>> } }
      */
     #sharedAxes = {};
+
+    /** @type {import("./gridChildLegends.js").GridChildLegends} */
+    #sharedLegends = {};
 
     #childSerial = 0;
 
@@ -290,6 +300,7 @@ export default class GridView extends ContainerView {
      */
     async createAxes() {
         await this.syncSharedAxes();
+        await this.syncSharedLegends();
         await Promise.all(
             this.#children.map((gridChild) => gridChild.createAxes())
         );
@@ -340,6 +351,38 @@ export default class GridView extends ContainerView {
     }
 
     /**
+     * Recreates shared legends based on current legend resolutions.
+     *
+     * Shared legends are GridView-owned for the same reason as shared axes:
+     * their placement is relative to the whole child grid, not any individual
+     * GridChild.
+     */
+    async syncSharedLegends() {
+        disposeLegendViews(this.#sharedLegends);
+        this.#sharedLegends = {};
+
+        /** @type {Promise<void>[]} */
+        const promises = [];
+        for (const resolution of Object.values(this.resolutions.legend)) {
+            for (const definition of resolution.getLegendDefs()) {
+                promises.push(
+                    createGridChildLegend(definition, this).then(
+                        async (legend) => {
+                            await addLegendView(
+                                this.#sharedLegends,
+                                legend,
+                                resolution
+                            );
+                        }
+                    )
+                );
+            }
+        }
+
+        await Promise.all(promises);
+    }
+
+    /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
@@ -354,6 +397,8 @@ export default class GridView extends ContainerView {
         for (const axisView of Object.values(this.#sharedAxes)) {
             yield axisView;
         }
+
+        yield* iterateLegendViews(this.#sharedLegends);
     }
 
     /**
@@ -564,7 +609,9 @@ export default class GridView extends ContainerView {
      * @return {Padding}
      */
     getOverhang() {
-        return this.#getGridOverhang().union(this.#getSharedAxisOverhang());
+        return this.#getGridOverhang()
+            .union(this.#getSharedAxisOverhang())
+            .union(this.#getSharedLegendOverhang());
     }
 
     #getGridOverhang() {
@@ -605,6 +652,29 @@ export default class GridView extends ContainerView {
         );
     }
 
+    #getSharedLegendOverhang() {
+        const getSharedLegendSize = (
+            /** @type {import("../../spec/legend.js").LegendOrient} */ orient
+        ) => getLegendOverhang(this.#sharedLegends, orient);
+
+        return new Padding(
+            getSharedLegendSize("top"),
+            getSharedLegendSize("right"),
+            getSharedLegendSize("bottom"),
+            getSharedLegendSize("left")
+        );
+    }
+
+    #getSharedAxesByOrient() {
+        /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} */
+        const axes = {};
+        for (const axisView of Object.values(this.#sharedAxes)) {
+            axes[axisView.axisProps.orient] = axisView;
+        }
+
+        return axes;
+    }
+
     /**
      * @returns {FlexDimensions}
      */
@@ -633,7 +703,10 @@ export default class GridView extends ContainerView {
             // Usually padding is applied by the parent GridView, but if this is the root view, we need to apply it here
             coords = coords.shrink(this.getPadding());
         }
-        coords = coords.shrink(this.#getSharedAxisOverhang());
+        const sharedGuideOverhang = this.#getSharedAxisOverhang().union(
+            this.#getSharedLegendOverhang()
+        );
+        coords = coords.shrink(sharedGuideOverhang);
 
         context.pushView(this, coords);
 
@@ -1098,6 +1171,16 @@ export default class GridView extends ContainerView {
                 );
             }
         }
+
+        renderLocalLegends(
+            this.#sharedLegends,
+            this.#getSharedAxesByOrient(),
+            coords,
+            context,
+            options,
+            queueDecoration,
+            DECORATION_ORDER.legend
+        );
 
         renderDecorations(underlays);
 

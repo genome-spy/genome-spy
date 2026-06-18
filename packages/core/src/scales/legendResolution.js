@@ -16,6 +16,7 @@ import { isChromeView } from "../view/viewSelectors.js";
  * @prop {import("../spec/channel.js").ChannelWithScale} channel
  *
  * @typedef {{
+ *     view: import("../view/unitView.js").default,
  *     channel: import("../spec/channel.js").ChannelWithScale,
  *     type: LegendType,
  *     symbolChannels?: Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>,
@@ -70,9 +71,23 @@ export default class LegendResolution {
      * @returns {LegendDefinition[]}
      */
     getLegendDefs() {
-        return orderResolutionMembers(this.#members)
-            .map((member) => this.#createLegendDefinition(member))
-            .filter((definition) => definition !== undefined);
+        /** @type {Set<import("./scaleResolution.js").default>} */
+        const seenScaleResolutions = new Set();
+        /** @type {LegendDefinition[]} */
+        const definitions = [];
+
+        for (const member of orderResolutionMembers(this.#members)) {
+            const definition = this.#createLegendDefinition(member);
+            if (
+                definition &&
+                !seenScaleResolutions.has(definition.scaleResolution)
+            ) {
+                seenScaleResolutions.add(definition.scaleResolution);
+                definitions.push(definition);
+            }
+        }
+
+        return definitions;
     }
 
     /**
@@ -142,6 +157,7 @@ export default class LegendResolution {
                 : undefined;
 
         return {
+            view: legendParent,
             channel,
             type: legendType,
             symbolChannels,

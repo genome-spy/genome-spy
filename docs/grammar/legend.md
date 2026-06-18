@@ -76,6 +76,27 @@ background improves readability.
 }
 ```
 
+## Resolution
+
+Legends participate in view resolution similarly to scales and axes. Use
+`resolve.legend` in composed views to choose whether child views share one
+legend or create independent legends.
+
+When `resolve.legend` is not configured, legend resolution follows the
+corresponding scale resolution.
+
+```json
+{
+  "resolve": {
+    "scale": { "color": "shared" },
+    "legend": { "color": "shared" }
+  }
+}
+```
+
+Shared legend resolution is most useful when sibling views encode the same field
+with a shared scale and should show a single collected legend.
+
 ## Titles
 
 The legend title defaults to the channel title. Set `title` to override it, or

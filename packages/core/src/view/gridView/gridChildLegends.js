@@ -230,7 +230,7 @@ function assertLegendOrient(orient) {
 
 /**
  * @param {import("../../spec/legend.js").LegendConfig} legend
- * @param {import("../unitView.js").default} legendParent
+ * @param {import("../view.js").default} legendParent
  * @param {(disposer: () => void) => void} registerDisposer
  * @returns {ResolvedLegendConfig}
  */
@@ -252,15 +252,11 @@ function resolveLegendOrient(legend, legendParent, registerDisposer) {
 
 /**
  * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
- * @param {import("../unitView.js").default} legendParent
  * @param {import("../containerView.js").default} layoutParent
  * @returns {Promise<LegendView>}
  */
-export async function createGridChildLegend(
-    definition,
-    legendParent,
-    layoutParent
-) {
+export async function createGridChildLegend(definition, layoutParent) {
+    const legendParent = definition.view;
     /** @type {(() => void)[]} */
     const orientDisposers = [];
     const legendProps = resolveLegendOrient(

@@ -196,6 +196,204 @@ describe("GridView legends", () => {
             ]);
         });
 
+        test("collects a shared hconcat legend into one region", async () => {
+            const view = await createAndInitialize(
+                /** @type {import("../../spec/root.js").RootSpec} */ ({
+                    config: { legend: { disable: false } },
+                    resolve: {
+                        scale: { color: "shared" },
+                        legend: { color: "shared" },
+                    },
+                    hconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 1, y: 2, group: "alpha" },
+                                    { x: 2, y: 3, group: "beta" },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                color: {
+                                    field: "group",
+                                    type: "nominal",
+                                    legend: { orient: "right" },
+                                },
+                            },
+                        },
+                        {
+                            data: {
+                                values: [
+                                    { x: 3, y: 4, group: "alpha" },
+                                    { x: 4, y: 5, group: "gamma" },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                color: {
+                                    field: "group",
+                                    type: "nominal",
+                                    legend: { orient: "right" },
+                                },
+                            },
+                        },
+                    ],
+                }),
+                ConcatView
+            );
+
+            expect(getLegends(view)).toHaveLength(1);
+            expect(getLegendRegions(view)).toHaveLength(1);
+
+            const renderContext = new MarkRecordingRenderingContext({
+                picking: false,
+            });
+            view.render(renderContext, Rectangle.create(0, 0, 700, 300), {
+                firstFacet: true,
+            });
+            expect(renderContext.markNames).toEqual(
+                expect.arrayContaining(["symbols", "labels"])
+            );
+        });
+
+        test("uses scale resolution when legend resolution is omitted", async () => {
+            const view = await createAndInitialize(
+                /** @type {import("../../spec/root.js").RootSpec} */ ({
+                    config: { legend: { disable: false } },
+                    resolve: {
+                        scale: { color: "independent" },
+                    },
+                    hconcat: [
+                        {
+                            data: {
+                                values: [{ x: 1, y: 2, group: "alpha" }],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                color: {
+                                    field: "group",
+                                    type: "nominal",
+                                    legend: { orient: "right" },
+                                },
+                            },
+                        },
+                        {
+                            data: {
+                                values: [{ x: 3, y: 4, group: "beta" }],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                color: {
+                                    field: "group",
+                                    type: "nominal",
+                                    legend: { orient: "right" },
+                                },
+                            },
+                        },
+                    ],
+                }),
+                ConcatView
+            );
+
+            expect(getLegends(view)).toHaveLength(2);
+            expect(getLegendRegions(view)).toHaveLength(2);
+        });
+
+        test("keeps independent layer scale legends separate", async () => {
+            const view = await createAndInitialize(
+                /** @type {import("../../spec/root.js").RootSpec} */ ({
+                    config: { legend: { disable: false } },
+                    data: {
+                        values: [
+                            {
+                                x: 1,
+                                y: 2,
+                                group: "alpha",
+                                amount: 3,
+                                intensity: 4,
+                            },
+                        ],
+                    },
+                    vconcat: [
+                        {
+                            resolve: {
+                                scale: { color: "independent" },
+                            },
+                            layer: [
+                                {
+                                    mark: "point",
+                                    encoding: {
+                                        x: {
+                                            field: "x",
+                                            type: "quantitative",
+                                        },
+                                        y: {
+                                            field: "y",
+                                            type: "quantitative",
+                                        },
+                                        color: {
+                                            field: "group",
+                                            type: "nominal",
+                                            legend: { orient: "right" },
+                                        },
+                                    },
+                                },
+                                {
+                                    mark: "point",
+                                    encoding: {
+                                        x: {
+                                            field: "x",
+                                            type: "quantitative",
+                                        },
+                                        y: {
+                                            field: "y",
+                                            type: "quantitative",
+                                        },
+                                        size: {
+                                            field: "amount",
+                                            type: "quantitative",
+                                            legend: { orient: "right" },
+                                        },
+                                    },
+                                },
+                                {
+                                    mark: "point",
+                                    encoding: {
+                                        x: {
+                                            field: "x",
+                                            type: "quantitative",
+                                        },
+                                        y: {
+                                            field: "y",
+                                            type: "quantitative",
+                                        },
+                                        color: {
+                                            field: "intensity",
+                                            type: "quantitative",
+                                            legend: { orient: "right" },
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                }),
+                ConcatView
+            );
+
+            expect(
+                getLegends(view).map((legend) => legend.legendProps.title)
+            ).toEqual(["amount", "group", "intensity"]);
+        });
+
         test("hides a stacked legend when its contributing view is hidden", async () => {
             let sizeLayerVisible = true;
             const context = createTestViewContext();

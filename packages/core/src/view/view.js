@@ -195,8 +195,7 @@ export default class View {
              */
             axis: {},
             /**
-             * Channel-specific legend resolutions. Internal only; not exposed
-             * through the public resolve spec yet.
+             * Channel-specific legend resolutions.
              * @type {Partial<Record<import("../spec/channel.js").ChannelWithScale, import("../scales/legendResolution.js").default>>}
              */
             legend: {},
@@ -964,11 +963,17 @@ export default class View {
      * @returns {import("../spec/view.js").ResolutionBehavior}
      */
     getConfiguredOrDefaultResolution(channel, resolutionType) {
-        return (
+        const configuredResolution =
             this.getConfiguredResolution(channel, resolutionType) ??
-            this.getConfiguredResolution("default", resolutionType) ??
-            this.getDefaultResolution(channel, resolutionType)
-        );
+            this.getConfiguredResolution("default", resolutionType);
+
+        if (configuredResolution) {
+            return configuredResolution;
+        } else if (resolutionType == "legend") {
+            return this.getConfiguredOrDefaultResolution(channel, "scale");
+        } else {
+            return this.getDefaultResolution(channel, resolutionType);
+        }
     }
 
     /**

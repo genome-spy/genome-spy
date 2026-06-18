@@ -13,19 +13,20 @@ The hierarchical model allows for nesting composition operators. For instance,
 you could have a visualization with two views side by side, and those views
 could contain multiple layered views. The views in the hierarchy inherit
 (transformed) `data` and `encoding` from their parents, and in some cases, the
-views may also share [scales](../scale.md) and axes with their siblings and
+views may also share [scales](../scale.md), axes, and legends with their siblings and
 parents. The data and encoding inherited from ancestors can always be overridden
 by the descendants.
 
-## Scale and axis resolution
+## Scale, axis, and legend resolution
 
 Each visual channel of a view has a scale, which is either `"independent"` or `"shared"`
 with other views. For example, sharing the scale on the positional `x` channel links
 the zooming interactions of the participanting views through the shared scale domain.
-The axes of positional channels can be configured similarly.
+The axes of positional channels and legends of non-positional channels can be
+configured similarly.
 
-The `resolve` property configures the scale and axis resolutions for the view's
-children.
+The `resolve` property configures the scale, axis, and legend resolutions for
+the view's children.
 
 ```json title="An example of a resolution configuration"
 {
@@ -38,6 +39,9 @@ children.
     "axis": {
       "x": "shared",
       "y": "independent"
+    },
+    "legend": {
+      "color": "shared"
     }
   },
   ...

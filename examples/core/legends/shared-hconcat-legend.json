@@ -1,0 +1,74 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Legend test case for a shared color scale and shared legend across hconcat children.",
+
+  "background": "#fafafa",
+
+  "width": 360,
+  "height": 250,
+
+  "config": { "legend": { "disable": false, "offset": 18 } },
+
+  "data": { "url": "vega-datasets/penguins.json" },
+
+  "resolve": {
+    "scale": {
+      "x": "independent",
+      "y": "independent",
+      "color": "shared"
+    },
+    "axis": {
+      "x": "independent",
+      "y": "independent"
+    },
+    "legend": {
+      "color": "shared"
+    }
+  },
+
+  "hconcat": [
+    {
+      "title": "Beak shape",
+      "mark": { "type": "point", "filled": true, "size": 40, "opacity": 0.75 },
+      "encoding": {
+        "x": {
+          "field": "Beak Length (mm)",
+          "type": "quantitative",
+          "scale": { "zero": false, "nice": true }
+        },
+        "y": {
+          "field": "Beak Depth (mm)",
+          "type": "quantitative",
+          "scale": { "zero": false, "nice": true }
+        },
+        "color": {
+          "field": "Species",
+          "type": "nominal",
+          "legend": { "title": "Species", "orient": "bottom" }
+        }
+      }
+    },
+    {
+      "title": "Body size",
+      "mark": { "type": "point", "filled": true, "size": 40, "opacity": 0.75 },
+      "encoding": {
+        "x": {
+          "field": "Flipper Length (mm)",
+          "type": "quantitative",
+          "scale": { "zero": false, "nice": true }
+        },
+        "y": {
+          "field": "Body Mass (g)",
+          "type": "quantitative",
+          "scale": { "zero": false, "nice": true }
+        },
+        "color": {
+          "field": "Species",
+          "type": "nominal",
+          "legend": { "title": "Species", "orient": "bottom" }
+        }
+      }
+    }
+  ]
+}

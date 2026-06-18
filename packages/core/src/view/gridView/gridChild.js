@@ -50,15 +50,18 @@ import {
 
 /**
  * @param {import("../view.js").default} view
- * @returns {UnitView[]}
+ * @returns {import("../view.js").default[]}
  */
 function getLegendOwners(view) {
     if (isChromeView(view) || view.getLayoutAncestors().some(isChromeView)) {
         return [];
     } else if (view instanceof UnitView) {
-        return [view];
+        return Object.keys(view.resolutions.legend).length > 0 ? [view] : [];
     } else if (view instanceof LayerView) {
-        return Array.from(view).flatMap((child) => getLegendOwners(child));
+        return [
+            ...(Object.keys(view.resolutions.legend).length > 0 ? [view] : []),
+            ...Array.from(view).flatMap((child) => getLegendOwners(child)),
+        ];
     } else {
         return [];
     }
@@ -888,7 +891,6 @@ export default class GridChild {
                 for (const definition of resolution.getLegendDefs()) {
                     const legend = await createGridChildLegend(
                         definition,
-                        legendOwner,
                         this.layoutParent
                     );
                     await addLegendView(this.legends, legend, resolution);

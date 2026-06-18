@@ -53,7 +53,7 @@ export const markTypes = {
 export default class UnitView extends View {
     /**
      * @typedef {import("../spec/channel.js").Channel} Channel
-     * @typedef {import("../spec/view.js").ResolutionTarget | "legend"} ResolutionTarget
+     * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionTarget
      * @typedef {((datum: import("../data/flowNode.js").Datum) => import("../spec/channel.js").Scalar) & { fieldDef: import("../spec/channel.js").FieldDef}} FieldAccessor
      *
      */

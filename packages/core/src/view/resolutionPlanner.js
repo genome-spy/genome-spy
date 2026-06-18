@@ -19,7 +19,7 @@ import {
 
 /**
  * @typedef {Map<import("../scales/scaleResolution.js").default, ResolutionMember[]>} ScaleResolutionMemberMap
- * @typedef {import("../spec/view.js").ResolutionTarget | "legend"} ResolutionPlannerTarget
+ * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionPlannerTarget
  */
 
 /**
@@ -29,10 +29,6 @@ import {
  * @returns {import("./unitView.js").default}
  */
 const getResolutionView = (view, type, targetChannel) => {
-    if (type == "legend") {
-        return view;
-    }
-
     let resolutionView = view;
     while (
         (resolutionView.getConfiguredOrDefaultResolution(targetChannel, type) ==
