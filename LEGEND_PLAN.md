@@ -38,6 +38,8 @@ Implemented behavior:
 - Multiple legends targeting the same local side or corner region are stacked
   predictably by `GridChild`; GenomeSpy intentionally does not copy Vega's
   default corner superimposition behavior.
+- Stacked legends remain instantiated but inactive legend children collapse
+  when all contributing views for that legend are hidden.
 - Right/left legends use vertical layout; top/bottom legends use horizontal
   layout; corner symbol legends default to vertical layout.
 - Vertical gradient legends can fill available container height.
@@ -73,6 +75,10 @@ Text, formatting, and styling:
 - Title styling, title padding, label styling, and label limits are wired.
 - Symbol labels and gradient tick labels use channel `format` where
   applicable. Gradient tick formatting reuses the axis `tickFormat` helper.
+- Symbol legends follow Vega-Lite's constant-vs-scale-backed style behavior:
+  constant mark color/fill/stroke styling is inherited, but unrelated
+  scale-backed color/fill/stroke encodings are neutralized in other symbol
+  legends so, for example, a size legend does not appear to explain color.
 - `measureText`, `truncateText`, and `packLabels` support deterministic symbol
   label placement without relying on a scenegraph bounds pass.
 
@@ -104,6 +110,12 @@ Vega builds symbol legends from scenegraph marks: a legend group contains an
 optional title and entry groups; each entry group contains a symbol and label.
 Symbol properties can be scale-backed for channels such as fill, stroke,
 shape, size, and opacity.
+
+Vega-Lite adds mark-style arbitration before emitting Vega legends. In
+`compile/legend/encode.ts`, constant mark styling is carried into symbol
+legends, but scale-backed color/fill/stroke encodings that represent another
+field are neutralized in non-color legends. GenomeSpy follows this behavior for
+local symbol legends.
 
 Vega supports side legend orients (`left`, `right`, `top`, `bottom`),
 inside-corner orients (`top-left`, `top-right`, `bottom-left`,
@@ -159,11 +171,46 @@ resolution API can be designed later if shared/root/named-area legends need it.
   labels or become Vega-like range labels such as `< 20` and `>= 100`.
 - Keep linear/log/pow/sqrt/symlog/threshold/quantize gradient behavior aligned
   with the source scale, especially after dynamic domain updates.
-- Keep inherited symbol styling deterministic by using the first contributing
-  source view for now; revisit arbitration only if real multi-view conflicts
-  appear.
+- Keep multi-view inherited symbol styling deterministic by using the first
+  contributing source view for now; revisit arbitration only if real
+  multi-view conflicts appear.
 - Verify unsupported or deferred combinations fail clearly or intentionally do
   not create a legend.
+
+### Vega/Vega-Lite Property Gaps
+
+GenomeSpy intentionally exposes only the subset needed by the current local
+legend model. The following Vega/Vega-Lite properties are not surfaced yet.
+Some may be useful later, but they are not all required for the initial
+GenomeSpy legend milestone.
+
+Potentially useful compatibility candidates:
+
+- explicit legend `values`, `tickCount`, and `tickMinStep` for controlling
+  shown entries/ticks,
+- explicit legend `type` if users need to force symbol vs gradient behavior,
+- `titleOrient` implementation, plus related title alignment details if
+  non-top titles are needed,
+- gradient sizing/styling knobs: `gradientLength`, `gradientThickness`,
+  `gradientOpacity`, `gradientStrokeColor`, and `gradientStrokeWidth`,
+- gradient label overlap controls: `labelOverlap` and `labelSeparation`,
+- symbol styling overrides beyond current base fill/stroke/stroke width:
+  `symbolFillColor`, `symbolStrokeColor`, `symbolOpacity`, `symbolDash`,
+  `symbolDashOffset`, and `symbolLimit`.
+
+Lower-priority or architecture-dependent Vega surface:
+
+- group placement/styling knobs: `offset`, `cornerRadius`, `legendX`,
+  `legendY`, `fillColor`, and `strokeColor` as Vega-style aliases,
+- title styling details: `titleAlign`, `titleAnchor`, `titleBaseline`,
+  `titleLineHeight`, and `titleOpacity`,
+- custom legend encoders (`legend.encoding` / Vega `encode`),
+- accessibility and interaction properties such as `aria`, `description`,
+  `zindex`, interactive legend filtering, and unselected legend opacity.
+
+Do not add these wholesale. Add a property only when a concrete example or
+user-facing need appears, and prefer GenomeSpy's existing config names unless
+Vega compatibility requires a public alias.
 
 ### Channel Coverage
 
@@ -219,7 +266,6 @@ internals unless that exact structure is an intentional contract.
 Useful next checks:
 
 - one compact supported-matrix test group for active channel/type combinations,
-- focused checks for same-region stacking where examples reveal gaps,
 - layout snapshots for stable side/corner examples if the structures are
   suitable.
 
