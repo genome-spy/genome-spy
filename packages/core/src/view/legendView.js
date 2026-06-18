@@ -387,6 +387,7 @@ export function createSymbolLegendSpec({
                           channel,
                           dataType,
                           format,
+                          values: legend.values,
                       },
                   },
             transform: [
@@ -505,6 +506,7 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
             channel,
             count: DEFAULT_GRADIENT_TICK_COUNT,
             format,
+            values: legend.values,
         },
     };
     /** @type {import("../spec/transform.js").FormulaParams[]} */

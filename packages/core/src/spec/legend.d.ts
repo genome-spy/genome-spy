@@ -57,6 +57,11 @@ export interface Legend {
     columns?: number;
 
     /**
+     * Explicit values to show in the legend.
+     */
+    values?: (string | number | boolean)[];
+
+    /**
      * Maximum label text width in pixels.
      */
     labelLimit?: number;

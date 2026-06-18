@@ -1,6 +1,6 @@
 import { format as numberFormat } from "d3-format";
 
-import { tickFormat, tickValues } from "../../../scale/ticks.js";
+import { tickFormat, tickValues, validTicks } from "../../../scale/ticks.js";
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { createDiscreteLegendEntries } from "../../../view/legend/legendEntries.js";
 import { isChromeView } from "../../../view/viewSelectors.js";
@@ -100,15 +100,33 @@ export default class LegendEntriesSource extends DataSource {
               ) => numberFormat(format)(Number(value))
             : undefined;
 
-        return createDiscreteLegendEntries(this.scaleResolution, formatter);
+        const entries = createDiscreteLegendEntries(
+            this.scaleResolution,
+            formatter
+        );
+
+        if (!this.params.values) {
+            return entries;
+        }
+
+        const entriesByValue = new Map(
+            entries.map((entry) => [entry.value, entry])
+        );
+
+        return this.params.values.flatMap((value) =>
+            entriesByValue.has(value) ? [entriesByValue.get(value)] : []
+        );
     }
 
     #createQuantitativeEntries() {
         const scale = this.scaleResolution.getScale();
         const count = this.params.count ?? DEFAULT_QUANTITATIVE_ENTRY_COUNT;
         const format = tickFormat(scale, count, this.params.format);
+        const values = this.params.values
+            ? validTicks(scale, this.params.values, count)
+            : tickValues(scale, count);
 
-        return tickValues(scale, count).map((value, index) => ({
+        return values.map((value, index) => ({
             value,
             label: format(value),
             _legendIndex: index,

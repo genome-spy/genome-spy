@@ -1269,6 +1269,44 @@ describe("GridView legends", () => {
             expect(getLegends(view)).toHaveLength(0);
         });
 
+        test("uses explicit legend values as an ordered symbol subset", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "USA" },
+                                { x: 2, y: 3, Origin: "Europe" },
+                                { x: 3, y: 4, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "Origin",
+                                type: "nominal",
+                                legend: { values: ["Japan", "USA"] },
+                            },
+                        },
+                    },
+                ],
+            });
+            const labels = getLegends(view)[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "labels");
+            const labelData = Array.from(
+                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+            );
+
+            expect(labelData.map(({ value }) => value)).toEqual([
+                "Japan",
+                "USA",
+            ]);
+        });
+
         test("does not create legends for positional quantitative channels", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
@@ -2214,6 +2252,41 @@ describe("GridView legends", () => {
                     position: rampData.at(-2).position1,
                 })
             );
+        });
+
+        test("uses explicit legend values as gradient ticks", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: 0 },
+                                { x: 2, y: 2, measurement: 100 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "measurement",
+                                type: "quantitative",
+                                scale: { domain: [0, 100] },
+                                legend: { values: [25, 75] },
+                            },
+                        },
+                    },
+                ],
+            });
+            const labels = getLegends(view)[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "gradientLabels");
+            const labelData = Array.from(
+                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+            );
+
+            expect(labelData.map(({ value }) => value)).toEqual([25, 75]);
         });
 
         test("quantize gradient legends use discrete color buckets", async () => {

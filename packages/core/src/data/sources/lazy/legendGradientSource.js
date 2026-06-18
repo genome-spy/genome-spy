@@ -305,9 +305,18 @@ class LegendGradientTicksSource extends LegendGradientBaseSource {
         const requestedCount = this.params.count ?? DEFAULT_TICK_COUNT;
         const count = tickCount(scale, requestedCount, undefined);
         const format = tickFormat(scale, requestedCount, this.params.format);
-        const values = isQuantizeScale(scale)
-            ? scale.thresholds().map(finiteNumber)
-            : tickValues(scale, count);
+        const values = this.params.values
+            ? this.params.values.map(finiteNumber).filter((value) => {
+                  const position = positionScale(value);
+                  return (
+                      Number.isFinite(position) &&
+                      position >= 0 &&
+                      position <= 1
+                  );
+              })
+            : isQuantizeScale(scale)
+              ? scale.thresholds().map(finiteNumber)
+              : tickValues(scale, count).map(finiteNumber);
 
         for (const value of values) {
             const label = format(value);

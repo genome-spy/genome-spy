@@ -406,6 +406,9 @@ export interface LegendEntriesData {
     /** D3 number format specifier for labels */
     format?: string;
 
+    /** Explicit legend values */
+    values?: Scalar[];
+
     /** Number of representative entries to generate for quantitative scales */
     count?: number;
 }
@@ -426,6 +429,9 @@ export interface LegendGradientData {
 
     /** D3 number format specifier for labels derived from this source */
     format?: string;
+
+    /** Explicit tick values derived from this source */
+    values?: Scalar[];
 }
 
 /**
@@ -444,6 +450,9 @@ export interface LegendGradientTicksData {
 
     /** D3 number format specifier for tick labels */
     format?: string;
+
+    /** Explicit tick values */
+    values?: Scalar[];
 }
 
 export interface AxisGenomeData {
