@@ -206,7 +206,8 @@
               "scale": {
                 "domain": ["-", "+"],
                 "range": ["triangle-left", "triangle-right"]
-              }
+              },
+              "legend": null
             }
           }
         }

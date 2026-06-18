@@ -63,5 +63,7 @@
         }
       ]
     }
-  ]
+  ],
+
+  "config": { "legend": { "disable": true } }
 }

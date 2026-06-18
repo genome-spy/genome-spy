@@ -47,7 +47,8 @@
         "type": "ordinal",
         "domain": ["A", "C", "T", "G"],
         "range": ["#7BD56C", "#FF9B9B", "#86BBF1", "#FFC56C"]
-      }
+      },
+      "legend": null
     }
   },
 

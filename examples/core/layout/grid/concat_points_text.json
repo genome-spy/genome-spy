@@ -111,5 +111,7 @@
         "clip": true
       }
     }
-  ]
+  ],
+
+  "config": { "legend": { "disable": true } }
 }

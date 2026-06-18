@@ -26,7 +26,8 @@
   },
 
   "resolve": {
-    "axis": { "x": "shared" }
+    "axis": { "x": "shared" },
+    "legend": { "color": "shared" }
   },
 
   "vconcat": [
