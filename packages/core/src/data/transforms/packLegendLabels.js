@@ -82,6 +82,7 @@ export default class PackLegendLabelsTransform extends Transform {
         const fontSize = params.fontSize ?? 10;
         const xOffset = params.xOffset ?? 0;
         const yOffset = params.yOffset ?? 0;
+        const symbolOffset = params.symbolOffset ?? 0;
         const yExtent = this.yExtent;
 
         /** @type {number} */
@@ -167,9 +168,9 @@ export default class PackLegendLabelsTransform extends Transform {
             const entryY = y + yOffset;
             const labelY = y + yOffset + rowHeights[entry.row] / 2;
 
-            datum.symbolX = x + xOffset;
-            datum.symbolX2 = x + xOffset + symbolSlotWidth;
-            datum.entryX = x + xOffset + symbolCenterOffset;
+            datum.symbolX = x + xOffset + symbolOffset;
+            datum.symbolX2 = x + xOffset + symbolOffset + symbolSlotWidth;
+            datum.entryX = x + xOffset + symbolOffset + symbolCenterOffset;
             datum.entryY = entryY;
             datum.entryWidth = columnWidths[entry.column];
             datum.entryHeight = rowHeights[entry.row];

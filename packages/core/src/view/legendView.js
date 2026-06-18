@@ -537,6 +537,7 @@ export function createSymbolLegendSpec({
                     fontSize: labelFontSize,
                     rowPadding: legend.rowPadding,
                     columnPadding: legend.columnPadding,
+                    symbolOffset: legend.symbolOffset,
                     yOffset: 0,
                     yExtent: { expr: "height" },
                     direction: horizontalLegend

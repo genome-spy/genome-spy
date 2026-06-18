@@ -601,6 +601,13 @@ export interface PackLegendLabelsParams extends TransformParamsBase {
     xOffset?: number;
 
     /**
+     * Horizontal offset for generated symbol coordinates in pixels.
+     *
+     * **Default:** `0`
+     */
+    symbolOffset?: number;
+
+    /**
      * Vertical offset for all generated entry coordinates in pixels.
      *
      * **Default:** `0`

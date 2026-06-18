@@ -113,6 +113,31 @@ test("PackLegendLabelsTransform applies entry offsets", () => {
     });
 });
 
+test("PackLegendLabelsTransform applies symbol offset without moving labels", () => {
+    const transform = new PackLegendLabelsTransform(
+        {
+            type: "packLegendLabels",
+            labelWidth: "_labelWidth",
+            symbolSize: 100,
+            labelOffset: 4,
+            fontSize: 12,
+            symbolOffset: 3,
+        },
+        makeParamRuntimeProvider()
+    );
+
+    const data = processData(transform, [
+        { label: "USA", _labelWidth: 18, _legendIndex: 0 },
+    ]);
+
+    expect(data[0]).toMatchObject({
+        symbolX: 3,
+        symbolX2: 13,
+        entryX: 8,
+        labelX: 14,
+    });
+});
+
 test("PackLegendLabelsTransform accepts expression-backed y extent", () => {
     const provider = makeParamRuntimeProvider();
     provider.paramRuntime.allocateSetter("height", 80);
