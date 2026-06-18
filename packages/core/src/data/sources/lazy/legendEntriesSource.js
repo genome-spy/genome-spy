@@ -9,6 +9,7 @@ import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
 const DEFAULT_QUANTITATIVE_ENTRY_COUNT = 5;
 const LEGEND_SYMBOL_SIZE_FIELD = "_legendSymbolSize";
+const LEGEND_STROKE_WIDTH_FIELD = "_legendStrokeWidth";
 
 export default class LegendEntriesSource extends DataSource {
     /** @type {import("../../../spec/channel.js").Scalar[] | undefined} */
@@ -83,9 +84,15 @@ export default class LegendEntriesSource extends DataSource {
         if (this.params.channel == "size") {
             const scale = this.scaleResolution.getScale();
             for (const entry of entries) {
-                /** @type {Record<string, any>} */ (entry)[
-                    LEGEND_SYMBOL_SIZE_FIELD
-                ] = scale(entry.value);
+                if (this.params.sizeMode == "strokeWidth") {
+                    /** @type {Record<string, any>} */ (entry)[
+                        LEGEND_STROKE_WIDTH_FIELD
+                    ] = scale(entry.value);
+                } else {
+                    /** @type {Record<string, any>} */ (entry)[
+                        LEGEND_SYMBOL_SIZE_FIELD
+                    ] = scale(entry.value);
+                }
             }
         }
 

@@ -280,6 +280,7 @@ export async function createGridChildLegend(definition, layoutParent) {
             channel: definition.channel,
             type: definition.type,
             symbolChannels: definition.symbolChannels,
+            symbolGeometry: definition.symbolGeometry,
             symbolStyle,
             legend: legendProps,
             format: definition.format,

@@ -558,11 +558,12 @@ export interface PackLegendLabelsParams extends TransformParamsBase {
     symbolSize?: number | Field;
 
     /**
-     * Symbol stroke width in pixels.
+     * Symbol stroke width in pixels, or a field containing per-entry stroke
+     * widths in pixels.
      *
      * **Default:** `0`
      */
-    symbolStrokeWidth?: number;
+    symbolStrokeWidth?: number | Field;
 
     /**
      * Offset between the symbol and label in pixels.

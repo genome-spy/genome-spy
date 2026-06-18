@@ -1976,6 +1976,116 @@ describe("GridView legends", () => {
             expect(labelData.length).toBeGreaterThan(2);
         });
 
+        test("uses stroke-width symbols for rule size legends", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 0, x2: 1, y: 2, width: 1 },
+                                { x: 1, x2: 2, y: 3, width: 6 },
+                            ],
+                        },
+                        mark: { type: "rule", color: "red" },
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            x2: { field: "x2", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            size: {
+                                field: "width",
+                                type: "quantitative",
+                                scale: { domain: [0, 6], range: [1, 6] },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            const symbols = legend
+                .getDescendants()
+                .find((descendant) => descendant.name == "symbols");
+            const labels = legend
+                .getDescendants()
+                .find((descendant) => descendant.name == "labels");
+            const plot = view
+                .getDescendants()
+                .find((descendant) => descendant.name == "grid0");
+            const labelData = Array.from(
+                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+            );
+
+            expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
+                expect.objectContaining({ type: "rule" })
+            );
+            expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
+                expect.objectContaining({
+                    x: expect.objectContaining({ field: "symbolX" }),
+                    x2: expect.objectContaining({ field: "symbolX2" }),
+                    color: { value: "red" },
+                    size: expect.objectContaining({
+                        field: "value",
+                        type: "quantitative",
+                    }),
+                })
+            );
+            expect(
+                /** @type {UnitView} */ (symbols).getScaleResolution("size")
+            ).toBe(/** @type {UnitView} */ (plot).getScaleResolution("size"));
+            expect(labelData).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        value: 6,
+                        _legendStrokeWidth: 6,
+                    }),
+                ])
+            );
+        });
+
+        test("uses stroke-width symbols for link size legends", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 0, x2: 1, y: 2, y2: 3, width: 1 },
+                                { x: 1, x2: 2, y: 3, y2: 4, width: 6 },
+                            ],
+                        },
+                        mark: { type: "link", color: "#444" },
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            x2: { field: "x2", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            y2: { field: "y2", type: "quantitative" },
+                            size: {
+                                field: "width",
+                                type: "quantitative",
+                                scale: { domain: [0, 6], range: [1, 6] },
+                            },
+                        },
+                    },
+                ],
+            });
+            const symbols = getLegends(view)[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "symbols");
+
+            expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
+                expect.objectContaining({ type: "rule" })
+            );
+            expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
+                expect.objectContaining({
+                    color: { value: "#444" },
+                    size: expect.objectContaining({
+                        field: "value",
+                        type: "quantitative",
+                    }),
+                })
+            );
+        });
+
         test("updates quantitative size entries when a dynamic range changes", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

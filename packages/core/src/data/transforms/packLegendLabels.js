@@ -5,12 +5,13 @@ import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
 /**
  * @param {unknown} symbolSize
- * @param {number} symbolStrokeWidth
+ * @param {unknown} symbolStrokeWidth
  */
 function getSymbolExtent(symbolSize, symbolStrokeWidth) {
     const size = Number(symbolSize);
     const area = Number.isFinite(size) && size >= 0 ? size : 100;
-    return Math.sqrt(area) + symbolStrokeWidth;
+    const strokeWidth = Number(symbolStrokeWidth);
+    return Math.sqrt(area) + (Number.isFinite(strokeWidth) ? strokeWidth : 0);
 }
 
 export default class PackLegendLabelsTransform extends Transform {
@@ -31,6 +32,10 @@ export default class PackLegendLabelsTransform extends Transform {
             typeof params.symbolSize == "string"
                 ? field(params.symbolSize)
                 : () => params.symbolSize ?? 100;
+        this.symbolStrokeWidthAccessor =
+            typeof params.symbolStrokeWidth == "string"
+                ? field(params.symbolStrokeWidth)
+                : () => params.symbolStrokeWidth ?? 0;
         /** @type {number | undefined} */
         this.yExtent = undefined;
 
@@ -78,7 +83,6 @@ export default class PackLegendLabelsTransform extends Transform {
         const xOffset = params.xOffset ?? 0;
         const yOffset = params.yOffset ?? 0;
         const yExtent = this.yExtent;
-        const symbolStrokeWidth = params.symbolStrokeWidth ?? 0;
 
         /** @type {number} */
         const n = this.buffer.length;
@@ -113,7 +117,7 @@ export default class PackLegendLabelsTransform extends Transform {
                     : Math.floor(index / rows);
             const symbolExtent = getSymbolExtent(
                 this.symbolSizeAccessor(datum),
-                symbolStrokeWidth
+                this.symbolStrokeWidthAccessor(datum)
             );
             const labelWidth = this.labelWidthAccessor(datum);
 
@@ -163,6 +167,8 @@ export default class PackLegendLabelsTransform extends Transform {
             const entryY = y + yOffset;
             const labelY = y + yOffset + rowHeights[entry.row] / 2;
 
+            datum.symbolX = x + xOffset;
+            datum.symbolX2 = x + xOffset + symbolSlotWidth;
             datum.entryX = x + xOffset + symbolCenterOffset;
             datum.entryY = entryY;
             datum.entryWidth = columnWidths[entry.column];

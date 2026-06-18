@@ -20,6 +20,7 @@ import { isChromeView } from "../view/viewSelectors.js";
  *     channel: import("../spec/channel.js").ChannelWithScale,
  *     type: LegendType,
  *     symbolChannels?: Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>,
+ *     symbolGeometry?: "point" | "stroke",
  *     legend: import("../spec/legend.js").LegendConfig,
  *     format?: string,
  *     dataType: import("../spec/channel.js").Type,
@@ -159,12 +160,17 @@ export default class LegendResolution {
             legendType == "symbol"
                 ? getRedundantSymbolChannels(channel, legendParent)
                 : undefined;
+        const symbolGeometry =
+            legendType == "symbol"
+                ? getSymbolGeometry(channel, legendParent)
+                : undefined;
 
         return {
             view: legendParent,
             channel,
             type: legendType,
             symbolChannels,
+            symbolGeometry,
             legend: {
                 ...legendDefaults,
                 title,
@@ -190,6 +196,18 @@ export default class LegendResolution {
 
         return false;
     }
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelWithScale} channel
+ * @param {import("../view/unitView.js").default} legendParent
+ * @returns {"point" | "stroke"}
+ */
+function getSymbolGeometry(channel, legendParent) {
+    const markType = legendParent.getMarkType();
+    return channel == "size" && (markType == "rule" || markType == "link")
+        ? "stroke"
+        : "point";
 }
 
 /**

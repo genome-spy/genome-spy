@@ -411,6 +411,14 @@ export interface LegendEntriesData {
 
     /** Number of representative entries to generate for quantitative scales */
     count?: number;
+
+    /**
+     * Whether size entries should also include the scale output as a stroke
+     * width for stroke-based legend symbols.
+     *
+     * @internal
+     */
+    sizeMode?: "area" | "strokeWidth";
 }
 
 /**

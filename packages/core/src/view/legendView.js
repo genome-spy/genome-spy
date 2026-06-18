@@ -25,6 +25,7 @@ import { truncateText } from "../data/transforms/truncateText.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
 const SYMBOL_SIZE_FIELD = "_legendSymbolSize";
+const SYMBOL_STROKE_WIDTH_FIELD = "_legendStrokeWidth";
 const DEFAULT_GRADIENT_LEGEND_LENGTH = 200;
 const DEFAULT_GRADIENT_SAMPLE_COUNT = 64;
 const DEFAULT_GRADIENT_TICK_COUNT = 5;
@@ -253,11 +254,91 @@ function createBaseColorEncoding(value) {
 }
 
 /**
+ * Rule and link marks use the `size` channel as stroke width. Vega/Vega-Lite
+ * still represent comparable guides as symbol legends; GenomeSpy renders this
+ * variant as a short rule so the legend explains stroke width directly.
+ *
+ * @param {object} options
+ * @param {import("../spec/channel.js").ChannelWithScale} options.channel
+ * @param {import("../spec/channel.js").Type} options.dataType
+ * @param {import("../spec/scale.js").Scale} options.horizontalPixelScale
+ * @param {import("../spec/scale.js").Scale} options.verticalPixelScale
+ * @param {LegendConfig} options.legend
+ * @param {SymbolLegendStyle} options.symbolStyle
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function createStrokeSymbolLayer({
+    channel,
+    dataType,
+    horizontalPixelScale,
+    verticalPixelScale,
+    legend,
+    symbolStyle,
+}) {
+    const styleEncoding =
+        /** @type {Partial<import("../spec/channel.js").Encoding>} */ (
+            symbolStyle.encoding ?? {}
+        );
+    const color =
+        styleEncoding.color ??
+        styleEncoding.stroke ??
+        styleEncoding.fill ??
+        createBaseColorEncoding(legend.symbolBaseStrokeColor);
+
+    return {
+        name: "symbols",
+        mark: {
+            type: "rule",
+            clip: false,
+            cullByVisibleRange: false,
+            opacity: symbolStyle.mark?.opacity,
+        },
+        encoding: {
+            x: {
+                field: "symbolX",
+                type: "quantitative",
+                scale: horizontalPixelScale,
+                axis: null,
+                buildIndex: false,
+            },
+            x2: {
+                field: "symbolX2",
+                type: "quantitative",
+                scale: horizontalPixelScale,
+                axis: null,
+            },
+            y: {
+                field: "labelY2",
+                type: "quantitative",
+                scale: verticalPixelScale,
+                axis: null,
+            },
+            y2: {
+                field: "labelY2",
+                type: "quantitative",
+                scale: verticalPixelScale,
+                axis: null,
+            },
+            [channel]: {
+                field: "value",
+                type: dataType,
+                domainInert: true,
+            },
+            ...(color ? { color } : {}),
+            ...(styleEncoding.opacity
+                ? { opacity: styleEncoding.opacity }
+                : {}),
+        },
+    };
+}
+
+/**
  * @param {object} options
  * @param {LegendEntry[]} [options.entries]
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [options.symbolChannels]
  * @param {SymbolLegendStyle} [options.symbolStyle]
+ * @param {"point" | "stroke"} [options.symbolGeometry]
  * @param {LegendConfig} options.legend
  * @param {string} [options.format]
  * @param {import("../spec/channel.js").Type} options.dataType
@@ -269,11 +350,13 @@ export function createSymbolLegendSpec({
     channel,
     symbolChannels = {},
     symbolStyle = {},
+    symbolGeometry = "point",
     legend,
     format,
     dataType,
     context,
 }) {
+    const strokeSymbol = symbolGeometry == "stroke";
     const horizontalLegend = isHorizontalLegend(legend);
     const labelAlign = legend.labelAlign ?? "left";
     const labelBaseline = legend.labelBaseline ?? "middle";
@@ -309,51 +392,60 @@ export function createSymbolLegendSpec({
 
     /** @type {import("../spec/view.js").UnitSpec[]} */
     const layer = [
-        {
-            name: "symbols",
-            mark: {
-                type: "point",
-                clip: false,
-                cullByVisibleRange: false,
-                filled: channel == "fill",
-                shape: legend.symbolType,
-                size: legend.symbolSize,
-                strokeWidth: legend.symbolStrokeWidth,
-                ...symbolStyle.mark,
-            },
-            encoding: {
-                x: {
-                    field: "entryX",
-                    type: "quantitative",
-                    scale: horizontalPixelScale,
-                    axis: null,
-                    buildIndex: false,
-                },
-                y: {
-                    field: "labelY2",
-                    type: "quantitative",
-                    scale: verticalPixelScale,
-                    axis: null,
-                },
-                [channel]: {
-                    field: "value",
-                    type: dataType,
-                    domainInert: true,
-                },
-                ...baseSymbolEncoding,
-                ...symbolStyle.encoding,
-                ...Object.fromEntries(
-                    Object.entries(symbolChannels).map(([channel]) => [
-                        channel,
-                        {
-                            field: "value",
-                            type: dataType,
-                            domainInert: true,
-                        },
-                    ])
-                ),
-            },
-        },
+        strokeSymbol
+            ? createStrokeSymbolLayer({
+                  channel,
+                  dataType,
+                  horizontalPixelScale,
+                  verticalPixelScale,
+                  legend,
+                  symbolStyle,
+              })
+            : {
+                  name: "symbols",
+                  mark: {
+                      type: "point",
+                      clip: false,
+                      cullByVisibleRange: false,
+                      filled: channel == "fill",
+                      shape: legend.symbolType,
+                      size: legend.symbolSize,
+                      strokeWidth: legend.symbolStrokeWidth,
+                      ...symbolStyle.mark,
+                  },
+                  encoding: {
+                      x: {
+                          field: "entryX",
+                          type: "quantitative",
+                          scale: horizontalPixelScale,
+                          axis: null,
+                          buildIndex: false,
+                      },
+                      y: {
+                          field: "labelY2",
+                          type: "quantitative",
+                          scale: verticalPixelScale,
+                          axis: null,
+                      },
+                      [channel]: {
+                          field: "value",
+                          type: dataType,
+                          domainInert: true,
+                      },
+                      ...baseSymbolEncoding,
+                      ...symbolStyle.encoding,
+                      ...Object.fromEntries(
+                          Object.entries(symbolChannels).map(([channel]) => [
+                              channel,
+                              {
+                                  field: "value",
+                                  type: dataType,
+                                  domainInert: true,
+                              },
+                          ])
+                      ),
+                  },
+              },
     ];
 
     layer.push({
@@ -407,6 +499,7 @@ export function createSymbolLegendSpec({
                           dataType,
                           format,
                           values: legend.values,
+                          sizeMode: strokeSymbol ? "strokeWidth" : "area",
                       },
                   },
             transform: [
@@ -432,11 +525,14 @@ export function createSymbolLegendSpec({
                     type: "packLegendLabels",
                     labelWidth: LABEL_WIDTH_FIELD,
                     columns: legend.columns,
-                    symbolSize:
-                        channel == "size"
-                            ? SYMBOL_SIZE_FIELD
-                            : legend.symbolSize,
-                    symbolStrokeWidth: legend.symbolStrokeWidth,
+                    symbolSize: strokeSymbol
+                        ? legend.symbolSize
+                        : channel == "size"
+                          ? SYMBOL_SIZE_FIELD
+                          : legend.symbolSize,
+                    symbolStrokeWidth: strokeSymbol
+                        ? SYMBOL_STROKE_WIDTH_FIELD
+                        : legend.symbolStrokeWidth,
                     labelOffset: legend.labelOffset,
                     fontSize: labelFontSize,
                     rowPadding: legend.rowPadding,
@@ -911,6 +1007,7 @@ export default class LegendView extends ContainerView {
      * @param {import("../spec/channel.js").ChannelWithScale} props.channel
      * @param {Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>} [props.symbolChannels]
      * @param {SymbolLegendStyle} [props.symbolStyle]
+     * @param {"point" | "stroke"} [props.symbolGeometry]
      * @param {"symbol" | "gradient"} [props.type]
      * @param {LegendConfig} props.legend
      * @param {string} [props.format]
@@ -926,6 +1023,7 @@ export default class LegendView extends ContainerView {
             channel,
             symbolChannels,
             symbolStyle,
+            symbolGeometry,
             type,
             legend,
             format,
@@ -949,6 +1047,7 @@ export default class LegendView extends ContainerView {
                       channel,
                       symbolChannels,
                       symbolStyle,
+                      symbolGeometry,
                       legend,
                       format,
                       dataType,
