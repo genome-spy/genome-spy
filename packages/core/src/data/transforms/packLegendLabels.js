@@ -26,13 +26,13 @@ function getSymbolExtent(symbolSize, symbolStrokeWidth) {
     return Math.sqrt(area) + symbolStrokeWidth;
 }
 
-export default class PackLabelsTransform extends Transform {
+export default class PackLegendLabelsTransform extends Transform {
     get behavior() {
         return BEHAVIOR_MODIFIES;
     }
 
     /**
-     * @param {import("../../spec/transform.js").PackLabelsParams} params
+     * @param {import("../../spec/transform.js").PackLegendLabelsParams} params
      * @param {import("../flowNode.js").ParamRuntimeProvider} paramRuntimeProvider
      */
     constructor(params, paramRuntimeProvider) {

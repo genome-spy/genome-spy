@@ -529,8 +529,8 @@ export interface TruncateTextParams extends TransformParamsBase {
     as?: string;
 }
 
-export interface PackLabelsParams extends TransformParamsBase {
-    type: "packLabels";
+export interface PackLegendLabelsParams extends TransformParamsBase {
+    type: "packLegendLabels";
 
     /**
      * The field that contains measured label width in pixels.
@@ -763,7 +763,7 @@ export type TransformParams =
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
     | TruncateTextParams
-    | PackLabelsParams
+    | PackLegendLabelsParams
     | MergeFacetsParams
     | PileupParams
     | ProjectParams

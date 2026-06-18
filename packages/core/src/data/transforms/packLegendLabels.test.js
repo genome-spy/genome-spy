@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
 import { makeParamRuntimeProvider, processData } from "../flowTestUtils.js";
-import PackLabelsTransform from "./packLabels.js";
+import PackLegendLabelsTransform from "./packLegendLabels.js";
 
-test("PackLabelsTransform stacks vertical legend entries using max column width", () => {
-    const transform = new PackLabelsTransform(
+test("PackLegendLabelsTransform stacks vertical legend entries using max column width", () => {
+    const transform = new PackLegendLabelsTransform(
         {
-            type: "packLabels",
+            type: "packLegendLabels",
             labelWidth: "_labelWidth",
             direction: "vertical",
             symbolSize: 100,
@@ -52,10 +52,10 @@ test("PackLabelsTransform stacks vertical legend entries using max column width"
     ]);
 });
 
-test("PackLabelsTransform packs horizontal legend entries by measured label width", () => {
-    const transform = new PackLabelsTransform(
+test("PackLegendLabelsTransform packs horizontal legend entries by measured label width", () => {
+    const transform = new PackLegendLabelsTransform(
         {
-            type: "packLabels",
+            type: "packLegendLabels",
             labelWidth: "_labelWidth",
             direction: "horizontal",
             symbolSize: 100,
@@ -79,10 +79,10 @@ test("PackLabelsTransform packs horizontal legend entries by measured label widt
     expect(data.map((datum) => datum._legendLabelY)).toEqual([6, 6, 6]);
 });
 
-test("PackLabelsTransform uses per-entry symbol sizes for row height", () => {
-    const transform = new PackLabelsTransform(
+test("PackLegendLabelsTransform uses per-entry symbol sizes for row height", () => {
+    const transform = new PackLegendLabelsTransform(
         {
-            type: "packLabels",
+            type: "packLegendLabels",
             labelWidth: "_labelWidth",
             direction: "vertical",
             symbolSize: "_symbolSize",
@@ -105,10 +105,10 @@ test("PackLabelsTransform uses per-entry symbol sizes for row height", () => {
     expect(data.map((datum) => datum._legendLabelX)).toEqual([24, 24]);
 });
 
-test("PackLabelsTransform applies entry offsets", () => {
-    const transform = new PackLabelsTransform(
+test("PackLegendLabelsTransform applies entry offsets", () => {
+    const transform = new PackLegendLabelsTransform(
         {
-            type: "packLabels",
+            type: "packLegendLabels",
             labelWidth: "_labelWidth",
             symbolSize: 100,
             labelOffset: 4,
@@ -134,12 +134,12 @@ test("PackLabelsTransform applies entry offsets", () => {
     });
 });
 
-test("PackLabelsTransform accepts expression-backed y extent", () => {
+test("PackLegendLabelsTransform accepts expression-backed y extent", () => {
     const provider = makeParamRuntimeProvider();
     provider.paramRuntime.allocateSetter("height", 80);
-    const transform = new PackLabelsTransform(
+    const transform = new PackLegendLabelsTransform(
         {
-            type: "packLabels",
+            type: "packLegendLabels",
             labelWidth: "_labelWidth",
             symbolSize: 100,
             labelOffset: 4,
@@ -161,9 +161,9 @@ test("PackLabelsTransform accepts expression-backed y extent", () => {
 
     const provider2 = makeParamRuntimeProvider();
     provider2.paramRuntime.allocateSetter("height", 120);
-    const transform2 = new PackLabelsTransform(
+    const transform2 = new PackLegendLabelsTransform(
         {
-            type: "packLabels",
+            type: "packLegendLabels",
             labelWidth: "_labelWidth",
             symbolSize: 100,
             labelOffset: 4,
