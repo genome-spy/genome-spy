@@ -14,7 +14,7 @@
 
   "encoding": {
     "x": { "field": "x", "type": "ordinal" },
-    "color": { "field": "x", "type": "nominal" },
+    "color": { "field": "x", "type": "nominal", "legend": null },
     "text": { "field": "text" },
     "size": { "value": 100 }
   }

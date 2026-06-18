@@ -8,6 +8,7 @@ import FlattenDelimitedTransform from "./flattenDelimited.js";
 import FormulaTransform from "./formula.js";
 import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate.js";
 import MeasureTextTransform from "./measureText.js";
+import PackLegendLabelsTransform from "./packLegendLabels.js";
 import PileupTransform from "./pileup.js";
 import ProjectTransform from "./project.js";
 import RegexExtractTransform from "./regexExtract.js";
@@ -17,6 +18,7 @@ import StackTransform from "./stack.js";
 import FlattenSequenceTransform from "./flattenSequence.js";
 import AggregateTransform from "./aggregate.js";
 import IdentifierTransform from "./identifier.js";
+import TruncateTextTransform from "./truncateText.js";
 
 /**
  * TODO: Make this dynamic
@@ -37,11 +39,13 @@ export const transforms = {
     identifier: IdentifierTransform,
     linearizeGenomicCoordinate: LinearizeGenomicCoordinate,
     measureText: MeasureTextTransform,
+    packLegendLabels: PackLegendLabelsTransform,
     pileup: PileupTransform,
     project: ProjectTransform,
     regexExtract: RegexExtractTransform,
     regexFold: RegexFoldTransform,
     sample: SampleTransform,
+    truncateText: TruncateTextTransform,
     stack: StackTransform,
 };
 

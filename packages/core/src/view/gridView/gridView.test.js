@@ -29,7 +29,10 @@ class NoOpRenderingContext extends ViewRenderingContext {
         //
     }
 
-    renderMark() {
+    /**
+     * @param {import("../../marks/mark.js").default} _mark
+     */
+    renderMark(_mark) {
         //
     }
 }
@@ -625,6 +628,35 @@ describe("GridView separators", () => {
         expect(child.paramRuntime.createExpression("height")()).toBe(123);
     });
 
+    test("forced layout size params shadow configured ancestor params", async () => {
+        const context = createTestViewContext({ wrapRoot: false });
+        const parent = await context.createOrImportView(
+            {
+                params: [{ name: "height", value: 123 }],
+                vconcat: [],
+            },
+            null,
+            null,
+            "parent"
+        );
+        const child = await context.createOrImportView(
+            makeUnitSpec(),
+            /** @type {ConcatView} */ (parent),
+            parent,
+            "child",
+            undefined,
+            { layoutSizeParams: "force" }
+        );
+
+        child.render(
+            new NoOpRenderingContext({ picking: false }),
+            Rectangle.create(0, 0, 50, 77),
+            { firstFacet: true }
+        );
+
+        expect(child.paramRuntime.createExpression("height")()).toBe(77);
+    });
+
     test("concat grid draws both horizontal and vertical separators", async () => {
         const view = await createAndInitialize(
             {
@@ -765,6 +797,46 @@ describe("GridView decoration zindex", () => {
         );
 
         expect(order).toEqual(["child", "axis_bottom", "axis_left"]);
+    });
+
+    test("renders legends above marks", async () => {
+        const order = await recordRenderOrder(
+            {
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        name: "child",
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "alpha" },
+                                { x: 2, y: 3, group: "beta" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: { orient: "top-right" },
+                            },
+                        },
+                    },
+                ],
+            },
+            ["child", "legend_region_top-right"]
+        );
+
+        expect(order).toEqual(["child", "legend_region_top-right"]);
     });
 
     test("defaults inside axes above marks", async () => {

@@ -33,7 +33,8 @@ export const VIEW_ROOT_NAME = "viewRoot";
  * @property {boolean} [wrapRoot]
  *
  * @typedef {object} CreateViewOptions
- * @property {"own" | "inherit"} [layoutSizeParams]
+ * @property {boolean} [blockEncodingInheritance]
+ * @property {"own" | "inherit" | "force"} [layoutSizeParams]
  * @property {import("./view.js").ViewOptions["axisLabelClipPolicy"]} [axisLabelClipPolicy]
  */
 

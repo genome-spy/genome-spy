@@ -1,0 +1,43 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "A Palmer penguins scatter plot with a checkbox for showing and hiding the legend.",
+
+  "width": 250,
+  "height": 250,
+
+  "params": [
+    {
+      "name": "showLegends",
+      "value": true,
+      "bind": { "input": "checkbox", "name": "Show legends" }
+    }
+  ],
+
+  "config": {
+    "legend": {
+      "disable": { "expr": "!showLegends" }
+    }
+  },
+
+  "data": { "url": "vega-datasets/penguins.json" },
+
+  "mark": { "type": "point", "filled": true, "size": 45, "opacity": 0.75 },
+
+  "encoding": {
+    "x": {
+      "field": "Beak Length (mm)",
+      "type": "quantitative",
+      "scale": { "zero": false, "nice": true }
+    },
+    "y": {
+      "field": "Beak Depth (mm)",
+      "type": "quantitative",
+      "scale": { "zero": false, "nice": true }
+    },
+    "color": {
+      "field": "Species",
+      "type": "nominal"
+    }
+  }
+}

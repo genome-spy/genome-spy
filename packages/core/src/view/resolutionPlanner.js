@@ -1,5 +1,6 @@
 import ScaleResolution from "../scales/scaleResolution.js";
 import AxisResolution from "../scales/axisResolution.js";
+import LegendResolution from "../scales/legendResolution.js";
 import {
     isPositionalChannel,
     findChannelDefWithScale,
@@ -18,11 +19,12 @@ import {
 
 /**
  * @typedef {Map<import("../scales/scaleResolution.js").default, ResolutionMember[]>} ScaleResolutionMemberMap
+ * @typedef {import("../spec/view.js").ResolutionTarget} ResolutionPlannerTarget
  */
 
 /**
  * @param {import("./unitView.js").default} view
- * @param {import("../spec/view.js").ResolutionTarget} type
+ * @param {ResolutionPlannerTarget} type
  * @param {import("../spec/channel.js").ChannelWithScale} targetChannel
  * @returns {import("./unitView.js").default}
  */
@@ -80,7 +82,7 @@ const ensureScaleResolution = (ownerView, resolutionView, targetChannel) => {
 
 /**
  * @param {import("./unitView.js").default} view
- * @param {import("../spec/view.js").ResolutionTarget} type
+ * @param {ResolutionPlannerTarget} type
  * @param {import("../spec/channel.js").Channel} channel
  * @param {unknown} channelDef
  * @returns {ResolutionMember | undefined}
@@ -99,6 +101,18 @@ const getResolutionMember = (view, type, channel, channelDef) => {
     }
 
     if (type == "axis" && !isPositionalChannel(targetChannel)) {
+        return undefined;
+    }
+    if (type == "legend" && isPositionalChannel(targetChannel)) {
+        return undefined;
+    }
+    if (
+        type == "legend" &&
+        view.getConfiguredOrDefaultResolution(
+            targetChannel,
+            /** @type {any} */ (type)
+        ) == "excluded"
+    ) {
         return undefined;
     }
 
@@ -142,6 +156,29 @@ const collectAxisResolutionMembers = (view) => {
     });
 
     return axisMembers;
+};
+
+/**
+ * @param {import("./unitView.js").default} view
+ * @returns {ResolutionMember[]}
+ */
+const collectLegendResolutionMembers = (view) => {
+    /** @type {ResolutionMember[]} */
+    const legendMembers = [];
+    for (const [channel, channelDef] of Object.entries(
+        view.spec.encoding ?? {}
+    )) {
+        if (!channelDef || Array.isArray(channelDef)) {
+            continue;
+        }
+
+        const member = getResolutionMember(view, "legend", channel, channelDef);
+        if (member && !isPositionalChannel(member.channel)) {
+            legendMembers.push(member);
+        }
+    }
+
+    return legendMembers;
 };
 
 /**
@@ -216,6 +253,48 @@ const registerAxisResolutionMembers = (view, axisMembers) => {
 
 /**
  * @param {import("./unitView.js").default} view
+ * @param {ResolutionMember[]} legendMembers
+ */
+const registerLegendResolutionMembers = (view, legendMembers) => {
+    for (const {
+        view: resolutionView,
+        channel,
+        targetChannel,
+    } of legendMembers) {
+        if (isPositionalChannel(channel)) {
+            continue;
+        }
+
+        const legendChannel =
+            /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                targetChannel
+            );
+        if (!resolutionView.resolutions.legend[legendChannel]) {
+            resolutionView.resolutions.legend[legendChannel] =
+                new LegendResolution(legendChannel);
+        }
+
+        const resolution = resolutionView.resolutions.legend[legendChannel];
+        const unregister = resolution.registerMember({
+            view,
+            channel:
+                /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                    channel
+                ),
+        });
+        view.registerDisposer(() => {
+            if (
+                unregister() &&
+                resolutionView.resolutions.legend[legendChannel] === resolution
+            ) {
+                delete resolutionView.resolutions.legend[legendChannel];
+            }
+        });
+    }
+};
+
+/**
+ * @param {import("./unitView.js").default} view
  * @param {ScaleResolutionMemberMap} scaleMembersByResolution
  */
 const registerScaleResolutionMembers = (view, scaleMembersByResolution) => {
@@ -262,7 +341,7 @@ const registerScaleResolutionMembers = (view, scaleMembersByResolution) => {
  * Resolves scale and axis members for a view.
  *
  * @param {import("./unitView.js").default} view
- * @param {import("../spec/view.js").ResolutionTarget} [type]
+ * @param {ResolutionPlannerTarget} [type]
  */
 export const resolveViewResolutions = (view, type) => {
     if (!type) {
@@ -273,6 +352,11 @@ export const resolveViewResolutions = (view, type) => {
 
     if (type == "axis") {
         registerAxisResolutionMembers(view, collectAxisResolutionMembers(view));
+    } else if (type == "legend") {
+        registerLegendResolutionMembers(
+            view,
+            collectLegendResolutionMembers(view)
+        );
     } else {
         registerScaleResolutionMembers(
             view,

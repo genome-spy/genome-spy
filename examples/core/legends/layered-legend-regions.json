@@ -1,0 +1,171 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Legend test case for layered plots with inside-corner and outside-side legend regions.",
+
+  "background": "#fafafa",
+
+  "width": 700,
+  "height": 350,
+
+  "config": {
+    "legend": {
+      "disable": false,
+      "offset": 12,
+      "backgroundFill": "white",
+      "backgroundFillOpacity": 0.8
+    }
+  },
+  "padding": { "top": 30, "left": 10, "bottom": 10, "right": 10 },
+
+  "resolve": {
+    "scale": {
+      "color": "independent",
+      "size": "independent",
+      "x": "independent",
+      "y": "independent"
+    },
+    "axis": {
+      "color": "independent",
+      "size": "independent",
+      "x": "independent",
+      "y": "independent"
+    }
+  },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 121, "step": 1, "as": "x" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "datum.x < 40 ? 'alpha' : datum.x < 80 ? 'beta' : 'gamma'",
+      "as": "group"
+    },
+    {
+      "type": "formula",
+      "expr": "38 + 18 * sin(datum.x / 12)",
+      "as": "signal"
+    },
+    {
+      "type": "formula",
+      "expr": "26 + 0.35 * datum.x + 8 * cos(datum.x / 10)",
+      "as": "trend"
+    },
+    {
+      "type": "formula",
+      "expr": "abs(datum.trend - datum.signal)",
+      "as": "difference"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.x + 18 * sin(datum.x / 9)",
+      "as": "intensity"
+    }
+  ],
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative", "title": "x" }
+  },
+
+  "hconcat": [
+    {
+      "import": { "template": "layeredPlot" },
+      "params": {
+        "legendOrient": "top-right",
+        "plotTitle": "Inside plot area"
+      }
+    },
+
+    {
+      "import": { "template": "layeredPlot" },
+      "params": {
+        "legendOrient": "right",
+        "plotTitle": "Outside plot area"
+      }
+    }
+  ],
+
+  "templates": {
+    "layeredPlot": {
+      "params": [
+        { "name": "legendOrient", "value": "right" },
+        { "name": "plotTitle", "value": "Layered plot" }
+      ],
+      "title": { "text": { "expr": "plotTitle" } },
+      "resolve": {
+        "scale": { "color": "independent" }
+      },
+      "layer": [
+        {
+          "mark": {
+            "type": "point",
+            "filled": true,
+            "size": 26,
+            "opacity": 0.8
+          },
+          "encoding": {
+            "y": {
+              "field": "signal",
+              "type": "quantitative",
+              "title": "value"
+            },
+            "color": {
+              "field": "group",
+              "type": "nominal",
+              "legend": {
+                "title": "Group",
+                "orient": { "expr": "legendOrient" }
+              }
+            }
+          }
+        },
+
+        {
+          "mark": { "type": "point", "filled": false, "opacity": 0.55 },
+          "encoding": {
+            "y": {
+              "field": "trend",
+              "type": "quantitative",
+              "title": "value"
+            },
+            "size": {
+              "field": "difference",
+              "type": "quantitative",
+              "legend": {
+                "title": "Difference",
+                "orient": { "expr": "legendOrient" }
+              }
+            },
+            "color": { "value": "#333" }
+          }
+        },
+
+        {
+          "mark": {
+            "type": "point",
+            "filled": true,
+            "size": 18,
+            "opacity": 0.75
+          },
+          "encoding": {
+            "y": {
+              "field": "trend",
+              "type": "quantitative",
+              "title": "value"
+            },
+            "color": {
+              "field": "intensity",
+              "type": "quantitative",
+              "legend": {
+                "title": "Intensity",
+                "orient": { "expr": "legendOrient" }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

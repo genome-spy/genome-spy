@@ -54,7 +54,8 @@
             "type": "threshold",
             "domain": [0],
             "range": ["white", "black"]
-          }
+          },
+          "legend": null
         }
       }
     },

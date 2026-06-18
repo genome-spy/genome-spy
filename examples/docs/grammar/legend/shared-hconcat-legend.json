@@ -1,0 +1,59 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Palmer penguins scatter plots with a shared legend.",
+
+  "data": { "url": "vega-datasets/penguins.json" },
+
+  "resolve": {
+    "scale": { "y": "independent", "color": "shared" },
+    "legend": { "color": "shared" }
+  },
+
+  "hconcat": [
+    {
+      "title": "Beak shape",
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "field": "Beak Length (mm)",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "Beak Depth (mm)",
+          "type": "quantitative"
+        },
+        "color": {
+          "field": "Species",
+          "type": "nominal",
+          "legend": { "orient": "bottom" }
+        }
+      }
+    },
+    {
+      "title": "Body size",
+      "mark": "point",
+      "encoding": {
+        "x": {
+          "field": "Flipper Length (mm)",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "Body Mass (g)",
+          "type": "quantitative"
+        },
+        "color": {
+          "field": "Species",
+          "type": "nominal",
+          "legend": { "orient": "bottom" }
+        }
+      }
+    }
+  ],
+
+  "config": {
+    "legend": { "offset": 10 },
+    "scale": { "quantitative": { "zero": false } },
+    "point": { "filled": true, "size": 40, "opacity": 0.75 }
+  }
+}

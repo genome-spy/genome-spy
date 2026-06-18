@@ -47,5 +47,5 @@ This example combines several GenomeSpy capabilities in one spec:
   junction y-scale domain to the current x-domain, which keeps the shared arc
   height and label placement proportional to the visible genomic window.
 - [`layer`](../../grammar/composition/layer.md) stacks the coverage and
-  junction tracks while [`resolve`](../../grammar/composition/index.md#scale-and-axis-resolution)
+  junction tracks while [`resolve`](../../grammar/composition/index.md#scale-axis-and-legend-resolution)
   keeps the coverage y scale independent from the junction-layer y scale.

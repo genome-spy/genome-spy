@@ -1,0 +1,79 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Legend test case for a threshold color scale.",
+
+  "background": "#fafafa",
+
+  "width": 700,
+  "height": 300,
+
+  "config": { "legend": { "disable": false, "offset": 18 } },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "axis": { "color": "independent" }
+  },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 241, "step": 1, "as": "x" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "datum.x / 2 + 12 * sin(datum.x / 14)",
+      "as": "value"
+    }
+  ],
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "title": "Continuous x"
+    },
+    "y": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Continuous y",
+      "scale": { "zero": false }
+    }
+  },
+
+  "hconcat": [
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Threshold color",
+          "scale": {
+            "type": "threshold",
+            "domain": [20, 40, 60, 80, 100],
+            "scheme": "turbo"
+          },
+          "legend": { "title": "Right", "orient": "right" }
+        }
+      }
+    },
+
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Threshold color",
+          "scale": {
+            "type": "threshold",
+            "domain": [20, 40, 60, 80, 100],
+            "scheme": "turbo"
+          },
+          "legend": { "title": "Bottom", "orient": "bottom" }
+        }
+      }
+    }
+  ]
+}

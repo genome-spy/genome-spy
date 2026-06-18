@@ -1,0 +1,51 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Legend test case adapted from Vega-Lite's horizontal stacked barley bar chart.",
+
+  "background": "#fafafa",
+
+  "width": 300,
+  "height": 200,
+
+  "config": { "legend": { "disable": false, "offset": 18 } },
+
+  "data": { "url": "vega-datasets/barley.json" },
+
+  "transform": [
+    {
+      "type": "aggregate",
+      "groupby": ["variety", "site"],
+      "fields": ["yield"],
+      "ops": ["sum"],
+      "as": ["yieldSum"]
+    },
+    {
+      "type": "stack",
+      "field": "yieldSum",
+      "groupby": ["variety"],
+      "sort": { "field": "site", "order": "ascending" },
+      "as": ["yieldStart", "yieldEnd"]
+    }
+  ],
+
+  "mark": "rect",
+
+  "encoding": {
+    "x": {
+      "field": "yieldStart",
+      "type": "quantitative",
+      "title": "Sum of yield"
+    },
+    "x2": { "field": "yieldEnd" },
+    "y": {
+      "field": "variety",
+      "type": "nominal",
+      "scale": { "padding": 0.1 }
+    },
+    "color": {
+      "field": "site",
+      "type": "nominal"
+    }
+  }
+}

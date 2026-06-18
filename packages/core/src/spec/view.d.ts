@@ -411,7 +411,7 @@ export interface FacetSpec extends ViewSpecBase {
     spacing?: number;
 }
 
-export type ResolutionTarget = "scale" | "axis";
+export type ResolutionTarget = "scale" | "axis" | "legend";
 
 /**
  * `"independent"` and `"shared"` behave similarly to Vega-Lite.
@@ -427,9 +427,12 @@ export type ResolutionBehavior =
 
 export interface ResolveSpec {
     /**
-     * Specifies how scales and axes are
-     * [resolved](https://genomespy.app/docs/grammar/composition/#scale-and-axis-resolution)
+     * Specifies how scales, axes, and legends are
+     * [resolved](https://genomespy.app/docs/grammar/composition/#scale-axis-and-legend-resolution)
      * in the view hierarchy.
+     *
+     * If legend resolution is not configured explicitly, it follows the
+     * corresponding scale resolution.
      */
     resolve?: Partial<
         Record<

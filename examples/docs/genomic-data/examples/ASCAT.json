@@ -219,6 +219,7 @@
       "grid": true,
       "gridColor": "#f8f8f8"
     },
+    "legend": { "disable": true },
     "view": {
       "fill": "white",
       "stroke": "#c8c8c8",

@@ -17,6 +17,25 @@ import {
  */
 
 /**
+ * @typedef {{
+ *   scopeOwned?: boolean,
+ *   registerDisposer?: (disposer: () => void) => void
+ * }} WatchExpressionOptions
+ */
+
+/**
+ * @typedef {{
+ *   createExpression: (expr: string) => ExprRefFunction,
+ *   watchExpression?: (
+ *     expr: string,
+ *     listener: () => void,
+ *     options?: WatchExpressionOptions
+ *   ) => ExprRefFunction,
+ *   whenPropagated?: () => Promise<void>
+ * }} ExprRefRuntime
+ */
+
+/**
  * @param {any} x
  * @returns {x is import("../spec/parameter.js").ExprRef}
  */
@@ -133,7 +152,7 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
  * ExprRefs to getters and setups a listener that is called when any of the
  * expressions (upstream parameters) change.
  *
- * @param {{ createExpression: (expr: string) => ExprRefFunction, watchExpression?: (expr: string, listener: () => void, options?: { scopeOwned?: boolean, registerDisposer?: (disposer: () => void) => void }) => ExprRefFunction, whenPropagated?: () => Promise<void> }} paramRuntime
+ * @param {ExprRefRuntime} paramRuntime
  * @param {T} props The properties object
  * @param {(props: ReadonlySet<keyof T>) => void} [listener] Listener to be called when any of the expressions change
  * @param {(disposer: () => void) => void} [registerDisposer]
@@ -252,6 +271,47 @@ export function activateExprRefProps(
     }
 
     return /** @type {T} */ (activatedProps);
+}
+
+/**
+ * Resolves a literal or ExprRef for properties that may be parameterized during
+ * view construction but are not safe to update reactively. This is intended for
+ * structural options, such as layout regions or view ownership, where a later
+ * value change would require rebuilding part of the view hierarchy. ExprRefs
+ * are evaluated once and subscribed with a fail-fast listener.
+ *
+ * @param {ExprRefRuntime} paramRuntime
+ * @param {T | import("../spec/parameter.js").ExprRef} value
+ * @param {string} errorMessage Error thrown if an ExprRef changes after initialization
+ * @param {(disposer: () => void) => void} [registerDisposer]
+ * @returns {T}
+ * @template T
+ */
+export function resolveInitOnlyExprRef(
+    paramRuntime,
+    value,
+    errorMessage,
+    registerDisposer
+) {
+    if (!isExprRef(value)) {
+        return value;
+    }
+
+    const throwUnsupportedChange = () => {
+        throw new Error(errorMessage);
+    };
+    const fn = paramRuntime.watchExpression
+        ? paramRuntime.watchExpression(value.expr, throwUnsupportedChange, {
+              scopeOwned: false,
+              registerDisposer,
+          })
+        : paramRuntime.createExpression(value.expr);
+    if (!paramRuntime.watchExpression) {
+        const unsubscribe = fn.subscribe(throwUnsupportedChange);
+        registerDisposer?.(unsubscribe);
+    }
+
+    return fn();
 }
 
 /**

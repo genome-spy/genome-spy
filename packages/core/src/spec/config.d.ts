@@ -11,6 +11,7 @@ import {
 import { Scale, SchemeParams } from "./scale.js";
 import { Title } from "./title.js";
 import { ViewBackgroundProps } from "./decoration.js";
+import { LegendConfig } from "./legend.js";
 
 export type BuiltInThemeName =
     | "genomespy"
@@ -137,7 +138,9 @@ type CombinedStyleConfig = MergeProps<
     MergeProps<MergeProps<LinkConfig, AxisConfig>, TitleConfig>
 >;
 
-export type StyleConfig = Partial<CombinedStyleConfig>;
+export type StyleConfig = Partial<
+    MergeProps<CombinedStyleConfig, LegendConfig>
+>;
 
 export interface GenomeSpyConfig {
     /**
@@ -185,6 +188,12 @@ export interface GenomeSpyConfig {
      * Defaults shared by all axes.
      */
     axis?: AxisConfig;
+
+    /**
+     * Defaults shared by all legends. Set `disable` to `true` to suppress
+     * automatic legend creation by default.
+     */
+    legend?: LegendConfig;
 
     /**
      * Defaults for x axes.
@@ -257,8 +266,8 @@ export interface GenomeSpyConfig {
     title?: TitleConfig;
 
     /**
-     * Named reusable style buckets that marks, axes, titles, and views can
-     * reference through their `style` properties.
+     * Named reusable style buckets that marks, axes, legends, titles, and
+     * views can reference through their `style` properties.
      */
     style?: Record<string, StyleConfig>;
 }

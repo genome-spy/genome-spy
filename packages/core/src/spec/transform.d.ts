@@ -474,6 +474,153 @@ export interface MeasureTextParams extends TransformParamsBase {
     as: string;
 }
 
+export interface TruncateTextParams extends TransformParamsBase {
+    type: "truncateText";
+
+    /**
+     * The field that contains the text to be truncated.
+     */
+    field: Field;
+
+    /**
+     * Maximum text width in pixels.
+     */
+    limit?: number;
+
+    /**
+     * The font size in pixels.
+     */
+    fontSize: number;
+
+    /**
+     * The font typeface. Uses the same asynchronously loaded SDF fonts as the
+     * `"text"` mark.
+     *
+     * **Default:** `"Lato"`
+     */
+    font?: string;
+
+    /**
+     * The font style. Valid values: `"normal"` and `"italic"`.
+     *
+     * **Default:** `"normal"`
+     */
+    fontStyle?: FontStyle;
+
+    /**
+     * The font weight.
+     *
+     * **Default:** `"regular"`
+     */
+    fontWeight?: FontWeight;
+
+    /**
+     * Text appended after truncation.
+     *
+     * **Default:** `"..."`.
+     */
+    ellipsis?: string;
+
+    /**
+     * The output field where the truncated text is written.
+     *
+     * **Default:** Same as `field`.
+     */
+    as?: string;
+}
+
+export interface PackLegendLabelsParams extends TransformParamsBase {
+    type: "packLegendLabels";
+
+    /**
+     * The field that contains measured label width in pixels.
+     */
+    labelWidth: Field;
+
+    /**
+     * The direction in which entries are laid out.
+     *
+     * **Default:** `"vertical"`
+     */
+    direction?: "vertical" | "horizontal";
+
+    /**
+     * The number of columns in which to arrange entries.
+     */
+    columns?: number;
+
+    /**
+     * Symbol size in pixels squared, or a field containing per-entry symbol
+     * sizes in pixels squared.
+     *
+     * **Default:** `100`
+     */
+    symbolSize?: number | Field;
+
+    /**
+     * Symbol stroke width in pixels, or a field containing per-entry stroke
+     * widths in pixels.
+     *
+     * **Default:** `0`
+     */
+    symbolStrokeWidth?: number | Field;
+
+    /**
+     * Offset between the symbol and label in pixels.
+     *
+     * **Default:** `0`
+     */
+    labelOffset?: number;
+
+    /**
+     * Label font size in pixels.
+     *
+     * **Default:** `10`
+     */
+    fontSize?: number;
+
+    /**
+     * Padding between rows in pixels.
+     *
+     * **Default:** `0`
+     */
+    rowPadding?: number;
+
+    /**
+     * Padding between columns in pixels.
+     *
+     * **Default:** `0`
+     */
+    columnPadding?: number;
+
+    /**
+     * Horizontal offset for all generated entry coordinates in pixels.
+     *
+     * **Default:** `0`
+     */
+    xOffset?: number;
+
+    /**
+     * Horizontal offset for generated symbol coordinates in pixels.
+     *
+     * **Default:** `0`
+     */
+    symbolOffset?: number;
+
+    /**
+     * Vertical offset for all generated entry coordinates in pixels.
+     *
+     * **Default:** `0`
+     */
+    yOffset?: number;
+
+    /**
+     * Height of the pixel-space layout area. When provided, the transform also
+     * emits inverted y coordinates for GenomeSpy's unit y range.
+     */
+    yExtent?: number | ExprRef;
+}
+
 export interface MergeFacetsParams extends TransformParamsBase {
     type: "mergeFacets";
 }
@@ -606,6 +753,8 @@ export type TransformParams =
     | IdentifierParams
     | LinearizeGenomicCoordinateParams
     | MeasureTextParams
+    | TruncateTextParams
+    | PackLegendLabelsParams
     | MergeFacetsParams
     | PileupParams
     | ProjectParams

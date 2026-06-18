@@ -5,6 +5,11 @@
 
   "title": { "text": "GC content", "style": "overlay-title" },
 
+  "config": {
+    "legend": { "disable": false, "offset": 18 },
+    "view": { "stroke": "lightgray" }
+  },
+
   "data": {
     "lazy": {
       "type": "bigwig",
@@ -21,7 +26,8 @@
   },
 
   "resolve": {
-    "axis": { "x": "shared" }
+    "axis": { "x": "shared" },
+    "legend": { "color": "shared" }
   },
 
   "vconcat": [
@@ -32,7 +38,7 @@
         "y": {
           "field": "score",
           "type": "quantitative",
-          "scale": { "nice": true, "zero": false },
+          "scale": { "nice": true, "zero": false, "clamp": true },
           "axis": {
             "title": "GC (%)",
             "grid": true,
@@ -54,7 +60,8 @@
         "color": {
           "field": "score",
           "type": "quantitative",
-          "scale": { "zero": false }
+          "scale": { "zero": false },
+          "legend": { "title": "GC (%)" }
         }
       },
       "mark": {
@@ -64,9 +71,5 @@
         "tooltip": null
       }
     }
-  ],
-
-  "config": {
-    "view": { "stroke": "lightgray" }
-  }
+  ]
 }

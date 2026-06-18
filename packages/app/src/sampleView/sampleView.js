@@ -44,6 +44,7 @@ import { getExternalAxisOverhang } from "@genome-spy/core/view/axisView.js";
 import { isAggregateSamplesSpec } from "./specGuards.js";
 import getViewAttributeInfo from "./viewAttributeInfoSource.js";
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
+import { renderLocalLegends } from "@genome-spy/core/view/gridView/legendLayout.js";
 import Scrollbar from "@genome-spy/core/view/gridView/scrollbar.js";
 import { SampleLabelView } from "./sampleLabelView.js";
 import {
@@ -962,6 +963,7 @@ export default class SampleView extends ContainerView {
      */
     #renderChild(context, coords, options = {}) {
         const gridChild = this.#gridChild;
+        const plotOptions = options;
 
         // Background and grid rendering --------
 
@@ -1076,6 +1078,16 @@ export default class SampleView extends ContainerView {
                 firstFacet: i == 0,
             });
         }
+
+        renderLocalLegends(
+            gridChild.legends,
+            gridChild.axes,
+            coords,
+            context,
+            plotOptions,
+            (_zindex, _order, render) => render(),
+            0
+        );
 
         gridChild.selectionRect?.render(context, coords, options);
     }
@@ -1862,6 +1874,21 @@ class SampleGridChild extends GridChild {
      */
     allowDuplicateAxes() {
         return true;
+    }
+
+    /**
+     * SampleView owns the left side with its sidebar, so child legends cannot
+     * use the outside-left legend region. Inside-left corner regions are still
+     * valid because they are placed over the plot area.
+     */
+    async createAxes() {
+        await super.createAxes();
+
+        if (this.legends.left) {
+            throw new Error(
+                "SampleView child legends do not support left orientation because the sidebar owns the left side."
+            );
+        }
     }
 
     /**

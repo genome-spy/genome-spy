@@ -1,0 +1,71 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Legend test case for a logarithmic color scale.",
+
+  "background": "#fafafa",
+
+  "width": 700,
+  "height": 300,
+
+  "config": { "legend": { "disable": false, "offset": 18 } },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "axis": { "color": "independent" }
+  },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 241, "step": 1, "as": "x" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "pow(10, datum.x / 60)",
+      "as": "value"
+    }
+  ],
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "title": "Continuous x"
+    },
+    "y": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Log y",
+      "scale": { "type": "log", "domain": [1, 10000], "zero": false }
+    }
+  },
+
+  "hconcat": [
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Log color",
+          "scale": { "type": "log", "domain": [1, 10000], "zero": false },
+          "legend": { "title": "Right", "orient": "right" }
+        }
+      }
+    },
+
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Log color",
+          "scale": { "type": "log", "domain": [1, 10000], "zero": false },
+          "legend": { "title": "Bottom", "orient": "bottom" }
+        }
+      }
+    }
+  ]
+}

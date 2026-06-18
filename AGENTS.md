@@ -62,10 +62,25 @@ aware interactions.
 - Unit tests with Vitest
 - Tests live next to code, with `.test.` in the filename
 - When writing tests, add a short comment for non-obvious test setup/intent.
-- After a refactor, remove tests that only cover temporary compatibility paths
-  or intermediate implementation details unless that behavior remains an
-  intentional public contract.
-- For rendered hierarchy/layout inspection, prefer `specToLayout(...)` or `renderToLayout(...)` from `packages/core/src/view/testUtils.js` instead of ad hoc scripts.
+- Permanent tests should verify behavior, contracts, dataflow, layout
+  semantics, or user-visible output rather than duplicating the current
+  implementation.
+- Prefer representative assertions that capture intent. Avoid exhaustive checks
+  over every property of a configuration object, generated spec, or internal
+  structure unless that full shape is an intentional compatibility contract.
+- Transient tests that pin down implementation details are acceptable while
+  debugging, but delete or rewrite them before committing. After a refactor,
+  remove tests that only cover temporary compatibility paths or intermediate
+  implementation details unless that behavior remains an intentional public
+  contract.
+- For generated specs, rendered hierarchy/layout inspection, or other structured
+  output where the whole shape matters, prefer focused snapshot tests once the
+  design has stabilized. Prefer `specToLayout(...)` or `renderToLayout(...)`
+  from `packages/core/src/view/testUtils.js` instead of ad hoc scripts.
+- If existing structures are unsuitable for snapshot testing, proactively
+  propose a stable snapshot-friendly representation or test helper. Do not
+  refactor production code or test infrastructure solely for snapshot testing
+  without developer approval.
 - `packages/core/layout.test.js` and `packages/core/src/view/layoutSnapshot.test.js` show the recommended layout-snapshot pattern.
 
 ### Running tests and linting

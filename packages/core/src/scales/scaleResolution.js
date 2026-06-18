@@ -906,6 +906,16 @@ export default class ScaleResolution {
         return this.#orderedMembers;
     }
 
+    /**
+     * Returns the participating members in the same deterministic order used
+     * for scale property merging.
+     *
+     * @returns {ScaleResolutionMember[]}
+     */
+    getOrderedMembers() {
+        return this.#getOrderedMembers().slice();
+    }
+
     #invalidateConfiguredDomain() {
         this.#domainAggregator.invalidateConfiguredDomain();
         this.#invalidateMergedScaleProps();

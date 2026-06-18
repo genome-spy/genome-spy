@@ -53,7 +53,8 @@
                 "type": "threshold",
                 "domain": [-0.01, 0.01],
                 "range": ["triangle-down", "diamond", "triangle-up"]
-              }
+              },
+              "legend": null
             }
           }
         }

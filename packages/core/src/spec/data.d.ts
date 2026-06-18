@@ -12,7 +12,13 @@
  * Constants and utilities for data.
  */
 import { Axis } from "./axis.js";
-import { FieldName, PrimaryPositionalChannel, Scalar } from "./channel.js";
+import {
+    ChannelWithScale,
+    FieldName,
+    PrimaryPositionalChannel,
+    Scalar,
+    Type as ChannelType,
+} from "./channel.js";
 import { ExprRef } from "./parameter.js";
 
 export type ParseValue =
@@ -331,6 +337,9 @@ export interface LazyData {
 
 export type LazyDataParams =
     | AxisTicksData
+    | LegendEntriesData
+    | LegendGradientData
+    | LegendGradientTicksData
     | AxisGenomeData
     | IndexedFastaData
     | BigWigData
@@ -378,6 +387,80 @@ export interface AxisTicksData {
 
     /** Which channel's scale domain to listen to */
     channel: PrimaryPositionalChannel;
+}
+
+/**
+ * Internal data source for generated legend entries.
+ *
+ * @internal
+ */
+export interface LegendEntriesData {
+    type: "legendEntries";
+
+    /** Which channel's scale domain to use */
+    channel: ChannelWithScale;
+
+    /** The data type of the source channel */
+    dataType?: ChannelType;
+
+    /** D3 number format specifier for labels */
+    format?: string;
+
+    /** Explicit legend values */
+    values?: Scalar[];
+
+    /** Number of representative entries to generate for quantitative scales */
+    count?: number;
+
+    /**
+     * Whether size entries should also include the scale output as a stroke
+     * width for stroke-based legend symbols.
+     *
+     * @internal
+     */
+    sizeMode?: "area" | "strokeWidth";
+}
+
+/**
+ * Internal data source for generated gradient legend ramp samples.
+ *
+ * @internal
+ */
+export interface LegendGradientData {
+    type: "legendGradient";
+
+    /** Which channel's scale domain to use */
+    channel: ChannelWithScale;
+
+    /** Number of ramp samples to generate */
+    count?: number;
+
+    /** D3 number format specifier for labels derived from this source */
+    format?: string;
+
+    /** Explicit tick values derived from this source */
+    values?: Scalar[];
+}
+
+/**
+ * Internal data source for generated gradient legend ticks.
+ *
+ * @internal
+ */
+export interface LegendGradientTicksData {
+    type: "legendGradientTicks";
+
+    /** Which channel's scale domain to use */
+    channel: ChannelWithScale;
+
+    /** Number of ticks to generate */
+    count?: number;
+
+    /** D3 number format specifier for tick labels */
+    format?: string;
+
+    /** Explicit tick values */
+    values?: Scalar[];
 }
 
 export interface AxisGenomeData {

@@ -11,6 +11,7 @@
 import { ExprRef } from "./parameter.js";
 import { Scale } from "./scale.js";
 import { GenomeAxis } from "./axis.js";
+import { Legend } from "./legend.js";
 
 // TODO: Rename Scalar to PrimitiveValue
 export type Scalar = string | number | boolean;
@@ -217,7 +218,8 @@ export interface ExprDef
  * Field definition of a mark property, which can contain a legend.
  */
 export type MarkPropFieldDef<T extends Type = Type> = ScaleFieldDef<T> &
-    LegendMixins;
+    LegendMixins &
+    FormatMixins;
 
 export type MarkPropExprDef<T extends Type = Type> = ExprDef &
     TypeMixins<T> &
@@ -237,8 +239,16 @@ export type MarkPropDatumDef<T extends Type> = LegendMixins &
  *
  * __See also:__ [`legend`](https://vega.github.io/vega-lite/docs/legend.html) documentation.
  */
-// TODO: legend?: Legend<ExprRef | SignalRef> | null;
-export type LegendMixins = Record<string, never>;
+export interface LegendMixins {
+    /**
+     * Legend properties for the encoding channel. If `null`, the legend for
+     * the channel is removed. If an object is provided, a legend is created
+     * even when legends are disabled by default in the config.
+     *
+     * __Default value:__ If undefined, configured legend defaults are applied.
+     */
+    legend?: Legend | null;
+}
 
 export type ConditionalTemplate =
     | FieldDef<any>
@@ -429,7 +439,11 @@ export type ChannelDef = Exclude<
 // TODO: Does this make sense?
 export type ChannelDefWithScale = ScaleMixins &
     TypeMixins<Type> &
-    DomainContributionMixins;
+    DomainContributionMixins &
+    TitleMixins &
+    Partial<FormatMixins> & {
+        axis?: GenomeAxis | null;
+    };
 
 export interface XIndexDef {
     /**

@@ -15,6 +15,37 @@ import specConfigImportOverride from "../../examples/core/config/config-import-o
 import specConfigScaleSchemesByType from "../../examples/core/config/config-scale-schemes-by-type.json";
 import specConfigThemeComparisonBars from "../../examples/core/config/config-theme-comparison-bars.json";
 
+/**
+ * @param {{ viewName: string, coords?: string, children: any[] }} node
+ * @param {string} viewName
+ * @returns {{ viewName: string, coords?: string, children: any[] } | undefined}
+ */
+function findLayoutNode(node, viewName) {
+    if (node.viewName === viewName) {
+        return node;
+    }
+
+    for (const child of node.children) {
+        const found = findLayoutNode(child, viewName);
+        if (found) {
+            return found;
+        }
+    }
+}
+
+/**
+ * @param {string} coords
+ * @param {"x" | "y" | "width" | "height"} key
+ */
+function readCoord(coords, key) {
+    const match = coords.match(new RegExp(key + ": ([0-9.-]+)"));
+    if (!match) {
+        throw new Error("Coordinate not found: " + key);
+    }
+
+    return Number(match[1]);
+}
+
 describe("Test layout process", () => {
     // TODO: Figure out how to construct this list automatically.
 
@@ -24,6 +55,24 @@ describe("Test layout process", () => {
 
     test("marks/point/point2d.json", async () => {
         expect(await specToLayout(specPoint2D)).toMatchSnapshot();
+    });
+
+    test("marks/point/point2d.json with legend enabled", async () => {
+        const layout = await specToLayout(specPoint2D);
+        const plot = findLayoutNode(layout, "grid0");
+        const legend = findLayoutNode(layout, "legend_region_right");
+
+        expect(plot).toBeDefined();
+        expect(legend).toBeDefined();
+        expect(readCoord(plot.coords, "width")).toBe(200);
+        expect(readCoord(plot.coords, "height")).toBe(200);
+        expect(readCoord(legend.coords, "x")).toBe(
+            readCoord(plot.coords, "x") + readCoord(plot.coords, "width") + 18
+        );
+        expect(readCoord(legend.coords, "height")).toBeGreaterThan(0);
+        expect(readCoord(legend.coords, "height")).toBeLessThanOrEqual(
+            readCoord(plot.coords, "height")
+        );
     });
 
     test("layout/grid/complex_grid_layout.json", async () => {

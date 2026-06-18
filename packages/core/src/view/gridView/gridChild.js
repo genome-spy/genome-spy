@@ -20,6 +20,7 @@ import Rectangle from "../layout/rectangle.js";
 import createTitle, { resolveTitleSpec } from "../title.js";
 import UnitView from "../unitView.js";
 import {
+    isChromeView,
     markViewAsChrome,
     markViewAsNonAddressable,
 } from "../viewSelectors.js";
@@ -30,6 +31,14 @@ import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
+import {
+    addLegendView,
+    createGridChildLegend,
+    disposeLegendViews,
+    getLegendOverhang,
+    getOrderedLegendEntries,
+    iterateLegendViews,
+} from "./gridChildLegends.js";
 
 /**
  * @typedef {{
@@ -39,6 +48,25 @@ import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
  *     resolution: import("../../scales/axisResolution.js").default,
  * }} AxisCandidate
  */
+
+/**
+ * @param {import("../view.js").default} view
+ * @returns {import("../view.js").default[]}
+ */
+function getLegendOwners(view) {
+    if (isChromeView(view) || view.getLayoutAncestors().some(isChromeView)) {
+        return [];
+    } else if (view instanceof UnitView) {
+        return Object.keys(view.resolutions.legend).length > 0 ? [view] : [];
+    } else if (view instanceof LayerView) {
+        return [
+            ...(Object.keys(view.resolutions.legend).length > 0 ? [view] : []),
+            ...Array.from(view).flatMap((child) => getLegendOwners(child)),
+        ];
+    } else {
+        return [];
+    }
+}
 
 export default class GridChild {
     /**
@@ -74,6 +102,9 @@ export default class GridChild {
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisGridView>>} gridLines */
         this.gridLines = {};
 
+        /** @type {import("./gridChildLegends.js").GridChildLegends} */
+        this.legends = {};
+
         /** @type {Partial<Record<import("./scrollbar.js").ScrollDirection, Scrollbar>>} */
         this.scrollbars = {};
 
@@ -95,11 +126,14 @@ export default class GridChild {
         /** @type {Rectangle} */
         this.coords = Rectangle.ZERO;
 
-        if (view.needsAxes.x || view.needsAxes.y) {
-            const spec = view.spec;
+        const needsAxes = view.needsAxes.x || view.needsAxes.y;
+        const spec = view.spec;
+        const explicitViewBackground = "view" in spec ? spec.view : undefined;
+
+        if (needsAxes || explicitViewBackground) {
             const viewBackground = getConfiguredViewBackground(
                 view.getConfigScopes(),
-                "view" in spec ? spec.view : undefined
+                explicitViewBackground
             );
             this.backgroundZindex = viewBackground?.zindex ?? 0;
             this.backgroundStrokeZindex = viewBackground?.strokeZindex;
@@ -141,7 +175,9 @@ export default class GridChild {
                     skipSubtree: true,
                 });
             }
+        }
 
+        if (needsAxes) {
             const titleSpec = resolveTitleSpec(
                 view.spec.title,
                 view.getConfigScopes()
@@ -647,6 +683,7 @@ export default class GridChild {
         for (const candidate of this.axisCandidates) {
             yield candidate.axisView;
         }
+        yield* iterateLegendViews(this.legends);
         yield* Object.values(this.gridLines);
         yield this.view;
         yield* Object.values(this.scrollbars);
@@ -848,10 +885,21 @@ export default class GridChild {
             // TODO: Axis grid
         }
 
+        for (const { definition, resolution } of getOrderedLegendEntries(
+            getLegendOwners(view)
+        )) {
+            const legend = await createGridChildLegend(
+                definition,
+                this.layoutParent
+            );
+            await addLegendView(this.legends, legend, resolution);
+        }
+
         // Axes are created after scales are resolved, so we need to resolve possible new scales here
         [
             ...this.axisCandidates.map((candidate) => candidate.axisView),
             ...Object.values(gridLines),
+            ...iterateLegendViews(this.legends),
         ].forEach((v) =>
             v.visit((view) => {
                 if (view instanceof UnitView) {
@@ -905,9 +953,12 @@ export default class GridChild {
             gridView.disposeSubtree();
         }
 
+        disposeLegendViews(this.legends);
+
         this.axes = {};
         this.axisCandidates = [];
         this.gridLines = {};
+        this.legends = {};
     }
 
     /**
@@ -935,13 +986,16 @@ export default class GridChild {
         const calculate = (
             /** @type {import("../../spec/axis.js").AxisOrient} */ orient
         ) => getExternalAxisOverhang(this.axes[orient]);
+        const legend = (
+            /** @type {import("../../spec/legend.js").LegendOrient} */ orient
+        ) => getLegendOverhang(this.legends, orient);
 
         // Axes and overhang should be mutually exclusive, so we can just add them together
         return new Padding(
-            calculate("top"),
-            calculate("right"),
-            calculate("bottom"),
-            calculate("left")
+            calculate("top") + legend("top"),
+            calculate("right") + legend("right"),
+            calculate("bottom") + legend("bottom"),
+            calculate("left") + legend("left")
         ).add(this.view.getOverhang());
     }
 
@@ -998,10 +1052,11 @@ function normalizeIntervalForChannel(scaleResolution, interval) {
  * @returns {import("../../spec/view.js").UnitSpec}
  */
 export function createBackground(viewBackground) {
+    const fillOpacity =
+        viewBackground?.fillOpacity ?? (viewBackground?.fill ? 1.0 : 0.0);
+    const shadowOpacity = viewBackground?.shadowOpacity ?? 0.0;
     const required =
-        viewBackground?.fill ||
-        viewBackground?.fillOpacity ||
-        viewBackground?.shadowOpacity;
+        (viewBackground?.fill && fillOpacity !== 0) || shadowOpacity !== 0;
     if (!required) {
         return;
     }
@@ -1010,8 +1065,7 @@ export function createBackground(viewBackground) {
         data: { values: [{}] },
         mark: {
             color: viewBackground.fill,
-            opacity:
-                viewBackground.fillOpacity ?? (viewBackground.fill ? 1.0 : 0.0),
+            opacity: fillOpacity,
             type: "rect",
             clip: false, // Shouldn't be needed
             tooltip: null,

@@ -11,6 +11,6 @@
 
   "encoding": {
     "x": { "field": "y", "type": "quantitative" },
-    "color": { "field": "y", "type": "nominal" }
+    "color": { "field": "y", "type": "nominal", "legend": null }
   }
 }

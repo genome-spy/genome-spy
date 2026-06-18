@@ -1,0 +1,58 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+
+  "description": "Legend test case for redundant nominal color and shape encodings.",
+
+  "background": "#fafafa",
+
+  "width": 700,
+  "height": 300,
+
+  "config": { "legend": { "disable": false, "offset": 18 } },
+
+  "resolve": {
+    "scale": { "color": "independent", "shape": "independent" },
+    "axis": { "color": "independent", "shape": "independent" }
+  },
+
+  "data": { "url": "vega-datasets/cars.json" },
+
+  "encoding": {
+    "x": { "field": "Horsepower", "type": "quantitative" },
+    "y": { "field": "Miles_per_Gallon", "type": "quantitative" }
+  },
+
+  "hconcat": [
+    {
+      "mark": { "type": "point", "filled": false, "opacity": 0.7, "size": 30 },
+      "encoding": {
+        "color": {
+          "field": "Origin",
+          "type": "nominal",
+          "legend": { "title": "Right", "orient": "right" }
+        },
+        "shape": {
+          "field": "Origin",
+          "type": "nominal",
+          "legend": { "title": "Right", "orient": "right" }
+        }
+      }
+    },
+
+    {
+      "mark": { "type": "point", "filled": false, "opacity": 0.7, "size": 30 },
+      "encoding": {
+        "color": {
+          "field": "Origin",
+          "type": "nominal",
+          "legend": { "title": "Bottom", "orient": "bottom" }
+        },
+        "shape": {
+          "field": "Origin",
+          "type": "nominal",
+          "legend": { "title": "Bottom", "orient": "bottom" }
+        }
+      }
+    }
+  ]
+}

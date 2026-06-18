@@ -1,0 +1,40 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Bubble plot testbed for a quantitative size legend, adapted from the Vega-Lite health and income example.",
+
+  "background": "#fafafa",
+
+  "width": 500,
+  "height": 300,
+
+  "config": { "legend": { "disable": false, "offset": 18 } },
+
+  "data": { "url": "vega-datasets/gapminder-health-income.csv" },
+
+  "mark": {
+    "type": "point",
+    "filled": true,
+    "shape": "circle",
+    "opacity": 0.7
+  },
+
+  "encoding": {
+    "x": {
+      "field": "income",
+      "type": "quantitative",
+      "scale": { "type": "log" }
+    },
+    "y": {
+      "field": "health",
+      "type": "quantitative",
+      "scale": { "zero": false },
+      "axis": { "minExtent": 30 }
+    },
+    "size": {
+      "field": "population",
+      "type": "quantitative"
+    },
+    "color": { "value": "#000" }
+  }
+}

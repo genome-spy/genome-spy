@@ -32,5 +32,7 @@
       "type": "quantitative",
       "scale": { "range": [0, 45] }
     }
-  }
+  },
+
+  "config": { "legend": { "disable": true } }
 }

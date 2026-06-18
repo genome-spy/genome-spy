@@ -344,7 +344,7 @@ owns it:
 }
 ```
 
-Use [`resolve.scale`](./composition/index.md#scale-and-axis-resolution) to
+Use [`resolve.scale`](./composition/index.md#scale-axis-and-legend-resolution) to
 choose how scales are shared. A view-level `scales.<channel>` entry configures
 the shared scale used by that view subtree. If the subtree has multiple
 independent scales for the same channel, place `scales.<channel>` closer to the

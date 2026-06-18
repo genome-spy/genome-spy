@@ -1,0 +1,82 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Legend test case for a quantize color scale.",
+    "GPU-side quantize scale rendering is incomplete; see GitHub issue #408."
+  ],
+
+  "background": "#fafafa",
+
+  "width": 700,
+  "height": 300,
+
+  "config": { "legend": { "disable": false, "offset": 18 } },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "axis": { "color": "independent" }
+  },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 241, "step": 1, "as": "x" }
+  },
+
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "datum.x / 2 + 12 * sin(datum.x / 14)",
+      "as": "value"
+    }
+  ],
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "title": "Continuous x"
+    },
+    "y": {
+      "field": "value",
+      "type": "quantitative",
+      "title": "Continuous y",
+      "scale": { "zero": false }
+    }
+  },
+
+  "hconcat": [
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Quantize color",
+          "scale": {
+            "type": "quantize",
+            "domain": [0, 120],
+            "scheme": { "name": "turbo", "count": 5 }
+          },
+          "legend": { "title": "Right", "orient": "right" }
+        }
+      }
+    },
+
+    {
+      "mark": { "type": "point", "filled": true, "opacity": 0.75, "size": 24 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "Quantize color",
+          "scale": {
+            "type": "quantize",
+            "domain": [0, 120],
+            "scheme": { "name": "turbo", "count": 5 }
+          },
+          "legend": { "title": "Bottom", "orient": "bottom" }
+        }
+      }
+    }
+  ]
+}
