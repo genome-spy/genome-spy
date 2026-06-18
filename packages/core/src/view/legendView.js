@@ -776,20 +776,25 @@ export class LegendRegionView extends ContainerView {
     }
 
     getPerpendicularSize() {
-        const legendViews = this.#getVisibleLegendViews();
-        if (this.orient == "top" || this.orient == "bottom") {
-            return legendViews.reduce(
-                (sum, legendView) => sum + legendView.getPerpendicularSize(),
-                0
-            );
-        } else {
-            return Math.max(
-                0,
-                ...legendViews.map((legendView) =>
-                    legendView.getPerpendicularSize()
-                )
-            );
+        if (!this.#child) {
+            return 0;
         }
+
+        const size = this.#child.getSize();
+        const perpendicularSize =
+            this.orient == "top" || this.orient == "bottom"
+                ? size.height
+                : size.width;
+
+        /*
+         * The legend stack is an actual vconcat child, so let GridView's
+         * concat sizing account for child sizes and spacing. Overhang,
+         * however, needs a concrete pixel reservation, not an unresolved
+         * flex grow value. Legend regions are expected to expose a fixed
+         * perpendicular requirement here; flexible size belongs to the
+         * parallel axis and is handled by getParallelSize().
+         */
+        return perpendicularSize.px ?? perpendicularSize.minPx ?? 0;
     }
 
     getExternalPadding() {

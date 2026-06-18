@@ -565,6 +565,75 @@ describe("GridView legends", () => {
             );
             expect(legendHeights.at(-1)).toBeGreaterThan(100);
         });
+
+        test("includes stack spacing in top and bottom legend overhang", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                {
+                                    x: 1,
+                                    signal: 2,
+                                    trend: 3,
+                                    group: "alpha",
+                                    difference: 1,
+                                },
+                                {
+                                    x: 2,
+                                    signal: 3,
+                                    trend: 4,
+                                    group: "beta",
+                                    difference: 2,
+                                },
+                            ],
+                        },
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                        },
+                        layer: [
+                            {
+                                mark: "point",
+                                encoding: {
+                                    y: {
+                                        field: "signal",
+                                        type: "quantitative",
+                                    },
+                                    color: {
+                                        field: "group",
+                                        type: "nominal",
+                                        legend: { orient: "bottom" },
+                                    },
+                                },
+                            },
+                            {
+                                mark: "point",
+                                encoding: {
+                                    y: {
+                                        field: "trend",
+                                        type: "quantitative",
+                                    },
+                                    size: {
+                                        field: "difference",
+                                        type: "quantitative",
+                                        legend: { orient: "bottom" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+            const [region] = getLegendRegions(view);
+            const legendHeights = getLegends(view).map((legend) =>
+                legend.getPerpendicularSize()
+            );
+
+            expect(region.getPerpendicularSize()).toBe(
+                legendHeights.reduce((sum, height) => sum + height, 0) + 10
+            );
+        });
     });
 
     describe("titles and labels", () => {
