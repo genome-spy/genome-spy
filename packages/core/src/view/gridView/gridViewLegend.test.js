@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
 import AxisGridView from "../axisGridView.js";
@@ -1465,6 +1465,42 @@ describe("GridView legends", () => {
 
             expect(legends).toHaveLength(1);
             expect(legends[0].legendProps.title).toBe("Region");
+        });
+
+        test("uses reactive disable as legend visibility predicate", async () => {
+            const view = await createLegendTestView({
+                params: [{ name: "showLegends", value: true }],
+                config: {
+                    legend: {
+                        disable: { expr: "!showLegends" },
+                    },
+                },
+            });
+            const legends = getLegends(view);
+            const regions = getLegendRegions(view);
+            view.context.requestLayoutReflow = vi.fn();
+            view.context.animator.requestRender = vi.fn();
+
+            expect(legends).toHaveLength(1);
+            expect(regions).toHaveLength(1);
+            expect(legends[0].isConfiguredVisible()).toBe(true);
+            expect(legends[0].isActive()).toBe(true);
+            expect(regions[0].getParallelSize()).toBeGreaterThan(0);
+
+            view.paramRuntime.setValue("showLegends", false);
+            await view.paramRuntime.whenPropagated();
+
+            expect(legends[0].isConfiguredVisible()).toBe(true);
+            expect(legends[0].isActive()).toBe(false);
+            expect(regions[0].getParallelSize()).toBe(0);
+
+            view.paramRuntime.setValue("showLegends", true);
+            await view.paramRuntime.whenPropagated();
+
+            expect(legends[0].isActive()).toBe(true);
+            expect(regions[0].getParallelSize()).toBeGreaterThan(0);
+            expect(view.context.requestLayoutReflow).toHaveBeenCalled();
+            expect(view.context.animator.requestRender).toHaveBeenCalled();
         });
 
         test("respects explicit legend null", async () => {

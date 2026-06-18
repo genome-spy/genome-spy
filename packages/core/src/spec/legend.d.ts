@@ -123,7 +123,7 @@ export interface LegendConfig extends Legend {
      *
      * __Default value:__ `false`
      */
-    disable?: boolean;
+    disable?: boolean | ExprRef;
 
     /**
      * Spacing in pixels between legends collected into the same legend region.

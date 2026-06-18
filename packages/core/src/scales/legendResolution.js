@@ -129,7 +129,7 @@ export default class LegendResolution {
             legendParent.getConfigScopes(),
             legendOverrides
         );
-        if (legendDefaults.disable) {
+        if (legendDefaults.disable === true) {
             return undefined;
         }
 

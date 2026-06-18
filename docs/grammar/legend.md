@@ -118,6 +118,12 @@ Set `legend` to `null` on a channel to remove that channel's legend.
 }
 ```
 
+`disable` also accepts an expression reference. This is useful for parameterized
+specifications that let the user show or hide all legends without rebuilding the
+view.
+
+EXAMPLE examples/docs/grammar/legend/reactive-disable.json height=300
+
 ## Properties
 
 SCHEMA Legend

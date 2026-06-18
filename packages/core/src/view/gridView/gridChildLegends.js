@@ -1,5 +1,8 @@
 import { findChannelDefWithScale, isValueDef } from "../../encoder/encoder.js";
-import { resolveInitOnlyExprRef } from "../../paramRuntime/paramUtils.js";
+import {
+    activateExprRefProps,
+    resolveInitOnlyExprRef,
+} from "../../paramRuntime/paramUtils.js";
 import LegendView, {
     LegendRegionView,
     getExternalLegendOverhang,
@@ -251,6 +254,32 @@ function resolveLegendOrient(legend, legendParent, registerDisposer) {
 }
 
 /**
+ * @param {import("../../spec/legend.js").LegendConfig} legend
+ * @param {import("../view.js").default} legendParent
+ * @param {(disposer: () => void) => void} registerDisposer
+ * @param {() => void} listener
+ * @returns {ResolvedLegendConfig}
+ */
+function resolveLegendProps(legend, legendParent, registerDisposer, listener) {
+    const orientedLegend = resolveLegendOrient(
+        legend,
+        legendParent,
+        registerDisposer
+    );
+
+    return activateExprRefProps(
+        legendParent.paramRuntime,
+        orientedLegend,
+        (props) => {
+            if (props.has("disable")) {
+                listener();
+            }
+        },
+        registerDisposer
+    );
+}
+
+/**
  * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
  * @param {import("../containerView.js").default} layoutParent
  * @returns {Promise<LegendView>}
@@ -258,11 +287,38 @@ function resolveLegendOrient(legend, legendParent, registerDisposer) {
 export async function createGridChildLegend(definition, layoutParent) {
     const legendParent = definition.view;
     /** @type {(() => void)[]} */
-    const orientDisposers = [];
-    const legendProps = resolveLegendOrient(
+    const legendDisposers = [];
+    /** @type {LegendView | undefined} */
+    let legend;
+    const legendProps = resolveLegendProps(
         definition.legend,
         legendParent,
-        (disposer) => orientDisposers.push(disposer)
+        (disposer) => legendDisposers.push(disposer),
+        () => {
+            if (!legend) {
+                throw new Error("Legend has not been initialized!");
+            }
+
+            legend.invalidateSizeCache();
+
+            /*
+             * Smell: external legend visibility can change the root view size,
+             * and canvas size is derived from the root view layout. Currently
+             * GenomeSpy.computeLayout() first builds the render buffer and only
+             * then invalidates/applies the canvas size. That means one reflow can
+             * compute a correct legend layout but leave the buffer tied to the
+             * old canvas size, so the legend appears active in the view tree but
+             * is not drawn.
+             *
+             * The first reflow updates root bounds and applies the new canvas
+             * size. The second reflow rebuilds the render buffer against that
+             * new canvas. This workaround should go away when canvas sizing and
+             * layout are made less circular.
+             */
+            legend.context.requestLayoutReflow();
+            legend.context.requestLayoutReflow();
+            legend.context.animator.requestRender();
+        }
     );
     const symbolStyle =
         definition.type == "symbol"
@@ -275,7 +331,7 @@ export async function createGridChildLegend(definition, layoutParent) {
               )
             : undefined;
 
-    const legend = new LegendView(
+    legend = new LegendView(
         {
             channel: definition.channel,
             type: definition.type,
@@ -291,7 +347,7 @@ export async function createGridChildLegend(definition, layoutParent) {
         legendParent
     );
 
-    for (const dispose of orientDisposers) {
+    for (const dispose of legendDisposers) {
         legend.registerDisposer(dispose);
     }
 
@@ -323,7 +379,11 @@ export async function addLegendView(legends, legend, resolution) {
         legends[orient] = region;
     }
 
-    legend.setActivePredicate(() => resolution.hasVisibleNonChromeMember());
+    legend.setActivePredicate(
+        () =>
+            !legend.legendProps.disable &&
+            resolution.hasVisibleNonChromeMember()
+    );
     region.legendView.addLegendView(legend);
     region.entries.push({ legendView: legend, resolution });
 }
