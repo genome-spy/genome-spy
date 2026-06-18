@@ -15,6 +15,14 @@ export type LegendDirection = "vertical" | "horizontal";
 
 export type LegendTitleOrient = "top" | "bottom" | "left" | "right";
 
+// TODO: Consider adding more Vega/Vega-Lite legend properties when concrete
+// use cases appear. Known gaps include tick controls (`tickCount`,
+// `tickMinStep`), explicit legend `type`, gradient sizing/styling knobs
+// (`gradientLength`, `gradientThickness`, `gradientOpacity`,
+// `gradientStrokeColor`, `gradientStrokeWidth`), label overlap controls, and
+// symbol override properties such as `symbolFillColor`, `symbolStrokeColor`,
+// `symbolOpacity`, and `symbolLimit`.
+
 /**
  * Legend properties. The initial legend surface is adapted from Vega:
  * https://github.com/vega/vega/
