@@ -1366,6 +1366,70 @@ describe("GridView legends", () => {
             );
         });
 
+        test("uses neutral symbols for size legends with separate color scales", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                {
+                                    x: 1,
+                                    y: 2,
+                                    population: 0,
+                                    Origin: "Europe",
+                                },
+                                {
+                                    x: 2,
+                                    y: 3,
+                                    population: 100,
+                                    Origin: "Japan",
+                                },
+                            ],
+                        },
+                        mark: {
+                            type: "point",
+                            filled: true,
+                            opacity: 0.7,
+                        },
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            size: {
+                                field: "population",
+                                type: "quantitative",
+                                scale: { domain: [0, 100] },
+                            },
+                            color: {
+                                field: "Origin",
+                                type: "nominal",
+                                legend: null,
+                            },
+                        },
+                    },
+                ],
+            });
+            const symbols = getLegends(view)[0]
+                .getDescendants()
+                .find((descendant) => descendant.name == "symbols");
+
+            expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
+                expect.objectContaining({
+                    fill: { value: "black" },
+                    size: expect.objectContaining({
+                        field: "value",
+                        type: "quantitative",
+                    }),
+                })
+            );
+            expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
+                expect.objectContaining({ opacity: 0.7 })
+            );
+            expect(
+                /** @type {UnitView} */ (symbols).spec.encoding.color
+            ).toBeUndefined();
+        });
+
         test("creates a quantitative size symbol legend with representative values", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

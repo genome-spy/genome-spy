@@ -1,4 +1,4 @@
-import { isValueDef } from "../../encoder/encoder.js";
+import { findChannelDefWithScale, isValueDef } from "../../encoder/encoder.js";
 import { resolveInitOnlyExprRef } from "../../paramRuntime/paramUtils.js";
 import LegendView, {
     LegendRegionView,
@@ -101,6 +101,49 @@ function applyConstantMarkColorStyle(encoding, scaledChannels, sourceProps) {
 }
 
 /**
+ * @param {import("../unitView.js").default} sourceView
+ * @param {import("../../spec/channel.js").ChannelWithScale} channel
+ * @returns {boolean}
+ */
+function hasScaleBackedChannel(sourceView, channel) {
+    return Boolean(
+        findChannelDefWithScale(sourceView.spec.encoding?.[channel])
+    );
+}
+
+/**
+ * Vega-Lite's `compile/legend/encode.ts` neutralizes non-redundant color
+ * encodings in other symbol legends. See its
+ * "should have fill if a color encoding exists" test: a size legend with an
+ * independent color scale gets a neutral black symbol instead of reusing the
+ * color scale. GenomeSpy follows that behavior to avoid suggesting that the
+ * size legend also explains color.
+ *
+ * @param {Record<string, import("../../spec/channel.js").ValueDef<any>>} encoding
+ * @param {Set<string>} scaledChannels
+ * @param {import("../unitView.js").default} sourceView
+ */
+function applyConflictingScaledColorStyle(
+    encoding,
+    scaledChannels,
+    sourceView
+) {
+    const hasConflictingColorScale = /** @type {const} */ ([
+        "color",
+        "fill",
+        "stroke",
+    ]).some(
+        (channel) =>
+            !scaledChannels.has(channel) &&
+            hasScaleBackedChannel(sourceView, channel)
+    );
+
+    if (hasConflictingColorScale && !scaledChannels.has("fill")) {
+        encoding.fill = { value: "black" };
+    }
+}
+
+/**
  * @param {import("../../spec/channel.js").ChannelWithScale} channel
  * @param {Partial<Record<import("../../spec/channel.js").ChannelWithScale, string>>} symbolChannels
  * @param {import("../unitView.js").default} sourceView
@@ -145,6 +188,7 @@ function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
     }
 
     applyConstantMarkColorStyle(styleEncoding, scaledChannels, sourceProps);
+    applyConflictingScaledColorStyle(styleEncoding, scaledChannels, sourceView);
 
     const colorDef = sourceView.spec.encoding?.color;
     const filled = sourceProps.filled;
