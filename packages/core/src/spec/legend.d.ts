@@ -79,6 +79,11 @@ export interface Legend {
      * Symbol shape.
      */
     symbolType?: string;
+
+    /**
+     * The side of the legend on which to place the title.
+     */
+    titleOrient?: LegendTitleOrient;
 }
 
 /**
@@ -200,11 +205,6 @@ export interface LegendConfig extends Legend {
      * Maximum title text width in pixels.
      */
     titleLimit?: number;
-
-    /**
-     * The side of the legend on which to place the title.
-     */
-    titleOrient?: LegendTitleOrient;
 
     /**
      * Padding between the legend title and entries in pixels.

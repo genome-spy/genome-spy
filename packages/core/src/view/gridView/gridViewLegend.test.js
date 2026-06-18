@@ -750,6 +750,96 @@ describe("GridView legends", () => {
             );
         });
 
+        test("places legend titles according to titleOrient", async () => {
+            const getLegendRootSpec = async (
+                /** @type {import("../../spec/legend.js").LegendTitleOrient} */ titleOrient
+            ) => {
+                const view = await createLegendTestView({
+                    config: { legend: { disable: false } },
+                    vconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 1, y: 2, Origin: "Europe" },
+                                    { x: 2, y: 3, Origin: "Japan" },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                color: {
+                                    field: "Origin",
+                                    type: "nominal",
+                                    legend: { title: "Origin", titleOrient },
+                                },
+                            },
+                        },
+                    ],
+                });
+
+                return /** @type {any} */ (getLegends(view)[0].spec);
+            };
+            const getRootChildNames = (/** @type {any} */ childSpec) =>
+                /** @type {import("../../spec/view.js").ViewSpec[]} */ (
+                    childSpec.vconcat ?? childSpec.hconcat
+                ).map(
+                    (
+                        /** @type {import("../../spec/view.js").ViewSpec} */ spec
+                    ) => spec.name
+                );
+
+            expect(getRootChildNames(await getLegendRootSpec("top"))).toEqual([
+                "title",
+                "legendBody",
+            ]);
+            expect(
+                getRootChildNames(await getLegendRootSpec("bottom"))
+            ).toEqual(["legendBody", "title"]);
+            const leftSpec = await getLegendRootSpec("left");
+            expect(getRootChildNames(leftSpec)).toEqual([
+                "title",
+                "legendBody",
+            ]);
+            expect(getRootChildNames(await getLegendRootSpec("right"))).toEqual(
+                ["legendBody", "title"]
+            );
+        });
+
+        test("keeps horizontal symbol legend extent data-driven", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "Origin",
+                                type: "nominal",
+                                legend: {
+                                    orient: "bottom",
+                                    title: "Origin",
+                                    titleOrient: "left",
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            await Promise.resolve();
+
+            expect(legend.getPerpendicularSize()).toBeLessThan(32);
+        });
+
         test("applies configured title and label text limits", async () => {
             const view = await createLegendTestView({
                 config: {

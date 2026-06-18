@@ -70,7 +70,7 @@ function excludeLegendGuideResolutions(spec) {
 /**
  * @typedef {import("../spec/legend.js").LegendConfig} LegendConfig
  * @typedef {import("./legend/legendEntries.js").LegendEntry} LegendEntry
- * @typedef {import("../spec/view.js").VConcatSpec & {
+ * @typedef {(import("../spec/view.js").VConcatSpec | import("../spec/view.js").HConcatSpec) & {
  *     view: import("../spec/view.js").ViewBackground
  * }} LegendRootSpec
  * @typedef {{
@@ -100,9 +100,10 @@ function createLegendViewBackground(legend) {
 
 /**
  * @param {LegendConfig} legend
+ * @param {import("../types/viewContext.js").default} context
  * @returns {import("../spec/view.js").UnitSpec | undefined}
  */
-function createLegendTitleSpec(legend) {
+function createLegendTitleSpec(legend, context) {
     const title = legend.title;
 
     if (!title) {
@@ -111,10 +112,14 @@ function createLegendTitleSpec(legend) {
 
     const titleFontSize = legend.titleFontSize ?? 11;
     const titlePadding = legend.titlePadding ?? 5;
+    const sideTitle = isSideTitle(legend);
+    const titleWidth = Math.ceil(getTitleWidth(legend, context));
+    const sideTitleWidth = titleWidth + titlePadding;
 
     return {
         name: "title",
-        height: titleFontSize + titlePadding,
+        width: sideTitle ? sideTitleWidth : undefined,
+        height: sideTitle ? { grow: 1 } : titleFontSize + titlePadding,
         view: LEGEND_VIEW_BACKGROUND,
         data: {
             values: [{ label: title }],
@@ -133,7 +138,10 @@ function createLegendTitleSpec(legend) {
         mark: {
             type: "text",
             clip: false,
-            x: 0,
+            x:
+                getTitleOrient(legend) == "right" && sideTitleWidth > 0
+                    ? titlePadding / sideTitleWidth
+                    : 0,
             y: 0.5,
             align: "left",
             baseline: "middle",
@@ -152,11 +160,26 @@ function createLegendTitleSpec(legend) {
 /**
  * @param {LegendConfig} legend
  * @param {import("../spec/view.js").ViewSpec} body
+ * @param {import("../types/viewContext.js").default} context
  * @param {import("../spec/channel.js").ChannelWithScale[]} [forcedScaleChannels]
  * @returns {LegendRootSpec}
  */
-function createLegendRootSpec(legend, body, forcedScaleChannels = []) {
-    const title = createLegendTitleSpec(legend);
+function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
+    const title = createLegendTitleSpec(legend, context);
+    /** @type {{ vconcat: import("../spec/view.js").ViewSpec[] } | { hconcat: import("../spec/view.js").ViewSpec[] }} */
+    let children;
+
+    if (!title) {
+        children = { vconcat: [body] };
+    } else if (getTitleOrient(legend) == "bottom") {
+        children = { vconcat: [body, title] };
+    } else if (getTitleOrient(legend) == "left") {
+        children = { hconcat: [title, body] };
+    } else if (getTitleOrient(legend) == "right") {
+        children = { hconcat: [body, title] };
+    } else {
+        children = { vconcat: [title, body] };
+    }
 
     return excludeLegendGuideResolutions({
         name: "legend_" + (legend.orient ?? "right"),
@@ -167,7 +190,7 @@ function createLegendRootSpec(legend, body, forcedScaleChannels = []) {
             ),
         },
         spacing: 0,
-        vconcat: title ? [title, body] : [body],
+        ...children,
     });
 }
 
@@ -176,6 +199,23 @@ function createLegendRootSpec(legend, body, forcedScaleChannels = []) {
  */
 function isHorizontalLegend(legend) {
     return legend.orient == "top" || legend.orient == "bottom";
+}
+
+/**
+ * @param {LegendConfig} legend
+ * @returns {import("../spec/legend.js").LegendTitleOrient}
+ */
+function getTitleOrient(legend) {
+    return legend.titleOrient ?? "top";
+}
+
+/**
+ * @param {LegendConfig} legend
+ */
+function isSideTitle(legend) {
+    const titleOrient = getTitleOrient(legend);
+
+    return titleOrient == "left" || titleOrient == "right";
 }
 
 /**
@@ -201,6 +241,7 @@ function createBaseColorEncoding(value) {
  * @param {LegendConfig} options.legend
  * @param {string} [options.format]
  * @param {import("../spec/channel.js").Type} options.dataType
+ * @param {import("../types/viewContext.js").default} options.context
  * @returns {LegendRootSpec}
  */
 export function createSymbolLegendSpec({
@@ -211,6 +252,7 @@ export function createSymbolLegendSpec({
     legend,
     format,
     dataType,
+    context,
 }) {
     const horizontalLegend = isHorizontalLegend(legend);
     const labelAlign = legend.labelAlign ?? "left";
@@ -387,6 +429,7 @@ export function createSymbolLegendSpec({
             ],
             layer,
         },
+        context,
         [channel, ...Object.keys(symbolChannels)]
     );
 }
@@ -396,9 +439,10 @@ export function createSymbolLegendSpec({
  * @param {import("../spec/channel.js").ChannelWithScale} options.channel
  * @param {LegendConfig} options.legend
  * @param {string} [options.format]
+ * @param {import("../types/viewContext.js").default} options.context
  * @returns {LegendRootSpec}
  */
-export function createGradientLegendSpec({ channel, legend, format }) {
+export function createGradientLegendSpec({ channel, legend, format, context }) {
     const h = isHorizontalLegend(legend);
     const labelAlign = h ? "center" : (legend.labelAlign ?? "left");
     const labelBaseline = h ? "top" : (legend.labelBaseline ?? "middle");
@@ -613,6 +657,7 @@ export function createGradientLegendSpec({ channel, legend, format }) {
             },
             layer: bodyLayer,
         },
+        context,
         [channel]
     );
 }
@@ -870,6 +915,7 @@ export default class LegendView extends ContainerView {
                       channel,
                       legend,
                       format,
+                      context,
                   })
                 : createSymbolLegendSpec({
                       entries,
@@ -879,6 +925,7 @@ export default class LegendView extends ContainerView {
                       legend,
                       format,
                       dataType,
+                      context,
                   });
 
         super(
@@ -1025,7 +1072,8 @@ export default class LegendView extends ContainerView {
         return getStackedLegendParallelSize(
             this.legendProps,
             this.#type,
-            measuredLabels
+            measuredLabels,
+            this.context
         );
     }
 
@@ -1182,7 +1230,9 @@ function getLegendExtent(legend, type, measuredLabels, context) {
         return getHorizontalLegendExtent(legend, type, measuredLabels);
     }
 
-    const titleWidth = getTitleWidth(legend, context);
+    const titleWidth = isSideTitle(legend)
+        ? getTitleWidthWithPadding(legend, context)
+        : getTitleWidth(legend, context);
     const labelOffset = legend.labelOffset ?? 4;
     const labelExtent =
         type == "gradient"
@@ -1197,7 +1247,11 @@ function getLegendExtent(legend, type, measuredLabels, context) {
                   measuredLabels.maxWidth;
 
     return Math.ceil(
-        Math.max(getMinimumLegendExtent(type, legend), labelExtent, titleWidth)
+        Math.max(
+            getMinimumLegendExtent(type, legend),
+            isSideTitle(legend) ? labelExtent + titleWidth : labelExtent,
+            titleWidth
+        )
     );
 }
 
@@ -1207,7 +1261,7 @@ function getLegendExtent(legend, type, measuredLabels, context) {
  */
 function getMinimumLegendExtent(type, legend) {
     if (isHorizontalLegend(legend)) {
-        return type == "gradient" ? 32 : 32;
+        return type == "gradient" ? 32 : 0;
     } else {
         return 0;
     }
@@ -1217,19 +1271,24 @@ function getMinimumLegendExtent(type, legend) {
  * @param {LegendConfig} legend
  * @param {"symbol" | "gradient"} type
  * @param {MeasuredLabels | undefined} measuredLabels
+ * @param {import("../types/viewContext.js").default} context
  */
-function getStackedLegendParallelSize(legend, type, measuredLabels) {
-    const titleExtent = getTitleHeight(legend);
+function getStackedLegendParallelSize(legend, type, measuredLabels, context) {
+    const titleExtent = getParallelTitleExtent(legend, context);
+    const titleSideBySide = isSideTitle(legend);
+    const combine = (/** @type {number} */ bodyExtent) =>
+        isHorizontalLegend(legend) == titleSideBySide
+            ? Math.ceil(titleExtent + bodyExtent)
+            : Math.ceil(Math.max(titleExtent, bodyExtent));
 
     if (type == "gradient") {
-        return titleExtent + DEFAULT_GRADIENT_LEGEND_LENGTH;
+        return combine(DEFAULT_GRADIENT_LEGEND_LENGTH);
     } else if (measuredLabels) {
         const labelFontSize = legend.labelFontSize ?? 10;
-        return Math.ceil(titleExtent + measuredLabels.maxY + labelFontSize / 2);
+        return combine(measuredLabels.maxY + labelFontSize / 2);
     } else {
-        return Math.ceil(
-            titleExtent +
-                Math.sqrt(legend.symbolSize ?? 100) +
+        return combine(
+            Math.sqrt(legend.symbolSize ?? 100) +
                 (legend.symbolStrokeWidth ?? 1.5)
         );
     }
@@ -1243,7 +1302,7 @@ function getStackedLegendParallelSize(legend, type, measuredLabels) {
 function getHorizontalLegendExtent(legend, type, measuredLabels) {
     const labelFontSize = legend.labelFontSize ?? 10;
     const labelOffset = legend.labelOffset ?? 4;
-    const titleExtent = getTitleHeight(legend);
+    const titleExtent = getPerpendicularTitleExtent(legend);
     const bodyExtent =
         type == "gradient"
             ? labelFontSize +
@@ -1254,7 +1313,12 @@ function getHorizontalLegendExtent(legend, type, measuredLabels) {
             : measuredLabels.maxY + labelFontSize / 2;
 
     return Math.ceil(
-        Math.max(getMinimumLegendExtent(type, legend), titleExtent + bodyExtent)
+        Math.max(
+            getMinimumLegendExtent(type, legend),
+            isSideTitle(legend)
+                ? Math.max(titleExtent, bodyExtent)
+                : titleExtent + bodyExtent
+        )
     );
 }
 
@@ -1262,8 +1326,36 @@ function getHorizontalLegendExtent(legend, type, measuredLabels) {
  * @param {LegendConfig} legend
  */
 function getTitleHeight(legend) {
+    return legend.title ? (legend.titleFontSize ?? 11) : 0;
+}
+
+/**
+ * @param {LegendConfig} legend
+ */
+function getPerpendicularTitleExtent(legend) {
     return legend.title
-        ? (legend.titleFontSize ?? 11) + (legend.titlePadding ?? 5)
+        ? getTitleHeight(legend) +
+              (isSideTitle(legend) ? 0 : (legend.titlePadding ?? 5))
+        : 0;
+}
+
+/**
+ * @param {LegendConfig} legend
+ * @param {import("../types/viewContext.js").default} context
+ */
+function getParallelTitleExtent(legend, context) {
+    return isSideTitle(legend)
+        ? getTitleWidthWithPadding(legend, context)
+        : getPerpendicularTitleExtent(legend);
+}
+
+/**
+ * @param {LegendConfig} legend
+ * @param {import("../types/viewContext.js").default} context
+ */
+function getTitleWidthWithPadding(legend, context) {
+    return legend.title
+        ? getTitleWidth(legend, context) + (legend.titlePadding ?? 5)
         : 0;
 }
 
