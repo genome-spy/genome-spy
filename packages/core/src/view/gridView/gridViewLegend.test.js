@@ -182,6 +182,50 @@ describe("GridView legends", () => {
             .getDescendants()
             .find((descendant) => descendant.name == "title");
 
+    /**
+     * @param {LegendView} legend
+     * @param {string} name
+     */
+    const getLegendChild = (legend, name) => {
+        const child = legend
+            .getDescendants()
+            .find((descendant) => descendant.name == name);
+        if (!child) {
+            throw new Error(`Legend child "${name}" not found!`);
+        }
+
+        return child;
+    };
+
+    /**
+     * @param {LegendView} legend
+     * @param {string} name
+     */
+    const getLegendUnitChild = (legend, name) => {
+        const child = getLegendChild(legend, name);
+        if (!(child instanceof UnitView)) {
+            throw new Error(`Legend child "${name}" is not a UnitView!`);
+        }
+
+        return child;
+    };
+
+    /**
+     * @param {UnitView} view
+     */
+    const getUnitData = (view) =>
+        Array.from(view.flowHandle.collector.getData());
+
+    /**
+     * @param {LegendView} legend
+     * @param {string} name
+     */
+    const getLegendData = (legend, name) =>
+        getUnitData(getLegendUnitChild(legend, name));
+
+    const getLegendTitles = (/** @type {ConcatView} */ view) =>
+        getLegends(view).map((legend) => legend.legendProps.title);
+
     describe("basic creation", () => {
         test("creates legends by default", async () => {
             const view = await createLegendTestView();
@@ -192,21 +236,15 @@ describe("GridView legends", () => {
         test("creates a right legend for a nominal color scale", async () => {
             const view = await createLegendTestView();
             const legends = getLegends(view);
-            const labels = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
 
             expect(legends).toHaveLength(1);
             expect(legends[0].name).toBe("legend_right");
             expect(legends[0].legendProps.title).toBe("Origin");
-            expect(labels).toBeInstanceOf(UnitView);
             expect(
-                Array.from(labels.flowHandle.collector.getData()).map(
-                    ({ value, label }) => ({
-                        value,
-                        label,
-                    })
-                )
+                getLegendData(legends[0], "labels").map(({ value, label }) => ({
+                    value,
+                    label,
+                }))
             ).toEqual([
                 { value: "Europe", label: "Europe" },
                 { value: "Japan", label: "Japan" },
@@ -436,9 +474,11 @@ describe("GridView legends", () => {
                 ConcatView
             );
 
-            expect(
-                getLegends(view).map((legend) => legend.legendProps.title)
-            ).toEqual(["group", "amount", "intensity"]);
+            expect(getLegendTitles(view)).toEqual([
+                "group",
+                "amount",
+                "intensity",
+            ]);
         });
 
         test("orders stacked legends by source view before displayed title", async () => {
@@ -518,9 +558,12 @@ describe("GridView legends", () => {
                 ],
             });
 
-            expect(
-                getLegends(view).map((legend) => legend.legendProps.title)
-            ).toEqual(["Alpha", "Zeta", "Aardvark", "Beta"]);
+            expect(getLegendTitles(view)).toEqual([
+                "Alpha",
+                "Zeta",
+                "Aardvark",
+                "Beta",
+            ]);
         });
 
         test("hides a stacked legend when its contributing view is hidden", async () => {
@@ -816,9 +859,7 @@ describe("GridView legends", () => {
                 ],
             });
 
-            expect(
-                getLegends(view).map((legend) => legend.legendProps.title)
-            ).toEqual(["Group", "Difference"]);
+            expect(getLegendTitles(view)).toEqual(["Group", "Difference"]);
             expect(getLegendRegions(view)).toHaveLength(1);
         });
 
@@ -1079,12 +1120,7 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const labelData = getLegendData(getLegends(view)[0], "labels");
 
             expect(labelData.map(({ label }) => label)).toEqual(["0.1", "0.5"]);
         });
@@ -1126,9 +1162,7 @@ describe("GridView legends", () => {
             });
             const legend = getLegends(view)[0];
             const title = getLegendTitle(legend);
-            const labels = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
+            const labels = getLegendUnitChild(legend, "labels");
 
             expect(title).toBeInstanceOf(UnitView);
             expect(/** @type {UnitView} */ (title).spec.height).toBe(26);
@@ -1269,24 +1303,12 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
-            const title = getLegendTitle(legend);
-            const labels = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
 
             expect(
-                Array.from(
-                    /** @type {UnitView} */ (
-                        title
-                    ).flowHandle.collector.getData()
-                ).map(({ label }) => label)
+                getLegendData(legend, "title").map(({ label }) => label)
             ).toEqual([""]);
             expect(
-                Array.from(
-                    /** @type {UnitView} */ (
-                        labels
-                    ).flowHandle.collector.getData()
-                ).map(({ label }) => label)
+                getLegendData(legend, "labels").map(({ label }) => label)
             ).toEqual(["", ""]);
         });
     });
@@ -1314,9 +1336,7 @@ describe("GridView legends", () => {
                 ],
             });
             const legends = getLegends(view);
-            const symbols = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const symbols = getLegendUnitChild(legends[0], "symbols");
 
             expect(legends).toHaveLength(1);
             expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
@@ -1356,9 +1376,7 @@ describe("GridView legends", () => {
                 ],
             });
             const legends = getLegends(view);
-            const symbols = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const symbols = getLegendUnitChild(legends[0], "symbols");
 
             expect(legends).toHaveLength(1);
             expect(
@@ -1421,12 +1439,8 @@ describe("GridView legends", () => {
                 ],
             });
             const legends = getLegends(view);
-            const symbols = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
-            const labels = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
+            const symbols = getLegendUnitChild(legends[0], "symbols");
+            const labels = getLegendUnitChild(legends[0], "labels");
 
             expect(legends).toHaveLength(1);
             expect(legends[0].legendProps.title).toBe("Origin");
@@ -1462,9 +1476,10 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const fillSymbols = getLegends(fillView)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const fillSymbols = getLegendUnitChild(
+                getLegends(fillView)[0],
+                "symbols"
+            );
 
             expect(/** @type {UnitView} */ (fillSymbols).spec.mark).toEqual(
                 expect.objectContaining({ filled: true })
@@ -1495,9 +1510,10 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const strokeSymbols = getLegends(strokeView)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const strokeSymbols = getLegendUnitChild(
+                getLegends(strokeView)[0],
+                "symbols"
+            );
 
             expect(
                 /** @type {UnitView} */ (strokeSymbols).spec.encoding
@@ -1530,9 +1546,7 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const symbols = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
 
             expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
                 expect.objectContaining({ shape: "square" })
@@ -1657,12 +1671,7 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const labelData = getLegendData(getLegends(view)[0], "labels");
 
             expect(labelData.map(({ value }) => value)).toEqual([
                 "Japan",
@@ -1697,12 +1706,7 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const labelData = getLegendData(getLegends(view)[0], "labels");
 
             expect(labelData.map(({ column }) => column)).toEqual([
                 0, 0, 0, 1, 1,
@@ -1788,9 +1792,7 @@ describe("GridView legends", () => {
                     ],
                 });
                 const legends = getLegends(view);
-                const symbols = legends[0]
-                    .getDescendants()
-                    .find((descendant) => descendant.name == "symbols");
+                const symbols = getLegendUnitChild(legends[0], "symbols");
 
                 expect(legends).toHaveLength(1);
                 expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
@@ -1828,12 +1830,8 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const labels = getLegendUnitChild(getLegends(view)[0], "labels");
+            const labelData = getUnitData(labels);
 
             expect(labelData).toEqual(
                 expect.arrayContaining([
@@ -1872,9 +1870,7 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const symbols = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
 
             expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
                 expect.objectContaining({
@@ -1910,9 +1906,7 @@ describe("GridView legends", () => {
                 ],
             });
             const legends = getLegends(view);
-            const symbols = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const symbols = getLegendUnitChild(legends[0], "symbols");
 
             expect(legends).toHaveLength(1);
             expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
@@ -1948,9 +1942,7 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
-            const symbols = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const symbols = getLegendUnitChild(legend, "symbols");
             const plot = view
                 .getDescendants()
                 .find((descendant) => descendant.name == "grid0");
@@ -2008,9 +2000,7 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const symbols = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
 
             expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
                 expect.objectContaining({
@@ -2061,18 +2051,12 @@ describe("GridView legends", () => {
                 ],
             });
             const legends = getLegends(view);
-            const symbols = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
-            const labels = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
+            const symbols = getLegendUnitChild(legends[0], "symbols");
+            const labels = getLegendUnitChild(legends[0], "labels");
             const plot = view
                 .getDescendants()
                 .find((descendant) => descendant.name == "grid0");
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const labelData = getUnitData(labels);
 
             expect(legends).toHaveLength(1);
             expect(/** @type {UnitView} */ (symbols).spec.encoding).toEqual(
@@ -2139,18 +2123,12 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
-            const symbols = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
-            const labels = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
+            const symbols = getLegendUnitChild(legend, "symbols");
+            const labels = getLegendUnitChild(legend, "labels");
             const plot = view
                 .getDescendants()
                 .find((descendant) => descendant.name == "grid0");
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const labelData = getUnitData(labels);
 
             expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
                 expect.objectContaining({ type: "rule" })
@@ -2205,9 +2183,7 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const symbols = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "symbols");
+            const symbols = getLegendUnitChild(getLegends(view)[0], "symbols");
 
             expect(/** @type {UnitView} */ (symbols).spec.mark).toEqual(
                 expect.objectContaining({ type: "rule" })
@@ -2251,15 +2227,10 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
+            const labels = getLegendUnitChild(getLegends(view)[0], "labels");
             const readMaxSymbolSize = () =>
-                Array.from(
-                    /** @type {UnitView} */ (
-                        labels
-                    ).flowHandle.collector.getData()
-                ).find((datum) => datum.value == 100)._legendSymbolSize;
+                getUnitData(labels).find((datum) => datum.value == 100)
+                    ._legendSymbolSize;
             const context = new NoOpRenderingContext({ picking: false });
 
             view.render(context, Rectangle.create(0, 0, 400, 160), {
@@ -2306,18 +2277,9 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "labels");
+            const labels = getLegendUnitChild(getLegends(view)[0], "labels");
             const readMaxValue = () =>
-                Math.max(
-                    ...Array.from(
-                        /** @type {UnitView} */ (
-                            labels
-                        ).flowHandle.collector.getData(),
-                        (datum) => datum.value
-                    )
-                );
+                Math.max(...getUnitData(labels).map((datum) => datum.value));
 
             expect(readMaxValue()).toBe(1);
 
@@ -2353,12 +2315,8 @@ describe("GridView legends", () => {
                 ],
             });
             const legends = getLegends(view);
-            const ramp = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientRamp");
-            const labels = legends[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientLabels");
+            const ramp = getLegendUnitChild(legends[0], "gradientRamp");
+            const labels = getLegendUnitChild(legends[0], "gradientLabels");
             const plot = view
                 .getDescendants()
                 .find((descendant) => descendant.name == "grid0");
@@ -2375,12 +2333,8 @@ describe("GridView legends", () => {
             expect(
                 /** @type {UnitView} */ (ramp).getScaleResolution("color")
             ).toBe(/** @type {UnitView} */ (plot).getScaleResolution("color"));
-            const rampData = Array.from(
-                /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
-            );
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const rampData = getUnitData(ramp);
+            const labelData = getUnitData(labels);
 
             expect(rampData.length).toBeGreaterThan(1);
             expect(rampData[0]).toEqual(
@@ -2445,11 +2399,9 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientLabels");
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+            const labelData = getLegendData(
+                getLegends(view)[0],
+                "gradientLabels"
             );
 
             expect(labelData).toEqual(
@@ -2485,9 +2437,7 @@ describe("GridView legends", () => {
                     ],
                 });
                 const legends = getLegends(view);
-                const ramp = legends[0]
-                    .getDescendants()
-                    .find((descendant) => descendant.name == "gradientRamp");
+                const ramp = getLegendUnitChild(legends[0], "gradientRamp");
                 const plot = view
                     .getDescendants()
                     .find((descendant) => descendant.name == "grid0");
@@ -2526,9 +2476,7 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
-            const body = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientBody");
+            const body = getLegendChild(legend, "gradientBody");
             const region = getLegendRegions(view)[0];
 
             expect(legend.getSize().height).toEqual({ grow: 1 });
@@ -2560,9 +2508,7 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const body = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientBody");
+            const body = getLegendChild(getLegends(view)[0], "gradientBody");
 
             expect(body.getSize().width).toEqual({ grow: 1, minPx: 40 });
             expect(body.getSize().height).toEqual({ grow: 1 });
@@ -2597,12 +2543,8 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
-            const ramp = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientRamp");
-            const labels = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientLabels");
+            const ramp = getLegendUnitChild(legend, "gradientRamp");
+            const labels = getLegendUnitChild(legend, "gradientLabels");
             const plot = view
                 .getDescendants()
                 .find((descendant) => descendant.name == "grid0");
@@ -2614,9 +2556,7 @@ describe("GridView legends", () => {
                 /** @type {UnitView} */ (ramp).getScaleResolution("color")
             ).toBe(/** @type {UnitView} */ (plot).getScaleResolution("color"));
 
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const labelData = getUnitData(labels);
             expect(labelData).toEqual(
                 expect.arrayContaining([
                     expect.objectContaining({ value: 1, position: 0 }),
@@ -2670,28 +2610,16 @@ describe("GridView legends", () => {
                     ],
                 });
                 const legend = getLegends(view)[0];
-                const ramp = legend
-                    .getDescendants()
-                    .find((descendant) => descendant.name == "gradientRamp");
-                const labels = legend
-                    .getDescendants()
-                    .find((descendant) => descendant.name == "gradientLabels");
+                const ramp = getLegendUnitChild(legend, "gradientRamp");
+                const labels = getLegendUnitChild(legend, "gradientLabels");
                 const expectedPosition = createScale({
                     ...scale,
                     range: [0, 1],
                     zero: false,
                     nice: false,
                 });
-                const rampData = Array.from(
-                    /** @type {UnitView} */ (
-                        ramp
-                    ).flowHandle.collector.getData()
-                );
-                const labelData = Array.from(
-                    /** @type {UnitView} */ (
-                        labels
-                    ).flowHandle.collector.getData()
-                );
+                const rampData = getUnitData(ramp);
+                const labelData = getUnitData(labels);
 
                 for (const datum of [...rampData, ...labelData]) {
                     expect(datum.position).toBeCloseTo(
@@ -2730,22 +2658,14 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
-            const ramp = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientRamp");
-            const labels = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientLabels");
+            const ramp = getLegendUnitChild(legend, "gradientRamp");
+            const labels = getLegendUnitChild(legend, "gradientLabels");
 
             expect(ramp).toBeInstanceOf(UnitView);
             expect(labels).toBeInstanceOf(UnitView);
 
-            const rampData = Array.from(
-                /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
-            );
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const rampData = getUnitData(ramp);
+            const labelData = getUnitData(labels);
 
             expect(rampData).toHaveLength(6);
             expect(rampData[0].position0).toBe(0);
@@ -2791,11 +2711,9 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegends(view)[0]
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientLabels");
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
+            const labelData = getLegendData(
+                getLegends(view)[0],
+                "gradientLabels"
             );
 
             expect(labelData.map(({ value }) => value)).toEqual([25, 75]);
@@ -2830,18 +2748,10 @@ describe("GridView legends", () => {
                 ],
             });
             const legend = getLegends(view)[0];
-            const ramp = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientRamp");
-            const labels = legend
-                .getDescendants()
-                .find((descendant) => descendant.name == "gradientLabels");
-            const rampData = Array.from(
-                /** @type {UnitView} */ (ramp).flowHandle.collector.getData()
-            );
-            const labelData = Array.from(
-                /** @type {UnitView} */ (labels).flowHandle.collector.getData()
-            );
+            const ramp = getLegendUnitChild(legend, "gradientRamp");
+            const labels = getLegendUnitChild(legend, "gradientLabels");
+            const rampData = getUnitData(ramp);
+            const labelData = getUnitData(labels);
 
             expect(
                 rampData.map(({ position0, position1 }) => [
