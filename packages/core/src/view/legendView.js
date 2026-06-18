@@ -183,6 +183,7 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
 
     return excludeLegendGuideResolutions({
         name: "legend_" + (legend.orient ?? "right"),
+        padding: legend.padding,
         view: createLegendViewBackground(legend),
         resolve: {
             scale: Object.fromEntries(
@@ -665,13 +666,13 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
 /**
  * @param {{
  *     getPerpendicularSize: () => number,
- *     getExternalPadding: () => number
+ *     getOffset: () => number
  * } | undefined} legendView
  * @returns {number}
  */
 export function getExternalLegendOverhang(legendView) {
     return legendView
-        ? legendView.getPerpendicularSize() + legendView.getExternalPadding()
+        ? legendView.getPerpendicularSize() + legendView.getOffset()
         : 0;
 }
 
@@ -797,11 +798,11 @@ export class LegendRegionView extends ContainerView {
         return perpendicularSize.px ?? perpendicularSize.minPx ?? 0;
     }
 
-    getExternalPadding() {
+    getOffset() {
         return Math.max(
             0,
             ...this.#getVisibleLegendViews().map((legendView) =>
-                legendView.getExternalPadding()
+                legendView.getOffset()
             )
         );
     }
@@ -1049,8 +1050,8 @@ export default class LegendView extends ContainerView {
         return this.#effectiveExtent;
     }
 
-    getExternalPadding() {
-        return this.legendProps.padding ?? 0;
+    getOffset() {
+        return this.legendProps.offset ?? 0;
     }
 
     /**

@@ -6,7 +6,7 @@
   "title": { "text": "GC content", "style": "overlay-title" },
 
   "config": {
-    "legend": { "disable": false, "padding": 18 },
+    "legend": { "disable": false, "offset": 18 },
     "view": { "stroke": "lightgray" }
   },
 

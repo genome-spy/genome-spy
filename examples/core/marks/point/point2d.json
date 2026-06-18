@@ -7,7 +7,7 @@
 
   "width": 200,
 
-  "config": { "legend": { "disable": false, "padding": 18 } },
+  "config": { "legend": { "disable": false, "offset": 18 } },
 
   "data": { "url": "vega-datasets/cars.json" },
 

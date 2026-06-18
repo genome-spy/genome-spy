@@ -8,6 +8,7 @@ export const LEGEND_DEFAULTS = {
     disable: true,
     orient: "right",
     direction: "vertical",
+    offset: 18,
     padding: 0,
     spacing: 10,
     columnPadding: 10,

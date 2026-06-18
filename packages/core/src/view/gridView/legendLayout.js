@@ -8,49 +8,54 @@ const LEGEND_ZINDEX = 1;
  * @param {import("../../spec/legend.js").LegendOrient} orient
  * @param {{
  *     getPerpendicularSize: () => number,
- *     getExternalPadding: () => number,
+ *     getOffset: () => number,
  *     getParallelSize?: () => number | undefined
  * }} legendView
- * @param {number} [offset]
+ * @param {number} [axisOffset]
  */
-export function translateLegendCoords(coords, orient, legendView, offset = 0) {
+export function translateLegendCoords(
+    coords,
+    orient,
+    legendView,
+    axisOffset = 0
+) {
     const ps = legendView.getPerpendicularSize();
-    const padding = legendView.getExternalPadding();
+    const offset = legendView.getOffset();
     const parallelSize = legendView.getParallelSize?.() ?? coords.height;
     const cornerParallelSize =
-        legendView.getParallelSize?.() ?? coords.height - 2 * padding;
+        legendView.getParallelSize?.() ?? coords.height - 2 * offset;
 
     if (orient == "bottom") {
         return coords
-            .translate(0, coords.height + offset + padding)
+            .translate(0, coords.height + axisOffset + offset)
             .modify({ height: ps });
     } else if (orient == "top") {
         return coords
-            .translate(0, -ps - offset - padding)
+            .translate(0, -ps - axisOffset - offset)
             .modify({ height: ps });
     } else if (orient == "left") {
         return coords
-            .translate(-ps - offset - padding, 0)
+            .translate(-ps - axisOffset - offset, 0)
             .modify({ width: ps, height: parallelSize });
     } else if (orient == "right") {
         return coords
-            .translate(coords.width + offset + padding, 0)
+            .translate(coords.width + axisOffset + offset, 0)
             .modify({ width: ps, height: parallelSize });
     } else if (orient == "top-left") {
         return coords
-            .translate(offset + padding, padding)
+            .translate(axisOffset + offset, offset)
             .modify({ width: ps, height: cornerParallelSize });
     } else if (orient == "top-right") {
         return coords
-            .translate(coords.width - ps - offset - padding, padding)
+            .translate(coords.width - ps - axisOffset - offset, offset)
             .modify({ width: ps, height: cornerParallelSize });
     } else if (orient == "bottom-left") {
         return coords
-            .translate(offset + padding, padding)
+            .translate(axisOffset + offset, offset)
             .modify({ width: ps, height: cornerParallelSize });
     } else if (orient == "bottom-right") {
         return coords
-            .translate(coords.width - ps - offset - padding, padding)
+            .translate(coords.width - ps - axisOffset - offset, offset)
             .modify({ width: ps, height: cornerParallelSize });
     } else {
         throw new Error(`Invalid legend orientation: ${orient}`);

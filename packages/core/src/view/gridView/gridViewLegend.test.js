@@ -56,7 +56,7 @@ describe("legend layout helpers", () => {
         test("places a right-oriented legend next to the viewport", () => {
             const legendView = /** @type {any} */ ({
                 getPerpendicularSize: () => 80,
-                getExternalPadding: () => 12,
+                getOffset: () => 12,
             });
 
             const coords = translateLegendCoords(
@@ -74,7 +74,7 @@ describe("legend layout helpers", () => {
         test("places a top-right legend inside the viewport", () => {
             const legendView = /** @type {any} */ ({
                 getPerpendicularSize: () => 80,
-                getExternalPadding: () => 12,
+                getOffset: () => 12,
             });
 
             const coords = translateLegendCoords(

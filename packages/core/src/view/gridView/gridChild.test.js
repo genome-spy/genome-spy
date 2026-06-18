@@ -28,7 +28,7 @@ function createLegendEntry(
         legendView: {
             legendProps: { orient: "right" },
             getPerpendicularSize: () => size,
-            getExternalPadding: () => 8,
+            getOffset: () => 8,
         },
         resolution: {
             hasVisibleNonChromeMember: () => visible,
@@ -48,7 +48,7 @@ function createLegendRegion(
                         entry.legendView.getPerpendicularSize()
                     )
                 ),
-            getExternalPadding: () => 8,
+            getOffset: () => 8,
         },
         entries,
     };

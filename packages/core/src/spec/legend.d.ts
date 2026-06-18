@@ -36,6 +36,16 @@ export interface Legend {
     direction?: LegendDirection;
 
     /**
+     * Offset in pixels by which to displace the legend from the plot edge.
+     */
+    offset?: number;
+
+    /**
+     * Padding around the legend content in pixels.
+     */
+    padding?: number;
+
+    /**
      * The number of columns in which to arrange symbol legend entries.
      */
     columns?: number;
@@ -95,11 +105,6 @@ export interface LegendConfig extends Legend {
      * Disable legends by default.
      */
     disable?: boolean;
-
-    /**
-     * Padding around the legend content in pixels.
-     */
-    padding?: number;
 
     /**
      * Spacing in pixels between legends collected into the same legend region.

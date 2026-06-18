@@ -11,7 +11,7 @@
   "config": {
     "legend": {
       "disable": false,
-      "padding": 12,
+      "offset": 12,
       "backgroundFill": "white",
       "backgroundFillOpacity": 0.8
     }

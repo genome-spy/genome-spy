@@ -11,7 +11,7 @@
   "width": 700,
   "height": 300,
 
-  "config": { "legend": { "disable": false, "padding": 18 } },
+  "config": { "legend": { "disable": false, "offset": 18 } },
 
   "resolve": {
     "scale": { "color": "independent" },
