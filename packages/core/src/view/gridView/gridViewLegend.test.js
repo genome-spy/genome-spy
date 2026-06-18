@@ -1341,7 +1341,7 @@ describe("GridView legends", () => {
                 /** @type {UnitView} */ (labels).flowHandle.collector.getData()
             );
 
-            expect(labelData.map(({ legendColumn }) => legendColumn)).toEqual([
+            expect(labelData.map(({ column }) => column)).toEqual([
                 0, 0, 0, 1, 1,
             ]);
         });

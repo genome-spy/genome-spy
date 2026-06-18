@@ -3,19 +3,6 @@ import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
-const OUTPUT_FIELDS = {
-    row: "legendRow",
-    column: "legendColumn",
-    entryX: "legendEntryX",
-    entryY: "legendEntryY",
-    entryWidth: "legendEntryWidth",
-    entryHeight: "legendEntryHeight",
-    labelX: "legendLabelX",
-    labelY: "legendLabelY",
-    entryY2: "legendEntryY2",
-    labelY2: "legendLabelY2",
-};
-
 /**
  * @param {unknown} symbolSize
  * @param {number} symbolStrokeWidth
@@ -171,21 +158,20 @@ export default class PackLegendLabelsTransform extends Transform {
             const symbolSlotWidth = columnSymbolExtents[entry.column];
             const symbolCenterOffset = symbolSlotWidth / 2;
 
-            datum[OUTPUT_FIELDS.row] = entry.row;
-            datum[OUTPUT_FIELDS.column] = entry.column;
+            datum.row = entry.row;
+            datum.column = entry.column;
             const entryY = y + yOffset;
             const labelY = y + yOffset + rowHeights[entry.row] / 2;
 
-            datum[OUTPUT_FIELDS.entryX] = x + xOffset + symbolCenterOffset;
-            datum[OUTPUT_FIELDS.entryY] = entryY;
-            datum[OUTPUT_FIELDS.entryWidth] = columnWidths[entry.column];
-            datum[OUTPUT_FIELDS.entryHeight] = rowHeights[entry.row];
-            datum[OUTPUT_FIELDS.labelX] =
-                x + xOffset + symbolSlotWidth + labelOffset;
-            datum[OUTPUT_FIELDS.labelY] = labelY;
+            datum.entryX = x + xOffset + symbolCenterOffset;
+            datum.entryY = entryY;
+            datum.entryWidth = columnWidths[entry.column];
+            datum.entryHeight = rowHeights[entry.row];
+            datum.labelX = x + xOffset + symbolSlotWidth + labelOffset;
+            datum.labelY = labelY;
             if (yExtent != null) {
-                datum[OUTPUT_FIELDS.entryY2] = yExtent - entryY;
-                datum[OUTPUT_FIELDS.labelY2] = yExtent - labelY;
+                datum.entryY2 = yExtent - entryY;
+                datum.labelY2 = yExtent - labelY;
             }
 
             this._propagate(datum);

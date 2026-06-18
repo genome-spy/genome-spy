@@ -27,27 +27,27 @@ test("PackLegendLabelsTransform stacks vertical legend entries using max column 
             label: "USA",
             _labelWidth: 18,
             _legendIndex: 0,
-            legendRow: 0,
-            legendColumn: 0,
-            legendEntryX: 5,
-            legendEntryY: 0,
-            legendEntryWidth: 50,
-            legendEntryHeight: 12,
-            legendLabelX: 14,
-            legendLabelY: 6,
+            row: 0,
+            column: 0,
+            entryX: 5,
+            entryY: 0,
+            entryWidth: 50,
+            entryHeight: 12,
+            labelX: 14,
+            labelY: 6,
         },
         {
             label: "Europe",
             _labelWidth: 36,
             _legendIndex: 1,
-            legendRow: 1,
-            legendColumn: 0,
-            legendEntryX: 5,
-            legendEntryY: 14,
-            legendEntryWidth: 50,
-            legendEntryHeight: 12,
-            legendLabelX: 14,
-            legendLabelY: 20,
+            row: 1,
+            column: 0,
+            entryX: 5,
+            entryY: 14,
+            entryWidth: 50,
+            entryHeight: 12,
+            labelX: 14,
+            labelY: 20,
         },
     ]);
 });
@@ -73,10 +73,10 @@ test("PackLegendLabelsTransform packs horizontal legend entries by measured labe
         { label: "BB", _labelWidth: 12, _legendIndex: 2 },
     ]);
 
-    expect(data.map((datum) => datum.legendEntryX)).toEqual([5, 35, 83]);
-    expect(data.map((datum) => datum.legendEntryWidth)).toEqual([20, 38, 26]);
-    expect(data.map((datum) => datum.legendLabelX)).toEqual([14, 44, 92]);
-    expect(data.map((datum) => datum.legendLabelY)).toEqual([6, 6, 6]);
+    expect(data.map((datum) => datum.entryX)).toEqual([5, 35, 83]);
+    expect(data.map((datum) => datum.entryWidth)).toEqual([20, 38, 26]);
+    expect(data.map((datum) => datum.labelX)).toEqual([14, 44, 92]);
+    expect(data.map((datum) => datum.labelY)).toEqual([6, 6, 6]);
 });
 
 test("PackLegendLabelsTransform uses per-entry symbol sizes for row height", () => {
@@ -99,10 +99,10 @@ test("PackLegendLabelsTransform uses per-entry symbol sizes for row height", () 
         { label: "large", _labelWidth: 30, _symbolSize: 400 },
     ]);
 
-    expect(data.map((datum) => datum.legendEntryHeight)).toEqual([10, 20]);
-    expect(data.map((datum) => datum.legendEntryY)).toEqual([0, 12]);
-    expect(data.map((datum) => datum.legendEntryX)).toEqual([10, 10]);
-    expect(data.map((datum) => datum.legendLabelX)).toEqual([24, 24]);
+    expect(data.map((datum) => datum.entryHeight)).toEqual([10, 20]);
+    expect(data.map((datum) => datum.entryY)).toEqual([0, 12]);
+    expect(data.map((datum) => datum.entryX)).toEqual([10, 10]);
+    expect(data.map((datum) => datum.labelX)).toEqual([24, 24]);
 });
 
 test("PackLegendLabelsTransform applies entry offsets", () => {
@@ -125,12 +125,12 @@ test("PackLegendLabelsTransform applies entry offsets", () => {
     ]);
 
     expect(data[0]).toMatchObject({
-        legendEntryX: 8,
-        legendEntryY: 20,
-        legendLabelX: 17,
-        legendLabelY: 26,
-        legendEntryY2: 60,
-        legendLabelY2: 54,
+        entryX: 8,
+        entryY: 20,
+        labelX: 17,
+        labelY: 26,
+        entryY2: 60,
+        labelY2: 54,
     });
 });
 
@@ -155,8 +155,8 @@ test("PackLegendLabelsTransform accepts expression-backed y extent", () => {
     ]);
 
     expect(data[0]).toMatchObject({
-        legendEntryY2: 60,
-        legendLabelY2: 54,
+        entryY2: 60,
+        labelY2: 54,
     });
 
     const provider2 = makeParamRuntimeProvider();
@@ -178,7 +178,7 @@ test("PackLegendLabelsTransform accepts expression-backed y extent", () => {
     ]);
 
     expect(data[0]).toMatchObject({
-        legendEntryY2: 100,
-        legendLabelY2: 94,
+        entryY2: 100,
+        labelY2: 94,
     });
 });
