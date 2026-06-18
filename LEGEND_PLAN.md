@@ -32,9 +32,12 @@ Implemented behavior:
   data.
 - Legend view backgrounds are configurable through `config.legend` or per-
   legend properties.
+- `legend.offset` follows Vega semantics as the external displacement from the
+  plot edge, while `legend.padding` is internal padding around legend content.
 - `Legend.orient` supports side orients (`left`, `right`, `top`, `bottom`),
   inside-corner orients (`top-left`, `top-right`, `bottom-left`,
   `bottom-right`), and init-only `ExprRef` values for template use.
+- `Legend.titleOrient` supports top, bottom, left, and right title placement.
 - Multiple legends targeting the same local side or corner region are stacked
   predictably by `GridChild`; GenomeSpy intentionally does not copy Vega's
   default corner superimposition behavior.
@@ -79,6 +82,9 @@ Text, formatting, and styling:
   constant mark color/fill/stroke styling is inherited, but unrelated
   scale-backed color/fill/stroke encodings are neutralized in other symbol
   legends so, for example, a size legend does not appear to explain color.
+- Legends support named `style` references through the config machinery. A
+  built-in `track-bottom` style exists, but using inherited styles from
+  config buckets such as `config.legend.style` is blocked by GitHub issue #414.
 - `measureText`, `truncateText`, and `packLabels` support deterministic symbol
   label placement without relying on a scenegraph bounds pass.
 
@@ -165,8 +171,6 @@ resolution API can be designed later if shared/root/named-area legends need it.
 
 ### Vega Parity And Behavior
 
-- Decide whether `titleOrient` is worth implementing. Generated legends
-  currently place titles above the legend body.
 - Decide whether threshold and quantize labels should remain plain boundary
   labels or become Vega-like range labels such as `< 20` and `>= 100`.
 - Keep linear/log/pow/sqrt/symlog/threshold/quantize gradient behavior aligned
@@ -174,6 +178,9 @@ resolution API can be designed later if shared/root/named-area legends need it.
 - Keep multi-view inherited symbol styling deterministic by using the first
   contributing source view for now; revisit arbitration only if real
   multi-view conflicts appear.
+- Track-specific defaults should remain explicit for now. A future
+  `config.track.legend` bucket is tracked in GitHub issue #415 and depends on
+  the inherited style-resolution fix in #414.
 - Verify unsupported or deferred combinations fail clearly or intentionally do
   not create a legend.
 
@@ -189,8 +196,6 @@ Potentially useful compatibility candidates:
 - explicit legend `values`, `tickCount`, and `tickMinStep` for controlling
   shown entries/ticks,
 - explicit legend `type` if users need to force symbol vs gradient behavior,
-- `titleOrient` implementation, plus related title alignment details if
-  non-top titles are needed,
 - gradient sizing/styling knobs: `gradientLength`, `gradientThickness`,
   `gradientOpacity`, `gradientStrokeColor`, and `gradientStrokeWidth`,
 - gradient label overlap controls: `labelOverlap` and `labelSeparation`,
@@ -200,8 +205,8 @@ Potentially useful compatibility candidates:
 
 Lower-priority or architecture-dependent Vega surface:
 
-- group placement/styling knobs: `offset`, `cornerRadius`, `legendX`,
-  `legendY`, `fillColor`, and `strokeColor` as Vega-style aliases,
+- group placement/styling knobs: `cornerRadius`, `legendX`, `legendY`,
+  `fillColor`, and `strokeColor` as Vega-style aliases,
 - title styling details: `titleAlign`, `titleAnchor`, `titleBaseline`,
   `titleLineHeight`, and `titleOpacity`,
 - custom legend encoders (`legend.encoding` / Vega `encode`),
