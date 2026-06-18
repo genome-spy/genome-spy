@@ -1341,9 +1341,9 @@ describe("GridView legends", () => {
                 /** @type {UnitView} */ (labels).flowHandle.collector.getData()
             );
 
-            expect(labelData.map(({ _legendColumn }) => _legendColumn)).toEqual(
-                [0, 0, 0, 1, 1]
-            );
+            expect(labelData.map(({ legendColumn }) => legendColumn)).toEqual([
+                0, 0, 0, 1, 1,
+            ]);
         });
 
         test("does not create legends for positional quantitative channels", async () => {

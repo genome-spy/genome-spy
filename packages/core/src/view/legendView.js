@@ -322,14 +322,14 @@ export function createSymbolLegendSpec({
             },
             encoding: {
                 x: {
-                    field: "_legendEntryX",
+                    field: "legendEntryX",
                     type: "quantitative",
                     scale: horizontalPixelScale,
                     axis: null,
                     buildIndex: false,
                 },
                 y: {
-                    field: "_legendLabelY2",
+                    field: "legendLabelY2",
                     type: "quantitative",
                     scale: verticalPixelScale,
                     axis: null,
@@ -371,14 +371,14 @@ export function createSymbolLegendSpec({
         },
         encoding: {
             x: {
-                field: "_legendLabelX",
+                field: "legendLabelX",
                 type: "quantitative",
                 scale: horizontalPixelScale,
                 axis: null,
                 buildIndex: false,
             },
             y: {
-                field: "_legendLabelY2",
+                field: "legendLabelY2",
                 type: "quantitative",
                 scale: verticalPixelScale,
                 axis: null,
@@ -1230,9 +1230,9 @@ function getMeasuredLabels(labelViews) {
             );
             maxEntryWidth = Math.max(
                 maxEntryWidth,
-                Number(datum._legendEntryWidth) || 0
+                Number(datum.legendEntryWidth) || 0
             );
-            maxY = Math.max(maxY, Number(datum._legendLabelY) || 0);
+            maxY = Math.max(maxY, Number(datum.legendLabelY) || 0);
         });
     }
 

@@ -611,23 +611,6 @@ export interface PackLegendLabelsParams extends TransformParamsBase {
      * emits inverted y coordinates for GenomeSpy's unit y range.
      */
     yExtent?: number | ExprRef;
-
-    /**
-     * Output field names for generated layout values. This transform is
-     * intended for internally generated guide specs.
-     */
-    as?: Partial<{
-        row: Field;
-        column: Field;
-        entryX: Field;
-        entryY: Field;
-        entryWidth: Field;
-        entryHeight: Field;
-        labelX: Field;
-        labelY: Field;
-        entryY2: Field;
-        labelY2: Field;
-    }>;
 }
 
 export interface MergeFacetsParams extends TransformParamsBase {

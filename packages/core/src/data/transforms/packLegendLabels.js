@@ -3,17 +3,17 @@ import { field } from "../../utils/field.js";
 import Transform from "./transform.js";
 import { isExprRef } from "../../paramRuntime/paramUtils.js";
 
-const DEFAULT_AS = {
-    row: "_legendRow",
-    column: "_legendColumn",
-    entryX: "_legendEntryX",
-    entryY: "_legendEntryY",
-    entryWidth: "_legendEntryWidth",
-    entryHeight: "_legendEntryHeight",
-    labelX: "_legendLabelX",
-    labelY: "_legendLabelY",
-    entryY2: "_legendEntryY2",
-    labelY2: "_legendLabelY2",
+const OUTPUT_FIELDS = {
+    row: "legendRow",
+    column: "legendColumn",
+    entryX: "legendEntryX",
+    entryY: "legendEntryY",
+    entryWidth: "legendEntryWidth",
+    entryHeight: "legendEntryHeight",
+    labelX: "legendLabelX",
+    labelY: "legendLabelY",
+    entryY2: "legendEntryY2",
+    labelY2: "legendLabelY2",
 };
 
 /**
@@ -83,7 +83,6 @@ export default class PackLegendLabelsTransform extends Transform {
 
     complete() {
         const params = this.params;
-        const as = { ...DEFAULT_AS, ...params.as };
         const direction = params.direction ?? "vertical";
         const rowPadding = params.rowPadding ?? 0;
         const columnPadding = params.columnPadding ?? 0;
@@ -172,20 +171,21 @@ export default class PackLegendLabelsTransform extends Transform {
             const symbolSlotWidth = columnSymbolExtents[entry.column];
             const symbolCenterOffset = symbolSlotWidth / 2;
 
-            datum[as.row] = entry.row;
-            datum[as.column] = entry.column;
+            datum[OUTPUT_FIELDS.row] = entry.row;
+            datum[OUTPUT_FIELDS.column] = entry.column;
             const entryY = y + yOffset;
             const labelY = y + yOffset + rowHeights[entry.row] / 2;
 
-            datum[as.entryX] = x + xOffset + symbolCenterOffset;
-            datum[as.entryY] = entryY;
-            datum[as.entryWidth] = columnWidths[entry.column];
-            datum[as.entryHeight] = rowHeights[entry.row];
-            datum[as.labelX] = x + xOffset + symbolSlotWidth + labelOffset;
-            datum[as.labelY] = labelY;
+            datum[OUTPUT_FIELDS.entryX] = x + xOffset + symbolCenterOffset;
+            datum[OUTPUT_FIELDS.entryY] = entryY;
+            datum[OUTPUT_FIELDS.entryWidth] = columnWidths[entry.column];
+            datum[OUTPUT_FIELDS.entryHeight] = rowHeights[entry.row];
+            datum[OUTPUT_FIELDS.labelX] =
+                x + xOffset + symbolSlotWidth + labelOffset;
+            datum[OUTPUT_FIELDS.labelY] = labelY;
             if (yExtent != null) {
-                datum[as.entryY2] = yExtent - entryY;
-                datum[as.labelY2] = yExtent - labelY;
+                datum[OUTPUT_FIELDS.entryY2] = yExtent - entryY;
+                datum[OUTPUT_FIELDS.labelY2] = yExtent - labelY;
             }
 
             this._propagate(datum);
