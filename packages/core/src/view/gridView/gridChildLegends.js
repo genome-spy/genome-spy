@@ -15,6 +15,11 @@ import LegendView, {
  * }} GridChildLegendEntry
  *
  * @typedef {{
+ *     definition: import("../../scales/legendResolution.js").LegendDefinition,
+ *     resolution: import("../../scales/legendResolution.js").default,
+ * }} OrderedLegendEntry
+ *
+ * @typedef {{
  *     legendView: LegendRegionView,
  *     entries: GridChildLegendEntry[],
  * }} GridChildLegendRegion
@@ -48,6 +53,75 @@ const LEGEND_ORIENTS = new Set(
         "bottom-right",
     ])
 );
+
+/**
+ * @param {import("../view.js").default[]} legendOwners
+ * @returns {Map<import("../view.js").default, number>}
+ */
+function getDepthFirstViewOrder(legendOwners) {
+    /** @type {Map<import("../view.js").default, number>} */
+    const order = new Map();
+
+    for (const owner of legendOwners) {
+        owner.visit((view) => {
+            if (!order.has(view)) {
+                order.set(view, order.size);
+            }
+        });
+    }
+
+    return order;
+}
+
+/**
+ * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
+ * @returns {string}
+ */
+function getLegendSortLabel(definition) {
+    return String(
+        definition.legend.title ?? definition.field ?? definition.channel
+    ).toLocaleLowerCase();
+}
+
+/**
+ * @param {import("../view.js").default[]} legendOwners
+ * @returns {OrderedLegendEntry[]}
+ */
+export function getOrderedLegendEntries(legendOwners) {
+    const viewOrder = getDepthFirstViewOrder(legendOwners);
+    /** @type {OrderedLegendEntry[]} */
+    const entries = [];
+
+    for (const legendOwner of legendOwners) {
+        for (const resolution of Object.values(
+            legendOwner.resolutions.legend
+        )) {
+            for (const definition of resolution.getLegendDefs()) {
+                entries.push({ definition, resolution });
+            }
+        }
+    }
+
+    entries.sort((a, b) => {
+        const viewDiff =
+            (viewOrder.get(a.definition.view) ?? Number.MAX_SAFE_INTEGER) -
+            (viewOrder.get(b.definition.view) ?? Number.MAX_SAFE_INTEGER);
+        if (viewDiff != 0) {
+            return viewDiff;
+        }
+
+        const labelDiff = getLegendSortLabel(a.definition).localeCompare(
+            getLegendSortLabel(b.definition)
+        );
+        if (labelDiff != 0) {
+            return labelDiff;
+        }
+
+        return a.definition.channel.localeCompare(b.definition.channel);
+    });
+
+    return entries;
+}
 
 /**
  * @param {import("../../spec/channel.js").ChannelDef | undefined} channelDef

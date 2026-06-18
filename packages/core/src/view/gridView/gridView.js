@@ -32,6 +32,7 @@ import {
     createGridChildLegend,
     disposeLegendViews,
     getLegendOverhang,
+    getOrderedLegendEntries,
     iterateLegendViews,
 } from "./gridChildLegends.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
@@ -361,25 +362,12 @@ export default class GridView extends ContainerView {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
 
-        /** @type {Promise<void>[]} */
-        const promises = [];
-        for (const resolution of Object.values(this.resolutions.legend)) {
-            for (const definition of resolution.getLegendDefs()) {
-                promises.push(
-                    createGridChildLegend(definition, this).then(
-                        async (legend) => {
-                            await addLegendView(
-                                this.#sharedLegends,
-                                legend,
-                                resolution
-                            );
-                        }
-                    )
-                );
-            }
+        for (const { definition, resolution } of getOrderedLegendEntries([
+            this,
+        ])) {
+            const legend = await createGridChildLegend(definition, this);
+            await addLegendView(this.#sharedLegends, legend, resolution);
         }
-
-        await Promise.all(promises);
     }
 
     /**

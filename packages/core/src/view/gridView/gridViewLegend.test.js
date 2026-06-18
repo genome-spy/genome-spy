@@ -419,7 +419,89 @@ describe("GridView legends", () => {
 
             expect(
                 getLegends(view).map((legend) => legend.legendProps.title)
-            ).toEqual(["amount", "group", "intensity"]);
+            ).toEqual(["group", "amount", "intensity"]);
+        });
+
+        test("orders stacked legends by source view before displayed title", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                {
+                                    x: 1,
+                                    y: 2,
+                                    group: "alpha",
+                                    amount: 10,
+                                    group2: "beta",
+                                    amount2: 20,
+                                },
+                            ],
+                        },
+                        resolve: {
+                            scale: {
+                                color: "independent",
+                                size: "independent",
+                            },
+                        },
+                        layer: [
+                            {
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                    },
+                                    color: {
+                                        field: "group",
+                                        type: "nominal",
+                                        legend: { title: "Zeta" },
+                                    },
+                                    size: {
+                                        field: "amount",
+                                        type: "quantitative",
+                                        scale: { domain: [0, 30] },
+                                        legend: { title: "Alpha" },
+                                    },
+                                },
+                            },
+                            {
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                    },
+                                    color: {
+                                        field: "group2",
+                                        type: "nominal",
+                                        legend: { title: "Beta" },
+                                    },
+                                    size: {
+                                        field: "amount2",
+                                        type: "quantitative",
+                                        scale: { domain: [0, 30] },
+                                        legend: { title: "Aardvark" },
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            expect(
+                getLegends(view).map((legend) => legend.legendProps.title)
+            ).toEqual(["Alpha", "Zeta", "Aardvark", "Beta"]);
         });
 
         test("hides a stacked legend when its contributing view is hidden", async () => {

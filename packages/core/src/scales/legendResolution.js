@@ -18,6 +18,7 @@ import { isChromeView } from "../view/viewSelectors.js";
  * @typedef {{
  *     view: import("../view/unitView.js").default,
  *     channel: import("../spec/channel.js").ChannelWithScale,
+ *     field?: string,
  *     type: LegendType,
  *     symbolChannels?: Partial<Record<import("../spec/channel.js").ChannelWithScale, string>>,
  *     symbolGeometry?: "point" | "stroke",
@@ -168,6 +169,7 @@ export default class LegendResolution {
         return {
             view: legendParent,
             channel,
+            field: isFieldDef(channelDef) ? channelDef.field : undefined,
             type: legendType,
             symbolChannels,
             symbolGeometry,

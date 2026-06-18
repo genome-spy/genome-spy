@@ -36,6 +36,7 @@ import {
     createGridChildLegend,
     disposeLegendViews,
     getLegendOverhang,
+    getOrderedLegendEntries,
     iterateLegendViews,
 } from "./gridChildLegends.js";
 
@@ -884,18 +885,14 @@ export default class GridChild {
             // TODO: Axis grid
         }
 
-        for (const legendOwner of getLegendOwners(view)) {
-            for (const resolution of Object.values(
-                legendOwner.resolutions.legend
-            )) {
-                for (const definition of resolution.getLegendDefs()) {
-                    const legend = await createGridChildLegend(
-                        definition,
-                        this.layoutParent
-                    );
-                    await addLegendView(this.legends, legend, resolution);
-                }
-            }
+        for (const { definition, resolution } of getOrderedLegendEntries(
+            getLegendOwners(view)
+        )) {
+            const legend = await createGridChildLegend(
+                definition,
+                this.layoutParent
+            );
+            await addLegendView(this.legends, legend, resolution);
         }
 
         // Axes are created after scales are resolved, so we need to resolve possible new scales here
