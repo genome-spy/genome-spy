@@ -9,6 +9,7 @@ import { getConfiguredStyleConfig } from "./styleUtils.js";
  *
  * @typedef {{
  *     appendConfig: (scopes: import("../spec/config.js").GenomeSpyConfig[], config: StyleableConfig | undefined) => void,
+ *     appendStyle: (scopes: import("../spec/config.js").GenomeSpyConfig[], style: string | string[] | null | undefined) => void,
  *     merge: () => Record<string, any>
  * }} ConfigLayerStack
  *
@@ -41,6 +42,10 @@ export function createConfigLayerStack() {
             appendConfigLayer(layers, scopes, config);
         },
 
+        appendStyle(scopes, style) {
+            appendStyleLayer(layers, scopes, style);
+        },
+
         merge() {
             return mergeConfigScopes(layers.map((layer) => layer.config));
         },
@@ -57,14 +62,36 @@ function appendConfigLayer(layers, scopes, config) {
         return;
     }
 
-    if (Object.hasOwn(config, "style") && config.style === null) {
-        removeStyleLayers(layers);
-    } else {
-        const styleConfig = getConfiguredStyleConfig(scopes, config.style);
-        layers.push({ kind: "style", config: styleConfig });
-    }
+    appendStyleLayer(
+        layers,
+        scopes,
+        Object.hasOwn(config, "style") ? config.style : undefined
+    );
 
     layers.push({ kind: "config", config });
+}
+
+/**
+ * Appends style-expanded defaults without appending the style declaration
+ * itself. Use this for explicit style inputs whose only purpose is to select a
+ * named style layer.
+ *
+ * @param {ConfigLayer[]} layers
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
+ * @param {string | string[] | null | undefined} style
+ */
+function appendStyleLayer(layers, scopes, style) {
+    if (style === undefined) {
+        return;
+    }
+
+    if (style === null) {
+        removeStyleLayers(layers);
+        return;
+    }
+
+    const styleConfig = getConfiguredStyleConfig(scopes, style);
+    layers.push({ kind: "style", config: styleConfig });
 }
 
 /**

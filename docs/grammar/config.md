@@ -25,6 +25,30 @@ Use `theme` when you want a broad preset for the whole visualization. Use
 `config` when you want defaults for a scope. Use `style` when the same visual
 treatment should be referenced by name from marks, axes, titles, or views.
 
+## Named styles and resets
+
+Named styles are defined under `config.style` and referenced with a `style`
+property. Style references add reusable defaults before the object that
+references them, so explicit properties still win.
+
+Some guide config objects, such as axes and legends, can inherit styles from
+more general config buckets. Set `style` to `null` in a deeper scope to clear
+those inherited style defaults without clearing other inherited properties:
+
+```json
+{
+  "config": {
+    "legendTrack": {
+      "style": null
+    }
+  }
+}
+```
+
+This is useful when a broad default style applies to most of a visualization
+but a subtree should keep the other defaults while using unstyled axes or
+legends.
+
 ## Built-in themes
 
 GenomeSpy currently supports these built-in themes:
@@ -85,7 +109,8 @@ For example,
 Axis defaults come from `config.axis` and then from more specific buckets such
 as `config.axisX`, `config.axisTop`, or `config.axisQuantitative`. Axis styles
 can be provided by config buckets and by explicit `axis.style` references in
-channel definitions.
+channel definitions. Set `axis.style` to `null` to clear inherited axis styles
+in a channel definition.
 
 See also [Scale](./scale.md).
 

@@ -173,6 +173,28 @@ describe("axisConfig", () => {
         expect(defaults.labelColor).toBe("orange");
     });
 
+    test("null axis bucket style clears inherited style defaults", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    axisX: { style: "emphasis" },
+                    style: {
+                        emphasis: { tickColor: "purple" },
+                    },
+                },
+                { axisX: { style: null } },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+            }
+        );
+
+        expect(defaults.tickColor).not.toBe("purple");
+    });
+
     test("explicit axis style overrides bucket styles", () => {
         const defaults = getConfiguredAxisDefaults(
             [
@@ -194,6 +216,28 @@ describe("axisConfig", () => {
         );
 
         expect(defaults.tickColor).toBe("black");
+    });
+
+    test("null explicit axis style clears inherited bucket styles", () => {
+        const defaults = getConfiguredAxisDefaults(
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    axisX: { style: "emphasis" },
+                    style: {
+                        emphasis: { tickColor: "purple" },
+                    },
+                },
+            ],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+                style: null,
+            }
+        );
+
+        expect(defaults.tickColor).not.toBe("purple");
     });
 
     test("closest scope wins for the same style bucket", () => {

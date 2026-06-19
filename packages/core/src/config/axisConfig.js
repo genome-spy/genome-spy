@@ -1,5 +1,4 @@
-import { mergeConfigScopes } from "./mergeConfig.js";
-import { getConfiguredStyleConfig, normalizeStyle } from "./styleUtils.js";
+import { createConfigLayerStack } from "./configLayers.js";
 
 /** @type {Record<import("../spec/channel.js").PrimaryPositionalChannel, keyof import("../spec/config.js").GenomeSpyConfig>} */
 const CHANNEL_BUCKETS = {
@@ -30,51 +29,40 @@ const TYPE_BUCKETS = {
  * @param {import("../spec/channel.js").PrimaryPositionalChannel} options.channel
  * @param {import("../spec/axis.js").AxisOrient} [options.orient]
  * @param {import("../spec/channel.js").Type} [options.type]
- * @param {string | string[]} [options.style]
+ * @param {string | string[] | null} [options.style]
  * @returns {import("../spec/config.js").AxisConfig}
  */
 export function getConfiguredAxisDefaults(
     scopes,
     { channel, orient, type, style }
 ) {
-    const styles = normalizeStyle(style);
+    const layers = createConfigLayerStack();
+
+    for (const [index, scope] of scopes.entries()) {
+        const channelBucket = CHANNEL_BUCKETS[channel];
+        const orientBucket = orient ? ORIENT_BUCKETS[orient] : undefined;
+        const typeBucket = type ? TYPE_BUCKETS[type] : undefined;
+        const precedingScopes = scopes.slice(0, index + 1);
+        const bucketConfigs = [
+            /** @type {Record<string, any> | undefined} */ (scope.axis),
+            /** @type {Record<string, any> | undefined} */ (
+                channelBucket ? scope[channelBucket] : undefined
+            ),
+            /** @type {Record<string, any> | undefined} */ (
+                orientBucket ? scope[orientBucket] : undefined
+            ),
+            /** @type {Record<string, any> | undefined} */ (
+                typeBucket ? scope[typeBucket] : undefined
+            ),
+        ];
+
+        for (const config of bucketConfigs) {
+            layers.appendConfig(precedingScopes, config);
+        }
+        layers.appendStyle(precedingScopes, style);
+    }
 
     return /** @type {import("../spec/config.js").AxisConfig} */ (
-        mergeConfigScopes(
-            scopes.flatMap((scope, index) => {
-                const channelBucket = CHANNEL_BUCKETS[channel];
-                const orientBucket = orient
-                    ? ORIENT_BUCKETS[orient]
-                    : undefined;
-                const typeBucket = type ? TYPE_BUCKETS[type] : undefined;
-                const bucketConfigs = [
-                    /** @type {Record<string, any> | undefined} */ (scope.axis),
-                    /** @type {Record<string, any> | undefined} */ (
-                        channelBucket ? scope[channelBucket] : undefined
-                    ),
-                    /** @type {Record<string, any> | undefined} */ (
-                        orientBucket ? scope[orientBucket] : undefined
-                    ),
-                    /** @type {Record<string, any> | undefined} */ (
-                        typeBucket ? scope[typeBucket] : undefined
-                    ),
-                ];
-                const precedingScopes = scopes.slice(0, index + 1);
-                const bucketStyleConfigs = bucketConfigs.map((config) =>
-                    getConfiguredStyleConfig(precedingScopes, config?.style)
-                );
-
-                return [
-                    ...bucketStyleConfigs,
-                    ...bucketConfigs,
-                    ...styles.map(
-                        (styleName) =>
-                            /** @type {Record<string, any> | undefined} */ (
-                                scope.style?.[styleName]
-                            )
-                    ),
-                ];
-            })
-        )
+        layers.merge()
     );
 }
