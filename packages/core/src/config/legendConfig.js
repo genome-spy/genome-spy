@@ -1,5 +1,4 @@
-import { mergeConfigScopes } from "./mergeConfig.js";
-import { getConfiguredStyleConfig } from "./styleUtils.js";
+import { createConfigLayerStack } from "./configLayers.js";
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
@@ -11,8 +10,7 @@ import { getConfiguredStyleConfig } from "./styleUtils.js";
 export function getConfiguredLegendDefaults(scopes, legend, options = {}) {
     const baseScope = scopes[0];
     const scopedOverrides = scopes.slice(1);
-    /** @type {{ kind: "style" | "config", config: Record<string, any> }[]} */
-    const layers = [];
+    const layers = createConfigLayerStack();
 
     appendLegendScopeDefaults(layers, scopes, baseScope, options.track);
 
@@ -25,12 +23,12 @@ export function getConfiguredLegendDefaults(scopes, legend, options = {}) {
     appendLegendConfigLayer(layers, scopes, legend);
 
     return /** @type {import("../spec/legend.js").LegendConfig} */ (
-        mergeConfigScopes(layers.map((layer) => layer.config))
+        layers.merge()
     );
 }
 
 /**
- * @param {{ kind: "style" | "config", config: Record<string, any> }[]} layers
+ * @param {import("./configLayers.js").ConfigLayerStack} layers
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
  * @param {import("../spec/config.js").GenomeSpyConfig | undefined} baseScope
  * @param {boolean | undefined} track
@@ -42,7 +40,7 @@ function appendLegendScopeDefaults(layers, scopes, baseScope, track) {
 }
 
 /**
- * @param {{ kind: "style" | "config", config: Record<string, any> }[]} layers
+ * @param {import("./configLayers.js").ConfigLayerStack} layers
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopedScopes
  * @param {import("../spec/config.js").GenomeSpyConfig | undefined} scope
  * @param {boolean | undefined} track
@@ -56,32 +54,10 @@ function appendTrackScopeDefaults(layers, scopedScopes, scope, track) {
 }
 
 /**
- * @param {{ kind: "style" | "config", config: Record<string, any> }[]} layers
+ * @param {import("./configLayers.js").ConfigLayerStack} layers
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
  * @param {import("../spec/legend.js").Legend | import("../spec/legend.js").LegendConfig | undefined} config
  */
 function appendLegendConfigLayer(layers, scopes, config) {
-    if (!config) {
-        return;
-    }
-
-    if (Object.hasOwn(config, "style") && config.style === null) {
-        removeStyleLayers(layers);
-    } else {
-        const styleConfig = getConfiguredStyleConfig(scopes, config.style);
-        layers.push({ kind: "style", config: styleConfig });
-    }
-
-    layers.push({ kind: "config", config });
-}
-
-/**
- * @param {{ kind: "style" | "config", config: Record<string, any> }[]} layers
- */
-function removeStyleLayers(layers) {
-    for (let index = layers.length - 1; index >= 0; index--) {
-        if (layers[index].kind == "style") {
-            layers.splice(index, 1);
-        }
-    }
+    layers.appendConfig(scopes, config);
 }
