@@ -37,3 +37,10 @@ export const LEGEND_STYLE_DEFAULTS = {
         offset: 3,
     },
 };
+
+/**
+ * @type {import("../../spec/legend.js").LegendConfig}
+ */
+export const LEGEND_TRACK_DEFAULTS = {
+    style: "track-bottom",
+};

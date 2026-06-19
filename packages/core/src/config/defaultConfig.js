@@ -11,6 +11,7 @@ import { AXIS_DEFAULTS, LOCUS_AXIS_DEFAULTS } from "./defaults/axisDefaults.js";
 import {
     LEGEND_DEFAULTS,
     LEGEND_STYLE_DEFAULTS,
+    LEGEND_TRACK_DEFAULTS,
 } from "./defaults/legendDefaults.js";
 import { RANGE_DEFAULTS, SCALE_DEFAULTS } from "./defaults/scaleDefaults.js";
 import {
@@ -34,6 +35,7 @@ export const INTERNAL_DEFAULT_CONFIG = {
     axis: AXIS_DEFAULTS,
     axisLocus: LOCUS_AXIS_DEFAULTS,
     legend: LEGEND_DEFAULTS,
+    legendTrack: LEGEND_TRACK_DEFAULTS,
 
     scale: SCALE_DEFAULTS,
     range: RANGE_DEFAULTS,

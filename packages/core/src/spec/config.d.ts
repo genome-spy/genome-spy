@@ -196,6 +196,14 @@ export interface GenomeSpyConfig {
     legend?: LegendConfig;
 
     /**
+     * Defaults for legends of track-like views that use `index` or `locus`
+     * scales on the x channel.
+     *
+     * __Default value:__ `{ "style": "track-bottom" }`
+     */
+    legendTrack?: LegendConfig;
+
+    /**
      * Defaults for x axes.
      */
     axisX?: AxisConfig;

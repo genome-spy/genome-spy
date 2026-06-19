@@ -226,6 +226,26 @@ describe("GridView legends", () => {
     const getLegendTitles = (/** @type {ConcatView} */ view) =>
         getLegends(view).map((legend) => legend.legendProps.title);
 
+    /**
+     * @param {number} [height]
+     * @returns {import("../../spec/view.js").UnitSpec}
+     */
+    const createIndexColorPlotSpec = (height) => ({
+        ...(height === undefined ? {} : { height }),
+        data: {
+            values: [
+                { x: 1, y: 2, Origin: "Europe" },
+                { x: 2, y: 3, Origin: "Japan" },
+            ],
+        },
+        mark: "point",
+        encoding: {
+            x: { field: "x", type: "index" },
+            y: { field: "y", type: "quantitative" },
+            color: { field: "Origin", type: "nominal" },
+        },
+    });
+
     describe("basic creation", () => {
         test("creates legends by default", async () => {
             const view = await createLegendTestView();
@@ -797,6 +817,79 @@ describe("GridView legends", () => {
             expect(() =>
                 view.paramRuntime.setValue("legendSide", "bottom")
             ).toThrow("Reactive legend orient changes are not supported");
+        });
+
+        test("uses track legend defaults for index views", async () => {
+            const view = await createLegendTestView({
+                vconcat: [createIndexColorPlotSpec(40)],
+            });
+            const [legend] = getLegends(view);
+
+            expect(legend.legendProps.orient).toBe("bottom");
+            expect(legend.legendProps.titleOrient).toBe("left");
+            expect(legend.legendProps.spacing).toBe(3);
+            expect(legend.legendProps.offset).toBe(3);
+        });
+
+        test("uses track defaults for layer children with index x scale", async () => {
+            const view = await createLegendTestView({
+                vconcat: [
+                    {
+                        height: 40,
+                        data: {
+                            values: [
+                                { x: 1, y: 2, Origin: "Europe" },
+                                { x: 2, y: 3, Origin: "Japan" },
+                            ],
+                        },
+                        encoding: {
+                            x: { field: "x", type: "index" },
+                            y: { field: "y", type: "quantitative" },
+                        },
+                        layer: [
+                            {
+                                mark: "point",
+                                encoding: {
+                                    color: {
+                                        field: "Origin",
+                                        type: "nominal",
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+            const [legend] = getLegends(view);
+
+            expect(legend.legendProps.orient).toBe("bottom");
+            expect(legend.legendProps.titleOrient).toBe("left");
+        });
+
+        test("lets global legend config override track defaults", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: {
+                        orient: "left",
+                        titleOrient: "top",
+                    },
+                },
+                vconcat: [createIndexColorPlotSpec(40)],
+            });
+            const [legend] = getLegends(view);
+
+            expect(legend.legendProps.orient).toBe("left");
+            expect(legend.legendProps.titleOrient).toBe("top");
+        });
+
+        test("uses track defaults for growing index views", async () => {
+            const view = await createLegendTestView({
+                vconcat: [createIndexColorPlotSpec()],
+            });
+            const [legend] = getLegends(view);
+
+            expect(legend.legendProps.orient).toBe("bottom");
+            expect(legend.legendProps.titleOrient).toBe("left");
         });
 
         test("creates legends for layer children", async () => {

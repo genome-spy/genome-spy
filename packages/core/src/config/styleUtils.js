@@ -1,7 +1,7 @@
 import { mergeConfigScopes } from "./mergeConfig.js";
 
 /**
- * @param {string | string[] | undefined} style
+ * @param {string | string[] | null | undefined} style
  * @returns {string[]}
  */
 export function normalizeStyle(style) {
@@ -13,7 +13,7 @@ export function normalizeStyle(style) {
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
- * @param {string | string[] | undefined} style
+ * @param {string | string[] | null | undefined} style
  * @returns {import("../spec/config.js").StyleConfig}
  */
 export function getConfiguredStyleConfig(scopes, style) {

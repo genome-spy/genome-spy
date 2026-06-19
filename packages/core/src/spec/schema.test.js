@@ -77,6 +77,9 @@ describe("generated core schema", () => {
                     orient: "right",
                     labelLimit: 160,
                 },
+                legendTrack: {
+                    style: "track-bottom",
+                },
             },
             mark: "point",
             encoding: {
@@ -87,6 +90,7 @@ describe("generated core schema", () => {
                     legend: {
                         title: "Category",
                         orient: "right",
+                        style: /** @type {null} */ (null),
                     },
                 },
             },

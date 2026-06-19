@@ -41,6 +41,24 @@ describe("legendConfig", () => {
         expect(defaults.labelLimit).toBe(40);
     });
 
+    test("track defaults apply between built-in and user legend config", () => {
+        const trackDefaults = getConfiguredLegendDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            undefined,
+            { track: true }
+        );
+        const userDefaults = getConfiguredLegendDefaults(
+            [INTERNAL_DEFAULT_CONFIG, { legend: { orient: "left" } }],
+            undefined,
+            { track: true }
+        );
+
+        expect(trackDefaults.orient).toBe("bottom");
+        expect(trackDefaults.titleOrient).toBe("left");
+        expect(userDefaults.orient).toBe("left");
+        expect(userDefaults.titleOrient).toBe("left");
+    });
+
     test("built-in track-bottom style configures compact bottom legends", () => {
         const defaults = getConfiguredLegendDefaults(
             [INTERNAL_DEFAULT_CONFIG],
@@ -63,6 +81,19 @@ describe("legendConfig", () => {
         expect(defaults.titleOrient).toBe("left");
         expect(defaults.spacing).toBe(3);
         expect(defaults.offset).toBe(3);
+    });
+
+    test("null config legend style resets inherited style defaults", () => {
+        const defaults = getConfiguredLegendDefaults([
+            INTERNAL_DEFAULT_CONFIG,
+            { legend: { style: "track-bottom" } },
+            { legend: { style: null } },
+        ]);
+
+        expect(defaults.orient).toBe("right");
+        expect(defaults.titleOrient).toBe("top");
+        expect(defaults.spacing).toBe(10);
+        expect(defaults.offset).toBe(18);
     });
 
     test("local style buckets override inherited config legend styles", () => {

@@ -147,6 +147,8 @@ object overrides the configured defaults for that legend.
 }
 ```
 
+### Track-like legends
+
 Named styles from `config.style` can also be referenced with `legend.style`.
 GenomeSpy includes a built-in `track-bottom` legend style for compact
 track-like layouts.
@@ -155,6 +157,26 @@ track-like layouts.
 {
   "legend": {
     "style": "track-bottom"
+  }
+}
+```
+
+Views with an `index` or `locus` x scale use `config.legendTrack` as an
+intermediate default. These views usually form genome-browser-like horizontal
+tracks where there is more room below each track than to the side of a dense
+track stack. The default `config.legendTrack` style is therefore
+`track-bottom`. Use `config.legend` to override those defaults globally, or a
+channel-level `legend` object to override a single legend.
+
+Clear this track-specific style at the root or in a subtree by setting
+`config.legendTrack.style` to `null`:
+
+```json
+{
+  "config": {
+    "legendTrack": {
+      "style": null
+    }
   }
 }
 ```

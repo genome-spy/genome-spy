@@ -126,9 +126,15 @@ export default class LegendResolution {
                           explicitLegend
                       ),
                   });
+        const scaleResolution = legendParent.getScaleResolution(channel);
+        if (!scaleResolution) {
+            return undefined;
+        }
+
         const legendDefaults = getConfiguredLegendDefaults(
             legendParent.getConfigScopes(),
-            legendOverrides
+            legendOverrides,
+            { track: isTrackLegendParent(legendParent) }
         );
         if (legendDefaults.disable === true) {
             return undefined;
@@ -136,11 +142,6 @@ export default class LegendResolution {
 
         const legendType = getLegendType(channel, channelDef);
         if (!legendType) {
-            return undefined;
-        }
-
-        const scaleResolution = legendParent.getScaleResolution(channel);
-        if (!scaleResolution) {
             return undefined;
         }
 
@@ -210,6 +211,22 @@ function getSymbolGeometry(channel, legendParent) {
     return channel == "size" && (markType == "rule" || markType == "link")
         ? "stroke"
         : "point";
+}
+
+/**
+ * @param {import("../view/unitView.js").default} legendParent
+ * @returns {boolean}
+ */
+function isTrackLegendParent(legendParent) {
+    const xDef = getLegendChannelDef("x", legendParent);
+    const xScale = legendParent.getScaleResolution("x")?.getScale();
+
+    return (
+        xDef?.type == "index" ||
+        xDef?.type == "locus" ||
+        xScale?.type == "index" ||
+        xScale?.type == "locus"
+    );
 }
 
 /**
