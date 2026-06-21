@@ -3,6 +3,49 @@ import { specToLayout } from "./testUtils.js";
 import Rectangle from "./layout/rectangle.js";
 
 describe("layout snapshot helper", () => {
+    test("renders view title in reserved bounds without manual padding", async () => {
+        const layout = await specToLayout(
+            {
+                vconcat: [
+                    {
+                        name: "titled",
+                        title: "Group title",
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 200, 120)
+        );
+
+        const title = layout.children.find(
+            (child) => child.viewName == "title0"
+        );
+        const titled = layout.children.find(
+            (child) => child.viewName == "titled"
+        );
+
+        expect(title).toMatchObject({
+            coords: "Rectangle: x: 0, y: 0, width: 200, height: 120",
+        });
+        expect(titled).toMatchObject({
+            coords: "Rectangle: x: 0, y: 21, width: 200, height: 99",
+        });
+    });
+
     test("captures a shared-axis concat layout", async () => {
         expect(
             await specToLayout({

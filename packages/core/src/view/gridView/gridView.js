@@ -831,6 +831,7 @@ export default class GridView extends ContainerView {
             const viewSize = view.getSize();
 
             const overhang = view.getOverhang();
+            const titleOverhang = gridChild.getTitleOverhang();
 
             const x = colLocSize.location - overhang.left;
             const y = rowLocSize.location - overhang.top;
@@ -920,6 +921,7 @@ export default class GridView extends ContainerView {
                 visibleChildCoords,
                 viewWidth,
                 viewHeight,
+                titleOverhang,
                 scrollable,
                 gridChild,
             });
@@ -1030,6 +1032,7 @@ export default class GridView extends ContainerView {
                 visibleChildCoords,
                 viewWidth,
                 viewHeight,
+                titleOverhang,
                 scrollable,
                 gridChild,
                 col,
@@ -1208,10 +1211,11 @@ export default class GridView extends ContainerView {
             }
 
             if (title) {
+                const titleCoords = viewportCoords.expand(titleOverhang);
                 queueDecoration(
                     gridChild.titleZindex,
                     DECORATION_ORDER.title,
-                    () => title?.render(context, viewportCoords, options)
+                    () => title?.render(context, titleCoords, options)
                 );
             }
         }
