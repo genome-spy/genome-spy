@@ -4,6 +4,7 @@ import { tickFormat, tickValues, validTicks } from "../../../scale/ticks.js";
 import { shallowArrayEquals } from "../../../utils/arrayUtils.js";
 import { createDiscreteLegendEntries } from "../../../view/legend/legendEntries.js";
 import { isChromeView } from "../../../view/viewSelectors.js";
+import Suspension from "../../../utils/suspension.js";
 import DataSource from "../dataSource.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 
@@ -14,6 +15,12 @@ const LEGEND_STROKE_WIDTH_FIELD = "_legendStrokeWidth";
 export default class LegendEntriesSource extends DataSource {
     /** @type {import("../../../spec/channel.js").Scalar[] | undefined} */
     #domain = undefined;
+
+    #rangeUpdatePending = false;
+
+    #rangeUpdateSuspension = new Suspension(() =>
+        this.#flushPendingRangeUpdate()
+    );
 
     /**
      * @param {import("../../../spec/data.js").LegendEntriesData} params
@@ -34,6 +41,10 @@ export default class LegendEntriesSource extends DataSource {
         this.scaleResolution.addEventListener("domain", publish);
         if (params.channel == "size") {
             const publishSizeEntries = () => {
+                if (this.#deferRangeUpdateIfSuspended()) {
+                    return;
+                }
+
                 this.#domain = undefined;
                 this.#publishEntries();
             };
@@ -55,8 +66,47 @@ export default class LegendEntriesSource extends DataSource {
     }
 
     async load() {
+        if (this.#deferRangeUpdateIfSuspended()) {
+            return;
+        }
+
         this.#domain = undefined;
         this.#publishEntries();
+    }
+
+    /**
+     * Defers size-entry updates caused by scale range changes. The live scale
+     * still updates marks; only the layout helper fields are republished later.
+     *
+     * @returns {() => void}
+     */
+    suspendRangeUpdates() {
+        if (this.params.channel != "size") {
+            return () => undefined;
+        }
+
+        return this.#rangeUpdateSuspension.suspend();
+    }
+
+    #deferRangeUpdateIfSuspended() {
+        if (
+            this.params.channel != "size" ||
+            !this.#rangeUpdateSuspension.active ||
+            !this.#domain
+        ) {
+            return false;
+        }
+
+        this.#rangeUpdatePending = true;
+        return true;
+    }
+
+    #flushPendingRangeUpdate() {
+        if (this.#rangeUpdatePending) {
+            this.#rangeUpdatePending = false;
+            this.#domain = undefined;
+            this.#publishEntries();
+        }
     }
 
     #publishEntries() {

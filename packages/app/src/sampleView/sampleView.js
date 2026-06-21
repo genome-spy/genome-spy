@@ -515,7 +515,7 @@ export default class SampleView extends ContainerView {
             "keyup",
             (/** @type {KeyboardEvent} */ event) => {
                 if (event.code == "KeyE") {
-                    this.locationManager.togglePeek(false);
+                    this.#togglePeek(false);
                 }
             }
         );
@@ -1198,7 +1198,7 @@ export default class SampleView extends ContainerView {
                   }
                 : {
                       label: "Close closeup",
-                      callback: () => this.locationManager.togglePeek(false),
+                      callback: () => this.#togglePeek(false),
                       icon: faXmark,
                   }),
 
@@ -1233,7 +1233,45 @@ export default class SampleView extends ContainerView {
         mouseY = this.#lastMouseY,
         sampleId = this.#getPeekFocusSampleAt(mouseY)?.id
     ) {
-        this.locationManager.togglePeek(undefined, mouseY, sampleId);
+        this.#togglePeek(undefined, mouseY, sampleId);
+    }
+
+    /**
+     * @param {boolean} [open]
+     * @param {number} [mouseY]
+     * @param {string} [sampleId]
+     */
+    #togglePeek(open, mouseY, sampleId) {
+        // Peek changes sample height every frame. Let legends redraw live scale
+        // ranges, but postpone layout-packing data updates until it settles.
+        const releaseLegendLayoutDataUpdates =
+            this.#suspendLocalLegendLayoutDataUpdates();
+
+        void Promise.resolve(
+            this.locationManager.togglePeek(open, mouseY, sampleId)
+        ).finally(releaseLegendLayoutDataUpdates);
+    }
+
+    /**
+     * @returns {() => void}
+     */
+    #suspendLocalLegendLayoutDataUpdates() {
+        if (!this.#gridChild) {
+            return () => undefined;
+        }
+
+        const releases = Object.values(this.#gridChild.legends).flatMap(
+            (region) =>
+                region.entries.map(({ legendView }) =>
+                    legendView.suspendLayoutDataUpdates()
+                )
+        );
+
+        return () => {
+            for (const release of releases) {
+                release();
+            }
+        };
     }
 
     /**

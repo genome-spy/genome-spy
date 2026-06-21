@@ -2320,7 +2320,8 @@ describe("GridView legends", () => {
                     },
                 ],
             });
-            const labels = getLegendUnitChild(getLegends(view)[0], "labels");
+            const legend = getLegends(view)[0];
+            const labels = getLegendUnitChild(legend, "labels");
             const readMaxSymbolSize = () =>
                 getUnitData(labels).find((datum) => datum.value == 100)
                     ._legendSymbolSize;
@@ -2332,13 +2333,28 @@ describe("GridView legends", () => {
             await view.paramRuntime.whenPropagated();
             const small = readMaxSymbolSize();
 
+            const requestLayoutReflow = vi.fn();
+            view.context.requestLayoutReflow = requestLayoutReflow;
+            const release = legend.suspendLayoutDataUpdates();
+
             view.render(context, Rectangle.create(0, 0, 400, 320), {
                 firstFacet: true,
             });
             await view.paramRuntime.whenPropagated();
-            const large = readMaxSymbolSize();
+            await Promise.resolve();
+            const suspended = readMaxSymbolSize();
 
+            // During peek-like transitions, layout helper data waits for the
+            // caller to release the suspension. Marks still use the live scale.
+            expect(suspended).toBe(small);
+            expect(requestLayoutReflow).not.toHaveBeenCalled();
+
+            release();
+            await Promise.resolve();
+
+            const large = readMaxSymbolSize();
             expect(large).toBeGreaterThan(small);
+            expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
         });
 
         test("updates quantitative symbol legends when the source domain changes", async () => {

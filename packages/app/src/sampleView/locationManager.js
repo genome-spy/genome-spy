@@ -186,19 +186,20 @@ export class LocationManager {
      * @param {boolean} [open] open if true, close if false, toggle if undefined
      * @param {number} [mouseY] Mouse position in pixels
      * @param {string} [sampleId]
+     * @returns {Promise<void>}
      */
     togglePeek(open, mouseY, sampleId) {
         if (this.#peekState > 0 && this.#peekState < 1) {
             // Transition is going on
-            return;
+            return Promise.resolve();
         }
 
         if (open !== undefined && open == !!this.#peekState) {
-            return;
+            return Promise.resolve();
         }
 
         if (!this.getLocations()) {
-            return;
+            return Promise.resolve();
         }
 
         const viewContext = this.#locationContext.viewContext;
@@ -248,7 +249,7 @@ export class LocationManager {
             }
 
             if (this.#scrollableHeight > height) {
-                transition({
+                return transition({
                     ...props,
                     to: 1,
                     duration: 500,
@@ -261,7 +262,7 @@ export class LocationManager {
                 /** @param {number} x */
                 const bounce = (x) => (1 - Math.pow(x * 2 - 1, 2)) * 0.5;
 
-                transition({
+                return transition({
                     ...props,
                     from: 0,
                     to: 1,
@@ -270,7 +271,7 @@ export class LocationManager {
                 });
             }
         } else {
-            transition({
+            return transition({
                 ...props,
                 to: 0,
                 duration: 400,

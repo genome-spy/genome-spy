@@ -1328,6 +1328,41 @@ export default class LegendView extends ContainerView {
         this.context.requestLayoutReflow();
     }
 
+    /**
+     * Defers legend data updates that only serve layout packing. Scale-backed
+     * legend marks keep using the live scale while callers run smooth layout
+     * transitions.
+     *
+     * TODO: Prefer optimizing layout and render batching to support partial
+     * updates, so transition callers do not need to suppress legend dataflow.
+     *
+     * @returns {() => void}
+     */
+    suspendLayoutDataUpdates() {
+        /** @type {Set<{suspendRangeUpdates: () => () => void}>} */
+        const dataSources = new Set();
+        for (const descendant of this.getDescendants()) {
+            const dataSource = descendant.flowHandle?.dataSource;
+            if (dataSource && "suspendRangeUpdates" in dataSource) {
+                dataSources.add(
+                    /** @type {{suspendRangeUpdates: () => () => void}} */ (
+                        dataSource
+                    )
+                );
+            }
+        }
+
+        const releases = Array.from(dataSources).map((dataSource) =>
+            dataSource.suspendRangeUpdates()
+        );
+
+        return () => {
+            for (const release of releases) {
+                release();
+            }
+        };
+    }
+
     isPickingSupported() {
         return false;
     }
