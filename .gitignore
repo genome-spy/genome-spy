@@ -28,6 +28,7 @@ node_modules/
 
 build/
 dist/
+/output/
 /coverage/
 /site/
 /packages/*/stats.html
