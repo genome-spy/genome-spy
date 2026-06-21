@@ -367,4 +367,76 @@ describe("layout snapshot helper", () => {
             coords: "Rectangle: x: 120, y: 0, width: 80, height: 120",
         });
     });
+
+    test("includes local legends in nested concat minimum size", async () => {
+        const layout = await specToLayout(
+            {
+                spacing: 0,
+                vconcat: [
+                    {
+                        spacing: 0,
+                        vconcat: [
+                            {
+                                height: { grow: 1 },
+                                data: {
+                                    values: [
+                                        { x: 1, y: 1, measurement: 0 },
+                                        { x: 2, y: 2, measurement: 1 },
+                                    ],
+                                },
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                        axis: null,
+                                    },
+                                    color: {
+                                        field: "measurement",
+                                        type: "quantitative",
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    {
+                        data: { values: [{ x: 3, y: 4 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            { config: { legend: { disable: false } } },
+            Rectangle.create(0, 0, 200, 20)
+        );
+
+        // The nested vconcat's local vertical gradient legend has a minimum
+        // height that includes the title and body before laying out siblings.
+        expect(
+            layout.children.find((child) => child.viewName == "grid0")
+        ).toMatchObject({
+            coords: "Rectangle: x: 0, y: 0, width: 200, height: 56",
+        });
+        expect(
+            layout.children.find((child) => child.viewName == "grid1")
+        ).toMatchObject({
+            coords: "Rectangle: x: 0, y: 56, width: 182, height: 0",
+        });
+    });
 });

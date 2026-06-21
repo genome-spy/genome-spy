@@ -2571,10 +2571,46 @@ describe("GridView legends", () => {
             const legend = getLegends(view)[0];
             const body = getLegendChild(legend, "gradientBody");
             const region = getLegendRegions(view)[0];
+            const legendHeight = legend.getSize().height;
 
-            expect(legend.getSize().height).toEqual({ grow: 1 });
+            expect(legendHeight.grow).toBe(1);
+            expect(legendHeight.minPx).toBeGreaterThan(
+                body.getSize().height.minPx
+            );
             expect(body.getSize().height).toEqual({ grow: 1, minPx: 40 });
             expect(region.getParallelSize()).toBeUndefined();
+        });
+
+        test("includes vertical gradient legend title in minimum height", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 1, measurement: 0 },
+                                { x: 2, y: 2, measurement: 1 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "measurement",
+                                type: "quantitative",
+                                legend: { title: "purifiedLogR" },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            const body = getLegendChild(legend, "gradientBody");
+
+            expect(legend.getSize().height.minPx).toBeGreaterThan(
+                body.getSize().height.minPx
+            );
         });
 
         test("uses horizontal gradient legend minimum width", async () => {

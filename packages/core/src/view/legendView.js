@@ -18,7 +18,13 @@
  */
 
 import ContainerView from "./containerView.js";
-import { FlexDimensions } from "./layout/flexLayout.js";
+import {
+    FlexDimensions,
+    getLargestSize,
+    getSizeDefMaxPx,
+    getSizeDefMinPx,
+    sumSizeDefs,
+} from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
@@ -885,13 +891,43 @@ export class LegendRegionView extends ContainerView {
     }
 
     getSize() {
-        const mainSize = { grow: 1 };
+        const mainSize = this.#getParallelSizeDef();
         const perpendicularSize = { px: this.getPerpendicularSize() };
 
         if (this.orient == "top" || this.orient == "bottom") {
             return new FlexDimensions(mainSize, perpendicularSize);
         } else {
             return new FlexDimensions(perpendicularSize, mainSize);
+        }
+    }
+
+    /**
+     * @returns {import("./layout/flexLayout.js").SizeDef}
+     */
+    #getParallelSizeDef() {
+        // Legend disable is reactive and separate from configured view
+        // visibility, so the internal legendStack concat cannot be used
+        // directly for region sizing.
+        const legendViews = this.#getVisibleLegendViews();
+
+        if (!legendViews.length) {
+            return { grow: 1 };
+        }
+
+        if (this.orient == "top" || this.orient == "bottom") {
+            return getLargestSize(
+                legendViews.map((legendView) => legendView.getSize().width)
+            );
+        } else {
+            /** @type {import("./layout/flexLayout.js").SizeDef[]} */
+            const sizeDefs = [];
+            for (const [index, legendView] of legendViews.entries()) {
+                if (index > 0) {
+                    sizeDefs.push({ px: this.#stackSpacing, grow: 0 });
+                }
+                sizeDefs.push(legendView.getSize().height);
+            }
+            return sumSizeDefs(sizeDefs);
         }
     }
 
@@ -931,21 +967,18 @@ export class LegendRegionView extends ContainerView {
 
     getParallelSize() {
         const legendViews = this.#getVisibleLegendViews();
-        if (
-            legendViews.some((legendView) =>
-                legendView.hasFlexibleParallelSize()
-            )
-        ) {
+        if (!legendViews.length) {
+            return 0;
+        }
+
+        const parallelSize = this.#getParallelSizeDef();
+        // Undefined asks legendLayout to stretch the region to the available
+        // viewport size. Fixed stacks return a numeric natural extent.
+        if (getSizeDefMaxPx(parallelSize) === undefined) {
             return undefined;
         }
 
-        return legendViews.reduce(
-            (sum, legendView, index) =>
-                sum +
-                legendView.getStackedParallelSize() +
-                (index > 0 ? this.#stackSpacing : 0),
-            0
-        );
+        return getSizeDefMinPx(parallelSize);
     }
 
     isPickingSupported() {
@@ -1143,7 +1176,7 @@ export default class LegendView extends ContainerView {
 
         if (this.#stacked) {
             const parallelSize = this.hasFlexibleParallelSize()
-                ? { grow: 1 }
+                ? this.#getFlexibleStackedParallelSize()
                 : { px: this.getStackedParallelSize() };
             if (
                 this.legendProps.orient == "top" ||
@@ -1163,6 +1196,22 @@ export default class LegendView extends ContainerView {
         } else {
             return new FlexDimensions(perpendicularSize, mainSize);
         }
+    }
+
+    /**
+     * @returns {import("./layout/flexLayout.js").SizeDef}
+     */
+    #getFlexibleStackedParallelSize() {
+        if (!this.#child) {
+            return { grow: 1, minPx: MIN_GRADIENT_LEGEND_LENGTH };
+        }
+
+        // The generated child concat includes title, padding, and the gradient
+        // body minimum, so use it as the public stacked parallel contract.
+        const childSize = this.#child.getSize();
+        return isHorizontalLegend(this.legendProps)
+            ? childSize.width
+            : childSize.height;
     }
 
     hasFlexibleParallelSize() {
