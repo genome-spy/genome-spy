@@ -17,7 +17,8 @@ import LayerView from "../layerView.js";
 import Padding from "../layout/padding.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
-import createTitle, {
+import {
+    createTitleFromResolvedSpec,
     getTitleOverhang,
     requestTitleFont,
     resolveTitleSpec,
@@ -191,7 +192,7 @@ export default class GridChild {
         if (this.titleSpec) {
             requestTitleFont(this.titleSpec, this.layoutParent.context);
         }
-        const title = createTitle(this.titleSpec);
+        const title = createTitleFromResolvedSpec(this.titleSpec);
         if (title) {
             const unitView = new UnitView(
                 title,

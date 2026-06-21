@@ -194,12 +194,10 @@ function measureTitleText(spec, metrics, fontSize) {
 }
 
 /**
- * @param {string | import("../spec/title.js").Title} title
- * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
+ * @param {import("../spec/title.js").Title | undefined} spec
  * @returns {import("../spec/view.js").UnitSpec}
  */
-export default function createTitle(title, configScopes = []) {
-    const spec = resolveTitleSpec(title, configScopes);
+export function createTitleFromResolvedSpec(spec) {
     if (!spec) {
         return;
     }
@@ -247,4 +245,13 @@ export default function createTitle(title, configScopes = []) {
             fontWeight: spec.fontWeight,
         },
     };
+}
+
+/**
+ * @param {string | import("../spec/title.js").Title} title
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+export default function createTitle(title, configScopes = []) {
+    return createTitleFromResolvedSpec(resolveTitleSpec(title, configScopes));
 }
