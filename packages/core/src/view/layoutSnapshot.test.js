@@ -212,6 +212,7 @@ describe("layout snapshot helper", () => {
         const layout = await specToLayout(
             {
                 spacing: 0,
+                config: { legend: { disable: false } },
                 vconcat: [
                     {
                         spacing: 0,
@@ -422,7 +423,7 @@ describe("layout snapshot helper", () => {
                     },
                 ],
             },
-            { config: { legend: { disable: false } } },
+            {},
             Rectangle.create(0, 0, 200, 20)
         );
 
