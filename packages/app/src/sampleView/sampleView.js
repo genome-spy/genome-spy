@@ -749,10 +749,10 @@ export default class SampleView extends ContainerView {
             .getHorizontalReserve(locations)
             .add(new Padding(0, 0, 0, sidebarWidth));
 
-        const sampleOverhang = this.#gridChild.getOverhangWithoutYAxes();
+        const alignedOverhangs = this.#getAlignedOverhangs();
         return chromeOverhang
-            .add(sampleOverhang.getHorizontal())
-            .add(this.#getSharedVerticalOverhang());
+            .add(alignedOverhangs.sampleOverhang.getHorizontal())
+            .add(alignedOverhangs.sharedVerticalOverhang);
     }
 
     /**
@@ -789,30 +789,30 @@ export default class SampleView extends ContainerView {
     }
 
     /**
-     * SampleView aligns sidebar rows with repeated sample rows. Vertical
-     * title/axis overhang from either side reserves one shared band instead of
+     * SampleView aligns sidebar rows with repeated sample rows. Vertical title
+     * and axis overhang from either side reserve one shared band instead of
      * shrinking the sidebar and sample pane independently.
      *
-     * @returns {Padding}
+     * @returns {{
+     *     sampleOverhang: Padding,
+     *     sidebarVerticalOverhang: Padding,
+     *     sharedVerticalOverhang: Padding,
+     * }}
      */
-    #getSharedVerticalOverhang() {
-        const sampleOverhang = this.#gridChild
-            .getOverhangWithoutYAxes()
-            .getVertical();
-        const sidebarOverhang = this.#sidebarView.isConfiguredVisible()
+    #getAlignedOverhangs() {
+        const sampleOverhang = this.#gridChild.getOverhangWithoutYAxes();
+        const sidebarVerticalOverhang = this.#sidebarView.isConfiguredVisible()
             ? this.#sidebarView.getOverhang().getVertical()
             : Padding.zero();
+        const sharedVerticalOverhang = sampleOverhang
+            .getVertical()
+            .union(sidebarVerticalOverhang);
 
-        return sampleOverhang.union(sidebarOverhang);
-    }
-
-    /**
-     * @returns {Padding}
-     */
-    #getSidebarVerticalOverhang() {
-        return this.#sidebarView.isConfiguredVisible()
-            ? this.#sidebarView.getOverhang().getVertical()
-            : Padding.zero();
+        return {
+            sampleOverhang,
+            sidebarVerticalOverhang,
+            sharedVerticalOverhang,
+        };
     }
 
     /**
@@ -1137,11 +1137,11 @@ export default class SampleView extends ContainerView {
             coords = coords.shrink(this.getPadding());
         }
 
+        const alignedOverhangs = this.#getAlignedOverhangs();
         coords = coords.shrink(
-            this.#gridChild
-                .getOverhangWithoutYAxes()
+            alignedOverhangs.sampleOverhang
                 .getHorizontal()
-                .add(this.#getSharedVerticalOverhang())
+                .add(alignedOverhangs.sharedVerticalOverhang)
         );
         // TODO: Should also consider the overhang of the summaries.
 
@@ -1171,7 +1171,7 @@ export default class SampleView extends ContainerView {
 
         this.#sidebarView.render(
             context,
-            this.sidebarCoords.expand(this.#getSidebarVerticalOverhang()),
+            this.sidebarCoords.expand(alignedOverhangs.sidebarVerticalOverhang),
             options
         );
 
