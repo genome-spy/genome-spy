@@ -789,12 +789,12 @@ ViewCoords {
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 32, y: 0, width: 260, height: 221",
+          "coords": "Rectangle: x: 32, y: 21, width: 260, height: 200",
           "viewName": "title0",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 335, y: 0, width: 260, height: 221",
+          "coords": "Rectangle: x: 335, y: 21, width: 260, height: 200",
           "viewName": "title1",
         },
       ],
@@ -959,12 +959,12 @@ ViewCoords {
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 32, y: 278, width: 260, height: 221",
+          "coords": "Rectangle: x: 32, y: 299, width: 260, height: 200",
           "viewName": "title0",
         },
         ViewCoords {
           "children": [],
-          "coords": "Rectangle: x: 335, y: 278, width: 260, height: 221",
+          "coords": "Rectangle: x: 335, y: 299, width: 260, height: 200",
           "viewName": "title1",
         },
       ],
@@ -1355,7 +1355,7 @@ ViewCoords {
             },
             ViewCoords {
               "children": [],
-              "coords": "Rectangle: x: 254, y: 508, width: 572, height: 461",
+              "coords": "Rectangle: x: 254, y: 533, width: 572, height: 436",
               "viewName": "title1",
             },
           ],

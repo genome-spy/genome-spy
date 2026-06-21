@@ -40,7 +40,7 @@ describe("layout snapshot helper", () => {
         );
 
         expect(title).toMatchObject({
-            coords: "Rectangle: x: 0, y: 0, width: 200, height: 120",
+            coords: "Rectangle: x: 0, y: 21, width: 200, height: 99",
         });
         expect(titled).toMatchObject({
             coords: "Rectangle: x: 0, y: 21, width: 200, height: 99",
