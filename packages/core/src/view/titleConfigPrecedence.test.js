@@ -1,6 +1,30 @@
 import { describe, expect, test } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
-import createTitle from "./title.js";
+import Padding from "./layout/padding.js";
+import createTitle, { getTitleOverhang } from "./title.js";
+
+function createFontContext() {
+    return {
+        fontManager: {
+            getDefaultFont: () => ({
+                metrics: {
+                    common: { base: 10 },
+                    capHeight: 7,
+                    descent: 2,
+                    measureWidth: (text, size) => text.length * size,
+                },
+            }),
+            getFont: () => ({
+                metrics: {
+                    common: { base: 10 },
+                    capHeight: 7,
+                    descent: 2,
+                    measureWidth: (text, size) => text.length * size,
+                },
+            }),
+        },
+    };
+}
 
 describe("title config precedence", () => {
     test("group-title style applies by default when title.style is omitted", () => {
@@ -73,5 +97,50 @@ describe("title config precedence", () => {
 
         expect(/** @type {any} */ (title.mark).size).toBe(30);
         expect(/** @type {any} */ (title.mark).color).toBe("blue");
+    });
+
+    test("top title reserves positive offset and text height", () => {
+        const overhang = getTitleOverhang(
+            {
+                text: "Title",
+                orient: "top",
+                offset: 10,
+                fontSize: 12,
+                angle: 0,
+            },
+            createFontContext()
+        );
+
+        expect(overhang).toEqual(new Padding(21, 0, 0, 0));
+    });
+
+    test("left title reserves positive offset and rotated text height", () => {
+        const overhang = getTitleOverhang(
+            {
+                text: "Track title",
+                orient: "left",
+                offset: 10,
+                fontSize: 12,
+                angle: -90,
+            },
+            createFontContext()
+        );
+
+        expect(overhang).toEqual(new Padding(0, 0, 0, 21));
+    });
+
+    test("negative offset title reserves no external space", () => {
+        const overhang = getTitleOverhang(
+            {
+                text: "Overlay",
+                orient: "top",
+                offset: -10,
+                fontSize: 12,
+                angle: 0,
+            },
+            createFontContext()
+        );
+
+        expect(overhang).toEqual(Padding.zero());
     });
 });

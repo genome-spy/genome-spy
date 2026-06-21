@@ -3,6 +3,13 @@ import {
     getConfiguredStyleConfig,
     getConfiguredTitleConfig,
 } from "../config/titleConfig.js";
+import {
+    getProjectedTextExtent,
+    measureText,
+    requestFont,
+} from "../fonts/textMetrics.js";
+import Padding from "./layout/padding.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 /** @type {Record<import("../spec/title.js").TitleAnchor, number>} */
 const ANCHORS = {
@@ -95,6 +102,90 @@ export function resolveTitleSpec(title, configScopes = []) {
         ...styleConfig,
         ...titleSpec,
     };
+}
+
+/**
+ * Requests the title font so asynchronous font loading is registered before
+ * layout uses title metrics.
+ *
+ * @param {import("../spec/title.js").Title | undefined} spec
+ * @param {import("../types/viewContext.js").default} context
+ */
+export function requestTitleFont(spec, context) {
+    return requestFont(context.fontManager, spec ?? {});
+}
+
+/**
+ * @param {import("../spec/title.js").Title} spec
+ * @param {import("../types/viewContext.js").default | { fontManager: import("../fonts/bmFontManager.js").default }} context
+ * @returns {Padding}
+ */
+export function getTitleOverhang(spec, context) {
+    if (!spec || spec.orient == "none" || spec.offset < 0) {
+        return Padding.zero();
+    }
+
+    const extent = getTitlePerpendicularExtent(spec, context);
+    const reserved = Math.ceil(extent + Math.max(spec.offset ?? 0, 0));
+
+    switch (spec.orient) {
+        case "top":
+            return new Padding(reserved, 0, 0, 0);
+        case "right":
+            return new Padding(0, reserved, 0, 0);
+        case "bottom":
+            return new Padding(0, 0, reserved, 0);
+        case "left":
+            return new Padding(0, 0, 0, reserved);
+        default:
+            return Padding.zero();
+    }
+}
+
+/**
+ * @param {import("../spec/title.js").Title} spec
+ * @param {import("../types/viewContext.js").default | { fontManager: import("../fonts/bmFontManager.js").default }} context
+ */
+function getTitlePerpendicularExtent(spec, context) {
+    const fontSize = isExprRef(spec.fontSize) ? 12 : (spec.fontSize ?? 12);
+    const angle = isExprRef(spec.angle) ? 0 : (spec.angle ?? 0);
+    const font = requestTitleFont(spec, context);
+    const metrics = font.metrics;
+    const direction =
+        spec.orient == "top" || spec.orient == "bottom"
+            ? "vertical"
+            : "horizontal";
+
+    if (!metrics) {
+        const fallbackMetrics = context.fontManager.getDefaultFont().metrics;
+        if (!fallbackMetrics) {
+            return fontSize;
+        }
+
+        return getProjectedTextExtent(
+            measureTitleText(spec, fallbackMetrics, fontSize),
+            angle,
+            direction
+        );
+    }
+
+    return getProjectedTextExtent(
+        measureTitleText(spec, metrics, fontSize),
+        angle,
+        direction
+    );
+}
+
+/**
+ * @param {import("../spec/title.js").Title} spec
+ * @param {import("../fonts/bmFontManager.js").BMFontMetrics} metrics
+ * @param {number} fontSize
+ */
+function measureTitleText(spec, metrics, fontSize) {
+    const text =
+        typeof spec.text == "string" ? spec.text : String(spec.text.expr);
+
+    return measureText(metrics, text, fontSize);
 }
 
 /**
