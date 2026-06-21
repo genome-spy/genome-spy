@@ -17,7 +17,11 @@ import LayerView from "../layerView.js";
 import Padding from "../layout/padding.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
-import createTitle, { resolveTitleSpec } from "../title.js";
+import createTitle, {
+    getTitleOverhang,
+    requestTitleFont,
+    resolveTitleSpec,
+} from "../title.js";
 import UnitView from "../unitView.js";
 import {
     isChromeView,
@@ -114,6 +118,9 @@ export default class GridChild {
         /** @type {UnitView} */
         this.title = undefined;
 
+        /** @type {import("../../spec/title.js").Title | undefined} */
+        this.titleSpec = undefined;
+
         /** @type {number} */
         this.backgroundZindex = 0;
 
@@ -177,28 +184,28 @@ export default class GridChild {
             }
         }
 
-        if (needsAxes) {
-            const titleSpec = resolveTitleSpec(
-                view.spec.title,
-                view.getConfigScopes()
+        this.titleSpec = view.spec.title
+            ? resolveTitleSpec(view.spec.title, view.getConfigScopes())
+            : undefined;
+        this.titleZindex = this.titleSpec?.zindex ?? 1;
+        if (this.titleSpec) {
+            requestTitleFont(this.titleSpec, this.layoutParent.context);
+        }
+        const title = createTitle(this.titleSpec);
+        if (title) {
+            const unitView = new UnitView(
+                title,
+                layoutParent.context,
+                layoutParent,
+                view,
+                "title" + serial,
+                {
+                    blockEncodingInheritance: true,
+                }
             );
-            this.titleZindex = titleSpec?.zindex ?? 1;
-            const title = createTitle(titleSpec);
-            if (title) {
-                const unitView = new UnitView(
-                    title,
-                    layoutParent.context,
-                    layoutParent,
-                    view,
-                    "title" + serial,
-                    {
-                        blockEncodingInheritance: true,
-                    }
-                );
-                this.title = unitView;
-                markViewAsNonAddressable(this.title, { skipSubtree: true });
-                markViewAsChrome(this.title, { skipSubtree: true });
-            }
+            this.title = unitView;
+            markViewAsNonAddressable(this.title, { skipSubtree: true });
+            markViewAsChrome(this.title, { skipSubtree: true });
         }
 
         // TODO: More specific getter for this
@@ -996,7 +1003,15 @@ export default class GridChild {
             calculate("right") + legend("right"),
             calculate("bottom") + legend("bottom"),
             calculate("left") + legend("left")
-        ).add(this.view.getOverhang());
+        )
+            .add(this.getTitleOverhang())
+            .add(this.view.getOverhang());
+    }
+
+    getTitleOverhang() {
+        return this.titleSpec
+            ? getTitleOverhang(this.titleSpec, this.layoutParent.context)
+            : Padding.zero();
     }
 
     getOverhangAndPadding() {

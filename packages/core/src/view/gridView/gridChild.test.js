@@ -20,6 +20,40 @@ function createMinimalGridChild() {
     return new GridChild(view, layoutParent, 0);
 }
 
+function createTitledGridChild(
+    /** @type {Partial<import("../../spec/title.js").Title>} */ titleSpec
+) {
+    const child = createMinimalGridChild();
+    child.titleSpec = /** @type {import("../../spec/title.js").Title} */ ({
+        text: "Title",
+        orient: "top",
+        offset: 10,
+        fontSize: 12,
+        angle: 0,
+        ...titleSpec,
+    });
+    child.layoutParent.context.fontManager = {
+        getDefaultFont: () => ({
+            metrics: {
+                common: { base: 10 },
+                capHeight: 7,
+                descent: 2,
+                measureWidth: (text, size) => text.length * size,
+            },
+        }),
+        getFont: () => ({
+            metrics: {
+                common: { base: 10 },
+                capHeight: 7,
+                descent: 2,
+                measureWidth: (text, size) => text.length * size,
+            },
+        }),
+    };
+
+    return child;
+}
+
 function createLegendEntry(
     /** @type {number} */ size,
     /** @type {boolean} */ visible
@@ -90,6 +124,23 @@ describe("GridChild legend layout", () => {
 
         expect(child.legends.right.entries).toHaveLength(2);
         expect(Array.from(iterateLegendViews(child.legends))).toHaveLength(1);
+    });
+});
+
+describe("GridChild title layout", () => {
+    test("default view title contributes top overhang", () => {
+        const child = createTitledGridChild({});
+
+        expect(child.getOverhang().top).toBeGreaterThan(0);
+    });
+
+    test("overlay view title does not contribute external overhang", () => {
+        const child = createTitledGridChild({
+            text: "Overlay",
+            offset: -10,
+        });
+
+        expect(child.getOverhang().top).toBe(0);
     });
 });
 
