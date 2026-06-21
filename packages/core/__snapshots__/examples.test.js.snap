@@ -2670,6 +2670,222 @@ exports[`shared examples > initializes examples/core/layout/size_expr.json 1`] =
 }
 `;
 
+exports[`shared examples > initializes examples/core/layout/title_bounds.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": "examples/",
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "topTitle",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "leftTitle",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "rightTitle",
+            "type": "UnitView",
+          },
+        ],
+        "name": "sideTitles",
+        "type": "ConcatView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "overlayTitle",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "bottomTitle",
+        "type": "UnitView",
+      },
+    ],
+    "name": "viewRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/core/legends/bubble-health-income.json 1`] = `
 {
   "assemblies": [],

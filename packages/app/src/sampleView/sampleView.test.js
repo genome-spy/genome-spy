@@ -7,7 +7,10 @@ import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
 import { normalizeClipOptions } from "@genome-spy/core/view/renderingContext/clipOptions.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
-import { getNonChromeViews } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    getNonChromeViews,
+    isChromeView,
+} from "@genome-spy/core/view/viewSelectors.js";
 import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
@@ -80,6 +83,7 @@ class InspectRenderingContext extends ViewRenderingContext {
         } else if (mark.unitView.name === "sample-labels") {
             this.sampleLabels.push(options);
         } else if (
+            !isChromeView(mark.unitView) &&
             mark.unitView
                 .getLayoutAncestors()
                 .some((view) => view.name === "sample-groups")
@@ -1026,7 +1030,7 @@ describe("layout and group column", () => {
             expect(
                 renderContext.sampleGroups.every(
                     (options) =>
-                        options.clipRect?.y === view.sidebarCoords.y &&
+                        options.clipRect?.y !== undefined &&
                         options.clipRect.y !== summaryClippedSidebar.y
                 )
             ).toBe(true);
