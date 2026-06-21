@@ -109,7 +109,7 @@ export function resolveTitleSpec(title, configScopes = []) {
  * layout uses title metrics.
  *
  * @param {import("../spec/title.js").Title | undefined} spec
- * @param {import("../types/viewContext.js").default} context
+ * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
  */
 export function requestTitleFont(spec, context) {
     return requestFont(context.fontManager, spec ?? {});
@@ -117,7 +117,7 @@ export function requestTitleFont(spec, context) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {import("../types/viewContext.js").default | { fontManager: import("../fonts/bmFontManager.js").default }} context
+ * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
  * @returns {Padding}
  */
 export function getTitleOverhang(spec, context) {
@@ -144,7 +144,7 @@ export function getTitleOverhang(spec, context) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
- * @param {import("../types/viewContext.js").default | { fontManager: import("../fonts/bmFontManager.js").default }} context
+ * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
  */
 function getTitlePerpendicularExtent(spec, context) {
     const fontSize = isExprRef(spec.fontSize) ? 12 : (spec.fontSize ?? 12);

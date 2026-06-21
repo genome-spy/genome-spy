@@ -7,24 +7,31 @@ import {
 } from "./textMetrics.js";
 
 function createMetrics() {
-    return {
+    return /** @type {import("./bmFontMetrics.js").BMFontMetrics} */ ({
         common: { base: 10 },
         capHeight: 7,
         descent: 2,
-        measureWidth: (text, size) => text.length * size,
-    };
+        measureWidth: (
+            /** @type {string} */ text,
+            /** @type {number} */ size
+        ) => text.length * size,
+    });
 }
 
 function createFontManager() {
-    return {
+    return /** @type {import("./textMetrics.js").FontManagerLike} */ ({
         getDefaultFont: () => ({ metrics: createMetrics() }),
-        getFont: (family, fontStyle, fontWeight) => ({
+        getFont: (
+            /** @type {string} */ family,
+            /** @type {import("../spec/font.js").FontStyle | undefined} */ fontStyle,
+            /** @type {import("../spec/font.js").FontWeight | undefined} */ fontWeight
+        ) => ({
             family,
             fontStyle,
             fontWeight,
             metrics: createMetrics(),
         }),
-    };
+    });
 }
 
 describe("textMetrics", () => {

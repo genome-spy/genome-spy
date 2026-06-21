@@ -1,21 +1,29 @@
 /**
  * @typedef {import("./bmFontManager.js").BMFontMetrics} BMFontMetrics
- * @typedef {import("./bmFontManager.js").FontEntry} FontEntry
  * @typedef {import("../spec/font.js").FontStyle} FontStyle
  * @typedef {import("../spec/font.js").FontWeight} FontWeight
+ * @typedef {{ metrics?: BMFontMetrics }} FontEntryLike
  * @typedef {{
  *     font?: string,
  *     fontStyle?: FontStyle,
  *     fontWeight?: FontWeight,
  * }} FontConfig
+ * @typedef {{
+ *     getDefaultFont: () => FontEntryLike,
+ *     getFont: (
+ *         family: string,
+ *         style?: FontStyle,
+ *         weight?: FontWeight
+ *     ) => FontEntryLike,
+ * }} FontManagerLike
  */
 
 /**
  * Requests a font entry and registers asynchronous loading for custom fonts.
  *
- * @param {import("./bmFontManager.js").default} fontManager
+ * @param {FontManagerLike} fontManager
  * @param {FontConfig} config
- * @returns {FontEntry}
+ * @returns {FontEntryLike}
  */
 export function requestFont(fontManager, config) {
     return config.font

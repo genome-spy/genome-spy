@@ -32,24 +32,32 @@ function createTitledGridChild(
         angle: 0,
         ...titleSpec,
     });
-    child.layoutParent.context.fontManager = {
+    child.layoutParent.context.fontManager = /** @type {any} */ ({
         getDefaultFont: () => ({
-            metrics: {
-                common: { base: 10 },
-                capHeight: 7,
-                descent: 2,
-                measureWidth: (text, size) => text.length * size,
-            },
+            metrics:
+                /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
+                    common: { base: 10 },
+                    capHeight: 7,
+                    descent: 2,
+                    measureWidth: (
+                        /** @type {string} */ text,
+                        /** @type {number} */ size
+                    ) => text.length * size,
+                }),
         }),
         getFont: () => ({
-            metrics: {
-                common: { base: 10 },
-                capHeight: 7,
-                descent: 2,
-                measureWidth: (text, size) => text.length * size,
-            },
+            metrics:
+                /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
+                    common: { base: 10 },
+                    capHeight: 7,
+                    descent: 2,
+                    measureWidth: (
+                        /** @type {string} */ text,
+                        /** @type {number} */ size
+                    ) => text.length * size,
+                }),
         }),
-    };
+    });
 
     return child;
 }

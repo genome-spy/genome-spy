@@ -4,26 +4,34 @@ import Padding from "./layout/padding.js";
 import createTitle, { getTitleOverhang } from "./title.js";
 
 function createFontContext() {
-    return {
+    return /** @type {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} */ ({
         fontManager: {
             getDefaultFont: () => ({
-                metrics: {
-                    common: { base: 10 },
-                    capHeight: 7,
-                    descent: 2,
-                    measureWidth: (text, size) => text.length * size,
-                },
+                metrics:
+                    /** @type {import("../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
+                        common: { base: 10 },
+                        capHeight: 7,
+                        descent: 2,
+                        measureWidth: (
+                            /** @type {string} */ text,
+                            /** @type {number} */ size
+                        ) => text.length * size,
+                    }),
             }),
             getFont: () => ({
-                metrics: {
-                    common: { base: 10 },
-                    capHeight: 7,
-                    descent: 2,
-                    measureWidth: (text, size) => text.length * size,
-                },
+                metrics:
+                    /** @type {import("../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
+                        common: { base: 10 },
+                        capHeight: 7,
+                        descent: 2,
+                        measureWidth: (
+                            /** @type {string} */ text,
+                            /** @type {number} */ size
+                        ) => text.length * size,
+                    }),
             }),
         },
-    };
+    });
 }
 
 describe("title config precedence", () => {
