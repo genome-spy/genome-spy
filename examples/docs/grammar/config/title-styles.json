@@ -12,12 +12,10 @@
   "vconcat": [
     {
       "title": { "text": "Group title (the default)", "style": "group-title" },
-      "padding": { "top": 18 },
       "mark": "point"
     },
     {
       "title": { "text": "Track title", "style": "track-title" },
-      "padding": { "left": 65 },
       "mark": "point"
     },
     {
@@ -26,7 +24,6 @@
     },
     {
       "title": { "text": "Custom title", "style": "custom-title" },
-      "padding": { "top": 28 },
       "mark": "point"
     }
   ],

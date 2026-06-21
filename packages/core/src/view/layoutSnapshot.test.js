@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { specToLayout } from "./testUtils.js";
 import Rectangle from "./layout/rectangle.js";
+import { loadSharedExampleSpec } from "../spec/exampleFiles.js";
 
 describe("layout snapshot helper", () => {
     test("renders view title in reserved bounds without manual padding", async () => {
@@ -44,6 +45,59 @@ describe("layout snapshot helper", () => {
         expect(titled).toMatchObject({
             coords: "Rectangle: x: 0, y: 21, width: 200, height: 99",
         });
+    });
+
+    test("title-styles docs example relies on title bounds instead of padding", async () => {
+        const spec = loadSharedExampleSpec(
+            "examples/docs/grammar/config/title-styles.json"
+        );
+        const layout = await specToLayout(spec);
+
+        expect(spec.vconcat[0].padding).toBeUndefined();
+        expect(spec.vconcat[1].padding).toBeUndefined();
+        expect(spec.vconcat[3].padding).toBeUndefined();
+
+        const groupTitleView = layout.children.find(
+            (child) => child.viewName == "grid0"
+        );
+        const trackTitleView = layout.children.find(
+            (child) => child.viewName == "grid1"
+        );
+
+        expect(groupTitleView.coords).toMatch(/y: [1-9][0-9]*/);
+        expect(trackTitleView.coords).toMatch(/x: [1-9][0-9]*/);
+    });
+
+    test("core title bounds acid test reserves title sides", async () => {
+        const spec = loadSharedExampleSpec(
+            "examples/core/layout/title_bounds.json"
+        );
+        const layout = await specToLayout(spec);
+
+        expect(spec.vconcat[0].padding).toBeUndefined();
+        expect(spec.vconcat[2].padding).toBeUndefined();
+        expect(spec.vconcat[3].padding).toBeUndefined();
+
+        const topTitleView = layout.children.find(
+            (child) => child.viewName == "topTitle"
+        );
+        const nestedRow = layout.children.find(
+            (child) => child.viewName == "sideTitles"
+        );
+        const overlayTitleView = layout.children.find(
+            (child) => child.viewName == "overlayTitle"
+        );
+        const bottomTitleView = layout.children.find(
+            (child) => child.viewName == "bottomTitle"
+        );
+
+        expect(topTitleView.coords).toMatch(/y: [1-9][0-9]*/);
+        expect(nestedRow.children[0].coords).toMatch(/x: [1-9][0-9]*/);
+        expect(nestedRow.children[1].coords).toMatch(
+            /Rectangle: x: [1-9][0-9]+, y: [0-9]+, width: 120, height: 80/
+        );
+        expect(overlayTitleView.coords).toMatch(/height: 80/);
+        expect(bottomTitleView.coords).toMatch(/height: [1-9][0-9]*/);
     });
 
     test("captures a shared-axis concat layout", async () => {

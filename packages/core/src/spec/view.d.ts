@@ -262,9 +262,6 @@ export interface ViewSpecBase extends ResolveSpec {
 
     /**
      * View title.
-     * N.B.: Currently, GenomeSpy doesn't do bound calculation, and you need to
-     * manually specify proper padding for the view to ensure that the title is
-     * visible.
      */
     title?: string | Title;
 
