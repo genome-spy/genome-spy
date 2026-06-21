@@ -4,6 +4,7 @@ export const TITLE_DEFAULTS = {
     frame: "group",
     offset: 10,
     orient: "top",
+    reserve: true,
     align: undefined,
     angle: 0,
     baseline: "alphabetic",
@@ -20,6 +21,8 @@ export const TITLE_DEFAULTS = {
 export const TITLE_STYLE_DEFAULTS = {
     "track-title": {
         orient: "left",
+        frame: "group",
+        reserve: true,
         anchor: "middle",
         align: "right",
         baseline: "middle",
@@ -28,6 +31,8 @@ export const TITLE_STYLE_DEFAULTS = {
     },
     overlay: {
         orient: "top",
+        frame: "group",
+        reserve: false,
         anchor: "start",
         align: "left",
         baseline: "top",
@@ -37,6 +42,8 @@ export const TITLE_STYLE_DEFAULTS = {
     },
     "overlay-title": {
         orient: "top",
+        frame: "group",
+        reserve: false,
         anchor: "start",
         align: "left",
         baseline: "top",

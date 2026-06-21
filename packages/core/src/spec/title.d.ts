@@ -33,7 +33,11 @@ export interface Title extends ZIndexProps {
     anchor?: TitleAnchor;
 
     /**
-     * The reference frame for the anchor position, one of `"bounds"` (to anchor relative to the full bounding box) or `"group"` (to anchor relative to the group width or height).
+     * The reference frame for the title anchor. `"group"` anchors the title
+     * along the plot area. `"bounds"` anchors the title along the full bounds,
+     * including axes, legends, and other reserved space.
+     *
+     * __Default value:__ `"group"`
      */
     frame?: TitleFrame;
 
@@ -43,7 +47,9 @@ export interface Title extends ZIndexProps {
     offset?: number;
 
     /**
-     * Whether the title reserves layout space outside the plot area.
+     * Whether the title reserves layout space outside the plot area. Reserved
+     * titles are placed outside axes, legends, and other guide space on the same
+     * side.
      *
      * Setting this to `false` lets the title render without affecting layout,
      * enabling wilder layouts where titles may overlap nearby content.

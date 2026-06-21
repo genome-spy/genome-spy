@@ -3,6 +3,14 @@ import { specToLayout } from "./testUtils.js";
 import Rectangle from "./layout/rectangle.js";
 import { loadSharedExampleSpec } from "../spec/exampleFiles.js";
 
+/**
+ * @param {string} coords
+ * @param {"x" | "y" | "width" | "height"} prop
+ */
+function getRectProp(coords, prop) {
+    return Number(coords.match(new RegExp(`${prop}: (-?\\d+)`))[1]);
+}
+
 describe("layout snapshot helper", () => {
     test("renders view title in reserved bounds without manual padding", async () => {
         const layout = await specToLayout(
@@ -98,6 +106,52 @@ describe("layout snapshot helper", () => {
         );
         expect(overlayTitleView.coords).toMatch(/height: 80/);
         expect(bottomTitleView.coords).toMatch(/height: [1-9][0-9]*/);
+    });
+
+    test("reserved group-frame title is placed outside same-side axis", async () => {
+        const layout = await specToLayout(
+            {
+                title: {
+                    text: "Top title",
+                    orient: "top",
+                    frame: "group",
+                },
+                data: { values: [{ x: 1, y: 2 }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        axis: { orient: "top" },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: null,
+                    },
+                },
+            },
+            {},
+            Rectangle.create(0, 0, 200, 120)
+        );
+
+        const title = layout.children.find(
+            (child) => child.viewName == "title0"
+        );
+        const axis = layout.children.find(
+            (child) => child.viewName == "axis_top"
+        );
+        const grid = layout.children.find((child) => child.viewName == "grid0");
+
+        expect(getRectProp(title.coords, "x")).toBe(
+            getRectProp(grid.coords, "x")
+        );
+        expect(getRectProp(title.coords, "y")).toBeLessThanOrEqual(
+            getRectProp(axis.coords, "y")
+        );
+        expect(getRectProp(title.coords, "y")).toBeLessThan(
+            getRectProp(grid.coords, "y")
+        );
     });
 
     test("captures a shared-axis concat layout", async () => {

@@ -991,6 +991,13 @@ export default class GridChild {
     }
 
     getOverhang() {
+        // Axes and overhang should be mutually exclusive, so we can just add them together
+        return this.getGuideOverhang()
+            .add(this.getTitleOverhang())
+            .add(this.view.getOverhang());
+    }
+
+    getGuideOverhang() {
         const calculate = (
             /** @type {import("../../spec/axis.js").AxisOrient} */ orient
         ) => getExternalAxisOverhang(this.axes[orient]);
@@ -998,21 +1005,56 @@ export default class GridChild {
             /** @type {import("../../spec/legend.js").LegendOrient} */ orient
         ) => getLegendOverhang(this.legends, orient);
 
-        // Axes and overhang should be mutually exclusive, so we can just add them together
         return new Padding(
             calculate("top") + legend("top"),
             calculate("right") + legend("right"),
             calculate("bottom") + legend("bottom"),
             calculate("left") + legend("left")
-        )
-            .add(this.getTitleOverhang())
-            .add(this.view.getOverhang());
+        );
     }
 
     getTitleOverhang() {
         return this.titleSpec
             ? getTitleOverhang(this.titleSpec, this.layoutParent.context)
             : Padding.zero();
+    }
+
+    /**
+     * Returns the frame used for rendering a view title. Reserved titles are
+     * placed outside guide overhang orthogonally, while the title frame controls
+     * the parallel anchor range.
+     *
+     * @param {Rectangle} viewportCoords
+     */
+    getTitleCoords(viewportCoords) {
+        if (!this.titleSpec) {
+            return viewportCoords;
+        }
+
+        const guideCoords = viewportCoords.expand(this.getGuideOverhang());
+        const frame = this.titleSpec.frame ?? "group";
+        if (this.titleSpec.reserve === false) {
+            return frame == "bounds" ? guideCoords : viewportCoords;
+        } else if (frame == "bounds") {
+            return guideCoords;
+        }
+
+        switch (this.titleSpec.orient) {
+            case "top":
+            case "bottom":
+                return guideCoords.modify({
+                    x: () => viewportCoords.x,
+                    width: () => viewportCoords.width,
+                });
+            case "left":
+            case "right":
+                return guideCoords.modify({
+                    y: () => viewportCoords.y,
+                    height: () => viewportCoords.height,
+                });
+            default:
+                return viewportCoords;
+        }
     }
 
     getOverhangAndPadding() {

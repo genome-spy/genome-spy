@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import Padding from "./layout/padding.js";
-import createTitle, { getTitleOverhang } from "./title.js";
+import createTitle, { getTitleOverhang, resolveTitleSpec } from "./title.js";
 
 function createFontContext() {
     return /** @type {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} */ ({
@@ -166,5 +166,23 @@ describe("title config precedence", () => {
         );
 
         expect(overhang).toEqual(Padding.zero());
+    });
+
+    test("built-in overlay-title style renders without reserving space", () => {
+        const spec = resolveTitleSpec(
+            {
+                text: "Overlay",
+                style: "overlay-title",
+            },
+            [INTERNAL_DEFAULT_CONFIG]
+        );
+
+        expect(spec).toMatchObject({
+            frame: "group",
+            reserve: false,
+        });
+        expect(getTitleOverhang(spec, createFontContext())).toEqual(
+            Padding.zero()
+        );
     });
 });

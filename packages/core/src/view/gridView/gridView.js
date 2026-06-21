@@ -1211,7 +1211,12 @@ export default class GridView extends ContainerView {
                 queueDecoration(
                     gridChild.titleZindex,
                     DECORATION_ORDER.title,
-                    () => title?.render(context, viewportCoords, options)
+                    () =>
+                        title?.render(
+                            context,
+                            gridChild.getTitleCoords(viewportCoords),
+                            options
+                        )
                 );
             }
         }
