@@ -55,6 +55,9 @@ class InspectRenderingContext extends ViewRenderingContext {
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     sampleLabels = [];
 
+    /** @type {import("@genome-spy/core/view/layout/rectangle.js").default[]} */
+    sampleLabelCoords = [];
+
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     sampleGroups = [];
 
@@ -82,6 +85,7 @@ class InspectRenderingContext extends ViewRenderingContext {
             });
         } else if (mark.unitView.name === "sample-labels") {
             this.sampleLabels.push(options);
+            this.sampleLabelCoords.push(this.#coordsStack.at(-1));
         } else if (
             !isChromeView(mark.unitView) &&
             mark.unitView
@@ -843,6 +847,41 @@ describe("layout and group column", () => {
             view.sidebarCoords.width
         );
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
+    });
+
+    test("aligns titled sidebar plots with the sample pane", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                    },
+                },
+            },
+        });
+
+        const renderContext = new InspectRenderingContext({
+            picking: false,
+        });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderContext.sampleLabelCoords).not.toHaveLength(0);
+        expect(renderContext.sampleLabelCoords[0].y).toBe(view.childCoords.y);
+        expect(renderContext.sampleLabelCoords[0].height).toBe(
+            view.childCoords.height
+        );
     });
 
     test("renders child legends in the sample pane", async () => {

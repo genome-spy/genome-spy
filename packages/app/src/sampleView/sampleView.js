@@ -749,7 +749,10 @@ export default class SampleView extends ContainerView {
             .getHorizontalReserve(locations)
             .add(new Padding(0, 0, 0, sidebarWidth));
 
-        return chromeOverhang.add(this.#gridChild.getOverhangWithoutYAxes());
+        const sampleOverhang = this.#gridChild.getOverhangWithoutYAxes();
+        return chromeOverhang
+            .add(sampleOverhang.getHorizontal())
+            .add(this.#getSharedVerticalOverhang());
     }
 
     /**
@@ -783,6 +786,33 @@ export default class SampleView extends ContainerView {
                   .getSize()
                   .addPadding(this.#sidebarView.getPadding()).width
             : { px: 0 };
+    }
+
+    /**
+     * SampleView aligns sidebar rows with repeated sample rows. Vertical
+     * title/axis overhang from either side reserves one shared band instead of
+     * shrinking the sidebar and sample pane independently.
+     *
+     * @returns {Padding}
+     */
+    #getSharedVerticalOverhang() {
+        const sampleOverhang = this.#gridChild
+            .getOverhangWithoutYAxes()
+            .getVertical();
+        const sidebarOverhang = this.#sidebarView.isConfiguredVisible()
+            ? this.#sidebarView.getOverhang().getVertical()
+            : Padding.zero();
+
+        return sampleOverhang.union(sidebarOverhang);
+    }
+
+    /**
+     * @returns {Padding}
+     */
+    #getSidebarVerticalOverhang() {
+        return this.#sidebarView.isConfiguredVisible()
+            ? this.#sidebarView.getOverhang().getVertical()
+            : Padding.zero();
     }
 
     /**
@@ -1107,7 +1137,12 @@ export default class SampleView extends ContainerView {
             coords = coords.shrink(this.getPadding());
         }
 
-        coords = coords.shrink(this.#gridChild.getOverhangWithoutYAxes());
+        coords = coords.shrink(
+            this.#gridChild
+                .getOverhangWithoutYAxes()
+                .getHorizontal()
+                .add(this.#getSharedVerticalOverhang())
+        );
         // TODO: Should also consider the overhang of the summaries.
 
         context.pushView(this, coords);
@@ -1134,7 +1169,11 @@ export default class SampleView extends ContainerView {
             locations
         );
 
-        this.#sidebarView.render(context, this.sidebarCoords, options);
+        this.#sidebarView.render(
+            context,
+            this.sidebarCoords.expand(this.#getSidebarVerticalOverhang()),
+            options
+        );
 
         this.#renderChild(context, this.childCoords, options);
 
