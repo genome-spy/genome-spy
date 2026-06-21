@@ -121,7 +121,12 @@ export function requestTitleFont(spec, context) {
  * @returns {Padding}
  */
 export function getTitleOverhang(spec, context) {
-    if (!spec || spec.orient == "none" || spec.offset < 0) {
+    if (
+        !spec ||
+        spec.reserve === false ||
+        spec.orient == "none" ||
+        spec.offset < 0
+    ) {
         return Padding.zero();
     }
 

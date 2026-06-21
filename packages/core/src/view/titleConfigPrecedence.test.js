@@ -151,4 +151,20 @@ describe("title config precedence", () => {
 
         expect(overhang).toEqual(Padding.zero());
     });
+
+    test("title can render without reserving space", () => {
+        const overhang = getTitleOverhang(
+            {
+                text: "Wild title",
+                orient: "bottom",
+                offset: 10,
+                fontSize: 12,
+                angle: 0,
+                reserve: false,
+            },
+            createFontContext()
+        );
+
+        expect(overhang).toEqual(Padding.zero());
+    });
 });

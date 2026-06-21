@@ -873,6 +873,7 @@ function createAttributeSpec(attributeName, attributeDef, metadataDef) {
             align: "right",
             baseline: "middle",
             offset: 5,
+            reserve: metadataDef?.titleReserve ?? false,
             angle: metadataDef?.labelAngle ?? -90,
             dy: -0.5,
 

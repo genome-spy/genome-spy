@@ -474,6 +474,18 @@ export interface MetadataDef {
      * __Default value:__ `-90`
      */
     labelAngle?: number;
+
+    /**
+     * Whether metadata attribute titles reserve layout space outside the sample
+     * rows.
+     *
+     * Setting this to `false` enables wilder layouts where attribute titles
+     * may overlap nearby content. This is useful for dense metadata matrices
+     * with rotated labels.
+     *
+     * __Default value:__ `false`
+     */
+    titleReserve?: boolean;
 }
 
 export interface SampleDef {

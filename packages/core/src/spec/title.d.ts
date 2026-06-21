@@ -43,6 +43,16 @@ export interface Title extends ZIndexProps {
     offset?: number;
 
     /**
+     * Whether the title reserves layout space outside the plot area.
+     *
+     * Setting this to `false` lets the title render without affecting layout,
+     * enabling wilder layouts where titles may overlap nearby content.
+     *
+     * __Default value:__ `true`
+     */
+    reserve?: boolean;
+
+    /**
      * Z-order of the title relative to the view content.
      *
      * Values greater than `0` render after the view marks. Values less than or
