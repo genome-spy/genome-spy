@@ -9,7 +9,7 @@ import {
     setUniformBlock,
     setUniforms,
 } from "twgl.js";
-import { isContinuous, isDiscrete } from "vega-scale";
+import { isContinuous, isDiscrete, isDiscretizing } from "vega-scale";
 import createEncoders, {
     findChannelDefWithScale,
     getSecondaryChannel,
@@ -29,6 +29,7 @@ import {
     generateDynamicValueGlslAndUniform,
     splitLargeHighPrecision,
     getRangeForGlsl,
+    getDiscretizingDomainForGlsl,
     getAttributeAndArrayTypes,
     generateDataGlsl,
     generateDatumGlslAndUniform,
@@ -898,9 +899,14 @@ export default class Mark {
                         const domainSetter =
                             this.createMarkUniformSetter(domainUniformName);
                         const set = () => {
-                            const domain = isDiscrete(scale.type)
-                                ? [0, scale.domain().length]
-                                : scale.domain();
+                            let domain;
+                            if (isDiscrete(scale.type)) {
+                                domain = [0, scale.domain().length];
+                            } else if (isDiscretizing(scale.type)) {
+                                domain = getDiscretizingDomainForGlsl(scale);
+                            } else {
+                                domain = scale.domain();
+                            }
 
                             domainSetter(
                                 isHighPrecisionScale(scale.type)

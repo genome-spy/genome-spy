@@ -21,6 +21,7 @@ import {
     createInterpolatedColorTexture,
     createSchemeTexture,
 } from "./colorUtils.js";
+import { getDiscreteRangeCountForGlsl } from "./glslScaleGenerator.js";
 import {
     getDiscreteRangeMapper,
     isColorChannel,
@@ -290,10 +291,8 @@ export default class WebGLHelper {
         function fixCount(count, scale) {
             if (isDiscrete(scale.type)) {
                 return scale.domain().length;
-            } else if (scale.type == "threshold") {
-                return scale.domain().length + 1;
-            } else if (scale.type == "quantize") {
-                return count ?? 4;
+            } else if (scale.type == "threshold" || scale.type == "quantize") {
+                return getDiscreteRangeCountForGlsl(scale);
             } else if (scale.type == "quantile") {
                 return count ?? 4;
             }
@@ -317,7 +316,7 @@ export default class WebGLHelper {
                     texture = createDiscreteColorTexture(
                         range,
                         this.gl,
-                        scale.domain().length,
+                        getDiscreteRangeCountForGlsl(scale),
                         existingTexture
                     );
                 } else {
@@ -351,7 +350,9 @@ export default class WebGLHelper {
                 texture = createDiscreteColorTexture(
                     range,
                     this.gl,
-                    scale.domain().length,
+                    isDiscretizing(scale.type)
+                        ? getDiscreteRangeCountForGlsl(scale)
+                        : scale.domain().length,
                     existingTexture
                 );
             }
@@ -373,7 +374,9 @@ export default class WebGLHelper {
                     createDiscreteTexture(
                         range.map(mapper),
                         this.gl,
-                        scale.domain().length,
+                        isDiscretizing(scale.type)
+                            ? getDiscreteRangeCountForGlsl(scale)
+                            : scale.domain().length,
                         existingTexture
                     )
                 );

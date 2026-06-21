@@ -190,6 +190,39 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).not.toContain("#define VISIBLE_RANGE_CULLING");
     });
 
+    test("quantize color scale generates discretizing shader", async () => {
+        const sources = await captureShaderSources({
+            data: {
+                values: [
+                    { x: 1, y: 1, value: 0 },
+                    { x: 2, y: 2, value: 120 },
+                ],
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+                color: {
+                    field: "value",
+                    type: "quantitative",
+                    scale: {
+                        type: "quantize",
+                        domain: [0, 120],
+                        scheme: { name: "turbo", count: 5 },
+                    },
+                },
+            },
+        });
+
+        expect(sources.vertex).toContain("mediump float uDomain_fill[4]");
+        expect(sources.vertex).toContain(
+            "while (slot < uDomain_fill.length() && value >= uDomain_fill[slot])"
+        );
+        expect(sources.vertex).toContain(
+            "return getDiscreteColor(uRangeTexture_fill, int(transformed));"
+        );
+    });
+
     test("interval selection example", async () => {
         const sources = await captureShaderSources(
             loadSpec(

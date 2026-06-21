@@ -53,6 +53,39 @@ function splitScaleType(type) {
 }
 
 /**
+ * Gets the boundary values that the shader uses for discretizing scale buckets.
+ * Threshold scales expose the boundaries as their domain, while quantize scales
+ * derive them from the domain extent and range count.
+ *
+ * @param {any} scale
+ * @returns {number[]}
+ */
+export function getDiscretizingDomainForGlsl(scale) {
+    if (scale.type === "quantize") {
+        return scale.thresholds();
+    } else {
+        return scale.domain();
+    }
+}
+
+/**
+ * Gets the number of buckets needed for a discrete or discretizing range
+ * texture.
+ *
+ * @param {any} scale
+ * @returns {number}
+ */
+export function getDiscreteRangeCountForGlsl(scale) {
+    if (scale.type === "quantize") {
+        return scale.range().length;
+    } else if (scale.type === "threshold") {
+        return scale.domain().length + 1;
+    } else {
+        return scale.domain().length;
+    }
+}
+
+/**
  *
  * @param {Channel} channel
  * @param {number} conditionNumber
@@ -250,7 +283,11 @@ export function generateScaleGlsl(channel, scale, channelDef) {
 
     const { hp, attributeType } = getAttributeAndArrayTypes(scale, channel);
 
-    const domainLength = scale.domain ? scale.domain().length : undefined;
+    const domainLength = scale.domain
+        ? isDiscretizing(scale.type)
+            ? getDiscretizingDomainForGlsl(scale).length
+            : scale.domain().length
+        : undefined;
 
     /** @type {string} */
     let domainUniform;
@@ -345,8 +382,8 @@ export function generateScaleGlsl(channel, scale, channelDef) {
             break;
 
         case "threshold":
+        case "quantize":
             // TODO: Quantile (it's a specialization of threshold scale)
-            // TODO: Quantize
             break;
 
         default:
