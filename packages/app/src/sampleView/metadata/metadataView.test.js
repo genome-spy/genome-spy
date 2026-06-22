@@ -313,6 +313,28 @@ describe("MetadataView", () => {
         });
     });
 
+    it("uses the default metadata title", async () => {
+        const { metadataView } = await createMetadataViewTestHarness();
+
+        expect(metadataView.spec.title).toBe("Sample metadata");
+    });
+
+    it("uses a configured metadata title", async () => {
+        const { metadataView } = await createMetadataViewTestHarness({
+            metadataDef: { title: "Clinical metadata" },
+        });
+
+        expect(metadataView.spec.title).toBe("Clinical metadata");
+    });
+
+    it("hides the metadata title when configured as null", async () => {
+        const { metadataView } = await createMetadataViewTestHarness({
+            metadataDef: { title: null },
+        });
+
+        expect(metadataView.spec.title).toBeUndefined();
+    });
+
     it("removes dataflow hosts when metadata is rebuilt", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();

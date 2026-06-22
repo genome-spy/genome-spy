@@ -82,7 +82,9 @@ export class MetadataView extends ConcatView {
         /** @type {import("../../spec/view.js").AppHConcatSpec} */
         const spec = {
             name: "sample-metadata",
-            title: "Sample metadata",
+            ...(metadataDef.title !== null
+                ? { title: metadataDef.title ?? "Sample metadata" }
+                : {}),
             configurableVisibility: true,
             data: { name: null },
             hconcat: [], // Contents are added dynamically

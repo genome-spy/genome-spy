@@ -409,6 +409,15 @@ export type MetadataSourceEntry =
 
 export interface MetadataDef {
     /**
+     * Title shown above metadata columns.
+     *
+     * Set to `null` to hide the metadata title.
+     *
+     * __Default value:__ `"Sample metadata"`
+     */
+    title?: string | null;
+
+    /**
      * Metadata source definitions used for startup and on-demand imports.
      *
      * Source order is significant for startup loading: eager startup imports
