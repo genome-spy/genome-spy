@@ -153,22 +153,28 @@ function resolveTitleSpec(title, configScopes = []) {
 
 /**
  * @param {import("../spec/title.js").Title} spec
+ * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
  * @returns {{ xOffset: number, yOffset: number }}
  */
-function getTitleOffsets(spec) {
+function getTitleOffsets(spec, context) {
     const offsets = { xOffset: 0, yOffset: 0 };
+    const subtitleSpacing = spec.subtitle
+        ? getSubtitleTextPerpendicularExtent(spec, context) +
+          (spec.subtitlePadding ?? 0)
+        : 0;
+
     switch (spec.orient) {
         case "top":
-            offsets.yOffset = -spec.offset;
+            offsets.yOffset = -spec.offset - subtitleSpacing;
             break;
         case "right":
-            offsets.xOffset = spec.offset;
+            offsets.xOffset = spec.offset + subtitleSpacing;
             break;
         case "bottom":
             offsets.yOffset = spec.offset;
             break;
         case "left":
-            offsets.xOffset = -spec.offset;
+            offsets.xOffset = -spec.offset - subtitleSpacing;
             break;
         default:
     }
@@ -182,21 +188,23 @@ function getTitleOffsets(spec) {
  * @returns {{ xOffset: number, yOffset: number }}
  */
 function getSubtitleOffsets(spec, context) {
-    const offsets = getTitleOffsets(spec);
+    const offsets = { xOffset: 0, yOffset: 0 };
     const spacing =
         getTitleTextPerpendicularExtent(spec, context) +
         (spec.subtitlePadding ?? 0);
 
     switch (spec.orient) {
         case "top":
+            offsets.yOffset = -spec.offset;
+            break;
         case "bottom":
-            offsets.yOffset += spacing;
+            offsets.yOffset = spec.offset + spacing;
             break;
         case "right":
-            offsets.xOffset -= spacing;
+            offsets.xOffset = spec.offset;
             break;
         case "left":
-            offsets.xOffset += spacing;
+            offsets.xOffset = -spec.offset;
             break;
         default:
     }
@@ -239,7 +247,7 @@ function requestTitleFonts(spec, context) {
  * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} context
  * @returns {Padding}
  */
-export function getTitleOverhang(spec, context) {
+function getTitleOverhang(spec, context) {
     if (
         !spec ||
         spec.reserve === false ||
@@ -430,7 +438,7 @@ function createTitleUnitSpecs(titleSpec, context) {
             mark: createTitleTextMark(
                 titleSpec,
                 xy,
-                getTitleOffsets(titleSpec),
+                getTitleOffsets(titleSpec, context),
                 false
             ),
         },
@@ -536,6 +544,10 @@ export default class TitleView extends ContainerView {
      */
     *[Symbol.iterator]() {
         yield* this.#children;
+    }
+
+    getOverhang() {
+        return getTitleOverhang(this.titleSpec, this.context);
     }
 
     /**

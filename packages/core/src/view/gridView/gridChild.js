@@ -17,7 +17,7 @@ import LayerView from "../layerView.js";
 import Padding from "../layout/padding.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
-import TitleView, { getTitleOverhang } from "../titleView.js";
+import TitleView from "../titleView.js";
 import UnitView from "../unitView.js";
 import {
     isChromeView,
@@ -998,9 +998,7 @@ export default class GridChild {
     }
 
     getTitleOverhang() {
-        return this.titleSpec
-            ? getTitleOverhang(this.titleSpec, this.layoutParent.context)
-            : Padding.zero();
+        return this.title?.getOverhang() ?? Padding.zero();
     }
 
     /**

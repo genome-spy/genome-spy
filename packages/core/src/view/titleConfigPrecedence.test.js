@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
 import Padding from "./layout/padding.js";
-import TitleView, { getTitleOverhang } from "./titleView.js";
+import TitleView from "./titleView.js";
 import ContainerView from "./containerView.js";
 import { createTestViewContext } from "./testUtils.js";
 
@@ -207,7 +207,7 @@ describe("title config precedence", () => {
     });
 
     test("subtitle contributes to reserved title overhang", () => {
-        const overhang = getTitleOverhang(
+        const overhang = createTitleView(
             {
                 text: "Title",
                 subtitle: "Subtitle",
@@ -218,20 +218,22 @@ describe("title config precedence", () => {
                 subtitlePadding: 3,
                 angle: 0,
             },
+            [INTERNAL_DEFAULT_CONFIG],
             createFontContext()
-        );
+        ).getOverhang();
 
         expect(overhang).toEqual(new Padding(31, 0, 0, 0));
     });
 
-    test("subtitle offset uses measured title extent", () => {
-        const [, subtitle] = createTitleUnits(
+    test("top subtitle remains outside the plot edge", () => {
+        const [title, subtitle] = createTitleUnits(
             {
                 text: "Title",
                 subtitle: "Subtitle",
                 orient: "top",
                 offset: 10,
                 fontSize: 12,
+                subtitleFontSize: 8,
                 subtitlePadding: 3,
                 angle: 0,
             },
@@ -239,11 +241,12 @@ describe("title config precedence", () => {
             createFontContext()
         );
 
-        expect(getTextMark(subtitle).yOffset).toBeCloseTo(3.8);
+        expect(getTextMark(title).yOffset).toBeCloseTo(-20.2);
+        expect(getTextMark(subtitle).yOffset).toBe(-10);
     });
 
     test("top title reserves positive offset and text height", () => {
-        const overhang = getTitleOverhang(
+        const overhang = createTitleView(
             {
                 text: "Title",
                 orient: "top",
@@ -251,14 +254,15 @@ describe("title config precedence", () => {
                 fontSize: 12,
                 angle: 0,
             },
+            [INTERNAL_DEFAULT_CONFIG],
             createFontContext()
-        );
+        ).getOverhang();
 
         expect(overhang).toEqual(new Padding(21, 0, 0, 0));
     });
 
     test("left title reserves positive offset and rotated text height", () => {
-        const overhang = getTitleOverhang(
+        const overhang = createTitleView(
             {
                 text: "Track title",
                 orient: "left",
@@ -266,14 +270,15 @@ describe("title config precedence", () => {
                 fontSize: 12,
                 angle: -90,
             },
+            [INTERNAL_DEFAULT_CONFIG],
             createFontContext()
-        );
+        ).getOverhang();
 
         expect(overhang).toEqual(new Padding(0, 0, 0, 21));
     });
 
     test("negative offset title reserves no external space", () => {
-        const overhang = getTitleOverhang(
+        const overhang = createTitleView(
             {
                 text: "Overlay",
                 orient: "top",
@@ -281,14 +286,15 @@ describe("title config precedence", () => {
                 fontSize: 12,
                 angle: 0,
             },
+            [INTERNAL_DEFAULT_CONFIG],
             createFontContext()
-        );
+        ).getOverhang();
 
         expect(overhang).toEqual(Padding.zero());
     });
 
     test("title can render without reserving space", () => {
-        const overhang = getTitleOverhang(
+        const overhang = createTitleView(
             {
                 text: "Wild title",
                 orient: "bottom",
@@ -297,8 +303,9 @@ describe("title config precedence", () => {
                 angle: 0,
                 reserve: false,
             },
+            [INTERNAL_DEFAULT_CONFIG],
             createFontContext()
-        );
+        ).getOverhang();
 
         expect(overhang).toEqual(Padding.zero());
     });
@@ -316,8 +323,12 @@ describe("title config precedence", () => {
             frame: "group",
             reserve: false,
         });
-        expect(getTitleOverhang(spec, createFontContext())).toEqual(
-            Padding.zero()
-        );
+        expect(
+            createTitleView(
+                spec,
+                [INTERNAL_DEFAULT_CONFIG],
+                createFontContext()
+            ).getOverhang()
+        ).toEqual(Padding.zero());
     });
 });

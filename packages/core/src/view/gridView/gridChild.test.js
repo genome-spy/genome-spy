@@ -3,6 +3,9 @@ import { describe, expect, test } from "vitest";
 import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
 import { iterateLegendViews } from "./gridChildLegends.js";
 import Padding from "../layout/padding.js";
+import TitleView from "../titleView.js";
+import ContainerView from "../containerView.js";
+import { createTestViewContext } from "../testUtils.js";
 
 function createMinimalGridChild() {
     const view = /** @type {any} */ ({
@@ -24,42 +27,56 @@ function createTitledGridChild(
     /** @type {Partial<import("../../spec/title.js").Title>} */ titleSpec
 ) {
     const child = createMinimalGridChild();
-    child.titleSpec = /** @type {import("../../spec/title.js").Title} */ ({
-        text: "Title",
-        orient: "top",
-        offset: 10,
-        fontSize: 12,
-        angle: 0,
-        ...titleSpec,
-    });
-    child.layoutParent.context.fontManager = /** @type {any} */ ({
-        getDefaultFont: () => ({
-            metrics:
-                /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
-                    common: { base: 10 },
-                    capHeight: 7,
-                    descent: 2,
-                    measureWidth: (
-                        /** @type {string} */ text,
-                        /** @type {number} */ size
-                    ) => text.length * size,
-                }),
+    const context = createTestViewContext();
+    context.fontManager = createFontManager();
+    const parent = new ContainerView(
+        { layer: [] },
+        context,
+        null,
+        null,
+        "parent"
+    );
+    child.title = TitleView.create(
+        /** @type {import("../../spec/title.js").Title} */ ({
+            text: "Title",
+            orient: "top",
+            offset: 10,
+            fontSize: 12,
+            angle: 0,
+            ...titleSpec,
         }),
-        getFont: () => ({
-            metrics:
-                /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
-                    common: { base: 10 },
-                    capHeight: 7,
-                    descent: 2,
-                    measureWidth: (
-                        /** @type {string} */ text,
-                        /** @type {number} */ size
-                    ) => text.length * size,
-                }),
-        }),
-    });
+        [],
+        context,
+        parent,
+        parent,
+        "title"
+    );
+    child.titleSpec = child.title.titleSpec;
 
     return child;
+}
+
+function createFontManager() {
+    return /** @type {any} */ ({
+        getDefaultFont: () => ({
+            metrics: createFontMetrics(),
+        }),
+        getFont: () => ({
+            metrics: createFontMetrics(),
+        }),
+    });
+}
+
+function createFontMetrics() {
+    return /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
+        common: { base: 10 },
+        capHeight: 7,
+        descent: 2,
+        measureWidth: (
+            /** @type {string} */ text,
+            /** @type {number} */ size
+        ) => text.length * size,
+    });
 }
 
 function createLegendEntry(
