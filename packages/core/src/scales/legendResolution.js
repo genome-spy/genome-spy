@@ -219,13 +219,15 @@ function getSymbolGeometry(channel, legendParent) {
  */
 function isTrackLegendParent(legendParent) {
     const xDef = getLegendChannelDef("x", legendParent);
-    const xScale = legendParent.getScaleResolution("x")?.getScale();
+    const xScaleType = legendParent
+        .getScaleResolution("x")
+        ?.getResolvedScaleType();
 
     return (
         xDef?.type == "index" ||
         xDef?.type == "locus" ||
-        xScale?.type == "index" ||
-        xScale?.type == "locus"
+        xScaleType == "index" ||
+        xScaleType == "locus"
     );
 }
 

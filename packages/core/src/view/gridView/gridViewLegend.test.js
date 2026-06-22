@@ -831,6 +831,63 @@ describe("GridView legends", () => {
             expect(legend.legendProps.offset).toBe(3);
         });
 
+        test("uses track legend defaults for locus views before assembly preflight", async () => {
+            const context = createTestViewContext();
+            context.genomeStore.configureGenomes(
+                new Map([
+                    ["hg38_chr1-22", { url: "data/tools/hg38_chr1_22.sizes" }],
+                ]),
+                "hg38_chr1-22"
+            );
+
+            // View construction happens before URL-backed assemblies are loaded.
+            const view = await context.createOrImportView(
+                /** @type {import("../../spec/root.js").RootSpec} */ ({
+                    vconcat: [
+                        {
+                            height: 40,
+                            data: {
+                                values: [
+                                    {
+                                        chrom: "chr1",
+                                        start: 1,
+                                        Origin: "Europe",
+                                    },
+                                    {
+                                        chrom: "chr2",
+                                        start: 2,
+                                        Origin: "Japan",
+                                    },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    chrom: "chrom",
+                                    pos: "start",
+                                    type: "locus",
+                                },
+                                color: {
+                                    field: "Origin",
+                                    type: "nominal",
+                                },
+                            },
+                        },
+                    ],
+                }),
+                null,
+                null,
+                "viewRoot"
+            );
+            if (!(view instanceof ConcatView)) {
+                throw new Error("Expected a concat root view!");
+            }
+            const [legend] = getLegends(view);
+
+            expect(legend.legendProps.orient).toBe("bottom");
+            expect(legend.legendProps.titleOrient).toBe("left");
+        });
+
         test("uses track defaults for layer children with index x scale", async () => {
             const view = await createLegendTestView({
                 vconcat: [
