@@ -15,6 +15,13 @@ const WEIGHTS = {
     black: 900,
 };
 
+/** @type {FontKey} */
+const DEFAULT_FONT_KEY = {
+    family: "Lato",
+    style: "normal",
+    weight: 400,
+};
+
 /**
  * Loader for A-Frame fonts.
  *
@@ -72,6 +79,7 @@ export default class BmFontManager {
                 ? this._createTextureNow(latoRegularBitmap)
                 : undefined,
         };
+        this._fonts.set(DEFAULT_FONT_KEY, this._defaultFontEntry);
     }
 
     async waitUntilReady() {
@@ -85,16 +93,8 @@ export default class BmFontManager {
      * @param {FontWeight | keyof WEIGHTS} weight
      * @returns {FontEntry}
      */
-    getFont(family, style = "normal", weight = "regular") {
-        if (isString(weight)) {
-            weight =
-                WEIGHTS[/** @type {keyof WEIGHTS} */ (weight.toLowerCase())];
-            if (!weight) {
-                throw new Error("Unknown font weight: " + weight);
-            }
-        }
-
-        const key = { family, style, weight };
+    getFont(family = DEFAULT_FONT_KEY.family, style = "normal", weight = 400) {
+        const key = normalizeFontKey(family, style, weight);
         let fontEntry = this._fonts.get(key);
         if (!fontEntry) {
             // Return and empty entry, load it asynchronously
@@ -259,6 +259,41 @@ export default class BmFontManager {
         this._promises.push(promise);
         return texture;
     }
+}
+
+/**
+ * @param {string} family
+ * @param {FontStyle} style
+ * @param {FontWeight | keyof WEIGHTS} weight
+ * @returns {FontKey}
+ */
+function normalizeFontKey(family, style, weight) {
+    return {
+        family:
+            family.toLowerCase() == "sans-serif"
+                ? DEFAULT_FONT_KEY.family
+                : family,
+        style,
+        weight: normalizeFontWeight(weight),
+    };
+}
+
+/**
+ * @param {FontWeight | keyof WEIGHTS} weight
+ * @returns {FontWeight}
+ */
+function normalizeFontWeight(weight) {
+    if (isString(weight)) {
+        const numericWeight =
+            WEIGHTS[/** @type {keyof WEIGHTS} */ (weight.toLowerCase())];
+        if (!numericWeight) {
+            throw new Error("Unknown font weight: " + weight);
+        }
+
+        return numericWeight;
+    }
+
+    return weight;
 }
 
 /**

@@ -14,6 +14,7 @@ import { TextVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixHalfOpenRangedText } from "./markUtils.js";
 import { primaryPositionalChannels } from "../encoder/encoder.js";
+import { requestFont } from "../fonts/textMetrics.js";
 
 /** For GLSL uniforms */
 const alignments = {
@@ -50,13 +51,7 @@ export default class TextMark extends Mark {
      */
     constructor(unitView) {
         super(unitView);
-        this.font = this.properties.font
-            ? unitView.context.fontManager.getFont(
-                  this.properties.font,
-                  this.properties.fontStyle,
-                  this.properties.fontWeight
-              )
-            : unitView.context.fontManager.getDefaultFont();
+        this.font = requestFont(unitView.context.fontManager, this.properties);
 
         this.setupExprRefsNeedingGraphicsUpdate([
             "text",

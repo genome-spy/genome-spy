@@ -35,10 +35,26 @@ function createFontManager() {
 }
 
 describe("textMetrics", () => {
-    test("requests the default font when no family is configured", () => {
+    test("requests the font manager default when no family is configured", () => {
         const font = requestFont(createFontManager(), {});
 
-        expect(font.metrics).toBeDefined();
+        expect(font).toMatchObject({
+            family: undefined,
+            fontStyle: undefined,
+            fontWeight: undefined,
+        });
+    });
+
+    test("requests configured weight from default family", () => {
+        const font = requestFont(createFontManager(), {
+            fontWeight: "bold",
+        });
+
+        expect(font).toMatchObject({
+            family: undefined,
+            fontStyle: undefined,
+            fontWeight: "bold",
+        });
     });
 
     test("requests configured font properties", () => {

@@ -13,6 +13,37 @@ function getBand(channelDef) {
 }
 
 describe("TextMark", () => {
+    test("requests configured weight from the default font family", async () => {
+        const view = await create(
+            {
+                data: {
+                    values: [{ label: "Bold default family" }],
+                },
+                layer: [
+                    {
+                        mark: {
+                            type: "text",
+                            fontWeight: "bold",
+                        },
+                        encoding: {
+                            text: { field: "label", type: "nominal" },
+                        },
+                    },
+                ],
+            },
+            LayerView
+        );
+
+        const textView = /** @type {UnitView} */ (view.children[0]);
+        const textMark = /** @type {import("./text.js").default} */ (
+            textView.mark
+        );
+
+        expect(textMark.font).not.toBe(
+            textView.context.fontManager.getDefaultFont()
+        );
+    });
+
     test("uses interval edges for ranged index text", async () => {
         const view = await create(
             {

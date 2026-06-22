@@ -2,7 +2,7 @@
  * @typedef {import("./bmFontManager.js").BMFontMetrics} BMFontMetrics
  * @typedef {import("../spec/font.js").FontStyle} FontStyle
  * @typedef {import("../spec/font.js").FontWeight} FontWeight
- * @typedef {{ metrics?: BMFontMetrics }} FontEntryLike
+ * @typedef {{ metrics?: BMFontMetrics, texture?: WebGLTexture }} FontEntryLike
  * @typedef {{
  *     font?: string,
  *     fontStyle?: FontStyle,
@@ -11,7 +11,7 @@
  * @typedef {{
  *     getDefaultFont: () => FontEntryLike,
  *     getFont: (
- *         family: string,
+ *         family?: string,
  *         style?: FontStyle,
  *         weight?: FontWeight
  *     ) => FontEntryLike,
@@ -26,9 +26,11 @@
  * @returns {FontEntryLike}
  */
 export function requestFont(fontManager, config) {
-    return config.font
-        ? fontManager.getFont(config.font, config.fontStyle, config.fontWeight)
-        : fontManager.getDefaultFont();
+    return fontManager.getFont(
+        config.font,
+        config.fontStyle,
+        config.fontWeight
+    );
 }
 
 /**
