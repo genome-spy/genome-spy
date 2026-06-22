@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import UnitView from "@genome-spy/core/view/unitView.js";
 import Tooltip from "@genome-spy/core/utils/ui/tooltip.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
+import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
+import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
 import {
     createSampleViewStub,
     createStoreStub,
@@ -13,6 +15,27 @@ import {
 const contextMenuMocks = vi.hoisted(() => ({
     contextMenu: vi.fn(),
 }));
+
+class NoOpRenderingContext extends ViewRenderingContext {
+    /**
+     * @param {import("@genome-spy/core/types/rendering.js").GlobalRenderingOptions} options
+     */
+    constructor(options) {
+        super(options);
+    }
+
+    pushView() {
+        //
+    }
+
+    popView() {
+        //
+    }
+
+    renderMark() {
+        //
+    }
+}
 
 vi.mock("../attributeContextMenu.js", () => ({ default: () => [] }));
 vi.mock("../../utils/ui/contextMenu.js", async (importOriginal) => {
@@ -336,6 +359,42 @@ describe("MetadataView", () => {
         });
 
         expect(metadataView.spec.title).toBeNull();
+    });
+
+    it("clips metadata cells to the sample row bounds, excluding title overhang", async () => {
+        const { sampleView, metadataView } =
+            await createMetadataViewTestHarness({
+                sampleMetadata: {
+                    attributeNames: ["Annotations/foo", "Annotations/bar"],
+                    attributeDefs: {
+                        "Annotations/foo": { type: "nominal" },
+                        "Annotations/bar": { type: "nominal" },
+                    },
+                    entities: {
+                        s1: {
+                            "Annotations/foo": "A",
+                            "Annotations/bar": "B",
+                        },
+                    },
+                },
+            });
+
+        const clipBySummary = vi.fn((coords) => coords);
+        sampleView.locationManager.clipBySummary = clipBySummary;
+
+        const coords = Rectangle.create(10, 20, 120, 80);
+        metadataView.render(
+            new NoOpRenderingContext({ picking: false }),
+            coords
+        );
+
+        const expectedClipInput = coords.shrink(metadataView.getOverhang());
+        expect(metadataView.getOverhang().top).toBeGreaterThan(0);
+        const actualClipInput = clipBySummary.mock.calls[0][0];
+        expect(actualClipInput.x).toBe(expectedClipInput.x);
+        expect(actualClipInput.y).toBe(expectedClipInput.y);
+        expect(actualClipInput.width).toBe(expectedClipInput.width);
+        expect(actualClipInput.height).toBe(expectedClipInput.height);
     });
 
     it("removes dataflow hosts when metadata is rebuilt", async () => {

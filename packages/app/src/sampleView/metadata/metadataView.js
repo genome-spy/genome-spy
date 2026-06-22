@@ -198,9 +198,11 @@ export class MetadataView extends ConcatView {
             return;
         }
 
+        const contentCoords = coords.shrink(this.getOverhang());
         super.render(context, coords, {
             ...options,
-            clipRect: this.#sampleView.locationManager.clipBySummary(coords),
+            clipRect:
+                this.#sampleView.locationManager.clipBySummary(contentCoords),
         });
     }
 
