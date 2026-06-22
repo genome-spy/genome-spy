@@ -895,6 +895,8 @@ export default class View {
         const sampleFieldDef = this.getEncoding().sample;
         if (isFieldDef(sampleFieldDef)) {
             return [sampleFieldDef.field];
+        } else if (this.options.blockEncodingInheritance) {
+            return [];
         } else {
             return this.layoutParent?.getFacetFields(this);
         }

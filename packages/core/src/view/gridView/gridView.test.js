@@ -1127,6 +1127,28 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["child", "title0"]);
     });
 
+    test("does not facet generated view titles by sample field", async () => {
+        await expect(
+            createAndInitialize(
+                {
+                    vconcat: [
+                        {
+                            title: "Track title",
+                            data: { values: [{ sample: "A", x: 1, y: 2 }] },
+                            mark: "point",
+                            encoding: {
+                                sample: { field: "sample" },
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                            },
+                        },
+                    ],
+                },
+                ConcatView
+            )
+        ).resolves.toBeInstanceOf(ConcatView);
+    });
+
     test("renders separators after child views when separator zindex is positive", async () => {
         const order = await recordRenderOrder(
             {
