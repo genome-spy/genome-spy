@@ -6,6 +6,8 @@
     "Data source: http://bioinfo.konkuk.ac.kr/synteny_portal/"
   ],
 
+  "title": "Human-mouse synteny",
+
   "view": { "stroke": "lightgray" },
 
   "data": { "url": "data/synteny-hg38-mm10.tsv" },

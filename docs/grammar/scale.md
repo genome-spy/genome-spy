@@ -174,6 +174,15 @@ Somewhere inside the chromosome 1:
 
 EXAMPLE examples/docs/grammar/scale/locus-scale-domain.json height=80
 
+#### Different assemblies
+
+Different positional channels can use locus scales with different assemblies.
+For example, a synteny view can use the `x` axis for human `hg38` coordinates
+and the `y` axis for mouse `mm10` coordinates by setting `scale.assembly` on
+each channel.
+
+EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460
+
 ## Domain from Selection Parameters
 
 Scale domains can be linked to interval selection parameters:
