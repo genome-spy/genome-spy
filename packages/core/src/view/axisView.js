@@ -614,6 +614,10 @@ function createAxis(axisProps, type, labelClipPolicy = "pixel") {
                 ],
                 text: ap.title,
                 color: ap.titleColor,
+                font: ap.titleFont,
+                size: ap.titleFontSize,
+                fontStyle: ap.titleFontStyle,
+                fontWeight: ap.titleFontWeight,
                 [secondary]: 1 - anchor,
             },
         };
