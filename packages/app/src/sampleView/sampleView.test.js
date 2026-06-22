@@ -105,7 +105,11 @@ class InspectRenderingContext extends ViewRenderingContext {
                 .some((view) => view.name?.startsWith("legend_region_"))
         ) {
             this.legendMarks.push(mark.unitView.name);
-        } else if (mark.unitView.name === "title0") {
+        } else if (
+            mark.unitView
+                .getLayoutAncestors()
+                .some((view) => view.name === "title0")
+        ) {
             this.titleCoords.push(this.#coordsStack.at(-1));
             this.titleOptions.push(options);
         }

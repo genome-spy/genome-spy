@@ -48,10 +48,10 @@ describe("layout snapshot helper", () => {
         );
 
         expect(title).toMatchObject({
-            coords: "Rectangle: x: 0, y: 21, width: 200, height: 99",
+            coords: "Rectangle: x: 0, y: 22, width: 200, height: 98",
         });
         expect(titled).toMatchObject({
-            coords: "Rectangle: x: 0, y: 21, width: 200, height: 99",
+            coords: "Rectangle: x: 0, y: 22, width: 200, height: 98",
         });
     });
 
