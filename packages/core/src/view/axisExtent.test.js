@@ -4,7 +4,10 @@ import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
 import UnitView from "./unitView.js";
 import AxisView from "./axisView.js";
-import { createBroadcastingTestViewContext } from "./testUtils.js";
+import {
+    createBroadcastingTestViewContext,
+    createHeadlessEngine,
+} from "./testUtils.js";
 import { VIEW_ROOT_NAME } from "./viewFactory.js";
 import { checkForDuplicateScaleNames } from "./viewUtils.js";
 import { initializeViewData } from "../genomeSpy/viewDataInit.js";
@@ -399,6 +402,62 @@ describe("Axis extent measurement", () => {
         const axis = findAxisView(root, "left");
         const initialExtent = axis.getPerpendicularSize();
 
+        await settleLayout(root, context);
+
+        expect(axis.getPerpendicularSize()).toBe(initialExtent);
+    });
+
+    test("zoomed vertical locus labels do not grow left axis extent", async () => {
+        const context = createBroadcastingTestViewContext();
+        const { view: root } = await createHeadlessEngine(
+            {
+                data: {
+                    values: [{ x: 0, chrom: "chr1", pos: 1 }],
+                },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                        scale: {
+                            type: "locus",
+                            assembly: {
+                                contigs: [{ name: "chr1", size: 200_000_000 }],
+                            },
+                            domain: [
+                                { chrom: "chr1", pos: 1 },
+                                { chrom: "chr1", pos: 200_000_000 },
+                            ],
+                            zoom: {
+                                extent: [
+                                    { chrom: "chr1", pos: 1 },
+                                    { chrom: "chr1", pos: 200_000_000 },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+            { context }
+        );
+
+        const axis = findAxisView(root, "left");
+        await settleLayout(root, context);
+        const initialExtent = axis.getPerpendicularSize();
+
+        const rootContainer = /** @type {import("./concatView.js").default} */ (
+            root
+        );
+        const firstChild = /** @type {import("./view.js").default} */ (
+            rootContainer.children[0]
+        );
+
+        // Exact locus tick labels become much longer at this zoom level.
+        await firstChild
+            .getScaleResolution("y")
+            .zoomTo([100_000_000, 100_000_005], 0);
         await settleLayout(root, context);
 
         expect(axis.getPerpendicularSize()).toBe(initialExtent);

@@ -168,17 +168,20 @@ export default class AxisView extends LayerView {
             ...axisProps,
         };
 
+        // Now the presence of genomeAxis is based on field type, not scale type.
+        // TODO: Use scale instead. However, it would make the initialization much more
+        // complex because scales are not available before scale resolution.
+        const genomeAxis = type == "locus";
+
         /** @type {Axis | GenomeAxis} */
         const fullAxisProps = {
             ...configuredDefaults,
             ...getDefaultAngleAndAlign(type, preliminaryAxisProps),
             ...axisProps,
+            ...(genomeAxis
+                ? getFixedGenomeAxisProps(preliminaryAxisProps)
+                : {}),
         };
-
-        // Now the presence of genomeAxis is based on field type, not scale type.
-        // TODO: Use scale instead. However, it would make the initialization much more
-        // complex because scales are not available before scale resolution.
-        const genomeAxis = type == "locus";
 
         super(
             genomeAxis
@@ -433,6 +436,32 @@ function getMeasuredLabelExtent(axisProps, context, labelsView) {
     );
 
     return Math.ceil(perpendicularExtent);
+}
+
+/**
+ * @param {GenomeAxis} axisProps
+ * @returns {Axis}
+ */
+function getFixedGenomeAxisProps(axisProps) {
+    switch (getAxisGeometry(axisProps).tickSide) {
+        case "bottom":
+        case "top":
+            return {};
+        case "left":
+            return {
+                labelAngle: -90,
+                labelAlign: "center",
+                labelPadding: 6,
+            };
+        case "right":
+            return {
+                labelAngle: 90,
+                labelAlign: "center",
+                labelPadding: 6,
+            };
+        default:
+            throw new Error("Invalid axis orient: " + axisProps.orient);
+    }
 }
 
 /**
@@ -792,36 +821,11 @@ export function createGenomeAxis(axisProps, type) {
         return labels;
     };
 
-    /** @type {Axis} */
-    let fixedAxisProps;
-    switch (tickSide) {
-        case "bottom":
-        case "top":
-            fixedAxisProps = {};
-            break;
-        case "left":
-            fixedAxisProps = {
-                labelAngle: -90,
-                labelAlign: "center",
-                labelPadding: 6,
-            };
-            break;
-        case "right":
-            fixedAxisProps = {
-                labelAngle: 90,
-                labelAlign: "center",
-                labelPadding: 6,
-            };
-            break;
-        default:
-            fixedAxisProps = {};
-    }
-
     // Create an ordinary axis
     const axisSpec = createAxis(
         {
             ...axisProps,
-            ...fixedAxisProps,
+            ...getFixedGenomeAxisProps(axisProps),
             // TODO: Allow the user to override fixedAxisProps
         },
         type
