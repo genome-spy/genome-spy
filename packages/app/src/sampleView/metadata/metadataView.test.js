@@ -316,7 +316,10 @@ describe("MetadataView", () => {
     it("uses the default metadata title", async () => {
         const { metadataView } = await createMetadataViewTestHarness();
 
-        expect(metadataView.spec.title).toBe("Sample metadata");
+        expect(metadataView.spec.title).toEqual({
+            text: "Sample metadata",
+            orient: "none",
+        });
     });
 
     it("uses a configured metadata title", async () => {
@@ -324,7 +327,7 @@ describe("MetadataView", () => {
             metadataDef: { title: "Clinical metadata" },
         });
 
-        expect(metadataView.spec.title).toBe("Clinical metadata");
+        expect(metadataView.spec.title).toEqual({ text: "Clinical metadata" });
     });
 
     it("hides the metadata title when configured as null", async () => {
@@ -332,7 +335,7 @@ describe("MetadataView", () => {
             metadataDef: { title: null },
         });
 
-        expect(metadataView.spec.title).toBeUndefined();
+        expect(metadataView.spec.title).toBeNull();
     });
 
     it("removes dataflow hosts when metadata is rebuilt", async () => {

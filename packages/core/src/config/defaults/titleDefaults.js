@@ -12,7 +12,7 @@ export const TITLE_DEFAULTS = {
     dy: 0,
     color: undefined,
     font: undefined,
-    fontSize: 12,
+    fontSize: 13,
     fontStyle: "normal",
     fontWeight: "normal",
     subtitlePadding: 3,
