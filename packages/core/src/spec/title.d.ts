@@ -23,6 +23,11 @@ export interface Title extends ZIndexProps {
     text: string | ExprRef;
 
     /**
+     * The subtitle text.
+     */
+    subtitle?: string | ExprRef;
+
+    /**
      * A mark style property to apply to the title text mark. If not specified, a default style of `"group-title"` is applied.
      */
     style?: string | string[];
@@ -127,4 +132,40 @@ export interface Title extends ZIndexProps {
      * This can be either a string (e.g `"bold"`, `"normal"`) or a number (`100`, `200`, `300`, ..., `900` where `"normal"` = `400` and `"bold"` = `700`).
      */
     fontWeight?: FontWeight;
+
+    // ---------- Subtitle Text ----------
+    /**
+     * Text color for subtitle text.
+     */
+    subtitleColor?: string | ExprRef;
+
+    /**
+     * Font name for subtitle text.
+     */
+    subtitleFont?: string;
+
+    /**
+     * Font size in pixels for subtitle text.
+     *
+     * @minimum 0
+     */
+    subtitleFontSize?: number | ExprRef;
+
+    /**
+     * Font style for subtitle text.
+     */
+    subtitleFontStyle?: FontStyle;
+
+    /**
+     * Font weight for subtitle text.
+     * This can be either a string (e.g `"bold"`, `"normal"`) or a number (`100`, `200`, `300`, ..., `900` where `"normal"` = `400` and `"bold"` = `700`).
+     */
+    subtitleFontWeight?: FontWeight;
+
+    /**
+     * Padding in pixels between title and subtitle text.
+     *
+     * __Default value:__ `3`
+     */
+    subtitlePadding?: number;
 }

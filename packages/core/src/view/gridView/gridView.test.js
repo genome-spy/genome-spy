@@ -1092,6 +1092,41 @@ describe("GridView decoration zindex", () => {
         ]);
     });
 
+    test("renders title with subtitle as one chrome view", async () => {
+        const order = await recordRenderOrder(
+            {
+                vconcat: [
+                    {
+                        name: "child",
+                        title: {
+                            text: "Track title",
+                            subtitle: "Track subtitle",
+                        },
+                        data: {
+                            values: [{ x: 1, y: 2 }],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            ["title0", "child"]
+        );
+
+        expect(order).toEqual(["child", "title0"]);
+    });
+
     test("renders separators after child views when separator zindex is positive", async () => {
         const order = await recordRenderOrder(
             {

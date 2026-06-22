@@ -17,12 +17,7 @@ import LayerView from "../layerView.js";
 import Padding from "../layout/padding.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
-import {
-    createTitleFromResolvedSpec,
-    getTitleOverhang,
-    requestTitleFont,
-    resolveTitleSpec,
-} from "../title.js";
+import TitleView, { getTitleOverhang } from "../titleView.js";
 import UnitView from "../unitView.js";
 import {
     isChromeView,
@@ -116,7 +111,7 @@ export default class GridChild {
         /** @type {SelectionRect} */
         this.selectionRect = undefined;
 
-        /** @type {UnitView} */
+        /** @type {TitleView} */
         this.title = undefined;
 
         /** @type {import("../../spec/title.js").Title | undefined} */
@@ -185,29 +180,18 @@ export default class GridChild {
             }
         }
 
-        this.titleSpec = view.spec.title
-            ? resolveTitleSpec(view.spec.title, view.getConfigScopes())
+        this.title = view.spec.title
+            ? TitleView.create(
+                  view.spec.title,
+                  view.getConfigScopes(),
+                  layoutParent.context,
+                  layoutParent,
+                  view,
+                  "title" + serial
+              )
             : undefined;
+        this.titleSpec = this.title?.titleSpec;
         this.titleZindex = this.titleSpec?.zindex ?? 1;
-        if (this.titleSpec) {
-            requestTitleFont(this.titleSpec, this.layoutParent.context);
-        }
-        const title = createTitleFromResolvedSpec(this.titleSpec);
-        if (title) {
-            const unitView = new UnitView(
-                title,
-                layoutParent.context,
-                layoutParent,
-                view,
-                "title" + serial,
-                {
-                    blockEncodingInheritance: true,
-                }
-            );
-            this.title = unitView;
-            markViewAsNonAddressable(this.title, { skipSubtree: true });
-            markViewAsChrome(this.title, { skipSubtree: true });
-        }
 
         // TODO: More specific getter for this
         if (view.spec.viewportWidth != null) {

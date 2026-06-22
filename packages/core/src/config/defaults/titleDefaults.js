@@ -15,6 +15,7 @@ export const TITLE_DEFAULTS = {
     fontSize: 12,
     fontStyle: "normal",
     fontWeight: "normal",
+    subtitlePadding: 3,
 };
 
 /** @type {Record<string, import("../../spec/config.js").StyleConfig>} */
@@ -50,5 +51,10 @@ export const TITLE_STYLE_DEFAULTS = {
         offset: -10,
         dx: 10,
         fontSize: 12,
+    },
+    "group-subtitle": {
+        fontSize: 11,
+        fontStyle: "normal",
+        fontWeight: "normal",
     },
 };
