@@ -40,6 +40,8 @@ export function createVertexRangeIndexer(
         return undefined;
     }
 
+    const pointIndex = readStart === readEnd;
+
     const startIndices = new Array(size);
     startIndices.fill(MAX_INTEGER);
 
@@ -105,14 +107,14 @@ export function createVertexRangeIndexer(
             break;
         }
 
-        if (runX < lastStart || runX2 < runX) {
+        if (runX < lastStart || (!pointIndex && runX2 < runX)) {
             unordered = true;
             break;
         }
         lastStart = runX;
 
         const startBin = getBin(runX, false);
-        const endBin = getBin(runX2, true);
+        const endBin = pointIndex ? startBin : getBin(runX2, true);
 
         for (let bin = startBin; bin <= endBin; bin++) {
             if (startIndices[bin] > runStart) {

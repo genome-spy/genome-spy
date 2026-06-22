@@ -58,6 +58,24 @@ describe("vertexRangeIndex", () => {
         expect(lookup(50, 60)).toEqual([2147483647, 2147483647]);
     });
 
+    test("indexes point vertices that fall on bin boundaries", () => {
+        const x = new Float32Array([0, 20, 40, 60, 80]);
+        const reader = makeScalarReader(x);
+
+        const lookup = createVertexRangeIndexer(
+            10,
+            [0, 100],
+            reader,
+            reader,
+            0,
+            x.length
+        );
+
+        // Axis ticks commonly fall exactly on bin boundaries.
+        expect(lookup(-1, 100)).toEqual([0, 5]);
+        expect(lookup(39, 41)).toEqual([2, 3]);
+    });
+
     test("decodes split high-precision vertex values", () => {
         const x = new Uint32Array([1, 0, 1, 0, 2, 0, 2, 0]);
         const x2 = new Uint32Array([1, 1, 1, 1, 2, 1, 2, 1]);

@@ -70,13 +70,14 @@ describe("Vertex builders", () => {
             numItems: 3,
         });
 
-        builder.addBatch("facet", [{ x: 11 }, { x: 21 }, { x: 31 }]);
+        builder.addBatch("facet", [{ x: 0 }, { x: 20 }, { x: 40 }]);
 
         const rangeEntry = builder.rangeMap.get("facet");
 
         expect(rangeEntry.count).toBe(3);
         expect(rangeEntry.xIndex).toBeTypeOf("function");
-        expect(rangeEntry.xIndex(21.1, 21.9)).toEqual([1, 2]);
+        expect(rangeEntry.xIndex(-1, 100)).toEqual([0, 3]);
+        expect(rangeEntry.xIndex(19, 21)).toEqual([1, 2]);
     });
 
     test("LinkVertexBuilder keeps the x-index aligned with instanced vertex ranges", () => {
