@@ -21,7 +21,7 @@
     {
       "mark": "rect",
       "encoding": {
-        "color": { "field": "from", "type": "nominal" }
+        "color": { "field": "from", "type": "nominal", "legend": null }
       }
     },
     {

@@ -9,7 +9,7 @@
 
   "encoding": {
     "x": { "field": "data", "type": "index" },
-    "color": { "field": "data", "type": "nominal" },
+    "color": { "field": "data", "type": "nominal", "legend": null },
     "size": { "value": 300 }
   }
 }

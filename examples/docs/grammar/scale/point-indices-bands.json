@@ -13,7 +13,7 @@
     {
       "mark": "rect",
       "encoding": {
-        "color": { "field": "data", "type": "nominal" }
+        "color": { "field": "data", "type": "nominal", "legend": null }
       }
     },
     {

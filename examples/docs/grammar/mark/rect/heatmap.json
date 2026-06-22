@@ -27,5 +27,7 @@
       "type": "quantitative",
       "scale": { "scheme": "magma" }
     }
-  }
+  },
+
+  "config": { "legendTrack": { "style": null } }
 }

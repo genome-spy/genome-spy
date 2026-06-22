@@ -92,6 +92,7 @@
                 "fill": {
                   "field": "odd",
                   "type": "nominal",
+                  "legend": null,
                   "scale": {
                     "domain": [true, false],
                     "range": ["#e8e8e8", "white"]

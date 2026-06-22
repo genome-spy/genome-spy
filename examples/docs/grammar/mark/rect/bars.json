@@ -32,7 +32,8 @@
         "type": "threshold",
         "domain": [0],
         "range": ["#ed553b", "#20639b"]
-      }
+      },
+      "legend": null
     }
   }
 }

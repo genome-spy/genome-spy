@@ -22,4 +22,4 @@ EXAMPLE examples/docs/grammar/mark/rule/ranged-rules.json height=150
 
 ### Human-mouse synteny
 
-EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=440
+EXAMPLE examples/docs/grammar/mark/rule/synteny-hg38-mm10.json height=460

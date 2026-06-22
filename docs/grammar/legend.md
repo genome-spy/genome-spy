@@ -122,7 +122,7 @@ Set `legend` to `null` on a channel to remove that channel's legend.
 specifications that let the user show or hide all legends without rebuilding the
 view.
 
-EXAMPLE examples/docs/grammar/legend/reactive-disable.json height=300
+EXAMPLE examples/docs/grammar/legend/reactive-disable.json height=340
 
 ## Properties
 
