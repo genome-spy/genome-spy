@@ -2,6 +2,10 @@
 
 import { translateAxisCoords } from "@genome-spy/core/view/gridView/gridView.js";
 import Padding from "@genome-spy/core/view/layout/padding.js";
+import {
+    createClipOptions,
+    normalizeClipOptions,
+} from "@genome-spy/core/view/renderingContext/clipOptions.js";
 
 const DEFAULT_MIN_SAMPLE_HEIGHT = 60;
 const DEFAULT_MODE = "all";
@@ -113,6 +117,15 @@ export default class SampleChromeLayout {
             return;
         }
 
+        const inheritedClip = normalizeClipOptions(options);
+        const axisOptions = inheritedClip
+            ? {
+                  ...options,
+                  clip: createClipOptions(inheritedClip.rect, false, true),
+                  clipRect: inheritedClip.rect,
+              }
+            : options;
+
         for (const orient of /** @type {const} */ (["left", "right"])) {
             const axisView = this.#getAxisView(orient);
             if (!axisView) {
@@ -128,7 +141,7 @@ export default class SampleChromeLayout {
                 axisView.render(
                     context,
                     translateAxisCoords(sampleCoords, orient, axisView),
-                    options
+                    axisOptions
                 );
             }
         }

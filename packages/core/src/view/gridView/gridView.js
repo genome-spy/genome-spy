@@ -1136,6 +1136,15 @@ export default class GridView extends ContainerView {
                     clipRect = clip?.rect;
                 }
 
+                if (clip && axisView.labelClipPolicy === "anchor") {
+                    clip = createClipOptions(
+                        clip.rect,
+                        ORIENT_CHANNELS[orient] === "x",
+                        ORIENT_CHANNELS[orient] === "y"
+                    );
+                    clipRect = clip?.rect;
+                }
+
                 queueDecoration(
                     defaultAxisZindex(axisView.axisProps, clippedDecorations),
                     DECORATION_ORDER.axis,

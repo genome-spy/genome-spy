@@ -52,6 +52,9 @@ class InspectRenderingContext extends ViewRenderingContext {
     /** @type {{ clip: import("@genome-spy/core/spec/mark.js").MarkProps["clip"], cullByVisibleRange: import("@genome-spy/core/spec/mark.js").MarkProps["cullByVisibleRange"], logicalVisibleRect: [number, number, number, number] }[]} */
     axisLabels = [];
 
+    /** @type {{ name: string | undefined, clip: import("@genome-spy/core/types/rendering.js").ClipOptions | undefined }[]} */
+    axisChrome = [];
+
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     sampleLabels = [];
 
@@ -88,6 +91,17 @@ class InspectRenderingContext extends ViewRenderingContext {
                     coords,
                     normalizeClipOptions(options)
                 ),
+            });
+        } else if (
+            (mark.unitView.name === "ticks" ||
+                mark.unitView.name === "title") &&
+            mark.unitView
+                .getLayoutAncestors()
+                .some((view) => view instanceof AxisView)
+        ) {
+            this.axisChrome.push({
+                name: mark.unitView.name,
+                clip: normalizeClipOptions(options),
             });
         } else if (mark.unitView.name === "sample-labels") {
             this.sampleLabels.push(options);
@@ -1613,7 +1627,7 @@ describe("axis layout and visibility", () => {
                     y: {
                         field: "y",
                         type: "quantitative",
-                        axis: { orient: "left" },
+                        axis: { orient: "left", title: "Signal" },
                     },
                 },
             },
@@ -1644,6 +1658,21 @@ describe("axis layout and visibility", () => {
         expect(
             verticallyClippedLabels.every(
                 (label) => label.cullByVisibleRange === "y"
+            )
+        ).toBe(true);
+
+        const verticallyClippedChrome = renderContext.axisChrome.filter(
+            (chrome) => chrome.clip?.clipY
+        );
+        expect(
+            verticallyClippedChrome.some((chrome) => chrome.name === "ticks")
+        ).toBe(true);
+        expect(
+            verticallyClippedChrome.some((chrome) => chrome.name === "title")
+        ).toBe(true);
+        expect(
+            verticallyClippedChrome.every(
+                (chrome) => chrome.clip?.clipX === false
             )
         ).toBe(true);
     });

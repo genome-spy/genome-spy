@@ -201,6 +201,9 @@ export default class AxisView extends LayerView {
             }
         );
 
+        /** @type {AxisLabelClipPolicy} */
+        this.labelClipPolicy = options?.labelClipPolicy ?? "pixel";
+
         this.axisProps = fullAxisProps;
         this.#effectiveExtent = getExtent(fullAxisProps);
         this.#axisExtentSetter = this.paramRuntime.allocateSetter(
