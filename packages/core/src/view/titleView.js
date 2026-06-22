@@ -157,29 +157,15 @@ function resolveTitleSpec(title, configScopes = []) {
  * @returns {{ xOffset: number, yOffset: number }}
  */
 function getTitleOffsets(spec, context) {
-    const offsets = { xOffset: 0, yOffset: 0 };
     const subtitleSpacing = spec.subtitle
         ? getSubtitleTextPerpendicularExtent(spec, context) +
           (spec.subtitlePadding ?? 0)
         : 0;
+    const distance =
+        spec.offset +
+        (isTitleOutsideSubtitle(spec.orient) ? subtitleSpacing : 0);
 
-    switch (spec.orient) {
-        case "top":
-            offsets.yOffset = -spec.offset - subtitleSpacing;
-            break;
-        case "right":
-            offsets.xOffset = spec.offset + subtitleSpacing;
-            break;
-        case "bottom":
-            offsets.yOffset = spec.offset;
-            break;
-        case "left":
-            offsets.xOffset = -spec.offset - subtitleSpacing;
-            break;
-        default:
-    }
-
-    return offsets;
+    return getOrientOffset(spec.orient, distance);
 }
 
 /**
@@ -188,27 +174,53 @@ function getTitleOffsets(spec, context) {
  * @returns {{ xOffset: number, yOffset: number }}
  */
 function getSubtitleOffsets(spec, context) {
-    const offsets = { xOffset: 0, yOffset: 0 };
     const spacing =
         getTitleTextPerpendicularExtent(spec, context) +
         (spec.subtitlePadding ?? 0);
+    const distance =
+        spec.offset + (isTitleOutsideSubtitle(spec.orient) ? 0 : spacing);
 
-    switch (spec.orient) {
+    return getOrientOffset(spec.orient, distance);
+}
+
+/**
+ * @param {import("../spec/title.js").TitleOrient} orient
+ */
+function isTitleOutsideSubtitle(orient) {
+    switch (orient) {
         case "top":
-            offsets.yOffset = -spec.offset;
-            break;
+        case "left":
+            return true;
+        case "right":
         case "bottom":
-            offsets.yOffset = spec.offset + spacing;
+            return false;
+        default:
+            return false;
+    }
+}
+
+/**
+ * @param {import("../spec/title.js").TitleOrient} orient
+ * @param {number} distance
+ * @returns {{ xOffset: number, yOffset: number }}
+ */
+function getOrientOffset(orient, distance) {
+    const offsets = { xOffset: 0, yOffset: 0 };
+    switch (orient) {
+        case "top":
+            offsets.yOffset = -distance;
             break;
         case "right":
-            offsets.xOffset = spec.offset;
+            offsets.xOffset = distance;
+            break;
+        case "bottom":
+            offsets.yOffset = distance;
             break;
         case "left":
-            offsets.xOffset = -spec.offset;
+            offsets.xOffset = -distance;
             break;
         default:
     }
-
     return offsets;
 }
 
@@ -411,7 +423,7 @@ function createTitleTextMark(spec, xy, offsets, subtitle) {
 
         text: subtitle ? spec.subtitle : spec.text,
 
-        align: spec.align ?? ANCHOR_TO_ALIGN[spec.anchor],
+        align: spec.align ?? ANCHOR_TO_ALIGN[spec.anchor ?? "middle"],
         angle: spec.angle,
         baseline: spec.baseline,
         dx: spec.dx,

@@ -18,8 +18,22 @@ export const TITLE_DEFAULTS = {
     subtitlePadding: 3,
 };
 
+/** @type {import("../../spec/config.js").StyleConfig} */
+const OVERLAY_TITLE_STYLE = {
+    orient: "top",
+    frame: "group",
+    reserve: false,
+    anchor: "start",
+    align: "left",
+    baseline: "top",
+    offset: -10,
+    dx: 10,
+    fontSize: 12,
+};
+
 /** @type {Record<string, import("../../spec/config.js").StyleConfig>} */
 export const TITLE_STYLE_DEFAULTS = {
+    "group-title": {},
     "track-title": {
         orient: "left",
         frame: "group",
@@ -30,28 +44,9 @@ export const TITLE_STYLE_DEFAULTS = {
         angle: 0,
         fontSize: 12,
     },
-    overlay: {
-        orient: "top",
-        frame: "group",
-        reserve: false,
-        anchor: "start",
-        align: "left",
-        baseline: "top",
-        offset: -10,
-        dx: 10,
-        fontSize: 12,
-    },
-    "overlay-title": {
-        orient: "top",
-        frame: "group",
-        reserve: false,
-        anchor: "start",
-        align: "left",
-        baseline: "top",
-        offset: -10,
-        dx: 10,
-        fontSize: 12,
-    },
+    // Legacy name kept for backward compatibility. Prefer "overlay-title".
+    overlay: OVERLAY_TITLE_STYLE,
+    "overlay-title": OVERLAY_TITLE_STYLE,
     "group-subtitle": {
         fontSize: 11,
         fontStyle: "normal",

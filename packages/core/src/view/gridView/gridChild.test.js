@@ -51,7 +51,6 @@ function createTitledGridChild(
         parent,
         "title"
     );
-    child.titleSpec = child.title.titleSpec;
 
     return child;
 }

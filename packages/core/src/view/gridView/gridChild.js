@@ -114,17 +114,11 @@ export default class GridChild {
         /** @type {TitleView} */
         this.title = undefined;
 
-        /** @type {import("../../spec/title.js").Title | undefined} */
-        this.titleSpec = undefined;
-
         /** @type {number} */
         this.backgroundZindex = 0;
 
         /** @type {number | undefined} */
         this.backgroundStrokeZindex = undefined;
-
-        /** @type {number} */
-        this.titleZindex = 1;
 
         /** @type {Rectangle} */
         this.coords = Rectangle.ZERO;
@@ -190,8 +184,6 @@ export default class GridChild {
                   "title" + serial
               )
             : undefined;
-        this.titleSpec = this.title?.titleSpec;
-        this.titleZindex = this.titleSpec?.zindex ?? 1;
 
         // TODO: More specific getter for this
         if (view.spec.viewportWidth != null) {
@@ -1001,6 +993,23 @@ export default class GridChild {
         return this.title?.getOverhang() ?? Padding.zero();
     }
 
+    getTitleZindex() {
+        return this.title?.titleSpec.zindex ?? 1;
+    }
+
+    /**
+     * @param {import("../renderingContext/viewRenderingContext.js").default} context
+     * @param {Rectangle} viewportCoords
+     * @param {import("../../types/rendering.js").RenderingOptions} options
+     */
+    renderTitle(context, viewportCoords, options) {
+        this.title?.render(
+            context,
+            this.getTitleCoords(viewportCoords),
+            options
+        );
+    }
+
     /**
      * Returns the frame used for rendering a view title. Reserved titles are
      * placed outside guide overhang orthogonally, while the title frame controls
@@ -1009,19 +1018,20 @@ export default class GridChild {
      * @param {Rectangle} viewportCoords
      */
     getTitleCoords(viewportCoords) {
-        if (!this.titleSpec) {
+        const titleSpec = this.title?.titleSpec;
+        if (!titleSpec) {
             return viewportCoords;
         }
 
         const guideCoords = viewportCoords.expand(this.getGuideOverhang());
-        const frame = this.titleSpec.frame ?? "group";
-        if (this.titleSpec.reserve === false) {
+        const frame = titleSpec.frame ?? "group";
+        if (titleSpec.reserve === false) {
             return frame == "bounds" ? guideCoords : viewportCoords;
         } else if (frame == "bounds") {
             return guideCoords;
         }
 
-        switch (this.titleSpec.orient) {
+        switch (titleSpec.orient) {
             case "top":
             case "bottom":
                 return guideCoords.modify({

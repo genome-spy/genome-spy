@@ -164,6 +164,18 @@ describe("title config precedence", () => {
         expect(/** @type {any} */ (title.mark).color).toBe("blue");
     });
 
+    test("explicit null anchor keeps middle alignment", () => {
+        const [title] = createTitleUnits(
+            {
+                text: "Hello",
+                anchor: null,
+            },
+            [INTERNAL_DEFAULT_CONFIG]
+        );
+
+        expect(getTextMark(title).align).toBe("center");
+    });
+
     test("group-subtitle style applies to subtitle text", () => {
         const [, subtitle] = createTitleUnits(
             {
