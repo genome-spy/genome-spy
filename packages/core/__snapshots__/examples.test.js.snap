@@ -8633,22 +8633,6 @@ exports[`shared examples > initializes examples/docs/grammar/mark/point/plenty-o
   "dataSources": [
     {
       "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendEntriesSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendEntriesSource",
-    },
-    {
-      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -8809,18 +8793,6 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rect/bars.json
     {
       "identifier": null,
       "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendGradientSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,
@@ -9234,10 +9206,6 @@ exports[`shared examples > initializes examples/docs/grammar/mark/rule/synteny-h
       "type": "InlineSource",
     },
     {
-      "identifier": null,
-      "type": "LegendEntriesSource",
-    },
-    {
       "identifier": "{"params":{"url":"data/synteny-hg38-mm10.tsv"},"baseUrl":"examples/"}",
       "type": "UrlSource",
     },
@@ -9529,14 +9497,6 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/genome-o
     {
       "identifier": null,
       "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
@@ -10043,14 +10003,6 @@ exports[`shared examples > initializes examples/docs/grammar/scale/numbering-off
       "identifier": null,
       "type": "InlineSource",
     },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendEntriesSource",
-    },
   ],
   "hierarchy": {
     "baseUrl": null,
@@ -10100,14 +10052,6 @@ exports[`shared examples > initializes examples/docs/grammar/scale/point-indices
     {
       "identifier": null,
       "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
@@ -10159,14 +10103,6 @@ exports[`shared examples > initializes examples/docs/grammar/scale/point-indices
       "identifier": null,
       "type": "InlineSource",
     },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendEntriesSource",
-    },
   ],
   "hierarchy": {
     "baseUrl": null,
@@ -10203,14 +10139,6 @@ exports[`shared examples > initializes examples/docs/grammar/scale/range-indices
     {
       "identifier": null,
       "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendEntriesSource",
     },
   ],
   "hierarchy": {
