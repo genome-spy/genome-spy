@@ -1,8 +1,159 @@
 import { describe, expect, test } from "vitest";
 import { specToLayout } from "./testUtils.js";
 import Rectangle from "./layout/rectangle.js";
+import { loadSharedExampleSpec } from "../spec/exampleFiles.js";
+
+/**
+ * @param {string} coords
+ * @param {"x" | "y" | "width" | "height"} prop
+ */
+function getRectProp(coords, prop) {
+    return Number(coords.match(new RegExp(`${prop}: (-?\\d+)`))[1]);
+}
 
 describe("layout snapshot helper", () => {
+    test("renders view title in reserved bounds without manual padding", async () => {
+        const layout = await specToLayout(
+            {
+                vconcat: [
+                    {
+                        name: "titled",
+                        title: "Group title",
+                        data: { values: [{ x: 1, y: 2 }] },
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                field: "x",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                            y: {
+                                field: "y",
+                                type: "quantitative",
+                                axis: null,
+                            },
+                        },
+                    },
+                ],
+            },
+            {},
+            Rectangle.create(0, 0, 200, 120)
+        );
+
+        const title = layout.children.find(
+            (child) => child.viewName == "title0"
+        );
+        const titled = layout.children.find(
+            (child) => child.viewName == "titled"
+        );
+
+        expect(title).toMatchObject({
+            coords: "Rectangle: x: 0, y: 22, width: 200, height: 98",
+        });
+        expect(titled).toMatchObject({
+            coords: "Rectangle: x: 0, y: 22, width: 200, height: 98",
+        });
+    });
+
+    test("title-styles docs example relies on title bounds instead of padding", async () => {
+        const spec = loadSharedExampleSpec(
+            "examples/docs/grammar/title/title-styles.json"
+        );
+        const layout = await specToLayout(spec);
+
+        expect(spec.vconcat[0].padding).toBeUndefined();
+        expect(spec.vconcat[1].padding).toBeUndefined();
+        expect(spec.vconcat[3].padding).toBeUndefined();
+
+        const groupTitleView = layout.children.find(
+            (child) => child.viewName == "grid0"
+        );
+        const trackTitleView = layout.children.find(
+            (child) => child.viewName == "grid1"
+        );
+
+        expect(groupTitleView.coords).toMatch(/y: [1-9][0-9]*/);
+        expect(trackTitleView.coords).toMatch(/x: [1-9][0-9]*/);
+    });
+
+    test("core title bounds acid test reserves title sides", async () => {
+        const spec = loadSharedExampleSpec(
+            "examples/core/layout/title_bounds.json"
+        );
+        const layout = await specToLayout(spec);
+
+        expect(spec.vconcat[0].padding).toBeUndefined();
+        expect(spec.vconcat[2].padding).toBeUndefined();
+        expect(spec.vconcat[3].padding).toBeUndefined();
+
+        const topTitleView = layout.children.find(
+            (child) => child.viewName == "topTitle"
+        );
+        const nestedRow = layout.children.find(
+            (child) => child.viewName == "sideTitles"
+        );
+        const overlayTitleView = layout.children.find(
+            (child) => child.viewName == "overlayTitle"
+        );
+        const bottomTitleView = layout.children.find(
+            (child) => child.viewName == "bottomTitle"
+        );
+
+        expect(topTitleView.coords).toMatch(/y: [1-9][0-9]*/);
+        expect(nestedRow.children[0].coords).toMatch(/x: [1-9][0-9]*/);
+        expect(nestedRow.children[1].coords).toMatch(
+            /Rectangle: x: [1-9][0-9]+, y: [0-9]+, width: 120, height: 80/
+        );
+        expect(overlayTitleView.coords).toMatch(/height: 80/);
+        expect(bottomTitleView.coords).toMatch(/height: [1-9][0-9]*/);
+    });
+
+    test("reserved group-frame title is placed outside same-side axis", async () => {
+        const layout = await specToLayout(
+            {
+                title: {
+                    text: "Top title",
+                    orient: "top",
+                    frame: "group",
+                },
+                data: { values: [{ x: 1, y: 2 }] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        axis: { orient: "top" },
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: null,
+                    },
+                },
+            },
+            {},
+            Rectangle.create(0, 0, 200, 120)
+        );
+
+        const title = layout.children.find(
+            (child) => child.viewName == "title0"
+        );
+        const axis = layout.children.find(
+            (child) => child.viewName == "axis_top"
+        );
+        const grid = layout.children.find((child) => child.viewName == "grid0");
+
+        expect(getRectProp(title.coords, "x")).toBe(
+            getRectProp(grid.coords, "x")
+        );
+        expect(getRectProp(title.coords, "y")).toBeLessThanOrEqual(
+            getRectProp(axis.coords, "y")
+        );
+        expect(getRectProp(title.coords, "y")).toBeLessThan(
+            getRectProp(grid.coords, "y")
+        );
+    });
+
     test("captures a shared-axis concat layout", async () => {
         expect(
             await specToLayout({

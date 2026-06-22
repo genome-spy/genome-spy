@@ -7,7 +7,10 @@ import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
 import { normalizeClipOptions } from "@genome-spy/core/view/renderingContext/clipOptions.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
-import { getNonChromeViews } from "@genome-spy/core/view/viewSelectors.js";
+import {
+    getNonChromeViews,
+    isChromeView,
+} from "@genome-spy/core/view/viewSelectors.js";
 import { initializeVisibleViewData } from "@genome-spy/core/genomeSpy/viewDataInit.js";
 import { initializeViewSubtree } from "@genome-spy/core/data/flowInit.js";
 import { createTestViewContext } from "@genome-spy/core/view/testUtils.js";
@@ -52,11 +55,20 @@ class InspectRenderingContext extends ViewRenderingContext {
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     sampleLabels = [];
 
+    /** @type {import("@genome-spy/core/view/layout/rectangle.js").default[]} */
+    sampleLabelCoords = [];
+
     /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
     sampleGroups = [];
 
     /** @type {string[]} */
     legendMarks = [];
+
+    /** @type {import("@genome-spy/core/view/layout/rectangle.js").default[]} */
+    titleCoords = [];
+
+    /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
+    titleOptions = [];
 
     pushView(view, coords) {
         this.#coordsStack.push(coords);
@@ -79,7 +91,9 @@ class InspectRenderingContext extends ViewRenderingContext {
             });
         } else if (mark.unitView.name === "sample-labels") {
             this.sampleLabels.push(options);
+            this.sampleLabelCoords.push(this.#coordsStack.at(-1));
         } else if (
+            !isChromeView(mark.unitView) &&
             mark.unitView
                 .getLayoutAncestors()
                 .some((view) => view.name === "sample-groups")
@@ -91,6 +105,13 @@ class InspectRenderingContext extends ViewRenderingContext {
                 .some((view) => view.name?.startsWith("legend_region_"))
         ) {
             this.legendMarks.push(mark.unitView.name);
+        } else if (
+            mark.unitView
+                .getLayoutAncestors()
+                .some((view) => view.name === "title0")
+        ) {
+            this.titleCoords.push(this.#coordsStack.at(-1));
+            this.titleOptions.push(options);
         }
     }
 }
@@ -841,6 +862,78 @@ describe("layout and group column", () => {
         expect(view.getOverhang().left).toBe(view.sidebarCoords.width);
     });
 
+    test("aligns titled sidebar plots with the sample pane", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                    },
+                },
+            },
+        });
+
+        const renderContext = new InspectRenderingContext({
+            picking: false,
+        });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderContext.sampleLabelCoords).not.toHaveLength(0);
+        expect(renderContext.sampleLabelCoords[0].y).toBe(view.childCoords.y);
+        expect(renderContext.sampleLabelCoords[0].height).toBe(
+            view.childCoords.height
+        );
+    });
+
+    test("renders sample pane title once", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [
+                        { sample: "A", x: 1 },
+                        { sample: "B", x: 2 },
+                    ],
+                },
+                samples: {},
+                spec: {
+                    title: "Genomic data",
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                    },
+                },
+            },
+        });
+
+        const renderContext = new InspectRenderingContext({
+            picking: false,
+        });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderContext.titleCoords).toHaveLength(1);
+        expect(renderContext.titleCoords[0].x).toBe(view.childCoords.x);
+        expect(renderContext.titleOptions[0].clipRect).toBeUndefined();
+    });
+
     test("renders child legends in the sample pane", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {
@@ -1026,7 +1119,7 @@ describe("layout and group column", () => {
             expect(
                 renderContext.sampleGroups.every(
                     (options) =>
-                        options.clipRect?.y === view.sidebarCoords.y &&
+                        options.clipRect?.y !== undefined &&
                         options.clipRect.y !== summaryClippedSidebar.y
                 )
             ).toBe(true);

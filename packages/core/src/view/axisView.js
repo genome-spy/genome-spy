@@ -5,6 +5,7 @@ import { FlexDimensions } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { getConfiguredAxisDefaults } from "../config/axisConfig.js";
+import { getProjectedTextExtent, getTextHeight } from "../fonts/textMetrics.js";
 
 const CHROM_LAYER_NAME = "chromosome_ticks_and_labels";
 const LABELS_LAYER_NAME = "labels_main";
@@ -424,18 +425,12 @@ function getMeasuredLabelExtent(axisProps, context, labelsView) {
         return undefined;
     }
 
-    const labelHeight =
-        ((metrics.capHeight + metrics.descent) / metrics.common.base) *
-        axisProps.labelFontSize;
-
-    const radians = (axisProps.labelAngle * Math.PI) / 180;
-    const absSin = Math.abs(Math.sin(radians));
-    const absCos = Math.abs(Math.cos(radians));
-
-    const perpendicularExtent =
-        orient2channel(axisProps.orient) == "x"
-            ? maxWidth * absSin + labelHeight * absCos
-            : maxWidth * absCos + labelHeight * absSin;
+    const labelHeight = getTextHeight(metrics, axisProps.labelFontSize);
+    const perpendicularExtent = getProjectedTextExtent(
+        { width: maxWidth, height: labelHeight },
+        axisProps.labelAngle,
+        orient2channel(axisProps.orient) == "x" ? "vertical" : "horizontal"
+    );
 
     return Math.ceil(perpendicularExtent);
 }

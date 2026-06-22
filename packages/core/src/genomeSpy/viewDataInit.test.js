@@ -277,6 +277,48 @@ describe("viewDataInit", () => {
         expect(datum?.width).toBe(24);
     });
 
+    test("invalidates layout size cache after fonts become ready", async () => {
+        const context = createTestViewContext();
+        const fontManager = /** @type {any} */ ({
+            getDefaultFont: context.fontManager.getDefaultFont.bind(
+                context.fontManager
+            ),
+            getFont: context.fontManager.getFont.bind(context.fontManager),
+            waitUntilReady: vi.fn(async () => undefined),
+        });
+        context.fontManager = fontManager;
+
+        /** @type {import("../spec/view.js").VConcatSpec} */
+        const spec = {
+            vconcat: [
+                {
+                    name: "titled",
+                    title: { text: "Custom font title", font: "Custom" },
+                    data: { values: [{ x: 1, y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative", axis: null },
+                        y: { field: "y", type: "quantitative", axis: null },
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        root.getSize();
+        const invalidateSizeCache = vi.spyOn(root, "invalidateSizeCache");
+
+        await initializeViewData(
+            root,
+            context.dataFlow,
+            context.fontManager,
+            () => undefined
+        );
+
+        expect(fontManager.waitUntilReady).toHaveBeenCalled();
+        expect(invalidateSizeCache).toHaveBeenCalled();
+    });
+
     test("finalizes graphics before initial data load notifies marks", async () => {
         const context = createTestViewContext();
         context.glHelper = /** @type {any} */ ({

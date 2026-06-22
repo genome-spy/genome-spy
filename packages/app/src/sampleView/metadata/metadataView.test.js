@@ -293,6 +293,51 @@ describe("MetadataView", () => {
         ).toBe("Custom");
     });
 
+    it("does not reserve space for metadata attribute titles by default", async () => {
+        const { attributeViews } = await createMetadataViewTestHarness();
+
+        expect(attributeViews.foo.spec.title).toMatchObject({
+            text: "foo",
+            reserve: false,
+        });
+    });
+
+    it("can reserve space for metadata attribute titles", async () => {
+        const { attributeViews } = await createMetadataViewTestHarness({
+            metadataDef: { titleReserve: true },
+        });
+
+        expect(attributeViews.foo.spec.title).toMatchObject({
+            text: "foo",
+            reserve: true,
+        });
+    });
+
+    it("uses the default metadata title", async () => {
+        const { metadataView } = await createMetadataViewTestHarness();
+
+        expect(metadataView.spec.title).toEqual({
+            text: "Sample metadata",
+            orient: "none",
+        });
+    });
+
+    it("uses a configured metadata title", async () => {
+        const { metadataView } = await createMetadataViewTestHarness({
+            metadataDef: { title: "Clinical metadata" },
+        });
+
+        expect(metadataView.spec.title).toEqual({ text: "Clinical metadata" });
+    });
+
+    it("hides the metadata title when configured as null", async () => {
+        const { metadataView } = await createMetadataViewTestHarness({
+            metadataDef: { title: null },
+        });
+
+        expect(metadataView.spec.title).toBeNull();
+    });
+
     it("removes dataflow hosts when metadata is rebuilt", async () => {
         const { MetadataView } = await import("./metadataView.js");
         const context = createTestViewContext();

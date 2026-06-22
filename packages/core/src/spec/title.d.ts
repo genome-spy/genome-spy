@@ -23,6 +23,11 @@ export interface Title extends ZIndexProps {
     text: string | ExprRef;
 
     /**
+     * The subtitle text.
+     */
+    subtitle?: string | ExprRef;
+
+    /**
      * A mark style property to apply to the title text mark. If not specified, a default style of `"group-title"` is applied.
      */
     style?: string | string[];
@@ -33,7 +38,11 @@ export interface Title extends ZIndexProps {
     anchor?: TitleAnchor;
 
     /**
-     * The reference frame for the anchor position, one of `"bounds"` (to anchor relative to the full bounding box) or `"group"` (to anchor relative to the group width or height).
+     * The reference frame for the title anchor. `"group"` anchors the title
+     * along the plot area. `"bounds"` anchors the title along the full bounds,
+     * including axes, legends, and other reserved space.
+     *
+     * __Default value:__ `"group"`
      */
     frame?: TitleFrame;
 
@@ -41,6 +50,18 @@ export interface Title extends ZIndexProps {
      * The orthogonal offset in pixels by which to displace the title group from its position along the edge of the chart.
      */
     offset?: number;
+
+    /**
+     * Whether the title reserves layout space outside the plot area. Reserved
+     * titles are placed outside axes, legends, and other guide space on the same
+     * side.
+     *
+     * Setting this to `false` lets the title render without affecting layout,
+     * enabling wilder layouts where titles may overlap nearby content.
+     *
+     * __Default value:__ `true`
+     */
+    reserve?: boolean;
 
     /**
      * Z-order of the title relative to the view content.
@@ -111,4 +132,40 @@ export interface Title extends ZIndexProps {
      * This can be either a string (e.g `"bold"`, `"normal"`) or a number (`100`, `200`, `300`, ..., `900` where `"normal"` = `400` and `"bold"` = `700`).
      */
     fontWeight?: FontWeight;
+
+    // ---------- Subtitle Text ----------
+    /**
+     * Text color for subtitle text.
+     */
+    subtitleColor?: string | ExprRef;
+
+    /**
+     * Font name for subtitle text.
+     */
+    subtitleFont?: string;
+
+    /**
+     * Font size in pixels for subtitle text.
+     *
+     * @minimum 0
+     */
+    subtitleFontSize?: number | ExprRef;
+
+    /**
+     * Font style for subtitle text.
+     */
+    subtitleFontStyle?: FontStyle;
+
+    /**
+     * Font weight for subtitle text.
+     * This can be either a string (e.g `"bold"`, `"normal"`) or a number (`100`, `200`, `300`, ..., `900` where `"normal"` = `400` and `"bold"` = `700`).
+     */
+    subtitleFontWeight?: FontWeight;
+
+    /**
+     * Padding in pixels between title and subtitle text.
+     *
+     * __Default value:__ `3`
+     */
+    subtitlePadding?: number;
 }

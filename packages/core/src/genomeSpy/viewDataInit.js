@@ -38,6 +38,7 @@ export async function initializeViewData(
     // await fonts inside text mark graphics updates and before loading data for
     // subtrees that contain measureText transforms.
     await fontManager.waitUntilReady();
+    viewRoot.invalidateSizeCache();
     await finalizeSubtreeGraphics(graphicsPromises);
 
     // Find all data sources and initiate loading.
@@ -112,6 +113,7 @@ export async function initializeVisibleViewData(
     // Newly visible subtrees may introduce text marks or measureText transforms
     // that request fonts during initializeViewSubtree.
     await fontManager.waitUntilReady();
+    viewRoot.invalidateSizeCache();
     await finalizeSubtreeGraphics(graphicsPromises);
 
     for (const collector of collectorsToRepropagate) {

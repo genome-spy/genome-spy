@@ -1,6 +1,7 @@
 import { Data, InlineData, UrlData } from "@genome-spy/core/spec/data.js";
 import { Align, FontStyle, FontWeight } from "@genome-spy/core/spec/font.js";
 import { Scale } from "@genome-spy/core/spec/scale.js";
+import { Title } from "@genome-spy/core/spec/title.js";
 import { ViewSpecBase, ViewBackground } from "@genome-spy/core/spec/view.js";
 import {
     AppConfigurableVisibilitySpec,
@@ -409,6 +410,15 @@ export type MetadataSourceEntry =
 
 export interface MetadataDef {
     /**
+     * Title shown above metadata columns.
+     *
+     * Set to `null` to hide the metadata title.
+     *
+     * __Default value:__ `"Sample metadata"`
+     */
+    title?: string | Title | null;
+
+    /**
      * Metadata source definitions used for startup and on-demand imports.
      *
      * Source order is significant for startup loading: eager startup imports
@@ -474,6 +484,18 @@ export interface MetadataDef {
      * __Default value:__ `-90`
      */
     labelAngle?: number;
+
+    /**
+     * Whether metadata attribute titles reserve layout space outside the sample
+     * rows.
+     *
+     * Setting this to `false` enables wilder layouts where attribute titles
+     * may overlap nearby content. This is useful for dense metadata matrices
+     * with rotated labels.
+     *
+     * __Default value:__ `false`
+     */
+    titleReserve?: boolean;
 }
 
 export interface SampleDef {

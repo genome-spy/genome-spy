@@ -1,0 +1,19 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Basic title and subtitle example.",
+
+  "title": {
+    "text": "Cosine wave",
+    "subtitle": "A basic title with secondary text",
+    "anchor": "start"
+  },
+
+  "data": { "url": "data/sincos.csv" },
+
+  "mark": "point",
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "cos", "type": "quantitative" }
+  }
+}

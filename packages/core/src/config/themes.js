@@ -26,9 +26,25 @@ const VEGALITE_THEME = {
         domainColor: "gray",
         gridColor: "#ddd",
         labelColor: "#333",
-        titleColor: "#333",
+        titleColor: "black",
         titleFontSize: 11,
-        titleFontWeight: "normal",
+        titleFontWeight: "bold",
+    },
+    legend: {
+        titleColor: "black",
+        titleFontSize: 11,
+        titleFontWeight: "bold",
+    },
+    style: {
+        "group-title": {
+            color: "black",
+            fontSize: 13,
+            fontWeight: "bold",
+        },
+        "group-subtitle": {
+            color: "black",
+            fontSize: 12,
+        },
     },
     axisQuantitative: {
         grid: true,

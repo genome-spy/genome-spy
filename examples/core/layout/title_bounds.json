@@ -1,0 +1,117 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+  "description": "Acid test for title bounds in composed layouts.",
+
+  "data": {
+    "values": [
+      { "x": 0, "y": 1, "category": "A" },
+      { "x": 1, "y": 3, "category": "B" },
+      { "x": 2, "y": 2, "category": "C" },
+      { "x": 3, "y": 4, "category": "D" }
+    ]
+  },
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "y", "type": "quantitative" }
+  },
+
+  "vconcat": [
+    {
+      "name": "topTitle",
+      "title": {
+        "text": "Top title with bottom axis",
+        "orient": "top",
+        "anchor": "start",
+        "fontSize": 15,
+        "fontWeight": "bold"
+      },
+      "height": 90,
+      "mark": "point"
+    },
+
+    {
+      "name": "sideTitles",
+      "hconcat": [
+        {
+          "name": "leftTitle",
+          "title": {
+            "text": "Left title",
+            "orient": "left",
+            "anchor": "middle",
+            "fontSize": 14
+          },
+          "width": 120,
+          "height": 80,
+          "mark": "point"
+        },
+        {
+          "name": "rightTitle",
+          "title": {
+            "text": "Right title",
+            "orient": "right",
+            "anchor": "middle",
+            "fontSize": 14
+          },
+          "width": 120,
+          "height": 80,
+          "mark": "point"
+        },
+        {
+          "name": "rightTitleWithSubtitle",
+          "title": {
+            "text": "Styled top title",
+            "subtitle": "Scoped config",
+            "style": "fancy-title",
+            "orient": "top",
+            "anchor": "middle"
+          },
+          "config": {
+            "title": {
+              "subtitleColor": "#9b5de5",
+              "subtitleFontSize": 10,
+              "subtitleFontStyle": "italic",
+              "subtitlePadding": 6
+            },
+            "style": {
+              "fancy-title": {
+                "color": "#f15bb5",
+                "fontSize": 15,
+                "fontWeight": "bold"
+              }
+            }
+          },
+          "width": 120,
+          "height": 80,
+          "mark": "point"
+        }
+      ]
+    },
+
+    {
+      "name": "overlayTitle",
+      "title": {
+        "text": "Overlay title should not reserve extra space",
+        "style": "overlay-title"
+      },
+      "height": 80,
+      "mark": "point"
+    },
+
+    {
+      "name": "bottomTitle",
+      "title": {
+        "text": "Bottom title",
+        "orient": "bottom",
+        "anchor": "end",
+        "fontSize": 16
+      },
+      "height": 90,
+      "mark": "point"
+    }
+  ],
+
+  "config": {
+    "view": { "stroke": "#d0d0d0", "strokeWidth": 1 }
+  }
+}

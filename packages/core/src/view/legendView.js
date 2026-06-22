@@ -28,6 +28,7 @@ import {
 import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
+import { measureText, requestFont } from "../fonts/textMetrics.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
 const SYMBOL_SIZE_FIELD = "_legendSymbolSize";
@@ -1589,13 +1590,11 @@ function getTitleWidth(legend, context) {
         return 0;
     }
 
-    const font = legend.titleFont
-        ? context.fontManager.getFont(
-              legend.titleFont,
-              legend.titleFontStyle,
-              legend.titleFontWeight
-          )
-        : context.fontManager.getDefaultFont();
+    const font = requestFont(context.fontManager, {
+        font: legend.titleFont,
+        fontStyle: legend.titleFontStyle,
+        fontWeight: legend.titleFontWeight,
+    });
     const metrics = font.metrics;
     if (!metrics) {
         return 0;
@@ -1605,10 +1604,10 @@ function getTitleWidth(legend, context) {
     const text = truncateText(
         legend.title,
         legend.titleLimit,
-        metrics.measureWidth,
+        (text, fontSize) => measureText(metrics, text, fontSize).width,
         fontSize,
         "..."
     );
 
-    return metrics.measureWidth(text, fontSize);
+    return measureText(metrics, text, fontSize).width;
 }

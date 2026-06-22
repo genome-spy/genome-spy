@@ -3,6 +3,9 @@ import { describe, expect, test } from "vitest";
 import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
 import { iterateLegendViews } from "./gridChildLegends.js";
 import Padding from "../layout/padding.js";
+import TitleView from "../titleView.js";
+import ContainerView from "../containerView.js";
+import { createTestViewContext } from "../testUtils.js";
 
 function createMinimalGridChild() {
     const view = /** @type {any} */ ({
@@ -18,6 +21,61 @@ function createMinimalGridChild() {
     });
 
     return new GridChild(view, layoutParent, 0);
+}
+
+function createTitledGridChild(
+    /** @type {Partial<import("../../spec/title.js").Title>} */ titleSpec
+) {
+    const child = createMinimalGridChild();
+    const context = createTestViewContext();
+    context.fontManager = createFontManager();
+    const parent = new ContainerView(
+        { layer: [] },
+        context,
+        null,
+        null,
+        "parent"
+    );
+    child.title = TitleView.create(
+        /** @type {import("../../spec/title.js").Title} */ ({
+            text: "Title",
+            orient: "top",
+            offset: 10,
+            fontSize: 12,
+            angle: 0,
+            ...titleSpec,
+        }),
+        [],
+        context,
+        parent,
+        parent,
+        "title"
+    );
+
+    return child;
+}
+
+function createFontManager() {
+    return /** @type {any} */ ({
+        getDefaultFont: () => ({
+            metrics: createFontMetrics(),
+        }),
+        getFont: () => ({
+            metrics: createFontMetrics(),
+        }),
+    });
+}
+
+function createFontMetrics() {
+    return /** @type {import("../../fonts/bmFontMetrics.js").BMFontMetrics} */ ({
+        common: { base: 10 },
+        capHeight: 7,
+        descent: 2,
+        measureWidth: (
+            /** @type {string} */ text,
+            /** @type {number} */ size
+        ) => text.length * size,
+    });
 }
 
 function createLegendEntry(
@@ -90,6 +148,23 @@ describe("GridChild legend layout", () => {
 
         expect(child.legends.right.entries).toHaveLength(2);
         expect(Array.from(iterateLegendViews(child.legends))).toHaveLength(1);
+    });
+});
+
+describe("GridChild title layout", () => {
+    test("default view title contributes top overhang", () => {
+        const child = createTitledGridChild({});
+
+        expect(child.getOverhang().top).toBeGreaterThan(0);
+    });
+
+    test("overlay view title does not contribute external overhang", () => {
+        const child = createTitledGridChild({
+            text: "Overlay",
+            offset: -10,
+        });
+
+        expect(child.getOverhang().top).toBe(0);
     });
 });
 

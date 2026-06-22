@@ -17,7 +17,7 @@ import LayerView from "../layerView.js";
 import Padding from "../layout/padding.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
-import createTitle, { resolveTitleSpec } from "../title.js";
+import TitleView from "../titleView.js";
 import UnitView from "../unitView.js";
 import {
     isChromeView,
@@ -111,7 +111,7 @@ export default class GridChild {
         /** @type {SelectionRect} */
         this.selectionRect = undefined;
 
-        /** @type {UnitView} */
+        /** @type {TitleView} */
         this.title = undefined;
 
         /** @type {number} */
@@ -119,9 +119,6 @@ export default class GridChild {
 
         /** @type {number | undefined} */
         this.backgroundStrokeZindex = undefined;
-
-        /** @type {number} */
-        this.titleZindex = 1;
 
         /** @type {Rectangle} */
         this.coords = Rectangle.ZERO;
@@ -177,29 +174,16 @@ export default class GridChild {
             }
         }
 
-        if (needsAxes) {
-            const titleSpec = resolveTitleSpec(
-                view.spec.title,
-                view.getConfigScopes()
-            );
-            this.titleZindex = titleSpec?.zindex ?? 1;
-            const title = createTitle(titleSpec);
-            if (title) {
-                const unitView = new UnitView(
-                    title,
-                    layoutParent.context,
-                    layoutParent,
-                    view,
-                    "title" + serial,
-                    {
-                        blockEncodingInheritance: true,
-                    }
-                );
-                this.title = unitView;
-                markViewAsNonAddressable(this.title, { skipSubtree: true });
-                markViewAsChrome(this.title, { skipSubtree: true });
-            }
-        }
+        this.title = view.spec.title
+            ? TitleView.create(
+                  view.spec.title,
+                  view.getConfigScopes(),
+                  layoutParent.context,
+                  layoutParent,
+                  view,
+                  "title" + serial
+              )
+            : undefined;
 
         // TODO: More specific getter for this
         if (view.spec.viewportWidth != null) {
@@ -983,6 +967,13 @@ export default class GridChild {
     }
 
     getOverhang() {
+        // Axes and overhang should be mutually exclusive, so we can just add them together
+        return this.getGuideOverhang()
+            .add(this.getTitleOverhang())
+            .add(this.view.getOverhang());
+    }
+
+    getGuideOverhang() {
         const calculate = (
             /** @type {import("../../spec/axis.js").AxisOrient} */ orient
         ) => getExternalAxisOverhang(this.axes[orient]);
@@ -990,13 +981,72 @@ export default class GridChild {
             /** @type {import("../../spec/legend.js").LegendOrient} */ orient
         ) => getLegendOverhang(this.legends, orient);
 
-        // Axes and overhang should be mutually exclusive, so we can just add them together
         return new Padding(
             calculate("top") + legend("top"),
             calculate("right") + legend("right"),
             calculate("bottom") + legend("bottom"),
             calculate("left") + legend("left")
-        ).add(this.view.getOverhang());
+        );
+    }
+
+    getTitleOverhang() {
+        return this.title?.getOverhang() ?? Padding.zero();
+    }
+
+    getTitleZindex() {
+        return this.title?.titleSpec.zindex ?? 1;
+    }
+
+    /**
+     * @param {import("../renderingContext/viewRenderingContext.js").default} context
+     * @param {Rectangle} viewportCoords
+     * @param {import("../../types/rendering.js").RenderingOptions} options
+     */
+    renderTitle(context, viewportCoords, options) {
+        this.title?.render(
+            context,
+            this.getTitleCoords(viewportCoords),
+            options
+        );
+    }
+
+    /**
+     * Returns the frame used for rendering a view title. Reserved titles are
+     * placed outside guide overhang orthogonally, while the title frame controls
+     * the parallel anchor range.
+     *
+     * @param {Rectangle} viewportCoords
+     */
+    getTitleCoords(viewportCoords) {
+        const titleSpec = this.title?.titleSpec;
+        if (!titleSpec) {
+            return viewportCoords;
+        }
+
+        const guideCoords = viewportCoords.expand(this.getGuideOverhang());
+        const frame = titleSpec.frame ?? "group";
+        if (titleSpec.reserve === false) {
+            return frame == "bounds" ? guideCoords : viewportCoords;
+        } else if (frame == "bounds") {
+            return guideCoords;
+        }
+
+        switch (titleSpec.orient) {
+            case "top":
+            case "bottom":
+                return guideCoords.modify({
+                    x: () => viewportCoords.x,
+                    width: () => viewportCoords.width,
+                });
+            case "left":
+            case "right":
+                return guideCoords.modify({
+                    y: () => viewportCoords.y,
+                    height: () => viewportCoords.height,
+                });
+            default:
+                return viewportCoords;
+        }
     }
 
     getOverhangAndPadding() {
