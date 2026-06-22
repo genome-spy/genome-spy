@@ -57,7 +57,7 @@ describe("layout snapshot helper", () => {
 
     test("title-styles docs example relies on title bounds instead of padding", async () => {
         const spec = loadSharedExampleSpec(
-            "examples/docs/grammar/config/title-styles.json"
+            "examples/docs/grammar/title/title-styles.json"
         );
         const layout = await specToLayout(spec);
 
