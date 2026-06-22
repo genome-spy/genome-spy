@@ -1119,6 +1119,12 @@ export default class SampleView extends ContainerView {
             0
         );
 
+        gridChild.title?.render(
+            context,
+            gridChild.getTitleCoords(coords),
+            plotOptions
+        );
+
         gridChild.selectionRect?.render(context, coords, options);
     }
 

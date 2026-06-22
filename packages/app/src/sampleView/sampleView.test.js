@@ -64,6 +64,12 @@ class InspectRenderingContext extends ViewRenderingContext {
     /** @type {string[]} */
     legendMarks = [];
 
+    /** @type {import("@genome-spy/core/view/layout/rectangle.js").default[]} */
+    titleCoords = [];
+
+    /** @type {import("@genome-spy/core/types/rendering.js").RenderingOptions[]} */
+    titleOptions = [];
+
     pushView(view, coords) {
         this.#coordsStack.push(coords);
     }
@@ -99,6 +105,9 @@ class InspectRenderingContext extends ViewRenderingContext {
                 .some((view) => view.name?.startsWith("legend_region_"))
         ) {
             this.legendMarks.push(mark.unitView.name);
+        } else if (mark.unitView.name === "title0") {
+            this.titleCoords.push(this.#coordsStack.at(-1));
+            this.titleOptions.push(options);
         }
     }
 }
@@ -882,6 +891,43 @@ describe("layout and group column", () => {
         expect(renderContext.sampleLabelCoords[0].height).toBe(
             view.childCoords.height
         );
+    });
+
+    test("renders sample pane title once", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                data: {
+                    values: [
+                        { sample: "A", x: 1 },
+                        { sample: "B", x: 2 },
+                    ],
+                },
+                samples: {},
+                spec: {
+                    title: "Genomic data",
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                    },
+                },
+            },
+        });
+
+        const renderContext = new InspectRenderingContext({
+            picking: false,
+        });
+        view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderContext.titleCoords).toHaveLength(1);
+        expect(renderContext.titleCoords[0].x).toBe(view.childCoords.x);
+        expect(renderContext.titleOptions[0].clipRect).toBeUndefined();
     });
 
     test("renders child legends in the sample pane", async () => {
