@@ -1,6 +1,7 @@
 import { Data, InlineData, UrlData } from "@genome-spy/core/spec/data.js";
 import { Align, FontStyle, FontWeight } from "@genome-spy/core/spec/font.js";
 import { Scale } from "@genome-spy/core/spec/scale.js";
+import { Title } from "@genome-spy/core/spec/title.js";
 import { ViewSpecBase, ViewBackground } from "@genome-spy/core/spec/view.js";
 import {
     AppConfigurableVisibilitySpec,
@@ -415,7 +416,7 @@ export interface MetadataDef {
      *
      * __Default value:__ `"Sample metadata"`
      */
-    title?: string | null;
+    title?: string | Title | null;
 
     /**
      * Metadata source definitions used for startup and on-demand imports.

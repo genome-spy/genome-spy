@@ -79,12 +79,18 @@ export class MetadataView extends ConcatView {
     constructor(sampleView, sidebarView) {
         const metadataDef = sampleView.spec.metadata ?? {};
 
+        /** @type {import("@genome-spy/core/spec/title.js").Title} */
+        const title =
+            typeof metadataDef.title === "string"
+                ? { text: metadataDef.title }
+                : typeof metadataDef.title === "undefined"
+                  ? { text: "Sample metadata", orient: "none" }
+                  : metadataDef.title;
+
         /** @type {import("../../spec/view.js").AppHConcatSpec} */
         const spec = {
             name: "sample-metadata",
-            ...(metadataDef.title !== null
-                ? { title: metadataDef.title ?? "Sample metadata" }
-                : {}),
+            title,
             configurableVisibility: true,
             data: { name: null },
             hconcat: [], // Contents are added dynamically
