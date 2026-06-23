@@ -91,6 +91,13 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @prop {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("./axisView.js").AxisLabelClipPolicy>>} [axisLabelClipPolicy]
  *      Overrides the label clipping policy for axes created for this view.
  */
+
+/**
+ * @typedef {object} ParentGridChromePolicy
+ * @prop {boolean} axes
+ * @prop {boolean} background
+ */
+
 /**
  * @template {import("../spec/view.js").ViewSpec} [TSpec=import("../spec/view.js").ViewSpec]
  */
@@ -920,6 +927,18 @@ export default class View {
      */
     getSampleFacetTexture() {
         return undefined;
+    }
+
+    /**
+     * Controls which decorations the parent GridView draws around this view.
+     *
+     * @returns {ParentGridChromePolicy}
+     */
+    getParentGridChromePolicy() {
+        return {
+            axes: true,
+            background: true,
+        };
     }
 
     /**

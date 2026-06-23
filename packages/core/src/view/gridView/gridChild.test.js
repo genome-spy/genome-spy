@@ -6,11 +6,17 @@ import Padding from "../layout/padding.js";
 import TitleView from "../titleView.js";
 import ContainerView from "../containerView.js";
 import { createTestViewContext } from "../testUtils.js";
+import UnitView from "../unitView.js";
 
 function createMinimalGridChild() {
     const view = /** @type {any} */ ({
         needsAxes: { x: false, y: false },
         spec: {},
+        getConfigScopes: () => [],
+        getParentGridChromePolicy: () => ({
+            axes: true,
+            background: true,
+        }),
         getOverhang: () => Padding.zero(),
         getPadding: () => Padding.zero(),
         paramRuntime: { paramConfigs: new Map() },
@@ -19,6 +25,40 @@ function createMinimalGridChild() {
         context: {},
         spec: {},
     });
+
+    return new GridChild(view, layoutParent, 0);
+}
+
+function createMinimalGridChildWithPolicy(
+    /** @type {import("../view.js").ParentGridChromePolicy} */ policy
+) {
+    const context = createTestViewContext();
+    const layoutParent = new ContainerView(
+        { layer: [] },
+        context,
+        null,
+        null,
+        "parent"
+    );
+    const view = new UnitView(
+        {
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            view: {
+                stroke: "lightgray",
+            },
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        },
+        context,
+        layoutParent,
+        layoutParent,
+        "child"
+    );
+    view.getParentGridChromePolicy = () => policy;
+    view.needsAxes.x = true;
+    view.getConfiguredOrDefaultResolution = () => "excluded";
 
     return new GridChild(view, layoutParent, 0);
 }
@@ -148,6 +188,29 @@ describe("GridChild legend layout", () => {
 
         expect(child.legends.right.entries).toHaveLength(2);
         expect(Array.from(iterateLegendViews(child.legends))).toHaveLength(1);
+    });
+});
+
+describe("GridChild parent chrome policy", () => {
+    test("keeps parent chrome enabled by default", () => {
+        const child = createMinimalGridChildWithPolicy({
+            axes: true,
+            background: true,
+        });
+
+        expect(child.backgroundStroke?.name).toBe("backgroundStroke0");
+    });
+
+    test("allows child views to opt out of parent-owned chrome", async () => {
+        const child = createMinimalGridChildWithPolicy({
+            axes: false,
+            background: false,
+        });
+
+        await child.createAxes();
+
+        expect(child.backgroundStroke).toBeUndefined();
+        expect(child.axisCandidates).toHaveLength(0);
     });
 });
 

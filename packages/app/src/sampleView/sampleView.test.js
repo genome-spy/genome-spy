@@ -180,6 +180,34 @@ async function getSampleLabelWidth(spec, samples) {
     return view.sampleLabelView.getSize().width.px;
 }
 
+describe("parent grid chrome ownership", () => {
+    test("SampleView owns its own axes and plot background", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                view: {
+                    stroke: "lightgray",
+                },
+                data: {
+                    values: [{ sample: "A", x: 1 }],
+                },
+                samples: {},
+                spec: {
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                    },
+                },
+            },
+        });
+
+        expect(view.getParentGridChromePolicy()).toEqual({
+            axes: false,
+            background: false,
+        });
+    });
+});
+
 describe("sample data and metadata wiring", () => {
     test("extracts samples from main data subtree on subtreeDataReady", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */

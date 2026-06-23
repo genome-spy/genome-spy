@@ -1830,6 +1830,19 @@ export default class SampleView extends ContainerView {
     }
 
     /**
+     * SampleView draws axes and view backgrounds through its internal grid child
+     * so that they align with repeated samples and the sidebar.
+     *
+     * @returns {import("@genome-spy/core/view/view.js").ParentGridChromePolicy}
+     */
+    getParentGridChromePolicy() {
+        return {
+            axes: false,
+            background: false,
+        };
+    }
+
+    /**
      * @param {import("@reduxjs/toolkit").PayloadAction<import("./state/payloadTypes.js").PayloadWithAttribute>} action
      */
     dispatchAttributeAction(action) {

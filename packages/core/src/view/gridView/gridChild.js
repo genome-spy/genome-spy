@@ -124,10 +124,14 @@ export default class GridChild {
         this.coords = Rectangle.ZERO;
 
         const needsAxes = view.needsAxes.x || view.needsAxes.y;
+        const parentChromePolicy = view.getParentGridChromePolicy();
         const spec = view.spec;
         const explicitViewBackground = "view" in spec ? spec.view : undefined;
 
-        if (needsAxes || explicitViewBackground) {
+        if (
+            parentChromePolicy.background &&
+            (needsAxes || explicitViewBackground)
+        ) {
             const viewBackground = getConfiguredViewBackground(
                 view.getConfigScopes(),
                 explicitViewBackground
@@ -683,6 +687,7 @@ export default class GridChild {
         this.disposeAxisViews();
 
         const { view, axes, gridLines } = this;
+        const parentChromePolicy = view.getParentGridChromePolicy();
         /**
          * @param {import("../../scales/axisResolution.js").default} r
          * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
@@ -803,70 +808,72 @@ export default class GridChild {
             }
         };
 
-        // Handle children that have caught axis resolutions. Create axes for them.
-        for (const channel of /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
-            "x",
-            "y",
-        ])) {
-            if (view.needsAxes[channel]) {
-                const r = view.resolutions.axis[channel];
-                if (!r) {
-                    continue;
+        if (parentChromePolicy.axes) {
+            // Handle children that have caught axis resolutions. Create axes for them.
+            for (const channel of /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
+                "x",
+                "y",
+            ])) {
+                if (view.needsAxes[channel]) {
+                    const r = view.resolutions.axis[channel];
+                    if (!r) {
+                        continue;
+                    }
+
+                    await createAxis(r, channel, view);
                 }
-
-                await createAxis(r, channel, view);
             }
-        }
 
-        // Handle gridlines of children. Note: children's axis resolution may be caught by
-        // this view or some of this view's ancestors.
-        for (const channel of /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
-            "x",
-            "y",
-        ])) {
-            if (
-                view.needsAxes[channel] &&
-                // Handle a special case where the child view has an excluded resolution
-                // but no scale or axis, e.g., when only values are used on a channel.
-                view.getConfiguredOrDefaultResolution(channel, "axis") !=
-                    "excluded"
-            ) {
-                const r = view.getAxisResolution(channel);
-                if (!r) {
-                    continue;
+            // Handle gridlines of children. Note: children's axis resolution may be caught by
+            // this view or some of this view's ancestors.
+            for (const channel of /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
+                "x",
+                "y",
+            ])) {
+                if (
+                    view.needsAxes[channel] &&
+                    // Handle a special case where the child view has an excluded resolution
+                    // but no scale or axis, e.g., when only values are used on a channel.
+                    view.getConfiguredOrDefaultResolution(channel, "axis") !=
+                        "excluded"
+                ) {
+                    const r = view.getAxisResolution(channel);
+                    if (!r) {
+                        continue;
+                    }
+
+                    await createAxisGrid(r, channel, view);
                 }
-
-                await createAxisGrid(r, channel, view);
             }
-        }
 
-        // Handle LayerView's possible independent axes
-        if (view instanceof LayerView) {
-            // First create axes that have an orient preference
-            for (const layerChild of view) {
-                for (const [channel, r] of Object.entries(
-                    layerChild.resolutions.axis
-                )) {
-                    const props = r.getAxisProps();
-                    if (props && props.orient) {
-                        await createAxis(r, channel, layerChild);
+            // Handle LayerView's possible independent axes
+            if (view instanceof LayerView) {
+                // First create axes that have an orient preference
+                for (const layerChild of view) {
+                    for (const [channel, r] of Object.entries(
+                        layerChild.resolutions.axis
+                    )) {
+                        const props = r.getAxisProps();
+                        if (props && props.orient) {
+                            await createAxis(r, channel, layerChild);
+                        }
                     }
                 }
-            }
 
-            // Then create axes in a priority order
-            for (const layerChild of view) {
-                for (const [channel, r] of Object.entries(
-                    layerChild.resolutions.axis
-                )) {
-                    const props = r.getAxisProps();
-                    if (props && !props.orient) {
-                        await createAxis(r, channel, layerChild);
+                // Then create axes in a priority order
+                for (const layerChild of view) {
+                    for (const [channel, r] of Object.entries(
+                        layerChild.resolutions.axis
+                    )) {
+                        const props = r.getAxisProps();
+                        if (props && !props.orient) {
+                            await createAxis(r, channel, layerChild);
+                        }
                     }
                 }
-            }
 
-            // TODO: Axis grid
+                // TODO: Axis grid
+            }
         }
 
         for (const { definition, resolution } of getOrderedLegendEntries(
