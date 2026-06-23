@@ -393,83 +393,77 @@ ViewCoords {
             ViewCoords {
               "children": [
                 ViewCoords {
-                  "children": [
-                    ViewCoords {
-                      "children": [],
-                      "coords": "Rectangle: x: 1500, y: 0, width: 0, height: 16",
-                      "viewName": "title",
-                    },
-                    ViewCoords {
-                      "children": [
-                        ViewCoords {
-                          "children": [],
-                          "coords": "Rectangle: x: 1500, y: 16, width: 0, height: 12",
-                          "viewName": "symbols",
-                        },
-                        ViewCoords {
-                          "children": [],
-                          "coords": "Rectangle: x: 1500, y: 16, width: 0, height: 12",
-                          "viewName": "labels",
-                        },
-                      ],
-                      "coords": "Rectangle: x: 1500, y: 16, width: 0, height: 12",
-                      "viewName": "legendBody",
-                    },
-                  ],
-                  "coords": "Rectangle: x: 1500, y: 0, width: 0, height: 28",
-                  "viewName": "legend0",
+                  "children": [],
+                  "coords": "Rectangle: x: 1500, y: 0, width: 0, height: 16",
+                  "viewName": "title",
                 },
-              ],
-              "coords": "Rectangle: x: 1500, y: 0, width: 0, height: 28",
-              "viewName": "legend_right",
-            },
-            ViewCoords {
-              "children": [
                 ViewCoords {
                   "children": [
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 1500, y: 38, width: 0, height: 16",
-                      "viewName": "title",
+                      "coords": "Rectangle: x: 1500, y: 16, width: 0, height: 12",
+                      "viewName": "symbols",
+                    },
+                    ViewCoords {
+                      "children": [],
+                      "coords": "Rectangle: x: 1500, y: 16, width: 0, height: 12",
+                      "viewName": "labels",
+                    },
+                  ],
+                  "coords": "Rectangle: x: 1500, y: 16, width: 0, height: 12",
+                  "viewName": "legendBody",
+                },
+              ],
+              "coords": "Rectangle: x: 1500, y: 0, width: 0, height: 28",
+              "viewName": "legend0",
+            },
+          ],
+          "coords": "Rectangle: x: 1500, y: 0, width: 0, height: 28",
+          "viewName": "legend_right",
+        },
+        ViewCoords {
+          "children": [
+            ViewCoords {
+              "children": [
+                ViewCoords {
+                  "children": [],
+                  "coords": "Rectangle: x: 1500, y: 38, width: 0, height: 16",
+                  "viewName": "title",
+                },
+                ViewCoords {
+                  "children": [
+                    ViewCoords {
+                      "children": [],
+                      "coords": "Rectangle: x: 1500, y: 54, width: 0, height: 914",
+                      "viewName": "gradientRamp",
                     },
                     ViewCoords {
                       "children": [
                         ViewCoords {
                           "children": [],
                           "coords": "Rectangle: x: 1500, y: 54, width: 0, height: 914",
-                          "viewName": "gradientRamp",
+                          "viewName": "gradientTicks",
                         },
                         ViewCoords {
-                          "children": [
-                            ViewCoords {
-                              "children": [],
-                              "coords": "Rectangle: x: 1500, y: 54, width: 0, height: 914",
-                              "viewName": "gradientTicks",
-                            },
-                            ViewCoords {
-                              "children": [],
-                              "coords": "Rectangle: x: 1500, y: 54, width: 0, height: 914",
-                              "viewName": "gradientLabels",
-                            },
-                          ],
+                          "children": [],
                           "coords": "Rectangle: x: 1500, y: 54, width: 0, height: 914",
-                          "viewName": "gradientGuide",
+                          "viewName": "gradientLabels",
                         },
                       ],
                       "coords": "Rectangle: x: 1500, y: 54, width: 0, height: 914",
-                      "viewName": "gradientBody",
+                      "viewName": "gradientGuide",
                     },
                   ],
-                  "coords": "Rectangle: x: 1500, y: 38, width: 0, height: 930",
-                  "viewName": "legend0",
+                  "coords": "Rectangle: x: 1500, y: 54, width: 0, height: 914",
+                  "viewName": "gradientBody",
                 },
               ],
               "coords": "Rectangle: x: 1500, y: 38, width: 0, height: 930",
-              "viewName": "legend_right",
+              "viewName": "legend0",
             },
           ],
-          "coords": "Rectangle: x: 1500, y: 0, width: 0, height: 968",
-          "viewName": "legendStack",
+          "coords": "Rectangle: x: 1500, y: 38, width: 0, height: 930",
+          "viewName": "legend_right",
         },
       ],
       "coords": "Rectangle: x: 1500, y: 0, width: 0, height: 968",
@@ -2368,39 +2362,33 @@ ViewCoords {
             ViewCoords {
               "children": [
                 ViewCoords {
+                  "children": [],
+                  "coords": "Rectangle: x: 250, y: 0, width: 0, height: 16",
+                  "viewName": "title",
+                },
+                ViewCoords {
                   "children": [
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 250, y: 0, width: 0, height: 16",
-                      "viewName": "title",
+                      "coords": "Rectangle: x: 250, y: 16, width: 0, height: 12",
+                      "viewName": "symbols",
                     },
                     ViewCoords {
-                      "children": [
-                        ViewCoords {
-                          "children": [],
-                          "coords": "Rectangle: x: 250, y: 16, width: 0, height: 12",
-                          "viewName": "symbols",
-                        },
-                        ViewCoords {
-                          "children": [],
-                          "coords": "Rectangle: x: 250, y: 16, width: 0, height: 12",
-                          "viewName": "labels",
-                        },
-                      ],
+                      "children": [],
                       "coords": "Rectangle: x: 250, y: 16, width: 0, height: 12",
-                      "viewName": "legendBody",
+                      "viewName": "labels",
                     },
                   ],
-                  "coords": "Rectangle: x: 250, y: 0, width: 0, height: 28",
-                  "viewName": "legend0",
+                  "coords": "Rectangle: x: 250, y: 16, width: 0, height: 12",
+                  "viewName": "legendBody",
                 },
               ],
               "coords": "Rectangle: x: 250, y: 0, width: 0, height: 28",
-              "viewName": "legend_right",
+              "viewName": "legend0",
             },
           ],
           "coords": "Rectangle: x: 250, y: 0, width: 0, height: 28",
-          "viewName": "legendStack",
+          "viewName": "legend_right",
         },
       ],
       "coords": "Rectangle: x: 250, y: 0, width: 0, height: 28",

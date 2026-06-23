@@ -165,6 +165,10 @@ describe("GridView keyboard navigation", () => {
                 glHelper: { canvas: { style: {} } },
             }),
             isConfiguredVisible: () => true,
+            getParentGridChromePolicy: () => ({
+                axes: true,
+                background: true,
+            }),
             getKeyboardZoomAnchorX,
             getScaleResolution: /** @returns {undefined} */ () => undefined,
             propagateInteraction: /** @returns {void} */ () => undefined,
