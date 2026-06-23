@@ -43,8 +43,12 @@ describe("embed factory", () => {
         };
 
         class ParamGenomeSpy extends MockGenomeSpy {
-            constructor() {
-                super();
+            /**
+             * @param {HTMLElement} element
+             * @param {any} spec
+             */
+            constructor(element, spec) {
+                super(element, spec);
                 this.getParam = vi.fn(() => paramApi);
             }
         }
