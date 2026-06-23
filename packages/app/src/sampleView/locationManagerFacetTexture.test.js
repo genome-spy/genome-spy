@@ -27,9 +27,18 @@ describe("LocationManager facet texture", () => {
                 sampleData: {
                     ids: ["s1"],
                     entities: {
-                        s1: { indexNumber: 0 },
+                        s1: {
+                            id: "s1",
+                            displayName: "S1",
+                            indexNumber: 0,
+                        },
                     },
                 },
+                sampleMetadata: {
+                    attributeNames: [],
+                    entities: {},
+                },
+                groupMetadata: [],
             }),
             getHeight: () => 0,
             getSummaryHeight: () => 0,

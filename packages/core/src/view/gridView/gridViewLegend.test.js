@@ -23,7 +23,11 @@ class NoOpRenderingContext extends ViewRenderingContext {
         super(options);
     }
 
-    pushView() {
+    /**
+     * @param {import("../view.js").default} _view
+     * @param {Rectangle} _coords
+     */
+    pushView(_view, _coords) {
         //
     }
 

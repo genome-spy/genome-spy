@@ -1673,10 +1673,15 @@ describe("axis layout and visibility", () => {
             throw new Error("Expected sample-pane x-axis view!");
         }
 
-        expect(axisView.axisProps.grid).toBe(false);
-        expect(axisView.axisProps.chromGrid).toBe(true);
-        expect(axisView.axisProps.chromGridDash).toEqual([3, 3]);
-        expect(axisView.axisProps.chromGridColor).toBe("lightgray");
+        const axisProps =
+            /** @type {import("@genome-spy/core/spec/axis.js").GenomeAxis} */ (
+                axisView.axisProps
+            );
+
+        expect(axisProps.grid).toBe(false);
+        expect(axisProps.chromGrid).toBe(true);
+        expect(axisProps.chromGridDash).toEqual([3, 3]);
+        expect(axisProps.chromGridColor).toBe("lightgray");
     });
 
     test("applies view-level y-axis config before creating summary axes", async () => {

@@ -8,11 +8,15 @@ import ContainerView from "../containerView.js";
 import { createTestViewContext } from "../testUtils.js";
 import UnitView from "../unitView.js";
 
+/**
+ * @returns {GridChild}
+ */
 function createMinimalGridChild() {
     const view = /** @type {any} */ ({
         needsAxes: { x: false, y: false },
         spec: {},
-        getConfigScopes: () => [],
+        getConfigScopes:
+            /** @returns {import("../../spec/config.js").GenomeSpyConfig[]} */ () => [],
         getParentGridChromePolicy: () => ({
             axes: true,
             background: true,
