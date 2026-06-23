@@ -51,6 +51,21 @@ class MarkRecordingRenderingContext extends NoOpRenderingContext {
     }
 }
 
+class LegendRecordingRenderingContext extends NoOpRenderingContext {
+    /** @type {Map<LegendView, Rectangle>} */
+    legendCoords = new Map();
+
+    /**
+     * @param {import("../view.js").default} view
+     * @param {Rectangle} coords
+     */
+    pushView(view, coords) {
+        if (view instanceof LegendView) {
+            this.legendCoords.set(view, coords);
+        }
+    }
+}
+
 describe("legend layout helpers", () => {
     describe("translateLegendCoords", () => {
         test("places a right-oriented legend next to the viewport", () => {
@@ -2652,6 +2667,12 @@ describe("GridView legends", () => {
             );
             expect(body.getSize().height).toEqual({ grow: 1, minPx: 40 });
             expect(region.getParallelSize()).toBeUndefined();
+
+            const renderContext = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            region.render(renderContext, Rectangle.create(0, 0, 120, 160));
+            expect(renderContext.legendCoords.get(legend)?.height).toBe(160);
         });
 
         test("includes vertical gradient legend title in minimum height", async () => {

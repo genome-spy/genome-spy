@@ -23,8 +23,10 @@ import {
     getLargestSize,
     getSizeDefMaxPx,
     getSizeDefMinPx,
+    mapToPixelCoords,
     sumSizeDefs,
 } from "./layout/flexLayout.js";
+import Rectangle from "./layout/rectangle.js";
 import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
@@ -999,7 +1001,25 @@ export class LegendRegionView extends ContainerView {
         }
 
         context.pushView(this, coords);
-        this.#child?.render(context, coords, options);
+        const legendViews = this.#getVisibleLegendViews();
+        const legendSizes = legendViews.map(
+            (legendView) => legendView.getSize().height
+        );
+        const legendLocSizes = mapToPixelCoords(legendSizes, coords.height, {
+            spacing: this.#stackSpacing,
+            devicePixelRatio: context.getDevicePixelRatio(),
+        });
+
+        for (const [index, legendView] of legendViews.entries()) {
+            const locSize = legendLocSizes[index];
+            const legendCoords = new Rectangle(
+                () => coords.x,
+                () => coords.y + locSize.location,
+                () => coords.width,
+                () => locSize.size
+            );
+            legendView.render(context, legendCoords, options);
+        }
         context.popView(this);
     }
 
@@ -1172,6 +1192,10 @@ export default class LegendView extends ContainerView {
     }
 
     getSize() {
+        if (this.#stacked && !this.isActive()) {
+            return new FlexDimensions({ px: 0, grow: 0 }, { px: 0, grow: 0 });
+        }
+
         const mainSize = { grow: 1 };
         const perpendicularSize = { px: this.getPerpendicularSize() };
 

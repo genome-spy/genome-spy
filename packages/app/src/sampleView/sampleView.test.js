@@ -7,6 +7,7 @@ import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import ViewRenderingContext from "@genome-spy/core/view/renderingContext/viewRenderingContext.js";
 import { normalizeClipOptions } from "@genome-spy/core/view/renderingContext/clipOptions.js";
 import AxisView from "@genome-spy/core/view/axisView.js";
+import LegendView from "@genome-spy/core/view/legendView.js";
 import {
     getNonChromeViews,
     isChromeView,
@@ -67,6 +68,12 @@ class InspectRenderingContext extends ViewRenderingContext {
     /** @type {string[]} */
     legendMarks = [];
 
+    /** @type {{ title: import("@genome-spy/core/spec/legend.js").LegendConfig["title"], coords: import("@genome-spy/core/view/layout/rectangle.js").default }[]} */
+    legendCoords = [];
+
+    /** @type {import("@genome-spy/core/view/layout/rectangle.js").default[]} */
+    legendRegionCoords = [];
+
     /** @type {import("@genome-spy/core/view/layout/rectangle.js").default[]} */
     titleCoords = [];
 
@@ -74,6 +81,14 @@ class InspectRenderingContext extends ViewRenderingContext {
     titleOptions = [];
 
     pushView(view, coords) {
+        if (view instanceof LegendView) {
+            this.legendCoords.push({
+                title: view.legendProps.title,
+                coords,
+            });
+        } else if (view.name?.startsWith("legend_region_")) {
+            this.legendRegionCoords.push(coords);
+        }
         this.#coordsStack.push(coords);
     }
 
@@ -1018,6 +1033,107 @@ describe("layout and group column", () => {
 
         expect(legendBody.paramRuntime.createExpression("height")()).toBe(
             legendBody.coords.height
+        );
+    });
+
+    test("collapses hidden child legends in the sample pane legend stack", async () => {
+        /** @type {string | undefined} */
+        let hiddenLayerName;
+        const context = createTestViewContext();
+        context.isViewConfiguredVisible = (candidate) =>
+            !hiddenLayerName || candidate.spec.name !== hiddenLayerName;
+
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            config: { legend: { disable: false } },
+            data: {
+                values: [
+                    { sample: "A", x: 1, a: "alpha", b: "one" },
+                    { sample: "B", x: 2, a: "beta", b: "two" },
+                ],
+            },
+            samples: {},
+            spec: {
+                resolve: {
+                    legend: { color: "independent" },
+                    scale: { color: "independent" },
+                },
+                layer: [
+                    {
+                        name: "signal-a",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            color: {
+                                field: "a",
+                                type: "nominal",
+                                legend: {
+                                    orient: "right",
+                                    title: "Signal A",
+                                },
+                            },
+                        },
+                    },
+                    {
+                        name: "signal-b",
+                        mark: "point",
+                        encoding: {
+                            sample: { field: "sample" },
+                            x: { field: "x", type: "quantitative" },
+                            color: {
+                                field: "b",
+                                type: "nominal",
+                                legend: {
+                                    orient: "right",
+                                    title: "Signal B",
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec, context });
+        const legends = /** @type {LegendView[]} */ (
+            view
+                .getDescendants()
+                .filter((descendant) => descendant instanceof LegendView)
+        );
+        const legendA = legends.find(
+            (legend) => legend.legendProps.title === "Signal A"
+        );
+        const legendB = legends.find(
+            (legend) => legend.legendProps.title === "Signal B"
+        );
+        if (!legendA || !legendB) {
+            throw new Error("Expected both layer legends!");
+        }
+
+        expect(legendA.getSize().height.px).toBeGreaterThan(0);
+        expect(legendB.getSize().height.px).toBeGreaterThan(0);
+
+        hiddenLayerName = "signal-a";
+
+        expect(legendA.getSize().width.px).toBe(0);
+        expect(legendA.getSize().height.px).toBe(0);
+        expect(legendB.getSize().height.px).toBeGreaterThan(0);
+
+        const renderContext = new InspectRenderingContext({ picking: false });
+        view.render(renderContext, Rectangle.create(0, 0, 360, 220), {
+            firstFacet: true,
+        });
+
+        expect(renderContext.legendCoords).toEqual([
+            {
+                title: "Signal B",
+                coords: expect.any(Rectangle),
+            },
+        ]);
+        expect(renderContext.legendRegionCoords).toHaveLength(1);
+        expect(renderContext.legendCoords[0].coords.y).toBe(
+            renderContext.legendRegionCoords[0].y
         );
     });
 
