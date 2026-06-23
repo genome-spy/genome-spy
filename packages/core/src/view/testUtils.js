@@ -31,13 +31,19 @@ import {
     createHeadlessEngine,
     createHeadlessViewContext,
 } from "../genomeSpy/headlessBootstrap.js";
+import { INTERNAL_DEFAULT_CONFIG } from "../config/defaultConfig.js";
+import { mergeConfigScopes } from "../config/mergeConfig.js";
+import { resolveBaseConfig } from "../config/resolveConfig.js";
+import { DEFAULT_THEME_NAME, resolveThemeSelection } from "../config/themes.js";
 
 /**
  * @param {import("./viewFactory.js").ViewFactoryOptions} [viewFactoryOptions]
+ * @param {Parameters<typeof createHeadlessViewContext>[0]} [contextOptions]
  * @returns
  */
-export function createTestViewContext(viewFactoryOptions = {}) {
+export function createTestViewContext(viewFactoryOptions = {}, contextOptions) {
     return createHeadlessViewContext({
+        ...contextOptions,
         viewFactoryOptions,
     });
 }
@@ -82,10 +88,15 @@ export function createBroadcastingTestViewContext(viewFactoryOptions = {}) {
 }
 
 /**
- * @type {<V extends import("./view.js").default>(spec: RootSpec, viewClass: { new(...args: any[]): V }, ViewFactoryOptions?: import("./viewFactory.js").ViewFactoryOptions) => Promise<V>}
+ * @type {<V extends import("./view.js").default>(spec: RootSpec, viewClass: { new(...args: any[]): V }, ViewFactoryOptions?: import("./viewFactory.js").ViewFactoryOptions, contextOptions?: Parameters<typeof createHeadlessViewContext>[0]) => Promise<V>}
  */
-export async function create(spec, viewClass, viewFactoryOptions = {}) {
-    const c = createTestViewContext(viewFactoryOptions);
+export async function create(
+    spec,
+    viewClass,
+    viewFactoryOptions = {},
+    contextOptions
+) {
+    const c = createTestViewContext(viewFactoryOptions, contextOptions);
     const view = await c.createOrImportView(
         /** @type {import("../spec/view.js").ViewSpec} */ (spec),
         null,
@@ -159,10 +170,21 @@ export function renderToLayout(view, coords) {
  * @param {import("./layout/rectangle.js").default} [coords]
  */
 export async function specToLayout(spec, viewFactoryOptions = {}, coords) {
-    const view = await create(/** @type {any} */ (spec), View, {
-        wrapRoot: true,
-        ...viewFactoryOptions,
+    const baseConfig = resolveBaseConfig({
+        defaultConfig: INTERNAL_DEFAULT_CONFIG,
+        builtInTheme: resolveThemeSelection(DEFAULT_THEME_NAME),
+        theme: mergeConfigScopes([resolveThemeSelection(spec.theme)]),
     });
+
+    const view = await create(
+        /** @type {any} */ (spec),
+        View,
+        {
+            wrapRoot: true,
+            ...viewFactoryOptions,
+        },
+        { baseConfig }
+    );
 
     return renderToLayout(view, coords);
 }

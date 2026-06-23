@@ -143,3 +143,29 @@ See also [Titles](./title.md).
 View background defaults come from `config.view` and from styles referenced by
 `view.style`. GenomeSpy also supports the implicit `"cell"` style model for view
 backgrounds.
+
+## View size defaults
+
+`config.view` can define default sizes for views that do not specify `width` or
+`height` directly. These defaults follow Vega-Lite's continuous/discrete split:
+
+SCHEMA ViewConfig
+
+`discreteWidth` and `discreteHeight` can be fixed pixel values or step objects:
+
+```json
+{
+  "config": {
+    "view": {
+      "continuousWidth": 300,
+      "continuousHeight": 300,
+      "discreteWidth": { "step": 20 },
+      "discreteHeight": { "step": 20 }
+    }
+  }
+}
+```
+
+If these properties are omitted, GenomeSpy keeps its default `"container"`
+sizing behavior. See [child sizing](./composition/concat.md#sizedef) for
+details about `"container"` and other size shorthands.

@@ -16,6 +16,9 @@ const VEGALITE_THEME = {
         color: "black",
     },
     view: {
+        continuousWidth: 300,
+        continuousHeight: 300,
+        step: 20,
         stroke: "#ddd",
         strokeWidth: 1,
     },

@@ -405,7 +405,7 @@ export default class View {
      * @return {import("./layout/flexLayout.js").SizeDef}
      */
     #getDimensionSize(dimension) {
-        let value = this.spec[dimension];
+        const { value, implicit } = this.#getDimensionValue(dimension);
         const needsStepInvalidation = isStepSize(value);
 
         const viewport =
@@ -453,6 +453,10 @@ export default class View {
                 );
 
                 return { px: steps * stepSize, grow: 0 };
+            } else if (implicit) {
+                // Vega-Lite treats a missing positional channel as one
+                // discrete step. Keep explicit step sizes strict.
+                return { px: stepSize, grow: 0 };
             } else {
                 throw new ViewError(
                     `Cannot use step-based size with "${dimension}"!`,
@@ -467,6 +471,59 @@ export default class View {
         }
     }
 
+    /**
+     * @param {"width" | "height" | "viewportWidth" | "viewportHeight"} dimension
+     * @returns {{ value: "container" | number | import("../spec/view.js").SizeDef | import("../spec/view.js").Step | undefined, implicit: boolean }}
+     */
+    #getDimensionValue(dimension) {
+        const value = this.spec[dimension];
+        if (value != null) {
+            return { value, implicit: false };
+        }
+
+        const viewport =
+            dimension == "viewportWidth" || dimension == "viewportHeight";
+        if (viewport) {
+            return { value, implicit: false };
+        }
+
+        return {
+            value: this.#getConfiguredDefaultSize(
+                /** @type {"width" | "height"} */ (dimension)
+            ),
+            implicit: true,
+        };
+    }
+
+    /**
+     * @param {"width" | "height"} dimension
+     * @returns {number | import("../spec/view.js").Step | undefined}
+     */
+    #getConfiguredDefaultSize(dimension) {
+        const viewConfig = this.getConfig().view;
+        if (!viewConfig) {
+            return undefined;
+        }
+
+        const channel = dimension == "width" ? "x" : "y";
+        const scaleType =
+            this.getScaleResolution(channel)?.getResolvedScaleType();
+        if (scaleType && !isDiscrete(scaleType)) {
+            return dimension == "width"
+                ? viewConfig.continuousWidth
+                : viewConfig.continuousHeight;
+        } else {
+            return (
+                (dimension == "width"
+                    ? viewConfig.discreteWidth
+                    : viewConfig.discreteHeight) ??
+                (viewConfig.step !== undefined
+                    ? { step: viewConfig.step }
+                    : undefined)
+            );
+        }
+    }
+
     registerStepSizeInvalidation() {
         this.#registerStepSizeInvalidationFor("width", "x");
         this.#registerStepSizeInvalidationFor("height", "y");
@@ -477,13 +534,17 @@ export default class View {
      * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
      */
     #registerStepSizeInvalidationFor(dimension, channel) {
-        const value = this.spec[dimension];
+        const { value, implicit } = this.#getDimensionValue(dimension);
         if (!isStepSize(value)) {
             return;
         }
 
         const resolution = this.getScaleResolution(channel);
         if (!resolution) {
+            if (implicit) {
+                return;
+            }
+
             throw new ViewError(
                 "Cannot use 'step' size without a scale!",
                 this

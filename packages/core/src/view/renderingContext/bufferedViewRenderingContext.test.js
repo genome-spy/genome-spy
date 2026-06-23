@@ -6,16 +6,22 @@ import BufferedViewRenderingContext from "./bufferedViewRenderingContext.js";
 describe("BufferedViewRenderingContext", () => {
     test("reuses viewport setup for value-equal mark clips", () => {
         const coords = Rectangle.create(0, 0, 20, 10);
-        const gl = {
-            COLOR_BUFFER_BIT: 0x4000,
-            SCISSOR_TEST: 0x0c11,
-            drawingBufferWidth: 100,
-            drawingBufferHeight: 100,
-            viewport: () => undefined,
-            disable: () => undefined,
-            clearColor: () => undefined,
-            clear: () => undefined,
-        };
+        const gl = /** @type {WebGL2RenderingContext} */ (
+            /** @type {unknown} */ ({
+                COLOR_BUFFER_BIT: 0x4000,
+                SCISSOR_TEST: 0x0c11,
+                drawingBufferWidth: 100,
+                drawingBufferHeight: 100,
+                /** @returns {void} */
+                viewport: () => undefined,
+                /** @returns {void} */
+                disable: () => undefined,
+                /** @returns {void} */
+                clearColor: () => undefined,
+                /** @returns {void} */
+                clear: () => undefined,
+            })
+        );
         let viewportSetups = 0;
         let draws = 0;
 
@@ -64,7 +70,10 @@ describe("BufferedViewRenderingContext", () => {
         const context = new BufferedViewRenderingContext(
             { picking: false },
             {
-                webGLHelper: { gl },
+                webGLHelper:
+                    /** @type {import("../../gl/webGLHelper.js").default} */ (
+                        /** @type {unknown} */ ({ gl })
+                    ),
                 canvasSize: { width: 100, height: 100 },
                 devicePixelRatio: 1,
             }
