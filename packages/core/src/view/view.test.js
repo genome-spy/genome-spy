@@ -813,6 +813,125 @@ describe("Test domain handling", () => {
 });
 
 describe("Step sizing and domain updates", () => {
+    test("Implicit width and height use container sizing by default", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(view.getSize().width).toEqual({ px: 0, grow: 1 });
+        expect(view.getSize().height).toEqual({ px: 0, grow: 1 });
+    });
+
+    test("Implicit continuous view size uses configured continuous defaults", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            config: {
+                view: {
+                    continuousWidth: 123,
+                    continuousHeight: 456,
+                },
+            },
+            data: { values: [{ x: 1, y: 2 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(view.getSize().width).toEqual({ px: 123, grow: 0 });
+        expect(view.getSize().height).toEqual({ px: 456, grow: 0 });
+    });
+
+    test("Implicit discrete view size uses configured fixed discrete defaults", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            config: {
+                view: {
+                    discreteWidth: 123,
+                    discreteHeight: 456,
+                },
+            },
+            data: { values: [{ x: "a", y: "b" }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "nominal" },
+                y: { field: "y", type: "nominal" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(view.getSize().width).toEqual({ px: 123, grow: 0 });
+        expect(view.getSize().height).toEqual({ px: 456, grow: 0 });
+    });
+
+    test("Implicit discrete view size uses configured step defaults", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            config: {
+                view: {
+                    discreteWidth: { step: 10 },
+                    discreteHeight: { step: 20 },
+                },
+            },
+            data: {
+                values: [
+                    { x: "a", y: "d" },
+                    { x: "b", y: "e" },
+                    { x: "c", y: "f" },
+                ],
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "nominal" },
+                y: { field: "y", type: "nominal" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(view.getSize().width.px).toBeCloseTo(30);
+        expect(view.getSize().height.px).toBeCloseTo(60);
+        expect(view.getSize().width.grow).toBe(0);
+        expect(view.getSize().height.grow).toBe(0);
+    });
+
+    test("Implicit discrete view size uses configured default step", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            config: {
+                view: {
+                    step: 12,
+                },
+            },
+            data: {
+                values: [{ x: "a" }, { x: "b" }],
+            },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "nominal" },
+                y: { value: 0 },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(view.getSize().width.px).toBeCloseTo(24);
+        expect(view.getSize().width.grow).toBe(0);
+        expect(view.getSize().height).toEqual({ px: 12, grow: 0 });
+    });
+
     test("Layer view width updates when discrete domain grows", async () => {
         // Non-obvious: step sizing depends on the x-scale domain, which is owned
         // by a child unit view. Ensure the parent layer size updates on data changes.

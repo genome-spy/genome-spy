@@ -12,6 +12,7 @@ import { Scale, SchemeParams } from "./scale.js";
 import { Title } from "./title.js";
 import { ViewBackgroundProps } from "./decoration.js";
 import { LegendConfig } from "./legend.js";
+import { Step } from "./view.js";
 
 export type BuiltInThemeName =
     | "genomespy"
@@ -21,7 +22,44 @@ export type BuiltInThemeName =
     | "fivethirtyeight"
     | "urbaninstitute";
 
-export type ViewConfig = ViewBackgroundProps;
+export interface ViewConfig extends ViewBackgroundProps {
+    /**
+     * The default width when the view has a continuous x scale.
+     *
+     * __Default value:__ `"container"`
+     */
+    continuousWidth?: number;
+
+    /**
+     * The default width when the view has a discrete x scale or no x scale.
+     * This may be a fixed width or a step size for each discrete domain value.
+     *
+     * __Default value:__ `"container"`
+     */
+    discreteWidth?: number | Step;
+
+    /**
+     * The default height when the view has a continuous y scale.
+     *
+     * __Default value:__ `"container"`
+     */
+    continuousHeight?: number;
+
+    /**
+     * The default height when the view has a discrete y scale or no y scale.
+     * This may be a fixed height or a step size for each discrete domain value.
+     *
+     * __Default value:__ `"container"`
+     */
+    discreteHeight?: number | Step;
+
+    /**
+     * Default step size for discrete view sizes.
+     *
+     * __Default value:__ none
+     */
+    step?: number;
+}
 
 export type MarkConfig = Partial<Omit<MarkPropsBase, "type">>;
 
