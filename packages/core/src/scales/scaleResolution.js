@@ -1279,6 +1279,9 @@ export default class ScaleResolution {
      * Returns the scale instance, creating it if needed.
      *
      * Use this from call sites that may run before explicit initialization.
+     * Creating the scale resolves default domains and may require loaded
+     * assemblies for locus scales. For side-effect-free type checks, use
+     * `getResolvedScaleType()`.
      *
      * @returns {ScaleWithProps}
      */

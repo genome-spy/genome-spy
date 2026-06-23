@@ -506,8 +506,9 @@ export default class View {
         }
 
         const channel = dimension == "width" ? "x" : "y";
-        const scale = this.getScaleResolution(channel)?.getScale();
-        if (scale && !isDiscrete(scale.type)) {
+        const scaleType =
+            this.getScaleResolution(channel)?.getResolvedScaleType();
+        if (scaleType && !isDiscrete(scaleType)) {
             return dimension == "width"
                 ? viewConfig.continuousWidth
                 : viewConfig.continuousHeight;
