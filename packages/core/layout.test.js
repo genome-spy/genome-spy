@@ -64,8 +64,8 @@ describe("Test layout process", () => {
 
         expect(plot).toBeDefined();
         expect(legend).toBeDefined();
-        expect(readCoord(plot.coords, "width")).toBe(200);
-        expect(readCoord(plot.coords, "height")).toBe(200);
+        expect(readCoord(plot.coords, "width")).toBe(300);
+        expect(readCoord(plot.coords, "height")).toBe(300);
         expect(readCoord(legend.coords, "x")).toBe(
             readCoord(plot.coords, "x") + readCoord(plot.coords, "width") + 18
         );

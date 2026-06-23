@@ -38,7 +38,6 @@ export function createEmbed(GenomeSpy) {
             const specObject = isObject(spec) ? spec : await loadSpec(spec);
 
             specObject.baseUrl ??= "";
-            specObject.width ??= "container";
             specObject.padding ??= 10;
 
             if (element == document.body) {

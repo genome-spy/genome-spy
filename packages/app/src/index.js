@@ -43,7 +43,6 @@ export async function embed(el, spec, options = {}) {
         const specObject = isObject(spec) ? spec : await loadSpec(spec);
 
         specObject.baseUrl ??= "";
-        specObject.width ??= "container";
         specObject.padding ??= 10;
 
         const embedOptions =

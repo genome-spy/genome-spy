@@ -71,6 +71,21 @@ describe("resolveConfig", () => {
         expect(urbanInstitute.view.strokeOpacity).toBe(0);
     });
 
+    test("vegalite and derived themes use Vega-Lite view size defaults", () => {
+        for (const themeName of /** @type {const} */ ([
+            "vegalite",
+            "quartz",
+            "dark",
+            "fivethirtyeight",
+            "urbaninstitute",
+        ])) {
+            const theme = resolveThemeSelection(themeName);
+            expect(theme.view.continuousWidth).toBe(300);
+            expect(theme.view.continuousHeight).toBe(300);
+            expect(theme.view.step).toBe(20);
+        }
+    });
+
     test("exposes built-in theme background for root resolution", () => {
         expect(getBuiltInThemeBackground("vegalite")).toBeUndefined();
         expect(getBuiltInThemeBackground("dark")).toBe("#333");
