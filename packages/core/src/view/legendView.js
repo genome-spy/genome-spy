@@ -872,7 +872,6 @@ export class LegendRegionView extends ContainerView {
 
         legendView.layoutParent =
             /** @type {import("./containerView.js").default} */ (this.#child);
-        legendView.setStacked();
         this.#legendViews.push(legendView);
         /** @type {any} */ (this.#child).appendChildView(legendView);
     }
@@ -1042,8 +1041,6 @@ export default class LegendView extends ContainerView {
     /** @type {"symbol" | "gradient"} */
     #type;
 
-    #stacked = false;
-
     /** @type {() => boolean} */
     #activePredicate = () => true;
 
@@ -1180,6 +1177,8 @@ export default class LegendView extends ContainerView {
                 )
             );
         }
+
+        this.#stackedParallelSize = this.getStackedParallelSize();
     }
 
     /**
@@ -1192,26 +1191,15 @@ export default class LegendView extends ContainerView {
     }
 
     getSize() {
-        if (this.#stacked && !this.isActive()) {
+        if (!this.isActive()) {
             return new FlexDimensions({ px: 0, grow: 0 }, { px: 0, grow: 0 });
         }
 
         const mainSize = { grow: 1 };
         const perpendicularSize = { px: this.getPerpendicularSize() };
-
-        if (this.#stacked) {
-            const parallelSize = this.hasFlexibleParallelSize()
-                ? this.#getFlexibleStackedParallelSize()
-                : { px: this.getStackedParallelSize() };
-            if (
-                this.legendProps.orient == "top" ||
-                this.legendProps.orient == "bottom"
-            ) {
-                return new FlexDimensions(mainSize, perpendicularSize);
-            } else {
-                return new FlexDimensions(perpendicularSize, parallelSize);
-            }
-        }
+        const parallelSize = this.#hasFlexibleParallelSize()
+            ? this.#getFlexibleStackedParallelSize()
+            : { px: this.getStackedParallelSize() };
 
         if (
             this.legendProps.orient == "top" ||
@@ -1219,7 +1207,7 @@ export default class LegendView extends ContainerView {
         ) {
             return new FlexDimensions(mainSize, perpendicularSize);
         } else {
-            return new FlexDimensions(perpendicularSize, mainSize);
+            return new FlexDimensions(perpendicularSize, parallelSize);
         }
     }
 
@@ -1239,7 +1227,7 @@ export default class LegendView extends ContainerView {
             : childSize.height;
     }
 
-    hasFlexibleParallelSize() {
+    #hasFlexibleParallelSize() {
         return (
             this.#type == "gradient" && !isHorizontalLegend(this.legendProps)
         );
@@ -1268,12 +1256,6 @@ export default class LegendView extends ContainerView {
      */
     isActive() {
         return super.isConfiguredVisible() && this.#activePredicate();
-    }
-
-    setStacked() {
-        this.#stacked = true;
-        this.#stackedParallelSize = this.getStackedParallelSize();
-        this.invalidateSizeCache();
     }
 
     getStackedParallelSize() {
@@ -1337,9 +1319,8 @@ export default class LegendView extends ContainerView {
             nextExtent >= this.#effectiveExtent + AUTO_EXTENT_GROW_THRESHOLD_PX;
         const nextStackedParallelSize = this.getStackedParallelSize();
         const willResizeStack =
-            this.#stacked &&
             Math.abs(nextStackedParallelSize - previousStackedParallelSize) >=
-                AUTO_EXTENT_GROW_THRESHOLD_PX;
+            AUTO_EXTENT_GROW_THRESHOLD_PX;
 
         if (!willGrow && !willResizeStack) {
             return;
