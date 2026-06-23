@@ -118,7 +118,7 @@ SCHEMA BigBedData
 
 The visualization below displays the "ENCODE Candidate Cis-Regulatory Elements (cCREs) combined from all cell types" dataset for the hg38 genome.
 
-EXAMPLE examples/docs/grammar/data/lazy/bigbed-ccre-track.json height=70 spechidden
+EXAMPLE examples/docs/grammar/data/lazy/bigbed-ccre-track.json height=85 spechidden
 
 !!! disclaimer ""
 
