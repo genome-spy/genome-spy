@@ -17,6 +17,8 @@ cover.
 - Verify dataflow wiring and propagation when views are initialized lazily.
 - Ensure scale/axis resolution stays consistent across dynamic changes.
 - Detect UI-visible issues such as missing marks, axes, or stale domains.
+- Ensure complex mutations that are canceled immediately leave the internal
+  hierarchy effectively identical to the pre-mutation state.
 
 ## Proposed scope (initial draft)
 
@@ -31,8 +33,39 @@ cover.
 - Toggle visibility of a hidden subtree with chrom/pos encodings.
 - Add/remove a subtree that shares a data source with an existing branch.
 - Reinsert a previously removed subtree with shared scales/axes.
+- Apply a complex speculative mutation sequence and cancel it immediately.
 - Switch visibility via URL hash/bookmark restore during initial load.
 - Mutate encodings (e.g., add a channel) and confirm mark encoders reinit.
+
+## Round-trip cancellation invariant
+
+Acid tests should include "round-trip no-op" scenarios. The test should capture
+a stable internal snapshot, apply a complex mutation sequence, cancel or undo it
+immediately, await lifecycle stabilization, and compare the resulting state with
+the baseline.
+
+The comparison should not require raw object identity everywhere. It should use
+a normalized representation of the relevant internal state, with targeted
+identity checks for objects that are expected to survive cancellation, such as
+pre-existing views, shared data sources, collectors, scale resolutions, and
+parameter scopes.
+
+The snapshot should cover:
+
+- View hierarchy structure, names, import scopes, types, visibility, data init
+  states, and parent relationships.
+- Dataflow sources, collectors, branch shape, observer counts, and loading
+  statuses.
+- Scale, axis, and legend resolution membership and view-level config
+  attachments.
+- Axis, gridline, legend, separator, title, and other generated guide/chrome
+  views.
+- Param scopes, registered params, subscriptions, and lifecycle owner state.
+- Layout-relevant cached state or a stable rendered/layout hierarchy snapshot.
+
+The post-cancel state should be effectively identical to the baseline: no extra
+collectors, listeners, guide views, resolution members, param scopes, data
+reloads, or stale references may remain.
 
 ## Invariants to assert (draft)
 
@@ -42,13 +75,17 @@ cover.
 - Axis/gridline views exist and render for visible scale resolutions.
 - Encoders never see chrom/pos channel defs after linearization.
 - No extra data reloads when not needed; no missed reloads when required.
+- Canceling a speculative mutation restores the normalized internal snapshot.
 
 ## Test harness outline (draft)
 
 - A spec builder that can generate a small, layered layout with shared scales
   (matching the view hierarchy and resolution rules in `ARCHITECTURE.md`).
 - A mutation driver that can apply ordered changes and await completion.
-- A verification layer that inspects views, flow nodes, and scale resolutions.
+- A stable snapshot collector for views, dataflow, resolutions, generated
+  guide/chrome views, params, subscriptions, and layout output.
+- A verification layer that compares snapshots and inspects selected object
+  identities where cancellation should preserve them.
 - A mocked slow data source to control load timing and partial propagation.
 
 ## Testability considerations
