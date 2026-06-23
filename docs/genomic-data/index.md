@@ -30,7 +30,7 @@ genome.
   locus encoding, and coordinate counting.
 - [Locus scale](../grammar/scale.md#locus-scale) documents chromosome-aware
   genomic axes.
-- [Genome axis for loci](../grammar/scale.md#genome-axis-for-loci) shows how to
+- [Genome axis for loci](../grammar/axis.md#genome-axis-for-loci) shows how to
   configure the genome axis and grid.
 - [linearizeGenomicCoordinate](../grammar/transform/linearize-genomic-coordinate.md)
   covers explicit coordinate linearization in the data flow.

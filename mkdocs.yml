@@ -82,6 +82,7 @@ nav:
                 - Layer: "grammar/composition/layer.md"
                 - Multiscale: "grammar/composition/multiscale.md"
           - Scales: "grammar/scale.md"
+          - Axes: "grammar/axis.md"
           - Titles: "grammar/title.md"
           - Legends: "grammar/legend.md"
           - Config And Themes: "grammar/config.md"

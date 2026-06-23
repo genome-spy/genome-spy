@@ -112,7 +112,7 @@ can be provided by config buckets and by explicit `axis.style` references in
 channel definitions. Set `axis.style` to `null` to clear inherited axis styles
 in a channel definition.
 
-See also [Scale](./scale.md).
+See also [Axis](./axis.md).
 
 ## Scale defaults
 

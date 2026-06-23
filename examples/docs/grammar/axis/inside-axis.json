@@ -1,0 +1,32 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Inside axis placement example.",
+
+  "data": { "sequence": { "start": 0, "stop": 101, "step": 1, "as": "x" } },
+
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 8)", "as": "y" }],
+
+  "mark": "point",
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "axis": {
+        "offset": 10
+      }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "axis": {
+        "placement": "inside",
+        "orient": "left",
+        "grid": true,
+        "gridDash": [2, 4],
+        "title": "sin(x / 8)"
+      }
+    }
+  }
+}

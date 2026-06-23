@@ -2,20 +2,103 @@ import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { ZIndexProps } from "./decoration.js";
 
 export interface GenomeAxis extends Axis {
+    /**
+     * A boolean flag indicating if chromosome boundary ticks should be included as part of the genome axis.
+     *
+     * __Default value:__ `true`
+     */
     chromTicks?: boolean;
+
+    /**
+     * The size in pixels of chromosome boundary ticks.
+     *
+     * __Default value:__ `18`
+     * @minimum 0
+     */
     chromTickSize?: number;
+
+    /**
+     * The width, in pixels, of chromosome boundary ticks.
+     *
+     * __Default value:__ `1`
+     * @minimum 0
+     */
     chromTickWidth?: number;
+
+    /**
+     * The color of chromosome boundary ticks.
+     *
+     * __Default value:__ `"#989898"`
+     */
     chromTickColor?: string;
+
+    /**
+     * An array of alternating [stroke, space] lengths for dashed chromosome boundary ticks.
+     *
+     * __Default value:__ `[4, 2]`
+     */
     chromTickDash?: number[];
+
+    /**
+     * The pixel offset at which to start drawing with the chromosome tick dash array.
+     *
+     * __Default value:__ `1`
+     */
     chromTickDashOffset?: number;
 
+    /**
+     * A boolean flag indicating if chromosome name labels should be included as part of the genome axis.
+     *
+     * __Default value:__ `true`
+     */
     chromLabels?: boolean;
+
+    /**
+     * The font of chromosome name labels.
+     */
     chromLabelFont?: string;
+
+    /**
+     * Font size of chromosome name labels, in pixels.
+     *
+     * __Default value:__ `13`
+     * @minimum 0
+     */
     chromLabelFontSize?: number;
+
+    /**
+     * Font weight of chromosome name labels.
+     *
+     * __Default value:__ `"normal"`
+     */
     chromLabelFontWeight?: FontWeight;
+
+    /**
+     * Font style of chromosome name labels.
+     *
+     * __Default value:__ `"normal"`
+     */
     chromLabelFontStyle?: FontStyle;
+
+    /**
+     * Text color of chromosome name labels.
+     *
+     * __Default value:__ `"black"`
+     */
     chromLabelColor?: string;
+
+    /**
+     * The padding, in pixels, between chromosome boundary ticks and chromosome name labels.
+     *
+     * __Default value:__ `7`
+     */
     chromLabelPadding?: number;
+
+    /**
+     * Horizontal text alignment of chromosome name labels.
+     *
+     * __Default value:__ `"left"`
+     */
     chromLabelAlign?: Align;
     // TODO: chromLabelPerpendicularPadding
 
@@ -123,7 +206,8 @@ export interface Axis extends BaseAxis, ZIndexProps {
     format?: string;
 
     /**
-     * A title for the axis (none by default). Set to `null` to remove it.
+     * A title for the axis. By default, the title is derived from the encoding title,
+     * field, or expression. Set to `null` to remove it.
      */
     title?: string | null;
 
