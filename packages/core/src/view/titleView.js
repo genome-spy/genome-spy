@@ -115,7 +115,7 @@ function resolveTitleSpec(title, configScopes = []) {
     /** @type {import("../spec/title.js").Title} */
     const titleSpec = isString(title) ? { text: title } : title;
 
-    if (!titleSpec.text || titleSpec.orient == "none") {
+    if (!titleSpec.text) {
         return;
     }
 
@@ -138,6 +138,10 @@ function resolveTitleSpec(title, configScopes = []) {
         ...pickSubtitleTitleConfig(titleConfig),
         ...titleSpec,
     };
+
+    if (preliminarySpec.orient == "none") {
+        return;
+    }
 
     const { orientConfig } = getTitleOrientMetadata(preliminarySpec);
 

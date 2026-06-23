@@ -55,6 +55,25 @@ function createTitleUnits(title, configScopes = [], fontContext) {
  * @returns {TitleView}
  */
 function createTitleView(title, configScopes = [], fontContext) {
+    const titleView = createTitleViewOrUndefined(
+        title,
+        configScopes,
+        fontContext
+    );
+    if (!titleView) {
+        throw new Error("Expected the title to produce a TitleView.");
+    }
+
+    return titleView;
+}
+
+/**
+ * @param {string | import("../spec/title.js").Title} title
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} [configScopes]
+ * @param {{ fontManager: import("../fonts/textMetrics.js").FontManagerLike }} [fontContext]
+ * @returns {TitleView | undefined}
+ */
+function createTitleViewOrUndefined(title, configScopes = [], fontContext) {
     const context = createTestViewContext();
     if (fontContext) {
         context.fontManager = /** @type {any} */ (fontContext.fontManager);
@@ -75,10 +94,6 @@ function createTitleView(title, configScopes = [], fontContext) {
         parent,
         "title"
     );
-    if (!titleView) {
-        throw new Error("Expected the title to produce a TitleView.");
-    }
-
     return titleView;
 }
 
@@ -112,6 +127,26 @@ describe("title config precedence", () => {
 
         expect(/** @type {any} */ (title.mark).size).toBe(20);
         expect(/** @type {any} */ (title.mark).color).toBe("rebeccapurple");
+    });
+
+    test("orient none from default title style suppresses the title", () => {
+        const title = createTitleViewOrUndefined(
+            {
+                text: "Hello",
+            },
+            [
+                INTERNAL_DEFAULT_CONFIG,
+                {
+                    style: {
+                        "group-title": {
+                            orient: "none",
+                        },
+                    },
+                },
+            ]
+        );
+
+        expect(title).toBeUndefined();
     });
 
     test("title config and style config drive defaults", () => {
