@@ -119,17 +119,21 @@ export function createSelfClipOptions(clip, coords) {
 }
 
 /**
- * @param {import("../../types/rendering.js").RenderingOptions} options
+ * @param {import("../../types/rendering.js").ClipOptions | undefined} inheritedClip
  * @param {import("../../spec/mark.js").MarkProps["clip"]} markClip
  * @param {import("../layout/rectangle.js").default} coords
  * @returns {import("../../types/rendering.js").ClipOptions | undefined}
  */
-export function prepareMarkClipOptions(options, markClip, coords) {
+export function prepareMarkClipOptionsFromClip(
+    inheritedClip,
+    markClip,
+    coords
+) {
     if (markClip === "never") {
         return undefined;
     } else {
         return combineClipOptions(
-            normalizeClipOptions(options),
+            inheritedClip,
             createSelfClipOptions(markClip, coords)
         );
     }

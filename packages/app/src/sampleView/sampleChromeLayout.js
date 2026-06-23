@@ -122,7 +122,6 @@ export default class SampleChromeLayout {
             ? {
                   ...options,
                   clip: createClipOptions(inheritedClip.rect, false, true),
-                  clipRect: inheritedClip.rect,
               }
             : options;
 

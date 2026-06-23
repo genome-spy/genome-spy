@@ -5,7 +5,7 @@ import {
     clipOptionsEqual,
     combineClipOptions,
     normalizeClipOptions,
-    prepareMarkClipOptions,
+    prepareMarkClipOptionsFromClip,
 } from "./clipOptions.js";
 
 describe("rendering clip options", () => {
@@ -73,14 +73,14 @@ describe("rendering clip options", () => {
         ).toBeTruthy();
     });
 
-    test("prepares mark clip by combining inherited and self clipping", () => {
+    test("prepares mark clip from an already-normalized inherited clip", () => {
         const coords = Rectangle.create(2, 2, 6, 6);
-        const clipRect = Rectangle.create(0, 4, 10, 4);
-        const clip = prepareMarkClipOptions(
-            { clip: { rect: clipRect, clipX: false, clipY: true } },
-            "x",
-            coords
-        );
+        const inheritedClip = {
+            rect: Rectangle.create(0, 4, 10, 4),
+            clipX: false,
+            clipY: true,
+        };
+        const clip = prepareMarkClipOptionsFromClip(inheritedClip, "x", coords);
 
         expect(clip).toMatchObject({
             clipX: true,

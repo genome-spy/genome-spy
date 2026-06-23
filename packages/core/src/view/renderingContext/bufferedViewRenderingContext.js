@@ -5,7 +5,7 @@ import { color } from "d3-color";
 import {
     clipOptionsEqual,
     normalizeClipOptions,
-    prepareMarkClipOptions,
+    prepareMarkClipOptionsFromClip,
 } from "./clipOptions.js";
 
 /**
@@ -102,8 +102,8 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 mark,
                 callback,
                 coords: this.#coords,
-                clip: prepareMarkClipOptions(
-                    options,
+                clip: prepareMarkClipOptionsFromClip(
+                    inheritedClip,
                     mark.properties.clip,
                     this.#coords
                 ),
@@ -215,7 +215,7 @@ export default class BufferedViewRenderingContext extends ViewRenderingContext {
                 // Render each facet
                 if (
                     !coords.equals(previousCoords) ||
-                    request.clip !== previousClip ||
+                    !clipOptionsEqual(request.clip, previousClip) ||
                     !clipOptionsEqual(request.cullClip, previousCullClip)
                 ) {
                     this.#batch.push(

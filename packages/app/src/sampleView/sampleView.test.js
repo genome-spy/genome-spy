@@ -1277,8 +1277,8 @@ describe("layout and group column", () => {
             expect(
                 renderContext.sampleGroups.every(
                     (options) =>
-                        options.clipRect?.y !== undefined &&
-                        options.clipRect.y !== summaryClippedSidebar.y
+                        options.clip?.rect.y !== undefined &&
+                        options.clip.rect.y !== summaryClippedSidebar.y
                 )
             ).toBe(true);
         } finally {

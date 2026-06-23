@@ -77,6 +77,7 @@ import {
     markViewAsChrome,
 } from "@genome-spy/core/view/viewSelectors.js";
 import { attachViewLevelScaleConfigs } from "@genome-spy/core/scales/viewLevelScaleConfig.js";
+import { createClipOptions } from "@genome-spy/core/view/renderingContext/clipOptions.js";
 import {
     attachViewLevelAxisConfigs,
     attachViewLevelLegendConfigs,
@@ -1040,6 +1041,7 @@ export default class SampleView extends ContainerView {
 
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
+        const clip = createClipOptions(clipRect, true, true);
 
         const locations = this.locationManager.getLocations();
         if (!locations) {
@@ -1057,6 +1059,7 @@ export default class SampleView extends ContainerView {
         delete passThroughOptions.firstFacet;
         delete passThroughOptions.sampleFacetRenderingOptions;
         delete passThroughOptions.clipRect;
+        delete passThroughOptions.clip;
         const hasPassThroughOptions =
             Object.keys(passThroughOptions).length > 0;
 
@@ -1066,7 +1069,7 @@ export default class SampleView extends ContainerView {
             if (hasPassThroughOptions) {
                 Object.assign(opt, passThroughOptions);
             }
-            opt.clipRect = clipRect;
+            opt.clip = clip;
 
             gridChild.background?.render(context, coords, opt);
             gridChild.view.render(context, coords, opt);
@@ -1095,7 +1098,7 @@ export default class SampleView extends ContainerView {
             locations,
             {
                 ...options,
-                clipRect,
+                clip,
             }
         );
 
@@ -1106,7 +1109,7 @@ export default class SampleView extends ContainerView {
 
         options = {
             ...options,
-            clipRect: coords.expand(summaryOverhang),
+            clip: createClipOptions(coords.expand(summaryOverhang), true, true),
         };
 
         const summaryHeight = summaryViews.getSize().height.px;

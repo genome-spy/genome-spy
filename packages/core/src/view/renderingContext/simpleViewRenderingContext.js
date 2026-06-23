@@ -1,5 +1,8 @@
 import ViewRenderingContext from "./viewRenderingContext.js";
-import { normalizeClipOptions, prepareMarkClipOptions } from "./clipOptions.js";
+import {
+    normalizeClipOptions,
+    prepareMarkClipOptionsFromClip,
+} from "./clipOptions.js";
 
 /**
  * This class is mainly for illustrative purpose, i.e., how the rendering
@@ -64,8 +67,8 @@ export default class SimpleViewRenderingContext extends ViewRenderingContext {
         const dpr = this.getDevicePixelRatio();
 
         const inheritedClip = normalizeClipOptions(options);
-        const markClip = prepareMarkClipOptions(
-            options,
+        const markClip = prepareMarkClipOptionsFromClip(
+            inheritedClip,
             mark.properties.clip,
             this.coords
         );
