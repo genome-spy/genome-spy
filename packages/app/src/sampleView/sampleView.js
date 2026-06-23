@@ -995,6 +995,20 @@ export default class SampleView extends ContainerView {
         const gridChild = this.#gridChild;
         const plotOptions = options;
 
+        const renderLocationIndependentDecorations = () => {
+            renderLocalLegends(
+                gridChild.legends,
+                gridChild.axes,
+                coords,
+                context,
+                plotOptions,
+                (_zindex, _order, render) => render(),
+                0
+            );
+
+            gridChild.renderTitle(context, coords, plotOptions);
+        };
+
         // Background and grid rendering --------
 
         const backgroundRects =
@@ -1015,10 +1029,11 @@ export default class SampleView extends ContainerView {
         // Adjust clipRect if we have a sticky summary
         const clipRect = this.locationManager.clipBySummary(coords);
 
-        const locations =
-            /** @type {import("./sampleViewTypes.js").Locations} */ (
-                this.locationManager.getLocations()
-            );
+        const locations = this.locationManager.getLocations();
+        if (!locations) {
+            renderLocationIndependentDecorations();
+            return;
+        }
 
         const sampleOptions = this.#getSampleRenderOptions(
             locations.samples,
@@ -1109,17 +1124,7 @@ export default class SampleView extends ContainerView {
             });
         }
 
-        renderLocalLegends(
-            gridChild.legends,
-            gridChild.axes,
-            coords,
-            context,
-            plotOptions,
-            (_zindex, _order, render) => render(),
-            0
-        );
-
-        gridChild.renderTitle(context, coords, plotOptions);
+        renderLocationIndependentDecorations();
 
         gridChild.selectionRect?.render(context, coords, options);
     }

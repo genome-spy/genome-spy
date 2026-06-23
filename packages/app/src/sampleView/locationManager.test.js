@@ -1,5 +1,6 @@
 // @ts-check
 import { describe, expect, test } from "vitest";
+import Rectangle from "@genome-spy/core/view/layout/rectangle.js";
 import {
     calculateLocations,
     computeScrollMetrics,
@@ -64,6 +65,17 @@ describe("LocationManager defaults", () => {
         );
 
         expect(manager.getScrollableHeight()).toBe(72);
+    });
+
+    test("LocationManager returns no group background rects when locations are unavailable", () => {
+        const root = createRootGroup();
+        root.groups = [createSampleGroup("A", ["s1"])];
+
+        const manager = createLocationManager(root, { height: 0 });
+
+        expect(
+            manager.getGroupBackgroundRects(Rectangle.create(0, 0, 100, 0))
+        ).toEqual([]);
     });
 });
 

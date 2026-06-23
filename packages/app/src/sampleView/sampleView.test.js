@@ -1677,6 +1677,45 @@ describe("axis layout and visibility", () => {
         ).toBe(true);
     });
 
+    test("skips sample rendering while sample locations are unavailable", async () => {
+        const { view } = await createSampleViewForTest({
+            spec: {
+                config: { legend: { disable: false } },
+                data: {
+                    values: [{ sample: "A", x: 1, y: 2, group: "alpha" }],
+                },
+                samples: {},
+                spec: {
+                    title: "Sample plot",
+                    mark: "point",
+                    encoding: {
+                        sample: { field: "sample" },
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: {
+                            field: "group",
+                            type: "nominal",
+                            legend: { orient: "right" },
+                        },
+                    },
+                },
+            },
+        });
+
+        /** @type {any} */ (view.locationManager).getLocations = () =>
+            undefined;
+
+        const renderContext = new InspectRenderingContext({ picking: false });
+
+        expect(() =>
+            view.render(renderContext, Rectangle.create(0, 0, 300, 220), {
+                firstFacet: true,
+            })
+        ).not.toThrow();
+        expect(renderContext.titleCoords).toHaveLength(1);
+        expect(renderContext.legendMarks).not.toHaveLength(0);
+    });
+
     test("anchor-culls summary y-axis labels by the SampleView clip", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {

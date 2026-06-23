@@ -294,7 +294,12 @@ export class LocationManager {
      * @param {import("@genome-spy/core/view/layout/rectangle.js").default} coords
      */
     getGroupBackgroundRects(coords) {
-        const groups = this.getLocations().groups;
+        const locations = this.getLocations();
+        if (!locations) {
+            return [];
+        }
+
+        const groups = locations.groups;
         const maxDepth = groups
             .map((d) => d.key.depth)
             .reduce((a, b) => Math.max(a, b), 0);
@@ -329,15 +334,14 @@ export class LocationManager {
     }
 
     updateFacetTexture() {
-        if (!this.#ensureDynamicLocations()) {
-            return;
-        }
-
         const sampleData =
             this.#locationContext.getSampleHierarchy().sampleData;
 
         const sampleCount = sampleData?.ids?.length ?? 0;
-        const requiredLength = Math.ceil((sampleCount * 2) / 4) * 4;
+        const requiredLength = Math.max(
+            4,
+            Math.ceil((sampleCount * 2) / 4) * 4
+        );
 
         if (
             !this.#facetTextureData ||
@@ -348,6 +352,7 @@ export class LocationManager {
         }
 
         const height = this.#locationContext.getHeight();
+        const hasLocations = this.#ensureDynamicLocations();
         if (
             this.#facetTextureInputs.baseVersion === this.#baseLayoutVersion &&
             this.#facetTextureInputs.height === height &&
@@ -362,7 +367,7 @@ export class LocationManager {
         arr.fill(0);
 
         const entities = sampleData?.entities;
-        if (entities) {
+        if (hasLocations && entities) {
             const sampleLocations = this.#locations.samples;
 
             for (const sampleLocation of sampleLocations) {
