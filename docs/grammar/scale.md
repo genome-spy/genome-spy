@@ -399,6 +399,40 @@ specifying the `axis` property in the encoding block.
 }
 ```
 
+In composed views with a shared axis resolution, view-level `axes.<channel>`
+can configure the shared axis at the composed view:
+
+```json title="View-level axis configuration"
+{
+  "resolve": {
+    "scale": { "x": "shared" },
+    "axis": { "x": "shared" }
+  },
+
+  "axes": {
+    "x": {
+      "orient": "bottom",
+      "grid": false,
+      "chromGrid": true,
+      "chromGridDash": [3, 3],
+      "chromGridColor": "lightgray"
+    }
+  },
+
+  "layer": [
+    ...
+  ]
+}
+```
+
+A view-level `axes.<channel>` entry must map to one axis resolution. If the
+subtree has multiple independent axes for the same channel, place the config
+closer to the intended subtree or use local `encoding.<channel>.axis` settings.
+Do not mix view-level axis config with participating channel-level axis config
+for the same resolved axis.
+
+### Axis properties
+
 GenomeSpy implements most of Vega-Lite's axis properties. See the [interface
 definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/src/spec/axis.d.ts)
 for supported properties. TODO: Write a proper documentation.

@@ -8,6 +8,11 @@ import {
     attachViewLevelScaleConfigs,
     clearViewLevelScaleConfigs,
 } from "../scales/viewLevelScaleConfig.js";
+import {
+    attachViewLevelAxisConfigs,
+    attachViewLevelLegendConfigs,
+    clearViewLevelGuideConfigs,
+} from "../scales/viewLevelGuideConfig.js";
 import { finalizeSubtreeGraphics } from "./viewUtils.js";
 
 /**
@@ -76,6 +81,8 @@ export default class ContainerMutationHelper {
         const insertionResult = this.options.insertView(childView, insertIndex);
 
         attachViewLevelScaleConfigs(this.container);
+        attachViewLevelAxisConfigs(this.container);
+        attachViewLevelLegendConfigs(this.container);
 
         // Reminder: ensure assemblies from the real child hierarchy before any
         // downstream work that may initialize scales (axis prep / encoders).
@@ -121,6 +128,7 @@ export default class ContainerMutationHelper {
     async removeChildAt(index) {
         const { removeAt } = this.options.getChildSpecs();
         clearViewLevelScaleConfigs(this.container);
+        clearViewLevelGuideConfigs(this.container);
         this.options.removeView(index);
         removeAt(index);
 
@@ -128,6 +136,8 @@ export default class ContainerMutationHelper {
             await this.options.afterRemove(index);
         }
         attachViewLevelScaleConfigs(this.container);
+        attachViewLevelAxisConfigs(this.container);
+        attachViewLevelLegendConfigs(this.container);
 
         if (this.options.requestLayout !== false) {
             this.container.invalidateSizeCache();

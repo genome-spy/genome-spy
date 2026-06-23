@@ -970,6 +970,20 @@ export default class View {
     }
 
     /**
+     * @param {import("../spec/channel.js").ChannelWithScale} channel
+     */
+    getLegendResolution(channel) {
+        const primaryChannel =
+            /** @type {import("../spec/channel.js").ChannelWithScale} */ (
+                getPrimaryChannel(channel)
+            );
+
+        return this.getDataAncestors()
+            .map((view) => view.resolutions.legend[primaryChannel])
+            .find((resolution) => resolution);
+    }
+
+    /**
      * @param {import("../spec/channel.js").Channel | "default"} channel
      * @param {import("../spec/view.js").ResolutionTarget} resolutionType
      * @returns {import("../spec/view.js").ResolutionBehavior}

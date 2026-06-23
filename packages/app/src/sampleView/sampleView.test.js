@@ -1627,6 +1627,113 @@ describe("interaction routing", () => {
 });
 
 describe("axis layout and visibility", () => {
+    test("applies view-level x-axis config before creating sample-pane axes", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", chrom: "chr1", pos: 1 },
+                    { sample: "B", chrom: "chr2", pos: 2 },
+                ],
+            },
+            samples: {},
+            spec: {
+                height: 160,
+                axes: {
+                    x: {
+                        orient: "bottom",
+                        grid: false,
+                        chromGrid: true,
+                        chromGridDash: [3, 3],
+                        chromGridColor: "lightgray",
+                    },
+                },
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: {
+                        chrom: "chrom",
+                        pos: "pos",
+                        type: "locus",
+                    },
+                },
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        const axisView = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.orient === "bottom"
+            );
+
+        if (!(axisView instanceof AxisView)) {
+            throw new Error("Expected sample-pane x-axis view!");
+        }
+
+        expect(axisView.axisProps.grid).toBe(false);
+        expect(axisView.axisProps.chromGrid).toBe(true);
+        expect(axisView.axisProps.chromGridDash).toEqual([3, 3]);
+        expect(axisView.axisProps.chromGridColor).toBe("lightgray");
+    });
+
+    test("applies view-level y-axis config before creating summary axes", async () => {
+        /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
+        const spec = {
+            data: {
+                values: [
+                    { sample: "A", x: 1, y: 2 },
+                    { sample: "B", x: 2, y: 3 },
+                ],
+            },
+            samples: {},
+            spec: {
+                height: 160,
+                mark: "point",
+                encoding: {
+                    sample: { field: "sample" },
+                    x: { field: "x", type: "quantitative" },
+                },
+                aggregateSamples: [
+                    {
+                        name: "summary",
+                        height: 40,
+                        axes: {
+                            y: {
+                                orient: "left",
+                                title: "Summary signal",
+                                labelColor: "crimson",
+                            },
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+        };
+
+        const { view } = await createSampleViewForTest({ spec });
+        const summaryAxisView = view
+            .getDescendants()
+            .find(
+                (descendant) =>
+                    descendant instanceof AxisView &&
+                    descendant.axisProps.title === "Summary signal"
+            );
+
+        if (!(summaryAxisView instanceof AxisView)) {
+            throw new Error("Expected summary y-axis view!");
+        }
+
+        expect(summaryAxisView.axisProps.orient).toBe("left");
+        expect(summaryAxisView.axisProps.labelColor).toBe("crimson");
+    });
+
     test("main-pane axis wheel zoom matches content zoom", async () => {
         /** @type {import("@genome-spy/app/spec/sampleView.js").SampleSpec} */
         const spec = {

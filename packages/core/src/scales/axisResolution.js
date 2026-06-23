@@ -31,6 +31,9 @@ export default class AxisResolution {
     /** @type {Set<AxisResolutionMember>} The involved views */
     #members = new Set();
 
+    /** @type {{ view: import("../view/view.js").default, config: Partial<import("../spec/axis.js").Axis & import("../spec/axis.js").GenomeAxis> } | undefined} */
+    #viewLevelAxisConfig;
+
     /**
      * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
      */
@@ -79,6 +82,7 @@ export default class AxisResolution {
      * @returns {() => boolean}
      */
     registerMember(member) {
+        this.#assertNoMixing(member);
         this.#addMember(member);
         return () => {
             const removed = this.removeMember(member);
@@ -116,13 +120,13 @@ export default class AxisResolution {
 
     getAxisProps() {
         return getCachedOrCall(this, "axisProps", () => {
-            const propArray = orderResolutionMembers(this.#members).map(
-                (member) => {
-                    const channelDef =
-                        member.view.mark.encoding[member.channel];
-                    return "axis" in channelDef && channelDef.axis;
-                }
-            );
+            const propArray = this.#viewLevelAxisConfig
+                ? [this.#viewLevelAxisConfig.config]
+                : orderResolutionMembers(this.#members).map((member) => {
+                      const channelDef =
+                          member.view.mark.encoding[member.channel];
+                      return "axis" in channelDef && channelDef.axis;
+                  });
 
             if (
                 propArray.length > 0 &&
@@ -143,6 +147,10 @@ export default class AxisResolution {
     }
 
     getTitle() {
+        if (this.#viewLevelAxisConfig?.config.title !== undefined) {
+            return this.#viewLevelAxisConfig.config.title;
+        }
+
         /** @param {AxisResolutionMember} member} */
         const computeTitle = (member) => {
             const channelDef = getChannelDefWithScale(
@@ -209,5 +217,62 @@ export default class AxisResolution {
         );
 
         return uniqueTitles.size ? [...uniqueTitles].join(", ") : null;
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     * @param {Partial<import("../spec/axis.js").Axis & import("../spec/axis.js").GenomeAxis>} config
+     */
+    attachViewLevelAxisConfig(view, config) {
+        if (
+            this.#viewLevelAxisConfig &&
+            this.#viewLevelAxisConfig.view !== view
+        ) {
+            throw new Error(
+                `Multiple view-level axis configs target the same ${this.channel} axis resolution.`
+            );
+        }
+
+        for (const member of this.#members) {
+            const channelDef = member.view.mark.encoding[member.channel];
+            if ("axis" in channelDef && channelDef.axis !== undefined) {
+                throw new Error(
+                    `Cannot mix view-level axes.${this.channel} with encoding.${member.channel}.axis in the same axis resolution.`
+                );
+            }
+        }
+
+        this.#viewLevelAxisConfig = { view, config };
+        invalidate(this, "axisProps");
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     */
+    clearViewLevelAxisConfig(view) {
+        if (this.#viewLevelAxisConfig?.view === view) {
+            this.#viewLevelAxisConfig = undefined;
+            invalidate(this, "axisProps");
+        }
+    }
+
+    getViewLevelAxisConfig() {
+        return this.#viewLevelAxisConfig;
+    }
+
+    /**
+     * @param {AxisResolutionMember} member
+     */
+    #assertNoMixing(member) {
+        if (!this.#viewLevelAxisConfig) {
+            return;
+        }
+
+        const channelDef = member.view.mark.encoding[member.channel];
+        if ("axis" in channelDef && channelDef.axis !== undefined) {
+            throw new Error(
+                `Cannot mix view-level axes.${this.channel} with encoding.${member.channel}.axis in the same axis resolution.`
+            );
+        }
     }
 }

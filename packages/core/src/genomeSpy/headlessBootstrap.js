@@ -16,6 +16,10 @@ import { ViewFactory, VIEW_ROOT_NAME } from "../view/viewFactory.js";
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
 import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
 import {
+    attachViewLevelAxisConfigs,
+    attachViewLevelLegendConfigs,
+} from "../scales/viewLevelGuideConfig.js";
+import {
     configureViewHierarchy,
     configureViewOpacity,
 } from "./viewHierarchyConfig.js";
@@ -198,6 +202,8 @@ export async function createHeadlessEngine(spec, options = {}) {
     );
 
     attachViewLevelScaleConfigs(view);
+    attachViewLevelAxisConfigs(view);
+    attachViewLevelLegendConfigs(view);
     await ensureAssembliesForView(view, context.genomeStore);
     prepareViewHierarchy(view);
 

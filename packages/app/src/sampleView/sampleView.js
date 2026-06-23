@@ -76,6 +76,11 @@ import {
     resolveParamSelector,
     markViewAsChrome,
 } from "@genome-spy/core/view/viewSelectors.js";
+import { attachViewLevelScaleConfigs } from "@genome-spy/core/scales/viewLevelScaleConfig.js";
+import {
+    attachViewLevelAxisConfigs,
+    attachViewLevelLegendConfigs,
+} from "@genome-spy/core/scales/viewLevelGuideConfig.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 import {
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
@@ -724,8 +729,15 @@ export default class SampleView extends ContainerView {
             );
         };
 
+        attachViewLevelScaleConfigs(this);
+        attachViewLevelAxisConfigs(this);
+        attachViewLevelLegendConfigs(this);
+
         await this.#gridChild.createAxes();
         await this.#createSummaryViews();
+        attachViewLevelScaleConfigs(this);
+        attachViewLevelAxisConfigs(this);
+        attachViewLevelLegendConfigs(this);
         // @ts-expect-error TODO: Resolve this
         await this.#gridChild.summaryViews.createAxes();
 

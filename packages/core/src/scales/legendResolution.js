@@ -45,6 +45,9 @@ export default class LegendResolution {
     /** @type {Set<LegendResolutionMember>} */
     #members = new Set();
 
+    /** @type {{ view: import("../view/view.js").default, config: import("../spec/legend.js").Legend } | undefined} */
+    #viewLevelLegendConfig;
+
     /**
      * @param {import("../spec/channel.js").ChannelWithScale} channel
      */
@@ -57,6 +60,7 @@ export default class LegendResolution {
      * @returns {() => boolean}
      */
     registerMember(member) {
+        this.#assertNoMixing(member);
         this.#members.add(member);
         return () => this.removeMember(member) && this.#members.size === 0;
     }
@@ -107,9 +111,9 @@ export default class LegendResolution {
             return undefined;
         }
 
-        const explicitLegend =
+        const memberLegend =
             "legend" in channelDef ? channelDef.legend : undefined;
-        if (explicitLegend === null) {
+        if (!this.#viewLevelLegendConfig && memberLegend === null) {
             return undefined;
         }
 
@@ -117,6 +121,8 @@ export default class LegendResolution {
             return undefined;
         }
 
+        const explicitLegend =
+            this.#viewLevelLegendConfig?.config ?? memberLegend;
         const legendOverrides =
             explicitLegend === undefined
                 ? undefined
@@ -199,6 +205,66 @@ export default class LegendResolution {
 
         return false;
     }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     * @param {import("../spec/legend.js").Legend} config
+     */
+    attachViewLevelLegendConfig(view, config) {
+        if (
+            this.#viewLevelLegendConfig &&
+            this.#viewLevelLegendConfig.view !== view
+        ) {
+            throw new Error(
+                `Multiple view-level legend configs target the same ${this.channel} legend resolution.`
+            );
+        }
+
+        const configuredMember = Array.from(this.#members).find((member) =>
+            hasExplicitLegendConfig(member)
+        );
+        if (configuredMember) {
+            throw new Error(
+                `Cannot mix view-level legends.${this.channel} with encoding.${configuredMember.channel}.legend in the same legend resolution.`
+            );
+        }
+        this.#viewLevelLegendConfig = { view, config };
+    }
+
+    /**
+     * @param {import("../view/view.js").default} view
+     */
+    clearViewLevelLegendConfig(view) {
+        if (this.#viewLevelLegendConfig?.view === view) {
+            this.#viewLevelLegendConfig = undefined;
+        }
+    }
+
+    getViewLevelLegendConfig() {
+        return this.#viewLevelLegendConfig;
+    }
+
+    /**
+     * @param {LegendResolutionMember} member
+     */
+    #assertNoMixing(member) {
+        if (this.#viewLevelLegendConfig && hasExplicitLegendConfig(member)) {
+            throw new Error(
+                `Cannot mix view-level legends.${this.channel} with encoding.${member.channel}.legend in the same legend resolution.`
+            );
+        }
+    }
+}
+
+/**
+ * @param {LegendResolutionMember} member
+ * @returns {boolean}
+ */
+function hasExplicitLegendConfig(member) {
+    const channelDef = getLegendChannelDef(member.channel, member.view);
+    return Boolean(
+        channelDef && "legend" in channelDef && channelDef.legend !== undefined
+    );
 }
 
 /**

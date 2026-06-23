@@ -27,6 +27,9 @@ aware interactions.
 - Prefer concise, direct wording in docs and JSDoc in `.d.ts`.
 - Avoid vague or tentative phrasing unless it carries real meaning
 - Prefer plain statements about behavior over analogies or design commentary
+- Use imperative phrasing such as "Use ..." or "Use this to ..." only when the
+  action is required or strongly recommended. When something is one available
+  option, present it as an option.
 - User-facing docs should not include implementation details or internal design rationale unless they are necessary for correct usage
 - If a sentence does not help the reader use the feature, shorten it or remove it
 - Documention in `docs/` is user-facing and should be written with the same principles as JSDoc;

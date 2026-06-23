@@ -43,6 +43,11 @@ export type ChannelWithScale =
     | "dx"
     | "dy";
 
+export type NonPositionalChannelWithScale = Exclude<
+    ChannelWithScale,
+    PositionalChannel
+>;
+
 export type ChannelWithoutScale =
     | "uniqueId"
     | "search"

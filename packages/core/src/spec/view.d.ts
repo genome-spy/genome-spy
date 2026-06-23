@@ -5,6 +5,7 @@ import {
     ChannelWithScale,
     Encoding,
     FacetFieldDef,
+    NonPositionalChannelWithScale,
     PrimaryPositionalChannel,
 } from "./channel.js";
 import { MarkProps, MarkType, RuleProps } from "./mark.js";
@@ -14,6 +15,8 @@ import { Parameter } from "./parameter.js";
 import { GenomeSpyConfig } from "./config.js";
 import { ViewBackgroundProps, ZIndexProps } from "./decoration.js";
 import { Scale } from "./scale.js";
+import { Axis, GenomeAxis } from "./axis.js";
+import { Legend } from "./legend.js";
 
 export interface SizeDef {
     /**
@@ -231,6 +234,26 @@ export interface ViewSpecBase extends ResolveSpec {
      * rather than an individual encoding.
      */
     scales?: Partial<Record<ChannelWithScale, Scale>>;
+
+    /**
+     * Configures axis resolutions used by this view subtree.
+     *
+     * Use this when a composed view shares an axis across child views and the
+     * axis settings belong to the composed view rather than an individual
+     * encoding.
+     */
+    axes?: Partial<
+        Record<PrimaryPositionalChannel, Partial<Axis & GenomeAxis>>
+    >;
+
+    /**
+     * Configures legend resolutions used by this view subtree.
+     *
+     * Use this when a composed view shares a legend across child views and the
+     * legend settings belong to the composed view rather than an individual
+     * encoding.
+     */
+    legends?: Partial<Record<NonPositionalChannelWithScale, Legend>>;
 
     /**
      * Specifies a [data source](https://genomespy.app/docs/grammar/data/).

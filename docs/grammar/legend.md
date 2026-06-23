@@ -19,6 +19,29 @@ uses the same scale as the plotted data.
 
 EXAMPLE examples/docs/grammar/legend/gradient-legend.json height=300
 
+## Configuration
+
+Legend properties are usually placed in the encoding channel that creates the
+legend:
+
+```json
+{
+  "encoding": {
+    "color": {
+      "field": "group",
+      "type": "nominal",
+      "legend": {
+        "title": "Sample group"
+      }
+    }
+  }
+}
+```
+
+In composed views with shared legend resolution, view-level
+`legends.<channel>` can provide a shared location for the legend properties. See
+[Resolution](#resolution).
+
 ## Placement
 
 The `orient` property controls where the legend is placed. Side legends are
@@ -52,9 +75,10 @@ background improves readability.
 
 ## Resolution
 
-Legends participate in view resolution similarly to scales and axes. Use
-`resolve.legend` in composed views to choose whether child views share one
-legend or create independent legends.
+Legends participate in view
+[resolution](./composition/index.md#scale-axis-and-legend-resolution) similarly
+to scales and axes. Use `resolve.legend` in composed views to choose whether
+child views share one legend or create independent legends.
 
 When `resolve.legend` is not configured, legend resolution follows the
 corresponding scale resolution.
@@ -74,6 +98,29 @@ Shared legend resolution is most useful when sibling views encode the same field
 with a shared scale and should show a single collected legend.
 
 EXAMPLE examples/docs/grammar/legend/shared-hconcat-legend.json height=360
+
+For shared legend resolutions, legend properties can also be placed at the view
+level with `legends.<channel>`:
+
+```json
+{
+  "legends": {
+    "color": {
+      "title": "Sample group",
+      "orient": "right"
+    }
+  },
+  "layer": [
+    ...
+  ]
+}
+```
+
+A view-level legend config must map to one legend resolution. If the subtree has
+multiple independent legends for the same channel, place the config closer to
+the intended subtree or use local `encoding.<channel>.legend` settings. Do not
+mix view-level `legends.<channel>` with participating channel-level legend
+config for the same resolved legend.
 
 ## Titles
 
