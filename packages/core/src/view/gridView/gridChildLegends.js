@@ -125,10 +125,21 @@ export function getOrderedLegendEntries(legendOwners) {
 
 /**
  * @param {import("../../spec/channel.js").ChannelDef | undefined} channelDef
- * @returns {channelDef is import("../../spec/channel.js").ValueDef}
+ * @returns {import("../../spec/channel.js").ValueDef | undefined}
  */
-function isConstantValueDef(channelDef) {
-    return isValueDef(channelDef) && !("condition" in channelDef);
+function getEmptySelectionValueDef(channelDef) {
+    if (channelDef && "condition" in channelDef) {
+        const conditions = Array.isArray(channelDef.condition)
+            ? channelDef.condition
+            : [channelDef.condition];
+        for (const condition of conditions) {
+            if (condition.empty !== false && "value" in condition) {
+                return { value: condition.value };
+            }
+        }
+    }
+
+    return isValueDef(channelDef) ? { value: channelDef.value } : undefined;
 }
 
 /**
@@ -269,14 +280,15 @@ function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
 
     const colorDef = sourceView.spec.encoding?.color;
     const filled = sourceProps.filled;
-    if (isConstantValueDef(colorDef) && !scaledChannels.has("color")) {
+    const colorValueDef = getEmptySelectionValueDef(colorDef);
+    if (colorValueDef && !scaledChannels.has("color")) {
         if (filled) {
-            styleEncoding.fill = { value: colorDef.value };
+            styleEncoding.fill = colorValueDef;
             styleEncoding.stroke = { value: null };
             styleEncoding.strokeWidth = { value: 0 };
         } else {
-            styleEncoding.stroke = { value: colorDef.value };
-            styleEncoding.fill = { value: colorDef.value };
+            styleEncoding.stroke = colorValueDef;
+            styleEncoding.fill = colorValueDef;
             styleEncoding.fillOpacity = { value: 0 };
         }
     }
@@ -287,8 +299,9 @@ function createInheritedSymbolStyle(channel, symbolChannels, sourceView) {
         }
 
         const channelDef = sourceView.spec.encoding?.[channel];
-        if (isConstantValueDef(channelDef)) {
-            styleEncoding[channel] = { value: channelDef.value };
+        const valueDef = getEmptySelectionValueDef(channelDef);
+        if (valueDef) {
+            styleEncoding[channel] = valueDef;
         }
     }
 
