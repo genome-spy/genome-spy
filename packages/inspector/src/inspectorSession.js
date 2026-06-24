@@ -26,13 +26,19 @@ export default class InspectorSession extends EventTarget {
     /** @type {Promise<typeof import("@genome-spy/core/debug/dataflowDebugSnapshot.js")> | undefined} */
     #dataflowDebugModulePromise;
 
+    /** @type {Promise<typeof import("@genome-spy/core/debug/paramDebugSnapshot.js")> | undefined} */
+    #paramDebugModulePromise;
+
+    /** @type {Promise<typeof import("@genome-spy/core/debug/markDebugSnapshot.js")> | undefined} */
+    #markDebugModulePromise;
+
     /** @type {(() => void)[]} */
     #disposers = [];
 
     /** @type {boolean} */
     #disposed = false;
 
-    /** @type {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugSnapshot & { resolutions: import("@genome-spy/core/debug/resolutionDebugSnapshot.js").ResolutionDebugSnapshot, dataflow: import("@genome-spy/core/debug/dataflowDebugSnapshot.js").DataflowDebugSnapshot }} */
+    /** @type {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugSnapshot & { resolutions: import("@genome-spy/core/debug/resolutionDebugSnapshot.js").ResolutionDebugSnapshot, dataflow: import("@genome-spy/core/debug/dataflowDebugSnapshot.js").DataflowDebugSnapshot, params: import("@genome-spy/core/debug/paramDebugSnapshot.js").ParamDebugSnapshot, marks: import("@genome-spy/core/debug/markDebugSnapshot.js").MarkDebugSnapshot }} */
     snapshot = {
         rootId: undefined,
         nodes: [],
@@ -45,6 +51,12 @@ export default class InspectorSession extends EventTarget {
             sourceIds: [],
             nodes: [],
             collectorCount: 0,
+        },
+        params: {
+            scopes: [],
+        },
+        marks: {
+            marks: [],
         },
     };
 
@@ -79,12 +91,19 @@ export default class InspectorSession extends EventTarget {
 
         const genomeSpy = this.#app.genomeSpy;
         const root = genomeSpy.viewRoot;
-        const [viewDebugModule, resolutionDebugModule, dataflowDebugModule] =
-            await Promise.all([
-                this.#getViewDebugModule(),
-                this.#getResolutionDebugModule(),
-                this.#getDataflowDebugModule(),
-            ]);
+        const [
+            viewDebugModule,
+            resolutionDebugModule,
+            dataflowDebugModule,
+            paramDebugModule,
+            markDebugModule,
+        ] = await Promise.all([
+            this.#getViewDebugModule(),
+            this.#getResolutionDebugModule(),
+            this.#getDataflowDebugModule(),
+            this.#getParamDebugModule(),
+            this.#getMarkDebugModule(),
+        ]);
         this.#objectsById = new Map();
         const viewSnapshot = viewDebugModule.createViewDebugSnapshot(root, {
             includeChrome: this.#includeChrome,
@@ -104,6 +123,12 @@ export default class InspectorSession extends EventTarget {
                     getDebugId: (object) => this.#getDebugId(object),
                 }
             ),
+            params: paramDebugModule.createParamDebugSnapshot(root, {
+                getDebugId: (object) => this.#getDebugId(object),
+            }),
+            marks: markDebugModule.createMarkDebugSnapshot(root, {
+                getDebugId: (object) => this.#getDebugId(object),
+            }),
         };
         this.#ensureRuntimeSubscriptions();
         this.dispatchEvent(new Event("snapshot"));
@@ -155,6 +180,24 @@ export default class InspectorSession extends EventTarget {
         this.#dataflowDebugModulePromise ??=
             import("@genome-spy/core/debug/dataflowDebugSnapshot.js");
         return this.#dataflowDebugModulePromise;
+    }
+
+    /**
+     * @returns {Promise<typeof import("@genome-spy/core/debug/paramDebugSnapshot.js")>}
+     */
+    #getParamDebugModule() {
+        this.#paramDebugModulePromise ??=
+            import("@genome-spy/core/debug/paramDebugSnapshot.js");
+        return this.#paramDebugModulePromise;
+    }
+
+    /**
+     * @returns {Promise<typeof import("@genome-spy/core/debug/markDebugSnapshot.js")>}
+     */
+    #getMarkDebugModule() {
+        this.#markDebugModulePromise ??=
+            import("@genome-spy/core/debug/markDebugSnapshot.js");
+        return this.#markDebugModulePromise;
     }
 
     #ensureRuntimeSubscriptions() {

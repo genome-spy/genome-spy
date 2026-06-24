@@ -3,6 +3,9 @@ import { LitElement, css, html, nothing } from "lit";
 /**
  * @typedef {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugNode} ViewDebugNode
  * @typedef {import("@genome-spy/core/debug/dataflowDebugSnapshot.js").DataflowDebugNode} DataflowDebugNode
+ * @typedef {import("@genome-spy/core/debug/paramDebugSnapshot.js").ParamScopeDebugNode} ParamScopeDebugNode
+ * @typedef {import("@genome-spy/core/debug/paramDebugSnapshot.js").ParamDebugNode} ParamDebugNode
+ * @typedef {import("@genome-spy/core/debug/markDebugSnapshot.js").MarkDebugNode} MarkDebugNode
  */
 
 export class GsInspectorPanel extends LitElement {
@@ -259,6 +262,12 @@ export class GsInspectorPanel extends LitElement {
                 nodes: [],
                 collectorCount: 0,
             },
+            params: {
+                scopes: [],
+            },
+            marks: {
+                marks: [],
+            },
         };
         this.selectedViewId = undefined;
         this.selectedFlowNodeId = undefined;
@@ -343,6 +352,8 @@ export class GsInspectorPanel extends LitElement {
                         ${this.#renderPanelTab("elements", "Elements")}
                         ${this.#renderPanelTab("resolutions", "Resolutions")}
                         ${this.#renderPanelTab("dataflow", "Dataflow")}
+                        ${this.#renderPanelTab("params", "Params")}
+                        ${this.#renderPanelTab("marks", "Marks")}
                     </span>
                     <label>
                         <input
@@ -399,6 +410,14 @@ export class GsInspectorPanel extends LitElement {
     #renderActivePanel(root, selected) {
         if (this.activePanel === "dataflow") {
             return this.#renderDataflowPanel();
+        }
+
+        if (this.activePanel === "params") {
+            return this.#renderParamsPanel();
+        }
+
+        if (this.activePanel === "marks") {
+            return this.#renderMarksPanel();
         }
 
         if (this.activePanel === "resolutions") {
@@ -513,9 +532,10 @@ export class GsInspectorPanel extends LitElement {
             </dl>
 
             <h3>Params</h3>
-            ${node.paramNames.length
-                ? html`<pre>${node.paramNames.join("\n")}</pre>`
-                : html`<p class="empty">No local parameter declarations.</p>`}
+            ${this.#renderViewParams(node)}
+
+            <h3>Mark</h3>
+            ${this.#renderViewMark(node)}
 
             <h3>All Resolutions</h3>
             ${this.#renderResolutionPanel()}
@@ -705,6 +725,186 @@ export class GsInspectorPanel extends LitElement {
                     )}
                 </tbody>
             </table>
+        `;
+    }
+
+    #renderParamsPanel() {
+        const scopes = this.snapshot.params.scopes.filter(
+            (scope) => scope.params.length > 0
+        );
+        if (scopes.length === 0) {
+            return html`
+                <div class="single-panel">
+                    <p class="empty">No params.</p>
+                </div>
+            `;
+        }
+
+        return html`
+            <div class="single-panel">
+                <h2>Params</h2>
+                ${scopes.map(
+                    (scope) => html`
+                        <h3>
+                            <span
+                                class="linked"
+                                @click=${() => {
+                                    this.selectedViewId = scope.viewId;
+                                    this.activePanel = "elements";
+                                }}
+                                >${scope.viewPath}</span
+                            >
+                            <span class="muted">${scope.scopeId}</span>
+                        </h3>
+                        ${this.#renderParamTable(scope.params)}
+                    `
+                )}
+            </div>
+        `;
+    }
+
+    /**
+     * @param {ViewDebugNode} node
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderViewParams(node) {
+        const scope = this.#getParamScope(node.id);
+        if (!scope || scope.params.length === 0) {
+            return html`<p class="empty">No local params.</p>`;
+        }
+
+        return this.#renderParamTable(scope.params);
+    }
+
+    /**
+     * @param {ParamDebugNode[]} params
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderParamTable(params) {
+        return html`
+            <table>
+                <thead>
+                    <tr>
+                        <th>name</th>
+                        <th>kind</th>
+                        <th>writable</th>
+                        <th>value</th>
+                        <th>config</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${params.map(
+                        (param) => html`
+                            <tr>
+                                <td>${param.name}</td>
+                                <td>${param.kind}</td>
+                                <td>${String(param.writable)}</td>
+                                <td>${this.#formatValue(param.value)}</td>
+                                <td>
+                                    ${param.config
+                                        ? this.#formatValue(param.config)
+                                        : "-"}
+                                </td>
+                            </tr>
+                        `
+                    )}
+                </tbody>
+            </table>
+        `;
+    }
+
+    #renderMarksPanel() {
+        if (this.snapshot.marks.marks.length === 0) {
+            return html`
+                <div class="single-panel">
+                    <p class="empty">No unit marks.</p>
+                </div>
+            `;
+        }
+
+        return html`
+            <div class="single-panel">
+                <h2>Marks</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>view</th>
+                            <th>type</th>
+                            <th>ready</th>
+                            <th>data</th>
+                            <th>vertices</th>
+                            <th>encoders</th>
+                            <th>search</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${this.snapshot.marks.marks.map(
+                            (mark) => html`
+                                <tr>
+                                    <td>
+                                        <span
+                                            class="linked"
+                                            @click=${() => {
+                                                this.selectedViewId =
+                                                    mark.viewId;
+                                                this.activePanel = "elements";
+                                            }}
+                                            >${mark.viewPath}</span
+                                        >
+                                    </td>
+                                    <td>${mark.type}</td>
+                                    <td>${String(mark.ready)}</td>
+                                    <td>${mark.dataCount ?? "-"}</td>
+                                    <td>${mark.vertexCount ?? "-"}</td>
+                                    <td>${mark.encoderChannels.join(", ")}</td>
+                                    <td>${mark.searchFields.join(", ")}</td>
+                                </tr>
+                            `
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    /**
+     * @param {ViewDebugNode} node
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderViewMark(node) {
+        const mark = this.#getMark(node.id);
+        if (!mark) {
+            return html`<p class="empty">No mark for this view.</p>`;
+        }
+
+        return html`
+            <dl>
+                <dt>type</dt>
+                <dd>${mark.type}</dd>
+                <dt>ready</dt>
+                <dd>${String(mark.ready)}</dd>
+                <dt>picking</dt>
+                <dd>${String(mark.pickingParticipant)}</dd>
+                <dt>data count</dt>
+                <dd>${mark.dataCount ?? "-"}</dd>
+                <dt>vertices</dt>
+                <dd>${mark.vertexCount ?? "-"}</dd>
+                <dt>allocated vertices</dt>
+                <dd>${mark.allocatedVertices ?? "-"}</dd>
+                <dt>ranges</dt>
+                <dd>${mark.rangeCount}</dd>
+                <dt>encoding channels</dt>
+                <dd>${mark.encodingChannels.join(", ") || "-"}</dd>
+                <dt>encoder channels</dt>
+                <dd>${mark.encoderChannels.join(", ") || "-"}</dd>
+                <dt>search fields</dt>
+                <dd>${mark.searchFields.join(", ") || "-"}</dd>
+                <dt>uniforms dirty</dt>
+                <dd>${String(mark.markUniformsAltered)}</dd>
+            </dl>
+
+            <h3>Mark Props</h3>
+            <pre>${this.#formatValue(mark.properties)}</pre>
         `;
     }
 
@@ -898,6 +1098,24 @@ ${this.#formatValue(node.first)}</pre
             throw new Error("Unknown inspector flow node: " + id);
         }
         return node;
+    }
+
+    /**
+     * @param {string} viewId
+     * @returns {ParamScopeDebugNode | undefined}
+     */
+    #getParamScope(viewId) {
+        return this.snapshot.params.scopes.find(
+            (scope) => scope.viewId === viewId
+        );
+    }
+
+    /**
+     * @param {string} viewId
+     * @returns {MarkDebugNode | undefined}
+     */
+    #getMark(viewId) {
+        return this.snapshot.marks.marks.find((mark) => mark.viewId === viewId);
     }
 
     /**

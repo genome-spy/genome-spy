@@ -18,6 +18,23 @@ export {
 } from "./paramUtils.js";
 
 /**
+ * @typedef {object} ViewParamRuntimeDebugState
+ * @prop {string} scopeId
+ * @prop {boolean} disposed
+ * @prop {ViewParamDebugState[]} params
+ */
+
+/**
+ * @typedef {object} ViewParamDebugState
+ * @prop {string} name
+ * @prop {"auto" | "base" | "derived" | "selection" | "push"} kind
+ * @prop {any} value
+ * @prop {boolean} writable
+ * @prop {boolean} configured
+ * @prop {import("../spec/parameter.js").Parameter | undefined} config
+ */
+
+/**
  * A class that manages parameters and expressions.
  * Supports nesting and scoped parameters through a shared runtime graph.
  * The architecture follows signal-graph ideas (explicit dependencies, batched
@@ -352,6 +369,32 @@ export default class ViewParamRuntime {
         }
     }
 
+    /**
+     * @returns {ViewParamRuntimeDebugState}
+     */
+    getDebugState() {
+        /** @type {ViewParamDebugState[]} */
+        const params = [];
+
+        for (const [name, ref] of this.#localRefs) {
+            const config = this.#paramConfigs.get(name);
+            params.push({
+                name,
+                kind: getParamKind(config),
+                value: ref.get(),
+                writable: this.#allocatedSetters.has(name),
+                configured: Boolean(config),
+                config: config ? structuredClone(config) : undefined,
+            });
+        }
+
+        return {
+            scopeId: this.#scopeId,
+            disposed: this.#disposed,
+            params,
+        };
+    }
+
     // Setter lifecycle is scope-owned: setters are dropped when the runtime scope
     // is disposed. A standalone deallocation API is intentionally not exposed.
 
@@ -485,5 +528,25 @@ export default class ViewParamRuntime {
         }
 
         return false;
+    }
+}
+
+/**
+ * @param {import("../spec/parameter.js").Parameter | undefined} config
+ * @returns {"auto" | "base" | "derived" | "selection" | "push"}
+ */
+function getParamKind(config) {
+    if (!config) {
+        return "auto";
+    }
+
+    if (config.push === "outer") {
+        return "push";
+    } else if ("select" in config) {
+        return "selection";
+    } else if ("expr" in config) {
+        return "derived";
+    } else {
+        return "base";
     }
 }

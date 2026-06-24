@@ -489,6 +489,7 @@ Status: Implemented.
 ### Phase 4: App Params And Mark Details
 
 Tentative commit: `feat(inspector): inspect params and marks`
+Status: Implemented.
 
 - Add `ViewParamRuntime.getDebugState()`.
 - Add selected-view and global Params panels.
