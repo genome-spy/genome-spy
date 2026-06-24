@@ -110,6 +110,38 @@ only address explicitly named views that satisfy selector uniqueness
 constraints. They are not enough for anonymous containers or for follow-up
 operations on newly inserted views.
 
+## Alignment With Existing API
+
+The existing embed API is mostly a set of narrow handles and named resources:
+`getParam(name)` returns a `ParamApi`, `getScaleResolutionByName(name)` returns
+a `ScaleResolutionApi`, `updateNamedData(name, data)` mutates a named data
+source, and `awaitVisibleLazyData()` provides a lifecycle barrier. The view
+mutation API should align with the better parts of that model by exposing a
+small handle-based surface rather than internal view objects.
+
+The main improvement should be addressing. Some existing APIs are name-only,
+which can become ambiguous as specifications grow or as templates are reused.
+`ViewMutationApi` should establish the cleaner pattern for new public APIs:
+scoped selectors for durable addresses, opaque live handles for runtime
+operations, and additive evolution for compatibility.
+
+This creates useful synergies with the current API:
+
+- Inserted views can use named data sources and continue to work with
+  `updateNamedData()`.
+- Scoped inserted views can provide a future path for scoped parameter access,
+  avoiding more global name-only APIs.
+- Named scale resolutions remain useful after mutations when their names and
+  resolution ownership are kept stable.
+- Mutation promises and transactions can compose with lifecycle barriers such as
+  `awaitVisibleLazyData()`.
+
+The API should not copy the weaker parts of the existing surface. In
+particular, avoid a primary mutation form like `addView("tracks", spec)` where
+`"tracks"` is a global view name. Keep the old API stable, but let
+`ViewMutationApi` use scoped selectors and handles as the conservative public
+contract going forward.
+
 ## Recommended Public API
 
 Expose a namespaced mutation API on `EmbedResult`:
@@ -188,6 +220,10 @@ Do not make index paths a primary public address in the initial API. Structural
 paths are convenient for diagnostics but unstable under insertion and reorder.
 Handles cover anonymous views without pretending structural paths are durable.
 
+Keep `ViewHandle` minimal initially. Convenience fields such as a current child
+index or explicit scope can be reconsidered after the embed example has been
+used for manual iteration.
+
 ## Scope Support
 
 Scopes should be available for both ordinary `ViewSpec` objects and
@@ -250,6 +286,12 @@ the same object multiple times. `options.scope` should register the created
 subtree root as a scope root after creation. It should not overwrite
 `spec.name`; the scope is an address namespace, while `name` remains the view's
 explicit name.
+
+Named scope collisions should fail fast. If `options.scope` or `ImportSpec.name`
+would create a duplicate non-null scope name in the same enclosing selector
+scope, the insertion should fail before committing the new subtree. This keeps
+selector behavior deterministic and avoids making callers discover ambiguity
+later through `resolve()`.
 
 ## Container Support
 
@@ -352,6 +394,8 @@ view/spec, disposing the subtree, refreshing configs/guides, and rethrowing.
 `transaction()` should batch several operations and defer layout/render requests
 until the end. It does not need full rollback in the first version, but it
 should preserve operation ordering and ensure final lifecycle cleanup runs once.
+Nested transactions should join the current transaction rather than creating an
+independent batch.
 
 All public errors should include enough context to debug:
 
@@ -361,6 +405,10 @@ All public errors should include enough context to debug:
 - stale/dead handle
 - root removal attempt
 - move across parents, if attempted
+
+Keep the public error model simple. A single mutation error shape with a stable
+string `code` and a clear message should be enough for v1; avoid a large error
+class hierarchy unless implementation experience proves it useful.
 
 ## Acid Test Coverage
 
@@ -392,19 +440,113 @@ harness that can drive ordered mutations and inspect stable invariants.
 
 ## Suggested Implementation Steps
 
-1. Add public types to `packages/core/src/types/embedApi.d.ts`.
-2. Add `packages/core/src/view/viewMutationApi.js` with handle creation,
-   address resolution, operation serialization, and public error shaping.
-3. Attach `views: createViewMutationApi(genomeSpy)` in `embedFactory.js`.
-4. Generalize import scope registration so inserted ordinary specs can also
-   become scope roots through `options.scope`.
-5. Refactor container mutation lifecycle so public operations call one
-   coordinator.
-6. Add same-parent reorder support to `ConcatView`, `LayerView`, and shared
-   helper code.
-7. Add guide/chrome refresh helper that covers axes and legends consistently.
-8. Replace naive insertion loading with reload/repropagation logic compatible
-   with `initializeVisibleViewData`.
-9. Add focused unit tests for API behavior and lifecycle invariants.
-10. Expand the acid-test plan into executable mutation scenarios.
-11. Document the public API in `docs/api.md` once the behavior is stable.
+1. Keep the public declaration surface in
+   `packages/core/src/types/embedApi.d.ts` as the compatibility contract. Changes
+   after the first release should be additive unless a breaking change is
+   explicitly versioned.
+
+   Tentative commit: `feat(core): declare view mutation API`.
+
+2. Add a small internal `viewMutationApi` module that owns `ViewHandle`
+   creation, handle liveness, address resolution, operation serialization, and
+   public error shaping with simple stable error codes. It should wrap internal
+   `View` objects without exposing them.
+
+   Tentative commit: `feat(core): add view mutation API facade`.
+
+3. Add a new `packages/embed-examples` development example early, for example
+   `viewMutationApi.html` and `viewMutationApi.js`, and link it from
+   `packages/embed-examples/src/index.html`. Start with the smallest working
+   flow as soon as `api.views.root()` and address resolution exist, then keep
+   the example updated throughout implementation. It should serve as a manual
+   testing and iteration fixture for resolving a named container, inserting two
+   scoped tracks from a reusable spec/template, resolving one inserted scoped
+   view, reordering tracks with `move()`, removing a track, and showing a
+   compact UI state derived from handles.
+
+   Tentative commit: `feat(embed-examples): add view mutation API example`.
+
+4. Attach `views: createViewMutationApi(genomeSpy)` in `embedFactory.js`.
+   `GenomeSpy` already owns `viewRoot`, layout/render hooks, dataflow, and the
+   context needed by the mutation coordinator, so the API factory should use
+   those existing entry points instead of duplicating lifecycle state.
+
+   Tentative commit: `feat(core): expose view mutation API from embed`.
+
+5. Generalize selector scope registration. The existing import-scope machinery
+   can already resolve scoped selectors, but `options.scope` must work for
+   ordinary `ViewSpec` insertions as well as `ImportSpec` insertions. Consider
+   renaming or wrapping `registerImportInstance()` internally so the mutation
+   path can register a generic inserted subtree scope without making the public
+   model import-specific. Reject duplicate named scopes in the same enclosing
+   selector scope before committing an insertion.
+
+   Tentative commit: `feat(core): support mutation scopes for direct specs`.
+
+6. Harden index handling before exposing it publicly. Validate insert and move
+   indices explicitly instead of relying on `Array.splice()` semantics. Use the
+   documented move rule: destination index is interpreted after temporarily
+   removing the target from its current parent.
+
+   Tentative commit: `fix(core): validate view mutation indices`.
+
+7. Refactor container mutation lifecycle so public insert/remove operations call
+   one coordinator. The coordinator should cover create/import, spec cloning,
+   backing spec updates, view insertion/removal, config reattachment, assembly
+   preflight, opacity setup, subtree dataflow/graphics initialization, guide
+   refresh, layout invalidation, and render scheduling.
+
+   Tentative commit: `refactor(core): centralize view mutation lifecycle`.
+
+8. Add non-disposing same-parent reorder support to `ConcatView`, `LayerView`,
+   and shared helper code. Reorder must update both the backing spec list and
+   live child list without rebuilding dataflow, disposing collectors, or
+   reloading data.
+
+   Tentative commit: `feat(core): support same-parent view reordering`.
+
+9. Add a guide/chrome refresh helper that covers the same artifacts after
+   mutation as initial setup does: shared axes, grid-child axes and gridlines,
+   shared legends, local legend regions, and relevant layout decorations. The
+   current dynamic path already refreshes shared axes, but public mutation needs
+   a single helper that includes legends too.
+
+   Tentative commit: `fix(core): refresh guides consistently after mutations`.
+
+10. Replace the insertion data-loading path with logic compatible with
+   `initializeVisibleViewData`. Inserted branches should repropagate completed
+   ancestor collectors when possible, queue reloads for sources already loading,
+   and load new subtree-owned sources directly.
+
+    Tentative commit: `fix(core): populate inserted view data reliably`.
+
+11. Implement operation-level rollback for failed insertions. If an insertion
+    has touched the backing spec or live hierarchy before a later lifecycle step
+    fails, remove the partial view/spec, dispose the subtree, refresh configs and
+    guides, then rethrow the original error.
+
+    Tentative commit: `fix(core): roll back failed view insertions`.
+
+12. Implement `transaction()` as ordered operation batching. The first version
+    can avoid full transaction rollback, but it should defer layout/render work
+    until the callback finishes and then run final lifecycle cleanup once.
+    Nested transactions should join the active transaction.
+
+    Tentative commit: `feat(core): batch view mutation transactions`.
+
+13. Add focused unit tests close to the lifecycle code for address resolution,
+    handle liveness, scoped ordinary-spec insertion, index validation,
+    insert/remove/reorder behavior, and guide/dataflow invariants.
+
+    Tentative commit: `test(core): cover view mutation API behavior`.
+
+14. Expand the acid-test plan into executable mutation scenarios that compare a
+    normalized internal hierarchy before and after complex mutation sequences
+    that are canceled immediately.
+
+    Tentative commit: `test(core): add view mutation acid scenarios`.
+
+15. Document the public API in `docs/api.md` once the runtime behavior and
+    example have stabilized.
+
+    Tentative commit: `docs(core): document view mutation API`.
