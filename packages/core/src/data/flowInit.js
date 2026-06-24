@@ -324,7 +324,7 @@ function collectSubtreeViews(subtreeRoot, viewFilter) {
  *
  * @param {import("../view/view.js").default} subtreeRoot
  */
-function broadcastSubtreeDataReady(subtreeRoot) {
+export function broadcastSubtreeDataReady(subtreeRoot) {
     /** @type {import("../view/view.js").BroadcastMessage} */
     const message = {
         type: /** @type {import("../genomeSpy.js").BroadcastEventType} */ (

@@ -1,0 +1,975 @@
+import { describe, expect, test, vi } from "vitest";
+
+import {
+    createHeadlessEngine,
+    createHeadlessViewHierarchy,
+} from "../genomeSpy/headlessBootstrap.js";
+import AxisView from "./axisView.js";
+import LegendView from "./legendView.js";
+import { renderToLayout } from "./testUtils.js";
+import { createViewMutationApi } from "./viewMutationApi.js";
+
+/**
+ * @param {string} name
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeUnitSpec(name) {
+    return {
+        name,
+        data: {
+            values: [{ x: 1, y: 2 }],
+        },
+        mark: "point",
+        encoding: {
+            x: { field: "x", type: "quantitative" },
+            y: { field: "y", type: "quantitative" },
+        },
+    };
+}
+
+/**
+ * @param {string} name
+ * @param {number} height
+ * @param {string} color
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeSignalTrackSpec(name, height, color) {
+    return {
+        name,
+        height,
+        data: {
+            values: [
+                { pos: 0, value: 0.2 },
+                { pos: 1, value: 0.8 },
+                { pos: 2, value: 0.4 },
+                { pos: 3, value: 0.9 },
+            ],
+        },
+        mark: "rect",
+        encoding: {
+            x: { field: "pos", type: "index" },
+            y: { field: "value", type: "quantitative" },
+            color: { value: color },
+        },
+    };
+}
+
+/**
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeVariantsTrackSpec() {
+    return {
+        name: "variants",
+        height: 30,
+        data: {
+            values: [
+                { pos: 0.5, type: "SNV" },
+                { pos: 1.5, type: "DEL" },
+                { pos: 2.5, type: "SNV" },
+            ],
+        },
+        mark: { type: "point", size: 140 },
+        encoding: {
+            x: { field: "pos", type: "index" },
+            color: { field: "type", type: "nominal" },
+        },
+    };
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @returns {number}
+ */
+function countBottomAxes(view) {
+    return view
+        .getDescendants()
+        .filter(
+            (descendant) =>
+                descendant instanceof AxisView &&
+                descendant.axisProps.orient === "bottom"
+        ).length;
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @returns {import("./view.js").default[]}
+ */
+function getBottomAxisSubtreeViews(view) {
+    const bottomAxis = view
+        .getDescendants()
+        .find(
+            (descendant) =>
+                descendant instanceof AxisView &&
+                descendant.axisProps.orient === "bottom"
+        );
+    if (!bottomAxis) {
+        return [];
+    }
+
+    return bottomAxis.getDescendants();
+}
+
+/**
+ * @param {{ viewName: string, children: any[] }} layout
+ * @param {string} viewName
+ * @returns {number}
+ */
+function countRenderedViews(layout, viewName) {
+    return (
+        (layout.viewName === viewName ? 1 : 0) +
+        layout.children.reduce(
+            (count, child) => count + countRenderedViews(child, viewName),
+            0
+        )
+    );
+}
+
+/**
+ * @param {{ viewName: string, coords: string, children: any[] }} layout
+ * @returns {{ viewName: string, coords: string, children: any[] }[]}
+ */
+function getRenderedLegendRegions(layout) {
+    return [
+        ...(layout.viewName.startsWith("legend_region_") ? [layout] : []),
+        ...layout.children.flatMap((child) => getRenderedLegendRegions(child)),
+    ];
+}
+
+/**
+ * @param {string} coords
+ * @returns {number}
+ */
+function getLayoutHeight(coords) {
+    const match = coords.match(/height: (?<height>\d+)/);
+    if (!match?.groups) {
+        throw new Error("Cannot parse layout height: " + coords);
+    }
+
+    return Number(match.groups.height);
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @returns {LegendView[]}
+ */
+function getLegends(view) {
+    return /** @type {LegendView[]} */ (
+        view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof LegendView)
+    );
+}
+
+describe("ViewMutationApi", () => {
+    test("returns handles for the root and layout children", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            vconcat: [
+                {
+                    name: "tracks",
+                    vconcat: [makeUnitSpec("trackA")],
+                },
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const root = api.root();
+
+        expect(root.isAlive()).toBe(true);
+        expect(root.type).toBe("concat");
+        expect(root.children()).toHaveLength(1);
+        expect(root.children()[0].name).toBe("tracks");
+        expect(root.parent()).toBeUndefined();
+    });
+
+    test("resolves scoped selectors to stable handles", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            vconcat: [
+                {
+                    name: "tracks",
+                    vconcat: [makeUnitSpec("trackA")],
+                },
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const first = api.get({ scope: [], view: "tracks" });
+        const second = api.resolve({ scope: [], view: "tracks" });
+
+        expect(second).toBe(first);
+        expect(first.selector).toEqual({ scope: [], view: "tracks" });
+        expect(first.children()[0].selector).toEqual({
+            scope: [],
+            view: "trackA",
+        });
+    });
+
+    test("treats detached handles as stale", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            layer: [makeUnitSpec("trackA")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const child = api.get({ scope: [], view: "trackA" });
+
+        await /** @type {import("./layerView.js").default} */ (
+            view
+        ).removeChildAt(0);
+
+        expect(child.isAlive()).toBe(false);
+        expect(api.resolve(child)).toBeUndefined();
+        expect(() => api.get(child)).toThrow(/stale/i);
+    });
+
+    test("inserts a direct spec into a concat container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const childSpec = makeUnitSpec("trackA");
+        const inserted = await api.insert("root", childSpec, { index: 0 });
+
+        expect(inserted.name).toBe("trackA");
+        expect(inserted.parent()).toBe(api.root());
+        expect(api.root().children()).toEqual([inserted]);
+        expect(api.get({ scope: [], view: "trackA" })).toBe(inserted);
+        expect(/** @type {any} */ (view).spec.vconcat[0]).not.toBe(childSpec);
+    });
+
+    test("initializes chrome views for dynamically inserted concat children", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    vconcat: [],
+                },
+            ],
+            config: {
+                view: {
+                    stroke: "lightgray",
+                },
+            },
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        await api.insert(
+            { scope: [], view: "tracks" },
+            {
+                ...makeUnitSpec("summary"),
+                title: "Summary track",
+            }
+        );
+
+        const summary = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "summary");
+        const chrome = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant !== summary && descendant.dataParent === summary
+            );
+        expect(chrome.map((descendant) => descendant.name)).toEqual(
+            expect.arrayContaining([
+                expect.stringMatching(/^axis_/),
+                expect.stringMatching(/^backgroundStroke/),
+                expect.stringMatching(/^title/),
+            ])
+        );
+        expect(
+            chrome.map((descendant) => descendant.getDataInitializationState())
+        ).not.toContain("none");
+    });
+
+    test("waits for inserted view fonts before loading data", async () => {
+        const fontEntry = /** @type {any} */ ({
+            metrics: undefined,
+            texture: undefined,
+        });
+        /** @type {(() => void) | undefined} */
+        let resolveFont;
+        let fontRequested = false;
+        const fontReady = new Promise((resolve) => {
+            resolveFont = () => {
+                fontEntry.metrics = /** @type {any} */ ({
+                    capHeight: 8,
+                    descent: 2,
+                    common: { base: 10 },
+                    measureWidth: (
+                        /** @type {string} */ text,
+                        /** @type {number} */ size
+                    ) => text.length * size,
+                });
+                resolve();
+            };
+        });
+        const fontManager = /** @type {any} */ ({
+            getFont: vi.fn(() => {
+                fontRequested = true;
+                return fontEntry;
+            }),
+            getDefaultFont: () => ({
+                metrics: {
+                    capHeight: 8,
+                    descent: 2,
+                    common: { base: 10 },
+                    measureWidth: (
+                        /** @type {string} */ text,
+                        /** @type {number} */ size
+                    ) => text.length * size,
+                },
+            }),
+            waitUntilReady: vi.fn(() =>
+                fontRequested ? fontReady : Promise.resolve()
+            ),
+        });
+        const { view } = await createHeadlessEngine(
+            {
+                name: "tracks",
+                vconcat: [],
+            },
+            {
+                contextOptions: {
+                    fontManager,
+                },
+            }
+        );
+
+        const api = createViewMutationApi({ viewRoot: view });
+        let resolved = false;
+        const insertPromise = api
+            .insert("root", {
+                name: "summary",
+                data: { values: [{ label: "abcd" }] },
+                transform: [
+                    {
+                        type: "measureText",
+                        field: "label",
+                        font: "Roboto Condensed",
+                        fontSize: 6,
+                        as: "width",
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: { field: "width", type: "quantitative" },
+                },
+            })
+            .then(() => {
+                resolved = true;
+            });
+
+        await Promise.resolve();
+        expect(resolved).toBe(false);
+
+        if (!resolveFont) {
+            throw new Error("Expected font resolver.");
+        }
+        resolveFont();
+        await insertPromise;
+
+        const summary = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "summary");
+        const datum = summary?.flowHandle?.collector
+            ? Array.from(summary.flowHandle.collector.getData())[0]
+            : undefined;
+        expect(fontManager.waitUntilReady).toHaveBeenCalled();
+        expect(datum?.width).toBe(24);
+    });
+
+    test("inserts a direct spec into a layer container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            layer: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const inserted = await api.insert("root", makeUnitSpec("trackA"));
+
+        expect(inserted.type).toBe("unit");
+        expect(api.root().children()).toEqual([inserted]);
+    });
+
+    test("registers explicit scopes for inserted direct specs", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        await api.insert(
+            "root",
+            {
+                name: "summary",
+                vconcat: [makeUnitSpec("coverage")],
+            },
+            { scope: "sampleA" }
+        );
+
+        expect(api.get({ scope: ["sampleA"], view: "coverage" }).name).toBe(
+            "coverage"
+        );
+    });
+
+    test("rejects invalid insert indexes without mutating the container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(
+            api.insert("root", makeUnitSpec("trackA"), { index: 1 })
+        ).rejects.toMatchObject({ code: "invalidIndex" });
+        expect(api.root().children()).toHaveLength(0);
+    });
+
+    test("rolls back partially inserted views when initialization fails", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(
+            api.insert("root", {
+                name: "badTrack",
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                },
+            })
+        ).rejects.toThrow(/data source/i);
+        expect(api.root().children()).toHaveLength(0);
+        expect(
+            /** @type {import("../spec/view.js").VConcatSpec} */ (view.spec)
+                .vconcat
+        ).toHaveLength(0);
+        expect(api.resolve({ scope: [], view: "badTrack" })).toBeUndefined();
+    });
+
+    test("rejects duplicate scopes in the same scope", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await api.insert("root", makeUnitSpec("trackA"), {
+            scope: "sampleA",
+        });
+
+        await expect(
+            api.insert("root", makeUnitSpec("trackB"), {
+                scope: "sampleA",
+            })
+        ).rejects.toMatchObject({ code: "duplicateScope" });
+        expect(api.root().children()).toHaveLength(1);
+    });
+
+    test("rejects insertion under unsupported parent views", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const unit = api.get({ scope: [], view: "trackA" });
+
+        await expect(
+            api.insert(unit, makeUnitSpec("trackB"))
+        ).rejects.toMatchObject({ code: "unsupportedContainer" });
+    });
+
+    test("rejects unsupported child specs for layer containers", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            layer: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(
+            api.insert("root", {
+                name: "nestedConcat",
+                vconcat: [makeUnitSpec("trackA")],
+            })
+        ).rejects.toMatchObject({ code: "unsupportedChildSpec" });
+        expect(api.root().children()).toHaveLength(0);
+    });
+
+    test("removes a child from a concat container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA"), makeUnitSpec("trackB")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const trackA = api.get({ scope: [], view: "trackA" });
+
+        await api.remove(trackA);
+
+        expect(trackA.isAlive()).toBe(false);
+        expect(api.resolve(trackA)).toBeUndefined();
+        expect(api.resolve({ scope: [], view: "trackA" })).toBeUndefined();
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackB"]);
+    });
+
+    test("keeps shared concat axes after removing an inserted child", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    spacing: 4,
+                    resolve: {
+                        axis: { x: "shared" },
+                    },
+                    vconcat: [
+                        makeSignalTrackSpec("signal", 80, "steelblue"),
+                        makeVariantsTrackSpec(),
+                    ],
+                },
+            ],
+            config: {
+                view: {
+                    stroke: "lightgray",
+                },
+            },
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const tracksView = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "tracks");
+        if (!tracksView) {
+            throw new Error("Expected tracks view.");
+        }
+
+        expect(countBottomAxes(tracksView)).toBe(1);
+        expect(countRenderedViews(renderToLayout(view), "axis_bottom")).toBe(1);
+        expect(
+            getBottomAxisSubtreeViews(tracksView).map((descendant) =>
+                descendant.getDataInitializationState()
+            )
+        ).not.toContain("none");
+
+        const inserted = await api.insert(
+            { scope: [], view: "tracks" },
+            makeSignalTrackSpec("summary", 50, "seagreen"),
+            { scope: "summary-1" }
+        );
+        expect(countBottomAxes(tracksView)).toBe(1);
+        expect(countRenderedViews(renderToLayout(view), "axis_bottom")).toBe(1);
+        expect(
+            getBottomAxisSubtreeViews(tracksView).map((descendant) =>
+                descendant.getDataInitializationState()
+            )
+        ).not.toContain("none");
+
+        await api.remove(inserted);
+
+        expect(countBottomAxes(tracksView)).toBe(1);
+        expect(countRenderedViews(renderToLayout(view), "axis_bottom")).toBe(1);
+        expect(
+            getBottomAxisSubtreeViews(tracksView).map((descendant) =>
+                descendant.getDataInitializationState()
+            )
+        ).not.toContain("none");
+    });
+
+    test("measures legends for inserted concat children", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    spacing: 4,
+                    resolve: {
+                        axis: { x: "shared" },
+                    },
+                    vconcat: [
+                        makeSignalTrackSpec("signal", 80, "steelblue"),
+                        makeVariantsTrackSpec(),
+                    ],
+                },
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        expect(getRenderedLegendRegions(renderToLayout(view))).toHaveLength(1);
+        expect(getLegends(view)).toHaveLength(1);
+
+        await api.insert(
+            { scope: [], view: "tracks" },
+            makeVariantsTrackSpec(),
+            { scope: "variants-2" }
+        );
+
+        const renderedLegendRegions = getRenderedLegendRegions(
+            renderToLayout(view)
+        );
+        expect(renderedLegendRegions).toHaveLength(2);
+        expect(getLegends(view).map((legend) => legend.isActive())).toEqual([
+            true,
+            true,
+        ]);
+        expect(
+            renderedLegendRegions.map(({ coords }) => getLayoutHeight(coords))
+        ).not.toContain(0);
+        expect(getLegends(view)).toHaveLength(2);
+        expect(
+            getLegends(view).flatMap((legend) =>
+                legend
+                    .getDescendants()
+                    .map((descendant) =>
+                        descendant.getDataInitializationState()
+                    )
+            )
+        ).not.toContain("none");
+    });
+
+    test("creates shared concat legends introduced by an inserted child", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    spacing: 4,
+                    resolve: {
+                        axis: { x: "shared" },
+                        scale: { color: "shared" },
+                        legend: { color: "shared" },
+                    },
+                    vconcat: [makeSignalTrackSpec("signal", 80, "steelblue")],
+                },
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        expect(getLegends(view)).toHaveLength(0);
+
+        await api.insert(
+            { scope: [], view: "tracks" },
+            makeVariantsTrackSpec(),
+            { scope: "variants-1" }
+        );
+
+        expect(getLegends(view)).toHaveLength(1);
+        expect(getRenderedLegendRegions(renderToLayout(view))).toHaveLength(1);
+    });
+
+    test("removes a child from a layer container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            layer: [makeUnitSpec("trackA"), makeUnitSpec("trackB")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await api.remove({ scope: [], view: "trackB" });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA"]);
+    });
+
+    test("rejects removing the root view", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(api.remove("root")).rejects.toMatchObject({
+            code: "cannotRemoveRoot",
+        });
+        expect(api.root().children()).toHaveLength(1);
+    });
+
+    test("moves a concat child within its current parent", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [
+                makeUnitSpec("trackA"),
+                makeUnitSpec("trackB"),
+                makeUnitSpec("trackC"),
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const trackB = api.get({ scope: [], view: "trackB" });
+        const moved = await api.move(trackB, { index: 2 });
+
+        expect(moved).toBe(trackB);
+        expect(trackB.isAlive()).toBe(true);
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackC", "trackB"]);
+        const spec = /** @type {import("../spec/view.js").VConcatSpec} */ (
+            view.spec
+        );
+        expect(spec.vconcat.map((childSpec) => childSpec.name)).toEqual([
+            "trackA",
+            "trackC",
+            "trackB",
+        ]);
+    });
+
+    test("moves a layer child within its current parent", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            layer: [
+                makeUnitSpec("trackA"),
+                makeUnitSpec("trackB"),
+                makeUnitSpec("trackC"),
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        await api.move({ scope: [], view: "trackC" }, { index: 0 });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackC", "trackA", "trackB"]);
+        const spec = /** @type {import("../spec/view.js").LayerSpec} */ (
+            view.spec
+        );
+        expect(spec.layer.map((childSpec) => childSpec.name)).toEqual([
+            "trackC",
+            "trackA",
+            "trackB",
+        ]);
+    });
+
+    test("rejects invalid move indexes without mutating the container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA"), makeUnitSpec("trackB")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(
+            api.move({ scope: [], view: "trackA" }, { index: 2 })
+        ).rejects.toMatchObject({ code: "invalidIndex" });
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
+
+    test("rejects moving the root view", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(api.move("root", { index: 0 })).rejects.toMatchObject({
+            code: "cannotMoveRoot",
+        });
+    });
+
+    test("returns layout bounds for addressed views after rendering", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "tracks",
+            vconcat: [
+                makeSignalTrackSpec("signal", 80, "steelblue"),
+                makeVariantsTrackSpec(),
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+
+        expect(
+            api.getLayoutBounds({ scope: [], view: "signal" })
+        ).toBeUndefined();
+
+        renderToLayout(view);
+
+        expect(api.getLayoutBounds({ scope: [], view: "signal" })).toEqual({
+            x: expect.any(Number),
+            y: expect.any(Number),
+            width: expect.any(Number),
+            height: 80,
+        });
+    });
+
+    test("subscribes to layout updates", async () => {
+        /** @type {Map<import("../genomeSpy.js").BroadcastEventType, Set<(message: import("./view.js").BroadcastMessage) => void>>} */
+        const listeners = new Map();
+        /** @type {(type: import("../genomeSpy.js").BroadcastEventType, listener: (message: import("./view.js").BroadcastMessage) => void) => void} */
+        const addBroadcastListener = (type, listener) => {
+            const typeListeners = listeners.get(type) ?? new Set();
+            typeListeners.add(listener);
+            listeners.set(type, typeListeners);
+        };
+        /** @type {(type: import("../genomeSpy.js").BroadcastEventType, listener: (message: import("./view.js").BroadcastMessage) => void) => void} */
+        const removeBroadcastListener = (type, listener) => {
+            listeners.get(type)?.delete(listener);
+        };
+        const emit = (
+            /** @type {import("../genomeSpy.js").BroadcastEventType} */ type
+        ) => {
+            for (const listener of listeners.get(type) ?? []) {
+                listener({ type });
+            }
+        };
+        const { view } = await createHeadlessEngine(
+            {
+                name: "tracks",
+                vconcat: [makeUnitSpec("trackA")],
+            },
+            {
+                contextOptions: {
+                    addBroadcastListener,
+                    removeBroadcastListener,
+                },
+            }
+        );
+        const api = createViewMutationApi({ viewRoot: view });
+        const listener = vi.fn();
+
+        const unsubscribe = api.subscribeToLayout(listener);
+        emit("layoutComputed");
+        unsubscribe();
+        emit("layoutComputed");
+
+        expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    test("defers layout reflow until the outer transaction completes", async () => {
+        const requestLayoutReflow = vi.fn();
+        const { view } = await createHeadlessEngine(
+            {
+                name: "tracks",
+                vconcat: [],
+            },
+            {
+                contextOptions: {
+                    requestLayoutReflow,
+                },
+            }
+        );
+
+        requestLayoutReflow.mockClear();
+
+        const api = createViewMutationApi({ viewRoot: view });
+        await api.transaction(async (views) => {
+            await views.insert("root", makeUnitSpec("trackA"));
+            await views.transaction(async (nestedViews) => {
+                await nestedViews.insert("root", makeUnitSpec("trackB"));
+            });
+
+            expect(requestLayoutReflow).not.toHaveBeenCalled();
+        });
+
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
+
+    test("serializes concurrently started mutations inside a transaction", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "tracks",
+            vconcat: [],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+
+        // Concurrent callers should still observe the same serialized mutation
+        // semantics as mutations that are started outside a transaction.
+        await api.transaction(async (views) => {
+            await Promise.all([
+                views.insert("root", makeUnitSpec("trackA")),
+                views.insert("root", makeUnitSpec("trackB")),
+            ]);
+        });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
+
+    test("waits for unawaited transaction mutations before resolving", async () => {
+        const requestLayoutReflow = vi.fn();
+        const { view } = await createHeadlessEngine(
+            {
+                name: "tracks",
+                vconcat: [],
+            },
+            {
+                contextOptions: {
+                    requestLayoutReflow,
+                },
+            }
+        );
+
+        requestLayoutReflow.mockClear();
+
+        const api = createViewMutationApi({ viewRoot: view });
+        // The transaction boundary is the commit point, so even fire-and-forget
+        // mutations started inside it must finish before the promise resolves.
+        await api.transaction((views) => {
+            views.insert("root", makeUnitSpec("trackA"));
+            views.insert("root", makeUnitSpec("trackB"));
+        });
+
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
+
+    test("waits for chained unawaited transaction mutations before resolving", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "tracks",
+            vconcat: [],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+
+        // Promise continuations can enqueue more mutation work before the
+        // transaction closes. The commit boundary must include that work too.
+        await api.transaction((views) => {
+            views
+                .insert("root", makeUnitSpec("trackA"))
+                .then(() => views.insert("root", makeUnitSpec("trackB")));
+        });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
+});

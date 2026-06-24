@@ -43,8 +43,30 @@ const chromeOverrides = new WeakMap();
  * @param {string | null} scopeName
  */
 export function registerImportInstance(view, scopeName) {
+    registerScope(view, scopeName, "Import");
+}
+
+/**
+ * Marks a view as the root of a named selector scope.
+ *
+ * Import instances and dynamically inserted views share the same selector scope
+ * model, even though imports were the original use case.
+ *
+ * @param {import("./view.js").default} view
+ * @param {string | null} scopeName
+ */
+export function registerViewScope(view, scopeName) {
+    registerScope(view, scopeName, "View");
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @param {string | null} scopeName
+ * @param {string} scopeKind
+ */
+function registerScope(view, scopeName, scopeKind) {
     if (scopeName !== null && typeof scopeName !== "string") {
-        throw new Error("Import scope name must be a string or null.");
+        throw new Error(scopeKind + " scope name must be a string or null.");
     }
 
     importScopes.set(view, { name: scopeName });

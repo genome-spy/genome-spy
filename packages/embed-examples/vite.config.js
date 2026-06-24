@@ -18,6 +18,7 @@ export default defineConfig({
                 scaleApi: "src/scaleApi.html",
                 paramApi: "src/paramApi.html",
                 brushLinkingApi: "src/brushLinkingApi.html",
+                viewMutationApi: "src/viewMutationApi.html",
                 linkedEmbeds: "src/linkedEmbeds.html",
                 dynamicNamedData: "src/dynamicNamedData.html",
                 multipleDynamicSources: "src/multipleDynamicSources.html",

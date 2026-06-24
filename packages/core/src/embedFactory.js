@@ -1,5 +1,6 @@
 import { isObject, isString } from "vega-util";
 
+import { createViewMutationApi } from "./view/viewMutationApi.js";
 import { fetchJson } from "./utils/fetchUtils.js";
 import inferSpecBaseUrl from "./utils/inferSpecBaseUrl.js";
 
@@ -59,6 +60,8 @@ export function createEmbed(GenomeSpy) {
         }
 
         return {
+            views: createViewMutationApi(genomeSpy),
+
             finalize() {
                 genomeSpy.destroy();
                 while (element.firstChild) {

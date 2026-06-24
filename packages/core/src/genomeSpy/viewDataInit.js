@@ -1,4 +1,5 @@
 import {
+    broadcastSubtreeDataReady,
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
@@ -65,16 +66,51 @@ export async function initializeVisibleViewData(
     dataFlow,
     fontManager
 ) {
-    // Initialize dataflow/graphics for views that have become visible since the
-    // initial load, while avoiding unnecessary data source reloads. If a view
-    // attaches downstream of an already completed collector, repropagate that
-    // collector instead of reloading the source.
     const visibilityPredicate = (
         /** @type {import("../view/view.js").default} */ view
     ) => view.isConfiguredVisible();
     const visibleViews = collectVisibleViews(viewRoot, visibilityPredicate);
     const viewsToInitialize = visibleViews.filter(
         (view) => view.getDataInitializationState() === "none"
+    );
+
+    return initializeViewDataForViews(
+        viewRoot,
+        dataFlow,
+        fontManager,
+        viewsToInitialize
+    );
+}
+
+/**
+ * Initializes dataflow/graphics for selected views while avoiding unnecessary
+ * data source reloads.
+ *
+ * If a selected view attaches downstream of an already completed collector,
+ * the collector is repropagated instead of reloading the source.
+ *
+ * @param {import("../view/view.js").default} viewRoot
+ * @param {import("../data/dataFlow.js").default} dataFlow
+ * @param {import("../fonts/bmFontManager.js").default} fontManager
+ * @param {Iterable<import("../view/view.js").default>} candidateViews
+ * @returns {Promise<import("../data/dataFlow.js").default>}
+ */
+export async function initializeViewDataForViews(
+    viewRoot,
+    dataFlow,
+    fontManager,
+    candidateViews
+) {
+    const candidates = new Set(candidateViews);
+    const visibilityPredicate = (
+        /** @type {import("../view/view.js").default} */ view
+    ) => view.isConfiguredVisible();
+    const viewsToInitialize = collectVisibleViews(
+        viewRoot,
+        visibilityPredicate
+    ).filter(
+        (view) =>
+            candidates.has(view) && view.getDataInitializationState() === "none"
     );
 
     if (viewsToInitialize.length === 0) {
@@ -133,6 +169,7 @@ export async function initializeVisibleViewData(
             )
         );
     }
+    broadcastSubtreeDataReady(viewRoot);
 
     return builtDataFlow;
 }

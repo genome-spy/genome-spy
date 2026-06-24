@@ -804,7 +804,7 @@ ViewCoords {
           "viewName": "title1",
         },
       ],
-      "coords": "Rectangle: x: 0, y: 0, width: 627, height: 310",
+      "coords": "Rectangle: x: 0, y: 0, width: 595, height: 255",
       "viewName": "grid0",
     },
     ViewCoords {
@@ -986,7 +986,7 @@ ViewCoords {
           "viewName": "title1",
         },
       ],
-      "coords": "Rectangle: x: 0, y: 279, width: 627, height: 310",
+      "coords": "Rectangle: x: 0, y: 279, width: 595, height: 255",
       "viewName": "grid1",
     },
   ],

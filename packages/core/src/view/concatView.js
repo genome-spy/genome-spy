@@ -5,6 +5,7 @@ import {
 } from "./viewSpecGuards.js";
 import GridView from "./gridView/gridView.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
+import { moveArrayItem } from "../utils/arrayUtils.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -81,7 +82,7 @@ export default class ConcatView extends GridView {
      * Callers should prefer this over direct GridView insertion to ensure
      * dataflow initialization, axis wiring, and layout reflow are handled.
      *
-     * @param {import("../spec/view.js").ViewSpec} childSpec
+     * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} childSpec
      * @param {number} [index]
      * @returns {Promise<import("./view.js").default>}
      */
@@ -96,6 +97,25 @@ export default class ConcatView extends GridView {
      */
     async removeChildAt(index) {
         await this.#getMutationHelper().removeChildAt(index);
+    }
+
+    /**
+     * Moves a child within the concat container without recreating it.
+     *
+     * @param {number} fromIndex
+     * @param {number} index Destination index after temporarily removing the child.
+     * @returns {Promise<void>}
+     */
+    async moveChildAt(fromIndex, index) {
+        const mutationHelper = this.#getMutationHelper();
+        const { specs } = this.#getChildSpecs();
+        moveArrayItem(specs, fromIndex, index);
+        super.moveChildAt(fromIndex, index);
+        // Reordering can move shared guide ownership without changing existing
+        // child-local guides.
+        await this.syncGuideViews({ gridChildren: [] });
+        await mutationHelper.initializeUninitializedChromeViews();
+        this.context.requestLayoutReflow();
     }
 
     /**
@@ -161,13 +181,12 @@ export default class ConcatView extends GridView {
             getChildSpecs: this.#getChildSpecs.bind(this),
             insertView: (view, index) => this.insertChildViewAt(view, index),
             removeView: (index) => super.removeChildAt(index),
-            prepareView: async (view, _index, gridChild) => {
-                await gridChild.createAxes();
-                await this.syncSharedAxes();
-            },
-            afterRemove: async () => {
-                await this.syncSharedAxes();
-            },
+            syncMutationGuideViews: (_view, _index, gridChild) =>
+                this.syncGuideViews({
+                    // Only inserted grid children need new local guides. Shared
+                    // guides are synced by GridView regardless of this filter.
+                    gridChildren: gridChild ? [gridChild] : [],
+                }),
             defaultName: () => this.getNextAutoName("grid"),
         });
     }

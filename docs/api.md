@@ -1,6 +1,8 @@
 # JavaScript API
 
-The public JavaScript API is currently quite minimal.
+This page documents the public API of the GenomeSpy JavaScript library. The API
+enables dynamic control of embedded GenomeSpy visualizations, including view
+hierarchy inspection and mutation, and parameterized data updates.
 
 ## Embedding
 
@@ -21,9 +23,15 @@ loaders. Import the data source and format modules you need explicitly:
 import { embed } from "@genome-spy/core/minimal";
 import "@genome-spy/core/data/formats/parquet.js";
 import "@genome-spy/core/data/sources/lazy/bigBedSource.js";
+
+const spec = {
+  // view specification that uses the lazy bigBed source
+};
+
+const api = await embed(document.body, spec);
 ```
 
-## The API
+## API object
 
 The `embed` function returns a promise that resolves into an object that
 provides the current public API. The API is documented in the [interface
@@ -31,11 +39,103 @@ definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/s
 
 For practical examples of using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
-package.
+package. The
+[view mutation example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/viewMutationApi.js)
+demonstrates adding, removing, reordering, and positioning external controls
+next to live views.
 
-## Embed options
+## View hierarchy
 
-The `embed` function accepts an optional options object.
+The `views` API inspects and controls the live layout hierarchy of an embedded
+GenomeSpy instance. It supports addressing views, reading their rendered layout
+bounds, listening for layout updates, and adding, removing, or reordering child
+views in mutable container views such as concat and layer views.
+
+The hierarchy exposed by the API matches the layout tree derived from the
+visualization spec. The root may be an implicit layout container, for example
+when a root unit view is wrapped to provide axes, titles, or other guides. Use
+`api.views.root()` to inspect the actual runtime root.
+
+Views can be addressed with:
+
+- `"root"` for the runtime root layout view
+- a `ViewHandle` returned by the API
+- a selector such as `{ scope: [], view: "tracks" }`
+
+When inserting the same spec multiple times, pass `scope` to make each instance
+independently addressable. The inserted value is a view spec, the same kind of
+object that appears inside `vconcat`, `hconcat`, or `layer` in a visualization
+specification:
+
+```js
+const signalTrackSpec = {
+  name: "signalTrack",
+  data: {
+    // ...
+  },
+  mark: "point",
+  encoding: {
+    // ...
+  },
+};
+
+const tracks = api.views.get({ scope: [], view: "tracks" });
+
+const signalTrack = await api.views.insert(tracks, signalTrackSpec, {
+  scope: "sample-1-signal",
+});
+
+const sameSignalTrack = api.views.get({
+  scope: ["sample-1-signal"],
+  view: "signalTrack",
+});
+```
+
+Mutation methods are asynchronous. Await the returned promise before using the
+new hierarchy. Handles remain stable while their views are live; after removing
+a subtree, `handle.isAlive()` returns `false`.
+
+`getLayoutBounds()` returns the rendered bounds of a view for positioning
+external UI. Bounds are reported in CSS pixels in the embedded GenomeSpy canvas
+coordinate space. Convert them to DOM coordinates when the external UI does not
+share the same positioning origin. The method returns `undefined` until the view
+has been rendered or when the address cannot be resolved:
+
+```js
+const bounds = api.views.getLayoutBounds(signalTrack);
+```
+
+`subscribeToLayout()` runs a callback after GenomeSpy has recomputed view
+bounds, which is useful for updating external UI. The method returns an
+unsubscribe function:
+
+```js
+const unsubscribe = api.views.subscribeToLayout(() => {
+  const bounds = api.views.getLayoutBounds(signalTrack);
+});
+```
+
+`move()` reorders a view within its current parent. The destination `index` is
+evaluated after temporarily removing the target from its parent:
+
+```js
+await api.views.move(signalTrack, { index: 0 });
+```
+
+`transaction()` applies ordered mutations while deferring layout work until the
+outer transaction finishes:
+
+```js
+await api.views.transaction(async (views) => {
+  const inserted = await views.insert(tracks, signalTrackSpec, {
+    scope: "sample-2-signal",
+  });
+
+  await views.move(inserted, { index: 0 });
+});
+```
+
+The mutation API does not move views between different parent containers.
 
 ## Named data
 
@@ -56,7 +156,7 @@ There are two ways to provide the data:
 
 ### `updateNamedData()`
 
-Use `updateNamedData(name, data)` when your application provides updated data
+Call `updateNamedData(name, data)` when your application provides updated data
 explicitly.
 
 ```js
@@ -70,8 +170,7 @@ api.updateNamedData("myResults", [
 
 ### `namedDataProvider`
 
-Use the `namedDataProvider` embed option when GenomeSpy should load named data
-on demand.
+The `namedDataProvider` embed option lets GenomeSpy load named data on demand.
 
 ```js
 const api = await embed("#container", spec, {
@@ -94,36 +193,12 @@ user interactions. For practical examples, see the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
-### Named data provider
-
-See [Named data](#named-data).
-
-### Theme config
-
-Use the `theme` embed option to provide global defaults without modifying the
-specification itself:
-
-```js
-embed(container, spec, {
-  theme: {
-    mark: { color: "#1f77b4" },
-    point: { size: 80 },
-    scale: { nominalColorScheme: "set2" },
-  },
-});
-```
-
-Theme config is merged before `spec.config`, so spec-local config and explicit
-properties still take precedence.
-
-See also [Config, Themes, and Styles](./grammar/config.md).
-
-### Named scales
+## Named scales
 
 Named scales can be accessed through `getScaleResolutionByName()`. To define a
 named scale in a spec, set `scale.name`. See [Scale](./grammar/scale.md).
 
-### Parameters
+## Parameters
 
 Named parameters can be accessed through `getParam()`. The returned handle can
 read and write the parameter value and subscribe to changes:
@@ -140,8 +215,8 @@ const unsubscribe = threshold.subscribe((value) => {
 });
 ```
 
-Variable parameters and interval selections can be read and written. Use
-`intervalSelection()` to construct interval selection values:
+Variable parameters and interval selections can be read and written.
+`intervalSelection()` constructs interval selection values:
 
 ```js
 import { embed, intervalSelection } from "@genome-spy/core";
@@ -162,6 +237,30 @@ Current limitations:
 For examples, see the `paramApi` and `brushLinkingApi` pages in the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
+
+## Embed options
+
+The `embed` function accepts an optional options object.
+
+### Theme config
+
+The `theme` embed option provides global defaults without modifying the
+specification itself:
+
+```js
+embed(container, spec, {
+  theme: {
+    mark: { color: "#1f77b4" },
+    point: { size: 80 },
+    scale: { nominalColorScheme: "set2" },
+  },
+});
+```
+
+Theme config is merged before `spec.config`, so spec-local config and explicit
+properties still take precedence.
+
+See also [Config, Themes, and Styles](./grammar/config.md).
 
 ### Custom tooltip handlers
 
@@ -237,8 +336,8 @@ Supported `mode` values:
 - `"endpoints"`
 - `"disabled"`
 
-Use the `tooltipHandlers` option to register custom handlers or override the
-default. See the example below.
+The `tooltipHandlers` option registers custom handlers or overrides the default.
+See the example below.
 
 #### Examples
 
