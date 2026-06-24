@@ -12,10 +12,11 @@ import { renderToLayout } from "./testUtils.js";
 
 /**
  * @param {import("../spec/root.js").RootSpec} spec
+ * @param {Parameters<typeof createHeadlessEngine>[1]} [options]
  * @returns {Promise<ViewMutationAcidHarness>}
  */
-export async function createViewMutationAcidHarness(spec) {
-    const { view, context } = await createHeadlessEngine(spec);
+export async function createViewMutationAcidHarness(spec, options) {
+    const { view, context } = await createHeadlessEngine(spec, options);
 
     return {
         view,

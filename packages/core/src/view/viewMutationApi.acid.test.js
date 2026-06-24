@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import DataSource from "../data/sources/dataSource.js";
 import { loadViewSubtreeData } from "../data/flowInit.js";
@@ -677,6 +677,59 @@ describe("View mutation acid scenarios", () => {
             overviewTrackCollector
         );
         expect(createMutationAcidSnapshot(view)).toEqual(baselineSnapshot);
+    });
+
+    test("batches multi-step transactions into one layout reflow", async () => {
+        const requestLayoutReflow = vi.fn();
+        const { view, api, context } = await createViewMutationAcidHarness(
+            makeEmptyTracksSpec(),
+            { contextOptions: { requestLayoutReflow } }
+        );
+
+        requestLayoutReflow.mockClear();
+
+        /** @type {import("../data/sources/dataSource.js").default | undefined} */
+        let removedDataSource;
+        /** @type {import("../data/collector.js").default | undefined} */
+        let removedCollector;
+        /** @type {import("../types/embedApi.js").ViewHandle | undefined} */
+        let removedHandle;
+
+        // Multiple child operations should publish one final layout reflow
+        // after the outer transaction, while still cleaning up the branch that
+        // was inserted and removed inside the same batch.
+        await api.transaction(async (views) => {
+            await views.insert("root", makeTrackSpec("trackA", "Track A"));
+            removedHandle = await views.insert(
+                "root",
+                makeTrackSpec("trackB", "Track B")
+            );
+            const trackC = await views.insert(
+                "root",
+                makeTrackSpec("trackC", "Track C")
+            );
+            const removedView = getRequiredView(view, "trackB");
+            removedDataSource = removedView.flowHandle?.dataSource;
+            removedCollector = removedView.flowHandle?.collector;
+
+            await views.move(trackC, { index: 0 });
+            await views.remove(removedHandle);
+
+            expect(requestLayoutReflow).not.toHaveBeenCalled();
+        });
+
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+        expect(removedHandle?.isAlive()).toBe(false);
+        expect(context.dataFlow.dataSources).not.toContain(removedDataSource);
+        expect(context.dataFlow.collectors).not.toContain(removedCollector);
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackC", "trackA"]);
+        expect(countCollectorRows(getRequiredView(view, "trackA"))).toBe(2);
+        expect(countCollectorRows(getRequiredView(view, "trackC"))).toBe(2);
     });
 });
 

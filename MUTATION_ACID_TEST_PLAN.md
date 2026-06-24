@@ -80,7 +80,7 @@ cover.
    selectors resolve through the hierarchy, implicit chrome is preserved, and
    sibling branches are unaffected.
 
-8. Transaction batching
+8. Transaction batching - done
 
    In one transaction, insert several tracks, move one, and remove another.
    Verify one final layout/render pass, stable final order, and no intermediate
@@ -269,11 +269,11 @@ Suggested order:
 
    Commit shape: `test(core): cover nested container view mutations`.
 
-9. Next: Implement transaction batching coverage.
+9. Done: Implement transaction batching coverage.
 
    Commit shape: `test(core): cover batched view mutation lifecycle`.
 
-10. Implement failure rollback after partial insertion.
+10. Next: Implement failure rollback after partial insertion.
 
     Commit shape: `test(core): cover failed insertion rollback`.
 
@@ -308,8 +308,8 @@ Current executable coverage includes round-trip cancellation, lazy insertion
 during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
 data insertion/removal, scoped params/subscription cleanup, repeated scoped spec
-insertion, and nested container mutation. It does not yet cover visibility
-toggles, encoding mutation, or URL/bookmark restore.
+insertion, nested container mutation, and transaction batching. It does not yet
+cover visibility toggles, encoding mutation, or URL/bookmark restore.
 
 ## Testability considerations
 
