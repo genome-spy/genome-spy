@@ -31,7 +31,10 @@ definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/s
 
 For practical examples of using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
-package.
+package. The
+[view mutation example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/viewMutationApi.js)
+demonstrates adding, removing, reordering, and positioning external controls
+next to live views.
 
 ## View hierarchy
 
@@ -72,14 +75,17 @@ new hierarchy. Handles remain stable while their views are live; after removing
 a subtree, `handle.isAlive()` returns `false`.
 
 Use `getLayoutBounds()` to position external UI relative to a view. Bounds are
-reported in CSS pixels in the embedded GenomeSpy canvas coordinate space:
+reported in CSS pixels in the embedded GenomeSpy canvas coordinate space.
+Convert them to DOM coordinates when the external UI does not share the same
+positioning origin. The method returns `undefined` until the view has been
+rendered or when the address cannot be resolved:
 
 ```js
 const bounds = api.views.getLayoutBounds(summary);
 ```
 
 Use `subscribeToLayout()` to update external UI after GenomeSpy has recomputed
-view bounds:
+view bounds. The method returns an unsubscribe function:
 
 ```js
 const unsubscribe = api.views.subscribeToLayout(() => {
