@@ -3,18 +3,19 @@ import { describe, expect, test, vi } from "vitest";
 import GenomeSpy from "./genomeSpyBase.js";
 
 describe("GenomeSpy layout reflow", () => {
-    test("requestLayoutReflow recomputes layout and schedules rendering", () => {
-        const computeLayout = vi.fn();
-        const requestRender = vi.fn();
+    test("requestLayoutReflow schedules layout as a render transition", () => {
+        const layoutReflowTransition = vi.fn();
+        const requestTransition = vi.fn();
 
         /** @type {any} */ (GenomeSpy.prototype.requestLayoutReflow).call({
-            computeLayout,
+            _layoutReflowTransition: layoutReflowTransition,
             animator: {
-                requestRender,
+                requestTransition,
             },
         });
 
-        expect(computeLayout).toHaveBeenCalledTimes(1);
-        expect(requestRender).toHaveBeenCalledTimes(1);
+        expect(layoutReflowTransition).not.toHaveBeenCalled();
+        expect(requestTransition).toHaveBeenCalledOnce();
+        expect(requestTransition).toHaveBeenCalledWith(layoutReflowTransition);
     });
 });

@@ -104,6 +104,11 @@ export default class GenomeSpy {
 
         this.animator = new Animator(() => this.renderAll());
 
+        // Use a stable callback identity so repeated layout requests coalesce
+        // in Animator's transition queue before the next render.
+        /** @type {(timestamp?: number) => void} */
+        this._layoutReflowTransition = () => this.computeLayout();
+
         /** @type {GenomeStore} */
         this.genomeStore = undefined;
 
@@ -685,15 +690,13 @@ export default class GenomeSpy {
 
     computeLayout() {
         this.#renderCoordinator.computeLayout();
-        this.#glHelper.invalidateSize();
     }
 
     /**
      * Recomputes layout and schedules the buffered render commands to be drawn.
      */
     requestLayoutReflow() {
-        this.computeLayout();
-        this.animator.requestRender();
+        this.animator.requestTransition(this._layoutReflowTransition);
     }
 
     renderAll() {

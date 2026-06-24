@@ -57,6 +57,29 @@ export default class RenderCoordinator {
 
         this.#broadcast("layout");
 
+        // Layout may change the root-derived canvas size. Start with a fresh
+        // size, then repeat only if the pass caused the applied canvas size to
+        // change so buffered render commands use current dimensions.
+        this.#glHelper.invalidateSize();
+        let remainingPasses = 5;
+        while (this.#computeLayoutPass()) {
+            if (!this.#glHelper.invalidateSize()) {
+                this.#onLayoutComputed();
+                this.#broadcast("layoutComputed");
+                return;
+            }
+
+            remainingPasses--;
+            if (remainingPasses == 0) {
+                throw new Error(
+                    "Layout did not settle: canvas size kept changing."
+                );
+            }
+        }
+    }
+
+    #computeLayoutPass() {
+        const root = this.#viewRoot;
         const canvasSize = this.#glHelper.getLogicalCanvasSize();
 
         if (isNaN(canvasSize.width) || isNaN(canvasSize.height)) {
@@ -64,7 +87,7 @@ export default class RenderCoordinator {
             console.log(
                 `NaN in canvas size: ${canvasSize.width}x${canvasSize.height}. Skipping computeLayout().`
             );
-            return;
+            return false;
         }
 
         const commonOptions = {
@@ -97,8 +120,7 @@ export default class RenderCoordinator {
             Rectangle.create(0, 0, canvasSize.width, canvasSize.height)
         );
 
-        this.#onLayoutComputed();
-        this.#broadcast("layoutComputed");
+        return true;
     }
 
     renderAll() {

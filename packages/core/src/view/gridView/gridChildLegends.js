@@ -388,23 +388,7 @@ export async function createGridChildLegend(definition, layoutParent) {
 
             legend.invalidateSizeCache();
 
-            /*
-             * Smell: external legend visibility can change the root view size,
-             * and canvas size is derived from the root view layout. Currently
-             * GenomeSpy.computeLayout() first builds the render buffer and only
-             * then invalidates/applies the canvas size. That means one reflow can
-             * compute a correct legend layout but leave the buffer tied to the
-             * old canvas size, so the legend appears active in the view tree but
-             * is not drawn.
-             *
-             * The first reflow updates root bounds and applies the new canvas
-             * size. The second reflow rebuilds the render buffer against that
-             * new canvas. This workaround should go away when canvas sizing and
-             * layout are made less circular.
-             */
             legend.context.requestLayoutReflow();
-            legend.context.requestLayoutReflow();
-            legend.context.animator.requestRender();
         }
     );
     const symbolStyle =

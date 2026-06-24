@@ -1783,8 +1783,8 @@ describe("GridView legends", () => {
 
             expect(legends[0].isActive()).toBe(true);
             expect(regions[0].getParallelSize()).toBeGreaterThan(0);
-            expect(view.context.requestLayoutReflow).toHaveBeenCalled();
-            expect(view.context.animator.requestRender).toHaveBeenCalled();
+            expect(view.context.requestLayoutReflow).toHaveBeenCalledTimes(2);
+            expect(view.context.animator.requestRender).not.toHaveBeenCalled();
         });
 
         test("respects explicit legend null", async () => {

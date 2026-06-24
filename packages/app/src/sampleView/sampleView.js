@@ -590,7 +590,6 @@ export default class SampleView extends ContainerView {
                     this.#updateVisibleSamplesParam();
                     this.#updateVisibleSampleMetadataParam();
                     this.context.requestLayoutReflow();
-                    this.context.animator.requestRender();
                 })
             )
         );

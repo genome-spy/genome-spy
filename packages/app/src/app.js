@@ -428,7 +428,6 @@ export default class App {
                 clearHiddenViewCoords(this.genomeSpy.viewRoot);
                 context.highlightView(null);
                 context.requestLayoutReflow();
-                context.animator.requestRender();
             })
         );
         attachIntentStatusUi({

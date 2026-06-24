@@ -162,7 +162,9 @@ export default class WebGLHelper {
 
     invalidateSize() {
         this._canvasSizeHelper.invalidate();
-        this.adjustGl();
+        // The return value tells layout code whether cached render commands may
+        // have been built against a stale logical or physical canvas size.
+        return this.adjustGl();
     }
 
     /**
