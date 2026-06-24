@@ -1,4 +1,5 @@
 import {
+    broadcastSubtreeDataReady,
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
@@ -168,6 +169,7 @@ export async function initializeViewDataForViews(
             )
         );
     }
+    broadcastSubtreeDataReady(viewRoot);
 
     return builtDataFlow;
 }

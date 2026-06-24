@@ -5,6 +5,7 @@ import {
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
 import AxisView from "./axisView.js";
+import LegendView from "./legendView.js";
 import { renderToLayout } from "./testUtils.js";
 import { createViewMutationApi } from "./viewMutationApi.js";
 
@@ -120,6 +121,42 @@ function countRenderedViews(layout, viewName) {
             (count, child) => count + countRenderedViews(child, viewName),
             0
         )
+    );
+}
+
+/**
+ * @param {{ viewName: string, children: any[] }} layout
+ * @returns {{ viewName: string, coords: string, children: any[] }[]}
+ */
+function getRenderedLegendRegions(layout) {
+    return [
+        ...(layout.viewName.startsWith("legend_region_") ? [layout] : []),
+        ...layout.children.flatMap((child) => getRenderedLegendRegions(child)),
+    ];
+}
+
+/**
+ * @param {string} coords
+ * @returns {number}
+ */
+function getLayoutHeight(coords) {
+    const match = coords.match(/height: (?<height>\d+)/);
+    if (!match?.groups) {
+        throw new Error("Cannot parse layout height: " + coords);
+    }
+
+    return Number(match.groups.height);
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @returns {LegendView[]}
+ */
+function getLegends(view) {
+    return /** @type {LegendView[]} */ (
+        view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof LegendView)
     );
 }
 
@@ -546,6 +583,56 @@ describe("ViewMutationApi", () => {
         expect(
             getBottomAxisSubtreeViews(tracksView).map((descendant) =>
                 descendant.getDataInitializationState()
+            )
+        ).not.toContain("none");
+    });
+
+    test("measures legends for inserted concat children", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    spacing: 4,
+                    resolve: {
+                        axis: { x: "shared" },
+                    },
+                    vconcat: [
+                        makeSignalTrackSpec("signal", 80, "steelblue"),
+                        makeVariantsTrackSpec(),
+                    ],
+                },
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        expect(getRenderedLegendRegions(renderToLayout(view))).toHaveLength(1);
+        expect(getLegends(view)).toHaveLength(1);
+
+        await api.insert(
+            { scope: [], view: "tracks" },
+            makeVariantsTrackSpec(),
+            { scope: "variants-2" }
+        );
+
+        const renderedLegendRegions = getRenderedLegendRegions(
+            renderToLayout(view)
+        );
+        expect(renderedLegendRegions).toHaveLength(2);
+        expect(getLegends(view).map((legend) => legend.isActive())).toEqual([
+            true,
+            true,
+        ]);
+        expect(
+            renderedLegendRegions.map(({ coords }) => getLayoutHeight(coords))
+        ).not.toContain(0);
+        expect(getLegends(view)).toHaveLength(2);
+        expect(
+            getLegends(view).flatMap((legend) =>
+                legend
+                    .getDescendants()
+                    .map((descendant) =>
+                        descendant.getDataInitializationState()
+                    )
             )
         ).not.toContain("none");
     });
