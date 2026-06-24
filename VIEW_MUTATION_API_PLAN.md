@@ -577,7 +577,11 @@ harness that can drive ordered mutations and inspect stable invariants.
 
     Tentative commit: `test(core): add view mutation acid scenarios`.
 
-15. **Todo.** Document the public API in `docs/api.md` once the runtime behavior and
+15. **Done.** Document the public API in `docs/api.md` once the runtime behavior and
     example have stabilized.
+
+    The API docs now include a concise view mutation section covering the live
+    layout hierarchy, root handles, selectors, scopes, async mutation promises,
+    child reordering, and transactions.
 
     Tentative commit: `docs(core): document view mutation API`.

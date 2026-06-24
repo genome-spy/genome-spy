@@ -33,6 +33,66 @@ For practical examples of using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
+## View mutation
+
+The `views` API controls the live layout hierarchy of an embedded GenomeSpy
+instance. It supports adding, removing, and reordering child views in mutable
+container views such as concat and layer views.
+
+The hierarchy exposed by the API matches the layout tree derived from the
+visualization spec. The root may be an implicit layout container, for example
+when a root unit view is wrapped to provide axes, titles, or other guides. Use
+`api.views.root()` to inspect the actual runtime root.
+
+Views can be addressed with:
+
+- `"root"` for the runtime root layout view
+- a `ViewHandle` returned by the API
+- a selector such as `{ scope: [], view: "tracks" }`
+
+When inserting the same spec multiple times, pass `scope` to make each instance
+independently addressable:
+
+```js
+const tracks = api.views.get({ scope: [], view: "tracks" });
+
+const summary = await api.views.insert(tracks, summaryTrackSpec, {
+  scope: "sample-1-summary",
+});
+
+const summaryView = api.views.get({
+  scope: ["sample-1-summary"],
+  view: "summary",
+});
+```
+
+Mutation methods are asynchronous. Await the returned promise before using the
+new hierarchy. Handles remain stable while their views are live; after removing
+a subtree, `handle.isAlive()` returns `false`.
+
+Use `move()` to reorder a view within its current parent. The destination
+`index` is evaluated after temporarily removing the target from its parent:
+
+```js
+await api.views.move(summary, { index: 0 });
+```
+
+Use `transaction()` to apply ordered mutations while deferring layout work until
+the outer transaction finishes:
+
+```js
+await api.views.transaction(async (views) => {
+  const inserted = await views.insert(tracks, summaryTrackSpec, {
+    scope: "sample-2-summary",
+  });
+
+  await views.move(inserted, { index: 0 });
+});
+```
+
+The initial mutation API does not move views between different parent
+containers.
+
 ## Embed options
 
 The `embed` function accepts an optional options object.
