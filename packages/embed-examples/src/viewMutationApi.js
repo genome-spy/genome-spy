@@ -4,6 +4,7 @@ import { html, render } from "lit";
 /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
 const signalTrack = {
     name: "signal",
+    title: "Signal track",
     height: 80,
     data: {
         values: [
@@ -18,7 +19,6 @@ const signalTrack = {
         x: {
             field: "pos",
             type: "index",
-            scale: { name: "position", domain: [0, 4] },
         },
         y: { field: "value", type: "quantitative" },
         color: { value: "steelblue" },
@@ -29,6 +29,7 @@ const signalTrack = {
 const summaryTrack = {
     name: "summary",
     height: 50,
+    title: "Summary track",
     data: {
         values: [
             { pos: 0, value: 0.35 },
@@ -37,12 +38,11 @@ const summaryTrack = {
             { pos: 3, value: 0.65 },
         ],
     },
-    mark: "bar",
+    mark: "rect",
     encoding: {
         x: {
             field: "pos",
             type: "index",
-            scale: { name: "position" },
         },
         y: { field: "value", type: "quantitative" },
         color: { value: "seagreen" },
@@ -52,7 +52,8 @@ const summaryTrack = {
 /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
 const variantsTrack = {
     name: "variants",
-    height: 60,
+    title: "Variants track",
+    height: 30,
     data: {
         values: [
             { pos: 0.5, type: "SNV" },
@@ -65,7 +66,6 @@ const variantsTrack = {
         x: {
             field: "pos",
             type: "index",
-            scale: { name: "position" },
         },
         color: { field: "type", type: "nominal" },
     },
@@ -73,7 +73,6 @@ const variantsTrack = {
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
-    width: 600,
     vconcat: [
         {
             name: "tracks",
@@ -81,6 +80,12 @@ const spec = {
             vconcat: [signalTrack, variantsTrack],
         },
     ],
+
+    config: {
+        view: {
+            stroke: "lightgray",
+        },
+    },
 };
 
 const container = document.getElementById("container");
