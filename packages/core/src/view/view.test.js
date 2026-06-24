@@ -309,6 +309,73 @@ describe("Trivial creations and initializations", () => {
         ]);
     });
 
+    test("Preserves inherited positional channels in layer children", async () => {
+        const view = await create(
+            {
+                encoding: {
+                    key: { field: "id" },
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+                layer: [{ mark: "point" }],
+            },
+            LayerView
+        );
+
+        const unitView = view.children[0];
+        expect(unitView).toBeInstanceOf(UnitView);
+        expect(unitView.getEncoding()).toEqual({
+            key: { field: "id" },
+            x: { field: "x", type: "quantitative", buildIndex: true },
+            y: { field: "y", type: "quantitative" },
+        });
+    });
+
+    test("Preserves inherited positional channels in concat children", async () => {
+        const view = await create(
+            {
+                encoding: {
+                    key: { field: "id" },
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+                vconcat: [{ mark: "point" }],
+            },
+            ConcatView
+        );
+
+        const unitView = view.children[0];
+        expect(unitView).toBeInstanceOf(UnitView);
+        expect(unitView.getEncoding()).toEqual({
+            key: { field: "id" },
+            x: { field: "x", type: "quantitative", buildIndex: true },
+            y: { field: "y", type: "quantitative" },
+        });
+    });
+
+    test("Preserves inherited positional channels in multiscale children", async () => {
+        const view = await create(
+            {
+                encoding: {
+                    key: { field: "id" },
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+                multiscale: [{ mark: "point" }],
+                stops: [],
+            },
+            LayerView
+        );
+
+        const unitView = view.children[0];
+        expect(unitView).toBeInstanceOf(UnitView);
+        expect(unitView.getEncoding()).toEqual({
+            key: { field: "id" },
+            x: { field: "x", type: "quantitative", buildIndex: true },
+            y: { field: "y", type: "quantitative" },
+        });
+    });
+
     test("Initializes a unit view with a composite key channel", () =>
         expect(
             createAndInitialize(

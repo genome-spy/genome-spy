@@ -23,6 +23,22 @@ const makeUnitSpec = () => ({
     },
 });
 
+/**
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+const makeEncodingInheritedUnitSpec = () => ({
+    data: {
+        values: [
+            {
+                id: "a",
+                x: 1,
+                y: 2,
+            },
+        ],
+    },
+    mark: "point",
+});
+
 describe("ConcatView dynamic children", () => {
     test("addChildSpec inserts at index and updates spec order", async () => {
         const context = createTestViewContext();
@@ -145,5 +161,33 @@ describe("ConcatView dynamic children", () => {
 
         // Consumers may need the created view to attach additional behavior.
         expect(view).toBeInstanceOf(UnitView);
+    });
+
+    test("addChildSpec children inherit the concat view's encoding", async () => {
+        const context = createTestViewContext();
+        const parent = new ConcatView(
+            {
+                encoding: {
+                    key: { field: "id" },
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+                vconcat: [],
+            },
+            context,
+            null,
+            null,
+            "concat"
+        );
+
+        const childView = await parent.addChildSpec(
+            makeEncodingInheritedUnitSpec()
+        );
+
+        expect(childView.getEncoding()).toEqual({
+            key: { field: "id" },
+            x: { field: "x", type: "quantitative", buildIndex: true },
+            y: { field: "y", type: "quantitative" },
+        });
     });
 });

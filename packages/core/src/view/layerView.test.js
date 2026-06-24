@@ -47,6 +47,22 @@ const makeUnitSpec = () => ({
     },
 });
 
+/**
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+const makeEncodingInheritedUnitSpec = () => ({
+    data: {
+        values: [
+            {
+                id: "a",
+                x: 1,
+                y: 2,
+            },
+        ],
+    },
+    mark: "point",
+});
+
 describe("LayerView dynamic children", () => {
     test("children inherit the layer view's layout size params", async () => {
         const view = await createAndInitialize(
@@ -127,5 +143,34 @@ describe("LayerView dynamic children", () => {
         const childView = await parent.addChildSpec(makeUnitSpec());
 
         expect(childView).toBeInstanceOf(UnitView);
+    });
+
+    test("addChildSpec children inherit the layer view's encoding", async () => {
+        const context = createTestViewContext();
+        const parent = /** @type {import("./layerView.js").default} */ (
+            await context.createOrImportView(
+                {
+                    encoding: {
+                        key: { field: "id" },
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                    layer: [],
+                },
+                null,
+                null,
+                "layer"
+            )
+        );
+
+        const childView = await parent.addChildSpec(
+            makeEncodingInheritedUnitSpec()
+        );
+
+        expect(childView.getEncoding()).toEqual({
+            key: { field: "id" },
+            x: { field: "x", type: "quantitative", buildIndex: true },
+            y: { field: "y", type: "quantitative" },
+        });
     });
 });
