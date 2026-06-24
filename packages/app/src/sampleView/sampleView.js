@@ -631,7 +631,9 @@ export default class SampleView extends ContainerView {
             childSpec,
             this,
             this,
-            "sample-facets"
+            "sample-facets",
+            undefined,
+            { inheritEncoding: true }
         );
 
         this.#gridChild = new SampleGridChild(
@@ -1808,6 +1810,7 @@ export default class SampleView extends ContainerView {
                         undefined,
                         {
                             axisLabelClipPolicy: { y: "anchor" },
+                            inheritEncoding: true,
                         }
                     )
                 );
@@ -1948,10 +1951,7 @@ class SampleGridChild extends GridChild {
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background-" + serial,
-                {
-                    blockEncodingInheritance: true,
-                }
+                "sample-group-background-" + serial
             );
             markViewAsChrome(this.groupBackground, { skipSubtree: true });
         }
@@ -1963,10 +1963,7 @@ class SampleGridChild extends GridChild {
                 layoutParent.context,
                 layoutParent,
                 view,
-                "sample-group-background-stroke-" + serial,
-                {
-                    blockEncodingInheritance: true,
-                }
+                "sample-group-background-stroke-" + serial
             );
             markViewAsChrome(this.groupBackgroundStroke, {
                 skipSubtree: true,

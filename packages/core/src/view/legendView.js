@@ -832,10 +832,7 @@ export class LegendRegionView extends ContainerView {
             context,
             layoutParent,
             dataParent,
-            "legend_region_" + orient,
-            {
-                blockEncodingInheritance: true,
-            }
+            "legend_region_" + orient
         );
 
         this.needsAxes = { x: false, y: false };
@@ -1116,10 +1113,7 @@ export default class LegendView extends ContainerView {
             layoutParent,
             dataParent,
             "legend_" + (legend.orient ?? "right"),
-            {
-                blockEncodingInheritance: true,
-                ...options,
-            }
+            options
         );
 
         this.needsAxes = { x: false, y: false };
@@ -1145,7 +1139,6 @@ export default class LegendView extends ContainerView {
             this.getNextAutoName("legend"),
             undefined,
             {
-                blockEncodingInheritance: true,
                 // Generated legend internals use `width`/`height` expressions
                 // for pixel-aware helper transforms and scales. Force local
                 // layout params so authored specs that intentionally overload

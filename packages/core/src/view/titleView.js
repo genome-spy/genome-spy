@@ -547,10 +547,7 @@ export default class TitleView extends ContainerView {
                     context,
                     this,
                     dataParent,
-                    name + "-" + (unitSpec.name ?? index),
-                    {
-                        blockEncodingInheritance: true,
-                    }
+                    name + "-" + (unitSpec.name ?? index)
                 )
         );
     }

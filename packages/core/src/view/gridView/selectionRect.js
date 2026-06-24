@@ -156,10 +156,7 @@ export default class SelectionRect extends LayerView {
             gridChild.layoutParent.context,
             gridChild.layoutParent,
             gridChild.view,
-            "selectionRect", // TODO: Serial
-            {
-                blockEncodingInheritance: true,
-            }
+            "selectionRect" // TODO: Serial
         );
 
         /** @type {number} */

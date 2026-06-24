@@ -302,9 +302,7 @@ export default class UnitView extends View {
         if (!type) {
             this.resolve("scale");
             this.resolve("axis");
-            if (!this.options.blockEncodingInheritance) {
-                this.resolve("legend");
-            }
+            this.resolve("legend");
             return;
         }
         resolveViewResolutions(this, type);

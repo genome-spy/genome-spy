@@ -146,10 +146,7 @@ export default class GridChild {
                     layoutParent.context,
                     layoutParent,
                     view,
-                    "background" + serial,
-                    {
-                        blockEncodingInheritance: true,
-                    }
+                    "background" + serial
                 );
                 markViewAsNonAddressable(this.background, {
                     skipSubtree: true,
@@ -164,10 +161,7 @@ export default class GridChild {
                     layoutParent.context,
                     layoutParent,
                     view,
-                    "backgroundStroke" + serial,
-                    {
-                        blockEncodingInheritance: true,
-                    }
+                    "backgroundStroke" + serial
                 );
                 markViewAsNonAddressable(this.backgroundStroke, {
                     skipSubtree: true,

@@ -195,10 +195,7 @@ export default class AxisView extends LayerView {
             layoutParent,
             dataParent,
             `axis_${axisProps.orient}`,
-            {
-                blockEncodingInheritance: true,
-                ...options,
-            }
+            options
         );
 
         /** @type {AxisLabelClipPolicy} */

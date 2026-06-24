@@ -32,10 +32,7 @@ export const VIEW_ROOT_NAME = "viewRoot";
  * @property {boolean} [allowImport] allows imports from urls
  * @property {boolean} [wrapRoot]
  *
- * @typedef {object} CreateViewOptions
- * @property {boolean} [blockEncodingInheritance]
- * @property {"own" | "inherit" | "force"} [layoutSizeParams]
- * @property {import("./view.js").ViewOptions["axisLabelClipPolicy"]} [axisLabelClipPolicy]
+ * @typedef {import("../types/viewContext.js").CreateViewOptions} CreateViewOptions
  */
 
 /**

@@ -1,7 +1,11 @@
 import { describe, expect, test, vi } from "vitest";
 import UnitView from "./unitView.js";
 
-import { create, createAndInitialize } from "./testUtils.js";
+import {
+    create,
+    createAndInitialize,
+    createTestViewContext,
+} from "./testUtils.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import { toRegularArray as r } from "../utils/domainArray.js";
 import ConcatView from "./concatView.js";
@@ -370,6 +374,68 @@ describe("Trivial creations and initializations", () => {
         const unitView = view.children[0];
         expect(unitView).toBeInstanceOf(UnitView);
         expect(unitView.getEncoding()).toEqual({
+            key: { field: "id" },
+            x: { field: "x", type: "quantitative", buildIndex: true },
+            y: { field: "y", type: "quantitative" },
+        });
+    });
+
+    test("Does not inherit encoding from dataParent by default", async () => {
+        const context = createTestViewContext();
+        const parent = /** @type {LayerView} */ (
+            await context.createOrImportView(
+                {
+                    encoding: {
+                        key: { field: "id" },
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                    layer: [],
+                },
+                null,
+                null,
+                "parent"
+            )
+        );
+
+        const child = await context.createOrImportView(
+            { mark: "point" },
+            parent,
+            parent,
+            "child"
+        );
+
+        expect(child.getEncoding()).toEqual({});
+    });
+
+    test("Inherits encoding from dataParent when explicitly requested", async () => {
+        const context = createTestViewContext();
+        const parent = /** @type {LayerView} */ (
+            await context.createOrImportView(
+                {
+                    encoding: {
+                        key: { field: "id" },
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                    layer: [],
+                },
+                null,
+                null,
+                "parent"
+            )
+        );
+
+        const child = await context.createOrImportView(
+            { mark: "point" },
+            parent,
+            parent,
+            "child",
+            undefined,
+            { inheritEncoding: true }
+        );
+
+        expect(child.getEncoding()).toEqual({
             key: { field: "id" },
             x: { field: "x", type: "quantitative", buildIndex: true },
             y: { field: "y", type: "quantitative" },

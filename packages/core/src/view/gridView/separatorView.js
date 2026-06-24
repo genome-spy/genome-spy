@@ -217,10 +217,7 @@ export default class SeparatorView {
             context,
             layoutParent,
             dataParent,
-            name,
-            {
-                blockEncodingInheritance: true,
-            }
+            name
         );
 
         markViewAsNonAddressable(view, { skipSubtree: true });

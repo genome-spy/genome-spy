@@ -30,10 +30,7 @@ export default class AxisGridView extends LayerView {
             layoutParent,
             dataParent,
             `axisGrid_${axisProps.orient}`,
-            {
-                blockEncodingInheritance: true,
-                ...options,
-            }
+            options
         );
 
         this.axisProps = axisProps;

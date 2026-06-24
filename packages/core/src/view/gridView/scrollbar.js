@@ -74,10 +74,7 @@ export default class Scrollbar extends UnitView {
             gridChild.layoutParent.context,
             gridChild.layoutParent,
             gridChild.view,
-            "scrollbar-" + scrollDirection, // TODO: Serial
-            {
-                blockEncodingInheritance: true,
-            }
+            "scrollbar-" + scrollDirection // TODO: Serial
         );
 
         markViewAsNonAddressable(this, { skipSubtree: true });

@@ -78,19 +78,7 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
  * @param {import("../utils/interaction.js").default} event
  */
 
-/**
- * @typedef {object} ViewOptions
- * @prop {boolean} [blockEncodingInheritance]
- *      Don't inherit encodings from parent. Default: false.
- * @prop {"own" | "inherit" | "force"} [layoutSizeParams]
- *      Whether the view should introduce local layout-driven width/height params.
- *      "own" preserves explicit ancestor params named `width` or `height`,
- *      "inherit" disables local layout params, and "force" allocates local
- *      layout params even when an ancestor has configured params with the same
- *      names. Default: "own".
- * @prop {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("./axisView.js").AxisLabelClipPolicy>>} [axisLabelClipPolicy]
- *      Overrides the label clipping policy for axes created for this view.
- */
+/** @typedef {import("../types/viewContext.js").ViewOptions} ViewOptions */
 
 /**
  * @typedef {object} ParentGridChromePolicy
@@ -211,7 +199,7 @@ export default class View {
         initPropertyCache(this);
 
         this.options = {
-            blockEncodingInheritance: false,
+            inheritEncoding: false,
             layoutSizeParams: "own",
             ...options,
         };
@@ -921,7 +909,7 @@ export default class View {
      */
     getEncoding() {
         const pe =
-            this.dataParent && !this.options.blockEncodingInheritance
+            this.dataParent && this.options.inheritEncoding
                 ? this.dataParent.getEncoding()
                 : {};
         const te = this.spec.encoding || {};
@@ -963,7 +951,7 @@ export default class View {
         const sampleFieldDef = this.getEncoding().sample;
         if (isFieldDef(sampleFieldDef)) {
             return [sampleFieldDef.field];
-        } else if (this.options.blockEncodingInheritance) {
+        } else if (!this.options.inheritEncoding) {
             return [];
         } else {
             return this.layoutParent?.getFacetFields(this);

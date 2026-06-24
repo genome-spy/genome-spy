@@ -20,13 +20,23 @@ export interface Hover {
 
 export type DataLoadingStatus = "loading" | "complete" | "error";
 
-export interface CreateViewOptions {
-    blockEncodingInheritance?: boolean;
+export interface ViewOptions {
+    /** Inherits encodings from the data parent. Authored composition children opt in. */
+    inheritEncoding?: boolean;
+    /**
+     * Controls whether the view allocates local layout-driven width/height
+     * parameters. `"own"` preserves explicitly configured ancestor params,
+     * `"inherit"` disables local layout params, and `"force"` always allocates
+     * local layout params.
+     */
     layoutSizeParams?: "own" | "inherit" | "force";
+    /** Overrides label clipping for axes created for this view. */
     axisLabelClipPolicy?: Partial<
         Record<PrimaryPositionalChannel, AxisLabelClipPolicy>
     >;
 }
+
+export type CreateViewOptions = ViewOptions;
 
 /**
  * ViewContext provides essential data and interfaces to View classes.

@@ -63,6 +63,7 @@ export default class LayerView extends ContainerView {
                                 }
                             },
                             {
+                                inheritEncoding: true,
                                 layoutSizeParams: "inherit",
                             }
                         )
@@ -146,6 +147,7 @@ export default class LayerView extends ContainerView {
             },
             defaultName: () => this.getNextAutoName("layer"),
             createViewOptions: {
+                inheritEncoding: true,
                 layoutSizeParams: "inherit",
             },
         });

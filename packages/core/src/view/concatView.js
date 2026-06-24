@@ -51,12 +51,13 @@ export default class ConcatView extends GridView {
             : isVConcatSpec(spec)
               ? spec.vconcat
               : spec.hconcat;
-        const childOptions =
-            this.options.layoutSizeParams == "force"
-                ? /** @type {import("./view.js").ViewOptions} */ ({
-                      layoutSizeParams: "force",
-                  })
-                : undefined;
+        /** @type {import("./view.js").ViewOptions} */
+        const childOptions = {
+            inheritEncoding: true,
+        };
+        if (this.options.layoutSizeParams == "force") {
+            childOptions.layoutSizeParams = "force";
+        }
 
         this.setChildren(
             await Promise.all(
@@ -177,6 +178,14 @@ export default class ConcatView extends GridView {
      * @returns {ContainerMutationHelper}
      */
     #getMutationHelper() {
+        /** @type {import("./view.js").ViewOptions} */
+        const createViewOptions = {
+            inheritEncoding: true,
+        };
+        if (this.options.layoutSizeParams == "force") {
+            createViewOptions.layoutSizeParams = "force";
+        }
+
         return new ContainerMutationHelper(this, {
             getChildSpecs: this.#getChildSpecs.bind(this),
             insertView: (view, index) => this.insertChildViewAt(view, index),
@@ -188,6 +197,7 @@ export default class ConcatView extends GridView {
                     gridChildren: gridChild ? [gridChild] : [],
                 }),
             defaultName: () => this.getNextAutoName("grid"),
+            createViewOptions,
         });
     }
 }
