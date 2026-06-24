@@ -190,6 +190,28 @@ function makeEmptyTracksSpec() {
 }
 
 /**
+ * @returns {import("../spec/view.js").VConcatSpec}
+ */
+function makeNestedContainerAcidSpec() {
+    return {
+        name: "dashboard",
+        vconcat: [
+            {
+                name: "overview",
+                vconcat: [makeTrackSpec("overviewTrack", "Overview")],
+            },
+            {
+                name: "tracks",
+                vconcat: [
+                    makeTrackSpec("trackA", "Track A"),
+                    makeTrackSpec("trackB", "Track B"),
+                ],
+            },
+        ],
+    };
+}
+
+/**
  * @param {string} name
  * @param {string} title
  * @returns {import("../spec/view.js").UnitSpec}
@@ -623,6 +645,38 @@ describe("View mutation acid scenarios", () => {
         expect(context.dataFlow.collectors).toHaveLength(
             baselineCollectorCount
         );
+    });
+
+    test("restores nested container mutations without disturbing sibling branches", async () => {
+        const { view, api } = await createViewMutationAcidHarness(
+            makeNestedContainerAcidSpec()
+        );
+        const baselineSnapshot = createMutationAcidSnapshot(view);
+        const overviewView = getRequiredView(view, "overview");
+        const overviewTrackView = getRequiredView(view, "overviewTrack");
+        const overviewTrackCollector = overviewTrackView.flowHandle?.collector;
+
+        // Mutating an inner concat should use that concat's child list and
+        // guide/data lifecycle without touching sibling branches.
+        await api.transaction(async (views) => {
+            const tracks = views.get({ scope: [], view: "tracks" });
+            const trackB = views.get({ scope: [], view: "trackB" });
+            const inserted = await views.insert(
+                tracks,
+                makeTrackSpec("trackC", "Track C"),
+                { index: 1, scope: "trackC" }
+            );
+
+            await views.move(trackB, { index: 1 });
+            await views.remove(inserted);
+        });
+
+        expect(getRequiredView(view, "overview")).toBe(overviewView);
+        expect(getRequiredView(view, "overviewTrack")).toBe(overviewTrackView);
+        expect(overviewTrackView.flowHandle?.collector).toBe(
+            overviewTrackCollector
+        );
+        expect(createMutationAcidSnapshot(view)).toEqual(baselineSnapshot);
     });
 });
 

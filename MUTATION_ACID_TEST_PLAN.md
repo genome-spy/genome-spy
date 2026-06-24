@@ -74,7 +74,7 @@ cover.
    scopes. Verify independent handles, selectors, titles/data, no shared spec
    mutation, and correct removal of one instance.
 
-7. Nested containers
+7. Nested containers - done
 
    Mutate a named concat inside another concat, grid, or layer. Verify scoped
    selectors resolve through the hierarchy, implicit chrome is preserved, and
@@ -265,11 +265,11 @@ Suggested order:
 
    Commit shape: `test(core): cover repeated scoped spec insertion`.
 
-8. Next: Implement nested container mutation coverage.
+8. Done: Implement nested container mutation coverage.
 
    Commit shape: `test(core): cover nested container view mutations`.
 
-9. Implement transaction batching coverage.
+9. Next: Implement transaction batching coverage.
 
    Commit shape: `test(core): cover batched view mutation lifecycle`.
 
@@ -307,9 +307,9 @@ ownership.
 Current executable coverage includes round-trip cancellation, lazy insertion
 during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
-data insertion/removal, scoped params/subscription cleanup, and repeated scoped
-spec insertion. It does not yet cover visibility toggles, encoding mutation, or
-URL/bookmark restore.
+data insertion/removal, scoped params/subscription cleanup, repeated scoped spec
+insertion, and nested container mutation. It does not yet cover visibility
+toggles, encoding mutation, or URL/bookmark restore.
 
 ## Testability considerations
 
