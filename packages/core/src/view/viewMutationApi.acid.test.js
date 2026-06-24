@@ -150,38 +150,7 @@ describe("View mutation acid scenarios", () => {
         /** @type {DataSource[]} */
         const loadCalls = [];
 
-        class ControlledAsyncSource extends DataSource {
-            /**
-             * @param {{ sourceId: string }} params
-             * @param {import("./view.js").default} view
-             */
-            constructor(params, view) {
-                super(view);
-                this.params = params;
-            }
-
-            get identifier() {
-                return this.params.sourceId;
-            }
-
-            async load() {
-                loadCalls.push(this);
-                const data = await loadPlans.shift();
-                this.reset();
-                this.beginBatch({ type: "file" });
-
-                for (const datum of data ?? []) {
-                    this._propagate(datum);
-                }
-
-                this.complete();
-            }
-        }
-
-        const unregister = registerLazyDataSource(
-            (params) => /** @type {any} */ (params).type === "acidAsync",
-            ControlledAsyncSource
-        );
+        const unregister = registerControlledAsyncSource(loadPlans, loadCalls);
 
         try {
             const { view, api } =
@@ -215,4 +184,105 @@ describe("View mutation acid scenarios", () => {
             unregister();
         }
     });
+
+    test("restores hierarchy after canceling an async inserted branch", async () => {
+        /** @type {Promise<TrackDatum[]>[]} */
+        const loadPlans = [
+            Promise.resolve([{ pos: 1, value: 2, group: "a" }]),
+            Promise.resolve([{ pos: 5, value: 8, group: "b" }]),
+        ];
+        /** @type {DataSource[]} */
+        const loadCalls = [];
+        const unregister = registerControlledAsyncSource(loadPlans, loadCalls);
+
+        try {
+            const { view, api, context } =
+                await createViewMutationAcidHarness(makeAsyncAcidSpec());
+            const baselineIdentity = captureMutationAcidIdentities(view);
+            const baselineSnapshot = createMutationAcidSnapshot(view);
+            const baselineDataSourceCount = context.dataFlow.dataSources.length;
+            const baselineCollectorCount = context.dataFlow.collectors.length;
+
+            await api.transaction(async (views) => {
+                const trackA = views.get({ scope: [], view: "trackA" });
+                const temporary = await views.insert(
+                    "root",
+                    makeAsyncTrackSpec(
+                        "temporary",
+                        "Temporary async track",
+                        "temporary"
+                    ),
+                    { index: 1, scope: "temporary" }
+                );
+
+                await views.move(trackA, { index: 1 });
+                await views.move(trackA, { index: 0 });
+                await views.remove(temporary);
+            });
+
+            expect(createMutationAcidSnapshot(view)).toEqual(baselineSnapshot);
+            expect(context.dataFlow.dataSources).toHaveLength(
+                baselineDataSourceCount
+            );
+            expect(context.dataFlow.collectors).toHaveLength(
+                baselineCollectorCount
+            );
+
+            const restoredIdentity = captureMutationAcidIdentities(view);
+            expect(restoredIdentity.views).toHaveLength(
+                baselineIdentity.views.length
+            );
+            for (const [
+                index,
+                restoredView,
+            ] of restoredIdentity.views.entries()) {
+                expect(restoredView).toBe(baselineIdentity.views[index]);
+                expect(restoredIdentity.collectors[index]).toBe(
+                    baselineIdentity.collectors[index]
+                );
+            }
+            expect(loadCalls).toHaveLength(2);
+        } finally {
+            unregister();
+        }
+    });
 });
+
+/**
+ * @param {Promise<TrackDatum[]>[]} loadPlans
+ * @param {DataSource[]} loadCalls
+ */
+function registerControlledAsyncSource(loadPlans, loadCalls) {
+    class ControlledAsyncSource extends DataSource {
+        /**
+         * @param {{ sourceId: string }} params
+         * @param {import("./view.js").default} view
+         */
+        constructor(params, view) {
+            super(view);
+            this.params = params;
+        }
+
+        get identifier() {
+            return this.params.sourceId;
+        }
+
+        async load() {
+            loadCalls.push(this);
+            const data = await loadPlans.shift();
+            this.reset();
+            this.beginBatch({ type: "file" });
+
+            for (const datum of data ?? []) {
+                this._propagate(datum);
+            }
+
+            this.complete();
+        }
+    }
+
+    return registerLazyDataSource(
+        (params) => /** @type {any} */ (params).type === "acidAsync",
+        ControlledAsyncSource
+    );
+}

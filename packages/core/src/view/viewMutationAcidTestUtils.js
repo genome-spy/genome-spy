@@ -5,7 +5,8 @@ import { renderToLayout } from "./testUtils.js";
 /**
  * @typedef {{
  *   view: import("./view.js").default,
- *   api: import("../types/embedApi.js").ViewApi
+ *   api: import("../types/embedApi.js").ViewApi,
+ *   context: import("../types/viewContext.js").default
  * }} ViewMutationAcidHarness
  */
 
@@ -14,11 +15,12 @@ import { renderToLayout } from "./testUtils.js";
  * @returns {Promise<ViewMutationAcidHarness>}
  */
 export async function createViewMutationAcidHarness(spec) {
-    const { view } = await createHeadlessEngine(spec);
+    const { view, context } = await createHeadlessEngine(spec);
 
     return {
         view,
         api: createViewMutationApi({ viewRoot: view }),
+        context,
     };
 }
 
