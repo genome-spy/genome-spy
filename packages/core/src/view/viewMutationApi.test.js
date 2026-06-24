@@ -513,4 +513,39 @@ describe("ViewMutationApi", () => {
             code: "cannotMoveRoot",
         });
     });
+
+    test("defers layout reflow until the outer transaction completes", async () => {
+        const requestLayoutReflow = vi.fn();
+        const { view } = await createHeadlessEngine(
+            {
+                name: "tracks",
+                vconcat: [],
+            },
+            {
+                contextOptions: {
+                    requestLayoutReflow,
+                },
+            }
+        );
+
+        requestLayoutReflow.mockClear();
+
+        const api = createViewMutationApi({ viewRoot: view });
+        await api.transaction(async (views) => {
+            await views.insert("root", makeUnitSpec("trackA"));
+            await views.transaction(async (nestedViews) => {
+                await nestedViews.insert("root", makeUnitSpec("trackB"));
+            });
+
+            expect(requestLayoutReflow).not.toHaveBeenCalled();
+        });
+
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
 });

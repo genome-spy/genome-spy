@@ -545,14 +545,15 @@ harness that can drive ordered mutations and inspect stable invariants.
 
     Tentative commit: `fix(core): roll back failed view insertions`.
 
-12. **Partial.** Implement `transaction()` as ordered operation batching. The first version
+12. **Done.** Implement `transaction()` as ordered operation batching. The first version
     can avoid full transaction rollback, but it should defer layout/render work
     until the callback finishes and then run final lifecycle cleanup once.
     Nested transactions should join the active transaction.
 
-    The facade currently serializes operations and lets nested transactions join
-    the active operation queue, but layout/render deferral and final lifecycle
-    cleanup batching are still pending.
+    The facade serializes operations, lets nested transactions join the active
+    operation queue, and defers layout reflow requests until the outer
+    transaction finishes. Full rollback for a multi-operation transaction remains
+    out of scope for the first public API version.
 
     Tentative commit: `feat(core): batch view mutation transactions`.
 

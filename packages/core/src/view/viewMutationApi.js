@@ -52,7 +52,11 @@ export function createViewMutationApi(genomeSpy) {
 
     let nextHandleId = 0;
     let transactionDepth = 0;
+    let transactionRequestedLayoutReflow = false;
     let queue = Promise.resolve();
+
+    /** @type {(() => void) | undefined} */
+    let restoreTransactionLayoutReflow;
 
     /**
      * @returns {import("./view.js").default}
@@ -251,6 +255,49 @@ export function createViewMutationApi(genomeSpy) {
      * @returns {void}
      */
     function clearQueueValue() {}
+
+    /**
+     * @returns {void}
+     */
+    function beginTransaction() {
+        if (transactionDepth === 0) {
+            const context = getRootView().context;
+            const requestLayoutReflow = context.requestLayoutReflow;
+            transactionRequestedLayoutReflow = false;
+            context.requestLayoutReflow = () => {
+                transactionRequestedLayoutReflow = true;
+            };
+            restoreTransactionLayoutReflow = () => {
+                context.requestLayoutReflow = requestLayoutReflow;
+                if (transactionRequestedLayoutReflow) {
+                    requestLayoutReflow.call(context);
+                }
+
+                transactionRequestedLayoutReflow = false;
+                restoreTransactionLayoutReflow = undefined;
+            };
+        }
+
+        transactionDepth++;
+    }
+
+    /**
+     * @returns {void}
+     */
+    function endTransaction() {
+        transactionDepth--;
+
+        if (transactionDepth === 0) {
+            if (!restoreTransactionLayoutReflow) {
+                throw new ViewMutationError(
+                    "invalidTransactionState",
+                    "Transaction cleanup state is missing."
+                );
+            }
+
+            restoreTransactionLayoutReflow();
+        }
+    }
 
     /**
      * @param {ViewAddress} parentAddress
@@ -594,11 +641,11 @@ export function createViewMutationApi(genomeSpy) {
 
         transaction: (/** @type {(views: typeof api) => any} */ callback) =>
             enqueue(async () => {
-                transactionDepth++;
+                beginTransaction();
                 try {
                     return await callback(api);
                 } finally {
-                    transactionDepth--;
+                    endTransaction();
                 }
             }),
     };
