@@ -10,7 +10,9 @@
     ></script>
 
     <script>
-      genomeSpyEmbed.embed(document.body, "spec.json", {});
+      genomeSpyEmbed.embed(document.body, "spec.json", {}).then((api) => {
+        // Call API methods here.
+      });
     </script>
   </body>
 </html>
