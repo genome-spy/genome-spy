@@ -118,6 +118,28 @@ export default class AxisResolution {
         return false;
     }
 
+    getDebugState() {
+        return {
+            kind: "axis",
+            channel: this.channel,
+            scaleResolution: this.scaleResolution,
+            title: this.getTitle(),
+            axisProps: this.getAxisProps(),
+            hasVisibleNonChromeMember: this.hasVisibleNonChromeMember(),
+            members: orderResolutionMembers(this.#members).map((member) => ({
+                view: member.view,
+                channel: member.channel,
+                channelDef: structuredClone(member.channelDef),
+            })),
+            viewLevelAxisConfig: this.#viewLevelAxisConfig
+                ? {
+                      view: this.#viewLevelAxisConfig.view,
+                      config: structuredClone(this.#viewLevelAxisConfig.config),
+                  }
+                : undefined,
+        };
+    }
+
     getAxisProps() {
         return getCachedOrCall(this, "axisProps", () => {
             const propArray = this.#viewLevelAxisConfig

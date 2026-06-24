@@ -31,8 +31,22 @@ import { getViewSelector, isChromeView } from "../view/viewSelectors.js";
  * @prop {Record<string, string>} scaleResolutionIds
  * @prop {Record<string, string>} axisResolutionIds
  * @prop {Record<string, string>} legendResolutionIds
+ * @prop {Record<string, EncodingDebugNode>} encodings
  * @prop {string[]} paramNames
  * @prop {Record<string, any>} spec
+ */
+
+/**
+ * @typedef {object} EncodingDebugNode
+ * @prop {string} channel
+ * @prop {string | undefined} field
+ * @prop {string | undefined} expr
+ * @prop {any} value
+ * @prop {string | undefined} type
+ * @prop {string | undefined} scaleResolutionId
+ * @prop {string | undefined} axisResolutionId
+ * @prop {string | undefined} legendResolutionId
+ * @prop {Record<string, any>} channelDef
  */
 
 /**
@@ -131,6 +145,7 @@ function createViewDebugNode(view, id, parentId, chrome, options) {
         scaleResolutionIds: getResolutionIds(view.resolutions.scale, options),
         axisResolutionIds: getResolutionIds(view.resolutions.axis, options),
         legendResolutionIds: getResolutionIds(view.resolutions.legend, options),
+        encodings: getEncodings(view, options),
         paramNames: Array.from(view.paramRuntime.paramConfigs.keys()),
         spec: structuredClone(view.spec),
     };
@@ -223,4 +238,64 @@ function getResolutionIds(resolutions, options) {
     }
 
     return ids;
+}
+
+/**
+ * @param {import("../view/view.js").default} view
+ * @param {ViewDebugSnapshotOptions} options
+ * @returns {Record<string, EncodingDebugNode>}
+ */
+function getEncodings(view, options) {
+    const encodingProvider =
+        /** @type {{ mark?: { encoding?: Record<string, any> } }} */ (
+            /** @type {unknown} */ (view)
+        );
+    const encoding = encodingProvider.mark?.encoding ?? view.getEncoding();
+    /** @type {Record<string, EncodingDebugNode>} */
+    const encodings = {};
+
+    for (const [channel, channelDef] of Object.entries(encoding)) {
+        if (!channelDef) {
+            continue;
+        }
+
+        encodings[channel] = {
+            channel,
+            field: "field" in channelDef ? channelDef.field : undefined,
+            expr: "expr" in channelDef ? channelDef.expr : undefined,
+            value: "value" in channelDef ? channelDef.value : undefined,
+            type: "type" in channelDef ? channelDef.type : undefined,
+            scaleResolutionId: getChannelResolutionId(
+                view.resolutions.scale,
+                channel,
+                options
+            ),
+            axisResolutionId: getChannelResolutionId(
+                view.resolutions.axis,
+                channel,
+                options
+            ),
+            legendResolutionId: getChannelResolutionId(
+                view.resolutions.legend,
+                channel,
+                options
+            ),
+            channelDef: structuredClone(channelDef),
+        };
+    }
+
+    return encodings;
+}
+
+/**
+ * @param {Record<string, any>} resolutions
+ * @param {string} channel
+ * @param {ViewDebugSnapshotOptions} options
+ * @returns {string | undefined}
+ */
+function getChannelResolutionId(resolutions, channel, options) {
+    const resolution = resolutions[channel];
+    return resolution
+        ? options.getDebugId(/** @type {object} */ (resolution))
+        : undefined;
 }

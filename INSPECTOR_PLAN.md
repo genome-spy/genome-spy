@@ -466,6 +466,7 @@ Status: Implemented.
 ### Phase 2: App Resolutions And Encodings
 
 Tentative commit: `feat(inspector): inspect resolutions and encodings`
+Status: Implemented.
 
 - Add debug methods for scale, axis, and legend resolutions.
 - Add Encodings and Resolutions tabs.

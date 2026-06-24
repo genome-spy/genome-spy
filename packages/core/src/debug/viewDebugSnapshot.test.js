@@ -53,6 +53,13 @@ describe("createViewDebugSnapshot", () => {
             type: "unit",
             markType: "point",
             selector: { scope: [], view: "top" },
+            encodings: {
+                x: {
+                    channel: "x",
+                    field: "x",
+                    type: "quantitative",
+                },
+            },
         });
     });
 });

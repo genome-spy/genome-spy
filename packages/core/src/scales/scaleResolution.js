@@ -916,6 +916,49 @@ export default class ScaleResolution {
         return this.#getOrderedMembers().slice();
     }
 
+    getDebugState() {
+        const scale = this.#scaleManager.scale;
+
+        return {
+            kind: "scale",
+            channel: this.channel,
+            name: this.name,
+            type: this.type,
+            resolvedScaleType: this.getResolvedScaleType(),
+            domain: scale ? this.getDomain() : undefined,
+            complexDomain: scale ? this.getComplexDomain() : undefined,
+            range: scale ? scale.range() : undefined,
+            zoomable: this.isZoomable(),
+            zoomed: this.isZoomable() ? this.isZoomed() : false,
+            members: this.#getOrderedMembers().map((member) =>
+                this.#createDebugMember(member)
+            ),
+            activeMemberCount: this.#getActiveMembers().size,
+            dataDomainMemberCount: this.#dataDomainMembers.size,
+            viewLevelScaleConfig: this.#viewLevelScaleConfig
+                ? {
+                      view: this.#viewLevelScaleConfig.view,
+                      config: structuredClone(
+                          this.#viewLevelScaleConfig.config
+                      ),
+                  }
+                : undefined,
+        };
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     */
+    #createDebugMember(member) {
+        return {
+            view: member.view,
+            channel: member.channel,
+            channelDef: structuredClone(member.channelDef),
+            contributesToDomain: member.contributesToDomain,
+            active: this.#getActiveMembers().has(member),
+        };
+    }
+
     #invalidateConfiguredDomain() {
         this.#domainAggregator.invalidateConfiguredDomain();
         this.#invalidateMergedScaleProps();

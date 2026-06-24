@@ -20,16 +20,24 @@ export default class InspectorSession extends EventTarget {
     /** @type {Promise<typeof import("@genome-spy/core/debug/viewDebugSnapshot.js")> | undefined} */
     #viewDebugModulePromise;
 
+    /** @type {Promise<typeof import("@genome-spy/core/debug/resolutionDebugSnapshot.js")> | undefined} */
+    #resolutionDebugModulePromise;
+
     /** @type {(() => void)[]} */
     #disposers = [];
 
     /** @type {boolean} */
     #disposed = false;
 
-    /** @type {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugSnapshot} */
+    /** @type {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugSnapshot & { resolutions: import("@genome-spy/core/debug/resolutionDebugSnapshot.js").ResolutionDebugSnapshot }} */
     snapshot = {
         rootId: undefined,
         nodes: [],
+        resolutions: {
+            scales: [],
+            axes: [],
+            legends: [],
+        },
     };
 
     /**
@@ -63,12 +71,24 @@ export default class InspectorSession extends EventTarget {
 
         const genomeSpy = this.#app.genomeSpy;
         const root = genomeSpy.viewRoot;
-        const debugModule = await this.#getViewDebugModule();
+        const [viewDebugModule, resolutionDebugModule] = await Promise.all([
+            this.#getViewDebugModule(),
+            this.#getResolutionDebugModule(),
+        ]);
         this.#objectsById = new Map();
-        this.snapshot = debugModule.createViewDebugSnapshot(root, {
+        const viewSnapshot = viewDebugModule.createViewDebugSnapshot(root, {
             includeChrome: this.#includeChrome,
             getDebugId: (object) => this.#getDebugId(object),
         });
+        this.snapshot = {
+            ...viewSnapshot,
+            resolutions: resolutionDebugModule.createResolutionDebugSnapshot(
+                root,
+                {
+                    getDebugId: (object) => this.#getDebugId(object),
+                }
+            ),
+        };
         this.#ensureRuntimeSubscriptions();
         this.dispatchEvent(new Event("snapshot"));
     }
@@ -101,6 +121,15 @@ export default class InspectorSession extends EventTarget {
         this.#viewDebugModulePromise ??=
             import("@genome-spy/core/debug/viewDebugSnapshot.js");
         return this.#viewDebugModulePromise;
+    }
+
+    /**
+     * @returns {Promise<typeof import("@genome-spy/core/debug/resolutionDebugSnapshot.js")>}
+     */
+    #getResolutionDebugModule() {
+        this.#resolutionDebugModulePromise ??=
+            import("@genome-spy/core/debug/resolutionDebugSnapshot.js");
+        return this.#resolutionDebugModulePromise;
     }
 
     #ensureRuntimeSubscriptions() {
