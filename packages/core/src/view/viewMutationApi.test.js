@@ -4,6 +4,8 @@ import {
     createHeadlessEngine,
     createHeadlessViewHierarchy,
 } from "../genomeSpy/headlessBootstrap.js";
+import AxisView from "./axisView.js";
+import { renderToLayout } from "./testUtils.js";
 import { createViewMutationApi } from "./viewMutationApi.js";
 
 /**
@@ -22,6 +24,103 @@ function makeUnitSpec(name) {
             y: { field: "y", type: "quantitative" },
         },
     };
+}
+
+/**
+ * @param {string} name
+ * @param {number} height
+ * @param {string} color
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeSignalTrackSpec(name, height, color) {
+    return {
+        name,
+        height,
+        data: {
+            values: [
+                { pos: 0, value: 0.2 },
+                { pos: 1, value: 0.8 },
+                { pos: 2, value: 0.4 },
+                { pos: 3, value: 0.9 },
+            ],
+        },
+        mark: "rect",
+        encoding: {
+            x: { field: "pos", type: "index" },
+            y: { field: "value", type: "quantitative" },
+            color: { value: color },
+        },
+    };
+}
+
+/**
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeVariantsTrackSpec() {
+    return {
+        name: "variants",
+        height: 30,
+        data: {
+            values: [
+                { pos: 0.5, type: "SNV" },
+                { pos: 1.5, type: "DEL" },
+                { pos: 2.5, type: "SNV" },
+            ],
+        },
+        mark: { type: "point", size: 140 },
+        encoding: {
+            x: { field: "pos", type: "index" },
+            color: { field: "type", type: "nominal" },
+        },
+    };
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @returns {number}
+ */
+function countBottomAxes(view) {
+    return view
+        .getDescendants()
+        .filter(
+            (descendant) =>
+                descendant instanceof AxisView &&
+                descendant.axisProps.orient === "bottom"
+        ).length;
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @returns {import("./view.js").default[]}
+ */
+function getBottomAxisSubtreeViews(view) {
+    const bottomAxis = view
+        .getDescendants()
+        .find(
+            (descendant) =>
+                descendant instanceof AxisView &&
+                descendant.axisProps.orient === "bottom"
+        );
+    if (!bottomAxis) {
+        return [];
+    }
+
+    return bottomAxis.getDescendants();
+}
+
+/**
+ * @param {{ viewName: string, children: any[] }} layout
+ * @param {string} viewName
+ * @returns {number}
+ */
+function countRenderedViews(layout, viewName) {
+    return (
+        (layout.viewName === viewName ? 1 : 0) +
+        layout.children.reduce(
+            (count, child) => count + countRenderedViews(child, viewName),
+            0
+        )
+    );
 }
 
 describe("ViewMutationApi", () => {
@@ -387,6 +486,68 @@ describe("ViewMutationApi", () => {
                 .children()
                 .map((child) => child.name)
         ).toEqual(["trackB"]);
+    });
+
+    test("keeps shared concat axes after removing an inserted child", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    spacing: 4,
+                    resolve: {
+                        axis: { x: "shared" },
+                    },
+                    vconcat: [
+                        makeSignalTrackSpec("signal", 80, "steelblue"),
+                        makeVariantsTrackSpec(),
+                    ],
+                },
+            ],
+            config: {
+                view: {
+                    stroke: "lightgray",
+                },
+            },
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const tracksView = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "tracks");
+        if (!tracksView) {
+            throw new Error("Expected tracks view.");
+        }
+
+        expect(countBottomAxes(tracksView)).toBe(1);
+        expect(countRenderedViews(renderToLayout(view), "axis_bottom")).toBe(1);
+        expect(
+            getBottomAxisSubtreeViews(tracksView).map((descendant) =>
+                descendant.getDataInitializationState()
+            )
+        ).not.toContain("none");
+
+        const inserted = await api.insert(
+            { scope: [], view: "tracks" },
+            makeSignalTrackSpec("summary", 50, "seagreen"),
+            { scope: "summary-1" }
+        );
+        expect(countBottomAxes(tracksView)).toBe(1);
+        expect(countRenderedViews(renderToLayout(view), "axis_bottom")).toBe(1);
+        expect(
+            getBottomAxisSubtreeViews(tracksView).map((descendant) =>
+                descendant.getDataInitializationState()
+            )
+        ).not.toContain("none");
+
+        await api.remove(inserted);
+
+        expect(countBottomAxes(tracksView)).toBe(1);
+        expect(countRenderedViews(renderToLayout(view), "axis_bottom")).toBe(1);
+        expect(
+            getBottomAxisSubtreeViews(tracksView).map((descendant) =>
+                descendant.getDataInitializationState()
+            )
+        ).not.toContain("none");
     });
 
     test("removes a child from a layer container", async () => {

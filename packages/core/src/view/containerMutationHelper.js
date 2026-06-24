@@ -179,6 +179,22 @@ export default class ContainerMutationHelper {
         attachViewLevelAxisConfigs(this.container);
         attachViewLevelLegendConfigs(this.container);
 
+        if (this.container.getDataInitializationState() !== "none") {
+            const viewsToInitialize = collectUninitializedChromeViews(
+                this.container
+            );
+            for (const view of viewsToInitialize) {
+                view.configureViewOpacity();
+            }
+
+            await initializeViewDataForViews(
+                this.container,
+                this.container.context.dataFlow,
+                this.container.context.fontManager,
+                viewsToInitialize
+            );
+        }
+
         if (this.options.requestLayout !== false) {
             this.container.invalidateSizeCache();
             this.container.context.requestLayoutReflow();
@@ -198,7 +214,17 @@ function collectMutationInitializedViews(
     insertionResult
 ) {
     const views = collectInsertedViews(childView, insertionResult);
+    collectUninitializedChromeViews(container, views);
 
+    return views;
+}
+
+/**
+ * @param {import("./containerView.js").default} container
+ * @param {Set<import("./view.js").default>} [views]
+ * @returns {Set<import("./view.js").default>}
+ */
+function collectUninitializedChromeViews(container, views = new Set()) {
     for (const view of container.getDescendants()) {
         if (
             isChromeView(view) &&
