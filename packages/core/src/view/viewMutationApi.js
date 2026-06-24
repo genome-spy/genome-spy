@@ -32,10 +32,10 @@ export class ViewMutationError extends Error {
 }
 
 /**
- * Creates the public view mutation API for a GenomeSpy instance.
+ * Creates the public view hierarchy API for a GenomeSpy instance.
  *
  * @param {{ viewRoot: import("./view.js").default }} genomeSpy
- * @returns {import("../types/embedApi.js").ViewMutationApi}
+ * @returns {import("../types/embedApi.js").ViewApi}
  */
 export function createViewMutationApi(genomeSpy) {
     /**
@@ -234,6 +234,46 @@ export function createViewMutationApi(genomeSpy) {
         }
 
         return view;
+    }
+
+    /**
+     * @param {ViewAddress} address
+     * @returns {import("../types/embedApi.js").ViewLayoutBounds | undefined}
+     */
+    function getLayoutBounds(address) {
+        const handle = resolve(address);
+        if (!handle) {
+            return undefined;
+        }
+
+        const view = viewsByHandle.get(handle);
+        const coords = view?.coords;
+        if (!coords) {
+            return undefined;
+        }
+
+        return {
+            x: coords.x,
+            y: coords.y,
+            width: coords.width,
+            height: coords.height,
+        };
+    }
+
+    /**
+     * @param {() => void} listener
+     * @returns {() => void}
+     */
+    function subscribeToLayout(listener) {
+        const context = getRootView().context;
+        const broadcastListener = () => listener();
+        context.addBroadcastListener("layoutComputed", broadcastListener);
+
+        return () =>
+            context.removeBroadcastListener(
+                "layoutComputed",
+                broadcastListener
+            );
     }
 
     /**
@@ -629,13 +669,17 @@ export function createViewMutationApi(genomeSpy) {
         }
     }
 
-    /** @type {import("../types/embedApi.js").ViewMutationApi} */
+    /** @type {import("../types/embedApi.js").ViewApi} */
     const api = {
         root: () => getHandle(getRootView()),
 
         resolve,
 
         get,
+
+        getLayoutBounds,
+
+        subscribeToLayout,
 
         insert,
 

@@ -1,15 +1,38 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="stylesheet" href="style.scss" />
-        <title>View Mutation API</title>
-    </head>
 
-    <body>
-        <h1>View Mutation API</h1>
+<head>
+    <meta charset="UTF-8" />
+    <title>View Mutation API</title>
+    <style>
+        #view-mutation-stage {
+            position: relative;
+        }
+
+        #track-controls {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .track-controls {
+            position: absolute;
+            display: flex;
+            gap: 4px;
+            pointer-events: auto;
+            transform: translateX(-100%);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>View Mutation API</h1>
+    <div id="dashboard"></div>
+    <div id="view-mutation-stage">
         <div id="container"></div>
-        <div id="dashboard"></div>
-        <script type="module" src="/viewMutationApi.js"></script>
-    </body>
+        <div id="track-controls"></div>
+    </div>
+    <script type="module" src="/viewMutationApi.js"></script>
+</body>
+
 </html>

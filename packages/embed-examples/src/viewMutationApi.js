@@ -3,6 +3,7 @@ import { html, render } from "lit";
 
 const container = document.getElementById("container");
 const dashboard = document.getElementById("dashboard");
+const trackControls = document.getElementById("track-controls");
 const trackCounts = { signal: 0, variants: 0 };
 
 const initialTrackSpecs = [createSignalTrack(), createVariantsTrack()];
@@ -40,7 +41,7 @@ const tracksContainer = api.views.get({ scope: [], view: "tracks" });
 
 /** @type {TrackItem[]} */
 const tracks = initialTrackSpecs.map((spec) => ({
-    title: /** @type {string} */ (spec.title),
+    title: getTitleText(spec.title),
     handle: api.views.get({
         scope: [],
         view: /** @type {string} */ (spec.name),
@@ -48,6 +49,7 @@ const tracks = initialTrackSpecs.map((spec) => ({
 }));
 
 let status = "Ready";
+api.views.subscribeToLayout(updateControls);
 updateControls();
 
 /**
@@ -57,6 +59,17 @@ updateControls();
  *   scope?: string
  * }} TrackItem
  */
+
+/**
+ * @param {import("@genome-spy/core/spec/view.js").ViewSpec["title"]} title
+ */
+function getTitleText(title) {
+    if (typeof title === "string") {
+        return title;
+    }
+
+    return title?.text ?? "";
+}
 
 /**
  * @returns {import("@genome-spy/core/spec/view.js").UnitSpec}
@@ -117,7 +130,7 @@ function createVariantsTrack() {
 async function addTrack(type) {
     const spec =
         type === "signal" ? createSignalTrack() : createVariantsTrack();
-    const title = /** @type {string} */ (spec.title);
+    const title = getTitleText(spec.title);
     const scope = type + "-" + trackCounts[type];
 
     try {
@@ -185,31 +198,52 @@ function updateControls() {
                 </button>
             </p>
             <p>Status: ${status}</p>
-            <ol>
-                ${tracks.map(
-                    (track, index) => html`
-                        <li>
-                            ${track.title}
-                            <button
-                                ?disabled=${index === 0}
-                                @click=${() => moveTrack(track, -1)}
-                            >
-                                Up
-                            </button>
-                            <button
-                                ?disabled=${index === tracks.length - 1}
-                                @click=${() => moveTrack(track, 1)}
-                            >
-                                Down
-                            </button>
-                            <button @click=${() => removeTrack(track)}>
-                                Remove
-                            </button>
-                        </li>
-                    `
-                )}
-            </ol>
         `,
         dashboard
+    );
+    render(
+        html`
+            ${tracks.map((track, index) => {
+                const bounds = api.views.getLayoutBounds(track.handle);
+                if (!bounds) {
+                    return "";
+                }
+
+                // View bounds are in the GenomeSpy canvas coordinate space.
+                // The overlay shares that origin, so CSS pixels map directly.
+                const style =
+                    "left: " +
+                    (bounds.x + bounds.width - 4) +
+                    "px; top: " +
+                    (bounds.y + 4) +
+                    "px";
+
+                return html`
+                    <div class="track-controls" style=${style}>
+                        <button
+                            title=${"Move " + track.title + " up"}
+                            ?disabled=${index === 0}
+                            @click=${() => moveTrack(track, -1)}
+                        >
+                            Up
+                        </button>
+                        <button
+                            title=${"Move " + track.title + " down"}
+                            ?disabled=${index === tracks.length - 1}
+                            @click=${() => moveTrack(track, 1)}
+                        >
+                            Down
+                        </button>
+                        <button
+                            title=${"Remove " + track.title}
+                            @click=${() => removeTrack(track)}
+                        >
+                            Remove
+                        </button>
+                    </div>
+                `;
+            })}
+        `,
+        trackControls
     );
 }

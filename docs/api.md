@@ -33,11 +33,12 @@ For practical examples of using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
 
-## View mutation
+## View hierarchy
 
-The `views` API controls the live layout hierarchy of an embedded GenomeSpy
-instance. It supports adding, removing, and reordering child views in mutable
-container views such as concat and layer views.
+The `views` API inspects and controls the live layout hierarchy of an embedded
+GenomeSpy instance. It supports addressing views, reading their rendered layout
+bounds, listening for layout updates, and adding, removing, or reordering child
+views in mutable container views such as concat and layer views.
 
 The hierarchy exposed by the API matches the layout tree derived from the
 visualization spec. The root may be an implicit layout container, for example
@@ -69,6 +70,22 @@ const summaryView = api.views.get({
 Mutation methods are asynchronous. Await the returned promise before using the
 new hierarchy. Handles remain stable while their views are live; after removing
 a subtree, `handle.isAlive()` returns `false`.
+
+Use `getLayoutBounds()` to position external UI relative to a view. Bounds are
+reported in CSS pixels in the embedded GenomeSpy canvas coordinate space:
+
+```js
+const bounds = api.views.getLayoutBounds(summary);
+```
+
+Use `subscribeToLayout()` to update external UI after GenomeSpy has recomputed
+view bounds:
+
+```js
+const unsubscribe = api.views.subscribeToLayout(() => {
+  const bounds = api.views.getLayoutBounds(summary);
+});
+```
 
 Use `move()` to reorder a view within its current parent. The destination
 `index` is evaluated after temporarily removing the target from its parent:

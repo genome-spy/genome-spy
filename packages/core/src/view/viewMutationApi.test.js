@@ -125,7 +125,7 @@ function countRenderedViews(layout, viewName) {
 }
 
 /**
- * @param {{ viewName: string, children: any[] }} layout
+ * @param {{ viewName: string, coords: string, children: any[] }} layout
  * @returns {{ viewName: string, coords: string, children: any[] }[]}
  */
 function getRenderedLegendRegions(layout) {
@@ -789,6 +789,73 @@ describe("ViewMutationApi", () => {
         await expect(api.move("root", { index: 0 })).rejects.toMatchObject({
             code: "cannotMoveRoot",
         });
+    });
+
+    test("returns layout bounds for addressed views after rendering", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "tracks",
+            vconcat: [
+                makeSignalTrackSpec("signal", 80, "steelblue"),
+                makeVariantsTrackSpec(),
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+
+        expect(
+            api.getLayoutBounds({ scope: [], view: "signal" })
+        ).toBeUndefined();
+
+        renderToLayout(view);
+
+        expect(api.getLayoutBounds({ scope: [], view: "signal" })).toEqual({
+            x: expect.any(Number),
+            y: expect.any(Number),
+            width: expect.any(Number),
+            height: 80,
+        });
+    });
+
+    test("subscribes to layout updates", async () => {
+        /** @type {Map<import("../genomeSpy.js").BroadcastEventType, Set<(message: import("./view.js").BroadcastMessage) => void>>} */
+        const listeners = new Map();
+        /** @type {(type: import("../genomeSpy.js").BroadcastEventType, listener: (message: import("./view.js").BroadcastMessage) => void) => void} */
+        const addBroadcastListener = (type, listener) => {
+            const typeListeners = listeners.get(type) ?? new Set();
+            typeListeners.add(listener);
+            listeners.set(type, typeListeners);
+        };
+        /** @type {(type: import("../genomeSpy.js").BroadcastEventType, listener: (message: import("./view.js").BroadcastMessage) => void) => void} */
+        const removeBroadcastListener = (type, listener) => {
+            listeners.get(type)?.delete(listener);
+        };
+        const emit = (
+            /** @type {import("../genomeSpy.js").BroadcastEventType} */ type
+        ) => {
+            for (const listener of listeners.get(type) ?? []) {
+                listener({ type });
+            }
+        };
+        const { view } = await createHeadlessEngine(
+            {
+                name: "tracks",
+                vconcat: [makeUnitSpec("trackA")],
+            },
+            {
+                contextOptions: {
+                    addBroadcastListener,
+                    removeBroadcastListener,
+                },
+            }
+        );
+        const api = createViewMutationApi({ viewRoot: view });
+        const listener = vi.fn();
+
+        const unsubscribe = api.subscribeToLayout(listener);
+        emit("layoutComputed");
+        unsubscribe();
+        emit("layoutComputed");
+
+        expect(listener).toHaveBeenCalledTimes(1);
     });
 
     test("defers layout reflow until the outer transaction completes", async () => {

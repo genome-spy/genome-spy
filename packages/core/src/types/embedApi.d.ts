@@ -133,6 +133,35 @@ export interface InsertViewOptions {
 export type ViewHandleType = "unit" | "layer" | "concat" | "grid" | "unknown";
 
 /**
+ * Last rendered layout bounds for a view, in CSS pixels.
+ *
+ * The coordinate space is the embedded GenomeSpy canvas. Convert these bounds
+ * to DOM coordinates in the embedding application when positioning external
+ * controls.
+ */
+export interface ViewLayoutBounds {
+    /**
+     * Horizontal position of the view's left edge.
+     */
+    x: number;
+
+    /**
+     * Vertical position of the view's top edge.
+     */
+    y: number;
+
+    /**
+     * View width.
+     */
+    width: number;
+
+    /**
+     * View height.
+     */
+    height: number;
+}
+
+/**
  * Options for reordering a view within its current parent container.
  */
 export interface MoveViewOptions {
@@ -204,7 +233,7 @@ export interface ViewHandle {
 }
 
 /**
- * API for mutating the live layout hierarchy.
+ * API for inspecting and mutating the live layout hierarchy.
  *
  * The hierarchy model matches the layout tree derived from the visualization
  * spec. The API addresses view nodes such as unit, layer, concat, and grid
@@ -217,7 +246,7 @@ export interface ViewHandle {
  * involved. Mutation promises resolve when the operation-specific lifecycle has
  * completed.
  */
-export interface ViewMutationApi {
+export interface ViewApi {
     /**
      * Returns a handle to the root layout view.
      *
@@ -241,6 +270,23 @@ export interface ViewMutationApi {
      * to a live view.
      */
     get: (address: ViewAddress) => ViewHandle;
+
+    /**
+     * Returns the last rendered layout bounds for a view.
+     *
+     * Bounds are returned in CSS pixels in the embedded GenomeSpy canvas
+     * coordinate space. Returns `undefined` if the address is unresolved, the
+     * view is no longer live, or the view has not been rendered yet.
+     */
+    getLayoutBounds: (address: ViewAddress) => ViewLayoutBounds | undefined;
+
+    /**
+     * Subscribes to completed layout updates.
+     *
+     * The listener is called after a layout/render pass has updated view
+     * bounds. Returns an unsubscribe function.
+     */
+    subscribeToLayout: (listener: () => void) => () => void;
 
     /**
      * Inserts a new child view or subtree under a mutable container view.
@@ -283,18 +329,24 @@ export interface ViewMutationApi {
      * has completed.
      */
     transaction: <T>(
-        callback: (views: ViewMutationApi) => T | Promise<T>
+        callback: (views: ViewApi) => T | Promise<T>
     ) => Promise<T>;
 }
+
+/**
+ * @deprecated Use `ViewApi`. The `api.views` namespace now includes both
+ * mutation and layout observation methods.
+ */
+export type ViewMutationApi = ViewApi;
 
 /**
  * An API for controlling the embedded GenomeSpy instance.
  */
 export interface EmbedResult {
     /**
-     * Controls the live view hierarchy.
+     * Inspects and controls the live view hierarchy.
      */
-    views: ViewMutationApi;
+    views: ViewApi;
 
     /**
      * Releases all resources and unregisters event listeners, etc.

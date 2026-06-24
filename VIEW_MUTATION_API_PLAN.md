@@ -116,12 +116,12 @@ The existing embed API is mostly a set of narrow handles and named resources:
 `getParam(name)` returns a `ParamApi`, `getScaleResolutionByName(name)` returns
 a `ScaleResolutionApi`, `updateNamedData(name, data)` mutates a named data
 source, and `awaitVisibleLazyData()` provides a lifecycle barrier. The view
-mutation API should align with the better parts of that model by exposing a
+hierarchy API should align with the better parts of that model by exposing a
 small handle-based surface rather than internal view objects.
 
 The main improvement should be addressing. Some existing APIs are name-only,
 which can become ambiguous as specifications grow or as templates are reused.
-`ViewMutationApi` should establish the cleaner pattern for new public APIs:
+`ViewApi` should establish the cleaner pattern for new public APIs:
 scoped selectors for durable addresses, opaque live handles for runtime
 operations, and additive evolution for compatibility.
 
@@ -139,12 +139,15 @@ This creates useful synergies with the current API:
 The API should not copy the weaker parts of the existing surface. In
 particular, avoid a primary mutation form like `addView("tracks", spec)` where
 `"tracks"` is a global view name. Keep the old API stable, but let
-`ViewMutationApi` use scoped selectors and handles as the conservative public
+`ViewApi` use scoped selectors and handles as the conservative public
 contract going forward.
+The public namespace can also expose read-only layout observation, such as
+view bounds and layout subscriptions, because those operations use the same
+addresses and handles without exposing internal `View` objects.
 
 ## Recommended Public API
 
-Expose a namespaced mutation API on `EmbedResult`:
+Expose a namespaced view hierarchy API on `EmbedResult`:
 
 ```ts
 const api = await embed(container, spec);
@@ -163,15 +166,17 @@ Type sketch:
 
 ```ts
 interface EmbedResult {
-  views: ViewMutationApi;
+  views: ViewApi;
 }
 
 type ViewAddress = ViewHandle | ViewSelector | "root";
 
-interface ViewMutationApi {
+interface ViewApi {
   root(): ViewHandle;
   resolve(address: ViewAddress): ViewHandle | undefined;
   get(address: ViewAddress): ViewHandle;
+  getLayoutBounds(address: ViewAddress): ViewLayoutBounds | undefined;
+  subscribeToLayout(listener: () => void): () => void;
   insert(
     parent: ViewAddress,
     spec: ViewSpec | ImportSpec,
@@ -180,8 +185,15 @@ interface ViewMutationApi {
   remove(target: ViewAddress): Promise<void>;
   move(target: ViewAddress, options: { index: number }): Promise<ViewHandle>;
   transaction<T>(
-    callback: (views: ViewMutationApi) => T | Promise<T>
+    callback: (views: ViewApi) => T | Promise<T>
   ): Promise<T>;
+}
+
+interface ViewLayoutBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 interface InsertOptions {
@@ -590,8 +602,21 @@ harness that can drive ordered mutations and inspect stable invariants.
 15. **Done.** Document the public API in `docs/api.md` once the runtime behavior and
     example have stabilized.
 
-    The API docs now include a concise view mutation section covering the live
-    layout hierarchy, root handles, selectors, scopes, async mutation promises,
-    child reordering, and transactions.
+    The API docs now include a concise view hierarchy section covering the live
+    layout hierarchy, root handles, selectors, scopes, layout bounds,
+    layout subscriptions, async mutation promises, child reordering, and
+    transactions.
 
     Commit: `5d77e630 docs(core): document view mutation API`.
+
+16. **Done.** Add read-only layout observation to `api.views` so embedding
+    applications can position external UI next to live views without accessing
+    internal `View` objects. The first version should expose last rendered view
+    bounds and a completed-layout subscription hook.
+
+    Implemented as `getLayoutBounds(address)` and
+    `subscribeToLayout(listener)`. The embed example now overlays per-track
+    move/remove controls using the reported bounds and updates them after
+    layout changes.
+
+    Tentative commit: `feat(core): expose view layout observation API`.
