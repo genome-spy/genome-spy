@@ -636,9 +636,7 @@ export default class GridView extends ContainerView {
      * @return {Padding}
      */
     getOverhang() {
-        return this.#getGridOverhang()
-            .union(this.#getSharedAxisOverhang())
-            .union(this.#getSharedLegendOverhang());
+        return this.#getGridOverhang().add(this.#getSharedGuideOverhang());
     }
 
     #getGridOverhang() {
@@ -692,6 +690,12 @@ export default class GridView extends ContainerView {
         );
     }
 
+    #getSharedGuideOverhang() {
+        return this.#getSharedAxisOverhang().add(
+            this.#getSharedLegendOverhang()
+        );
+    }
+
     #getSharedAxesByOrient() {
         /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} */
         const axes = {};
@@ -723,11 +727,7 @@ export default class GridView extends ContainerView {
                     this.#getFlexSize("row"),
                     parallelLegendSize.height,
                 ])
-            ).addPadding(
-                this.#getSharedAxisOverhang().union(
-                    this.#getSharedLegendOverhang()
-                )
-            );
+            ).addPadding(this.#getSharedGuideOverhang());
         });
     }
 
@@ -747,9 +747,7 @@ export default class GridView extends ContainerView {
             // Usually padding is applied by the parent GridView, but if this is the root view, we need to apply it here
             coords = coords.shrink(this.getPadding());
         }
-        const sharedGuideOverhang = this.#getSharedAxisOverhang().union(
-            this.#getSharedLegendOverhang()
-        );
+        const sharedGuideOverhang = this.#getSharedGuideOverhang();
         coords = coords.shrink(sharedGuideOverhang);
 
         context.pushView(this, coords);
@@ -843,10 +841,12 @@ export default class GridView extends ContainerView {
              * @param {boolean} explicitViewport
              */
             const getLen = (size, dimension, explicitViewport = false) =>
-                (size[dimension].grow
-                    ? (dimension == "width" ? colLocSize : rowLocSize).size
-                    : size[dimension].px) +
-                (explicitViewport ? 0 : overhang[dimension]);
+                explicitViewport
+                    ? size[dimension].grow
+                        ? (dimension == "width" ? colLocSize : rowLocSize).size
+                        : size[dimension].px
+                    : (dimension == "width" ? colLocSize : rowLocSize).size +
+                      overhang[dimension];
 
             const viewportWidth = getLen(
                 viewportSize,

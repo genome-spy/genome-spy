@@ -5,8 +5,12 @@ import Rectangle from "./layout/rectangle.js";
 import ViewRenderingContext from "./renderingContext/viewRenderingContext.js";
 import { createBroadcastingTestViewContext } from "./testUtils.js";
 import { VIEW_ROOT_NAME } from "./viewFactory.js";
-import { checkForDuplicateScaleNames } from "./viewUtils.js";
+import {
+    calculateCanvasSize,
+    checkForDuplicateScaleNames,
+} from "./viewUtils.js";
 import { initializeViewData } from "../genomeSpy/viewDataInit.js";
+import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 
 /**
  * @typedef {import("./testUtils.js").BroadcastingViewContext} BroadcastingViewContext
@@ -94,6 +98,21 @@ function reflow(root, context) {
     context.emitBroadcast(root, "layoutComputed");
 }
 
+/**
+ * @param {import("./view.js").default} root
+ */
+function getRenderedBounds(root) {
+    /** @type {{ width: number, height: number }} */
+    const bounds = { width: 0, height: 0 };
+    root.visit((view) => {
+        for (const coords of view.facetCoords.values()) {
+            bounds.width = Math.max(bounds.width, coords.x2);
+            bounds.height = Math.max(bounds.height, coords.y2);
+        }
+    });
+    return bounds;
+}
+
 async function flushMicrotasks() {
     await Promise.resolve();
     await Promise.resolve();
@@ -157,6 +176,82 @@ describe("Legend extent measurement", () => {
         await settleLayout(root, context);
 
         expect(legend.getPerpendicularSize()).toBeGreaterThan(80);
+    });
+
+    test("canvas size includes measured shared track legend extent", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    spacing: 5,
+                    resolve: {
+                        axis: { x: "shared" },
+                        scale: { color: "shared" },
+                        legend: { color: "shared" },
+                    },
+                    vconcat: [
+                        {
+                            name: "signal",
+                            height: 80,
+                            data: {
+                                values: [
+                                    { pos: 0, value: 0.2 },
+                                    { pos: 1, value: 0.8 },
+                                ],
+                            },
+                            mark: "rect",
+                            encoding: {
+                                x: { field: "pos", type: "index" },
+                                y: {
+                                    field: "value",
+                                    type: "quantitative",
+                                },
+                                color: { value: "steelblue" },
+                            },
+                        },
+                        {
+                            name: "variants",
+                            height: 36,
+                            data: {
+                                values: [
+                                    { pos: 0.5, type: "SNV" },
+                                    { pos: 1.5, type: "DEL" },
+                                ],
+                            },
+                            mark: { type: "point", size: 120 },
+                            encoding: {
+                                x: { field: "pos", type: "index" },
+                                color: {
+                                    field: "type",
+                                    type: "nominal",
+                                },
+                            },
+                        },
+                    ],
+                },
+            ],
+            config: {
+                view: { stroke: "lightgray" },
+            },
+            padding: 10,
+        });
+        await flushMicrotasks();
+        const canvasSize = calculateCanvasSize(view);
+        view.render(
+            new NoOpRenderingContext({ picking: false }),
+            Rectangle.create(
+                0,
+                0,
+                canvasSize.width ?? 700,
+                canvasSize.height ?? 300
+            ),
+            { firstFacet: true }
+        );
+
+        // Shared legends and axes on the same side reserve additive overhang.
+        expect(canvasSize.height).toBeGreaterThanOrEqual(
+            getRenderedBounds(view).height
+        );
     });
 
     test("compact gradient legends do not reserve symbol legend extent", async () => {
