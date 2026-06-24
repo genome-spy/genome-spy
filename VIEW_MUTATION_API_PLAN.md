@@ -564,9 +564,16 @@ harness that can drive ordered mutations and inspect stable invariants.
     Covered across `af0a632c`, `745af1bb`, `5df2420e`, `9191bbb4`, and
     `3390f9c4`. Additional tests should be added with future lifecycle work.
 
-14. **Todo.** Expand the acid-test plan into executable mutation scenarios that compare a
+14. **Partial.** Expand the acid-test plan into executable mutation scenarios that compare a
     normalized internal hierarchy before and after complex mutation sequences
     that are canceled immediately.
+
+    Initial executable coverage lives in
+    `packages/core/src/view/viewMutationApi.acid.test.js`. It snapshots the
+    normalized live hierarchy, generated chrome, flow handles, scale/axis/legend
+    resolution summaries, and rendered layout before an add/reorder/remove
+    sequence that is immediately undone. Additional scenarios should cover async
+    sources, visibility toggles, encoding mutation, and URL/bookmark restore.
 
     Tentative commit: `test(core): add view mutation acid scenarios`.
 

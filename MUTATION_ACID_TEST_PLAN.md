@@ -88,6 +88,19 @@ reloads, or stale references may remain.
   identities where cancellation should preserve them.
 - A mocked slow data source to control load timing and partial propagation.
 
+## Initial executable coverage
+
+`packages/core/src/view/viewMutationApi.acid.test.js` contains the first
+round-trip cancellation scenario. It captures a normalized internal hierarchy
+snapshot, rendered layout snapshot, and selected object identities, then applies
+an add/reorder/remove mutation sequence inside a transaction and verifies that
+the pre-existing hierarchy is restored.
+
+This first scenario covers generated guide/chrome views, flow handles,
+scale/axis/legend resolution summaries, and layout output. It does not yet cover
+slow data sources, visibility toggles, encoding mutation, or URL/bookmark
+restore.
+
 ## Testability considerations
 
 To make acid testing feasible and reliable, some architectural improvements may
