@@ -104,6 +104,24 @@ function makeAsyncAcidSpec() {
     };
 }
 
+/**
+ * @returns {import("../spec/view.js").VConcatSpec}
+ */
+function makeSharedGuideAcidSpec() {
+    return {
+        name: "tracks",
+        vconcat: [
+            makeTrackSpec("trackA", "Track A"),
+            makeTrackSpec("trackB", "Track B"),
+        ],
+        resolve: {
+            axis: { x: "shared" },
+            scale: { x: "shared", color: "shared" },
+            legend: { color: "shared" },
+        },
+    };
+}
+
 describe("View mutation acid scenarios", () => {
     test("restores the internal hierarchy after an immediately canceled mutation sequence", async () => {
         const { view, api } =
@@ -246,6 +264,40 @@ describe("View mutation acid scenarios", () => {
             unregister();
         }
     });
+
+    test("keeps shared guide ownership live after add move and remove", async () => {
+        const { view, api } = await createViewMutationAcidHarness(
+            makeSharedGuideAcidSpec()
+        );
+        const trackAView = getRequiredView(view, "trackA");
+        const trackA = api.get({ scope: [], view: "trackA" });
+        expect(getLegendDefinitionNames(view, "tracks", "color")).toEqual([
+            "trackA",
+        ]);
+
+        const inserted = await api.insert(
+            "root",
+            makeTrackSpec("trackC", "Track C"),
+            { index: 0, scope: "trackC" }
+        );
+        await api.move(inserted, { index: 2 });
+        await api.remove(trackA);
+
+        const liveViews = new Set(view.getDescendants());
+        expect(liveViews.has(trackAView)).toBe(false);
+        expect(
+            getScaleMemberNames(view, "tracks", "x").filter((name) =>
+                name.startsWith("track")
+            )
+        ).toEqual(["trackB", "trackC"]);
+        expect(getLegendDefinitionNames(view, "tracks", "color")).toEqual([
+            "trackB",
+        ]);
+
+        for (const owner of getLegendDefinitionViews(view, "tracks", "color")) {
+            expect(liveViews.has(owner)).toBe(true);
+        }
+    });
 });
 
 /**
@@ -285,4 +337,50 @@ function registerControlledAsyncSource(loadPlans, loadCalls) {
         (params) => /** @type {any} */ (params).type === "acidAsync",
         ControlledAsyncSource
     );
+}
+
+/**
+ * @param {import("./view.js").default} viewRoot
+ * @param {string} viewName
+ * @param {import("../spec/channel.js").ChannelWithScale} channel
+ * @returns {string[]}
+ */
+function getScaleMemberNames(viewRoot, viewName, channel) {
+    const resolution = getRequiredView(viewRoot, viewName).resolutions.scale[
+        channel
+    ];
+    if (!resolution) {
+        throw new Error("Expected scale resolution for channel: " + channel);
+    }
+
+    return resolution.getOrderedMembers().map((member) => member.view.name);
+}
+
+/**
+ * @param {import("./view.js").default} viewRoot
+ * @param {string} viewName
+ * @param {import("../spec/channel.js").ChannelWithScale} channel
+ * @returns {string[]}
+ */
+function getLegendDefinitionNames(viewRoot, viewName, channel) {
+    return getLegendDefinitionViews(viewRoot, viewName, channel).map(
+        (view) => view.name
+    );
+}
+
+/**
+ * @param {import("./view.js").default} viewRoot
+ * @param {string} viewName
+ * @param {import("../spec/channel.js").ChannelWithScale} channel
+ * @returns {import("./view.js").default[]}
+ */
+function getLegendDefinitionViews(viewRoot, viewName, channel) {
+    const resolution = getRequiredView(viewRoot, viewName).resolutions.legend[
+        channel
+    ];
+    if (!resolution) {
+        throw new Error("Expected legend resolution for channel: " + channel);
+    }
+
+    return resolution.getLegendDefs().map((definition) => definition.view);
 }
