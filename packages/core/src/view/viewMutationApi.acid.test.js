@@ -127,6 +127,47 @@ function makeSharedGuideAcidSpec() {
     };
 }
 
+/**
+ * @returns {import("../spec/view.js").VConcatSpec}
+ */
+function makeInheritedDataAcidSpec() {
+    return {
+        name: "tracks",
+        data: {
+            values: [
+                { pos: 1, value: 2, group: "a" },
+                { pos: 2, value: 4, group: "b" },
+            ],
+        },
+        transform: [
+            {
+                type: "formula",
+                expr: "datum.value * 2",
+                as: "scaledValue",
+            },
+        ],
+        vconcat: [makeInheritedTrackSpec("trackA", "Track A")],
+    };
+}
+
+/**
+ * @param {string} name
+ * @param {string} title
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeInheritedTrackSpec(name, title) {
+    return {
+        name,
+        title,
+        mark: "point",
+        encoding: {
+            x: { field: "pos", type: "quantitative" },
+            y: { field: "scaledValue", type: "quantitative" },
+            color: { field: "group", type: "nominal" },
+        },
+    };
+}
+
 describe("View mutation acid scenarios", () => {
     test("restores the internal hierarchy after an immediately canceled mutation sequence", async () => {
         const { view, api } =
@@ -314,6 +355,56 @@ describe("View mutation acid scenarios", () => {
             expect(liveViews.has(owner)).toBe(true);
         }
     });
+
+    test("restores inherited dataflow after inserting and removing an inherited track", async () => {
+        const { view, api, context } = await createViewMutationAcidHarness(
+            makeInheritedDataAcidSpec()
+        );
+        const baselineSnapshot = createMutationAcidSnapshot(view);
+        const baselineIdentity = captureMutationAcidIdentities(view);
+        const baselineDataSourceCount = context.dataFlow.dataSources.length;
+        const baselineCollectorCount = context.dataFlow.collectors.length;
+        const tracksView = getRequiredView(view, "tracks");
+
+        // The inserted child has no local data declaration. It must inherit the
+        // parent branch, including the parent formula transform, and then
+        // dispose back to the baseline without reloading or duplicating sources.
+        await api.transaction(async (views) => {
+            const inserted = await views.insert(
+                "root",
+                makeInheritedTrackSpec("summary", "Summary"),
+                { index: 1, scope: "summary" }
+            );
+            const insertedView = getRequiredView(view, "summary");
+
+            expect(insertedView.dataParent).toBe(tracksView);
+            expect(insertedView.flowHandle?.dataSource).toBeUndefined();
+            expect(
+                getCollectorData(insertedView).map((datum) => datum.scaledValue)
+            ).toEqual([4, 8]);
+
+            await views.remove(inserted);
+        });
+
+        expect(createMutationAcidSnapshot(view)).toEqual(baselineSnapshot);
+        expect(context.dataFlow.dataSources).toHaveLength(
+            baselineDataSourceCount
+        );
+        expect(context.dataFlow.collectors).toHaveLength(
+            baselineCollectorCount
+        );
+
+        const restoredIdentity = captureMutationAcidIdentities(view);
+        expect(restoredIdentity.views).toHaveLength(
+            baselineIdentity.views.length
+        );
+        for (const [index, restoredView] of restoredIdentity.views.entries()) {
+            expect(restoredView).toBe(baselineIdentity.views[index]);
+            expect(restoredIdentity.collectors[index]).toBe(
+                baselineIdentity.collectors[index]
+            );
+        }
+    });
 });
 
 /**
@@ -401,4 +492,17 @@ function getLegendDefinitionViews(viewRoot, viewName, channel) {
     }
 
     return resolution.getLegendDefs().map((definition) => definition.view);
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @returns {import("../data/flowNode.js").Datum[]}
+ */
+function getCollectorData(view) {
+    const collector = view.flowHandle?.collector;
+    if (!collector) {
+        throw new Error("Expected view to have a collector.");
+    }
+
+    return Array.from(collector.getData());
 }

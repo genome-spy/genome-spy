@@ -52,7 +52,7 @@ cover.
    views. Also verify scale, axis, and legend resolution members match the
    current live children and preserve correct domains after mutation.
 
-4. Inherited data insertion and removal
+4. Inherited data insertion and removal - done
 
    Use a container with inherited data and transforms, then insert tracks that
    inherit that data instead of declaring their own source. Verify inserted
@@ -253,11 +253,11 @@ Suggested order:
 
    Commit shape: `test(core): cover shared guide ownership churn`.
 
-5. Next: Implement inherited data insertion and removal.
+5. Done: Implement inherited data insertion and removal.
 
    Commit shape: `test(core): cover inherited data view mutations`.
 
-6. Implement parameter scopes and subscriptions.
+6. Next: Implement parameter scopes and subscriptions.
 
    Commit shape: `test(core): cover params across view mutations`.
 
@@ -306,9 +306,9 @@ ownership.
 
 Current executable coverage includes round-trip cancellation, lazy insertion
 during an in-flight shared load, async branch insertion/removal cancellation,
-and shared guide ownership churn after add/move/remove operations. It does not
-yet cover inherited data, params, visibility toggles, encoding mutation, or
-URL/bookmark restore.
+shared guide ownership churn after add/move/remove operations, and inherited
+data insertion/removal. It does not yet cover params, visibility toggles,
+encoding mutation, or URL/bookmark restore.
 
 ## Testability considerations
 
