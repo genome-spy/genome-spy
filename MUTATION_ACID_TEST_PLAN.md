@@ -32,19 +32,19 @@ cover.
 
 ### Highest value
 
-1. Lazy source insertion during in-flight loading
+1. Lazy source insertion during in-flight loading - done
 
    Insert a new track that shares or uses a lazy/windowed data source while
    another source is loading. Verify the inserted view receives data, renders,
    and can be removed cleanly.
 
-2. Immediate cancel acid sequence with async data
+2. Immediate cancel acid sequence with async data - done
 
    Capture a baseline snapshot, insert an async/lazy track, reorder it, remove
    it before or after data resolves, and compare the normalized hierarchy,
    guides, flow handles, resolutions, and rendered layout with the baseline.
 
-3. Shared guide ownership churn
+3. Shared guide ownership churn - done
 
    Use multiple tracks with a shared x axis and a shared color legend. Add,
    remove, and reorder tracks so the owner of a shared axis or legend changes.
@@ -232,26 +232,28 @@ uses it.
 
 Suggested order:
 
-1. Add the minimum reusable acid-test harness needed for the next scenarios.
+1. Done: Add the minimum reusable acid-test harness needed for the next
+   scenarios.
+
    Keep this focused on normalized snapshots, selected identity checks, and
    lifecycle settling. Do not broaden the harness beyond what the first new
    scenario needs.
 
    Commit shape: `test(core): factor view mutation acid test harness`.
 
-2. Implement lazy source insertion during in-flight loading.
+2. Done: Implement lazy source insertion during in-flight loading.
 
    Commit shape: `test(core): cover lazy insertion during in-flight loading`.
 
-3. Implement the immediate cancel sequence with async data.
+3. Done: Implement the immediate cancel sequence with async data.
 
    Commit shape: `test(core): cover async mutation cancellation`.
 
-4. Implement shared guide ownership churn.
+4. Done: Implement shared guide ownership churn.
 
    Commit shape: `test(core): cover shared guide ownership churn`.
 
-5. Implement inherited data insertion and removal.
+5. Next: Implement inherited data insertion and removal.
 
    Commit shape: `test(core): cover inherited data view mutations`.
 
@@ -296,16 +298,17 @@ stall the whole acid-test expansion.
 
 ## Initial executable coverage
 
-`packages/core/src/view/viewMutationApi.acid.test.js` contains the first
-round-trip cancellation scenario. It captures a normalized internal hierarchy
-snapshot, rendered layout snapshot, and selected object identities, then applies
-an add/reorder/remove mutation sequence inside a transaction and verifies that
-the pre-existing hierarchy is restored.
+`packages/core/src/view/viewMutationApi.acid.test.js` contains the reusable
+acid-test harness and the first batch of executable scenarios. The covered
+scenarios capture normalized internal hierarchy snapshots, rendered layout
+snapshots, selected object identities, dataflow object counts, and shared guide
+ownership.
 
-This first scenario covers generated guide/chrome views, flow handles,
-scale/axis/legend resolution summaries, and layout output. It does not yet cover
-slow data sources, visibility toggles, encoding mutation, or URL/bookmark
-restore.
+Current executable coverage includes round-trip cancellation, lazy insertion
+during an in-flight shared load, async branch insertion/removal cancellation,
+and shared guide ownership churn after add/move/remove operations. It does not
+yet cover inherited data, params, visibility toggles, encoding mutation, or
+URL/bookmark restore.
 
 ## Testability considerations
 

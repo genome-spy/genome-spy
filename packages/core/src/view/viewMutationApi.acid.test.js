@@ -13,6 +13,11 @@ import {
     waitUntil,
 } from "./viewMutationAcidTestUtils.js";
 
+// These acid scenarios intentionally drive mutations through the public
+// ViewMutationApi. The assertions inspect normalized internal state because
+// the goal is to catch stale views, dataflow objects, resolutions, and guides
+// that remain after realistic public API operations.
+
 /**
  * @typedef {{ pos: number, value: number, group: string }} TrackDatum
  */
@@ -129,6 +134,9 @@ describe("View mutation acid scenarios", () => {
         const baselineIdentity = captureMutationAcidIdentities(view);
         const baselineSnapshot = createMutationAcidSnapshot(view);
 
+        // This is the core acid invariant: a complex no-op mutation round trip
+        // must restore the normalized internal hierarchy and preserve the
+        // pre-existing view/collector objects.
         await api.transaction(async (views) => {
             const trackA = views.get({ scope: [], view: "trackA" });
             const summary = await views.insert(
@@ -157,6 +165,9 @@ describe("View mutation acid scenarios", () => {
     });
 
     test("feeds an inserted lazy branch while a shared source is loading", async () => {
+        // The deferred second load keeps the shared data source in flight while
+        // the new branch is inserted. The inserted view must attach to that
+        // source and receive propagated rows once the load completes.
         /** @type {{ promise: Promise<TrackDatum[]>, resolve: (value: TrackDatum[]) => void, reject: (reason?: unknown) => void }} */
         const secondLoad = createDeferred();
         /** @type {Promise<TrackDatum[]>[]} */
@@ -204,6 +215,8 @@ describe("View mutation acid scenarios", () => {
     });
 
     test("restores hierarchy after canceling an async inserted branch", async () => {
+        // Async insertion creates dataflow state that must be fully disposed
+        // when the branch is immediately removed again.
         /** @type {Promise<TrackDatum[]>[]} */
         const loadPlans = [
             Promise.resolve([{ pos: 1, value: 2, group: "a" }]),
@@ -275,6 +288,9 @@ describe("View mutation acid scenarios", () => {
             "trackA",
         ]);
 
+        // Removing the original guide owner should transfer shared legend
+        // ownership to a remaining live child and should not leave stale
+        // resolution members behind.
         const inserted = await api.insert(
             "root",
             makeTrackSpec("trackC", "Track C"),
@@ -325,6 +341,8 @@ function registerControlledAsyncSource(loadPlans, loadCalls) {
             this.reset();
             this.beginBatch({ type: "file" });
 
+            // Propagate rows through the real dataflow path so the tests cover
+            // collector wiring, not just source registration.
             for (const datum of data ?? []) {
                 this._propagate(datum);
             }
