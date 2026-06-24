@@ -60,7 +60,7 @@ cover.
    applied once, removal leaves no stale observers, and canceling returns the
    dataflow graph to its baseline shape.
 
-5. Parameter scopes and subscriptions
+5. Parameter scopes and subscriptions - done
 
    Insert and remove views that declare or reference params. Include scoped
    repeated specs that use the same param names. Verify param scopes,
@@ -257,11 +257,11 @@ Suggested order:
 
    Commit shape: `test(core): cover inherited data view mutations`.
 
-6. Next: Implement parameter scopes and subscriptions.
+6. Done: Implement parameter scopes and subscriptions.
 
    Commit shape: `test(core): cover params across view mutations`.
 
-7. Implement repeated same-spec insertion with scopes.
+7. Next: Implement repeated same-spec insertion with scopes.
 
    Commit shape: `test(core): cover repeated scoped spec insertion`.
 
@@ -307,8 +307,8 @@ ownership.
 Current executable coverage includes round-trip cancellation, lazy insertion
 during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
-data insertion/removal. It does not yet cover params, visibility toggles,
-encoding mutation, or URL/bookmark restore.
+data insertion/removal, and scoped params/subscription cleanup. It does not yet
+cover visibility toggles, encoding mutation, or URL/bookmark restore.
 
 ## Testability considerations
 
@@ -388,3 +388,8 @@ stay in test utilities unless the production API needs the same capability.
 - Implicit coupling between view creation and dataflow initialization (tracked
   in `ARCHITECTURE.md`).
 - Lack of a formal mutation API that enforces lifecycle ordering.
+- Parameter-driven scale-domain changes can affect axis extents and layout
+  caches even after the parameter value is reset. This is broader than mutation
+  cleanup, so the current params acid scenario audits hierarchy and
+  subscription cleanup but leaves layout-cache invalidation for separate
+  analysis.

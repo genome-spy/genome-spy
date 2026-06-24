@@ -168,6 +168,70 @@ function makeInheritedTrackSpec(name, title) {
     };
 }
 
+/**
+ * @returns {import("../spec/view.js").VConcatSpec}
+ */
+function makeParamAcidSpec() {
+    return {
+        name: "tracks",
+        params: [{ name: "threshold", value: 3 }],
+        vconcat: [makeParamTrackSpec("trackA", "Track A")],
+    };
+}
+
+/**
+ * @param {string} name
+ * @param {string} title
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeParamTrackSpec(name, title) {
+    return {
+        name,
+        title,
+        data: {
+            values: [
+                { pos: 1, value: 2 },
+                { pos: 2, value: 4 },
+            ],
+        },
+        mark: "point",
+        encoding: {
+            x: { field: "pos", type: "quantitative" },
+            y: {
+                field: "value",
+                type: "quantitative",
+                scale: { domain: { expr: "[0, threshold]" } },
+            },
+        },
+    };
+}
+
+/**
+ * @param {string} name
+ * @param {string} title
+ * @param {number} threshold
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeScopedParamTrackSpec(name, title, threshold) {
+    const spec = makeParamTrackSpec(name, title);
+
+    return {
+        ...spec,
+        params: [
+            { name: "threshold", value: threshold },
+            { name: "expandedThreshold", expr: "threshold + 1" },
+        ],
+        encoding: {
+            ...spec.encoding,
+            y: {
+                field: "value",
+                type: "quantitative",
+                scale: { domain: { expr: "[0, expandedThreshold]" } },
+            },
+        },
+    };
+}
+
 describe("View mutation acid scenarios", () => {
     test("restores the internal hierarchy after an immediately canceled mutation sequence", async () => {
         const { view, api } =
@@ -403,6 +467,93 @@ describe("View mutation acid scenarios", () => {
             expect(restoredIdentity.collectors[index]).toBe(
                 baselineIdentity.collectors[index]
             );
+        }
+    });
+
+    test("keeps scoped params independent and disposes inserted subscriptions", async () => {
+        const { view, api } =
+            await createViewMutationAcidHarness(makeParamAcidSpec());
+        const tracksView = getRequiredView(view, "tracks");
+        const baselineHierarchy = createMutationAcidSnapshot(view).hierarchy;
+        let rootThresholdCalls = 0;
+        const unsubscribeRoot = tracksView.paramRuntime.subscribe(
+            "threshold",
+            () => {
+                rootThresholdCalls += 1;
+            }
+        );
+
+        try {
+            /** @type {import("./view.js").default | undefined} */
+            let insertedView;
+            let expandedThresholdCalls = 0;
+
+            // The inserted branch reuses the ancestor parameter name in its
+            // own scope. Updating either scope must not cross-write the other,
+            // and the inserted expression subscription must be disposed with
+            // the removed branch.
+            await api.transaction(async (views) => {
+                const inserted = await views.insert(
+                    "root",
+                    makeScopedParamTrackSpec("scopedTrack", "Scoped", 7),
+                    { scope: "sampleA" }
+                );
+                insertedView = getRequiredView(view, "scopedTrack");
+                insertedView.paramRuntime.subscribe("expandedThreshold", () => {
+                    expandedThresholdCalls += 1;
+                });
+
+                expect(
+                    api.get({ scope: ["sampleA"], view: "scopedTrack" })
+                ).toBe(inserted);
+                expect(insertedView.paramRuntime.findValue("threshold")).toBe(
+                    7
+                );
+                expect(
+                    insertedView.paramRuntime.findValue("expandedThreshold")
+                ).toBe(8);
+
+                tracksView.paramRuntime.setValue("threshold", 4);
+                await tracksView.paramRuntime.whenPropagated();
+
+                expect(rootThresholdCalls).toBe(1);
+                expect(insertedView.paramRuntime.findValue("threshold")).toBe(
+                    7
+                );
+
+                insertedView.paramRuntime.setValue("threshold", 9);
+                await insertedView.paramRuntime.whenPropagated();
+
+                expect(
+                    insertedView.paramRuntime.findValue("expandedThreshold")
+                ).toBe(10);
+                expect(expandedThresholdCalls).toBe(1);
+                expect(tracksView.paramRuntime.findValue("threshold")).toBe(4);
+
+                tracksView.paramRuntime.setValue("threshold", 3);
+                await tracksView.paramRuntime.whenPropagated();
+                await views.remove(inserted);
+            });
+
+            expect(insertedView?.paramRuntime.getValue("threshold")).toBe(
+                undefined
+            );
+
+            tracksView.paramRuntime.setValue("threshold", 5);
+            await tracksView.paramRuntime.whenPropagated();
+
+            expect(rootThresholdCalls).toBe(3);
+            expect(expandedThresholdCalls).toBe(1);
+
+            tracksView.paramRuntime.setValue("threshold", 3);
+            await tracksView.paramRuntime.whenPropagated();
+
+            expect(rootThresholdCalls).toBe(4);
+            expect(createMutationAcidSnapshot(view).hierarchy).toEqual(
+                baselineHierarchy
+            );
+        } finally {
+            unsubscribeRoot();
         }
     });
 });
