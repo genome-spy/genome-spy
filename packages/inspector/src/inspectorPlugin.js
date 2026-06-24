@@ -54,17 +54,31 @@ export function genomeSpyInspector(options = {}) {
                 return panelHandle;
             };
 
+            /**
+             * @param {{ panel?: string }} [openOptions]
+             */
+            const openInspector = async (openOptions = {}) => {
+                const handle = await ensurePanel();
+                if (openOptions.panel && panelElement) {
+                    panelElement.activePanel = openOptions.panel;
+                }
+                handle.show();
+                await session.refresh();
+            };
+
             const removeButton = app.ui.registerToolbarButton({
                 title: "GenomeSpy Inspector",
                 icon: faBug,
-                onClick: async () => {
-                    const handle = await ensurePanel();
-                    handle.toggle();
-                    await session.refresh();
-                },
+                onClick: () => openInspector(),
             });
+            const removeLauncher = app.ui.registerInspectorLauncher
+                ? app.ui.registerInspectorLauncher({
+                      open: openInspector,
+                  })
+                : /** @returns {void} */ () => {};
 
             return () => {
+                removeLauncher();
                 removeButton();
                 session?.dispose();
                 session = undefined;

@@ -23,13 +23,16 @@ export default class InspectorSession extends EventTarget {
     /** @type {Promise<typeof import("@genome-spy/core/debug/resolutionDebugSnapshot.js")> | undefined} */
     #resolutionDebugModulePromise;
 
+    /** @type {Promise<typeof import("@genome-spy/core/debug/dataflowDebugSnapshot.js")> | undefined} */
+    #dataflowDebugModulePromise;
+
     /** @type {(() => void)[]} */
     #disposers = [];
 
     /** @type {boolean} */
     #disposed = false;
 
-    /** @type {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugSnapshot & { resolutions: import("@genome-spy/core/debug/resolutionDebugSnapshot.js").ResolutionDebugSnapshot }} */
+    /** @type {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugSnapshot & { resolutions: import("@genome-spy/core/debug/resolutionDebugSnapshot.js").ResolutionDebugSnapshot, dataflow: import("@genome-spy/core/debug/dataflowDebugSnapshot.js").DataflowDebugSnapshot }} */
     snapshot = {
         rootId: undefined,
         nodes: [],
@@ -37,6 +40,11 @@ export default class InspectorSession extends EventTarget {
             scales: [],
             axes: [],
             legends: [],
+        },
+        dataflow: {
+            sourceIds: [],
+            nodes: [],
+            collectorCount: 0,
         },
     };
 
@@ -71,10 +79,12 @@ export default class InspectorSession extends EventTarget {
 
         const genomeSpy = this.#app.genomeSpy;
         const root = genomeSpy.viewRoot;
-        const [viewDebugModule, resolutionDebugModule] = await Promise.all([
-            this.#getViewDebugModule(),
-            this.#getResolutionDebugModule(),
-        ]);
+        const [viewDebugModule, resolutionDebugModule, dataflowDebugModule] =
+            await Promise.all([
+                this.#getViewDebugModule(),
+                this.#getResolutionDebugModule(),
+                this.#getDataflowDebugModule(),
+            ]);
         this.#objectsById = new Map();
         const viewSnapshot = viewDebugModule.createViewDebugSnapshot(root, {
             includeChrome: this.#includeChrome,
@@ -84,6 +94,12 @@ export default class InspectorSession extends EventTarget {
             ...viewSnapshot,
             resolutions: resolutionDebugModule.createResolutionDebugSnapshot(
                 root,
+                {
+                    getDebugId: (object) => this.#getDebugId(object),
+                }
+            ),
+            dataflow: dataflowDebugModule.createDataflowDebugSnapshot(
+                root?.context.dataFlow,
                 {
                     getDebugId: (object) => this.#getDebugId(object),
                 }
@@ -130,6 +146,15 @@ export default class InspectorSession extends EventTarget {
         this.#resolutionDebugModulePromise ??=
             import("@genome-spy/core/debug/resolutionDebugSnapshot.js");
         return this.#resolutionDebugModulePromise;
+    }
+
+    /**
+     * @returns {Promise<typeof import("@genome-spy/core/debug/dataflowDebugSnapshot.js")>}
+     */
+    #getDataflowDebugModule() {
+        this.#dataflowDebugModulePromise ??=
+            import("@genome-spy/core/debug/dataflowDebugSnapshot.js");
+        return this.#dataflowDebugModulePromise;
     }
 
     #ensureRuntimeSubscriptions() {

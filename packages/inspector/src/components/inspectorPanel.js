@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing } from "lit";
 
 /**
  * @typedef {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugNode} ViewDebugNode
+ * @typedef {import("@genome-spy/core/debug/dataflowDebugSnapshot.js").DataflowDebugNode} DataflowDebugNode
  */
 
 export class GsInspectorPanel extends LitElement {
@@ -9,6 +10,8 @@ export class GsInspectorPanel extends LitElement {
         session: { attribute: false },
         snapshot: { state: true },
         selectedViewId: { state: true },
+        selectedFlowNodeId: { state: true },
+        activePanel: { state: true },
         loading: { state: true },
     };
 
@@ -44,6 +47,11 @@ export class GsInspectorPanel extends LitElement {
             background: #292e36;
         }
 
+        .panel-tabs {
+            display: flex;
+            gap: 0.2rem;
+        }
+
         button,
         label {
             font: inherit;
@@ -62,6 +70,18 @@ export class GsInspectorPanel extends LitElement {
             background: #414856;
         }
 
+        .panel-tab {
+            color: #b8c0cc;
+            background: transparent;
+            border-color: transparent;
+        }
+
+        .panel-tab.selected {
+            color: #f4f7fb;
+            background: #174f78;
+            border-color: #2d6e9e;
+        }
+
         .status {
             margin-left: auto;
             color: #9aa6b2;
@@ -71,6 +91,13 @@ export class GsInspectorPanel extends LitElement {
             display: grid;
             grid-template-columns: minmax(15rem, 38%) minmax(0, 1fr);
             min-height: 0;
+        }
+
+        .single-panel {
+            display: block;
+            min-height: 0;
+            overflow: auto;
+            padding: 0.75rem;
         }
 
         .tree,
@@ -114,6 +141,10 @@ export class GsInspectorPanel extends LitElement {
 
         .node.selected {
             background: #174f78;
+        }
+
+        .node.warning {
+            color: #ffcf8a;
         }
 
         .node-main {
@@ -201,6 +232,14 @@ export class GsInspectorPanel extends LitElement {
             color: #8cc7ff;
             cursor: pointer;
         }
+
+        .muted {
+            color: #9aa6b2;
+        }
+
+        .flow-first {
+            max-height: 22rem;
+        }
     `;
 
     constructor() {
@@ -215,8 +254,15 @@ export class GsInspectorPanel extends LitElement {
                 axes: [],
                 legends: [],
             },
+            dataflow: {
+                sourceIds: [],
+                nodes: [],
+                collectorCount: 0,
+            },
         };
         this.selectedViewId = undefined;
+        this.selectedFlowNodeId = undefined;
+        this.activePanel = "elements";
         this.loading = false;
     }
 
@@ -260,6 +306,16 @@ export class GsInspectorPanel extends LitElement {
             } else {
                 this.selectedViewId ??= this.snapshot.rootId;
             }
+            if (
+                this.selectedFlowNodeId &&
+                !this.snapshot.dataflow.nodes.some(
+                    (node) => node.id === this.selectedFlowNodeId
+                )
+            ) {
+                this.selectedFlowNodeId = this.snapshot.dataflow.sourceIds[0];
+            } else {
+                this.selectedFlowNodeId ??= this.snapshot.dataflow.sourceIds[0];
+            }
             this.loading = false;
         };
 
@@ -283,6 +339,11 @@ export class GsInspectorPanel extends LitElement {
             <div class="shell">
                 <div class="toolbar">
                     <strong>GenomeSpy Inspector</strong>
+                    <span class="panel-tabs">
+                        ${this.#renderPanelTab("elements", "Elements")}
+                        ${this.#renderPanelTab("resolutions", "Resolutions")}
+                        ${this.#renderPanelTab("dataflow", "Dataflow")}
+                    </span>
                     <label>
                         <input
                             type="checkbox"
@@ -305,6 +366,43 @@ export class GsInspectorPanel extends LitElement {
                             : `${this.snapshot.nodes.length} views`}
                     </span>
                 </div>
+                ${this.#renderActivePanel(root, selected)}
+            </div>
+        `;
+    }
+
+    /**
+     * @param {string} panel
+     * @param {string} label
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderPanelTab(panel, label) {
+        return html`
+            <button
+                class=${this.activePanel === panel
+                    ? "panel-tab selected"
+                    : "panel-tab"}
+                @click=${() => {
+                    this.activePanel = panel;
+                }}
+            >
+                ${label}
+            </button>
+        `;
+    }
+
+    /**
+     * @param {ViewDebugNode | undefined} root
+     * @param {ViewDebugNode | undefined} selected
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderActivePanel(root, selected) {
+        if (this.activePanel === "dataflow") {
+            return this.#renderDataflowPanel();
+        }
+
+        if (this.activePanel === "resolutions") {
+            return html`
                 <div class="main">
                     <div class="tree">
                         ${root
@@ -313,11 +411,24 @@ export class GsInspectorPanel extends LitElement {
                                   Launch the app to inspect the hierarchy.
                               </div>`}
                     </div>
-                    <div class="details">
-                        ${selected
-                            ? this.#renderDetails(selected)
-                            : html`<div class="empty">No view selected.</div>`}
-                    </div>
+                    <div class="details">${this.#renderResolutionPanel()}</div>
+                </div>
+            `;
+        }
+
+        return html`
+            <div class="main">
+                <div class="tree">
+                    ${root
+                        ? this.#renderNode(root, 0)
+                        : html`<div class="empty">
+                              Launch the app to inspect the hierarchy.
+                          </div>`}
+                </div>
+                <div class="details">
+                    ${selected
+                        ? this.#renderDetails(selected)
+                        : html`<div class="empty">No view selected.</div>`}
                 </div>
             </div>
         `;
@@ -597,6 +708,143 @@ export class GsInspectorPanel extends LitElement {
         `;
     }
 
+    #renderDataflowPanel() {
+        if (this.snapshot.dataflow.sourceIds.length === 0) {
+            return html`
+                <div class="single-panel">
+                    <p class="empty">No dataflow has been built yet.</p>
+                </div>
+            `;
+        }
+
+        const selected = this.selectedFlowNodeId
+            ? this.#getFlowNode(this.selectedFlowNodeId)
+            : this.#getFlowNode(this.snapshot.dataflow.sourceIds[0]);
+
+        return html`
+            <div class="main">
+                <div class="tree">
+                    <p class="empty">
+                        ${this.snapshot.dataflow.sourceIds.length} sources,
+                        ${this.snapshot.dataflow.collectorCount} collectors
+                    </p>
+                    ${this.snapshot.dataflow.sourceIds.map((sourceId) =>
+                        this.#renderFlowNode(this.#getFlowNode(sourceId), 0)
+                    )}
+                </div>
+                <div class="details">
+                    ${this.#renderFlowNodeDetails(selected)}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * @param {DataflowDebugNode} node
+     * @param {number} depth
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderFlowNode(node, depth) {
+        const selected = node.id === this.selectedFlowNodeId;
+        const warning = node.disposed || !node.initialized;
+        return html`
+            <button
+                class=${[
+                    "node",
+                    selected ? "selected" : "",
+                    warning ? "warning" : "",
+                ].join(" ")}
+                style=${`padding-left: ${0.65 + depth * 1.1}rem`}
+                @click=${() => {
+                    this.selectedFlowNodeId = node.id;
+                }}
+                @mouseenter=${() => this.session?.highlightView(node.viewId)}
+                @mouseleave=${() => this.session?.highlightView(undefined)}
+            >
+                <span class="node-main">
+                    ${node.childIds.length > 0 ? "v" : "-"} ${node.label}
+                    ${node.completed
+                        ? html`<span class="badge">done</span>`
+                        : nothing}
+                    ${node.disposed
+                        ? html`<span class="badge">disposed</span>`
+                        : nothing}
+                    ${node.initialized
+                        ? nothing
+                        : html`<span class="badge">new</span>`}
+                </span>
+                <span class="node-meta">out ${node.count}</span>
+            </button>
+            ${node.childIds.map(
+                /**
+                 * @param {string} childId
+                 * @returns {import("lit").TemplateResult}
+                 */
+                (childId) =>
+                    this.#renderFlowNode(this.#getFlowNode(childId), depth + 1)
+            )}
+        `;
+    }
+
+    /**
+     * @param {DataflowDebugNode} node
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderFlowNodeDetails(node) {
+        return html`
+            <h2>${node.label}</h2>
+            <dl>
+                <dt>id</dt>
+                <dd>${node.id}</dd>
+                <dt>out count</dt>
+                <dd>${node.count}</dd>
+                <dt>children</dt>
+                <dd>${node.childIds.length}</dd>
+                <dt>completed</dt>
+                <dd>${String(node.completed)}</dd>
+                <dt>initialized</dt>
+                <dd>${String(node.initialized)}</dd>
+                <dt>disposed</dt>
+                <dd>${String(node.disposed)}</dd>
+                <dt>view</dt>
+                <dd>
+                    ${node.viewId
+                        ? html`<span
+                              class="linked"
+                              @click=${() => {
+                                  this.selectedViewId = node.viewId;
+                                  this.activePanel = "elements";
+                              }}
+                              >${node.viewPath}</span
+                          >`
+                        : "-"}
+                </dd>
+                <dt>domain-sensitive scales</dt>
+                <dd>
+                    ${node.domainSensitiveScaleChannels.length
+                        ? node.domainSensitiveScaleChannels.join(", ")
+                        : "-"}
+                </dd>
+            </dl>
+
+            <h3>Params</h3>
+            ${node.params
+                ? html`<pre>${this.#formatValue(node.params)}</pre>`
+                : html`<p class="empty">No flow node parameters.</p>`}
+
+            <h3>First Datum</h3>
+            ${node.first
+                ? html`<pre class="flow-first">
+${this.#formatValue(node.first)}</pre
+                  >`
+                : html`<p class="empty">
+                      ${node.count > 0
+                          ? "No datum preview is available."
+                          : "No data was propagated."}
+                  </p>`}
+        `;
+    }
+
     async #refresh() {
         if (!this.session) {
             return;
@@ -634,6 +882,20 @@ export class GsInspectorPanel extends LitElement {
         );
         if (!node) {
             throw new Error("Unknown inspector node: " + id);
+        }
+        return node;
+    }
+
+    /**
+     * @param {string} id
+     * @returns {DataflowDebugNode}
+     */
+    #getFlowNode(id) {
+        const node = this.snapshot.dataflow.nodes.find(
+            (candidate) => candidate.id === id
+        );
+        if (!node) {
+            throw new Error("Unknown inspector flow node: " + id);
         }
         return node;
     }

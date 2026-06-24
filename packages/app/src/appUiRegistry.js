@@ -16,6 +16,9 @@ export default class AppUiRegistry extends EventTarget {
 
         /** @type {ResizeObserver | undefined} */
         this.#sidePanelResizeObserver = undefined;
+
+        /** @type {import("./appTypes.js").InspectorLauncher | undefined} */
+        this.inspectorLauncher = undefined;
     }
 
     /**
@@ -27,6 +30,11 @@ export default class AppUiRegistry extends EventTarget {
      * @type {Set<import("./utils/ui/contextMenu.js").MenuItem>}
      */
     toolbarMenuItems;
+
+    /**
+     * @type {import("./appTypes.js").InspectorLauncher | undefined}
+     */
+    inspectorLauncher;
 
     /**
      * @type {Map<string, import("./appTypes.js").SidePanelSpec>}
@@ -95,6 +103,41 @@ export default class AppUiRegistry extends EventTarget {
                 this.#emitChange();
             }
         };
+    }
+
+    /**
+     * @param {import("./appTypes.js").InspectorLauncher} launcher
+     * @returns {() => void}
+     */
+    registerInspectorLauncher(launcher) {
+        if (this.inspectorLauncher) {
+            throw new Error(
+                "An inspector launcher has already been registered."
+            );
+        }
+
+        this.inspectorLauncher = launcher;
+        this.#emitChange();
+
+        return () => {
+            if (this.inspectorLauncher === launcher) {
+                this.inspectorLauncher = undefined;
+                this.#emitChange();
+            }
+        };
+    }
+
+    /**
+     * @param {import("./appTypes.js").InspectorOpenOptions} [options]
+     * @returns {boolean}
+     */
+    openInspector(options = {}) {
+        if (!this.inspectorLauncher) {
+            return false;
+        }
+
+        void this.inspectorLauncher.open(options);
+        return true;
     }
 
     /**

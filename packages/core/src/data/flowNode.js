@@ -25,6 +25,20 @@ export const BEHAVIOR_COLLECTS = 1 << 2;
  */
 
 /**
+ * @typedef {object} FlowNodeDebugState
+ * @prop {string} label
+ * @prop {FlowNode[]} children
+ * @prop {FlowNode | undefined} parent
+ * @prop {{ count: number, first: Datum | null }} stats
+ * @prop {boolean} completed
+ * @prop {boolean} initialized
+ * @prop {boolean} disposed
+ * @prop {Record<string, any> | undefined} params
+ * @prop {import("../view/view.js").default | undefined} view
+ * @prop {import("../spec/channel.js").ChannelWithScale[]} domainSensitiveScaleChannels
+ */
+
+/**
  * This is heavily inspired by Vega's and Vega-Lite's data flow system.
  *
  * @typedef {Record<string, any>} Datum
@@ -95,6 +109,31 @@ export default class FlowNode {
 
     get disposed() {
         return this.#disposed;
+    }
+
+    /**
+     * @returns {FlowNodeDebugState}
+     */
+    getDebugState() {
+        const flowNode = /** @type {any} */ (this);
+        return {
+            label: this.label,
+            children: this.children.slice(),
+            parent: this.parent,
+            stats: {
+                count: this.stats.count,
+                first: this.stats.first,
+            },
+            completed: this.completed,
+            initialized: this.#initialized,
+            disposed: this.#disposed,
+            params:
+                "params" in flowNode
+                    ? structuredClone(flowNode.params)
+                    : undefined,
+            view: "view" in flowNode ? flowNode.view : undefined,
+            domainSensitiveScaleChannels: this.domainSensitiveScaleChannels,
+        };
     }
 
     /**

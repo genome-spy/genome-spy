@@ -16,12 +16,21 @@ export interface ToolbarButtonSpec {
     onClick: () => void | Promise<void>;
 }
 
+export interface InspectorOpenOptions {
+    panel?: string;
+}
+
+export interface InspectorLauncher {
+    open(options?: InspectorOpenOptions): void | Promise<void>;
+}
+
 export interface AppUiHost {
     registerToolbarButton(button: ToolbarButtonSpec): () => void;
     registerToolbarMenuItem(
         item: import("./utils/ui/contextMenu.js").MenuItem
     ): () => void;
     registerSidePanel?(panel: SidePanelSpec): SidePanelHandle;
+    registerInspectorLauncher?(launcher: InspectorLauncher): () => void;
 }
 
 export interface SidePanelSpec {
@@ -55,8 +64,11 @@ export interface AppUiRegistry extends AppUiHost, EventTarget {
     readonly toolbarMenuItems: Set<
         import("./utils/ui/contextMenu.js").MenuItem
     >;
+    readonly inspectorLauncher?: InspectorLauncher;
     attachAppShell(appShell: HTMLElement): void;
     registerSidePanel(panel: SidePanelSpec): SidePanelHandle;
+    registerInspectorLauncher(launcher: InspectorLauncher): () => void;
+    openInspector(options?: InspectorOpenOptions): boolean;
 }
 
 export type AppEmbedFunction = (

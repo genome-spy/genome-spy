@@ -190,15 +190,21 @@ export default class Toolbar extends LitElement {
             items.push({
                 label: "Dataflow Inspector",
                 icon: faBug,
-                callback: () =>
-                    showDataflowInspectorDialog(
-                        this.app.genomeSpy.viewRoot.context.dataFlow,
-                        {
-                            highlightView:
-                                this.app.genomeSpy.viewRoot.context
-                                    .highlightView,
-                        }
-                    ),
+                callback: () => {
+                    const opened = this.app.ui.openInspector({
+                        panel: "dataflow",
+                    });
+                    if (!opened) {
+                        showDataflowInspectorDialog(
+                            this.app.genomeSpy.viewRoot.context.dataFlow,
+                            {
+                                highlightView:
+                                    this.app.genomeSpy.viewRoot.context
+                                        .highlightView,
+                            }
+                        );
+                    }
+                },
             });
         }
 

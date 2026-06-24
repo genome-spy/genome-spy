@@ -478,6 +478,7 @@ Status: Implemented.
 ### Phase 3: App Dataflow Replacement
 
 Tentative commit: `feat(inspector): replace app dataflow inspector`
+Status: Implemented.
 
 - Add dataflow snapshot builder.
 - Add Dataflow panel with current dialog parity.
