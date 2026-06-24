@@ -3,6 +3,7 @@ import ViewError from "./viewError.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
 import { isMultiscaleSpec } from "./multiscale.js";
 import { isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
+import { moveArrayItem } from "../utils/arrayUtils.js";
 
 /**
  * @template {import("../spec/view.js").LayerSpec} [TSpec=import("../spec/view.js").LayerSpec]
@@ -90,6 +91,18 @@ export default class LayerView extends ContainerView {
      */
     async removeChildAt(index) {
         await this.#getMutationHelper().removeChildAt(index);
+    }
+
+    /**
+     * Moves a child within the layer container without recreating it.
+     *
+     * @param {number} fromIndex
+     * @param {number} index Destination index after temporarily removing the child.
+     */
+    moveChildAt(fromIndex, index) {
+        moveArrayItem(this.spec.layer, fromIndex, index);
+        moveArrayItem(this.#children, fromIndex, index);
+        this.context.requestLayoutReflow();
     }
 
     /**

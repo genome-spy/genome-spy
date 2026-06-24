@@ -250,4 +250,97 @@ describe("ViewMutationApi", () => {
         });
         expect(api.root().children()).toHaveLength(1);
     });
+
+    test("moves a concat child within its current parent", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [
+                makeUnitSpec("trackA"),
+                makeUnitSpec("trackB"),
+                makeUnitSpec("trackC"),
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const trackB = api.get({ scope: [], view: "trackB" });
+        const moved = await api.move(trackB, { index: 2 });
+
+        expect(moved).toBe(trackB);
+        expect(trackB.isAlive()).toBe(true);
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackC", "trackB"]);
+        const spec = /** @type {import("../spec/view.js").VConcatSpec} */ (
+            view.spec
+        );
+        expect(spec.vconcat.map((childSpec) => childSpec.name)).toEqual([
+            "trackA",
+            "trackC",
+            "trackB",
+        ]);
+    });
+
+    test("moves a layer child within its current parent", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            layer: [
+                makeUnitSpec("trackA"),
+                makeUnitSpec("trackB"),
+                makeUnitSpec("trackC"),
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        await api.move({ scope: [], view: "trackC" }, { index: 0 });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackC", "trackA", "trackB"]);
+        const spec = /** @type {import("../spec/view.js").LayerSpec} */ (
+            view.spec
+        );
+        expect(spec.layer.map((childSpec) => childSpec.name)).toEqual([
+            "trackC",
+            "trackA",
+            "trackB",
+        ]);
+    });
+
+    test("rejects invalid move indexes without mutating the container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA"), makeUnitSpec("trackB")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(
+            api.move({ scope: [], view: "trackA" }, { index: 2 })
+        ).rejects.toMatchObject({ code: "invalidIndex" });
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
+
+    test("rejects moving the root view", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(api.move("root", { index: 0 })).rejects.toMatchObject({
+            code: "cannotMoveRoot",
+        });
+    });
 });

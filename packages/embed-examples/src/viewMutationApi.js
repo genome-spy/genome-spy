@@ -133,6 +133,24 @@ async function removeSummaryTrack(summary) {
     updateDashboard();
 }
 
+/**
+ * @param {{ scope: string, handle: import("@genome-spy/core/types/embedApi.js").ViewHandle }} summary
+ * @param {number} offset
+ */
+async function moveSummaryTrack(summary, offset) {
+    try {
+        const currentIndex = getTrackIndex(summary.handle);
+        await api.views.move(summary.handle, {
+            index: currentIndex + offset,
+        });
+        status = "Moved " + summary.scope;
+    } catch (error) {
+        status = error instanceof Error ? error.message : "Summary move failed";
+    }
+
+    updateDashboard();
+}
+
 function updateDashboard() {
     render(
         html`
@@ -159,6 +177,25 @@ function updateDashboard() {
                         (summary) => html`
                             <p>
                                 <button
+                                    ?disabled=${!canMoveTrack(
+                                        summary.handle,
+                                        -1
+                                    )}
+                                    @click=${() =>
+                                        moveSummaryTrack(summary, -1)}
+                                >
+                                    Up
+                                </button>
+                                <button
+                                    ?disabled=${!canMoveTrack(
+                                        summary.handle,
+                                        1
+                                    )}
+                                    @click=${() => moveSummaryTrack(summary, 1)}
+                                >
+                                    Down
+                                </button>
+                                <button
                                     ?disabled=${!summary.handle.isAlive()}
                                     @click=${() => removeSummaryTrack(summary)}
                                 >
@@ -176,6 +213,27 @@ function updateDashboard() {
             </dl>
         `,
         dashboard
+    );
+}
+
+/**
+ * @param {import("@genome-spy/core/types/embedApi.js").ViewHandle} handle
+ */
+function getTrackIndex(handle) {
+    return tracks.children().indexOf(handle);
+}
+
+/**
+ * @param {import("@genome-spy/core/types/embedApi.js").ViewHandle} handle
+ * @param {number} offset
+ */
+function canMoveTrack(handle, offset) {
+    const currentIndex = getTrackIndex(handle);
+    const destinationIndex = currentIndex + offset;
+    return (
+        currentIndex >= 0 &&
+        destinationIndex >= 0 &&
+        destinationIndex <= tracks.children().length - 1
     );
 }
 

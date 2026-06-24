@@ -492,15 +492,90 @@ export function createViewMutationApi(genomeSpy) {
     }
 
     /**
+     * @param {ViewAddress} targetAddress
+     * @param {import("../types/embedApi.js").MoveViewOptions} options
      * @returns {Promise<ViewHandle>}
      */
-    function rejectMove() {
-        return Promise.reject(
-            new ViewMutationError(
-                "notImplemented",
-                "View reordering is not implemented yet."
-            )
-        );
+    function move(targetAddress, options) {
+        return enqueue(async () => {
+            const targetView = getView(targetAddress);
+            if (targetView === getRootView() || !targetView.layoutParent) {
+                throw new ViewMutationError(
+                    "cannotMoveRoot",
+                    "Moving the root view is not supported."
+                );
+            }
+
+            const parentView = targetView.layoutParent;
+            const children = getLayoutChildren(parentView);
+            if (!children) {
+                throw new ViewMutationError(
+                    "unsupportedContainer",
+                    "Parent view does not expose layout children."
+                );
+            }
+
+            const fromIndex = children.indexOf(targetView);
+            if (fromIndex < 0) {
+                throw new ViewMutationError(
+                    "invalidHierarchy",
+                    "Target view is not a child of its layout parent."
+                );
+            }
+
+            if (!options) {
+                throw new ViewMutationError(
+                    "invalidIndex",
+                    "Move options with an index are required."
+                );
+            }
+
+            const index = getMoveIndex(options.index, children.length - 1);
+            moveChildWithinMutableContainer(parentView, fromIndex, index);
+
+            return getHandle(targetView);
+        });
+    }
+
+    /**
+     * @param {number | undefined} index
+     * @param {number} remainingChildCount
+     * @returns {number}
+     */
+    function getMoveIndex(index, remainingChildCount) {
+        if (!Number.isInteger(index)) {
+            throw new ViewMutationError(
+                "invalidIndex",
+                "Move index must be an integer."
+            );
+        }
+
+        if (index < 0 || index > remainingChildCount) {
+            throw new ViewMutationError(
+                "invalidIndex",
+                "Move index must be between 0 and the remaining child count."
+            );
+        }
+
+        return index;
+    }
+
+    /**
+     * @param {import("./view.js").default} parentView
+     * @param {number} fromIndex
+     * @param {number} index
+     */
+    function moveChildWithinMutableContainer(parentView, fromIndex, index) {
+        if (parentView instanceof ConcatView) {
+            parentView.moveChildAt(fromIndex, index);
+        } else if (parentView instanceof LayerView) {
+            parentView.moveChildAt(fromIndex, index);
+        } else {
+            throw new ViewMutationError(
+                "unsupportedContainer",
+                "Only concat and layer views support child reordering."
+            );
+        }
     }
 
     /** @type {import("../types/embedApi.js").ViewMutationApi} */
@@ -515,7 +590,7 @@ export function createViewMutationApi(genomeSpy) {
 
         remove,
 
-        move: () => enqueue(rejectMove),
+        move,
 
         transaction: (/** @type {(views: typeof api) => any} */ callback) =>
             enqueue(async () => {

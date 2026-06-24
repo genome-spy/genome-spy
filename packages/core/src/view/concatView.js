@@ -5,6 +5,7 @@ import {
 } from "./viewSpecGuards.js";
 import GridView from "./gridView/gridView.js";
 import ContainerMutationHelper from "./containerMutationHelper.js";
+import { moveArrayItem } from "../utils/arrayUtils.js";
 
 /**
  * Creates a vertically or horizontally concatenated layout for children.
@@ -96,6 +97,19 @@ export default class ConcatView extends GridView {
      */
     async removeChildAt(index) {
         await this.#getMutationHelper().removeChildAt(index);
+    }
+
+    /**
+     * Moves a child within the concat container without recreating it.
+     *
+     * @param {number} fromIndex
+     * @param {number} index Destination index after temporarily removing the child.
+     */
+    moveChildAt(fromIndex, index) {
+        const { specs } = this.#getChildSpecs();
+        moveArrayItem(specs, fromIndex, index);
+        super.moveChildAt(fromIndex, index);
+        this.context.requestLayoutReflow();
     }
 
     /**

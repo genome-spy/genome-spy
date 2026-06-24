@@ -38,6 +38,7 @@ import {
 } from "./gridChildLegends.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
+import { moveArrayItem } from "../../utils/arrayUtils.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
 import {
     clipCoords,
@@ -276,6 +277,17 @@ export default class GridView extends ContainerView {
         }
         this.#disposeGridChild(gridChild);
         this.#children.splice(index, 1);
+        this.invalidateSizeCache();
+    }
+
+    /**
+     * Moves a child within the grid without disposing it.
+     *
+     * @param {number} fromIndex
+     * @param {number} index Destination index after temporarily removing the child.
+     */
+    moveChildAt(fromIndex, index) {
+        moveArrayItem(this.#children, fromIndex, index);
         this.invalidateSizeCache();
     }
 
