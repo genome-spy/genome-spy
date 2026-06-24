@@ -896,6 +896,40 @@ describe("View mutation acid scenarios", () => {
             baselineCollectorCount
         );
     });
+
+    test("fails fast for duplicate names outside explicit scopes", async () => {
+        const { api } = await createViewMutationAcidHarness(
+            makeEmptyTracksSpec()
+        );
+
+        const first = await api.insert(
+            "root",
+            makeTrackSpec("duplicateTrack", "First duplicate"),
+            { scope: "first" }
+        );
+        const second = await api.insert(
+            "root",
+            makeTrackSpec("duplicateTrack", "Second duplicate"),
+            { scope: "second" }
+        );
+
+        expect(api.get({ scope: ["first"], view: "duplicateTrack" })).toBe(
+            first
+        );
+        expect(api.get({ scope: ["second"], view: "duplicateTrack" })).toBe(
+            second
+        );
+        expect(() =>
+            api.resolve({ scope: [], view: "duplicateTrack" })
+        ).toThrow(/ambiguous/i);
+
+        await api.remove(first);
+
+        expect(api.get({ scope: [], view: "duplicateTrack" })).toBe(second);
+        expect(
+            api.resolve({ scope: ["first"], view: "duplicateTrack" })
+        ).toBeUndefined();
+    });
 });
 
 /**

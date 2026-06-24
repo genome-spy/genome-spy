@@ -118,7 +118,7 @@ cover.
     then verify all descendant handles are dead and cannot be used for
     move/remove/layout-bounds operations.
 
-14. Duplicate names across scopes
+14. Duplicate names across scopes - done
 
     Insert views with the same `name` under different scopes. Verify scoped
     selectors resolve correctly and unscoped ambiguous selectors fail fast or
@@ -309,8 +309,9 @@ during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
 data insertion/removal, scoped params/subscription cleanup, repeated scoped spec
 insertion, nested container mutation, transaction batching, failed insertion
-rollback, move render freshness, and implicit root behavior. It does not yet
-cover visibility toggles, encoding mutation, or URL/bookmark restore.
+rollback, move render freshness, implicit root behavior, and duplicate names
+across scopes. It does not yet cover visibility toggles, encoding mutation, or
+URL/bookmark restore.
 
 ## Testability considerations
 
