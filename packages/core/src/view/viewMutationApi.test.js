@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import {
     createHeadlessEngine,
@@ -144,6 +144,103 @@ describe("ViewMutationApi", () => {
         expect(
             chrome.map((descendant) => descendant.getDataInitializationState())
         ).not.toContain("none");
+    });
+
+    test("waits for inserted view fonts before loading data", async () => {
+        const fontEntry = /** @type {any} */ ({
+            metrics: undefined,
+            texture: undefined,
+        });
+        /** @type {(() => void) | undefined} */
+        let resolveFont;
+        let fontRequested = false;
+        const fontReady = new Promise((resolve) => {
+            resolveFont = () => {
+                fontEntry.metrics = /** @type {any} */ ({
+                    capHeight: 8,
+                    descent: 2,
+                    common: { base: 10 },
+                    measureWidth: (
+                        /** @type {string} */ text,
+                        /** @type {number} */ size
+                    ) => text.length * size,
+                });
+                resolve();
+            };
+        });
+        const fontManager = /** @type {any} */ ({
+            getFont: vi.fn(() => {
+                fontRequested = true;
+                return fontEntry;
+            }),
+            getDefaultFont: () => ({
+                metrics: {
+                    capHeight: 8,
+                    descent: 2,
+                    common: { base: 10 },
+                    measureWidth: (
+                        /** @type {string} */ text,
+                        /** @type {number} */ size
+                    ) => text.length * size,
+                },
+            }),
+            waitUntilReady: vi.fn(() =>
+                fontRequested ? fontReady : Promise.resolve()
+            ),
+        });
+        const { view } = await createHeadlessEngine(
+            {
+                name: "tracks",
+                vconcat: [],
+            },
+            {
+                contextOptions: {
+                    fontManager,
+                },
+            }
+        );
+
+        const api = createViewMutationApi({ viewRoot: view });
+        let resolved = false;
+        const insertPromise = api
+            .insert("root", {
+                name: "summary",
+                data: { values: [{ label: "abcd" }] },
+                transform: [
+                    {
+                        type: "measureText",
+                        field: "label",
+                        font: "Roboto Condensed",
+                        fontSize: 6,
+                        as: "width",
+                    },
+                ],
+                mark: "point",
+                encoding: {
+                    x: { field: "width", type: "quantitative" },
+                },
+            })
+            .then(() => {
+                resolved = true;
+            });
+
+        await Promise.resolve();
+        expect(resolved).toBe(false);
+
+        if (!resolveFont) {
+            throw new Error("Expected font resolver.");
+        }
+        resolveFont();
+        await insertPromise;
+
+        const summary = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "summary");
+        const datum = summary?.flowHandle?.collector
+            ? Array.from(summary.flowHandle.collector.getData())[0]
+            : undefined;
+        expect(fontManager.waitUntilReady).toHaveBeenCalled();
+        expect(datum?.width).toBe(24);
     });
 
     test("inserts a direct spec into a layer container", async () => {

@@ -1,8 +1,5 @@
-import {
-    initializeViewSubtree,
-    loadViewSubtreeData,
-} from "../data/flowInit.js";
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
+import { initializeViewDataForViews } from "../genomeSpy/viewDataInit.js";
 import {
     attachViewLevelScaleConfigs,
     clearViewLevelScaleConfigs,
@@ -13,7 +10,6 @@ import {
     clearViewLevelGuideConfigs,
 } from "../scales/viewLevelGuideConfig.js";
 import { isChromeView } from "./viewSelectors.js";
-import { finalizeSubtreeGraphics } from "./viewUtils.js";
 
 /**
  * @param {unknown} value
@@ -120,17 +116,12 @@ export default class ContainerMutationHelper {
             view.configureViewOpacity();
         }
 
-        const visibilityPredicate = (
-            /** @type {import("./view.js").default} */ view
-        ) => view.isConfiguredVisible();
-        const { dataSources, graphicsPromises } = initializeViewSubtree(
+        await initializeViewDataForViews(
             this.container,
             this.container.context.dataFlow,
-            visibilityPredicate,
-            (view) => viewsToInitialize.has(view)
+            this.container.context.fontManager,
+            viewsToInitialize
         );
-        await loadViewSubtreeData(childView, dataSources);
-        await finalizeSubtreeGraphics(graphicsPromises);
 
         if (this.options.requestLayout !== false) {
             this.container.invalidateSizeCache();

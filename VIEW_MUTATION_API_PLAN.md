@@ -440,21 +440,21 @@ harness that can drive ordered mutations and inspect stable invariants.
 
 ## Suggested Implementation Steps
 
-1. Keep the public declaration surface in
+1. **Done.** Keep the public declaration surface in
    `packages/core/src/types/embedApi.d.ts` as the compatibility contract. Changes
    after the first release should be additive unless a breaking change is
    explicitly versioned.
 
-   Tentative commit: `feat(core): declare view mutation API`.
+   Commit: `4c0082b9 feat(core): add view mutation API declarations`.
 
-2. Add a small internal `viewMutationApi` module that owns `ViewHandle`
+2. **Done.** Add a small internal `viewMutationApi` module that owns `ViewHandle`
    creation, handle liveness, address resolution, operation serialization, and
    public error shaping with simple stable error codes. It should wrap internal
    `View` objects without exposing them.
 
-   Tentative commit: `feat(core): add view mutation API facade`.
+   Commit: `af0a632c feat: add view mutation API facade`.
 
-3. Add a new `packages/embed-examples` development example early, for example
+3. **Done.** Add a new `packages/embed-examples` development example early, for example
    `viewMutationApi.html` and `viewMutationApi.js`, and link it from
    `packages/embed-examples/src/index.html`. Start with the smallest working
    flow as soon as `api.views.root()` and address resolution exist, then keep
@@ -464,16 +464,20 @@ harness that can drive ordered mutations and inspect stable invariants.
    view, reordering tracks with `move()`, removing a track, and showing a
    compact UI state derived from handles.
 
-   Tentative commit: `feat(embed-examples): add view mutation API example`.
+   Commits: `af0a632c feat: add view mutation API facade`,
+   `745af1bb feat(core): implement view insertion API`,
+   `5df2420e feat(core): implement view removal API`,
+   `9191bbb4 feat(core): implement view reordering API`, and
+   `6055f733 chore(embed-example): update example`.
 
-4. Attach `views: createViewMutationApi(genomeSpy)` in `embedFactory.js`.
+4. **Done.** Attach `views: createViewMutationApi(genomeSpy)` in `embedFactory.js`.
    `GenomeSpy` already owns `viewRoot`, layout/render hooks, dataflow, and the
    context needed by the mutation coordinator, so the API factory should use
    those existing entry points instead of duplicating lifecycle state.
 
-   Tentative commit: `feat(core): expose view mutation API from embed`.
+   Commit: `af0a632c feat: add view mutation API facade`.
 
-5. Generalize selector scope registration. The existing import-scope machinery
+5. **Done.** Generalize selector scope registration. The existing import-scope machinery
    can already resolve scoped selectors, but `options.scope` must work for
    ordinary `ViewSpec` insertions as well as `ImportSpec` insertions. Consider
    renaming or wrapping `registerImportInstance()` internally so the mutation
@@ -481,72 +485,87 @@ harness that can drive ordered mutations and inspect stable invariants.
    model import-specific. Reject duplicate named scopes in the same enclosing
    selector scope before committing an insertion.
 
-   Tentative commit: `feat(core): support mutation scopes for direct specs`.
+   Commit: `745af1bb feat(core): implement view insertion API`.
 
-6. Harden index handling before exposing it publicly. Validate insert and move
+6. **Done.** Harden index handling before exposing it publicly. Validate insert and move
    indices explicitly instead of relying on `Array.splice()` semantics. Use the
    documented move rule: destination index is interpreted after temporarily
    removing the target from its current parent.
 
-   Tentative commit: `fix(core): validate view mutation indices`.
+   Commits: `745af1bb feat(core): implement view insertion API` and
+   `9191bbb4 feat(core): implement view reordering API`.
 
-7. Refactor container mutation lifecycle so public insert/remove operations call
+7. **Done for the initial API.** Refactor container mutation lifecycle so public insert/remove operations call
    one coordinator. The coordinator should cover create/import, spec cloning,
    backing spec updates, view insertion/removal, config reattachment, assembly
    preflight, opacity setup, subtree dataflow/graphics initialization, guide
    refresh, layout invalidation, and render scheduling.
 
-   Tentative commit: `refactor(core): centralize view mutation lifecycle`.
+   Commits: `745af1bb feat(core): implement view insertion API`,
+   `5df2420e feat(core): implement view removal API`, and
+   `3390f9c4 fix(core): initialize chrome for inserted views`.
+   Remaining reliability work is tracked separately in steps 10 and 11.
 
-8. Add non-disposing same-parent reorder support to `ConcatView`, `LayerView`,
+8. **Done.** Add non-disposing same-parent reorder support to `ConcatView`, `LayerView`,
    and shared helper code. Reorder must update both the backing spec list and
    live child list without rebuilding dataflow, disposing collectors, or
    reloading data.
 
-   Tentative commit: `feat(core): support same-parent view reordering`.
+   Commit: `9191bbb4 feat(core): implement view reordering API`.
 
-9. Add a guide/chrome refresh helper that covers the same artifacts after
+9. **Partial.** Add a guide/chrome refresh helper that covers the same artifacts after
    mutation as initial setup does: shared axes, grid-child axes and gridlines,
    shared legends, local legend regions, and relevant layout decorations. The
    current dynamic path already refreshes shared axes, but public mutation needs
    a single helper that includes legends too.
 
-   Tentative commit: `fix(core): refresh guides consistently after mutations`.
+   Current work initializes newly created chrome for inserted views:
+   `3390f9c4 fix(core): initialize chrome for inserted views`. A single
+   consolidated guide/chrome refresh helper is still pending.
 
-10. Replace the insertion data-loading path with logic compatible with
+10. **Done.** Replace the insertion data-loading path with logic compatible with
    `initializeVisibleViewData`. Inserted branches should repropagate completed
    ancestor collectors when possible, queue reloads for sources already loading,
    and load new subtree-owned sources directly.
 
+    Implemented by extracting a shared selected-view initialization helper from
+    `initializeVisibleViewData` and using it for dynamic insertions. This also
+    makes inserted branches wait for newly requested fonts before loading data.
+
     Tentative commit: `fix(core): populate inserted view data reliably`.
 
-11. Implement operation-level rollback for failed insertions. If an insertion
+11. **Todo.** Implement operation-level rollback for failed insertions. If an insertion
     has touched the backing spec or live hierarchy before a later lifecycle step
     fails, remove the partial view/spec, dispose the subtree, refresh configs and
     guides, then rethrow the original error.
 
     Tentative commit: `fix(core): roll back failed view insertions`.
 
-12. Implement `transaction()` as ordered operation batching. The first version
+12. **Partial.** Implement `transaction()` as ordered operation batching. The first version
     can avoid full transaction rollback, but it should defer layout/render work
     until the callback finishes and then run final lifecycle cleanup once.
     Nested transactions should join the active transaction.
 
+    The facade currently serializes operations and lets nested transactions join
+    the active operation queue, but layout/render deferral and final lifecycle
+    cleanup batching are still pending.
+
     Tentative commit: `feat(core): batch view mutation transactions`.
 
-13. Add focused unit tests close to the lifecycle code for address resolution,
+13. **Done for current behavior.** Add focused unit tests close to the lifecycle code for address resolution,
     handle liveness, scoped ordinary-spec insertion, index validation,
     insert/remove/reorder behavior, and guide/dataflow invariants.
 
-    Tentative commit: `test(core): cover view mutation API behavior`.
+    Covered across `af0a632c`, `745af1bb`, `5df2420e`, `9191bbb4`, and
+    `3390f9c4`. Additional tests should be added with future lifecycle work.
 
-14. Expand the acid-test plan into executable mutation scenarios that compare a
+14. **Todo.** Expand the acid-test plan into executable mutation scenarios that compare a
     normalized internal hierarchy before and after complex mutation sequences
     that are canceled immediately.
 
     Tentative commit: `test(core): add view mutation acid scenarios`.
 
-15. Document the public API in `docs/api.md` once the runtime behavior and
+15. **Todo.** Document the public API in `docs/api.md` once the runtime behavior and
     example have stabilized.
 
     Tentative commit: `docs(core): document view mutation API`.
