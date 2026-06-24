@@ -80,4 +80,120 @@ describe("ViewMutationApi", () => {
         expect(api.resolve(child)).toBeUndefined();
         expect(() => api.get(child)).toThrow(/stale/i);
     });
+
+    test("inserts a direct spec into a concat container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const childSpec = makeUnitSpec("trackA");
+        const inserted = await api.insert("root", childSpec, { index: 0 });
+
+        expect(inserted.name).toBe("trackA");
+        expect(inserted.parent()).toBe(api.root());
+        expect(api.root().children()).toEqual([inserted]);
+        expect(api.get({ scope: [], view: "trackA" })).toBe(inserted);
+        expect(/** @type {any} */ (view).spec.vconcat[0]).not.toBe(childSpec);
+    });
+
+    test("inserts a direct spec into a layer container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            layer: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const inserted = await api.insert("root", makeUnitSpec("trackA"));
+
+        expect(inserted.type).toBe("unit");
+        expect(api.root().children()).toEqual([inserted]);
+    });
+
+    test("registers explicit scopes for inserted direct specs", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        await api.insert(
+            "root",
+            {
+                name: "summary",
+                vconcat: [makeUnitSpec("coverage")],
+            },
+            { scope: "sampleA" }
+        );
+
+        expect(api.get({ scope: ["sampleA"], view: "coverage" }).name).toBe(
+            "coverage"
+        );
+    });
+
+    test("rejects invalid insert indexes without mutating the container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(
+            api.insert("root", makeUnitSpec("trackA"), { index: 1 })
+        ).rejects.toMatchObject({ code: "invalidIndex" });
+        expect(api.root().children()).toHaveLength(0);
+    });
+
+    test("rejects duplicate scopes in the same scope", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await api.insert("root", makeUnitSpec("trackA"), {
+            scope: "sampleA",
+        });
+
+        await expect(
+            api.insert("root", makeUnitSpec("trackB"), {
+                scope: "sampleA",
+            })
+        ).rejects.toMatchObject({ code: "duplicateScope" });
+        expect(api.root().children()).toHaveLength(1);
+    });
+
+    test("rejects insertion under unsupported parent views", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const unit = api.get({ scope: [], view: "trackA" });
+
+        await expect(
+            api.insert(unit, makeUnitSpec("trackB"))
+        ).rejects.toMatchObject({ code: "unsupportedContainer" });
+    });
+
+    test("rejects unsupported child specs for layer containers", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            layer: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(
+            api.insert("root", {
+                name: "nestedConcat",
+                vconcat: [makeUnitSpec("trackA")],
+            })
+        ).rejects.toMatchObject({ code: "unsupportedChildSpec" });
+        expect(api.root().children()).toHaveLength(0);
+    });
 });

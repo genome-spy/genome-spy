@@ -81,7 +81,7 @@ export default class ConcatView extends GridView {
      * Callers should prefer this over direct GridView insertion to ensure
      * dataflow initialization, axis wiring, and layout reflow are handled.
      *
-     * @param {import("../spec/view.js").ViewSpec} childSpec
+     * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} childSpec
      * @param {number} [index]
      * @returns {Promise<import("./view.js").default>}
      */

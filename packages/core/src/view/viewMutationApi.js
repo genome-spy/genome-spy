@@ -1,8 +1,16 @@
 import ConcatView from "./concatView.js";
 import GridView from "./gridView/gridView.js";
 import LayerView from "./layerView.js";
+import { isMultiscaleSpec } from "./multiscale.js";
 import UnitView from "./unitView.js";
-import { getViewSelector, resolveViewSelector } from "./viewSelectors.js";
+import { isImportSpec, isLayerSpec, isUnitSpec } from "./viewSpecGuards.js";
+import {
+    getImportScopeInfo,
+    getViewScopeChain,
+    getViewSelector,
+    registerImportInstance,
+    resolveViewSelector,
+} from "./viewSelectors.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -208,6 +216,23 @@ export function createViewMutationApi(genomeSpy) {
     }
 
     /**
+     * @param {ViewAddress} address
+     * @returns {import("./view.js").default}
+     */
+    function getView(address) {
+        const handle = get(address);
+        const view = viewsByHandle.get(handle);
+        if (!view) {
+            throw new ViewMutationError(
+                "invalidAddress",
+                "View handle is not owned by this GenomeSpy instance."
+            );
+        }
+
+        return view;
+    }
+
+    /**
      * @template T
      * @param {() => T | Promise<T>} operation
      * @returns {Promise<T>}
@@ -228,14 +253,189 @@ export function createViewMutationApi(genomeSpy) {
     function clearQueueValue() {}
 
     /**
+     * @param {ViewAddress} parentAddress
+     * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} spec
+     * @param {import("../types/embedApi.js").InsertViewOptions} [options]
      * @returns {Promise<ViewHandle>}
      */
-    function rejectInsert() {
-        return Promise.reject(
-            new ViewMutationError(
-                "notImplemented",
-                "View insertion is not implemented yet."
-            )
+    function insert(parentAddress, spec, options = {}) {
+        return enqueue(async () => {
+            const parentView = getView(parentAddress);
+            const childCount = getMutableContainerChildCount(parentView);
+            const index = getInsertIndex(options.index, childCount);
+            const scopeName = getInsertScopeName(spec, options);
+
+            if (scopeName !== undefined && typeof scopeName === "string") {
+                ensureScopeNameIsAvailable(parentView, scopeName);
+            }
+
+            const childSpec = structuredClone(spec);
+            const childView = await addChildToMutableContainer(
+                parentView,
+                childSpec,
+                index
+            );
+
+            if (options.scope !== undefined) {
+                registerImportInstance(childView, options.scope);
+            }
+
+            return getHandle(childView);
+        });
+    }
+
+    /**
+     * @param {import("./view.js").default} parentView
+     * @returns {number}
+     */
+    function getMutableContainerChildCount(parentView) {
+        if (
+            !(parentView instanceof ConcatView) &&
+            !(parentView instanceof LayerView)
+        ) {
+            throw new ViewMutationError(
+                "unsupportedContainer",
+                "Only concat and layer views support child insertion."
+            );
+        }
+
+        const children = getLayoutChildren(parentView);
+        if (!children) {
+            throw new ViewMutationError(
+                "unsupportedContainer",
+                "Mutable container does not expose layout children."
+            );
+        }
+
+        return children.length;
+    }
+
+    /**
+     * @param {import("./view.js").default} parentView
+     * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} childSpec
+     * @param {number} index
+     * @returns {Promise<import("./view.js").default>}
+     */
+    async function addChildToMutableContainer(parentView, childSpec, index) {
+        if (parentView instanceof ConcatView) {
+            return parentView.addChildSpec(childSpec, index);
+        } else if (parentView instanceof LayerView) {
+            if (!isLayerChildSpec(childSpec)) {
+                throw new ViewMutationError(
+                    "unsupportedChildSpec",
+                    "Layer views accept only unit, layer, multiscale, or import specs as children."
+                );
+            }
+
+            return parentView.addChildSpec(childSpec, index);
+        }
+
+        throw new ViewMutationError(
+            "unsupportedContainer",
+            "Only concat and layer views support child insertion."
+        );
+    }
+
+    /**
+     * @param {number | undefined} index
+     * @param {number} childCount
+     * @returns {number}
+     */
+    function getInsertIndex(index, childCount) {
+        const insertIndex = index ?? childCount;
+
+        if (!Number.isInteger(insertIndex)) {
+            throw new ViewMutationError(
+                "invalidIndex",
+                "Insert index must be an integer."
+            );
+        }
+
+        if (insertIndex < 0 || insertIndex > childCount) {
+            throw new ViewMutationError(
+                "invalidIndex",
+                "Insert index must be between 0 and the current child count."
+            );
+        }
+
+        return insertIndex;
+    }
+
+    /**
+     * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} spec
+     * @param {import("../types/embedApi.js").InsertViewOptions} options
+     * @returns {string | null | undefined}
+     */
+    function getInsertScopeName(spec, options) {
+        const importScopeName =
+            isImportSpec(spec) && "name" in spec ? spec.name : undefined;
+
+        if (
+            options.scope !== undefined &&
+            importScopeName !== undefined &&
+            options.scope !== importScopeName
+        ) {
+            throw new ViewMutationError(
+                "scopeMismatch",
+                "Insert scope must match the import instance name."
+            );
+        }
+
+        return options.scope ?? importScopeName;
+    }
+
+    /**
+     * @param {import("./view.js").default} parentView
+     * @param {string} scopeName
+     */
+    function ensureScopeNameIsAvailable(parentView, scopeName) {
+        const parentScope = getViewScopeChain(parentView);
+        const targetScope = parentScope.concat(scopeName);
+
+        getRootView().visit((view) => {
+            const info = getImportScopeInfo(view);
+            if (
+                info &&
+                info.name === scopeName &&
+                scopesEqual(getViewScopeChain(view), targetScope)
+            ) {
+                throw new ViewMutationError(
+                    "duplicateScope",
+                    'Scope "' + scopeName + '" already exists.'
+                );
+            }
+        });
+    }
+
+    /**
+     * @param {string[]} a
+     * @param {string[]} b
+     * @returns {boolean}
+     */
+    function scopesEqual(a, b) {
+        if (a.length !== b.length) {
+            return false;
+        }
+
+        return a.every((value, index) => value === b[index]);
+    }
+
+    /**
+     * @param {import("../spec/view.js").ViewSpec | import("../spec/view.js").ImportSpec} spec
+     * @returns {spec is import("../spec/view.js").UnitSpec | import("../spec/view.js").LayerSpec | import("../spec/view.js").MultiscaleSpec | import("../spec/view.js").ImportSpec}
+     */
+    function isLayerChildSpec(spec) {
+        if (isImportSpec(spec)) {
+            return true;
+        }
+
+        const viewSpec = /** @type {import("../spec/view.js").ViewSpec} */ (
+            spec
+        );
+        return (
+            isUnitSpec(viewSpec) ||
+            isLayerSpec(viewSpec) ||
+            isMultiscaleSpec(viewSpec)
         );
     }
 
@@ -271,7 +471,7 @@ export function createViewMutationApi(genomeSpy) {
 
         get,
 
-        insert: () => enqueue(rejectInsert),
+        insert,
 
         remove: () => enqueue(rejectRemove),
 

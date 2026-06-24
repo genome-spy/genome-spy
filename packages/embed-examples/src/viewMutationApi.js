@@ -26,6 +26,30 @@ const signalTrack = {
 };
 
 /** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
+const summaryTrack = {
+    name: "summary",
+    height: 50,
+    data: {
+        values: [
+            { pos: 0, value: 0.35 },
+            { pos: 1, value: 0.7 },
+            { pos: 2, value: 0.5 },
+            { pos: 3, value: 0.65 },
+        ],
+    },
+    mark: "bar",
+    encoding: {
+        x: {
+            field: "pos",
+            type: "index",
+            scale: { name: "position" },
+        },
+        y: { field: "value", type: "quantitative" },
+        color: { value: "seagreen" },
+    },
+};
+
+/** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
 const variantsTrack = {
     name: "variants",
     height: 60,
@@ -68,14 +92,42 @@ const root = api.views.root();
 const tracks = api.views.get({ scope: [], view: "tracks" });
 const signal = api.views.get({ scope: [], view: "signal" });
 
+/** @type {{ scope: string, handle: import("@genome-spy/core/types/embedApi.js").ViewHandle }[]} */
+const insertedSummaries = [];
+
+let nextSummaryIndex = 1;
+let status = "Ready";
+
 updateDashboard();
+
+async function insertSummaryTrack() {
+    const scope = "summary-" + nextSummaryIndex;
+
+    try {
+        const handle = await api.views.insert(tracks, summaryTrack, {
+            scope,
+        });
+        insertedSummaries.push({ scope, handle });
+        nextSummaryIndex++;
+        status = "Inserted " + scope;
+    } catch (error) {
+        status =
+            error instanceof Error ? error.message : "Summary insert failed";
+    }
+
+    updateDashboard();
+}
 
 function updateDashboard() {
     render(
         html`
             <p>
                 <button @click=${updateDashboard}>Refresh handles</button>
+                <button @click=${insertSummaryTrack}>
+                    Insert summary track
+                </button>
             </p>
+            <p>Status: ${status}</p>
             <dl>
                 <dt>Root</dt>
                 <dd><code>${JSON.stringify(summarizeHandle(root))}</code></dd>
@@ -85,6 +137,22 @@ function updateDashboard() {
 
                 <dt>Signal</dt>
                 <dd><code>${JSON.stringify(summarizeHandle(signal))}</code></dd>
+
+                <dt>Inserted summaries</dt>
+                <dd>
+                    <code
+                        >${JSON.stringify(
+                            insertedSummaries.map(({ scope, handle }) => ({
+                                scope,
+                                handle: summarizeHandle(handle),
+                                scopedSelector: api.views.get({
+                                    scope: [scope],
+                                    view: "summary",
+                                }).selector,
+                            }))
+                        )}</code
+                    >
+                </dd>
             </dl>
         `,
         dashboard

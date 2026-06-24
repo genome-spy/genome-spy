@@ -73,7 +73,7 @@ export default class LayerView extends ContainerView {
     /**
      * Adds a child spec dynamically. Intended for post-initialization updates.
      *
-     * @param {import("../spec/view.js").LayerSpec | import("../spec/view.js").UnitSpec | import("../spec/view.js").ImportSpec} childSpec
+     * @param {import("../spec/view.js").LayerSpec | import("../spec/view.js").UnitSpec | import("../spec/view.js").MultiscaleSpec | import("../spec/view.js").ImportSpec} childSpec
      * @param {number} [index]
      * @returns {Promise<LayerView | import("./unitView.js").default>}
      */
