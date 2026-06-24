@@ -93,7 +93,7 @@ cover.
    spec, live child list, guide views, dataflow collectors, and handles roll
    back.
 
-10. Move render freshness
+10. Move render freshness - done
 
    Reorder tracks where layout bounds change but data does not reload. Verify
    the canvas changes immediately without resize and overlay controls update
@@ -277,7 +277,7 @@ Suggested order:
 
     Commit shape: `test(core): cover failed insertion rollback`.
 
-11. Next: Implement move render freshness coverage.
+11. Done: Implement move render freshness coverage.
 
     Commit shape: `test(core): cover render scheduling after view move`.
 
@@ -308,9 +308,9 @@ Current executable coverage includes round-trip cancellation, lazy insertion
 during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
 data insertion/removal, scoped params/subscription cleanup, repeated scoped spec
-insertion, nested container mutation, transaction batching, and failed insertion
-rollback. It does not yet cover visibility toggles, encoding mutation, or
-URL/bookmark restore.
+insertion, nested container mutation, transaction batching, failed insertion
+rollback, and move render freshness. It does not yet cover visibility toggles,
+encoding mutation, or URL/bookmark restore.
 
 ## Testability considerations
 

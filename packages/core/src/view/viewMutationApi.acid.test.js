@@ -212,6 +212,33 @@ function makeNestedContainerAcidSpec() {
 }
 
 /**
+ * @returns {import("../spec/view.js").VConcatSpec}
+ */
+function makeMoveFreshnessAcidSpec() {
+    return {
+        name: "tracks",
+        vconcat: [
+            makeFixedHeightTrackSpec("trackA", "Track A", 40),
+            makeFixedHeightTrackSpec("trackB", "Track B", 50),
+            makeFixedHeightTrackSpec("trackC", "Track C", 60),
+        ],
+    };
+}
+
+/**
+ * @param {string} name
+ * @param {string} title
+ * @param {number} height
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeFixedHeightTrackSpec(name, title, height) {
+    return {
+        ...makeTrackSpec(name, title),
+        height,
+    };
+}
+
+/**
  * @param {string} name
  * @param {string} title
  * @returns {import("../spec/view.js").UnitSpec}
@@ -767,6 +794,68 @@ describe("View mutation acid scenarios", () => {
             baselineCollectorCount
         );
         expect(createMutationAcidSnapshot(view)).toEqual(baselineSnapshot);
+    });
+
+    test("updates layout bounds and listeners after moving a child", async () => {
+        /** @type {Set<(message: import("./view.js").BroadcastMessage) => void>} */
+        const layoutListeners = new Set();
+        /** @type {import("./view.js").default | undefined} */
+        let viewRoot;
+        const requestLayoutReflow = vi.fn(() => {
+            if (viewRoot) {
+                createMutationAcidSnapshot(viewRoot);
+                for (const listener of layoutListeners) {
+                    listener({ type: "layoutComputed" });
+                }
+            }
+        });
+        const { view, api } = await createViewMutationAcidHarness(
+            makeMoveFreshnessAcidSpec(),
+            {
+                contextOptions: {
+                    requestLayoutReflow,
+                    addBroadcastListener: (type, listener) => {
+                        if (type === "layoutComputed") {
+                            layoutListeners.add(listener);
+                        }
+                    },
+                    removeBroadcastListener: (type, listener) => {
+                        if (type === "layoutComputed") {
+                            layoutListeners.delete(listener);
+                        }
+                    },
+                },
+            }
+        );
+        viewRoot = view;
+        createMutationAcidSnapshot(view);
+        requestLayoutReflow.mockClear();
+
+        const trackC = api.get({ scope: [], view: "trackC" });
+        const beforeMove = api.getLayoutBounds(trackC);
+        let layoutEvents = 0;
+        const unsubscribe = api.subscribeToLayout(() => {
+            layoutEvents += 1;
+        });
+
+        try {
+            // Moving an existing view should synchronously request a fresh
+            // layout and make overlay-style callers see the new bounds.
+            await api.move(trackC, { index: 0 });
+
+            const afterMove = api.getLayoutBounds(trackC);
+            expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+            expect(layoutEvents).toBe(1);
+            expect(afterMove?.y).not.toBe(beforeMove?.y);
+            expect(
+                api
+                    .root()
+                    .children()
+                    .map((child) => child.name)
+            ).toEqual(["trackC", "trackA", "trackB"]);
+        } finally {
+            unsubscribe();
+        }
     });
 });
 
