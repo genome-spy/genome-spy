@@ -68,7 +68,7 @@ cover.
    disposed with the view subtree, and that pre-existing param subscriptions
    survive round-trip cancellation.
 
-6. Repeated same spec object with scopes
+6. Repeated same spec object with scopes - done
 
    Insert the exact same `ViewSpec` object multiple times using different
    scopes. Verify independent handles, selectors, titles/data, no shared spec
@@ -261,11 +261,11 @@ Suggested order:
 
    Commit shape: `test(core): cover params across view mutations`.
 
-7. Next: Implement repeated same-spec insertion with scopes.
+7. Done: Implement repeated same-spec insertion with scopes.
 
    Commit shape: `test(core): cover repeated scoped spec insertion`.
 
-8. Implement nested container mutation coverage.
+8. Next: Implement nested container mutation coverage.
 
    Commit shape: `test(core): cover nested container view mutations`.
 
@@ -307,8 +307,9 @@ ownership.
 Current executable coverage includes round-trip cancellation, lazy insertion
 during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
-data insertion/removal, and scoped params/subscription cleanup. It does not yet
-cover visibility toggles, encoding mutation, or URL/bookmark restore.
+data insertion/removal, scoped params/subscription cleanup, and repeated scoped
+spec insertion. It does not yet cover visibility toggles, encoding mutation, or
+URL/bookmark restore.
 
 ## Testability considerations
 

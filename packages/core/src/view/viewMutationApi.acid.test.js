@@ -180,6 +180,16 @@ function makeParamAcidSpec() {
 }
 
 /**
+ * @returns {import("../spec/view.js").VConcatSpec}
+ */
+function makeEmptyTracksSpec() {
+    return {
+        name: "tracks",
+        vconcat: [],
+    };
+}
+
+/**
  * @param {string} name
  * @param {string} title
  * @returns {import("../spec/view.js").UnitSpec}
@@ -555,6 +565,64 @@ describe("View mutation acid scenarios", () => {
         } finally {
             unsubscribeRoot();
         }
+    });
+
+    test("inserts the same spec object multiple times using independent scopes", async () => {
+        const { view, api, context } = await createViewMutationAcidHarness(
+            makeEmptyTracksSpec()
+        );
+        const baselineSnapshot = createMutationAcidSnapshot(view);
+        const baselineDataSourceCount = context.dataFlow.dataSources.length;
+        const baselineCollectorCount = context.dataFlow.collectors.length;
+        const reusableSpec = makeTrackSpec("reusedTrack", "Reusable");
+        const originalReusableSpec = structuredClone(reusableSpec);
+
+        // Public insertion must clone the caller's spec. Scopes make the two
+        // otherwise identical view names independently addressable.
+        const first = await api.insert("root", reusableSpec, {
+            scope: "sampleA",
+        });
+        const second = await api.insert("root", reusableSpec, {
+            scope: "sampleB",
+        });
+
+        expect(reusableSpec).toEqual(originalReusableSpec);
+        expect(first).not.toBe(second);
+        expect(first.selector).toEqual({
+            scope: ["sampleA"],
+            view: "reusedTrack",
+        });
+        expect(second.selector).toEqual({
+            scope: ["sampleB"],
+            view: "reusedTrack",
+        });
+        expect(api.get({ scope: ["sampleA"], view: "reusedTrack" })).toBe(
+            first
+        );
+        expect(api.get({ scope: ["sampleB"], view: "reusedTrack" })).toBe(
+            second
+        );
+
+        await api.remove(first);
+
+        expect(first.isAlive()).toBe(false);
+        expect(second.isAlive()).toBe(true);
+        expect(
+            api.resolve({ scope: ["sampleA"], view: "reusedTrack" })
+        ).toBeUndefined();
+        expect(countCollectorRows(getRequiredView(view, "reusedTrack"))).toBe(
+            2
+        );
+
+        await api.remove(second);
+
+        expect(createMutationAcidSnapshot(view)).toEqual(baselineSnapshot);
+        expect(context.dataFlow.dataSources).toHaveLength(
+            baselineDataSourceCount
+        );
+        expect(context.dataFlow.collectors).toHaveLength(
+            baselineCollectorCount
+        );
     });
 });
 
