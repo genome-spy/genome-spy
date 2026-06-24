@@ -291,6 +291,31 @@ describe("ViewMutationApi", () => {
         expect(api.root().children()).toHaveLength(0);
     });
 
+    test("rolls back partially inserted views when initialization fails", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "tracks",
+            vconcat: [],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(
+            api.insert("root", {
+                name: "badTrack",
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                },
+            })
+        ).rejects.toThrow(/data source/i);
+        expect(api.root().children()).toHaveLength(0);
+        expect(
+            /** @type {import("../spec/view.js").VConcatSpec} */ (view.spec)
+                .vconcat
+        ).toHaveLength(0);
+        expect(api.resolve({ scope: [], view: "badTrack" })).toBeUndefined();
+    });
+
     test("rejects duplicate scopes in the same scope", async () => {
         const { view } = await createHeadlessViewHierarchy({
             name: "tracks",

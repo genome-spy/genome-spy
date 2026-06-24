@@ -534,10 +534,14 @@ harness that can drive ordered mutations and inspect stable invariants.
 
     Tentative commit: `fix(core): populate inserted view data reliably`.
 
-11. **Todo.** Implement operation-level rollback for failed insertions. If an insertion
+11. **Done.** Implement operation-level rollback for failed insertions. If an insertion
     has touched the backing spec or live hierarchy before a later lifecycle step
     fails, remove the partial view/spec, dispose the subtree, refresh configs and
     guides, then rethrow the original error.
+
+    Implemented in the shared container mutation helper. Failed post-insertion
+    lifecycle work removes the partial live child and backing spec entry, then
+    rethrows the original error.
 
     Tentative commit: `fix(core): roll back failed view insertions`.
 

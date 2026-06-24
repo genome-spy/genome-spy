@@ -70,12 +70,14 @@ export default class ContainerMutationHelper {
      * @returns {Promise<View>}
      */
     async addChildSpec(childSpec, index) {
-        const { specs, insertAt } = this.options.getChildSpecs();
+        const { specs, insertAt, removeAt } = this.options.getChildSpecs();
         const insertIndex = index ?? specs.length;
         const name =
             this.options.defaultName?.(insertIndex, childSpec) ??
             this.container.getNextAutoName("child");
 
+        let specInserted = false;
+        let viewInserted = false;
         const childView = await this.container.context.createOrImportView(
             childSpec,
             this.container,
@@ -85,43 +87,58 @@ export default class ContainerMutationHelper {
             this.options.createViewOptions
         );
 
-        insertAt(insertIndex, childSpec);
-        const insertionResult = this.options.insertView(childView, insertIndex);
-
-        attachViewLevelScaleConfigs(this.container);
-        attachViewLevelAxisConfigs(this.container);
-        attachViewLevelLegendConfigs(this.container);
-
-        // Reminder: ensure assemblies from the real child hierarchy before any
-        // downstream work that may initialize scales (axis prep / encoders).
-        await ensureAssembliesForView(
-            childView,
-            this.container.context.genomeStore
-        );
-
-        if (this.options.prepareView) {
-            await this.options.prepareView(
+        try {
+            insertAt(insertIndex, childSpec);
+            specInserted = true;
+            const insertionResult = this.options.insertView(
                 childView,
-                insertIndex,
+                insertIndex
+            );
+            viewInserted = true;
+
+            attachViewLevelScaleConfigs(this.container);
+            attachViewLevelAxisConfigs(this.container);
+            attachViewLevelLegendConfigs(this.container);
+
+            // Reminder: ensure assemblies from the real child hierarchy before any
+            // downstream work that may initialize scales (axis prep / encoders).
+            await ensureAssembliesForView(
+                childView,
+                this.container.context.genomeStore
+            );
+
+            if (this.options.prepareView) {
+                await this.options.prepareView(
+                    childView,
+                    insertIndex,
+                    insertionResult
+                );
+            }
+
+            const viewsToInitialize = collectMutationInitializedViews(
+                this.container,
+                childView,
                 insertionResult
             );
-        }
+            for (const view of viewsToInitialize) {
+                view.configureViewOpacity();
+            }
 
-        const viewsToInitialize = collectMutationInitializedViews(
-            this.container,
-            childView,
-            insertionResult
-        );
-        for (const view of viewsToInitialize) {
-            view.configureViewOpacity();
-        }
+            await initializeViewDataForViews(
+                this.container,
+                this.container.context.dataFlow,
+                this.container.context.fontManager,
+                viewsToInitialize
+            );
+        } catch (error) {
+            if (viewInserted) {
+                await this.#rollbackInsertedChild(insertIndex, error);
+            } else if (specInserted) {
+                removeAt(insertIndex);
+            }
 
-        await initializeViewDataForViews(
-            this.container,
-            this.container.context.dataFlow,
-            this.container.context.fontManager,
-            viewsToInitialize
-        );
+            throw error;
+        }
 
         if (this.options.requestLayout !== false) {
             this.container.invalidateSizeCache();
@@ -129,6 +146,18 @@ export default class ContainerMutationHelper {
         }
 
         return childView;
+    }
+
+    /**
+     * @param {number} index
+     * @param {unknown} originalError
+     */
+    async #rollbackInsertedChild(index, originalError) {
+        try {
+            await this.removeChildAt(index);
+        } catch (rollbackError) {
+            /** @type {any} */ (originalError).rollbackError = rollbackError;
+        }
     }
 
     /**
