@@ -6320,6 +6320,110 @@ exports[`shared examples > initializes examples/docs/genomic-data/genomic-coordi
 }
 `;
 
+exports[`shared examples > initializes examples/docs/grammar/axis/genome-axis.json 1`] = `
+{
+  "assemblies": [
+    "hg38",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/axis/inside-axis.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/grammar/composition/concat/child-sizing.json 1`] = `
 {
   "assemblies": [],
@@ -9888,57 +9992,6 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/two-way-
       },
     ],
     "name": "viewRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
-exports[`shared examples > initializes examples/docs/grammar/scale/genome-axis.json 1`] = `
-{
-  "assemblies": [
-    "hg38",
-  ],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisGenomeSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisGenomeSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisGenomeSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": null,
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid0",
-        "type": "UnitView",
-      },
-    ],
-    "name": "implicitRoot",
     "type": "ConcatView",
   },
 }
