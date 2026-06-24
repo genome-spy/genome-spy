@@ -450,6 +450,9 @@ and clinical data. Make the following defaults conservative:
 
 ### Phase 1: App Read-Only Hierarchy Inspector
 
+Tentative commit: `feat(inspector): add app hierarchy inspector`
+Status: Implemented.
+
 - Add `@genome-spy/inspector` package.
 - Add `InspectorSession` inside the plugin package.
 - Add view snapshot builder with authored/all chrome modes.
@@ -462,6 +465,8 @@ and clinical data. Make the following defaults conservative:
 
 ### Phase 2: App Resolutions And Encodings
 
+Tentative commit: `feat(inspector): inspect resolutions and encodings`
+
 - Add debug methods for scale, axis, and legend resolutions.
 - Add Encodings and Resolutions tabs.
 - Add global Resolutions panel.
@@ -471,6 +476,8 @@ and clinical data. Make the following defaults conservative:
 
 ### Phase 3: App Dataflow Replacement
 
+Tentative commit: `feat(inspector): replace app dataflow inspector`
+
 - Add dataflow snapshot builder.
 - Add Dataflow panel with current dialog parity.
 - Link flow nodes to views and collectors.
@@ -478,6 +485,8 @@ and clinical data. Make the following defaults conservative:
 - Update App menu fallback behavior.
 
 ### Phase 4: App Params And Mark Details
+
+Tentative commit: `feat(inspector): inspect params and marks`
 
 - Add `ViewParamRuntime.getDebugState()`.
 - Add selected-view and global Params panels.
@@ -487,6 +496,8 @@ and clinical data. Make the following defaults conservative:
 
 ### Phase 5: Playground Integration
 
+Tentative commit: `feat(playground): add inspector integration`
+
 - Add a Playground toolbar entry that opens the same inspector panel.
 - Reuse the App-proven plugin session and components.
 - Use a small Playground host adapter instead of changing Core embed APIs unless
@@ -494,6 +505,8 @@ and clinical data. Make the following defaults conservative:
 - Add a Playground smoke test or Playwright test after the UI is wired.
 
 ### Phase 6: Core Embed Integration
+
+Tentative commit: `feat(core): add inspector host integration`
 
 - Add direct Core embed support after App and Playground have validated the host
   contract.
@@ -503,6 +516,8 @@ and clinical data. Make the following defaults conservative:
   disposal, and optional UI attachment.
 
 ### Phase 7: Inspect Mode And Event Timeline
+
+Tentative commit: `feat(inspector): add inspect mode and event timeline`
 
 - Add canvas inspect mode.
 - Add recent event timeline.
