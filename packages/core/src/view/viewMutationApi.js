@@ -8,7 +8,7 @@ import {
     getImportScopeInfo,
     getViewScopeChain,
     getViewSelector,
-    registerImportInstance,
+    registerViewScope,
     resolveViewSelector,
 } from "./viewSelectors.js";
 
@@ -454,7 +454,7 @@ export function createViewMutationApi(genomeSpy) {
             );
 
             if (options.scope !== undefined) {
-                registerImportInstance(childView, options.scope);
+                registerViewScope(childView, options.scope);
             }
 
             return getHandle(childView);
