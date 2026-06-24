@@ -13,6 +13,10 @@ function createCoordinator({ getLogicalCanvasSize, invalidateSize, onRender }) {
     const renderedSizes = [];
 
     const root = {
+        /**
+         * @param {import("../view/renderingContext/viewRenderingContext.js").default} _context
+         * @param {import("../view/layout/rectangle.js").default} coords
+         */
         render(_context, coords) {
             renderedSizes.push({
                 width: coords.width,
