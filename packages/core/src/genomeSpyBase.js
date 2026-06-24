@@ -492,7 +492,7 @@ export default class GenomeSpy {
 
         // Allow early layout requests from view subscriptions created during initialization.
         // Layout will be recomputed anyway once launch completes.
-        context.requestLayoutReflow = this.computeLayout.bind(this);
+        context.requestLayoutReflow = this.requestLayoutReflow.bind(this);
 
         this.#setupDpr();
     }
@@ -513,7 +513,7 @@ export default class GenomeSpy {
      */
     #finalizeViewInitialization(context) {
         // Allow layout computation (in case a custom context overrode the early assignment).
-        context.requestLayoutReflow = this.computeLayout.bind(this);
+        context.requestLayoutReflow = this.requestLayoutReflow.bind(this);
 
         // Invalidate cached sizes to ensure that step-based sizes are current.
         // TODO: This should be done automatically when the domains of band/point scales are updated.
@@ -686,6 +686,14 @@ export default class GenomeSpy {
     computeLayout() {
         this.#renderCoordinator.computeLayout();
         this.#glHelper.invalidateSize();
+    }
+
+    /**
+     * Recomputes layout and schedules the buffered render commands to be drawn.
+     */
+    requestLayoutReflow() {
+        this.computeLayout();
+        this.animator.requestRender();
     }
 
     renderAll() {
