@@ -1,6 +1,19 @@
 import { embed } from "@genome-spy/core/minimal";
 import { html, render } from "lit";
 
+/*
+ * This example demonstrates the public view hierarchy API from an embedding
+ * application. It starts with a small genome-browser-like stack of tracks and
+ * lets the user add, remove, and reorder tracks without rebuilding the whole
+ * GenomeSpy instance.
+ *
+ * The key API pieces are:
+ * - named container lookup with api.views.get(...)
+ * - repeated insertion of ordinary specs using explicit scopes
+ * - stable ViewHandle objects for later move/remove operations
+ * - layout bounds and layout subscriptions for positioning external controls
+ */
+
 const container = document.getElementById("container");
 const dashboard = document.getElementById("dashboard");
 const trackControls = document.getElementById("track-controls");
@@ -12,9 +25,14 @@ const initialTrackSpecs = [createSignalTrack(), createVariantsTrack()];
 const spec = {
     vconcat: [
         {
+            // The mutable part of the visualization is a normal vconcat view.
+            // Its name gives the embedding code a stable address for inserting
+            // and reordering child tracks.
             name: "tracks",
             spacing: 5,
             resolve: {
+                // Shared x axes and color legends continue to work when tracks
+                // are inserted, removed, or reordered dynamically.
                 axis: { x: "shared" },
                 scale: { color: "shared" },
                 legend: { color: "shared" },
@@ -37,11 +55,18 @@ const spec = {
 };
 
 const api = await embed(container, spec);
+
+// Resolve the container once and keep the handle. Handles remain valid while
+// their views are live, even if sibling tracks are inserted or reordered.
 const tracksContainer = api.views.get({ scope: [], view: "tracks" });
 
 /** @type {TrackItem[]} */
+// Local UI model for the external controls. GenomeSpy state lives in the view
+// hierarchy; this array just mirrors successful hierarchy mutations.
 const tracks = initialTrackSpecs.map((spec) => ({
     title: getTitleText(spec.title),
+    // Initial views were not inserted with extra scopes, so they live in the
+    // root selector scope and are addressable directly by their spec names.
     handle: api.views.get({
         scope: [],
         view: /** @type {string} */ (spec.name),
@@ -49,14 +74,16 @@ const tracks = initialTrackSpecs.map((spec) => ({
 }));
 
 let status = "Ready";
+
+// Layout changes after data loading, mutations, and resizes. The subscription
+// keeps the external overlay controls aligned with the rendered tracks.
 api.views.subscribeToLayout(updateControls);
 updateControls();
 
 /**
  * @typedef {{
  *   title: string,
- *   handle: import("@genome-spy/core/types/embedApi.js").ViewHandle,
- *   scope?: string
+ *   handle: import("@genome-spy/core/types/embedApi.js").ViewHandle
  * }} TrackItem
  */
 
@@ -82,10 +109,7 @@ function createSignalTrack() {
         title: { text: "Signal track " + number, style: "overlay-title" },
         height: 80,
         data: {
-            values: Array.from({ length: 64 }, (_, pos) => ({
-                pos,
-                value: Math.random(),
-            })),
+            values: createSignalValues(),
         },
         mark: "rect",
         encoding: {
@@ -101,19 +125,13 @@ function createSignalTrack() {
  */
 function createVariantsTrack() {
     const number = ++trackCounts.variants;
-    const variantTypes = ["SNV", "DEL", "DUP"];
 
     return {
         name: "variants",
         title: { text: "Variants track " + number, style: "overlay-title" },
         height: 36,
         data: {
-            values: Array.from({ length: 12 }, () => ({
-                pos: Math.random() * 63,
-                type: variantTypes[
-                    Math.floor(Math.random() * variantTypes.length)
-                ],
-            })).sort((a, b) => a.pos - b.pos),
+            values: createVariantValues(),
         },
         mark: { type: "point", size: 120 },
         encoding: {
@@ -134,10 +152,11 @@ async function addTrack(type) {
     const scope = type + "-" + trackCounts[type];
 
     try {
-        // Scope lets this ordinary spec be inserted repeatedly while remaining
-        // addressable by selectors such as { scope: ["signal-2"], view: "signal" }.
+        // Scope lets the same ordinary spec shape be inserted repeatedly while
+        // remaining addressable by selectors such as
+        // { scope: ["signal-2"], view: "signal" }.
         const handle = await api.views.insert(tracksContainer, spec, { scope });
-        tracks.push({ title, handle, scope });
+        tracks.push({ title, handle });
         status = "Added " + title;
     } catch (error) {
         status = error instanceof Error ? error.message : "Track insert failed";
@@ -246,4 +265,26 @@ function updateControls() {
         `,
         trackControls
     );
+}
+
+/**
+ * @returns {{ pos: number, value: number }[]}
+ */
+function createSignalValues() {
+    return Array.from({ length: 64 }, (_, pos) => ({
+        pos,
+        value: Math.random(),
+    }));
+}
+
+/**
+ * @returns {{ pos: number, type: string }[]}
+ */
+function createVariantValues() {
+    const variantTypes = ["SNV", "DEL", "DUP"];
+
+    return Array.from({ length: 12 }, () => ({
+        pos: Math.floor(Math.random() * 64),
+        type: variantTypes[Math.floor(Math.random() * variantTypes.length)],
+    })).sort((a, b) => a.pos - b.pos);
 }
