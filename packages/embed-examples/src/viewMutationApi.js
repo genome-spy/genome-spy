@@ -12,8 +12,12 @@ const spec = {
     vconcat: [
         {
             name: "tracks",
-            spacing: 4,
-            resolve: { axis: { x: "shared" } },
+            spacing: 5,
+            resolve: {
+                axis: { x: "shared" },
+                scale: { color: "shared" },
+                legend: { color: "shared" },
+            },
             vconcat: initialTrackSpecs,
         },
     ],
@@ -21,6 +25,12 @@ const spec = {
     config: {
         view: {
             stroke: "lightgray",
+        },
+        style: {
+            "overlay-title": {
+                offset: -5,
+                dx: 5,
+            },
         },
     },
 };
@@ -56,7 +66,7 @@ function createSignalTrack() {
 
     return {
         name: "signal",
-        title: "Signal track " + number,
+        title: { text: "Signal track " + number, style: "overlay-title" },
         height: 80,
         data: {
             values: Array.from({ length: 64 }, (_, pos) => ({
@@ -82,7 +92,7 @@ function createVariantsTrack() {
 
     return {
         name: "variants",
-        title: "Variants track " + number,
+        title: { text: "Variants track " + number, style: "overlay-title" },
         height: 36,
         data: {
             values: Array.from({ length: 12 }, () => ({
