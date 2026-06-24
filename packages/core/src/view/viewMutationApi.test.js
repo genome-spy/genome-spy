@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
+import {
+    createHeadlessEngine,
+    createHeadlessViewHierarchy,
+} from "../genomeSpy/headlessBootstrap.js";
 import { createViewMutationApi } from "./viewMutationApi.js";
 
 /**
@@ -96,6 +99,51 @@ describe("ViewMutationApi", () => {
         expect(api.root().children()).toEqual([inserted]);
         expect(api.get({ scope: [], view: "trackA" })).toBe(inserted);
         expect(/** @type {any} */ (view).spec.vconcat[0]).not.toBe(childSpec);
+    });
+
+    test("initializes chrome views for dynamically inserted concat children", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    vconcat: [],
+                },
+            ],
+            config: {
+                view: {
+                    stroke: "lightgray",
+                },
+            },
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        await api.insert(
+            { scope: [], view: "tracks" },
+            {
+                ...makeUnitSpec("summary"),
+                title: "Summary track",
+            }
+        );
+
+        const summary = view
+            .getDescendants()
+            .find((descendant) => descendant.name === "summary");
+        const chrome = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant !== summary && descendant.dataParent === summary
+            );
+        expect(chrome.map((descendant) => descendant.name)).toEqual(
+            expect.arrayContaining([
+                expect.stringMatching(/^axis_/),
+                expect.stringMatching(/^backgroundStroke/),
+                expect.stringMatching(/^title/),
+            ])
+        );
+        expect(
+            chrome.map((descendant) => descendant.getDataInitializationState())
+        ).not.toContain("none");
     });
 
     test("inserts a direct spec into a layer container", async () => {

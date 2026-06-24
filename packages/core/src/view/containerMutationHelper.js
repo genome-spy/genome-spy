@@ -2,7 +2,6 @@ import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
-import { configureViewOpacity } from "../genomeSpy/viewHierarchyConfig.js";
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
 import {
     attachViewLevelScaleConfigs,
@@ -13,7 +12,20 @@ import {
     attachViewLevelLegendConfigs,
     clearViewLevelGuideConfigs,
 } from "../scales/viewLevelGuideConfig.js";
+import { isChromeView } from "./viewSelectors.js";
 import { finalizeSubtreeGraphics } from "./viewUtils.js";
+
+/**
+ * @param {unknown} value
+ * @returns {value is { getChildren: () => Iterable<import("./view.js").default> }}
+ */
+function hasGridChildChildren(value) {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        typeof (/** @type {any} */ (value).getChildren) === "function"
+    );
+}
 
 /**
  * Shared helper for dynamic container mutations.
@@ -99,15 +111,23 @@ export default class ContainerMutationHelper {
             );
         }
 
-        configureViewOpacity(childView);
+        const viewsToInitialize = collectMutationInitializedViews(
+            this.container,
+            childView,
+            insertionResult
+        );
+        for (const view of viewsToInitialize) {
+            view.configureViewOpacity();
+        }
 
         const visibilityPredicate = (
             /** @type {import("./view.js").default} */ view
         ) => view.isConfiguredVisible();
         const { dataSources, graphicsPromises } = initializeViewSubtree(
-            childView,
+            this.container,
             this.container.context.dataFlow,
-            visibilityPredicate
+            visibilityPredicate,
+            (view) => viewsToInitialize.has(view)
         );
         await loadViewSubtreeData(childView, dataSources);
         await finalizeSubtreeGraphics(graphicsPromises);
@@ -144,4 +164,50 @@ export default class ContainerMutationHelper {
             this.container.context.requestLayoutReflow();
         }
     }
+}
+
+/**
+ * @param {import("./containerView.js").default} container
+ * @param {import("./view.js").default} childView
+ * @param {unknown} insertionResult
+ * @returns {Set<import("./view.js").default>}
+ */
+function collectMutationInitializedViews(
+    container,
+    childView,
+    insertionResult
+) {
+    const views = collectInsertedViews(childView, insertionResult);
+
+    for (const view of container.getDescendants()) {
+        if (
+            isChromeView(view) &&
+            view.getDataInitializationState() === "none"
+        ) {
+            for (const chromeView of view.getDescendants()) {
+                if (chromeView.getDataInitializationState() === "none") {
+                    views.add(chromeView);
+                }
+            }
+        }
+    }
+
+    return views;
+}
+
+/**
+ * @param {import("./view.js").default} childView
+ * @param {unknown} insertionResult
+ * @returns {Set<import("./view.js").default>}
+ */
+function collectInsertedViews(childView, insertionResult) {
+    if (hasGridChildChildren(insertionResult)) {
+        return new Set(
+            Array.from(insertionResult.getChildren()).flatMap((view) =>
+                view.getDescendants()
+            )
+        );
+    }
+
+    return new Set(childView.getDescendants());
 }
