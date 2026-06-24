@@ -196,4 +196,58 @@ describe("ViewMutationApi", () => {
         ).rejects.toMatchObject({ code: "unsupportedChildSpec" });
         expect(api.root().children()).toHaveLength(0);
     });
+
+    test("removes a child from a concat container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA"), makeUnitSpec("trackB")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        const trackA = api.get({ scope: [], view: "trackA" });
+
+        await api.remove(trackA);
+
+        expect(trackA.isAlive()).toBe(false);
+        expect(api.resolve(trackA)).toBeUndefined();
+        expect(api.resolve({ scope: [], view: "trackA" })).toBeUndefined();
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackB"]);
+    });
+
+    test("removes a child from a layer container", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            layer: [makeUnitSpec("trackA"), makeUnitSpec("trackB")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await api.remove({ scope: [], view: "trackB" });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA"]);
+    });
+
+    test("rejects removing the root view", async () => {
+        const { view } = await createHeadlessViewHierarchy({
+            name: "tracks",
+            vconcat: [makeUnitSpec("trackA")],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+
+        await expect(api.remove("root")).rejects.toMatchObject({
+            code: "cannotRemoveRoot",
+        });
+        expect(api.root().children()).toHaveLength(1);
+    });
 });

@@ -440,15 +440,55 @@ export function createViewMutationApi(genomeSpy) {
     }
 
     /**
+     * @param {ViewAddress} targetAddress
      * @returns {Promise<void>}
      */
-    function rejectRemove() {
-        return Promise.reject(
-            new ViewMutationError(
-                "notImplemented",
-                "View removal is not implemented yet."
-            )
-        );
+    function remove(targetAddress) {
+        return enqueue(async () => {
+            const targetView = getView(targetAddress);
+            if (targetView === getRootView() || !targetView.layoutParent) {
+                throw new ViewMutationError(
+                    "cannotRemoveRoot",
+                    "Removing the root view is not supported."
+                );
+            }
+
+            const parentView = targetView.layoutParent;
+            const children = getLayoutChildren(parentView);
+            if (!children) {
+                throw new ViewMutationError(
+                    "unsupportedContainer",
+                    "Parent view does not expose layout children."
+                );
+            }
+
+            const index = children.indexOf(targetView);
+            if (index < 0) {
+                throw new ViewMutationError(
+                    "invalidHierarchy",
+                    "Target view is not a child of its layout parent."
+                );
+            }
+
+            await removeChildFromMutableContainer(parentView, index);
+        });
+    }
+
+    /**
+     * @param {import("./view.js").default} parentView
+     * @param {number} index
+     */
+    async function removeChildFromMutableContainer(parentView, index) {
+        if (parentView instanceof ConcatView) {
+            await parentView.removeChildAt(index);
+        } else if (parentView instanceof LayerView) {
+            await parentView.removeChildAt(index);
+        } else {
+            throw new ViewMutationError(
+                "unsupportedContainer",
+                "Only concat and layer views support child removal."
+            );
+        }
     }
 
     /**
@@ -473,7 +513,7 @@ export function createViewMutationApi(genomeSpy) {
 
         insert,
 
-        remove: () => enqueue(rejectRemove),
+        remove,
 
         move: () => enqueue(rejectMove),
 

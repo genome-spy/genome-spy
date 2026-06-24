@@ -118,6 +118,21 @@ async function insertSummaryTrack() {
     updateDashboard();
 }
 
+/**
+ * @param {{ scope: string, handle: import("@genome-spy/core/types/embedApi.js").ViewHandle }} summary
+ */
+async function removeSummaryTrack(summary) {
+    try {
+        await api.views.remove(summary.handle);
+        status = "Removed " + summary.scope;
+    } catch (error) {
+        status =
+            error instanceof Error ? error.message : "Summary removal failed";
+    }
+
+    updateDashboard();
+}
+
 function updateDashboard() {
     render(
         html`
@@ -140,18 +155,23 @@ function updateDashboard() {
 
                 <dt>Inserted summaries</dt>
                 <dd>
-                    <code
-                        >${JSON.stringify(
-                            insertedSummaries.map(({ scope, handle }) => ({
-                                scope,
-                                handle: summarizeHandle(handle),
-                                scopedSelector: api.views.get({
-                                    scope: [scope],
-                                    view: "summary",
-                                }).selector,
-                            }))
-                        )}</code
-                    >
+                    ${insertedSummaries.map(
+                        (summary) => html`
+                            <p>
+                                <button
+                                    ?disabled=${!summary.handle.isAlive()}
+                                    @click=${() => removeSummaryTrack(summary)}
+                                >
+                                    Remove ${summary.scope}
+                                </button>
+                                <code
+                                    >${JSON.stringify(
+                                        summarizeInsertedSummary(summary)
+                                    )}</code
+                                >
+                            </p>
+                        `
+                    )}
                 </dd>
             </dl>
         `,
@@ -171,5 +191,20 @@ function summarizeHandle(handle) {
         alive: handle.isAlive(),
         parent: handle.parent()?.name,
         children: handle.children().map((child) => child.name ?? child.id),
+    };
+}
+
+/**
+ * @param {{ scope: string, handle: import("@genome-spy/core/types/embedApi.js").ViewHandle }} summary
+ */
+function summarizeInsertedSummary(summary) {
+    const selector = summary.handle.isAlive()
+        ? api.views.get({ scope: [summary.scope], view: "summary" }).selector
+        : undefined;
+
+    return {
+        scope: summary.scope,
+        handle: summarizeHandle(summary.handle),
+        scopedSelector: selector,
     };
 }
