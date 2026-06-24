@@ -226,6 +226,36 @@ function makeMoveFreshnessAcidSpec() {
 }
 
 /**
+ * @returns {import("../spec/view.js").VConcatSpec}
+ */
+function makeNamedDataAcidSpec() {
+    return {
+        name: "tracks",
+        vconcat: [makeNamedDataTrackSpec("trackA", "Track A", "dynamicData")],
+    };
+}
+
+/**
+ * @param {string} name
+ * @param {string} title
+ * @param {string} dataName
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function makeNamedDataTrackSpec(name, title, dataName) {
+    return {
+        name,
+        title,
+        data: { name: dataName },
+        mark: "point",
+        encoding: {
+            x: { field: "pos", type: "quantitative" },
+            y: { field: "value", type: "quantitative" },
+            color: { field: "group", type: "nominal" },
+        },
+    };
+}
+
+/**
  * @param {string} name
  * @param {string} title
  * @param {number} height
@@ -928,6 +958,55 @@ describe("View mutation acid scenarios", () => {
         expect(api.get({ scope: [], view: "duplicateTrack" })).toBe(second);
         expect(
             api.resolve({ scope: ["first"], view: "duplicateTrack" })
+        ).toBeUndefined();
+    });
+
+    test("updates named data after removing an inserted named-data track", async () => {
+        const { view, api, context } = await createViewMutationAcidHarness(
+            makeNamedDataAcidSpec(),
+            {
+                contextOptions: {
+                    getNamedDataFromProvider: () => [
+                        { pos: 1, value: 2, group: "a" },
+                    ],
+                },
+            }
+        );
+        const namedSource = context.dataFlow.findNamedDataSource("dynamicData");
+        if (!namedSource) {
+            throw new Error("Expected named data source.");
+        }
+
+        const trackAView = getRequiredView(view, "trackA");
+        const inserted = await api.insert(
+            "root",
+            makeNamedDataTrackSpec("trackB", "Track B", "dynamicData"),
+            { scope: "trackB" }
+        );
+        const trackBView = getRequiredView(view, "trackB");
+        const trackBCollector = trackBView.flowHandle?.collector;
+
+        // Both tracks share one named data source. Removing the inserted track
+        // must dispose only its collector branch, leaving later named-data
+        // updates connected to the original track.
+        namedSource.dataSource.updateDynamicData([
+            { pos: 1, value: 3, group: "a" },
+            { pos: 2, value: 5, group: "b" },
+        ]);
+
+        expect(countCollectorRows(trackAView)).toBe(2);
+        expect(countCollectorRows(trackBView)).toBe(2);
+
+        await api.remove(inserted);
+
+        namedSource.dataSource.updateDynamicData([
+            { pos: 3, value: 8, group: "c" },
+        ]);
+
+        expect(countCollectorRows(trackAView)).toBe(1);
+        expect(context.dataFlow.collectors).not.toContain(trackBCollector);
+        expect(
+            api.resolve({ scope: ["trackB"], view: "trackB" })
         ).toBeUndefined();
     });
 });

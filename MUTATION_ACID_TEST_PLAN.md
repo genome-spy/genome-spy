@@ -124,7 +124,7 @@ cover.
     selectors resolve correctly and unscoped ambiguous selectors fail fast or
     follow the documented behavior.
 
-15. Named data updates after mutation
+15. Named data updates after mutation - done
 
     Insert a track using `data.name`, call `updateNamedData()`, remove it, and
     update the named data again. Verify no stale collectors or listeners remain.
@@ -309,9 +309,9 @@ during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
 data insertion/removal, scoped params/subscription cleanup, repeated scoped spec
 insertion, nested container mutation, transaction batching, failed insertion
-rollback, move render freshness, implicit root behavior, and duplicate names
-across scopes. It does not yet cover visibility toggles, encoding mutation, or
-URL/bookmark restore.
+rollback, move render freshness, implicit root behavior, duplicate names across
+scopes, and named data updates after mutation. It does not yet cover visibility
+toggles, encoding mutation, or URL/bookmark restore.
 
 ## Testability considerations
 
