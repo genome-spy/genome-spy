@@ -637,6 +637,35 @@ describe("ViewMutationApi", () => {
         ).not.toContain("none");
     });
 
+    test("creates shared concat legends introduced by an inserted child", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "tracks",
+                    spacing: 4,
+                    resolve: {
+                        axis: { x: "shared" },
+                        scale: { color: "shared" },
+                        legend: { color: "shared" },
+                    },
+                    vconcat: [makeSignalTrackSpec("signal", 80, "steelblue")],
+                },
+            ],
+        });
+
+        const api = createViewMutationApi({ viewRoot: view });
+        expect(getLegends(view)).toHaveLength(0);
+
+        await api.insert(
+            { scope: [], view: "tracks" },
+            makeVariantsTrackSpec(),
+            { scope: "variants-1" }
+        );
+
+        expect(getLegends(view)).toHaveLength(1);
+        expect(getRenderedLegendRegions(renderToLayout(view))).toHaveLength(1);
+    });
+
     test("removes a child from a layer container", async () => {
         const { view } = await createHeadlessViewHierarchy({
             name: "tracks",

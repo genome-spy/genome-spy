@@ -47,6 +47,11 @@ export default class ContainerMutationHelper {
      *   removeView: (index: number) => void,
      *   prepareView?: (view: View, index: number, insertionResult: any) => Promise<void>,
      *   afterRemove?: (index: number) => Promise<void>,
+     *   syncMutationGuideViews?: (
+     *     view: View | undefined,
+     *     index: number | undefined,
+     *     insertionResult: any
+     *   ) => Promise<void>,
      *   defaultName?: (index: number, spec: ViewSpec | ImportSpec) => string,
      *   createViewOptions?: import("../types/viewContext.js").CreateViewOptions,
      *   requestLayout?: boolean
@@ -109,6 +114,16 @@ export default class ContainerMutationHelper {
 
             if (this.options.prepareView) {
                 await this.options.prepareView(
+                    childView,
+                    insertIndex,
+                    insertionResult
+                );
+            }
+
+            // Guide views are container-specific. Sync them after configs and
+            // assemblies are ready so generated guide marks can initialize.
+            if (this.options.syncMutationGuideViews) {
+                await this.options.syncMutationGuideViews(
                     childView,
                     insertIndex,
                     insertionResult
@@ -178,6 +193,15 @@ export default class ContainerMutationHelper {
         attachViewLevelScaleConfigs(this.container);
         attachViewLevelAxisConfigs(this.container);
         attachViewLevelLegendConfigs(this.container);
+
+        // Removed children may change shared guide ownership and visibility.
+        if (this.options.syncMutationGuideViews) {
+            await this.options.syncMutationGuideViews(
+                undefined,
+                undefined,
+                undefined
+            );
+        }
 
         if (this.container.getDataInitializationState() !== "none") {
             const viewsToInitialize = collectUninitializedChromeViews(

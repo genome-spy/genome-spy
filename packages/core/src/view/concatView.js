@@ -104,11 +104,15 @@ export default class ConcatView extends GridView {
      *
      * @param {number} fromIndex
      * @param {number} index Destination index after temporarily removing the child.
+     * @returns {Promise<void>}
      */
-    moveChildAt(fromIndex, index) {
+    async moveChildAt(fromIndex, index) {
         const { specs } = this.#getChildSpecs();
         moveArrayItem(specs, fromIndex, index);
         super.moveChildAt(fromIndex, index);
+        // Reordering can move shared guide ownership without changing existing
+        // child-local guides.
+        await this.syncGuideViews({ gridChildren: [] });
         this.context.requestLayoutReflow();
     }
 
@@ -175,13 +179,12 @@ export default class ConcatView extends GridView {
             getChildSpecs: this.#getChildSpecs.bind(this),
             insertView: (view, index) => this.insertChildViewAt(view, index),
             removeView: (index) => super.removeChildAt(index),
-            prepareView: async (view, _index, gridChild) => {
-                await gridChild.createAxes();
-                await this.syncSharedAxes();
-            },
-            afterRemove: async () => {
-                await this.syncSharedAxes();
-            },
+            syncMutationGuideViews: (_view, _index, gridChild) =>
+                this.syncGuideViews({
+                    // Only inserted grid children need new local guides. Shared
+                    // guides are synced by GridView regardless of this filter.
+                    gridChildren: gridChild ? [gridChild] : [],
+                }),
             defaultName: () => this.getNextAutoName("grid"),
         });
     }

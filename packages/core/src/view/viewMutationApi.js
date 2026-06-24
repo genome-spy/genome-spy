@@ -578,7 +578,7 @@ export function createViewMutationApi(genomeSpy) {
             }
 
             const index = getMoveIndex(options.index, children.length - 1);
-            moveChildWithinMutableContainer(parentView, fromIndex, index);
+            await moveChildWithinMutableContainer(parentView, fromIndex, index);
 
             return getHandle(targetView);
         });
@@ -612,9 +612,13 @@ export function createViewMutationApi(genomeSpy) {
      * @param {number} fromIndex
      * @param {number} index
      */
-    function moveChildWithinMutableContainer(parentView, fromIndex, index) {
+    async function moveChildWithinMutableContainer(
+        parentView,
+        fromIndex,
+        index
+    ) {
         if (parentView instanceof ConcatView) {
-            parentView.moveChildAt(fromIndex, index);
+            await parentView.moveChildAt(fromIndex, index);
         } else if (parentView instanceof LayerView) {
             parentView.moveChildAt(fromIndex, index);
         } else {
