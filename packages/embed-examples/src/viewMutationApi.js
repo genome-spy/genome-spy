@@ -1,75 +1,11 @@
 import { embed } from "@genome-spy/core/minimal";
 import { html, render } from "lit";
 
-/** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
-const signalTrack = {
-    name: "signal",
-    title: "Signal track",
-    height: 80,
-    data: {
-        values: [
-            { pos: 0, value: 0.2 },
-            { pos: 1, value: 0.8 },
-            { pos: 2, value: 0.4 },
-            { pos: 3, value: 0.9 },
-        ],
-    },
-    mark: "rect",
-    encoding: {
-        x: {
-            field: "pos",
-            type: "index",
-        },
-        y: { field: "value", type: "quantitative" },
-        color: { value: "steelblue" },
-    },
-};
+const container = document.getElementById("container");
+const dashboard = document.getElementById("dashboard");
+const trackCounts = { signal: 0, variants: 0 };
 
-/** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
-const summaryTrack = {
-    name: "summary",
-    height: 50,
-    title: "Summary track",
-    data: {
-        values: [
-            { pos: 0, value: 0.35 },
-            { pos: 1, value: 0.7 },
-            { pos: 2, value: 0.5 },
-            { pos: 3, value: 0.65 },
-        ],
-    },
-    mark: "rect",
-    encoding: {
-        x: {
-            field: "pos",
-            type: "index",
-        },
-        y: { field: "value", type: "quantitative" },
-        color: { value: "seagreen" },
-    },
-};
-
-/** @type {import("@genome-spy/core/spec/view.js").UnitSpec} */
-const variantsTrack = {
-    name: "variants",
-    title: "Variants track",
-    height: 30,
-    data: {
-        values: [
-            { pos: 0.5, type: "SNV" },
-            { pos: 1.5, type: "DEL" },
-            { pos: 2.5, type: "SNV" },
-        ],
-    },
-    mark: { type: "point", size: 140 },
-    encoding: {
-        x: {
-            field: "pos",
-            type: "index",
-        },
-        color: { field: "type", type: "nominal" },
-    },
-};
+const initialTrackSpecs = [createSignalTrack(), createVariantsTrack()];
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
@@ -77,7 +13,8 @@ const spec = {
         {
             name: "tracks",
             spacing: 4,
-            vconcat: [signalTrack, variantsTrack],
+            resolve: { axis: { x: "shared" } },
+            vconcat: initialTrackSpecs,
         },
     ],
 
@@ -88,186 +25,181 @@ const spec = {
     },
 };
 
-const container = document.getElementById("container");
-const dashboard = document.getElementById("dashboard");
-
 const api = await embed(container, spec);
+const tracksContainer = api.views.get({ scope: [], view: "tracks" });
 
-const root = api.views.root();
-const tracks = api.views.get({ scope: [], view: "tracks" });
-const signal = api.views.get({ scope: [], view: "signal" });
+/** @type {TrackItem[]} */
+const tracks = initialTrackSpecs.map((spec) => ({
+    title: /** @type {string} */ (spec.title),
+    handle: api.views.get({
+        scope: [],
+        view: /** @type {string} */ (spec.name),
+    }),
+}));
 
-/** @type {{ scope: string, handle: import("@genome-spy/core/types/embedApi.js").ViewHandle }[]} */
-const insertedSummaries = [];
-
-let nextSummaryIndex = 1;
 let status = "Ready";
-
-updateDashboard();
-
-async function insertSummaryTrack() {
-    const scope = "summary-" + nextSummaryIndex;
-
-    try {
-        const handle = await api.views.insert(tracks, summaryTrack, {
-            scope,
-        });
-        insertedSummaries.push({ scope, handle });
-        nextSummaryIndex++;
-        status = "Inserted " + scope;
-    } catch (error) {
-        status =
-            error instanceof Error ? error.message : "Summary insert failed";
-    }
-
-    updateDashboard();
-}
+updateControls();
 
 /**
- * @param {{ scope: string, handle: import("@genome-spy/core/types/embedApi.js").ViewHandle }} summary
+ * @typedef {{
+ *   title: string,
+ *   handle: import("@genome-spy/core/types/embedApi.js").ViewHandle,
+ *   scope?: string
+ * }} TrackItem
  */
-async function removeSummaryTrack(summary) {
-    try {
-        await api.views.remove(summary.handle);
-        status = "Removed " + summary.scope;
-    } catch (error) {
-        status =
-            error instanceof Error ? error.message : "Summary removal failed";
-    }
 
-    updateDashboard();
+/**
+ * @returns {import("@genome-spy/core/spec/view.js").UnitSpec}
+ */
+function createSignalTrack() {
+    const number = ++trackCounts.signal;
+
+    return {
+        name: "signal",
+        title: "Signal track " + number,
+        height: 80,
+        data: {
+            values: Array.from({ length: 64 }, (_, pos) => ({
+                pos,
+                value: Math.random(),
+            })),
+        },
+        mark: "rect",
+        encoding: {
+            x: { field: "pos", type: "index" },
+            y: { field: "value", type: "quantitative" },
+            color: { value: "steelblue" },
+        },
+    };
 }
 
 /**
- * @param {{ scope: string, handle: import("@genome-spy/core/types/embedApi.js").ViewHandle }} summary
+ * @returns {import("@genome-spy/core/spec/view.js").UnitSpec}
+ */
+function createVariantsTrack() {
+    const number = ++trackCounts.variants;
+    const variantTypes = ["SNV", "DEL", "DUP"];
+
+    return {
+        name: "variants",
+        title: "Variants track " + number,
+        height: 36,
+        data: {
+            values: Array.from({ length: 12 }, () => ({
+                pos: Math.random() * 63,
+                type: variantTypes[
+                    Math.floor(Math.random() * variantTypes.length)
+                ],
+            })).sort((a, b) => a.pos - b.pos),
+        },
+        mark: { type: "point", size: 120 },
+        encoding: {
+            x: { field: "pos", type: "index" },
+            color: { field: "type", type: "nominal" },
+        },
+    };
+}
+
+/**
+ * @param {"signal" | "variants"} type
+ * @returns {Promise<void>}
+ */
+async function addTrack(type) {
+    const spec =
+        type === "signal" ? createSignalTrack() : createVariantsTrack();
+    const title = /** @type {string} */ (spec.title);
+    const scope = type + "-" + trackCounts[type];
+
+    try {
+        // Scope lets this ordinary spec be inserted repeatedly while remaining
+        // addressable by selectors such as { scope: ["signal-2"], view: "signal" }.
+        const handle = await api.views.insert(tracksContainer, spec, { scope });
+        tracks.push({ title, handle, scope });
+        status = "Added " + title;
+    } catch (error) {
+        status = error instanceof Error ? error.message : "Track insert failed";
+    }
+
+    updateControls();
+}
+
+/**
+ * @param {TrackItem} track
+ * @returns {Promise<void>}
+ */
+async function removeTrack(track) {
+    try {
+        await api.views.remove(track.handle);
+        tracks.splice(tracks.indexOf(track), 1);
+        status = "Removed " + track.title;
+    } catch (error) {
+        status =
+            error instanceof Error ? error.message : "Track removal failed";
+    }
+
+    updateControls();
+}
+
+/**
+ * @param {TrackItem} track
  * @param {number} offset
+ * @returns {Promise<void>}
  */
-async function moveSummaryTrack(summary, offset) {
+async function moveTrack(track, offset) {
+    const from = tracks.indexOf(track);
+    const to = from + offset;
+
     try {
-        const currentIndex = getTrackIndex(summary.handle);
-        await api.views.move(summary.handle, {
-            index: currentIndex + offset,
-        });
-        status = "Moved " + summary.scope;
+        // The destination index uses the order after the target has been removed.
+        await api.views.move(track.handle, { index: to });
+        tracks.splice(from, 1);
+        tracks.splice(to, 0, track);
+        status = "Moved " + track.title;
     } catch (error) {
-        status = error instanceof Error ? error.message : "Summary move failed";
+        status = error instanceof Error ? error.message : "Track move failed";
     }
 
-    updateDashboard();
+    updateControls();
 }
 
-function updateDashboard() {
+/**
+ * @returns {void}
+ */
+function updateControls() {
     render(
         html`
             <p>
-                <button @click=${updateDashboard}>Refresh handles</button>
-                <button @click=${insertSummaryTrack}>
-                    Insert summary track
+                <button @click=${() => addTrack("signal")}>Add signal</button>
+                <button @click=${() => addTrack("variants")}>
+                    Add variants
                 </button>
             </p>
             <p>Status: ${status}</p>
-            <dl>
-                <dt>Root</dt>
-                <dd><code>${JSON.stringify(summarizeHandle(root))}</code></dd>
-
-                <dt>Tracks</dt>
-                <dd><code>${JSON.stringify(summarizeHandle(tracks))}</code></dd>
-
-                <dt>Signal</dt>
-                <dd><code>${JSON.stringify(summarizeHandle(signal))}</code></dd>
-
-                <dt>Inserted summaries</dt>
-                <dd>
-                    ${insertedSummaries.map(
-                        (summary) => html`
-                            <p>
-                                <button
-                                    ?disabled=${!canMoveTrack(
-                                        summary.handle,
-                                        -1
-                                    )}
-                                    @click=${() =>
-                                        moveSummaryTrack(summary, -1)}
-                                >
-                                    Up
-                                </button>
-                                <button
-                                    ?disabled=${!canMoveTrack(
-                                        summary.handle,
-                                        1
-                                    )}
-                                    @click=${() => moveSummaryTrack(summary, 1)}
-                                >
-                                    Down
-                                </button>
-                                <button
-                                    ?disabled=${!summary.handle.isAlive()}
-                                    @click=${() => removeSummaryTrack(summary)}
-                                >
-                                    Remove ${summary.scope}
-                                </button>
-                                <code
-                                    >${JSON.stringify(
-                                        summarizeInsertedSummary(summary)
-                                    )}</code
-                                >
-                            </p>
-                        `
-                    )}
-                </dd>
-            </dl>
+            <ol>
+                ${tracks.map(
+                    (track, index) => html`
+                        <li>
+                            ${track.title}
+                            <button
+                                ?disabled=${index === 0}
+                                @click=${() => moveTrack(track, -1)}
+                            >
+                                Up
+                            </button>
+                            <button
+                                ?disabled=${index === tracks.length - 1}
+                                @click=${() => moveTrack(track, 1)}
+                            >
+                                Down
+                            </button>
+                            <button @click=${() => removeTrack(track)}>
+                                Remove
+                            </button>
+                        </li>
+                    `
+                )}
+            </ol>
         `,
         dashboard
     );
-}
-
-/**
- * @param {import("@genome-spy/core/types/embedApi.js").ViewHandle} handle
- */
-function getTrackIndex(handle) {
-    return tracks.children().indexOf(handle);
-}
-
-/**
- * @param {import("@genome-spy/core/types/embedApi.js").ViewHandle} handle
- * @param {number} offset
- */
-function canMoveTrack(handle, offset) {
-    const currentIndex = getTrackIndex(handle);
-    const destinationIndex = currentIndex + offset;
-    return (
-        currentIndex >= 0 &&
-        destinationIndex >= 0 &&
-        destinationIndex <= tracks.children().length - 1
-    );
-}
-
-/**
- * @param {import("@genome-spy/core/types/embedApi.js").ViewHandle} handle
- */
-function summarizeHandle(handle) {
-    return {
-        id: handle.id,
-        name: handle.name,
-        selector: handle.selector,
-        type: handle.type,
-        alive: handle.isAlive(),
-        parent: handle.parent()?.name,
-        children: handle.children().map((child) => child.name ?? child.id),
-    };
-}
-
-/**
- * @param {{ scope: string, handle: import("@genome-spy/core/types/embedApi.js").ViewHandle }} summary
- */
-function summarizeInsertedSummary(summary) {
-    const selector = summary.handle.isAlive()
-        ? api.views.get({ scope: [summary.scope], view: "summary" }).selector
-        : undefined;
-
-    return {
-        scope: summary.scope,
-        handle: summarizeHandle(summary.handle),
-        scopedSelector: selector,
-    };
 }
