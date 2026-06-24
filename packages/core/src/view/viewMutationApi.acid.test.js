@@ -857,6 +857,45 @@ describe("View mutation acid scenarios", () => {
             unsubscribe();
         }
     });
+
+    test("addresses an authored unit inside an implicit mutable root", async () => {
+        const { api, context } = await createViewMutationAcidHarness(
+            makeTrackSpec("authoredTrack", "Authored track"),
+            { contextOptions: { viewFactoryOptions: { wrapRoot: true } } }
+        );
+        const baselineDataSourceCount = context.dataFlow.dataSources.length;
+        const baselineCollectorCount = context.dataFlow.collectors.length;
+        const root = api.root();
+        const authored = api.get({ scope: [], view: "authoredTrack" });
+
+        // Root-unit specs are wrapped in an implicit container for chrome.
+        // Mutations should target that layout tree while selectors still find
+        // the authored unit view inside it.
+        expect(root.type).toBe("concat");
+        expect(root.name).toBe("implicitRoot");
+        expect(root.children()).toEqual([authored]);
+        expect(authored.type).toBe("unit");
+        expect(authored.parent()).toBe(root);
+
+        const inserted = await api.insert(
+            root,
+            makeTrackSpec("summary", "Summary"),
+            { scope: "summary" }
+        );
+
+        expect(api.root().children()).toEqual([authored, inserted]);
+        expect(api.get({ scope: ["summary"], view: "summary" })).toBe(inserted);
+
+        await api.remove(inserted);
+
+        expect(api.root().children()).toEqual([authored]);
+        expect(context.dataFlow.dataSources).toHaveLength(
+            baselineDataSourceCount
+        );
+        expect(context.dataFlow.collectors).toHaveLength(
+            baselineCollectorCount
+        );
+    });
 });
 
 /**

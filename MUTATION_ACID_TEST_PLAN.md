@@ -106,7 +106,7 @@ cover.
    Insert, remove, and reorder layer children. Verify z-order changes without
    data reload and without incorrectly creating concat-style chrome.
 
-12. Implicit root behavior
+12. Implicit root behavior - done
 
     Start from a root unit spec that is wrapped internally. Verify `root()`,
     selectors, layout bounds, and mutations under the actual mutable container
@@ -309,8 +309,8 @@ during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
 data insertion/removal, scoped params/subscription cleanup, repeated scoped spec
 insertion, nested container mutation, transaction batching, failed insertion
-rollback, and move render freshness. It does not yet cover visibility toggles,
-encoding mutation, or URL/bookmark restore.
+rollback, move render freshness, and implicit root behavior. It does not yet
+cover visibility toggles, encoding mutation, or URL/bookmark restore.
 
 ## Testability considerations
 
