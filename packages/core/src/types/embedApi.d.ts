@@ -368,9 +368,10 @@ export interface EmbedResult {
 
     /**
      * Returns a named `ScaleResolution` object that allows for attaching event
-     * listeners and controlling the scale domain.
+     * listeners and controlling the scale domain. Returns `undefined` when the
+     * name is not registered.
      */
-    getScaleResolutionByName: (name: string) => ScaleResolutionApi;
+    getScaleResolutionByName: (name: string) => ScaleResolutionApi | undefined;
 
     /**
      * Returns a handle for reading, writing, and subscribing to a named
@@ -420,9 +421,9 @@ export interface EmbedResult {
      * @returns A PNG data URL
      */
     exportCanvas: (
-        logicalWidth: number,
-        logicalHeight: number,
-        devicePixelRatio: number,
-        clearColor: string
+        logicalWidth?: number,
+        logicalHeight?: number,
+        devicePixelRatio?: number,
+        clearColor?: string
     ) => string;
 }

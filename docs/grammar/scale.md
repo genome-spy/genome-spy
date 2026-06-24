@@ -367,7 +367,7 @@ drives default scale type inference.
 ## Named scales
 
 By giving the scale a name, it can be accessed through the
-[API](../api.md#named-scales).
+[API](../api/runtime-state.md#named-scales).
 
 ```json
 {

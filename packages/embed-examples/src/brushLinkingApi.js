@@ -82,6 +82,9 @@ const [overviewApi, detailApi] = await Promise.all([
 /** @type {import("@genome-spy/core/types/embedApi.js").ParamApi<IntervalSelection>} */
 const brush = overviewApi.getParam("brush");
 const detailScale = detailApi.getScaleResolutionByName("detailScale");
+if (!detailScale) {
+    throw new Error("Missing named scale: detailScale");
+}
 
 brush.subscribe((value) => {
     // This illustrates a simple one-way linking example.

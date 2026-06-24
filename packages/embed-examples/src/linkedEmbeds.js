@@ -110,6 +110,10 @@ class LinkingManager {
      */
     register(api) {
         const scaleResolution = api.getScaleResolutionByName(this.#scaleName);
+        if (!scaleResolution) {
+            throw new Error("Missing named scale: " + this.#scaleName);
+        }
+
         const listener = (
             /** @type {import("@genome-spy/core/types/scaleResolutionApi.js").ScaleResolutionEvent} */ event
         ) => this.#syncFrom(event.scaleResolution);
@@ -158,6 +162,9 @@ linkingManager.register(secondApi);
 
 const firstScale = firstApi.getScaleResolutionByName("genomeScale");
 const secondScale = secondApi.getScaleResolutionByName("genomeScale");
+if (!firstScale || !secondScale) {
+    throw new Error("Missing named scale: genomeScale");
+}
 
 updateDashboard();
 

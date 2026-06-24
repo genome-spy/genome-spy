@@ -131,6 +131,9 @@ async function getSequence(seqName, start, end) {
 }
 
 const genomeScale = api.getScaleResolutionByName("genomeScale");
+if (!genomeScale) {
+    throw new Error("Missing named scale: genomeScale");
+}
 
 genomeScale.addEventListener("domain", (event) => {
     handleDomainChange(

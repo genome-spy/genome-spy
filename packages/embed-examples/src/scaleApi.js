@@ -87,6 +87,9 @@ function updateDashboard(genomeScale) {
 const api = await embed(container, spec);
 
 const genomeScale = api.getScaleResolutionByName("genomeScale");
+if (!genomeScale) {
+    throw new Error("Missing named scale: genomeScale");
+}
 
 updateDashboard(genomeScale);
 

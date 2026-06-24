@@ -290,7 +290,7 @@ embeds reusable datasets in the root specification and exposes them by name.
 }
 ```
 
-Another way is the [JavaScript API](../../api.md#named-data), which can provide
+Another way is the [JavaScript API](../../api/runtime-state.md#named-data), which can provide
 or update named data at runtime. Named datasets must be arrays. If a named
 dataset is not found, GenomeSpy treats it as empty data.
 

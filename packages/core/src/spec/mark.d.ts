@@ -98,7 +98,7 @@ export interface MarkPropsBase {
 
     /**
      * Tooltip handler. If `null`, no tooltip is shown. If string, specifies
-     * the [tooltip handler](https://genomespy.app/docs/api/#custom-tooltip-handlers)
+     * the [tooltip handler](https://genomespy.app/docs/api/embed-options/#custom-tooltip-handlers)
      * to use.
      */
     tooltip?: Tooltip;

@@ -86,7 +86,7 @@ The effective order is:
 
 1. internal defaults
 2. built-in default theme
-3. [embed-level theme override](../api.md#theme-config)
+3. [embed-level theme override](../api/embed-options.md#theme-config)
 4. root `theme`
 5. root `config`
 6. ancestor view `config`

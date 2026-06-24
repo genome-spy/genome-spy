@@ -104,5 +104,11 @@ nav:
           - Configuring Metadata Sources: "sample-collections/metadata-sources.md"
           - Analyzing: "sample-collections/analyzing.md"
           - Importing Metadata: "sample-collections/importing-metadata.md"
-    - JavaScript API: "api.md"
+    - JavaScript API:
+          - "api/index.md"
+          - Embedding and Entry Points: "api/embedding.md"
+          - View Hierarchy: "api/views.md"
+          - Runtime State: "api/runtime-state.md"
+          - Instance, Events, and Export: "api/instance.md"
+          - Embed Options: "api/embed-options.md"
     - License: "license.md"

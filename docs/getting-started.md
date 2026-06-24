@@ -61,7 +61,7 @@ not yet 100% stable, it is recommended to use a specific version.
 The `embed` function initializes a visualization into the HTML element given as
 the first parameter using the specification given as the second parameter. The
 function returns a promise that resolves into an object that provides the
-current public API. For details, see the [JavaScript API](./api.md).
+current public API. For details, see the [JavaScript API](api/index.md).
 
 #### Load the spec from a file
 
