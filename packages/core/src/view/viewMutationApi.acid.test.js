@@ -1009,6 +1009,36 @@ describe("View mutation acid scenarios", () => {
             api.resolve({ scope: ["trackB"], view: "trackB" })
         ).toBeUndefined();
     });
+
+    test("marks nested parent and descendant handles stale after subtree removal", async () => {
+        const { api } = await createViewMutationAcidHarness(
+            makeNestedContainerAcidSpec()
+        );
+        const overview = api.get({ scope: [], view: "overview" });
+        const tracks = api.get({ scope: [], view: "tracks" });
+        const trackA = api.get({ scope: [], view: "trackA" });
+        const trackB = api.get({ scope: [], view: "trackB" });
+
+        await api.remove(tracks);
+
+        for (const handle of [tracks, trackA, trackB]) {
+            expect(handle.isAlive()).toBe(false);
+            expect(handle.parent()).toBeUndefined();
+            expect(handle.children()).toEqual([]);
+            expect(api.resolve(handle)).toBeUndefined();
+            expect(() => api.get(handle)).toThrow(/stale/i);
+            expect(api.getLayoutBounds(handle)).toBeUndefined();
+            await expect(api.move(handle, { index: 0 })).rejects.toMatchObject({
+                code: "staleHandle",
+            });
+            await expect(api.remove(handle)).rejects.toMatchObject({
+                code: "staleHandle",
+            });
+        }
+
+        expect(overview.isAlive()).toBe(true);
+        expect(api.root().children()).toEqual([overview]);
+    });
 });
 
 /**

@@ -112,7 +112,7 @@ cover.
     selectors, layout bounds, and mutations under the actual mutable container
     behave predictably.
 
-13. Handle liveness under nested removal
+13. Handle liveness under nested removal - done
 
     Keep handles to a parent and its descendants, remove the parent subtree,
     then verify all descendant handles are dead and cannot be used for
@@ -309,9 +309,10 @@ during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
 data insertion/removal, scoped params/subscription cleanup, repeated scoped spec
 insertion, nested container mutation, transaction batching, failed insertion
-rollback, move render freshness, implicit root behavior, duplicate names across
-scopes, and named data updates after mutation. It does not yet cover visibility
-toggles, encoding mutation, or URL/bookmark restore.
+rollback, move render freshness, implicit root behavior, handle liveness under
+nested removal, duplicate names across scopes, and named data updates after
+mutation. It does not yet cover visibility toggles, encoding mutation, or
+URL/bookmark restore.
 
 ## Testability considerations
 
