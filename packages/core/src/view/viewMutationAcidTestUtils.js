@@ -50,6 +50,74 @@ export function captureMutationAcidIdentities(viewRoot) {
 }
 
 /**
+ * @template T
+ * @returns {{
+ *   promise: Promise<T>,
+ *   resolve: (value: T) => void,
+ *   reject: (reason?: unknown) => void
+ * }}
+ */
+export function createDeferred() {
+    /** @type {(value: any) => void} */
+    let resolve;
+    /** @type {(reason?: unknown) => void} */
+    let reject;
+    const promise = new Promise((resolvePromise, rejectPromise) => {
+        resolve = resolvePromise;
+        reject = rejectPromise;
+    });
+
+    return { promise, resolve, reject };
+}
+
+/**
+ * @param {() => boolean} predicate
+ * @returns {Promise<void>}
+ */
+export async function waitUntil(predicate) {
+    for (let i = 0; i < 50; i++) {
+        if (predicate()) {
+            return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    throw new Error("Condition was not met.");
+}
+
+/**
+ * @param {import("./view.js").default} viewRoot
+ * @param {string} name
+ */
+export function getRequiredView(viewRoot, name) {
+    const view = viewRoot.getDescendants().find((view) => view.name === name);
+    if (!view) {
+        throw new Error("Expected view: " + name);
+    }
+
+    return view;
+}
+
+/**
+ * @param {import("./view.js").default} view
+ */
+export function countCollectorRows(view) {
+    const collector = view.flowHandle?.collector;
+    if (!collector) {
+        throw new Error("Expected view to have a collector.");
+    }
+
+    let count = 0;
+    for (const datum of collector.getData()) {
+        void datum;
+        count++;
+    }
+
+    return count;
+}
+
+/**
  * @param {import("./view.js").default} viewRoot
  */
 function createHierarchySnapshot(viewRoot) {
