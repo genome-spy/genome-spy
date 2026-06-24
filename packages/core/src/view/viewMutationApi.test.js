@@ -892,4 +892,84 @@ describe("ViewMutationApi", () => {
                 .map((child) => child.name)
         ).toEqual(["trackA", "trackB"]);
     });
+
+    test("serializes concurrently started mutations inside a transaction", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "tracks",
+            vconcat: [],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+
+        // Concurrent callers should still observe the same serialized mutation
+        // semantics as mutations that are started outside a transaction.
+        await api.transaction(async (views) => {
+            await Promise.all([
+                views.insert("root", makeUnitSpec("trackA")),
+                views.insert("root", makeUnitSpec("trackB")),
+            ]);
+        });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
+
+    test("waits for unawaited transaction mutations before resolving", async () => {
+        const requestLayoutReflow = vi.fn();
+        const { view } = await createHeadlessEngine(
+            {
+                name: "tracks",
+                vconcat: [],
+            },
+            {
+                contextOptions: {
+                    requestLayoutReflow,
+                },
+            }
+        );
+
+        requestLayoutReflow.mockClear();
+
+        const api = createViewMutationApi({ viewRoot: view });
+        // The transaction boundary is the commit point, so even fire-and-forget
+        // mutations started inside it must finish before the promise resolves.
+        await api.transaction((views) => {
+            views.insert("root", makeUnitSpec("trackA"));
+            views.insert("root", makeUnitSpec("trackB"));
+        });
+
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
+
+    test("waits for chained unawaited transaction mutations before resolving", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "tracks",
+            vconcat: [],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+
+        // Promise continuations can enqueue more mutation work before the
+        // transaction closes. The commit boundary must include that work too.
+        await api.transaction((views) => {
+            views
+                .insert("root", makeUnitSpec("trackA"))
+                .then(() => views.insert("root", makeUnitSpec("trackB")));
+        });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackB"]);
+    });
 });

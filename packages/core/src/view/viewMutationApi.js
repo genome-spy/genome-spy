@@ -32,6 +32,17 @@ export class ViewMutationError extends Error {
 }
 
 /**
+ * @typedef {{
+ *   depth: number,
+ *   queue: Promise<void>,
+ *   failed: boolean,
+ *   error: unknown | undefined,
+ *   requestedLayoutReflow: boolean,
+ *   restoreLayoutReflow: () => void
+ * }} TransactionState
+ */
+
+/**
  * Creates the public view hierarchy API for a GenomeSpy instance.
  *
  * @param {{ viewRoot: import("./view.js").default }} genomeSpy
@@ -51,12 +62,10 @@ export function createViewMutationApi(genomeSpy) {
     const viewsByHandle = new WeakMap();
 
     let nextHandleId = 0;
-    let transactionDepth = 0;
-    let transactionRequestedLayoutReflow = false;
     let queue = Promise.resolve();
 
-    /** @type {(() => void) | undefined} */
-    let restoreTransactionLayoutReflow;
+    /** @type {TransactionState | undefined} */
+    let activeTransaction;
 
     /**
      * @returns {import("./view.js").default}
@@ -282,12 +291,36 @@ export function createViewMutationApi(genomeSpy) {
      * @returns {Promise<T>}
      */
     function enqueue(operation) {
-        if (transactionDepth > 0) {
-            return Promise.resolve(operation());
+        if (activeTransaction) {
+            return enqueueTransactionOperation(activeTransaction, operation);
         }
 
+        return enqueueTopLevelOperation(operation);
+    }
+
+    /**
+     * @template T
+     * @param {() => T | Promise<T>} operation
+     * @returns {Promise<T>}
+     */
+    function enqueueTopLevelOperation(operation) {
         const next = queue.then(operation, operation);
         queue = next.then(clearQueueValue, clearQueueValue);
+        return next;
+    }
+
+    /**
+     * @template T
+     * @param {TransactionState} transaction
+     * @param {() => T | Promise<T>} operation
+     * @returns {Promise<T>}
+     */
+    function enqueueTransactionOperation(transaction, operation) {
+        const next = transaction.queue.then(operation, operation);
+        transaction.queue = next.then(clearQueueValue, (error) => {
+            transaction.failed = true;
+            transaction.error = error;
+        });
         return next;
     }
 
@@ -297,45 +330,102 @@ export function createViewMutationApi(genomeSpy) {
     function clearQueueValue() {}
 
     /**
-     * @returns {void}
+     * @returns {TransactionState}
      */
     function beginTransaction() {
-        if (transactionDepth === 0) {
-            const context = getRootView().context;
-            const requestLayoutReflow = context.requestLayoutReflow;
-            transactionRequestedLayoutReflow = false;
-            context.requestLayoutReflow = () => {
-                transactionRequestedLayoutReflow = true;
-            };
-            restoreTransactionLayoutReflow = () => {
-                context.requestLayoutReflow = requestLayoutReflow;
-                if (transactionRequestedLayoutReflow) {
-                    requestLayoutReflow.call(context);
-                }
-
-                transactionRequestedLayoutReflow = false;
-                restoreTransactionLayoutReflow = undefined;
-            };
+        const transaction = activeTransaction;
+        if (transaction) {
+            transaction.depth++;
+            return transaction;
         }
 
-        transactionDepth++;
+        const context = getRootView().context;
+        const requestLayoutReflow = context.requestLayoutReflow;
+        /** @type {TransactionState} */
+        const topLevelTransaction = {
+            depth: 1,
+            queue: Promise.resolve(),
+            failed: false,
+            error: undefined,
+            requestedLayoutReflow: false,
+            restoreLayoutReflow: () => {
+                context.requestLayoutReflow = requestLayoutReflow;
+                if (topLevelTransaction.requestedLayoutReflow) {
+                    requestLayoutReflow.call(context);
+                }
+            },
+        };
+
+        context.requestLayoutReflow = () => {
+            topLevelTransaction.requestedLayoutReflow = true;
+        };
+        activeTransaction = topLevelTransaction;
+        return topLevelTransaction;
     }
 
     /**
+     * @param {TransactionState} transaction
      * @returns {void}
      */
-    function endTransaction() {
-        transactionDepth--;
+    function endTransaction(transaction) {
+        transaction.depth--;
 
-        if (transactionDepth === 0) {
-            if (!restoreTransactionLayoutReflow) {
-                throw new ViewMutationError(
-                    "invalidTransactionState",
-                    "Transaction cleanup state is missing."
-                );
+        if (transaction.depth === 0) {
+            transaction.restoreLayoutReflow();
+            activeTransaction = undefined;
+        }
+    }
+
+    /**
+     * Mutations may enqueue more mutations from promise continuations. Keep
+     * draining until the transaction queue stops changing.
+     *
+     * @param {TransactionState} transaction
+     * @returns {Promise<void>}
+     */
+    async function waitForTransactionQueue(transaction) {
+        let currentQueue;
+        do {
+            currentQueue = transaction.queue;
+            await currentQueue;
+        } while (transaction.queue !== currentQueue);
+    }
+
+    /**
+     * @template T
+     * @param {(views: import("../types/embedApi.js").ViewApi) => T | Promise<T>} callback
+     * @returns {Promise<T>}
+     */
+    async function runTransaction(callback) {
+        const transaction = beginTransaction();
+        const previouslyFailed = transaction.failed;
+        /** @type {T | undefined} */
+        let result;
+        /** @type {unknown} */
+        let callbackError;
+        let callbackFailed = false;
+
+        try {
+            result = await callback(api);
+        } catch (error) {
+            callbackError = error;
+            callbackFailed = true;
+        }
+
+        await waitForTransactionQueue(transaction);
+
+        try {
+            if (callbackFailed) {
+                throw callbackError;
             }
 
-            restoreTransactionLayoutReflow();
+            if (transaction.failed && transaction.failed !== previouslyFailed) {
+                throw transaction.error;
+            }
+
+            return /** @type {T} */ (result);
+        } finally {
+            endTransaction(transaction);
         }
     }
 
@@ -687,15 +777,10 @@ export function createViewMutationApi(genomeSpy) {
 
         move,
 
-        transaction: (/** @type {(views: typeof api) => any} */ callback) =>
-            enqueue(async () => {
-                beginTransaction();
-                try {
-                    return await callback(api);
-                } finally {
-                    endTransaction();
-                }
-            }),
+        transaction: (callback) =>
+            activeTransaction
+                ? runTransaction(callback)
+                : enqueueTopLevelOperation(() => runTransaction(callback)),
     };
 
     return api;
