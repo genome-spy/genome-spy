@@ -12,6 +12,7 @@ import {
     getRequiredView,
     waitUntil,
 } from "./viewMutationAcidTestUtils.js";
+import AxisView from "./axisView.js";
 
 // These acid scenarios intentionally drive mutations through the public
 // ViewMutationApi. The assertions inspect normalized internal state because
@@ -507,6 +508,33 @@ describe("View mutation acid scenarios", () => {
         for (const owner of getLegendDefinitionViews(view, "tracks", "color")) {
             expect(liveViews.has(owner)).toBe(true);
         }
+    });
+
+    test("keeps shared axis initialized when the penultimate child moves last", async () => {
+        const { view, api } = await createViewMutationAcidHarness({
+            ...makeSharedGuideAcidSpec(),
+            vconcat: [
+                makeTrackSpec("trackA", "Track A"),
+                makeTrackSpec("trackB", "Track B"),
+                makeTrackSpec("trackC", "Track C"),
+            ],
+        });
+
+        const beforeMoveAxisStates = getAxisDataStates(view, "bottom");
+        expect(beforeMoveAxisStates).not.toContain("none");
+
+        // Moving the second-last track to the end changes shared x-axis
+        // ownership. The regenerated axis must be initialized immediately, not
+        // only after a later insert/remove mutation refreshes chrome again.
+        await api.move(api.get({ scope: [], view: "trackB" }), { index: 2 });
+
+        expect(
+            api
+                .root()
+                .children()
+                .map((child) => child.name)
+        ).toEqual(["trackA", "trackC", "trackB"]);
+        expect(getAxisDataStates(view, "bottom")).toEqual(beforeMoveAxisStates);
     });
 
     test("restores inherited dataflow after inserting and removing an inherited track", async () => {
@@ -1126,6 +1154,28 @@ function getLegendDefinitionViews(viewRoot, viewName, channel) {
     }
 
     return resolution.getLegendDefs().map((definition) => definition.view);
+}
+
+/**
+ * @param {import("./view.js").default} viewRoot
+ * @param {import("../spec/axis.js").AxisOrient} orient
+ * @returns {string[]}
+ */
+function getAxisDataStates(viewRoot, orient) {
+    const axisView = viewRoot
+        .getDescendants()
+        .find(
+            (view) =>
+                view instanceof AxisView && view.axisProps.orient === orient
+        );
+
+    if (!axisView) {
+        throw new Error("Expected shared axis with orient: " + orient);
+    }
+
+    return axisView
+        .getDescendants()
+        .map((view) => view.getDataInitializationState());
 }
 
 /**

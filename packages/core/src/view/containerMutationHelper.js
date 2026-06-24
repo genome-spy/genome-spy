@@ -204,21 +204,7 @@ export default class ContainerMutationHelper {
             );
         }
 
-        if (this.container.getDataInitializationState() !== "none") {
-            const viewsToInitialize = collectUninitializedChromeViews(
-                this.container
-            );
-            for (const view of viewsToInitialize) {
-                view.configureViewOpacity();
-            }
-
-            await initializeViewDataForViews(
-                this.container,
-                this.container.context.dataFlow,
-                this.container.context.fontManager,
-                viewsToInitialize
-            );
-        }
+        await this.initializeUninitializedChromeViews();
 
         if (
             this.options.requestLayout !== false &&
@@ -227,6 +213,33 @@ export default class ContainerMutationHelper {
             this.container.invalidateSizeCache();
             this.container.context.requestLayoutReflow();
         }
+    }
+
+    /**
+     * Initializes generated guide/chrome views created by a dynamic mutation.
+     *
+     * Reorder operations can recreate shared axes or legends without touching
+     * normal child dataflow. This keeps those regenerated chrome views renderable
+     * without reloading or rebuilding existing track data.
+     */
+    async initializeUninitializedChromeViews() {
+        if (this.container.getDataInitializationState() === "none") {
+            return;
+        }
+
+        const viewsToInitialize = collectUninitializedChromeViews(
+            this.container
+        );
+        for (const view of viewsToInitialize) {
+            view.configureViewOpacity();
+        }
+
+        await initializeViewDataForViews(
+            this.container,
+            this.container.context.dataFlow,
+            this.container.context.fontManager,
+            viewsToInitialize
+        );
     }
 }
 

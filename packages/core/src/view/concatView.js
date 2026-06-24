@@ -107,12 +107,14 @@ export default class ConcatView extends GridView {
      * @returns {Promise<void>}
      */
     async moveChildAt(fromIndex, index) {
+        const mutationHelper = this.#getMutationHelper();
         const { specs } = this.#getChildSpecs();
         moveArrayItem(specs, fromIndex, index);
         super.moveChildAt(fromIndex, index);
         // Reordering can move shared guide ownership without changing existing
         // child-local guides.
         await this.syncGuideViews({ gridChildren: [] });
+        await mutationHelper.initializeUninitializedChromeViews();
         this.context.requestLayoutReflow();
     }
 
