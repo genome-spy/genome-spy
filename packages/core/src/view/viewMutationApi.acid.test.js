@@ -731,6 +731,43 @@ describe("View mutation acid scenarios", () => {
         expect(countCollectorRows(getRequiredView(view, "trackA"))).toBe(2);
         expect(countCollectorRows(getRequiredView(view, "trackC"))).toBe(2);
     });
+
+    test("rolls back failed insertion without leaving partial lifecycle state", async () => {
+        const requestLayoutReflow = vi.fn();
+        const { view, api, context } = await createViewMutationAcidHarness(
+            makeEmptyTracksSpec(),
+            { contextOptions: { requestLayoutReflow } }
+        );
+        const baselineSnapshot = createMutationAcidSnapshot(view);
+        const baselineDataSourceCount = context.dataFlow.dataSources.length;
+        const baselineCollectorCount = context.dataFlow.collectors.length;
+
+        requestLayoutReflow.mockClear();
+
+        // The child is structurally inserted before data initialization fails.
+        // Rollback must remove the spec, view, dataflow branch, and pending
+        // layout work as if the public insert never happened.
+        await expect(
+            api.insert("root", {
+                name: "badTrack",
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                },
+            })
+        ).rejects.toThrow(/data source/i);
+
+        expect(requestLayoutReflow).not.toHaveBeenCalled();
+        expect(api.root().children()).toEqual([]);
+        expect(api.resolve({ scope: [], view: "badTrack" })).toBeUndefined();
+        expect(context.dataFlow.dataSources).toHaveLength(
+            baselineDataSourceCount
+        );
+        expect(context.dataFlow.collectors).toHaveLength(
+            baselineCollectorCount
+        );
+        expect(createMutationAcidSnapshot(view)).toEqual(baselineSnapshot);
+    });
 });
 
 /**

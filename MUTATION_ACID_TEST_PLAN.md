@@ -86,7 +86,7 @@ cover.
    Verify one final layout/render pass, stable final order, and no intermediate
    stale guide or dataflow state leaks.
 
-9. Failure rollback after partial insertion
+9. Failure rollback after partial insertion - done
 
    Force a failure after spec insertion but before full initialization, for
    example with invalid assembly, data, font, or import setup. Verify backing
@@ -273,11 +273,11 @@ Suggested order:
 
    Commit shape: `test(core): cover batched view mutation lifecycle`.
 
-10. Next: Implement failure rollback after partial insertion.
+10. Done: Implement failure rollback after partial insertion.
 
     Commit shape: `test(core): cover failed insertion rollback`.
 
-11. Implement move render freshness coverage.
+11. Next: Implement move render freshness coverage.
 
     Commit shape: `test(core): cover render scheduling after view move`.
 
@@ -308,8 +308,9 @@ Current executable coverage includes round-trip cancellation, lazy insertion
 during an in-flight shared load, async branch insertion/removal cancellation,
 shared guide ownership churn after add/move/remove operations, and inherited
 data insertion/removal, scoped params/subscription cleanup, repeated scoped spec
-insertion, nested container mutation, and transaction batching. It does not yet
-cover visibility toggles, encoding mutation, or URL/bookmark restore.
+insertion, nested container mutation, transaction batching, and failed insertion
+rollback. It does not yet cover visibility toggles, encoding mutation, or
+URL/bookmark restore.
 
 ## Testability considerations
 

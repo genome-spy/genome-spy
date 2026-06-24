@@ -169,7 +169,7 @@ export default class ContainerMutationHelper {
      */
     async #rollbackInsertedChild(index, originalError) {
         try {
-            await this.removeChildAt(index);
+            await this.removeChildAt(index, { requestLayout: false });
         } catch (rollbackError) {
             /** @type {any} */ (originalError).rollbackError = rollbackError;
         }
@@ -179,8 +179,9 @@ export default class ContainerMutationHelper {
      * Removes a child by index and updates the backing spec list.
      *
      * @param {number} index
+     * @param {{ requestLayout?: boolean }} [options]
      */
-    async removeChildAt(index) {
+    async removeChildAt(index, options = {}) {
         const { removeAt } = this.options.getChildSpecs();
         clearViewLevelScaleConfigs(this.container);
         clearViewLevelGuideConfigs(this.container);
@@ -219,7 +220,10 @@ export default class ContainerMutationHelper {
             );
         }
 
-        if (this.options.requestLayout !== false) {
+        if (
+            this.options.requestLayout !== false &&
+            options.requestLayout !== false
+        ) {
             this.container.invalidateSizeCache();
             this.container.context.requestLayoutReflow();
         }
