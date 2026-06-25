@@ -348,6 +348,7 @@ export class GsInspectorPanel extends LitElement {
     #renderDetails(node) {
         return html`
             <h2>${node.path}</h2>
+            ${this.#renderDebugErrors(node)}
             <dl>
                 <dt>id</dt>
                 <dd>${node.id}</dd>
@@ -419,6 +420,29 @@ export class GsInspectorPanel extends LitElement {
                 Authored or generated view spec snapshot for this runtime view.
             </p>
             <pre>${JSON.stringify(node.spec, null, 2)}</pre>
+        `;
+    }
+
+    /**
+     * @param {ViewDebugNode} node
+     * @returns {import("lit").TemplateResult | typeof nothing}
+     */
+    #renderDebugErrors(node) {
+        if (!node.debugErrors || node.debugErrors.length === 0) {
+            return nothing;
+        }
+
+        return html`
+            <div class="debug-errors">
+                <strong>Incomplete debug snapshot</strong>
+                <ul>
+                    ${node.debugErrors.map(
+                        (error) => html`
+                            <li>${error.field}: ${error.message}</li>
+                        `
+                    )}
+                </ul>
+            </div>
         `;
     }
 

@@ -62,4 +62,38 @@ describe("createViewDebugSnapshot", () => {
             },
         });
     });
+
+    test("keeps a node when optional debug fields fail", async () => {
+        const view = await create(
+            {
+                name: "broken",
+                data: { values: [{ x: 1 }] },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                },
+            },
+            View
+        );
+
+        view.getSize = () => {
+            throw new Error("Cannot use step-based size with null scale.");
+        };
+
+        const snapshot = createViewDebugSnapshot(view, {
+            getDebugId: () => "view-id",
+        });
+
+        expect(snapshot.nodes).toHaveLength(1);
+        expect(snapshot.nodes[0]).toMatchObject({
+            name: "broken",
+            size: undefined,
+            debugErrors: expect.arrayContaining([
+                expect.objectContaining({
+                    field: "size",
+                    message: "Cannot use step-based size with null scale.",
+                }),
+            ]),
+        });
+    });
 });

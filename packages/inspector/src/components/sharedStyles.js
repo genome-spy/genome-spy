@@ -126,6 +126,20 @@ export const inspectorPanelStyles = css`
         color: #9aa6b2;
     }
 
+    .debug-errors {
+        margin: 0 0 0.75rem;
+        padding: 0.5rem 0.65rem;
+        border: 1px solid #8f6a2f;
+        border-radius: 4px;
+        background: #34291c;
+        color: #ffcf8a;
+    }
+
+    .debug-errors ul {
+        margin: 0.35rem 0 0;
+        padding-left: 1rem;
+    }
+
     .node {
         display: grid;
         grid-template-columns: 1fr auto;

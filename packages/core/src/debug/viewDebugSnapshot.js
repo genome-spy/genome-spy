@@ -34,6 +34,13 @@ import { getViewSelector, isChromeView } from "../view/viewSelectors.js";
  * @prop {Record<string, EncodingDebugNode>} encodings
  * @prop {string[]} paramNames
  * @prop {Record<string, any>} spec
+ * @prop {DebugSnapshotError[]} debugErrors
+ */
+
+/**
+ * @typedef {object} DebugSnapshotError
+ * @prop {string} field
+ * @prop {string} message
  */
 
 /**
@@ -122,6 +129,8 @@ export function createViewDebugSnapshot(root, options) {
  * @returns {ViewDebugNode}
  */
 function createViewDebugNode(view, id, parentId, chrome, options) {
+    /** @type {DebugSnapshotError[]} */
+    const debugErrors = [];
     return {
         id,
         parentId,
@@ -129,26 +138,106 @@ function createViewDebugNode(view, id, parentId, chrome, options) {
         name: view.name,
         explicitName: view.explicitName,
         defaultName: view.defaultName,
-        path: view.getPathString(),
+        path: captureDebugValue(debugErrors, "path", view.name, () =>
+            view.getPathString()
+        ),
         className: view.constructor.name,
-        type: getViewType(view),
-        markType: getMarkType(view),
+        type: captureDebugValue(debugErrors, "type", "unknown", () =>
+            getViewType(view)
+        ),
+        markType: captureDebugValue(debugErrors, "markType", undefined, () =>
+            getMarkType(view)
+        ),
         chrome,
-        visible: view.isVisible(),
-        configuredVisible: view.isConfiguredVisible(),
-        visibleInSpec: view.isVisibleInSpec(),
-        dataInitializationState: view.getDataInitializationState(),
-        selector: getSelector(view),
-        bounds: getBounds(view),
-        size: summarizeFlexDimensions(view.getSize()),
-        viewportSize: summarizeFlexDimensions(view.getViewportSize()),
-        scaleResolutionIds: getResolutionIds(view.resolutions.scale, options),
-        axisResolutionIds: getResolutionIds(view.resolutions.axis, options),
-        legendResolutionIds: getResolutionIds(view.resolutions.legend, options),
-        encodings: getEncodings(view, options),
-        paramNames: Array.from(view.paramRuntime.paramConfigs.keys()),
-        spec: structuredClone(view.spec),
+        visible: captureDebugValue(debugErrors, "visible", false, () =>
+            view.isVisible()
+        ),
+        configuredVisible: captureDebugValue(
+            debugErrors,
+            "configuredVisible",
+            false,
+            () => view.isConfiguredVisible()
+        ),
+        visibleInSpec: captureDebugValue(
+            debugErrors,
+            "visibleInSpec",
+            false,
+            () => view.isVisibleInSpec()
+        ),
+        dataInitializationState: captureDebugValue(
+            debugErrors,
+            "dataInitializationState",
+            "none",
+            () => view.getDataInitializationState()
+        ),
+        selector: captureDebugValue(debugErrors, "selector", undefined, () =>
+            getSelector(view)
+        ),
+        bounds: captureDebugValue(debugErrors, "bounds", undefined, () =>
+            getBounds(view)
+        ),
+        size: captureDebugValue(debugErrors, "size", undefined, () =>
+            summarizeFlexDimensions(view.getSize())
+        ),
+        viewportSize: captureDebugValue(
+            debugErrors,
+            "viewportSize",
+            undefined,
+            () => summarizeFlexDimensions(view.getViewportSize())
+        ),
+        scaleResolutionIds: captureDebugValue(
+            debugErrors,
+            "scaleResolutionIds",
+            {},
+            () => getResolutionIds(view.resolutions.scale, options)
+        ),
+        axisResolutionIds: captureDebugValue(
+            debugErrors,
+            "axisResolutionIds",
+            {},
+            () => getResolutionIds(view.resolutions.axis, options)
+        ),
+        legendResolutionIds: captureDebugValue(
+            debugErrors,
+            "legendResolutionIds",
+            {},
+            () => getResolutionIds(view.resolutions.legend, options)
+        ),
+        encodings: captureDebugValue(debugErrors, "encodings", {}, () =>
+            getEncodings(view, options)
+        ),
+        paramNames: captureDebugValue(debugErrors, "paramNames", [], () =>
+            Array.from(view.paramRuntime.paramConfigs.keys())
+        ),
+        spec: captureDebugValue(
+            debugErrors,
+            "spec",
+            /** @type {import("../spec/view.js").ViewSpec} */ ({}),
+            () => structuredClone(view.spec)
+        ),
+        debugErrors,
     };
+}
+
+/**
+ * @template T
+ * @param {DebugSnapshotError[]} debugErrors
+ * @param {string} field
+ * @param {T} fallback
+ * @param {() => T} getter
+ * @returns {T}
+ */
+function captureDebugValue(debugErrors, field, fallback, getter) {
+    try {
+        return getter();
+    } catch (error) {
+        console.warn(`Failed to collect view debug field "${field}".`, error);
+        debugErrors.push({
+            field,
+            message: error instanceof Error ? error.message : String(error),
+        });
+        return fallback;
+    }
 }
 
 /**
