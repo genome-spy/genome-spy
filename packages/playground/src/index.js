@@ -30,6 +30,7 @@ import "./filePane.js";
 import "./playground.scss";
 import addMarkdownProps from "./markdownProps.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
+import { createEditorState } from "./editorState.js";
 
 registerJsonSchema();
 
@@ -52,6 +53,7 @@ let embedResult;
 
 let previousStringifiedSpec = "";
 let suppressNextEditorChange = false;
+const editorState = createEditorState();
 
 const layouts = ["vertical", "horizontal"];
 let layout = layouts[0];
@@ -172,6 +174,7 @@ function toggleLayout() {
 }
 
 function toggleInspector() {
+    editorState.syncFromEditor(editorRef.value);
     sidePane =
         sidePane === "inspector"
             ? sidePanes[0]
@@ -203,6 +206,7 @@ async function ensureInspectorPanel() {
             }
         );
         inspectorHandle.panel.addEventListener("close", () => {
+            editorState.syncFromEditor(editorRef.value);
             sidePane = sidePanes[0];
             renderLayout();
         });
@@ -230,8 +234,11 @@ function closeExamplePicker() {
  * @param {string} specText
  */
 function setEditorSpec(specText) {
-    suppressNextEditorChange = true;
-    editorRef.value.value = specText;
+    editorState.set(specText);
+    if (editorRef.value) {
+        suppressNextEditorChange = true;
+        editorRef.value.value = specText;
+    }
     void update(true);
 }
 
@@ -454,16 +461,22 @@ async function formatWithPrettier() {
             import("prettier/plugins/estree"),
         ]);
 
-    const formatted = await prettier.format(editorRef.value.value, {
-        parser: "json",
-        // @ts-ignore
-        plugins: [prettierPluginBabel, prettierPluginEstree],
-    });
-    editorRef.value.value = formatted;
+    const formatted = await prettier.format(
+        editorState.getCurrent(editorRef.value),
+        {
+            parser: "json",
+            // @ts-ignore
+            plugins: [prettierPluginBabel, prettierPluginEstree],
+        }
+    );
+    editorState.set(formatted);
+    if (editorRef.value) {
+        editorRef.value.value = formatted;
+    }
 }
 
 function clearBaseUrl() {
-    const value = editorRef.value?.value;
+    const value = editorState.getCurrent(editorRef.value);
     if (!value) {
         return;
     }
@@ -471,7 +484,10 @@ function clearBaseUrl() {
     const parsedSpec = JSON.parse(value);
     if (parsedSpec.baseUrl) {
         delete parsedSpec.baseUrl;
-        editorRef.value.value = JSON.stringify(parsedSpec, null, 2) + "\n";
+        editorState.set(JSON.stringify(parsedSpec, null, 2) + "\n");
+        if (editorRef.value) {
+            editorRef.value.value = editorState.get();
+        }
     } else {
         inheritedBaseUrl = undefined;
     }
@@ -482,8 +498,9 @@ function clearBaseUrl() {
 async function update(force = false) {
     missingFiles = new Set();
 
-    const value = editorRef.value?.value;
+    const value = editorState.getCurrent(editorRef.value);
     if (value) {
+        editorState.set(value);
         storeState(value);
     }
 
@@ -599,6 +616,7 @@ function handleEditorChange() {
         return;
     }
 
+    editorState.syncFromEditor(editorRef.value);
     clearSpecQueryParam();
     debouncedUpdate();
 }
@@ -653,6 +671,7 @@ const layoutTemplate = () => html`
                                   : null}
                               <code-editor
                                   ${ref(editorRef)}
+                                  .value=${editorState.get()}
                                   @change=${handleEditorChange}
                               ></code-editor>
                           </section>
