@@ -1,8 +1,11 @@
 import { expect, test } from "vitest";
 import { ViewFactory, VIEW_ROOT_NAME } from "./viewFactory.js";
-import { createTestViewContext } from "./testUtils.js";
+import { createAndInitialize, createTestViewContext } from "./testUtils.js";
 import ConcatView from "./concatView.js";
 import FacetView from "./facetView.js";
+import UnitView from "./unitView.js";
+import { isChromeView } from "./viewSelectors.js";
+import { getFlattenedViews } from "./viewUtils.js";
 
 test("factory recognizes facet specs", () => {
     const factory = new ViewFactory();
@@ -93,4 +96,68 @@ test("row facet cannot be combined with wrapping columns", async () => {
     ).rejects.toThrow(
         'Facet "columns" can be used only with one-dimensional column facets.'
     );
+});
+
+test("facet creates one non-chrome child view", async () => {
+    const context = createTestViewContext();
+    const view = /** @type {FacetView} */ (
+        await context.createOrImportView(
+            {
+                facet: { field: "Series" },
+                spec: {
+                    data: { values: [] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+            },
+            null,
+            null,
+            "facet"
+        )
+    );
+
+    const nonChromeChildren = Array.from(view).filter(
+        (child) => !isChromeView(child)
+    );
+
+    expect(nonChromeChildren).toEqual([view.child]);
+    expect(view.child).toBeInstanceOf(UnitView);
+});
+
+test("descendant unit collectors group data by facet fields", async () => {
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    { Series: "A", x: 1, y: 10 },
+                    { Series: "B", x: 2, y: 20 },
+                    { Series: "A", x: 3, y: 30 },
+                ],
+            },
+            facet: { field: "Series" },
+            spec: {
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+        },
+        FacetView
+    );
+
+    const child = getFlattenedViews(view).find(
+        (candidate) => candidate instanceof UnitView && !isChromeView(candidate)
+    );
+    const collector = /** @type {UnitView} */ (child).getCollector();
+
+    expect(collector.facetBatches.get(["A"]).map((datum) => datum.x)).toEqual([
+        1, 3,
+    ]);
+    expect(collector.facetBatches.get(["B"]).map((datum) => datum.x)).toEqual([
+        2,
+    ]);
 });
