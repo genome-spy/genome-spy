@@ -149,10 +149,7 @@ test("descendant unit collectors group data by facet fields", async () => {
         FacetView
     );
 
-    const child = getFlattenedViews(view).find(
-        (candidate) => candidate instanceof UnitView && !isChromeView(candidate)
-    );
-    const collector = /** @type {UnitView} */ (child).getCollector();
+    const collector = getNonChromeUnitView(view).getCollector();
 
     expect(collector.facetBatches.get(["A"]).map((datum) => datum.x)).toEqual([
         1, 3,
@@ -161,3 +158,115 @@ test("descendant unit collectors group data by facet fields", async () => {
         2,
     ]);
 });
+
+test("anscombe-style facets expose sorted facet ids", async () => {
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    { Series: "IV", X: 8, Y: 6.58 },
+                    { Series: "II", X: 8, Y: 8.14 },
+                    { Series: "I", X: 10, Y: 8.04 },
+                    { Series: "III", X: 8, Y: 6.95 },
+                    { Series: "I", X: 8, Y: 6.95 },
+                ],
+            },
+            facet: { field: "Series" },
+            columns: 2,
+            spec: {
+                mark: "point",
+                encoding: {
+                    x: { field: "X", type: "quantitative" },
+                    y: { field: "Y", type: "quantitative" },
+                },
+            },
+        },
+        FacetView
+    );
+
+    expect(view.getFacetIds()).toEqual([["I"], ["II"], ["III"], ["IV"]]);
+    expect(view.getFacetFactors()).toEqual({
+        row: [],
+        column: ["I", "II", "III", "IV"],
+    });
+});
+
+test("row and column facets expose sorted factors", async () => {
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    { Origin: "USA", Cylinders: 8, Horsepower: 150, MPG: 18 },
+                    { Origin: "Europe", Cylinders: 4, Horsepower: 76, MPG: 30 },
+                    { Origin: "Japan", Cylinders: 4, Horsepower: 65, MPG: 35 },
+                    { Origin: "USA", Cylinders: 6, Horsepower: 105, MPG: 22 },
+                    { Origin: "Europe", Cylinders: 6, Horsepower: 90, MPG: 25 },
+                ],
+            },
+            facet: {
+                row: { field: "Origin" },
+                column: { field: "Cylinders" },
+            },
+            spec: {
+                mark: "point",
+                encoding: {
+                    x: { field: "Horsepower", type: "quantitative" },
+                    y: { field: "MPG", type: "quantitative" },
+                },
+            },
+        },
+        FacetView
+    );
+
+    expect(view.getFacetIds()).toEqual([
+        ["Europe", 4],
+        ["Europe", 6],
+        ["Japan", 4],
+        ["USA", 6],
+        ["USA", 8],
+    ]);
+    expect(view.getFacetFactors()).toEqual({
+        row: ["Europe", "Japan", "USA"],
+        column: [4, 6, 8],
+    });
+});
+
+test("facet collector observers are disposed with the view", async () => {
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [{ Series: "A", x: 1, y: 10 }],
+            },
+            facet: { field: "Series" },
+            spec: {
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+        },
+        FacetView
+    );
+    const collector = getNonChromeUnitView(view).getCollector();
+    const observerCount = collector.observers.size;
+
+    view.getFacetIds();
+    expect(collector.observers.size).toBe(observerCount + 1);
+
+    view.dispose();
+    expect(collector.observers.size).toBe(observerCount);
+});
+
+/**
+ * @param {FacetView} view
+ * @returns {UnitView}
+ */
+function getNonChromeUnitView(view) {
+    const child = getFlattenedViews(view).find(
+        (candidate) => candidate instanceof UnitView && !isChromeView(candidate)
+    );
+
+    expect(child).toBeInstanceOf(UnitView);
+    return /** @type {UnitView} */ (child);
+}
