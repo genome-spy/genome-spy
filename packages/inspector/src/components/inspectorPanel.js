@@ -4,13 +4,13 @@ import {
     formatRecord,
     formatValue,
 } from "./formatters.js";
+import { renderParamTable } from "./paramsPanel.js";
 import { inspectorPanelStyles } from "./sharedStyles.js";
 
 /**
  * @typedef {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugNode} ViewDebugNode
  * @typedef {import("@genome-spy/core/debug/dataflowDebugSnapshot.js").DataflowDebugNode} DataflowDebugNode
  * @typedef {import("@genome-spy/core/debug/paramDebugSnapshot.js").ParamScopeDebugNode} ParamScopeDebugNode
- * @typedef {import("@genome-spy/core/debug/paramDebugSnapshot.js").ParamDebugNode} ParamDebugNode
  * @typedef {import("@genome-spy/core/debug/markDebugSnapshot.js").MarkDebugNode} MarkDebugNode
  */
 
@@ -76,6 +76,14 @@ export class GsInspectorPanel extends LitElement {
 
     /** @type {(() => void) | undefined} */
     #disconnect = undefined;
+
+    /**
+     * @param {CustomEvent<{ viewId: string }>} event
+     */
+    #handleSelectView = (event) => {
+        this.selectedViewId = event.detail.viewId;
+        this.activePanel = "elements";
+    };
 
     #connectSession() {
         if (!this.session || this.#disconnect) {
@@ -187,7 +195,12 @@ export class GsInspectorPanel extends LitElement {
         }
 
         if (this.activePanel === "params") {
-            return this.#renderParamsPanel();
+            return html`
+                <gs-inspector-params-panel
+                    .snapshot=${this.snapshot}
+                    @select-view=${this.#handleSelectView}
+                ></gs-inspector-params-panel>
+            `;
         }
 
         if (this.activePanel === "resolutions") {
@@ -565,41 +578,6 @@ export class GsInspectorPanel extends LitElement {
         `;
     }
 
-    #renderParamsPanel() {
-        const scopes = this.snapshot.params.scopes.filter(
-            (scope) => scope.params.length > 0
-        );
-        if (scopes.length === 0) {
-            return html`
-                <div class="single-panel">
-                    <p class="empty">No params.</p>
-                </div>
-            `;
-        }
-
-        return html`
-            <div class="single-panel">
-                <h2>Params</h2>
-                ${scopes.map(
-                    (scope) => html`
-                        <h3>
-                            <span
-                                class="linked"
-                                @click=${() => {
-                                    this.selectedViewId = scope.viewId;
-                                    this.activePanel = "elements";
-                                }}
-                                >${scope.viewPath}</span
-                            >
-                            <span class="muted">${scope.scopeId}</span>
-                        </h3>
-                        ${this.#renderParamTable(scope.params)}
-                    `
-                )}
-            </div>
-        `;
-    }
-
     /**
      * @param {ViewDebugNode} node
      * @returns {import("lit").TemplateResult}
@@ -610,44 +588,7 @@ export class GsInspectorPanel extends LitElement {
             return html`<p class="empty">No local params.</p>`;
         }
 
-        return this.#renderParamTable(scope.params);
-    }
-
-    /**
-     * @param {ParamDebugNode[]} params
-     * @returns {import("lit").TemplateResult}
-     */
-    #renderParamTable(params) {
-        return html`
-            <table>
-                <thead>
-                    <tr>
-                        <th>name</th>
-                        <th>kind</th>
-                        <th>writable</th>
-                        <th>value</th>
-                        <th>config</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${params.map(
-                        (param) => html`
-                            <tr>
-                                <td>${param.name}</td>
-                                <td>${param.kind}</td>
-                                <td>${String(param.writable)}</td>
-                                <td>${formatValue(param.value)}</td>
-                                <td>
-                                    ${param.config
-                                        ? formatValue(param.config)
-                                        : "-"}
-                                </td>
-                            </tr>
-                        `
-                    )}
-                </tbody>
-            </table>
-        `;
+        return renderParamTable(scope.params);
     }
 
     /**
