@@ -4,10 +4,12 @@ import {
     createFacetGrid,
     getFacetCellLayouts,
     getFacetGridSize,
+    isRectVisible,
 } from "./facetLayout.js";
 import FacetHeaderView from "./facetHeaderView.js";
 import GridChild from "./gridView/gridChild.js";
 import { ZERO_FLEXDIMENSIONS } from "./layout/flexLayout.js";
+import { normalizeClipOptions } from "./renderingContext/clipOptions.js";
 import UnitView from "./unitView.js";
 import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 
@@ -204,6 +206,18 @@ export default class FacetView extends ContainerView {
             this.spec.spacing ?? 10,
             context.getDevicePixelRatio()
         );
+        const parentClip = normalizeClipOptions(options);
+        const visibleLayouts = layouts.filter((layout) =>
+            isRectVisible(layout.viewportCoords, parentClip)
+        );
+
+        for (const [index, layout] of visibleLayouts.entries()) {
+            this.#renderFacetCell(context, layout, {
+                ...options,
+                facetId: layout.cell.facetId,
+                firstFacet: index === 0,
+            });
+        }
 
         this.#renderFacetHeaders(context, coords, layouts, options);
 
@@ -269,6 +283,35 @@ export default class FacetView extends ContainerView {
             );
             this.#rowHeaderView.render(context, coords, options);
         }
+    }
+
+    /**
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("./facetLayout.js").FacetCellLayout} layout
+     * @param {import("../types/rendering.js").RenderingOptions} options
+     */
+    #renderFacetCell(context, layout, options) {
+        this.#gridChild.background?.render(
+            context,
+            layout.viewportCoords,
+            options
+        );
+
+        for (const gridLineView of Object.values(this.#gridChild.gridLines)) {
+            gridLineView.render(context, layout.viewportCoords, options);
+        }
+
+        this.#gridChild.view.render(context, layout.childCoords, options);
+
+        for (const axisView of Object.values(this.#gridChild.axes)) {
+            axisView.render(context, layout.viewportCoords, options);
+        }
+
+        this.#gridChild.backgroundStroke?.render(
+            context,
+            layout.viewportCoords,
+            options
+        );
     }
 }
 
