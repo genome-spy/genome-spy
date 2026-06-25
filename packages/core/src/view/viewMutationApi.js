@@ -11,6 +11,7 @@ import {
     registerViewScope,
     resolveViewSelector,
 } from "./viewSelectors.js";
+import { getViewIdentityRegistry } from "./viewIdentityRegistry.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -61,7 +62,6 @@ export function createViewMutationApi(genomeSpy) {
     /** @type {WeakMap<import("../types/embedApi.js").ViewHandle, import("./view.js").default>} */
     const viewsByHandle = new WeakMap();
 
-    let nextHandleId = 0;
     let queue = Promise.resolve();
 
     /** @type {TransactionState | undefined} */
@@ -129,8 +129,7 @@ export function createViewMutationApi(genomeSpy) {
             return handle;
         }
 
-        const id = "view-" + nextHandleId;
-        nextHandleId++;
+        const id = getViewIdentityRegistry(getRootView()).getId(view);
 
         handle = {
             id,

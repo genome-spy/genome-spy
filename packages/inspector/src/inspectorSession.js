@@ -1,3 +1,5 @@
+import { getViewIdentityRegistry } from "@genome-spy/core/view/viewIdentityRegistry.js";
+
 /**
  * Browser-side state and runtime bridge for the inspector UI.
  *
@@ -20,6 +22,9 @@ export default class InspectorSession extends EventTarget {
 
     /** @type {Record<string, number>} */
     #idCounters = {};
+
+    /** @type {WeakSet<object>} */
+    #views = new WeakSet();
 
     /** @type {Promise<typeof import("@genome-spy/core/debug/viewDebugSnapshot.js")> | undefined} */
     #viewDebugModulePromise;
@@ -108,6 +113,7 @@ export default class InspectorSession extends EventTarget {
             this.#getMarkDebugModule(),
         ]);
         this.#objectsById = new Map();
+        this.#views = collectViews(root);
         const viewSnapshot = viewDebugModule.createViewDebugSnapshot(root, {
             includeChrome: this.#includeChrome,
             getDebugId: (object) => this.#getDebugId(object),
@@ -244,6 +250,15 @@ export default class InspectorSession extends EventTarget {
      * @returns {string}
      */
     #getDebugId(object) {
+        if (this.#views.has(object)) {
+            const root = this.#getRoot();
+            const id = getViewIdentityRegistry(root).getId(
+                /** @type {any} */ (object)
+            );
+            this.#objectsById.set(id, object);
+            return id;
+        }
+
         const existing = this.#ids.get(object);
         if (existing) {
             this.#objectsById.set(existing, object);
@@ -261,14 +276,26 @@ export default class InspectorSession extends EventTarget {
 }
 
 /**
+ * @param {any | undefined} root
+ * @returns {WeakSet<object>}
+ */
+function collectViews(root) {
+    const views = new WeakSet();
+    /**
+     * @param {object} view
+     */
+    const addView = (view) => {
+        views.add(view);
+    };
+    root?.visit?.(addView);
+    return views;
+}
+
+/**
  * @param {object} object
  * @returns {string}
  */
 function getDebugIdPrefix(object) {
-    if ("spec" in object) {
-        return "v";
-    }
-
     if ("channel" in object) {
         return "r";
     }

@@ -45,7 +45,7 @@ export declare class InspectorSession extends EventTarget {
     refresh(): Promise<void>;
 
     /**
-     * Highlights a view by inspector debug id.
+     * Highlights a view by its runtime view id.
      */
     highlightView(viewId: string | undefined): void;
 
