@@ -1,4 +1,9 @@
 import { LitElement, css, html, nothing } from "lit";
+import {
+    formatFlowNodeState,
+    formatRecord,
+    formatValue,
+} from "./formatters.js";
 
 /**
  * @typedef {import("@genome-spy/core/debug/viewDebugSnapshot.js").ViewDebugNode} ViewDebugNode
@@ -547,11 +552,11 @@ export class GsInspectorPanel extends LitElement {
             <h3>Resolutions</h3>
             <dl>
                 <dt>scale</dt>
-                <dd>${this.#formatRecord(node.scaleResolutionIds)}</dd>
+                <dd>${formatRecord(node.scaleResolutionIds)}</dd>
                 <dt>axis</dt>
-                <dd>${this.#formatRecord(node.axisResolutionIds)}</dd>
+                <dd>${formatRecord(node.axisResolutionIds)}</dd>
                 <dt>legend</dt>
-                <dd>${this.#formatRecord(node.legendResolutionIds)}</dd>
+                <dd>${formatRecord(node.legendResolutionIds)}</dd>
             </dl>
 
             <h3>Dataflow</h3>
@@ -597,7 +602,7 @@ export class GsInspectorPanel extends LitElement {
                             <tr>
                                 <td>${flowNode.label}</td>
                                 <td>${flowNode.count}</td>
-                                <td>${this.#formatFlowNodeState(flowNode)}</td>
+                                <td>${formatFlowNodeState(flowNode)}</td>
                                 <td>
                                     <button
                                         @click=${() =>
@@ -643,7 +648,7 @@ export class GsInspectorPanel extends LitElement {
                                 <td>
                                     ${encoding.field ??
                                     encoding.expr ??
-                                    this.#formatValue(encoding.value)}
+                                    formatValue(encoding.value)}
                                 </td>
                                 <td>${encoding.type ?? "-"}</td>
                                 <td>${encoding.scaleResolutionId ?? "-"}</td>
@@ -700,7 +705,7 @@ export class GsInspectorPanel extends LitElement {
                                     ${scale.resolvedScaleType ?? scale.type}
                                 </td>
                                 <td>
-                                    ${this.#formatValue(
+                                    ${formatValue(
                                         scale.complexDomain ?? scale.domain
                                     )}
                                 </td>
@@ -868,10 +873,10 @@ export class GsInspectorPanel extends LitElement {
                                 <td>${param.name}</td>
                                 <td>${param.kind}</td>
                                 <td>${String(param.writable)}</td>
-                                <td>${this.#formatValue(param.value)}</td>
+                                <td>${formatValue(param.value)}</td>
                                 <td>
                                     ${param.config
-                                        ? this.#formatValue(param.config)
+                                        ? formatValue(param.config)
                                         : "-"}
                                 </td>
                             </tr>
@@ -919,7 +924,7 @@ export class GsInspectorPanel extends LitElement {
             </dl>
 
             <h3>Mark Props</h3>
-            <pre>${this.#formatValue(mark.properties)}</pre>
+            <pre>${formatValue(mark.properties)}</pre>
         `;
     }
 
@@ -1044,14 +1049,12 @@ export class GsInspectorPanel extends LitElement {
 
             <h3>Params</h3>
             ${node.params
-                ? html`<pre>${this.#formatValue(node.params)}</pre>`
+                ? html`<pre>${formatValue(node.params)}</pre>`
                 : html`<p class="empty">No flow node parameters.</p>`}
 
             <h3>First Datum</h3>
             ${node.first
-                ? html`<pre class="flow-first">
-${this.#formatValue(node.first)}</pre
-                  >`
+                ? html`<pre class="flow-first">${formatValue(node.first)}</pre>`
                 : html`<p class="empty">
                       ${node.count > 0
                           ? "No datum preview is available."
@@ -1148,45 +1151,6 @@ ${this.#formatValue(node.first)}</pre
      */
     #getMark(viewId) {
         return this.snapshot.marks.marks.find((mark) => mark.viewId === viewId);
-    }
-
-    /**
-     * @param {Record<string, string>} record
-     * @returns {string}
-     */
-    #formatRecord(record) {
-        const entries = Object.entries(record);
-        return entries.length
-            ? entries.map(([channel, id]) => channel + ": " + id).join(", ")
-            : "-";
-    }
-
-    /**
-     * @param {DataflowDebugNode} node
-     * @returns {string}
-     */
-    #formatFlowNodeState(node) {
-        if (node.disposed) {
-            return "disposed";
-        } else if (!node.initialized) {
-            return "new";
-        } else if (node.completed) {
-            return "done";
-        } else {
-            return "active";
-        }
-    }
-
-    /**
-     * @param {any} value
-     * @returns {string}
-     */
-    #formatValue(value) {
-        if (value === undefined) {
-            return "-";
-        }
-
-        return typeof value === "string" ? value : JSON.stringify(value);
     }
 }
 
