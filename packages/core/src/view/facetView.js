@@ -1,5 +1,11 @@
 import ContainerView from "./containerView.js";
-import { createFacetGrid, getFacetGridSize } from "./facetLayout.js";
+import {
+    DEFAULT_FACET_HEADER_SIZES,
+    createFacetGrid,
+    getFacetCellLayouts,
+    getFacetGridSize,
+} from "./facetLayout.js";
+import FacetHeaderView from "./facetHeaderView.js";
 import GridChild from "./gridView/gridChild.js";
 import { ZERO_FLEXDIMENSIONS } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
@@ -35,6 +41,12 @@ export default class FacetView extends ContainerView {
 
     /** @type {GridChild} */
     #gridChild;
+
+    /** @type {FacetHeaderView | undefined} */
+    #columnHeaderView;
+
+    /** @type {FacetHeaderView | undefined} */
+    #rowHeaderView;
 
     /** @type {import("../spec/channel.js").Scalar[][]} */
     #facetIds = [];
@@ -78,6 +90,26 @@ export default class FacetView extends ContainerView {
 
         this.#gridChild = new GridChild(this.child, this, 0);
         await this.#gridChild.createAxes();
+
+        if (this.#facet.column) {
+            this.#columnHeaderView = new FacetHeaderView({
+                orient: "column",
+                context: this.context,
+                layoutParent: this,
+                dataParent: this.child,
+                getName: (prefix) => this.getNextAutoName(prefix),
+            });
+        }
+
+        if (this.#facet.row) {
+            this.#rowHeaderView = new FacetHeaderView({
+                orient: "row",
+                context: this.context,
+                layoutParent: this,
+                dataParent: this.child,
+                getName: (prefix) => this.getNextAutoName(prefix),
+            });
+        }
     }
 
     /**
@@ -85,6 +117,14 @@ export default class FacetView extends ContainerView {
      */
     *[Symbol.iterator]() {
         yield* this.#gridChild.getChildren();
+
+        if (this.#columnHeaderView) {
+            yield this.#columnHeaderView.view;
+        }
+
+        if (this.#rowHeaderView) {
+            yield this.#rowHeaderView.view;
+        }
     }
 
     /**
@@ -140,6 +180,36 @@ export default class FacetView extends ContainerView {
         });
     }
 
+    /**
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("./layout/rectangle.js").default} coords
+     * @param {import("../types/rendering.js").RenderingOptions} [options]
+     */
+    render(context, coords, options = {}) {
+        super.render(context, coords, options);
+
+        if (!this.isConfiguredVisible()) {
+            return;
+        }
+
+        this.#syncFacetCollectors();
+        context.pushView(this, coords);
+
+        const layouts = getFacetCellLayouts(
+            createFacetGrid(this.#facet, this.#facetFactors, this.spec.columns),
+            coords,
+            this.child.getViewportSize(),
+            this.#gridChild.getOverhangAndPadding(),
+            undefined,
+            this.spec.spacing ?? 10,
+            context.getDevicePixelRatio()
+        );
+
+        this.#renderFacetHeaders(context, coords, layouts, options);
+
+        context.popView(this);
+    }
+
     #syncFacetCollectors() {
         this.child.visit((view) => {
             if (view instanceof UnitView) {
@@ -178,6 +248,89 @@ export default class FacetView extends ContainerView {
             return true;
         }
     }
+
+    /**
+     * @param {import("./renderingContext/viewRenderingContext.js").default} context
+     * @param {import("./layout/rectangle.js").default} coords
+     * @param {import("./facetLayout.js").FacetCellLayout[]} layouts
+     * @param {import("../types/rendering.js").RenderingOptions} options
+     */
+    #renderFacetHeaders(context, coords, layouts, options) {
+        if (this.#columnHeaderView) {
+            this.#columnHeaderView.updateData(
+                createColumnHeaderData(layouts, coords, this.#facet)
+            );
+            this.#columnHeaderView.render(context, coords, options);
+        }
+
+        if (this.#rowHeaderView) {
+            this.#rowHeaderView.updateData(
+                createRowHeaderData(layouts, coords)
+            );
+            this.#rowHeaderView.render(context, coords, options);
+        }
+    }
+}
+
+/**
+ * @param {import("./facetLayout.js").FacetCellLayout[]} layouts
+ * @param {import("./layout/rectangle.js").default} coords
+ * @param {NormalizedFacet} facet
+ * @returns {{ x: number, y: number, text: string }[]}
+ */
+function createColumnHeaderData(layouts, coords, facet) {
+    /** @type {{ x: number, y: number, text: string }[]} */
+    const data = [];
+    /** @type {Set<number>} */
+    const columns = new Set();
+
+    for (const layout of layouts) {
+        if (facet.row && columns.has(layout.cell.column)) {
+            continue;
+        }
+
+        columns.add(layout.cell.column);
+        data.push({
+            x:
+                layout.viewportCoords.x -
+                coords.x +
+                layout.viewportCoords.width / 2,
+            y: DEFAULT_FACET_HEADER_SIZES.column / 2,
+            text: String(layout.cell.columnValue),
+        });
+    }
+
+    return data;
+}
+
+/**
+ * @param {import("./facetLayout.js").FacetCellLayout[]} layouts
+ * @param {import("./layout/rectangle.js").default} coords
+ * @returns {{ x: number, y: number, text: string }[]}
+ */
+function createRowHeaderData(layouts, coords) {
+    /** @type {{ x: number, y: number, text: string }[]} */
+    const data = [];
+    /** @type {Set<number>} */
+    const rows = new Set();
+
+    for (const layout of layouts) {
+        if (rows.has(layout.cell.row)) {
+            continue;
+        }
+
+        rows.add(layout.cell.row);
+        data.push({
+            x: DEFAULT_FACET_HEADER_SIZES.row / 2,
+            y:
+                layout.viewportCoords.y -
+                coords.y +
+                layout.viewportCoords.height / 2,
+            text: String(layout.cell.rowValue),
+        });
+    }
+
+    return data;
 }
 
 /**
