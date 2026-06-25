@@ -19,6 +19,7 @@ import {
 import { FlexDimensions } from "./layout/flexLayout.js";
 import Padding from "./layout/padding.js";
 import Rectangle from "./layout/rectangle.js";
+import DebugginViewRenderingContext from "./renderingContext/debuggingViewRenderingContext.js";
 import {
     initializeViewSubtree,
     loadViewSubtreeData,
@@ -554,6 +555,80 @@ test("implicit root grid uses facet viewport height", async () => {
     expect(root.getSize().height).toEqual({ px: 80, grow: 0 });
 });
 
+test("facet render repeats child at each facet cell", async () => {
+    const view = await createAndInitialize(
+        createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
+        FacetView
+    );
+    const layout = renderToLayout(view, Rectangle.create(0, 0, 210, 138));
+
+    expect(
+        findLayoutNodes(layout, "facet0").map((node) => node.coords)
+    ).toEqual([
+        "Rectangle: x: 0, y: 28, width: 100, height: 50",
+        "Rectangle: x: 110, y: 28, width: 100, height: 50",
+        "Rectangle: x: 0, y: 88, width: 100, height: 50",
+        "Rectangle: x: 110, y: 88, width: 100, height: 50",
+    ]);
+});
+
+test("facet render marks only first visible cell as first facet", async () => {
+    const view = await createAndInitialize(
+        createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
+        FacetView
+    );
+    const original = view.child.render.bind(view.child);
+    /** @type {{ facetId: unknown, firstFacet: boolean | undefined }[]} */
+    const calls = [];
+
+    view.child.render = (context, coords, options = {}) => {
+        calls.push({
+            facetId: options.facetId,
+            firstFacet: options.firstFacet,
+        });
+        return original(context, coords, options);
+    };
+
+    renderToLayout(view, Rectangle.create(0, 0, 210, 138));
+
+    expect(calls).toEqual([
+        { facetId: ["I"], firstFacet: true },
+        { facetId: ["II"], firstFacet: false },
+        { facetId: ["III"], firstFacet: false },
+        { facetId: ["IV"], firstFacet: false },
+    ]);
+});
+
+test("facet render culls cells outside the clip rectangle", async () => {
+    const view = await createAndInitialize(
+        createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
+        FacetView
+    );
+    const original = view.child.render.bind(view.child);
+    /** @type {unknown[]} */
+    const facetIds = [];
+
+    view.child.render = (context, coords, options = {}) => {
+        facetIds.push(options.facetId);
+        return original(context, coords, options);
+    };
+
+    view.render(
+        new DebugginViewRenderingContext({}),
+        Rectangle.create(0, 0, 210, 138),
+        {
+            firstFacet: true,
+            clip: {
+                rect: Rectangle.create(0, 0, 210, 80),
+                clipX: true,
+                clipY: true,
+            },
+        }
+    );
+
+    expect(facetIds).toEqual([["I"], ["II"]]);
+});
+
 /**
  * @param {FacetView} view
  * @returns {UnitView}
@@ -583,6 +658,18 @@ function getFacetHeaderViews(view) {
  */
 function rectTuple(rect) {
     return [rect.x, rect.y, rect.width, rect.height];
+}
+
+/**
+ * @param {{ viewName: string, children: any[] }} layout
+ * @param {string} viewName
+ * @returns {{ viewName: string, coords: string, children: any[] }[]}
+ */
+function findLayoutNodes(layout, viewName) {
+    return [
+        ...(layout.viewName === viewName ? [layout] : []),
+        ...layout.children.flatMap((child) => findLayoutNodes(child, viewName)),
+    ];
 }
 
 /**
