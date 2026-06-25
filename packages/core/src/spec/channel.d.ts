@@ -60,8 +60,7 @@ export type ChannelWithoutScale =
 
 export type Channel = ChannelWithScale | ChannelWithoutScale;
 
-// TODO
-export type FacetFieldDef = any;
+export type FacetFieldDef = FieldDefWithoutScale;
 
 // TODO: Belongs to "guide"
 export interface TitleMixins {

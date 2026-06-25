@@ -272,7 +272,8 @@ export default class FacetView extends ContainerView {
             );
         }
 
-        for (const channel of ["x", "y"]) {
+        const channels = /** @type {const} */ (["x", "y"]);
+        for (const channel of channels) {
             this.#validateSharedResolution(channel, "scale");
             this.#validateSharedResolution(channel, "axis");
         }
@@ -449,7 +450,9 @@ function collectFacetIds(childView) {
  * @returns {FacetFactors}
  */
 function createFacetFactors(facet, facetIds) {
+    /** @type {import("../spec/channel.js").Scalar[]} */
     const rowValues = [];
+    /** @type {import("../spec/channel.js").Scalar[]} */
     const columnValues = [];
     const rowKeys = new Set();
     const columnKeys = new Set();
@@ -533,15 +536,16 @@ function normalizeFacetSpec(spec) {
     let row;
     /** @type {import("../spec/channel.js").FieldDefWithoutScale | undefined} */
     let column;
+    const facet = spec.facet;
 
-    if (isFacetFieldDef(spec.facet)) {
-        column = spec.facet;
-    } else if (isFacetMapping(spec.facet)) {
-        row = normalizeFacetFieldDef(spec.facet.row, "row");
-        column = normalizeFacetFieldDef(spec.facet.column, "column");
+    if (isFacetFieldDef(facet)) {
+        column = facet;
+    } else if (isFacetMapping(facet)) {
+        row = normalizeFacetFieldDef(facet.row, "row");
+        column = normalizeFacetFieldDef(facet.column, "column");
     } else {
         throw new Error(
-            "Invalid facet specification: " + JSON.stringify(spec.facet)
+            "Invalid facet specification: " + JSON.stringify(facet)
         );
     }
 

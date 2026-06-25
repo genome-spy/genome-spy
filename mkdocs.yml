@@ -79,6 +79,7 @@ nav:
           - View Composition:
                 - "grammar/composition/index.md"
                 - Concat: "grammar/composition/concat.md"
+                - Facet: "grammar/facet.md"
                 - Layer: "grammar/composition/layer.md"
                 - Multiscale: "grammar/composition/multiscale.md"
           - Scales: "grammar/scale.md"

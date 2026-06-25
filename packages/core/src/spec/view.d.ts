@@ -425,9 +425,30 @@ export interface MultiscaleSpec extends ViewSpecBase, DynamicOpacitySpec {
 }
 
 export interface FacetSpec extends ViewSpecBase {
-    facet: any; //FacetMapping | FacetFieldDef
-    spec: LayerSpec | UnitSpec;
+    /**
+     * Defines the field or fields used to split data into repeated facet cells.
+     *
+     * A single field definition creates column facets. Use `row` and `column`
+     * to create a two-dimensional facet matrix.
+     */
+    facet: FacetMapping | FacetFieldDef;
+
+    /**
+     * The view specification repeated for each facet cell.
+     *
+     * Facets currently use shared scales and axes. Independent per-facet scale
+     * domains are not supported.
+     */
+    spec: LayerSpec | UnitSpec | ImportSpec;
+
+    /**
+     * Wraps one-dimensional column facets into the specified number of columns.
+     *
+     * This property is valid only when `facet` is a single field definition or
+     * when only `facet.column` is defined.
+     */
     columns?: number;
+
     spacing?: number;
 }
 
@@ -471,7 +492,7 @@ export type CoreViewSpec =
     | UnitSpec
     | LayerSpec
     | MultiscaleSpec
-    //    | FacetSpec
+    | FacetSpec
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec;

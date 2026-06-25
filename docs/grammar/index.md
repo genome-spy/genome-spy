@@ -43,5 +43,6 @@ SCHEMA UnitSpec
 View [composition](composition/index.md) allows for building more complex
 visualizations from multiple single-view specifications. For example, the
 [`layer`](composition/layer.md) operator allows creation of custom glyphs and
-the [concatenation](composition/concat.md) operators enables stacked layouts
-resembling genome browsers with multiple tracks.
+the [concatenation](composition/concat.md) operators enable stacked layouts
+resembling genome browsers with multiple tracks. The [`facet`](facet.md)
+operator repeats one child view for groups of data.

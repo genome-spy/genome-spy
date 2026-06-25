@@ -1,0 +1,27 @@
+{
+  "data": {
+    "values": [
+      { "Series": "I", "X": 10, "Y": 8.04 },
+      { "Series": "II", "X": 10, "Y": 9.14 },
+      { "Series": "III", "X": 10, "Y": 7.46 },
+      { "Series": "IV", "X": 8, "Y": 6.58 }
+    ]
+  },
+  "facet": { "field": "Series" },
+  "columns": 2,
+  "spec": {
+    "mark": "point",
+    "encoding": {
+      "x": {
+        "field": "X",
+        "type": "quantitative",
+        "scale": { "zero": false }
+      },
+      "y": {
+        "field": "Y",
+        "type": "quantitative",
+        "scale": { "zero": false }
+      }
+    }
+  }
+}
