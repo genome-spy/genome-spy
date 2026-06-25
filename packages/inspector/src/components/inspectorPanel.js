@@ -116,6 +116,16 @@ export class GsInspectorPanel extends LitElement {
             padding: 0.4rem 0;
         }
 
+        .tree-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.2rem 0.65rem 0.45rem;
+            border-bottom: 1px solid #303743;
+            margin-bottom: 0.3rem;
+            color: #b8c0cc;
+        }
+
         .details {
             padding: 0.75rem;
         }
@@ -355,21 +365,6 @@ export class GsInspectorPanel extends LitElement {
                         ${this.#renderPanelTab("params", "Params")}
                         ${this.#renderPanelTab("marks", "Marks")}
                     </span>
-                    <label>
-                        <input
-                            type="checkbox"
-                            .checked=${this.session?.includeChrome ?? false}
-                            @change=${(/** @type {Event} */ event) => {
-                                const input = /** @type {HTMLInputElement} */ (
-                                    event.target
-                                );
-                                void this.session?.setIncludeChrome(
-                                    input.checked
-                                );
-                            }}
-                        />
-                        All chrome
-                    </label>
                     <button @click=${() => this.#refresh()}>Refresh</button>
                     <button
                         class="close-button"
@@ -435,13 +430,7 @@ export class GsInspectorPanel extends LitElement {
         if (this.activePanel === "resolutions") {
             return html`
                 <div class="main">
-                    <div class="tree">
-                        ${root
-                            ? this.#renderNode(root, 0)
-                            : html`<div class="empty">
-                                  Launch the app to inspect the hierarchy.
-                              </div>`}
-                    </div>
+                    ${this.#renderHierarchyPane(root)}
                     <div class="details">${this.#renderResolutionPanel()}</div>
                 </div>
             `;
@@ -449,18 +438,45 @@ export class GsInspectorPanel extends LitElement {
 
         return html`
             <div class="main">
-                <div class="tree">
-                    ${root
-                        ? this.#renderNode(root, 0)
-                        : html`<div class="empty">
-                              Launch the app to inspect the hierarchy.
-                          </div>`}
-                </div>
+                ${this.#renderHierarchyPane(root)}
                 <div class="details">
                     ${selected
                         ? this.#renderDetails(selected)
                         : html`<div class="empty">No view selected.</div>`}
                 </div>
+            </div>
+        `;
+    }
+
+    /**
+     * @param {ViewDebugNode | undefined} root
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderHierarchyPane(root) {
+        return html`
+            <div class="tree">
+                <div class="tree-controls">
+                    <label>
+                        <input
+                            type="checkbox"
+                            .checked=${this.session?.includeChrome ?? false}
+                            @change=${(/** @type {Event} */ event) => {
+                                const input = /** @type {HTMLInputElement} */ (
+                                    event.target
+                                );
+                                void this.session?.setIncludeChrome(
+                                    input.checked
+                                );
+                            }}
+                        />
+                        All chrome
+                    </label>
+                </div>
+                ${root
+                    ? this.#renderNode(root, 0)
+                    : html`<div class="empty">
+                          Launch the app to inspect the hierarchy.
+                      </div>`}
             </div>
         `;
     }
