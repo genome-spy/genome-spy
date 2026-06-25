@@ -57,7 +57,9 @@ export default class FacetHeaderView {
 
         for (let i = 0; i < data.length; i++) {
             const source = data[i];
-            const target = this.#data[i] ?? {};
+            const target = /** @type {FacetHeaderDatum} */ (
+                this.#data[i] ?? {}
+            );
             target.x = source.x;
             target.y = source.y;
             target.text = source.text;

@@ -10,8 +10,8 @@ import { fetchJson } from "../utils/fetchUtils.js";
 
 /**
  *
- * @param {import("../spec/channel.js").ChannelDef | import("../spec/view.js").FacetMapping} def
- * @returns {spec is FacetFieldDef}
+ * @param {unknown} def
+ * @returns {def is import("../spec/channel.js").FacetFieldDef}
  */
 export function isFacetFieldDef(def) {
     return isObject(def) && "field" in def && isString(def.field);
@@ -19,8 +19,8 @@ export function isFacetFieldDef(def) {
 
 /**
  *
- * @param {import("../spec/channel.js").FacetFieldDef | import("../spec/view.js").FacetMapping} def
- * @returns {spec is FacetMapping}
+ * @param {unknown} def
+ * @returns {def is import("../spec/view.js").FacetMapping}
  */
 export function isFacetMapping(def) {
     return (

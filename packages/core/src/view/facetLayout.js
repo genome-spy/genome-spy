@@ -177,11 +177,13 @@ function createColumnFacetGrid(factors, columns) {
     return {
         cells: factors.column.map((columnValue, index) => {
             const [column, row] = grid.getCellCoords(index);
+            /** @type {import("../spec/channel.js").Scalar | undefined} */
+            const rowValue = undefined;
             return {
                 facetId: [columnValue],
                 row,
                 column,
-                rowValue: undefined,
+                rowValue,
                 columnValue,
             };
         }),
@@ -202,12 +204,14 @@ function createRowFacetGrid(factors) {
     return {
         cells: factors.row.map((rowValue, index) => {
             const [column, row] = grid.getCellCoords(index);
+            /** @type {import("../spec/channel.js").Scalar | undefined} */
+            const columnValue = undefined;
             return {
                 facetId: [rowValue],
                 row,
                 column,
                 rowValue,
-                columnValue: undefined,
+                columnValue,
             };
         }),
         nRows: grid.nRows,
