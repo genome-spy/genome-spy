@@ -38,6 +38,12 @@ const appPackageSource = path.join(
     "app",
     "package.json"
 );
+const inspectorPackageSource = path.join(
+    repoRoot,
+    "packages",
+    "inspector",
+    "package.json"
+);
 
 // Files that MkDocs and the custom markdown extension consume.
 const docsDir = path.join(repoRoot, "docs");
@@ -116,16 +122,21 @@ await ensureReadable(coreSchemaSource);
 await ensureReadable(appSchemaSource);
 await ensureReadable(corePackageSource);
 await ensureReadable(appPackageSource);
+await ensureReadable(inspectorPackageSource);
 await ensureReadable(examplesSourceDir);
 await ensureReadable(vegaDatasetsSourceDir);
 await ensureReadable(docsSnippetTemplatesDir);
 
 const corePackage = JSON.parse(await readFile(corePackageSource, "utf8"));
 const appPackage = JSON.parse(await readFile(appPackageSource, "utf8"));
+const inspectorPackage = JSON.parse(
+    await readFile(inspectorPackageSource, "utf8")
+);
 
 const snippetReplacements = {
     CORE_VERSION: corePackage.version,
     APP_VERSION: appPackage.version,
+    INSPECTOR_VERSION: inspectorPackage.version,
 };
 
 // Replace staged docs assets atomically to avoid stale files from older builds.

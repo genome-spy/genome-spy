@@ -11,12 +11,17 @@ exist, and where data objects flow through transforms.
 
 ## App
 
-GenomeSpy App includes the inspector in local development builds. Open it from
-the three-dot menu in the App toolbar while developing sample-collection
-visualizations.
+To use the inspector in GenomeSpy App, load the App and Inspector bundles,
+initialize App with the inspector plugin, and open the inspector from the
+three-dot menu in the App toolbar.
 
-The App integration uses the inspector package as an App plugin. Applications
-that embed App directly can install the plugin explicitly:
+SNIPPET sample-collections/app-module-spec-file-inspector.html
+
+This is the inspector-enabled variant of the App template used in
+[Visualizing Sample Collections](../sample-collections/visualizing.md).
+
+Bundled applications that install App through npm can add the inspector plugin
+explicitly:
 
 ```js
 import { embed } from "@genome-spy/app";
@@ -29,12 +34,9 @@ await embed(element, spec, {
 
 ## Playground
 
-GenomeSpy Playground includes an Inspector button in the toolbar. The button
-replaces the editor/file pane with the inspector, so the plot and inspector are
-visible side by side.
-
-The Playground integration uses the embeddable panel API from
-`@genome-spy/inspector`.
+GenomeSpy [Playground](https://genomespy.app/playground) includes an Inspector
+button in the toolbar. The button replaces the editor/file pane with the
+inspector, so the plot and inspector are visible side by side.
 
 ## Core Embeds
 
@@ -67,15 +69,6 @@ the application UI.
 See the
 [inspector overlay example](https://github.com/genome-spy/genome-spy/blob/master/packages/embed-examples/src/inspectorOverlay.html)
 for a complete Core embed.
-
-## Dataflow Debugging
-
-The Dataflow panel shows the structure of the data flow, the parameters of each
-node, the number of propagated data objects, and a preview of the first data
-object that passes through the node.
-
-This is useful for debugging transforms, lazy data loading, and views whose
-marks are missing because no data reaches the mark.
 
 ## Debug Scope
 

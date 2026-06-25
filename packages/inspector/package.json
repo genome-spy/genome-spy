@@ -1,6 +1,5 @@
 {
   "name": "@genome-spy/inspector",
-  "private": true,
   "description": "GenomeSpy developer inspector plugin.",
   "author": {
     "name": "Kari Lavikka",
