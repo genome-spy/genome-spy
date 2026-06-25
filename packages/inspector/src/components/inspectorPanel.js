@@ -363,7 +363,6 @@ export class GsInspectorPanel extends LitElement {
                         ${this.#renderPanelTab("resolutions", "Resolutions")}
                         ${this.#renderPanelTab("dataflow", "Dataflow")}
                         ${this.#renderPanelTab("params", "Params")}
-                        ${this.#renderPanelTab("marks", "Marks")}
                     </span>
                     <button @click=${() => this.#refresh()}>Refresh</button>
                     <button
@@ -421,10 +420,6 @@ export class GsInspectorPanel extends LitElement {
 
         if (this.activePanel === "params") {
             return this.#renderParamsPanel();
-        }
-
-        if (this.activePanel === "marks") {
-            return this.#renderMarksPanel();
         }
 
         if (this.activePanel === "resolutions") {
@@ -884,60 +879,6 @@ export class GsInspectorPanel extends LitElement {
                     )}
                 </tbody>
             </table>
-        `;
-    }
-
-    #renderMarksPanel() {
-        if (this.snapshot.marks.marks.length === 0) {
-            return html`
-                <div class="single-panel">
-                    <p class="empty">No unit marks.</p>
-                </div>
-            `;
-        }
-
-        return html`
-            <div class="single-panel">
-                <h2>Marks</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>view</th>
-                            <th>type</th>
-                            <th>ready</th>
-                            <th>data</th>
-                            <th>vertices</th>
-                            <th>encoders</th>
-                            <th>search</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${this.snapshot.marks.marks.map(
-                            (mark) => html`
-                                <tr>
-                                    <td>
-                                        <span
-                                            class="linked"
-                                            @click=${() => {
-                                                this.selectedViewId =
-                                                    mark.viewId;
-                                                this.activePanel = "elements";
-                                            }}
-                                            >${mark.viewPath}</span
-                                        >
-                                    </td>
-                                    <td>${mark.type}</td>
-                                    <td>${String(mark.ready)}</td>
-                                    <td>${mark.dataCount ?? "-"}</td>
-                                    <td>${mark.vertexCount ?? "-"}</td>
-                                    <td>${mark.encoderChannels.join(", ")}</td>
-                                    <td>${mark.searchFields.join(", ")}</td>
-                                </tr>
-                            `
-                        )}
-                    </tbody>
-                </table>
-            </div>
         `;
     }
 

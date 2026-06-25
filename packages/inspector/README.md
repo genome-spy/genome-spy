@@ -56,7 +56,7 @@ attachment point, and lifecycle disposal are enough for this tool.
 - Load debug helpers and UI lazily with dynamic imports.
 - Use LitElement web components for UI.
 - Keep the UI dense and DevTools-like: hierarchy on the left, details on the
-  right, cross-links between views, resolutions, dataflow, params, and marks.
+  right, cross-links between views, resolutions, dataflow, and params.
 - Bound potentially sensitive data previews. The inspector should summarize
   runtime data by default instead of copying full datasets into the UI.
 - Treat debug ids as session-local. They are stable only for the current embed
