@@ -559,6 +559,9 @@ export class GsInspectorPanel extends LitElement {
                 <dd>${this.#formatRecord(node.legendResolutionIds)}</dd>
             </dl>
 
+            <h3>Dataflow</h3>
+            ${this.#renderViewDataflow(node)}
+
             <h3>Params</h3>
             ${this.#renderViewParams(node)}
 
@@ -570,6 +573,49 @@ export class GsInspectorPanel extends LitElement {
 
             <h3>Spec</h3>
             <pre>${JSON.stringify(node.spec, null, 2)}</pre>
+        `;
+    }
+
+    /**
+     * @param {ViewDebugNode} node
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderViewDataflow(node) {
+        const flowNodes = this.#getFlowNodesForView(node.id);
+        if (flowNodes.length === 0) {
+            return html`<p class="empty">No linked dataflow nodes.</p>`;
+        }
+
+        return html`
+            <table>
+                <thead>
+                    <tr>
+                        <th>node</th>
+                        <th>out</th>
+                        <th>state</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${flowNodes.map(
+                        (flowNode) => html`
+                            <tr>
+                                <td>${flowNode.label}</td>
+                                <td>${flowNode.count}</td>
+                                <td>${this.#formatFlowNodeState(flowNode)}</td>
+                                <td>
+                                    <button
+                                        @click=${() =>
+                                            this.#showFlowNode(flowNode.id)}
+                                    >
+                                        Dataflow
+                                    </button>
+                                </td>
+                            </tr>
+                        `
+                    )}
+                </tbody>
+            </table>
         `;
     }
 
@@ -1129,6 +1175,24 @@ ${this.#formatValue(node.first)}</pre
 
     /**
      * @param {string} viewId
+     * @returns {DataflowDebugNode[]}
+     */
+    #getFlowNodesForView(viewId) {
+        return this.snapshot.dataflow.nodes.filter(
+            (node) => node.viewId === viewId
+        );
+    }
+
+    /**
+     * @param {string} flowNodeId
+     */
+    #showFlowNode(flowNodeId) {
+        this.selectedFlowNodeId = flowNodeId;
+        this.activePanel = "dataflow";
+    }
+
+    /**
+     * @param {string} viewId
      * @returns {ParamScopeDebugNode | undefined}
      */
     #getParamScope(viewId) {
@@ -1154,6 +1218,22 @@ ${this.#formatValue(node.first)}</pre
         return entries.length
             ? entries.map(([channel, id]) => channel + ": " + id).join(", ")
             : "-";
+    }
+
+    /**
+     * @param {DataflowDebugNode} node
+     * @returns {string}
+     */
+    #formatFlowNodeState(node) {
+        if (node.disposed) {
+            return "disposed";
+        } else if (!node.initialized) {
+            return "new";
+        } else if (node.completed) {
+            return "done";
+        } else {
+            return "active";
+        }
     }
 
     /**

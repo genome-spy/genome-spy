@@ -63,9 +63,10 @@ export default class Collector extends FlowNode {
 
     /**
      * @param {import("../spec/transform.js").CollectParams} [params]
+     * @param {import("./flowNode.js").ParamRuntimeProvider} [paramRuntimeProvider]
      */
-    constructor(params) {
-        super();
+    constructor(params, paramRuntimeProvider) {
+        super(paramRuntimeProvider);
 
         this.params = params ?? { type: "collect" };
 

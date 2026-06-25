@@ -33,5 +33,15 @@ describe("createDataflowDebugSnapshot", () => {
         expect(snapshot.collectorCount).toBeGreaterThan(0);
         expect(snapshot.nodes.map((node) => node.label)).toContain("filter");
         expect(snapshot.nodes.some((node) => node.count > 0)).toBe(true);
+        expect(
+            snapshot.nodes.find((node) => node.label === "filter")
+        ).toMatchObject({
+            viewPath: "viewRoot",
+        });
+        expect(
+            snapshot.nodes.find((node) => node.label === "collect")
+        ).toMatchObject({
+            viewPath: "viewRoot",
+        });
     });
 });

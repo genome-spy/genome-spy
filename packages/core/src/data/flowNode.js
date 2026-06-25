@@ -131,7 +131,7 @@ export default class FlowNode {
                 "params" in flowNode
                     ? structuredClone(flowNode.params)
                     : undefined,
-            view: "view" in flowNode ? flowNode.view : undefined,
+            view: getDebugView(flowNode, this.paramRuntimeProvider),
             domainSensitiveScaleChannels: this.domainSensitiveScaleChannels,
         };
     }
@@ -445,6 +445,26 @@ export default class FlowNode {
      */
     _propagate(datum) {
         // Implementation is set dynamically in add/removeChild
+    }
+}
+
+/**
+ * @param {any} flowNode
+ * @param {ParamRuntimeProvider | undefined} paramRuntimeProvider
+ * @returns {import("../view/view.js").default | undefined}
+ */
+function getDebugView(flowNode, paramRuntimeProvider) {
+    if ("view" in flowNode) {
+        return flowNode.view;
+    } else if (
+        paramRuntimeProvider &&
+        "getPathString" in paramRuntimeProvider
+    ) {
+        return /** @type {import("../view/view.js").default} */ (
+            paramRuntimeProvider
+        );
+    } else {
+        return undefined;
     }
 }
 
