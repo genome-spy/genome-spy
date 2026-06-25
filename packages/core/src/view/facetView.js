@@ -62,6 +62,8 @@ export default class FacetView extends ContainerView {
     /** @type {Set<import("../data/collector.js").default>} */
     #observedCollectors = new Set();
 
+    #hasPendingCollectors = false;
+
     /**
      * @param {import("../spec/view.js").FacetSpec} spec
      * @param {import("../types/viewContext.js").default} context
@@ -164,24 +166,33 @@ export default class FacetView extends ContainerView {
      * @returns {import("./layout/flexLayout.js").FlexDimensions}
      */
     getSize() {
+        if (!this.isConfiguredVisible()) {
+            return ZERO_FLEXDIMENSIONS;
+        }
+
+        this.#syncFacetCollectors();
+
+        if (this.#hasPendingCollectors) {
+            return this.#getFacetGridSize();
+        }
+
         return this._cache("size/size", () => {
-            if (!this.isConfiguredVisible()) {
-                return ZERO_FLEXDIMENSIONS;
-            } else {
-                this.#syncFacetCollectors();
-                return getFacetGridSize(
-                    createFacetGrid(
-                        this.#facet,
-                        this.#facetFactors,
-                        this.spec.columns
-                    ),
-                    this.child.getViewportSize(),
-                    this.#gridChild.getOverhangAndPadding(),
-                    undefined,
-                    this.spec.spacing ?? 10
-                );
-            }
+            this.#syncFacetCollectors();
+            return this.#getFacetGridSize();
         });
+    }
+
+    /**
+     * @returns {import("./layout/flexLayout.js").FlexDimensions}
+     */
+    #getFacetGridSize() {
+        return getFacetGridSize(
+            createFacetGrid(this.#facet, this.#facetFactors, this.spec.columns),
+            this.child.getViewportSize(),
+            this.#gridChild.getOverhangAndPadding(),
+            undefined,
+            this.spec.spacing ?? 10
+        );
     }
 
     /**
@@ -227,11 +238,16 @@ export default class FacetView extends ContainerView {
     }
 
     #syncFacetCollectors() {
+        const hadPendingCollectors = this.#hasPendingCollectors;
+        this.#hasPendingCollectors = false;
+
         this.child.visit((view) => {
             if (view instanceof UnitView) {
                 const collector = view.getCollector();
 
-                if (!this.#observedCollectors.has(collector)) {
+                if (!collector) {
+                    this.#hasPendingCollectors = true;
+                } else if (!this.#observedCollectors.has(collector)) {
                     this.#observedCollectors.add(collector);
                     this.registerDisposer(
                         collector.observe(() => {
@@ -244,6 +260,10 @@ export default class FacetView extends ContainerView {
                 }
             }
         });
+
+        if (hadPendingCollectors && !this.#hasPendingCollectors) {
+            this.invalidateSizeCache();
+        }
 
         this.#updateFacetStateFromCollectors();
     }
@@ -426,7 +446,7 @@ function collectFacetIds(childView) {
         if (view instanceof UnitView) {
             const collector = view.getCollector();
 
-            if (collector.completed) {
+            if (collector?.completed) {
                 for (const key of collector.facetBatches.keys()) {
                     if (key !== undefined) {
                         const facetId = Array.isArray(key) ? key : [key];
