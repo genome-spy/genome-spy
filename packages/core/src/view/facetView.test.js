@@ -24,6 +24,7 @@ import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
+import { loadSharedExampleSpec } from "../spec/exampleFiles.js";
 
 test("factory recognizes facet specs", () => {
     const factory = new ViewFactory();
@@ -696,6 +697,83 @@ test("facet render culls cells outside the clip rectangle", async () => {
     );
 
     expect(facetIds).toEqual([["I"], ["II"]]);
+});
+
+test("anscombe wrapped facet example renders stable cell layout", async () => {
+    const spec = loadSharedExampleSpec(
+        "examples/core/facet/anscombe_wrapped.json"
+    );
+    spec.data = {
+        values: [
+            { Series: "I", X: 10, Y: 8.04 },
+            { Series: "II", X: 10, Y: 9.14 },
+            { Series: "III", X: 10, Y: 7.46 },
+            { Series: "IV", X: 8, Y: 6.58 },
+        ],
+    };
+
+    const view = await createAndInitialize(spec, FacetView);
+    const layout = renderToLayout(view);
+
+    expect(findLayoutNodes(layout, "facet0").map((node) => node.coords))
+        .toMatchInlineSnapshot(`
+          [
+            "Rectangle: x: 0, y: 28, width: 745, height: 481",
+            "Rectangle: x: 755, y: 28, width: 745, height: 481",
+            "Rectangle: x: 0, y: 519, width: 745, height: 481",
+            "Rectangle: x: 755, y: 519, width: 745, height: 481",
+          ]
+        `);
+});
+
+test("cars matrix facet example renders stable cell layout", async () => {
+    const spec = loadSharedExampleSpec("examples/core/facet/cars_matrix.json");
+    spec.data = {
+        values: [
+            {
+                Origin: "Europe",
+                Cylinders: 4,
+                Horsepower: 76,
+                Miles_per_Gallon: 30,
+            },
+            {
+                Origin: "Europe",
+                Cylinders: 6,
+                Horsepower: 90,
+                Miles_per_Gallon: 25,
+            },
+            {
+                Origin: "Japan",
+                Cylinders: 4,
+                Horsepower: 65,
+                Miles_per_Gallon: 35,
+            },
+            {
+                Origin: "USA",
+                Cylinders: 8,
+                Horsepower: 150,
+                Miles_per_Gallon: 18,
+            },
+        ],
+    };
+
+    const view = await createAndInitialize(spec, FacetView);
+    const layout = renderToLayout(view);
+
+    expect(findLayoutNodes(layout, "facet0").map((node) => node.coords))
+        .toMatchInlineSnapshot(`
+          [
+            "Rectangle: x: 28, y: 28, width: 484, height: 317",
+            "Rectangle: x: 522, y: 28, width: 484, height: 317",
+            "Rectangle: x: 1016, y: 28, width: 484, height: 317",
+            "Rectangle: x: 28, y: 355, width: 484, height: 317",
+            "Rectangle: x: 522, y: 355, width: 484, height: 317",
+            "Rectangle: x: 1016, y: 355, width: 484, height: 317",
+            "Rectangle: x: 28, y: 683, width: 484, height: 317",
+            "Rectangle: x: 522, y: 683, width: 484, height: 317",
+            "Rectangle: x: 1016, y: 683, width: 484, height: 317",
+          ]
+        `);
 });
 
 /**
