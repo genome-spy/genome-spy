@@ -627,6 +627,27 @@ test("implicit root grid uses facet viewport height", async () => {
     expect(root.getSize().height).toEqual({ px: 80, grow: 0 });
 });
 
+test("facet root size can be measured before dataflow initialization", async () => {
+    const context = createTestViewContext({ wrapRoot: true });
+    const root = /** @type {ConcatView} */ (
+        await context.createOrImportView(
+            createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
+            null,
+            null,
+            VIEW_ROOT_NAME
+        )
+    );
+    const facet = /** @type {FacetView} */ (root.children[0]);
+
+    expect(root.getSize().height).toEqual({ px: 18, grow: 0 });
+
+    const { dataSources } = initializeViewSubtree(root, root.context.dataFlow);
+    await loadViewSubtreeData(root, dataSources);
+
+    expect(facet.getSize().height).toEqual({ px: 138, grow: 0 });
+    expect(root.getSize().height).toEqual({ px: 138, grow: 0 });
+});
+
 test("facet render repeats child at each facet cell", async () => {
     const view = await createAndInitialize(
         createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
