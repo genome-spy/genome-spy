@@ -2,8 +2,7 @@
  * Browser-side state and runtime bridge for the inspector UI.
  *
  * @typedef {object} InspectorHost
- * @prop {() => any | undefined} [getRootView]
- * @prop {() => any | undefined} [getGenomeSpy]
+ * @prop {() => any | undefined} getRootView
  * @prop {(view: object | null) => void} [highlightView]
  */
 export default class InspectorSession extends EventTarget {
@@ -66,11 +65,11 @@ export default class InspectorSession extends EventTarget {
     };
 
     /**
-     * @param {InspectorHost | { genomeSpy?: any }} host
+     * @param {InspectorHost} host
      */
     constructor(host) {
         super();
-        this.#host = normalizeInspectorHost(host);
+        this.#host = host;
     }
 
     get includeChrome() {
@@ -237,14 +236,7 @@ export default class InspectorSession extends EventTarget {
     }
 
     #getRoot() {
-        if (this.#host.getRootView) {
-            return this.#host.getRootView();
-        }
-
-        const genomeSpy = this.#host.getGenomeSpy
-            ? this.#host.getGenomeSpy()
-            : undefined;
-        return genomeSpy ? genomeSpy.viewRoot : undefined;
+        return this.#host.getRootView();
     }
 
     /**
@@ -266,26 +258,6 @@ export default class InspectorSession extends EventTarget {
         this.#objectsById.set(id, object);
         return id;
     }
-}
-
-/**
- * @param {InspectorHost | { genomeSpy?: any }} host
- * @returns {InspectorHost}
- */
-function normalizeInspectorHost(host) {
-    const maybeHost = /** @type {{ getGenomeSpy?: unknown }} */ (host);
-    const maybeRootHost = /** @type {{ getRootView?: unknown }} */ (host);
-    if (
-        typeof maybeHost.getGenomeSpy === "function" ||
-        typeof maybeRootHost.getRootView === "function"
-    ) {
-        return /** @type {InspectorHost} */ (host);
-    }
-
-    const app = /** @type {{ genomeSpy?: any }} */ (host);
-    return {
-        getGenomeSpy: () => app.genomeSpy,
-    };
 }
 
 /**

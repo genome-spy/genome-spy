@@ -8,13 +8,7 @@ export interface InspectorHost {
      *
      * Core embed results expose this through `getDebugViewRoot()`.
      */
-    getRootView?(): any | undefined;
-
-    /**
-     * Returns a GenomeSpy instance. This is mainly for App integrations that
-     * already own the instance.
-     */
-    getGenomeSpy?(): any | undefined;
+    getRootView(): object | undefined;
 
     /**
      * Highlights a view while the user hovers items in the inspector.
@@ -28,7 +22,7 @@ export interface InspectorHost {
  * Maintains inspector state for one embedded GenomeSpy runtime.
  */
 export declare class InspectorSession extends EventTarget {
-    constructor(host: InspectorHost | { genomeSpy?: any });
+    constructor(host: InspectorHost);
 
     /**
      * Whether generated chrome views are included in view snapshots.
@@ -65,7 +59,7 @@ export declare class InspectorSession extends EventTarget {
  * Creates an embeddable inspector panel and its backing session.
  */
 export declare function createInspectorPanel(
-    host: ConstructorParameters<typeof InspectorSession>[0],
+    host: InspectorHost,
     options?: {
         /**
          * Inspector tab to show first, such as `"elements"` or `"dataflow"`.
@@ -93,7 +87,7 @@ export declare function createInspectorPanel(
  * Attaches the inspector as a fixed-position overlay.
  */
 export declare function attachInspectorOverlay(
-    host: ConstructorParameters<typeof InspectorSession>[0],
+    host: InspectorHost,
     options?: {
         /**
          * Container where the overlay is appended. Defaults to `document.body`.

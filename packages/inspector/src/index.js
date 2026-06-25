@@ -3,15 +3,14 @@ export { default as InspectorSession } from "./inspectorSession.js";
 
 /**
  * @typedef {object} InspectorHost
- * @prop {() => any | undefined} [getRootView]
- * @prop {() => any | undefined} [getGenomeSpy]
+ * @prop {() => any | undefined} getRootView
  * @prop {(view: object | null) => void} [highlightView]
  */
 
 /**
  * Creates an embeddable inspector panel and its backing session.
  *
- * @param {InspectorHost | { genomeSpy?: any }} host
+ * @param {InspectorHost} host
  * @param {{ activePanel?: string }} [options]
  * @returns {Promise<{
  *   panel: import("./components/inspectorPanel.js").GsInspectorPanel,
@@ -46,7 +45,7 @@ export async function createInspectorPanel(host, options = {}) {
 /**
  * Attaches the inspector as a fixed-position overlay.
  *
- * @param {InspectorHost | { genomeSpy?: any }} host
+ * @param {InspectorHost} host
  * @param {{
  *   container?: HTMLElement,
  *   width?: string,

@@ -43,7 +43,8 @@ export function genomeSpyInspector(options = {}) {
                 ]);
 
                 session = new InspectorSession({
-                    getGenomeSpy: () => app.genomeSpy,
+                    getRootView: () =>
+                        app.genomeSpy ? app.genomeSpy.viewRoot : undefined,
                 });
                 panelElement = new GsInspectorPanel();
                 panelElement.session = session;
