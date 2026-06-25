@@ -6,7 +6,6 @@ export type UrlHash = Partial<BookmarkEntry>;
 
 export type AppEmbedOptions =
     import("@genome-spy/core/types/embedApi.js").EmbedOptions & {
-        showInspectorButton?: boolean;
         plugins?: AppPlugin[];
     };
 

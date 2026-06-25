@@ -206,6 +206,37 @@ export default class LegendResolution {
         return false;
     }
 
+    getDebugState() {
+        const legendDefs = this.getLegendDefs();
+        return {
+            kind: "legend",
+            channel: this.channel,
+            hostView:
+                legendDefs[0]?.scaleResolution.getDebugState().hostView ??
+                this.#viewLevelLegendConfig?.view ??
+                this.#members.values().next().value?.view,
+            legendDefs: legendDefs.map((definition) => ({
+                ...definition,
+                view: definition.view,
+                scaleResolution: definition.scaleResolution,
+                legend: structuredClone(definition.legend),
+            })),
+            hasVisibleNonChromeMember: this.hasVisibleNonChromeMember(),
+            members: orderResolutionMembers(this.#members).map((member) => ({
+                view: member.view,
+                channel: member.channel,
+            })),
+            viewLevelLegendConfig: this.#viewLevelLegendConfig
+                ? {
+                      view: this.#viewLevelLegendConfig.view,
+                      config: structuredClone(
+                          this.#viewLevelLegendConfig.config
+                      ),
+                  }
+                : undefined,
+        };
+    }
+
     /**
      * @param {import("../view/view.js").default} view
      * @param {import("../spec/legend.js").Legend} config

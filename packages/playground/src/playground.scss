@@ -69,6 +69,7 @@ split-panel {
 #genome-spy-container,
 #editor-and-others,
 #editor-pane,
+#inspector-pane,
 code-editor,
 file-pane {
     position: absolute;
@@ -142,6 +143,10 @@ file-pane {
             background-color: color.adjust($bgcolor, $lightness: 5%);
         }
 
+        &.selected {
+            background-color: color.adjust($bgcolor, $lightness: -8%);
+        }
+
         &:focus {
             outline: none;
         }
@@ -206,6 +211,16 @@ base-url-notice {
 
 file-pane {
     position: absolute;
+}
+
+#inspector-pane {
+    min-height: 0;
+
+    gs-inspector-panel {
+        display: block;
+        height: 100%;
+        min-height: 0;
+    }
 }
 
 .tab-wrapper {

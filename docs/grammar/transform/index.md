@@ -39,12 +39,11 @@ only the rows that match the predicate [expression](../expressions.md).
 
 ## Debugging the Data Flow
 
-![Dataflow Inspector](../../img/dataflow-inspector.webp){ align="right" width="280" class="screenshot" }
-
 Complex visualizations may involve multiple data sources and transformations,
 which can make it difficult to understand the data flow, particularly when no
-data objects appear to pass through the flow. The Dataflow Inspector shows the
-structure of the data flow and allows you to inspect the parameters of each
-node, the number of propagated data objects, and a recorded copy of the first
-data object that passes through the node. The Inspector is currently available
-in the toolbar (:fontawesome-solid-bug:) of the GenomeSpy [App](../../sample-collections/index.md).
+data objects appear to pass through the flow. The GenomeSpy Inspector's Dataflow
+panel shows the structure of the data flow and allows you to inspect the
+parameters of each node, the number of propagated data objects, and a preview of
+the first data object that passes through the node. See
+[Inspector](../../api/inspector.md) for the available App, Playground, and Core
+embed integrations.

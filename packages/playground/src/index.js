@@ -2,6 +2,7 @@ import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
+    faBug,
     faColumns,
     faFolderOpen,
     faQuestionCircle,
@@ -9,6 +10,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
+import { createInspectorPanel } from "@genome-spy/inspector";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import inferSpecBaseUrl, {
     getCuratedExampleBaseUrl,
@@ -28,12 +30,14 @@ import "./filePane.js";
 import "./playground.scss";
 import addMarkdownProps from "./markdownProps.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
+import { createEditorState } from "./editorState.js";
 
 registerJsonSchema();
 
 const STORAGE_KEY = "playgroundSpec";
 const EXAMPLE_CATALOG_URL = "example-catalog.json";
 const genomeSpyContainerRef = createRef();
+const inspectorPaneRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./codeEditor.js").default>} */
 const editorRef = createRef();
@@ -49,9 +53,16 @@ let embedResult;
 
 let previousStringifiedSpec = "";
 let suppressNextEditorChange = false;
+const editorState = createEditorState();
 
 const layouts = ["vertical", "horizontal"];
 let layout = layouts[0];
+
+const sidePanes = ["editor", "inspector"];
+let sidePane = sidePanes[0];
+
+/** @type {Awaited<ReturnType<typeof createInspectorPanel>> | undefined} */
+let inspectorHandle;
 
 /** @type {string | undefined} */
 let inheritedBaseUrl;
@@ -162,6 +173,50 @@ function toggleLayout() {
     window.dispatchEvent(new Event("resize"));
 }
 
+function toggleInspector() {
+    editorState.syncFromEditor(editorRef.value);
+    sidePane =
+        sidePane === "inspector"
+            ? sidePanes[0]
+            : /** @type {"inspector"} */ ("inspector");
+    renderLayout();
+}
+
+async function ensureInspectorPanel() {
+    if (sidePane !== "inspector") {
+        return;
+    }
+
+    const pane = inspectorPaneRef.value;
+    if (!pane) {
+        return;
+    }
+
+    if (!inspectorHandle) {
+        inspectorHandle = await createInspectorPanel(
+            {
+                getRootView: () => {
+                    if (embedResult) {
+                        return embedResult.getDebugViewRoot();
+                    }
+                },
+            },
+            {
+                activePanel: "elements",
+            }
+        );
+        inspectorHandle.panel.addEventListener("close", () => {
+            editorState.syncFromEditor(editorRef.value);
+            sidePane = sidePanes[0];
+            renderLayout();
+        });
+    }
+
+    if (inspectorHandle.panel.parentElement !== pane) {
+        pane.append(inspectorHandle.panel);
+    }
+}
+
 function openExamplePicker() {
     isExamplePickerOpen = true;
     setExamplePickerHash(true);
@@ -179,8 +234,11 @@ function closeExamplePicker() {
  * @param {string} specText
  */
 function setEditorSpec(specText) {
-    suppressNextEditorChange = true;
-    editorRef.value.value = specText;
+    editorState.set(specText);
+    if (editorRef.value) {
+        suppressNextEditorChange = true;
+        editorRef.value.value = specText;
+    }
     void update(true);
 }
 
@@ -403,16 +461,22 @@ async function formatWithPrettier() {
             import("prettier/plugins/estree"),
         ]);
 
-    const formatted = await prettier.format(editorRef.value.value, {
-        parser: "json",
-        // @ts-ignore
-        plugins: [prettierPluginBabel, prettierPluginEstree],
-    });
-    editorRef.value.value = formatted;
+    const formatted = await prettier.format(
+        editorState.getCurrent(editorRef.value),
+        {
+            parser: "json",
+            // @ts-ignore
+            plugins: [prettierPluginBabel, prettierPluginEstree],
+        }
+    );
+    editorState.set(formatted);
+    if (editorRef.value) {
+        editorRef.value.value = formatted;
+    }
 }
 
 function clearBaseUrl() {
-    const value = editorRef.value?.value;
+    const value = editorState.getCurrent(editorRef.value);
     if (!value) {
         return;
     }
@@ -420,7 +484,10 @@ function clearBaseUrl() {
     const parsedSpec = JSON.parse(value);
     if (parsedSpec.baseUrl) {
         delete parsedSpec.baseUrl;
-        editorRef.value.value = JSON.stringify(parsedSpec, null, 2) + "\n";
+        editorState.set(JSON.stringify(parsedSpec, null, 2) + "\n");
+        if (editorRef.value) {
+            editorRef.value.value = editorState.get();
+        }
     } else {
         inheritedBaseUrl = undefined;
     }
@@ -431,8 +498,9 @@ function clearBaseUrl() {
 async function update(force = false) {
     missingFiles = new Set();
 
-    const value = editorRef.value?.value;
+    const value = editorState.getCurrent(editorRef.value);
     if (value) {
+        editorState.set(value);
         storeState(value);
     }
 
@@ -476,6 +544,9 @@ async function update(force = false) {
                 powerPreference: "high-performance",
             }
         );
+        if (inspectorHandle) {
+            await inspectorHandle.session.refresh();
+        }
 
         // To ensure that missing files are shown in file pane
         renderLayout();
@@ -507,6 +578,15 @@ const toolbarTemplate = () => html`
             ${icon(faIndent).node[0]}
             <span>Format code</span>
         </button>
+        <button
+            @click=${toggleInspector}
+            class=${sidePane === "inspector"
+                ? "tool-button selected"
+                : "tool-button"}
+        >
+            ${icon(faBug).node[0]}
+            <span>Inspector</span>
+        </button>
         <a
             href="https://genomespy.app/docs/"
             target="_blank"
@@ -536,6 +616,7 @@ function handleEditorChange() {
         return;
     }
 
+    editorState.syncFromEditor(editorRef.value);
     clearSpecQueryParam();
     debouncedUpdate();
 }
@@ -563,39 +644,53 @@ const layoutTemplate = () => html`
                 ${ref(genomeSpyContainerRef)}
                 slot="1"
             ></div>
-            <split-panel
-                .orientation=${layout == "vertical" ? "horizontal" : "vertical"}
-                slot="2"
-                id="editor-and-others"
-            >
-                <section id="editor-pane" slot="1">
-                    ${effectiveBaseUrlInfo
-                        ? html`
-                              <base-url-notice
-                                  .info=${effectiveBaseUrlInfo}
-                                  @clear=${clearBaseUrl}
-                              ></base-url-notice>
-                          `
-                        : null}
-                    <code-editor
-                        ${ref(editorRef)}
-                        @change=${handleEditorChange}
-                    ></code-editor>
-                </section>
-                <section id="file-pane" slot="2">
-                    <file-pane
-                        @upload=${update}
-                        .files=${files}
-                        .missingFiles=${missingFiles}
-                    ></file-pane>
-                </section>
-            </split-panel>
+            ${sidePane === "inspector"
+                ? html`
+                      <section
+                          id="inspector-pane"
+                          ${ref(inspectorPaneRef)}
+                          slot="2"
+                      ></section>
+                  `
+                : html`
+                      <split-panel
+                          .orientation=${layout == "vertical"
+                              ? "horizontal"
+                              : "vertical"}
+                          slot="2"
+                          id="editor-and-others"
+                      >
+                          <section id="editor-pane" slot="1">
+                              ${effectiveBaseUrlInfo
+                                  ? html`
+                                        <base-url-notice
+                                            .info=${effectiveBaseUrlInfo}
+                                            @clear=${clearBaseUrl}
+                                        ></base-url-notice>
+                                    `
+                                  : null}
+                              <code-editor
+                                  ${ref(editorRef)}
+                                  .value=${editorState.get()}
+                                  @change=${handleEditorChange}
+                              ></code-editor>
+                          </section>
+                          <section id="file-pane" slot="2">
+                              <file-pane
+                                  @upload=${update}
+                                  .files=${files}
+                                  .missingFiles=${missingFiles}
+                              ></file-pane>
+                          </section>
+                      </split-panel>
+                  `}
         </split-panel>
     </section>
 `;
 
 function renderLayout() {
     render(layoutTemplate(), document.body);
+    void ensureInspectorPanel();
 }
 
 function syncExamplePickerFromUrl() {

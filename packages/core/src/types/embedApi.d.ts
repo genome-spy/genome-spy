@@ -426,4 +426,12 @@ export interface EmbedResult {
         devicePixelRatio?: number,
         clearColor?: string
     ) => string;
+
+    /**
+     * Returns the internal root view for optional developer tooling.
+     *
+     * This API is intended for debug inspectors that need access to internal
+     * runtime structures without forcing debug modules into normal Core use.
+     */
+    getDebugViewRoot: () => object | undefined;
 }

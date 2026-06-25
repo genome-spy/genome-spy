@@ -21,7 +21,9 @@ The easiest way to try out GenomeSpy is the [Playground
 ](https://genomespy.app/playground/) app, which allows you to experiment with
 different visualization specifications directly in your web browser. You can
 load data from publicly accessible web servers or from your computer. The app is
-still rudimentary and does not support saving or sharing visualizations.
+still rudimentary and does not support saving or sharing visualizations. The
+toolbar includes an [Inspector](api/inspector.md) button for looking at the live
+view hierarchy and dataflow while editing a specification.
 
 ## Observable notebooks
 

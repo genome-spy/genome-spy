@@ -87,6 +87,14 @@ export const SELECTION_TEXTURE_PREFIX = "uSelectionTexture_";
  */
 
 /**
+ * @typedef {object} MarkDebugState
+ * @prop {boolean} markUniformsAltered
+ * @prop {number | undefined} vertexCount
+ * @prop {number | undefined} allocatedVertices
+ * @prop {Record<string, any>} properties
+ */
+
+/**
  * @template {MarkProps} [P=MarkProps]
  */
 export default class Mark {
@@ -1230,6 +1238,34 @@ export default class Mark {
         }
 
         return true;
+    }
+
+    /**
+     * @returns {MarkDebugState}
+     */
+    getDebugState() {
+        const specProperties =
+            typeof this.unitView.spec.mark == "object"
+                ? this.unitView.spec.mark
+                : {};
+        const propertyKeys = new Set([
+            ...Object.keys(this.defaultProperties),
+            ...Object.keys(specProperties),
+        ]);
+        /** @type {Record<string, any>} */
+        const properties = {};
+        for (const key of propertyKeys) {
+            properties[key] = /** @type {Record<string, any>} */ (
+                this.properties
+            )[key];
+        }
+
+        return {
+            markUniformsAltered: this.markUniformsAltered,
+            vertexCount: this.bufferInfo?.numElements,
+            allocatedVertices: this.bufferInfo?.allocatedVertices,
+            properties,
+        };
     }
 
     /**

@@ -916,6 +916,52 @@ export default class ScaleResolution {
         return this.#getOrderedMembers().slice();
     }
 
+    getDebugState() {
+        const scale = this.#scaleManager.scale;
+        const canReadDomain = scale && typeof scale.domain === "function";
+        const canReadRange = scale && typeof scale.range === "function";
+
+        return {
+            kind: "scale",
+            channel: this.channel,
+            hostView: this.#resolutionView,
+            name: this.name,
+            type: this.type,
+            resolvedScaleType: this.getResolvedScaleType(),
+            domain: canReadDomain ? this.getDomain() : undefined,
+            complexDomain: canReadDomain ? this.getComplexDomain() : undefined,
+            range: canReadRange ? scale.range() : undefined,
+            zoomable: this.isZoomable(),
+            zoomed: this.isZoomable() ? this.isZoomed() : false,
+            members: this.#getOrderedMembers().map((member) =>
+                this.#createDebugMember(member)
+            ),
+            activeMemberCount: this.#getActiveMembers().size,
+            dataDomainMemberCount: this.#dataDomainMembers.size,
+            viewLevelScaleConfig: this.#viewLevelScaleConfig
+                ? {
+                      view: this.#viewLevelScaleConfig.view,
+                      config: structuredClone(
+                          this.#viewLevelScaleConfig.config
+                      ),
+                  }
+                : undefined,
+        };
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     */
+    #createDebugMember(member) {
+        return {
+            view: member.view,
+            channel: member.channel,
+            channelDef: structuredClone(member.channelDef),
+            contributesToDomain: member.contributesToDomain,
+            active: this.#getActiveMembers().has(member),
+        };
+    }
+
     #invalidateConfiguredDomain() {
         this.#domainAggregator.invalidateConfiguredDomain();
         this.#invalidateMergedScaleProps();
