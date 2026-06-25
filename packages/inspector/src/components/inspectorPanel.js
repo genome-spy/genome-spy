@@ -961,7 +961,7 @@ export class GsInspectorPanel extends LitElement {
      */
     #getRootNode() {
         return this.snapshot.rootId
-            ? this.#getNode(this.snapshot.rootId)
+            ? this.#findNode(this.snapshot.rootId)
             : undefined;
     }
 
@@ -969,9 +969,11 @@ export class GsInspectorPanel extends LitElement {
      * @returns {ViewDebugNode | undefined}
      */
     #getSelectedNode() {
-        return this.selectedViewId
-            ? this.#getNode(this.selectedViewId)
-            : this.#getRootNode();
+        if (!this.selectedViewId) {
+            return this.#getRootNode();
+        }
+
+        return this.#findNode(this.selectedViewId) ?? this.#getRootNode();
     }
 
     /**
@@ -986,6 +988,14 @@ export class GsInspectorPanel extends LitElement {
             throw new Error("Unknown inspector node: " + id);
         }
         return node;
+    }
+
+    /**
+     * @param {string} id
+     * @returns {ViewDebugNode | undefined}
+     */
+    #findNode(id) {
+        return this.snapshot.nodes.find((candidate) => candidate.id === id);
     }
 
     /**
