@@ -338,14 +338,14 @@ test("facet headers are centered over plot area excluding overhang", async () =>
 
     const layout = renderToLayout(view);
     const rootCoords = parseRectString(layout.coords);
-    const firstFacetCoords = parseRectString(
+    const firstPlotCoords = parseRectString(
         findLayoutNodes(layout, "facet0")[0].coords
     );
-    const viewportCenterX =
-        (firstFacetCoords.x + firstFacetCoords.width / 2) / rootCoords.width;
-    const viewportCenterY =
+    const plotCenterX =
+        (firstPlotCoords.x + firstPlotCoords.width / 2) / rootCoords.width;
+    const plotCenterY =
         1 -
-        (firstFacetCoords.y + firstFacetCoords.height / 2) / rootCoords.height;
+        (firstPlotCoords.y + firstPlotCoords.height / 2) / rootCoords.height;
 
     const columnData = /** @type {{ x: number, y: number, text: string }[]} */ (
         columnUpdateSpy.mock.calls[0][0]
@@ -354,8 +354,8 @@ test("facet headers are centered over plot area excluding overhang", async () =>
         rowUpdateSpy.mock.calls[0][0]
     );
 
-    expect(columnData[0].x).toBeGreaterThan(viewportCenterX);
-    expect(rowData[0].y).toBeGreaterThan(viewportCenterY);
+    expect(columnData[0].x).toBeCloseTo(plotCenterX);
+    expect(rowData[0].y).toBeCloseTo(plotCenterY);
 });
 
 test("descendant unit collectors group data by facet fields", async () => {
@@ -582,6 +582,30 @@ test("facet layout creates row and column matrix cells", () => {
     expect(rectTuple(layouts[5].viewportCoords)).toEqual([230, 106, 100, 80]);
 });
 
+test("facet layout places child plot inside reserved overhang", () => {
+    const grid = createFacetGrid(
+        { row: undefined, column: { field: "Series" }, fields: ["Series"] },
+        { row: [], column: ["I"] },
+        undefined
+    );
+    const childSize = new FlexDimensions(
+        { px: 100, grow: 0 },
+        { px: 80, grow: 0 }
+    );
+    const childOverhang = new Padding(10, 20, 30, 40);
+    const layouts = getFacetCellLayouts(
+        grid,
+        Rectangle.create(0, 0, 160, 140),
+        childSize,
+        childOverhang,
+        undefined,
+        0
+    );
+
+    expect(rectTuple(layouts[0].viewportCoords)).toEqual([0, 18, 160, 120]);
+    expect(rectTuple(layouts[0].childCoords)).toEqual([40, 28, 100, 80]);
+});
+
 test("facet layout creates row-only facets", () => {
     const grid = createFacetGrid(
         { row: { field: "Origin" }, column: undefined, fields: ["Origin"] },
@@ -802,10 +826,10 @@ test("anscombe wrapped facet example renders stable cell layout", async () => {
     expect(findLayoutNodes(layout, "facet0").map((node) => node.coords))
         .toMatchInlineSnapshot(`
           [
-            "Rectangle: x: 0, y: 28, width: 332, height: 332",
-            "Rectangle: x: 342, y: 28, width: 332, height: 332",
-            "Rectangle: x: 0, y: 370, width: 332, height: 332",
-            "Rectangle: x: 342, y: 370, width: 332, height: 332",
+            "Rectangle: x: 32, y: 28, width: 300, height: 300",
+            "Rectangle: x: 374, y: 28, width: 300, height: 300",
+            "Rectangle: x: 32, y: 370, width: 300, height: 300",
+            "Rectangle: x: 374, y: 370, width: 300, height: 300",
           ]
         `);
 });
@@ -849,15 +873,15 @@ test("cars matrix facet example renders stable cell layout", async () => {
     expect(findLayoutNodes(layout, "facet0").map((node) => node.coords))
         .toMatchInlineSnapshot(`
           [
-            "Rectangle: x: 28, y: 28, width: 182, height: 182",
-            "Rectangle: x: 220, y: 28, width: 182, height: 182",
-            "Rectangle: x: 412, y: 28, width: 182, height: 182",
-            "Rectangle: x: 28, y: 220, width: 182, height: 182",
-            "Rectangle: x: 220, y: 220, width: 182, height: 182",
-            "Rectangle: x: 412, y: 220, width: 182, height: 182",
-            "Rectangle: x: 28, y: 412, width: 182, height: 182",
-            "Rectangle: x: 220, y: 412, width: 182, height: 182",
-            "Rectangle: x: 412, y: 412, width: 182, height: 182",
+            "Rectangle: x: 60, y: 28, width: 150, height: 150",
+            "Rectangle: x: 252, y: 28, width: 150, height: 150",
+            "Rectangle: x: 444, y: 28, width: 150, height: 150",
+            "Rectangle: x: 60, y: 220, width: 150, height: 150",
+            "Rectangle: x: 252, y: 220, width: 150, height: 150",
+            "Rectangle: x: 444, y: 220, width: 150, height: 150",
+            "Rectangle: x: 60, y: 412, width: 150, height: 150",
+            "Rectangle: x: 252, y: 412, width: 150, height: 150",
+            "Rectangle: x: 444, y: 412, width: 150, height: 150",
           ]
         `);
 });

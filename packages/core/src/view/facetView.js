@@ -363,7 +363,7 @@ export default class FacetView extends ContainerView {
         );
 
         for (const gridLineView of Object.values(this.#gridChild.gridLines)) {
-            gridLineView.render(context, layout.viewportCoords, options);
+            gridLineView.render(context, layout.childCoords, options);
         }
 
         this.#gridChild.view.render(context, layout.childCoords, options);
@@ -372,7 +372,7 @@ export default class FacetView extends ContainerView {
             axisView.render(
                 context,
                 translateAxisCoords(
-                    layout.viewportCoords,
+                    layout.childCoords,
                     axisView.axisProps.orient,
                     axisView
                 ),
