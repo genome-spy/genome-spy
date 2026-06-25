@@ -1,10 +1,14 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { ViewFactory, VIEW_ROOT_NAME } from "./viewFactory.js";
-import { createAndInitialize, createTestViewContext } from "./testUtils.js";
+import {
+    createAndInitialize,
+    createTestViewContext,
+    renderToLayout,
+} from "./testUtils.js";
 import ConcatView from "./concatView.js";
 import FacetView from "./facetView.js";
 import UnitView from "./unitView.js";
-import { isChromeView } from "./viewSelectors.js";
+import { isChromeView, visitAddressableViews } from "./viewSelectors.js";
 import { getFlattenedViews } from "./viewUtils.js";
 import {
     createFacetGrid,
@@ -138,6 +142,88 @@ test("facet creates one non-chrome child view", async () => {
 
     expect(nonChromeChildren).toEqual([view.child]);
     expect(view.child).toBeInstanceOf(UnitView);
+});
+
+test("column facet creates one chrome header view", async () => {
+    const view = await createAndInitialize(
+        createFixedSizeFacetSpec(["I", "II"]),
+        FacetView
+    );
+    const headers = getFacetHeaderViews(view);
+    /** @type {import("./view.js").default[]} */
+    const addressableViews = [];
+
+    visitAddressableViews(view, (candidate) => {
+        addressableViews.push(candidate);
+    });
+
+    expect(headers.map((header) => header.name)).toEqual([
+        "facetHeaderColumn0",
+    ]);
+    expect(headers.every((header) => isChromeView(header))).toBe(true);
+    expect(addressableViews).not.toContain(headers[0]);
+});
+
+test("column facet header updates dynamic label data during render", async () => {
+    const view = await createAndInitialize(
+        createFixedSizeFacetSpec(["I", "II"]),
+        FacetView
+    );
+    const header = /** @type {UnitView} */ (getFacetHeaderViews(view)[0]);
+    const dataSource =
+        /** @type {import("../data/sources/inlineSource.js").default} */ (
+            header.flowHandle.dataSource
+        );
+    const updateSpy = vi.spyOn(dataSource, "updateDynamicData");
+
+    renderToLayout(view, Rectangle.create(0, 0, 210, 78));
+
+    expect(updateSpy).toHaveBeenCalledWith([
+        { x: 50, y: 9, text: "I" },
+        { x: 160, y: 9, text: "II" },
+    ]);
+});
+
+test("row and column facet creates one chrome header view per orientation", async () => {
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    { Origin: "Europe", Cylinders: 4, x: 1, y: 2 },
+                    { Origin: "Japan", Cylinders: 6, x: 3, y: 4 },
+                ],
+            },
+            facet: {
+                row: { field: "Origin" },
+                column: { field: "Cylinders" },
+            },
+            spec: {
+                width: 100,
+                height: 50,
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "x",
+                        type: "quantitative",
+                        axis: null,
+                    },
+                    y: {
+                        field: "y",
+                        type: "quantitative",
+                        axis: null,
+                    },
+                },
+            },
+        },
+        FacetView
+    );
+    const headers = getFacetHeaderViews(view);
+
+    expect(headers.map((header) => header.name)).toEqual([
+        "facetHeaderColumn0",
+        "facetHeaderRow0",
+    ]);
+    expect(headers.every((header) => isChromeView(header))).toBe(true);
 });
 
 test("descendant unit collectors group data by facet fields", async () => {
@@ -479,6 +565,16 @@ function getNonChromeUnitView(view) {
 
     expect(child).toBeInstanceOf(UnitView);
     return /** @type {UnitView} */ (child);
+}
+
+/**
+ * @param {FacetView} view
+ * @returns {import("./view.js").default[]}
+ */
+function getFacetHeaderViews(view) {
+    return getFlattenedViews(view).filter((candidate) =>
+        candidate.name?.startsWith("facetHeader")
+    );
 }
 
 /**
