@@ -82,14 +82,8 @@ export function genomeSpyInspector(options = {}) {
                     );
                 },
             });
-            const removeLauncher = app.ui.registerInspectorLauncher
-                ? app.ui.registerInspectorLauncher({
-                      open: openInspector,
-                  })
-                : /** @returns {void} */ () => {};
 
             return () => {
-                removeLauncher();
                 removeMenuItem();
                 session?.dispose();
                 session = undefined;

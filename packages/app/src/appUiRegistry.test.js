@@ -106,15 +106,4 @@ describe("AppUiRegistry", () => {
 
         expect(sidePanelHost.style.width).toBe("361px");
     });
-
-    it("reports failed inspector launches", async () => {
-        const registry = new AppUiRegistry();
-        registry.registerInspectorLauncher({
-            open: async () => {
-                throw new Error("Cannot load inspector");
-            },
-        });
-
-        await expect(registry.openInspector()).resolves.toBe(false);
-    });
 });
