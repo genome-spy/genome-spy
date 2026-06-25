@@ -22,6 +22,7 @@ export class GsInspectorPanel extends LitElement {
         selectedViewId: { state: true },
         selectedFlowNodeId: { state: true },
         activePanel: { state: true },
+        expandedResolutionMemberIds: { state: true },
     };
 
     static styles = inspectorPanelStyles;
@@ -53,6 +54,8 @@ export class GsInspectorPanel extends LitElement {
         this.selectedViewId = undefined;
         this.selectedFlowNodeId = undefined;
         this.activePanel = "elements";
+        /** @type {Set<string>} */
+        this.expandedResolutionMemberIds = new Set();
     }
 
     connectedCallback() {
@@ -72,6 +75,9 @@ export class GsInspectorPanel extends LitElement {
         if (changed.has("session")) {
             this.#disconnectSession();
             this.#connectSession();
+        }
+        if (changed.has("selectedViewId") || changed.has("activePanel")) {
+            this.#scrollSelectedNodeIntoView();
         }
     }
 
@@ -139,6 +145,23 @@ export class GsInspectorPanel extends LitElement {
 
     #disconnectSession() {
         this.#disconnect?.();
+    }
+
+    #scrollSelectedNodeIntoView() {
+        if (
+            this.activePanel !== "elements" &&
+            this.activePanel !== "resolutions"
+        ) {
+            return;
+        }
+
+        const selectedNode = this.renderRoot.querySelector(
+            `.node.selected[data-view-id="${this.selectedViewId}"]`
+        );
+        selectedNode?.scrollIntoView({
+            block: "nearest",
+            inline: "nearest",
+        });
     }
 
     render() {
@@ -290,6 +313,7 @@ export class GsInspectorPanel extends LitElement {
         return html`
             <button
                 class=${selected ? "node selected" : "node"}
+                data-view-id=${node.id}
                 style=${`padding-left: ${0.65 + depth * 1.1}rem`}
                 @click=${() => {
                     this.selectedViewId = node.id;
@@ -346,9 +370,16 @@ export class GsInspectorPanel extends LitElement {
             </dl>
 
             <h3>Encodings</h3>
+            <p class="section-note">
+                Channels defined on this view and the resolution ids they use.
+            </p>
             ${this.#renderEncodings(node)}
 
             <h3>Resolutions</h3>
+            <p class="section-note">
+                Direct scale, axis, and legend resolution ids registered on this
+                view.
+            </p>
             <dl>
                 <dt>scale</dt>
                 <dd>${formatRecord(node.scaleResolutionIds)}</dd>
@@ -359,18 +390,34 @@ export class GsInspectorPanel extends LitElement {
             </dl>
 
             <h3>Dataflow</h3>
+            <p class="section-note">
+                Flow nodes owned by this view. Use the Dataflow button to jump
+                to the full flow tree.
+            </p>
             ${this.#renderViewDataflow(node)}
 
             <h3>Params</h3>
+            <p class="section-note">Params declared in this view scope.</p>
             ${this.#renderViewParams(node)}
 
             <h3>Mark</h3>
+            <p class="section-note">
+                Runtime mark state for unit views, including data and vertex
+                counts.
+            </p>
             ${this.#renderViewMark(node)}
 
-            <h3>All Resolutions</h3>
-            ${this.#renderResolutionPanel()}
+            <h3>Related Resolutions</h3>
+            <p class="section-note">
+                Resolutions that this view uses directly or participates in as a
+                member. The Resolutions tab shows the global list.
+            </p>
+            ${this.#renderRelatedResolutions(node)}
 
             <h3>Spec</h3>
+            <p class="section-note">
+                Authored or generated view spec snapshot for this runtime view.
+            </p>
             <pre>${JSON.stringify(node.spec, null, 2)}</pre>
         `;
     }
@@ -474,6 +521,52 @@ export class GsInspectorPanel extends LitElement {
     }
 
     /**
+     * @param {ViewDebugNode} node
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderRelatedResolutions(node) {
+        const { scales, axes, legends } =
+            /** @type {import("@genome-spy/core/debug/resolutionDebugSnapshot.js").ResolutionDebugSnapshot} */ (
+                this.snapshot.resolutions
+            );
+        const scaleIds = new Set(Object.values(node.scaleResolutionIds));
+        const axisIds = new Set(Object.values(node.axisResolutionIds));
+        const legendIds = new Set(Object.values(node.legendResolutionIds));
+        const relatedScales = scales.filter(
+            (scale) =>
+                scaleIds.has(scale.id) ||
+                scale.members.some((member) => member.viewId === node.id)
+        );
+        const relatedAxes = axes.filter(
+            (axis) =>
+                axisIds.has(axis.id) ||
+                axis.members.some((member) => member.viewId === node.id)
+        );
+        const relatedLegends = legends.filter(
+            (legend) =>
+                legendIds.has(legend.id) ||
+                legend.members.some((member) => member.viewId === node.id)
+        );
+
+        if (
+            relatedScales.length === 0 &&
+            relatedAxes.length === 0 &&
+            relatedLegends.length === 0
+        ) {
+            return html`<p class="empty">No related resolutions.</p>`;
+        }
+
+        return html`
+            <h4>Scales</h4>
+            ${this.#renderScaleResolutions(relatedScales)}
+            <h4>Axes</h4>
+            ${this.#renderAxisResolutions(relatedAxes)}
+            <h4>Legends</h4>
+            ${this.#renderLegendResolutions(relatedLegends)}
+        `;
+    }
+
+    /**
      * @param {import("@genome-spy/core/debug/resolutionDebugSnapshot.js").ScaleResolutionDebugNode[]} scales
      */
     #renderScaleResolutions(scales) {
@@ -509,18 +602,9 @@ export class GsInspectorPanel extends LitElement {
                                     )}
                                 </td>
                                 <td>
-                                    ${scale.members.map(
-                                        (member, index) => html`
-                                            ${index > 0 ? ", " : nothing}
-                                            <span
-                                                class="linked"
-                                                @click=${() => {
-                                                    this.selectedViewId =
-                                                        member.viewId;
-                                                }}
-                                                >${member.viewPath}:${member.channel}</span
-                                            >
-                                        `
+                                    ${this.#renderResolutionMembers(
+                                        scale.id,
+                                        scale.members
                                     )}
                                 </td>
                             </tr>
@@ -558,7 +642,12 @@ export class GsInspectorPanel extends LitElement {
                                 <td>${axis.channel}</td>
                                 <td>${axis.title ?? "-"}</td>
                                 <td>${axis.scaleResolutionId ?? "-"}</td>
-                                <td>${axis.members.length}</td>
+                                <td>
+                                    ${this.#renderResolutionMembers(
+                                        axis.id,
+                                        axis.members
+                                    )}
+                                </td>
                             </tr>
                         `
                     )}
@@ -592,13 +681,128 @@ export class GsInspectorPanel extends LitElement {
                                 <td>${legend.id}</td>
                                 <td>${legend.channel}</td>
                                 <td>${legend.definitionCount}</td>
-                                <td>${legend.members.length}</td>
+                                <td>
+                                    ${this.#renderResolutionMembers(
+                                        legend.id,
+                                        legend.members
+                                    )}
+                                </td>
                             </tr>
                         `
                     )}
                 </tbody>
             </table>
         `;
+    }
+
+    /**
+     * @param {string} resolutionId
+     * @param {{ viewId: string, viewPath: string, channel: string }[]} members
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderResolutionMembers(resolutionId, members) {
+        if (members.length === 0) {
+            return html`<span class="muted">none</span>`;
+        }
+
+        const expanded = this.expandedResolutionMemberIds.has(resolutionId);
+        const visibleMembers = expanded ? members : members.slice(0, 5);
+        return html`
+            <ul class="member-list">
+                ${visibleMembers.map((member) =>
+                    member.viewId === this.selectedViewId
+                        ? html`
+                              <li>
+                                  <span class="current-member">
+                                      ${member.viewPath}:${member.channel}
+                                  </span>
+                              </li>
+                          `
+                        : html`
+                              <li>
+                                  <button
+                                      class="link-button"
+                                      title="Jump to member view"
+                                      @click=${() => {
+                                          void this.#showMemberView(member);
+                                      }}
+                                      @mouseenter=${() =>
+                                          this.session?.highlightView(
+                                              member.viewId
+                                          )}
+                                      @mouseleave=${() =>
+                                          this.session?.highlightView(
+                                              undefined
+                                          )}
+                                  >
+                                      ${member.viewPath}:${member.channel}
+                                  </button>
+                              </li>
+                          `
+                )}
+            </ul>
+            ${members.length > visibleMembers.length
+                ? html`
+                      <button
+                          class="inline-action"
+                          @click=${() =>
+                              this.#setResolutionMembersExpanded(
+                                  resolutionId,
+                                  true
+                              )}
+                      >
+                          Show all ${members.length}
+                      </button>
+                  `
+                : nothing}
+            ${expanded && members.length > 5
+                ? html`
+                      <button
+                          class="inline-action"
+                          @click=${() =>
+                              this.#setResolutionMembersExpanded(
+                                  resolutionId,
+                                  false
+                              )}
+                      >
+                          Show fewer
+                      </button>
+                  `
+                : nothing}
+        `;
+    }
+
+    /**
+     * @param {{ viewId: string }} member
+     * @returns {Promise<void>}
+     */
+    async #showMemberView(member) {
+        if (!this.#hasNode(member.viewId) && this.session) {
+            await this.session.setIncludeChrome(true);
+            this.snapshot = this.session.snapshot;
+        }
+
+        if (this.#hasNode(member.viewId)) {
+            this.selectedViewId = member.viewId;
+        }
+        this.activePanel = "elements";
+        this.session?.highlightView(undefined);
+        await this.updateComplete;
+        this.#scrollSelectedNodeIntoView();
+    }
+
+    /**
+     * @param {string} resolutionId
+     * @param {boolean} expanded
+     */
+    #setResolutionMembersExpanded(resolutionId, expanded) {
+        const ids = new Set(this.expandedResolutionMemberIds);
+        if (expanded) {
+            ids.add(resolutionId);
+        } else {
+            ids.delete(resolutionId);
+        }
+        this.expandedResolutionMemberIds = ids;
     }
 
     /**
@@ -693,6 +897,14 @@ export class GsInspectorPanel extends LitElement {
             throw new Error("Unknown inspector node: " + id);
         }
         return node;
+    }
+
+    /**
+     * @param {string} id
+     * @returns {boolean}
+     */
+    #hasNode(id) {
+        return this.snapshot.nodes.some((candidate) => candidate.id === id);
     }
 
     /**

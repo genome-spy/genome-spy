@@ -121,6 +121,11 @@ export const inspectorPanelStyles = css`
         padding: 0.75rem;
     }
 
+    .section-note {
+        margin: -0.35rem 0 0.6rem;
+        color: #9aa6b2;
+    }
+
     .node {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -237,6 +242,46 @@ export const inspectorPanelStyles = css`
     .linked {
         color: #8cc7ff;
         cursor: pointer;
+    }
+
+    .member-list {
+        margin: 0;
+        padding-left: 1rem;
+    }
+
+    .member-list li {
+        margin: 0 0 0.15rem;
+    }
+
+    .link-button,
+    .inline-action {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #8cc7ff;
+    }
+
+    .link-button {
+        text-align: left;
+    }
+
+    .current-member {
+        color: #d8dee9;
+    }
+
+    .current-member::after {
+        color: #9aa6b2;
+        content: " current";
+    }
+
+    .inline-action {
+        margin-top: 0.25rem;
+    }
+
+    .link-button:hover,
+    .inline-action:hover {
+        background: transparent;
+        text-decoration: underline;
     }
 
     .muted {
