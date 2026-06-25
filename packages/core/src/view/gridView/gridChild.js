@@ -640,7 +640,7 @@ export default class GridChild {
             // Handle children that have caught axis resolutions. Create axes for them.
             for (const channel of primaryPositionalChannels) {
                 if (view.needsAxes[channel]) {
-                    const r = view.resolutions.axis[channel];
+                    const r = this.getAxisResolutionForAxis(channel);
                     if (!r) {
                         continue;
                     }
@@ -742,6 +742,18 @@ export default class GridChild {
      */
     allowDuplicateAxes() {
         return false;
+    }
+
+    /**
+     * Returns the axis resolution used for creating a rendered axis.
+     * Subclasses may override this when the rendered child uses a resolution
+     * caught by an ancestor.
+     *
+     * @protected
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+     */
+    getAxisResolutionForAxis(channel) {
+        return this.view.resolutions.axis[channel];
     }
 
     /**

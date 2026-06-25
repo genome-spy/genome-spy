@@ -751,6 +751,8 @@ test("anscombe wrapped facet example renders stable cell layout", async () => {
 
 test("cars matrix facet example renders stable cell layout", async () => {
     const spec = loadSharedExampleSpec("examples/core/facet/cars_matrix.json");
+    spec.spec.width = 150;
+    spec.spec.height = 150;
     spec.data = {
         values: [
             {
@@ -786,17 +788,46 @@ test("cars matrix facet example renders stable cell layout", async () => {
     expect(findLayoutNodes(layout, "facet0").map((node) => node.coords))
         .toMatchInlineSnapshot(`
           [
-            "Rectangle: x: 28, y: 28, width: 484, height: 317",
-            "Rectangle: x: 522, y: 28, width: 484, height: 317",
-            "Rectangle: x: 1016, y: 28, width: 484, height: 317",
-            "Rectangle: x: 28, y: 355, width: 484, height: 317",
-            "Rectangle: x: 522, y: 355, width: 484, height: 317",
-            "Rectangle: x: 1016, y: 355, width: 484, height: 317",
-            "Rectangle: x: 28, y: 683, width: 484, height: 317",
-            "Rectangle: x: 522, y: 683, width: 484, height: 317",
-            "Rectangle: x: 1016, y: 683, width: 484, height: 317",
+            "Rectangle: x: 28, y: 28, width: 182, height: 182",
+            "Rectangle: x: 220, y: 28, width: 182, height: 182",
+            "Rectangle: x: 412, y: 28, width: 182, height: 182",
+            "Rectangle: x: 28, y: 220, width: 182, height: 182",
+            "Rectangle: x: 220, y: 220, width: 182, height: 182",
+            "Rectangle: x: 412, y: 220, width: 182, height: 182",
+            "Rectangle: x: 28, y: 412, width: 182, height: 182",
+            "Rectangle: x: 220, y: 412, width: 182, height: 182",
+            "Rectangle: x: 412, y: 412, width: 182, height: 182",
           ]
         `);
+});
+
+test("cars matrix facet example renders repeated chrome", async () => {
+    const spec = loadSharedExampleSpec("examples/core/facet/cars_matrix.json");
+    spec.spec.width = 150;
+    spec.spec.height = 150;
+    spec.data = {
+        values: [
+            {
+                Origin: "Europe",
+                Cylinders: 4,
+                Horsepower: 76,
+                Miles_per_Gallon: 30,
+            },
+            {
+                Origin: "Japan",
+                Cylinders: 6,
+                Horsepower: 65,
+                Miles_per_Gallon: 35,
+            },
+        ],
+    };
+
+    const view = await createAndInitialize(spec, FacetView);
+    const layout = renderToLayout(view);
+
+    expect(findLayoutNodes(layout, "facetHeaderColumn0")).toHaveLength(1);
+    expect(findLayoutNodes(layout, "facetHeaderRow0")).toHaveLength(1);
+    expect(findLayoutNodesByPrefix(layout, "axis_")).toHaveLength(8);
 });
 
 /**
@@ -804,9 +835,9 @@ test("cars matrix facet example renders stable cell layout", async () => {
  * @returns {UnitView}
  */
 function getNonChromeUnitView(view) {
-    const child = getFlattenedViews(view).find(
-        (candidate) => candidate instanceof UnitView && !isChromeView(candidate)
-    );
+    const child = getFlattenedViews(view).find((candidate) => {
+        return candidate instanceof UnitView && candidate.name === "facet0";
+    });
 
     expect(child).toBeInstanceOf(UnitView);
     return /** @type {UnitView} */ (child);
@@ -839,6 +870,20 @@ function findLayoutNodes(layout, viewName) {
     return [
         ...(layout.viewName === viewName ? [layout] : []),
         ...layout.children.flatMap((child) => findLayoutNodes(child, viewName)),
+    ];
+}
+
+/**
+ * @param {{ viewName: string, coords: string, children: any[] }} layout
+ * @param {string} prefix
+ * @returns {{ viewName: string, coords: string, children: any[] }[]}
+ */
+function findLayoutNodesByPrefix(layout, prefix) {
+    return [
+        ...(layout.viewName.startsWith(prefix) ? [layout] : []),
+        ...layout.children.flatMap((child) =>
+            findLayoutNodesByPrefix(child, prefix)
+        ),
     ];
 }
 
