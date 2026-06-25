@@ -90,6 +90,8 @@ export default class FacetView extends ContainerView {
             { inheritEncoding: true }
         );
 
+        this.#validateInitialLimitations();
+
         this.#gridChild = new GridChild(this.child, this, 0);
         await this.#gridChild.createAxes();
 
@@ -261,6 +263,39 @@ export default class FacetView extends ContainerView {
             this.#facetFactors = createFacetFactors(this.#facet, facetIds);
             return true;
         }
+    }
+
+    #validateInitialLimitations() {
+        if (this.child instanceof FacetView) {
+            throw new Error(
+                "Facet specs cannot contain an immediate facet child."
+            );
+        }
+
+        for (const channel of ["x", "y"]) {
+            this.#validateSharedResolution(channel, "scale");
+            this.#validateSharedResolution(channel, "axis");
+        }
+    }
+
+    /**
+     * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+     * @param {"scale" | "axis"} resolutionType
+     */
+    #validateSharedResolution(channel, resolutionType) {
+        this.child.visit((view) => {
+            if (view instanceof UnitView) {
+                const behavior =
+                    view.getConfiguredResolution(channel, resolutionType) ??
+                    view.getConfiguredResolution("default", resolutionType);
+
+                if (behavior === "independent") {
+                    throw new Error(
+                        `FacetView currently supports only shared ${resolutionType} resolutions. Channel "${channel}" is resolved independently in child view "${view.name}".`
+                    );
+                }
+            }
+        });
     }
 
     /**
