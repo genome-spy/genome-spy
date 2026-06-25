@@ -109,6 +109,7 @@ nav:
           - Embedding and Entry Points: "api/embedding.md"
           - View Hierarchy: "api/views.md"
           - Runtime State: "api/runtime-state.md"
+          - Inspector: "api/inspector.md"
           - Instance, Events, and Export: "api/instance.md"
           - Embed Options: "api/embed-options.md"
     - License: "license.md"

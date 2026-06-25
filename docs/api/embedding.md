@@ -36,3 +36,9 @@ definition](https://github.com/genome-spy/genome-spy/blob/master/packages/core/s
 For practical examples of using the API, check the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
+
+## Debugging embeds
+
+Use the [Inspector](./inspector.md) to inspect the live view hierarchy,
+resolutions, params, and dataflow of embedded visualizations. Core embeds can
+attach the inspector through the `@genome-spy/inspector` package.

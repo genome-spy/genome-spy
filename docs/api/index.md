@@ -1,8 +1,8 @@
 # JavaScript API
 
 GenomeSpy's JavaScript API supports embedding visualizations, controlling live
-view hierarchies, updating runtime state, exporting images, and customizing
-embed behavior.
+view hierarchies, updating runtime state, attaching developer inspection tools,
+exporting images, and customizing embed behavior.
 
 The `embed` function returns a promise that resolves into an object that
 provides the current public API. The API is documented in the [interface
@@ -17,5 +17,6 @@ package.
 - [Embedding and entry points](./embedding.md)
 - [View hierarchy](./views.md)
 - [Runtime state](./runtime-state.md)
+- [Inspector](./inspector.md)
 - [Instance, events, and export](./instance.md)
 - [Embed options](./embed-options.md)

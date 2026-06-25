@@ -6,9 +6,9 @@ encodings, scale/axis/legend resolutions, dataflow, params, and unit mark state.
 The goal is to make the live runtime easier to understand without adding debug
 UI or heavy inspection code to the default Core or App bundles.
 
-This package is currently experimental. The initial implementation was largely
-vibe-coded with Codex and should be treated as a useful development tool rather
-than a stable public API.
+The initial implementation was largely vibe-coded with Codex. The tool is
+usable for development work, but the package API may still change as the
+integration points are refined.
 
 ## Package Integrations
 
@@ -25,8 +25,8 @@ await embed(element, spec, {
 ```
 
 In the App development single-page entry, the inspector is installed
-automatically so it is available from the App overflow menu during local
-development.
+automatically so it is available from the three-dot menu in the App toolbar
+during local development.
 
 The plugin uses App UI hooks to register a menu item and a side panel. It also
 registers an inspector launcher so App-side development commands can open this

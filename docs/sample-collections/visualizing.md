@@ -19,6 +19,11 @@ For a complete example, check the
 [website-examples](https://github.com/genome-spy/website-examples/blob/master/index.html)
 repository on GitHub.
 
+When developing sample-collection visualizations locally, use the
+[Inspector](../api/inspector.md) from the three-dot menu in the App toolbar to
+inspect the live view hierarchy, dataflow, params, and scale/axis/legend
+resolutions.
+
 ## Specifying a Sample View
 
 The GenomeSpy app extends the core library with a new view composition operator
