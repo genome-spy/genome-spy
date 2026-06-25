@@ -39,17 +39,19 @@ test("factory recognizes facet specs", () => {
 
 test("root facet spec is wrapped in an implicit grid root", async () => {
     const context = createTestViewContext({ wrapRoot: true });
-    const view = await context.createOrImportView(
-        {
-            facet: { field: "Series" },
-            spec: {
-                data: { values: [] },
-                mark: "point",
+    const view = /** @type {ConcatView} */ (
+        await context.createOrImportView(
+            {
+                facet: { field: "Series" },
+                spec: {
+                    data: { values: [] },
+                    mark: "point",
+                },
             },
-        },
-        null,
-        null,
-        VIEW_ROOT_NAME
+            null,
+            null,
+            VIEW_ROOT_NAME
+        )
     );
 
     expect(view).toBeInstanceOf(ConcatView);
@@ -174,10 +176,10 @@ test("facet rejects an immediate nested facet child", async () => {
         context.createOrImportView(
             {
                 facet: { field: "Series" },
-                spec: {
+                spec: /** @type {any} */ ({
                     facet: { field: "Group" },
                     spec: { mark: "point" },
-                },
+                }),
             },
             null,
             null,
@@ -808,7 +810,7 @@ function rectTuple(rect) {
 }
 
 /**
- * @param {{ viewName: string, children: any[] }} layout
+ * @param {{ viewName: string, coords: string, children: any[] }} layout
  * @param {string} viewName
  * @returns {{ viewName: string, coords: string, children: any[] }[]}
  */

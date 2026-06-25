@@ -1,6 +1,7 @@
 import { RootConfig } from "./root.js";
 import {
     ConcatSpec as CoreConcatSpec,
+    FacetSpec as CoreFacetSpec,
     HConcatSpec as CoreHConcatSpec,
     ImportSpec,
     LayerSpec as CoreLayerSpec,
@@ -42,10 +43,16 @@ interface ConcatSpec
     concat: (ViewSpec | ImportSpec)[];
 }
 
+interface FacetSpec
+    extends Omit<CoreFacetSpec, "templates" | "spec">, SchemaViewConfig {
+    spec: LayerSpec | UnitSpec | ImportSpec;
+}
+
 type ViewSpec =
     | UnitSpec
     | LayerSpec
     | MultiscaleSpec
+    | FacetSpec
     | VConcatSpec
     | HConcatSpec
     | ConcatSpec;
