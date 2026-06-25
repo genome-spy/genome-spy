@@ -68,4 +68,41 @@ describe("createResolutionDebugSnapshot", () => {
             ])
         );
     });
+
+    test("summarizes disabled scales without domain and range snapshots", async () => {
+        const view = await createAndInitialize(
+            {
+                data: {
+                    values: [{ x: 1, size: 10 }],
+                },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    size: {
+                        field: "size",
+                        type: "quantitative",
+                        scale: null,
+                    },
+                },
+            },
+            View
+        );
+
+        const snapshot = createResolutionDebugSnapshot(view, {
+            getDebugId: () => "id",
+        });
+
+        const size = snapshot.scales.find(
+            (resolution) => resolution.channel === "size"
+        );
+
+        expect(size).toMatchObject({
+            channel: "size",
+            type: "quantitative",
+            resolvedScaleType: undefined,
+            domain: undefined,
+            complexDomain: undefined,
+            range: undefined,
+        });
+    });
 });

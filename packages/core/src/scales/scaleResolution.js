@@ -918,6 +918,8 @@ export default class ScaleResolution {
 
     getDebugState() {
         const scale = this.#scaleManager.scale;
+        const canReadDomain = scale && typeof scale.domain === "function";
+        const canReadRange = scale && typeof scale.range === "function";
 
         return {
             kind: "scale",
@@ -925,9 +927,9 @@ export default class ScaleResolution {
             name: this.name,
             type: this.type,
             resolvedScaleType: this.getResolvedScaleType(),
-            domain: scale ? this.getDomain() : undefined,
-            complexDomain: scale ? this.getComplexDomain() : undefined,
-            range: scale ? scale.range() : undefined,
+            domain: canReadDomain ? this.getDomain() : undefined,
+            complexDomain: canReadDomain ? this.getComplexDomain() : undefined,
+            range: canReadRange ? scale.range() : undefined,
             zoomable: this.isZoomable(),
             zoomed: this.isZoomable() ? this.isZoomed() : false,
             members: this.#getOrderedMembers().map((member) =>
