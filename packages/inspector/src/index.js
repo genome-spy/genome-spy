@@ -42,3 +42,63 @@ export async function createInspectorPanel(host, options = {}) {
         },
     };
 }
+
+/**
+ * Attaches the inspector as a fixed-position overlay.
+ *
+ * @param {InspectorHost | { genomeSpy?: any }} host
+ * @param {{
+ *   container?: HTMLElement,
+ *   width?: string,
+ *   activePanel?: string
+ * }} [options]
+ * @returns {Promise<{
+ *   element: HTMLElement,
+ *   panel: import("./components/inspectorPanel.js").GsInspectorPanel,
+ *   session: import("./inspectorSession.js").default,
+ *   dispose: () => void
+ * }>}
+ */
+export async function attachInspectorOverlay(host, options = {}) {
+    const container = options.container ?? document.body;
+    const element = document.createElement("section");
+    element.className = "gs-inspector-overlay";
+    Object.assign(element.style, {
+        position: "fixed",
+        top: "0",
+        right: "0",
+        bottom: "0",
+        zIndex: "2147483647",
+        width: options.width ?? "min(46vw, 760px)",
+        minWidth: "320px",
+        maxWidth: "100vw",
+        boxShadow: "0 0 18px rgba(0, 0, 0, 0.35)",
+        resize: "horizontal",
+        overflow: "hidden",
+    });
+
+    const inspector = await createInspectorPanel(host, {
+        activePanel: options.activePanel,
+    });
+    Object.assign(inspector.panel.style, {
+        display: "block",
+        height: "100%",
+        minHeight: "0",
+    });
+    element.append(inspector.panel);
+    container.append(element);
+
+    const dispose = () => {
+        inspector.dispose();
+        element.remove();
+    };
+    inspector.panel.addEventListener("close", dispose, { once: true });
+    await inspector.session.refresh();
+
+    return {
+        element,
+        panel: inspector.panel,
+        session: inspector.session,
+        dispose,
+    };
+}

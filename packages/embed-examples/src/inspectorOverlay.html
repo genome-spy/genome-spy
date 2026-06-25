@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="style.scss" />
+        <title>Inspector overlay</title>
+        <style>
+            #container {
+                min-height: 320px;
+                margin-bottom: 1rem;
+            }
+        </style>
+    </head>
+
+    <body>
+        <h1>Inspector overlay</h1>
+
+        <p>
+            This example embeds a Core visualization and opens the optional
+            GenomeSpy inspector as a floating developer overlay.
+        </p>
+        <p>
+            <button id="open-inspector">Open inspector</button>
+        </p>
+        <div id="container"></div>
+
+        <script type="module" src="/inspectorOverlay.js"></script>
+    </body>
+</html>

@@ -169,7 +169,12 @@ export const inspectorPanelStyles = css`
         color: #b8c0cc;
     }
 
-    h2,
+    h2 {
+        margin: 0 0 0.6rem;
+        font-size: 0.9rem;
+        line-height: 1.2;
+    }
+
     h3 {
         margin: 0 0 0.6rem;
         font-size: 1rem;

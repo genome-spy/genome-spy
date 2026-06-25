@@ -44,6 +44,11 @@
   "peerDependencies": {
     "@genome-spy/app": "^0.78.0"
   },
+  "peerDependenciesMeta": {
+    "@genome-spy/app": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@genome-spy/app": "^0.78.0"
   }

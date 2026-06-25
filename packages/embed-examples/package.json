@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "@genome-spy/core": "^0.78.0",
+    "@genome-spy/inspector": "^0.78.0",
     "@genome-spy/react-component": "^0.78.0",
     "@gmod/indexedfasta": "^2.0.4",
     "buffer": "^6.0.3",
