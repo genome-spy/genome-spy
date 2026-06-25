@@ -15,7 +15,6 @@ export class GsInspectorPanel extends LitElement {
         selectedViewId: { state: true },
         selectedFlowNodeId: { state: true },
         activePanel: { state: true },
-        loading: { state: true },
     };
 
     static styles = css`
@@ -89,13 +88,8 @@ export class GsInspectorPanel extends LitElement {
             border-color: #2d6e9e;
         }
 
-        .status {
-            margin-left: auto;
-            color: #9aa6b2;
-        }
-
         .close-button {
-            margin-left: 0;
+            margin-left: auto;
         }
 
         .main {
@@ -280,7 +274,6 @@ export class GsInspectorPanel extends LitElement {
         this.selectedViewId = undefined;
         this.selectedFlowNodeId = undefined;
         this.activePanel = "elements";
-        this.loading = false;
     }
 
     connectedCallback() {
@@ -333,7 +326,6 @@ export class GsInspectorPanel extends LitElement {
             } else {
                 this.selectedFlowNodeId ??= this.snapshot.dataflow.sourceIds[0];
             }
-            this.loading = false;
         };
 
         this.session.addEventListener("snapshot", onSnapshot);
@@ -379,11 +371,6 @@ export class GsInspectorPanel extends LitElement {
                         All chrome
                     </label>
                     <button @click=${() => this.#refresh()}>Refresh</button>
-                    <span class="status">
-                        ${this.loading
-                            ? "Loading..."
-                            : `${this.snapshot.nodes.length} views`}
-                    </span>
                     <button
                         class="close-button"
                         title="Close inspector"
@@ -1075,7 +1062,6 @@ ${this.#formatValue(node.first)}</pre
             return;
         }
 
-        this.loading = true;
         await this.session.refresh();
     }
 
