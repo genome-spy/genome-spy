@@ -433,18 +433,11 @@ and clinical data. Make the following defaults conservative:
 - no network requests
 - no persistence unless the user explicitly exports a snapshot
 
-## Migration Plan For Existing Dataflow Inspector
+## Migration From The Old Dataflow Dialog
 
-1. Build `dataflowDebugSnapshot` using the current `DataFlowInspectorDialog`
-   behavior as the baseline.
-2. Implement the new Dataflow panel inside `@genome-spy/inspector`.
-3. In App, change the existing "Dataflow Inspector" menu item to:
-   - open the new inspector directly to the Dataflow panel when the inspector
-     package is installed
-   - keep the old dialog as a fallback while the migration is incomplete
-4. Remove `DataFlowInspectorDialog` only after the new panel covers current
-   documented behavior.
-5. Update the transform docs screenshot and wording after replacement.
+The old App `DataFlowInspectorDialog` has been replaced by the Dataflow panel in
+`@genome-spy/inspector`. The App overflow menu now gets its Inspector item from
+the plugin, and the legacy dialog/export path has been removed.
 
 ## Implementation Phases
 

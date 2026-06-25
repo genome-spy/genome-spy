@@ -12,10 +12,7 @@
     <script type="module">
       import { embed } from "https://cdn.jsdelivr.net/npm/@genome-spy/app@{{APP_VERSION}}/dist/index.es.js";
 
-      await embed(document.body, "spec.json", {
-        // Show the dataflow inspector button in the toolbar (default: true)
-        showInspectorButton: true,
-      });
+      await embed(document.body, "spec.json");
     </script>
   </body>
 </html>

@@ -73,7 +73,6 @@ export default class App {
         this.rootSpec = rootSpec;
 
         this.options = {
-            showInspectorButton: true,
             ...options,
             // App has a specialized handler for input bindings
             inputBindingContainer: /** @type {"none"} */ ("none"),

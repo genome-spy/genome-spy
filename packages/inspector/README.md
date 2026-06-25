@@ -30,8 +30,8 @@ automatically so it is available from the App overflow menu during local
 development.
 
 The plugin uses App UI hooks to register a menu item and a side panel. It also
-registers an inspector launcher so App's existing Dataflow Inspector menu entry
-can open this panel directly to the Dataflow view when the plugin is installed.
+registers an inspector launcher so App-side development commands can open this
+panel directly to a specific inspector view.
 
 ## Core And Playground
 

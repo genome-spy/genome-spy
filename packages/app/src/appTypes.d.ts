@@ -6,7 +6,6 @@ export type UrlHash = Partial<BookmarkEntry>;
 
 export type AppEmbedOptions =
     import("@genome-spy/core/types/embedApi.js").EmbedOptions & {
-        showInspectorButton?: boolean;
         plugins?: AppPlugin[];
     };
 
@@ -68,7 +67,7 @@ export interface AppUiRegistry extends AppUiHost, EventTarget {
     attachAppShell(appShell: HTMLElement): void;
     registerSidePanel(panel: SidePanelSpec): SidePanelHandle;
     registerInspectorLauncher(launcher: InspectorLauncher): () => void;
-    openInspector(options?: InspectorOpenOptions): boolean;
+    openInspector(options?: InspectorOpenOptions): Promise<boolean>;
 }
 
 export type AppEmbedFunction = (

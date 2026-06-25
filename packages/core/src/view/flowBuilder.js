@@ -219,17 +219,14 @@ export function buildDataFlow(
             // TODO: Handle cases where the spec contains terminal collector nodes
             // (with custom sort configuration, for example). Now a new collector
             // is always appended to the end of the current branch.
-            const collector = new Collector(
-                {
-                    type: "collect",
-                    groupby: view.getFacetFields(),
-                    sort: getCompareParamsForView(
-                        view,
-                        linearize?.rewrittenEncoding
-                    ),
-                },
-                view
-            );
+            const collector = new Collector({
+                type: "collect",
+                groupby: view.getFacetFields(),
+                sort: getCompareParamsForView(
+                    view,
+                    linearize?.rewrittenEncoding
+                ),
+            });
 
             appendNode(collector);
             const previousCollector = view.flowHandle?.collector;

@@ -72,7 +72,12 @@ export function genomeSpyInspector(options = {}) {
             const removeMenuItem = app.ui.registerToolbarMenuItem({
                 label: "Inspector",
                 icon: faBug,
-                callback: () => openInspector(),
+                callback: () => {
+                    void openInspector().catch(
+                        /** @returns {void} */
+                        () => {}
+                    );
+                },
             });
             const removeLauncher = app.ui.registerInspectorLauncher
                 ? app.ui.registerInspectorLauncher({

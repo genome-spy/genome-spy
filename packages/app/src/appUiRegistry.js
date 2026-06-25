@@ -129,15 +129,19 @@ export default class AppUiRegistry extends EventTarget {
 
     /**
      * @param {import("./appTypes.js").InspectorOpenOptions} [options]
-     * @returns {boolean}
+     * @returns {Promise<boolean>}
      */
-    openInspector(options = {}) {
+    async openInspector(options = {}) {
         if (!this.inspectorLauncher) {
             return false;
         }
 
-        void this.inspectorLauncher.open(options);
-        return true;
+        try {
+            await this.inspectorLauncher.open(options);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     /**

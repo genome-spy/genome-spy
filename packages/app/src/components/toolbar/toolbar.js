@@ -4,7 +4,6 @@ import {
     faInfoCircle,
     faQuestionCircle,
     faExpandArrowsAlt,
-    faBug,
     faFileImage,
     faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
@@ -15,7 +14,6 @@ import { renderVersionLink, packageJson } from "../../utils/version.js";
 import "./viewSettingsButton.js";
 import "./provenanceToolbar.js";
 import "./bookmarkButton.js";
-import { showDataflowInspectorDialog } from "../dialogs/dataflowInspectorDialog.js";
 import { toggleDropdown } from "../../utils/ui/dropdown.js";
 import { menuItemToTemplate } from "../../utils/ui/contextMenu.js";
 import { subscribeTo } from "../../state/subscribeTo.js";
@@ -185,28 +183,6 @@ export default class Toolbar extends LitElement {
                     }
                 ),
         });
-
-        if (this.app.options.showInspectorButton) {
-            items.push({
-                label: "Dataflow Inspector",
-                icon: faBug,
-                callback: () => {
-                    const opened = this.app.ui.openInspector({
-                        panel: "dataflow",
-                    });
-                    if (!opened) {
-                        showDataflowInspectorDialog(
-                            this.app.genomeSpy.viewRoot.context.dataFlow,
-                            {
-                                highlightView:
-                                    this.app.genomeSpy.viewRoot.context
-                                        .highlightView,
-                            }
-                        );
-                    }
-                },
-            });
-        }
 
         items.push(...this.app.ui.toolbarMenuItems);
 

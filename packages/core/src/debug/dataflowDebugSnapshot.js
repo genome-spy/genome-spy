@@ -3,6 +3,7 @@ import { previewValue } from "./valuePreview.js";
 /**
  * @typedef {object} DataflowDebugSnapshotOptions
  * @prop {(object: object) => string} getDebugId
+ * @prop {import("../view/view.js").default} [rootView]
  */
 
 /**
@@ -48,9 +49,17 @@ export function createDataflowDebugSnapshot(dataFlow, options) {
     /** @type {string[]} */
     const sourceIds = [];
     const seen = new Set();
+    const flowNodeViewLookup = createFlowNodeViewLookup(options.rootView);
 
     for (const source of dataFlow.dataSources) {
-        const node = visitFlowNode(source, undefined, options, nodes, seen);
+        const node = visitFlowNode(
+            source,
+            undefined,
+            options,
+            nodes,
+            seen,
+            flowNodeViewLookup
+        );
         sourceIds.push(node.id);
     }
 
@@ -67,9 +76,17 @@ export function createDataflowDebugSnapshot(dataFlow, options) {
  * @param {DataflowDebugSnapshotOptions} options
  * @param {DataflowDebugNode[]} nodes
  * @param {Set<object>} seen
+ * @param {WeakMap<object, import("../view/view.js").default>} flowNodeViewLookup
  * @returns {DataflowDebugNode}
  */
-function visitFlowNode(flowNode, parentId, options, nodes, seen) {
+function visitFlowNode(
+    flowNode,
+    parentId,
+    options,
+    nodes,
+    seen,
+    flowNodeViewLookup
+) {
     const id = options.getDebugId(flowNode);
     if (seen.has(flowNode)) {
         const existing = nodes.find((node) => node.id === id);
@@ -81,6 +98,7 @@ function visitFlowNode(flowNode, parentId, options, nodes, seen) {
 
     seen.add(flowNode);
     const state = flowNode.getDebugState();
+    const view = state.view ?? flowNodeViewLookup.get(flowNode);
     /** @type {string[]} */
     const childIds = [];
     const node = {
@@ -94,16 +112,48 @@ function visitFlowNode(flowNode, parentId, options, nodes, seen) {
         initialized: state.initialized,
         disposed: state.disposed,
         params: state.params ? previewValue(state.params) : undefined,
-        viewId: state.view ? options.getDebugId(state.view) : undefined,
-        viewPath: state.view ? state.view.getPathString() : undefined,
+        viewId: view ? options.getDebugId(view) : undefined,
+        viewPath: view ? view.getPathString() : undefined,
         domainSensitiveScaleChannels: state.domainSensitiveScaleChannels,
     };
     nodes.push(node);
 
     for (const child of state.children) {
-        const childNode = visitFlowNode(child, id, options, nodes, seen);
+        const childNode = visitFlowNode(
+            child,
+            id,
+            options,
+            nodes,
+            seen,
+            flowNodeViewLookup
+        );
         node.childIds.push(childNode.id);
     }
 
     return node;
+}
+
+/**
+ * @param {import("../view/view.js").default | undefined} root
+ * @returns {WeakMap<object, import("../view/view.js").default>}
+ */
+function createFlowNodeViewLookup(root) {
+    const lookup = new WeakMap();
+    if (!root) {
+        return lookup;
+    }
+
+    root.visit((view) => {
+        const flowHandle = view.flowHandle;
+        if (flowHandle?.dataSource) {
+            lookup.set(flowHandle.dataSource, view);
+        }
+        if (flowHandle?.node) {
+            lookup.set(flowHandle.node, view);
+        }
+        if (flowHandle?.collector) {
+            lookup.set(flowHandle.collector, view);
+        }
+    });
+    return lookup;
 }

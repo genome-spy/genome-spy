@@ -121,6 +121,7 @@ export default class InspectorSession extends EventTarget {
                 root?.context.dataFlow,
                 {
                     getDebugId: (object) => this.#getDebugId(object),
+                    rootView: root,
                 }
             ),
             params: paramDebugModule.createParamDebugSnapshot(root, {

@@ -27,6 +27,7 @@ describe("createDataflowDebugSnapshot", () => {
                 }
                 return ids.get(object);
             },
+            rootView: view,
         });
 
         expect(snapshot.sourceIds.length).toBeGreaterThan(0);
@@ -43,5 +44,6 @@ describe("createDataflowDebugSnapshot", () => {
         ).toMatchObject({
             viewPath: "viewRoot",
         });
+        expect(view.flowHandle.collector.paramRuntimeProvider).toBeUndefined();
     });
 });

@@ -37,7 +37,6 @@ the import at that bundle.
   import { appAgent } from "https://example.test/@genome-spy/app-agent/dist/index.es.js";
 
   await embed(document.body, "spec.json", {
-    showInspectorButton: true,
     plugins: [
       appAgent({
         baseUrl: "http://127.0.0.1:8001",
