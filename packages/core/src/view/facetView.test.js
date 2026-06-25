@@ -6,6 +6,15 @@ import FacetView from "./facetView.js";
 import UnitView from "./unitView.js";
 import { isChromeView } from "./viewSelectors.js";
 import { getFlattenedViews } from "./viewUtils.js";
+import {
+    createFacetGrid,
+    getFacetCellLayouts,
+    getFacetGridSize,
+    isRectVisible,
+} from "./facetLayout.js";
+import { FlexDimensions } from "./layout/flexLayout.js";
+import Padding from "./layout/padding.js";
+import Rectangle from "./layout/rectangle.js";
 
 test("factory recognizes facet specs", () => {
     const factory = new ViewFactory();
@@ -258,6 +267,153 @@ test("facet collector observers are disposed with the view", async () => {
     expect(collector.observers.size).toBe(observerCount);
 });
 
+test("facet layout wraps column facets into configured columns", () => {
+    const grid = createFacetGrid(
+        { row: undefined, column: { field: "Series" }, fields: ["Series"] },
+        { row: [], column: ["I", "II", "III"] },
+        2
+    );
+    const childSize = new FlexDimensions(
+        { px: 100, grow: 0 },
+        { px: 80, grow: 0 }
+    );
+    const size = getFacetGridSize(
+        grid,
+        childSize,
+        Padding.zero(),
+        undefined,
+        4
+    );
+    const layouts = getFacetCellLayouts(
+        grid,
+        Rectangle.create(0, 0, size.width.px, size.height.px),
+        childSize,
+        Padding.zero(),
+        undefined,
+        4
+    );
+
+    expect(grid).toMatchObject({ nRows: 2, nCols: 2 });
+    expect(
+        grid.cells.map((cell) => [cell.facetId, cell.row, cell.column])
+    ).toEqual([
+        [["I"], 0, 0],
+        [["II"], 0, 1],
+        [["III"], 1, 0],
+    ]);
+    expect(size.width).toEqual({ px: 204, grow: 0 });
+    expect(size.height).toEqual({ px: 186, grow: 0 });
+    expect(layouts.map((layout) => rectTuple(layout.viewportCoords))).toEqual([
+        [0, 22, 100, 80],
+        [104, 22, 100, 80],
+        [0, 106, 100, 80],
+    ]);
+});
+
+test("facet layout creates row and column matrix cells", () => {
+    const grid = createFacetGrid(
+        {
+            row: { field: "Origin" },
+            column: { field: "Cylinders" },
+            fields: ["Origin", "Cylinders"],
+        },
+        { row: ["Europe", "Japan"], column: [4, 6, 8] },
+        undefined
+    );
+    const childSize = new FlexDimensions(
+        { px: 100, grow: 0 },
+        { px: 80, grow: 0 }
+    );
+    const size = getFacetGridSize(
+        grid,
+        childSize,
+        Padding.zero(),
+        undefined,
+        4
+    );
+    const layouts = getFacetCellLayouts(
+        grid,
+        Rectangle.create(0, 0, size.width.px, size.height.px),
+        childSize,
+        Padding.zero(),
+        undefined,
+        4
+    );
+
+    expect(grid).toMatchObject({
+        nRows: 2,
+        nCols: 3,
+        hasRowHeaders: true,
+        hasColumnHeaders: true,
+    });
+    expect(grid.cells.map((cell) => cell.facetId)).toEqual([
+        ["Europe", 4],
+        ["Europe", 6],
+        ["Europe", 8],
+        ["Japan", 4],
+        ["Japan", 6],
+        ["Japan", 8],
+    ]);
+    expect(size.width).toEqual({ px: 330, grow: 0 });
+    expect(size.height).toEqual({ px: 186, grow: 0 });
+    expect(rectTuple(layouts[0].viewportCoords)).toEqual([22, 22, 100, 80]);
+    expect(rectTuple(layouts[5].viewportCoords)).toEqual([230, 106, 100, 80]);
+});
+
+test("facet layout creates row-only facets", () => {
+    const grid = createFacetGrid(
+        { row: { field: "Origin" }, column: undefined, fields: ["Origin"] },
+        { row: ["Europe", "Japan"], column: [] },
+        undefined
+    );
+    const childSize = new FlexDimensions(
+        { px: 100, grow: 0 },
+        { px: 80, grow: 0 }
+    );
+    const size = getFacetGridSize(
+        grid,
+        childSize,
+        Padding.zero(),
+        undefined,
+        4
+    );
+    const layouts = getFacetCellLayouts(
+        grid,
+        Rectangle.create(0, 0, size.width.px, size.height.px),
+        childSize,
+        Padding.zero(),
+        undefined,
+        4
+    );
+
+    expect(grid).toMatchObject({
+        nRows: 2,
+        nCols: 1,
+        hasRowHeaders: true,
+        hasColumnHeaders: false,
+    });
+    expect(
+        grid.cells.map((cell) => [cell.facetId, cell.row, cell.column])
+    ).toEqual([
+        [["Europe"], 0, 0],
+        [["Japan"], 1, 0],
+    ]);
+    expect(size.width).toEqual({ px: 122, grow: 0 });
+    expect(size.height).toEqual({ px: 164, grow: 0 });
+    expect(layouts.map((layout) => rectTuple(layout.viewportCoords))).toEqual([
+        [22, 0, 100, 80],
+        [22, 84, 100, 80],
+    ]);
+});
+
+test("facet layout culls rectangles outside a clip", () => {
+    const clip = { rect: Rectangle.create(0, 0, 10, 10) };
+
+    expect(isRectVisible(Rectangle.create(20, 20, 5, 5), clip)).toBe(false);
+    expect(isRectVisible(Rectangle.create(8, 8, 5, 5), clip)).toBe(true);
+    expect(isRectVisible(Rectangle.create(20, 20, 5, 5), undefined)).toBe(true);
+});
+
 /**
  * @param {FacetView} view
  * @returns {UnitView}
@@ -269,4 +425,12 @@ function getNonChromeUnitView(view) {
 
     expect(child).toBeInstanceOf(UnitView);
     return /** @type {UnitView} */ (child);
+}
+
+/**
+ * @param {Rectangle} rect
+ * @returns {[number, number, number, number]}
+ */
+function rectTuple(rect) {
+    return [rect.x, rect.y, rect.width, rect.height];
 }
