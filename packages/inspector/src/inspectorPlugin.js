@@ -16,7 +16,7 @@ export function genomeSpyInspector(options = {}) {
         name: "@genome-spy/inspector",
 
         async install(/** @type {any} */ app) {
-            if (!app.ui?.registerToolbarButton) {
+            if (!app.ui?.registerToolbarMenuItem) {
                 throw new Error("genomeSpyInspector requires an App UI host.");
             }
 
@@ -66,10 +66,10 @@ export function genomeSpyInspector(options = {}) {
                 await session.refresh();
             };
 
-            const removeButton = app.ui.registerToolbarButton({
-                title: "GenomeSpy Inspector",
+            const removeMenuItem = app.ui.registerToolbarMenuItem({
+                label: "GenomeSpy Inspector",
                 icon: faBug,
-                onClick: () => openInspector(),
+                callback: () => openInspector(),
             });
             const removeLauncher = app.ui.registerInspectorLauncher
                 ? app.ui.registerInspectorLauncher({
@@ -79,7 +79,7 @@ export function genomeSpyInspector(options = {}) {
 
             return () => {
                 removeLauncher();
-                removeButton();
+                removeMenuItem();
                 session?.dispose();
                 session = undefined;
                 panelHandle?.dispose();

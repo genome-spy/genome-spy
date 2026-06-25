@@ -6,6 +6,8 @@
       "@genome-spy/app/*": ["packages/app/src/*"],
       "@genome-spy/app-agent": ["packages/app-agent/src/index.d.ts"],
       "@genome-spy/app-agent/*": ["packages/app-agent/src/*"],
+      "@genome-spy/inspector": ["packages/inspector/src/index.d.ts"],
+      "@genome-spy/inspector/*": ["packages/inspector/src/*"],
       "@genome-spy/app/schema.json": ["packages/app/dist/schema.json"],
       "@genome-spy/core": ["packages/core/src/index.js"],
       "@genome-spy/core/*": ["packages/core/src/*"],
