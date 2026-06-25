@@ -924,6 +924,7 @@ export default class ScaleResolution {
         return {
             kind: "scale",
             channel: this.channel,
+            hostView: this.#resolutionView,
             name: this.name,
             type: this.type,
             resolvedScaleType: this.getResolvedScaleType(),

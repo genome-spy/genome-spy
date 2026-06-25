@@ -122,6 +122,10 @@ export default class AxisResolution {
         return {
             kind: "axis",
             channel: this.channel,
+            hostView:
+                this.scaleResolution?.getDebugState().hostView ??
+                this.#viewLevelAxisConfig?.view ??
+                this.#members.values().next().value?.view,
             scaleResolution: this.scaleResolution,
             title: this.getTitle(),
             axisProps: this.getAxisProps(),

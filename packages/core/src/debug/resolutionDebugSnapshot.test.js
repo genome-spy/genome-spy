@@ -49,18 +49,21 @@ describe("createResolutionDebugSnapshot", () => {
 
         expect(color).toMatchObject({
             channel: "color",
+            hostViewPath: "viewRoot",
             type: "nominal",
         });
         expect(color.members).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({
                     viewPath: "viewRoot/points",
+                    chrome: false,
                     channel: "fill",
                     field: "category",
                     contributesToDomain: true,
                 }),
                 expect.objectContaining({
                     viewPath: "viewRoot/morePoints",
+                    chrome: false,
                     channel: "fill",
                     field: "category",
                     contributesToDomain: true,

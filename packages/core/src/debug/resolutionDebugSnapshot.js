@@ -1,4 +1,5 @@
 import ContainerView from "../view/containerView.js";
+import { isChromeView } from "../view/viewSelectors.js";
 
 /**
  * @typedef {object} ResolutionDebugSnapshotOptions
@@ -15,6 +16,8 @@ import ContainerView from "../view/containerView.js";
 /**
  * @typedef {object} ScaleResolutionDebugNode
  * @prop {string} id
+ * @prop {string | undefined} hostViewId
+ * @prop {string | undefined} hostViewPath
  * @prop {string} channel
  * @prop {string | undefined} name
  * @prop {string | null | undefined} type
@@ -33,6 +36,7 @@ import ContainerView from "../view/containerView.js";
  * @typedef {object} ScaleResolutionMemberDebugNode
  * @prop {string} viewId
  * @prop {string} viewPath
+ * @prop {boolean} chrome
  * @prop {string} channel
  * @prop {string | undefined} field
  * @prop {string | undefined} expr
@@ -44,6 +48,8 @@ import ContainerView from "../view/containerView.js";
 /**
  * @typedef {object} AxisResolutionDebugNode
  * @prop {string} id
+ * @prop {string | undefined} hostViewId
+ * @prop {string | undefined} hostViewPath
  * @prop {string} channel
  * @prop {string | null | undefined} title
  * @prop {string | undefined} scaleResolutionId
@@ -55,6 +61,7 @@ import ContainerView from "../view/containerView.js";
  * @typedef {object} AxisResolutionMemberDebugNode
  * @prop {string} viewId
  * @prop {string} viewPath
+ * @prop {boolean} chrome
  * @prop {string} channel
  * @prop {string | undefined} field
  * @prop {string | undefined} expr
@@ -64,6 +71,8 @@ import ContainerView from "../view/containerView.js";
 /**
  * @typedef {object} LegendResolutionDebugNode
  * @prop {string} id
+ * @prop {string | undefined} hostViewId
+ * @prop {string | undefined} hostViewPath
  * @prop {string} channel
  * @prop {boolean} hasVisibleNonChromeMember
  * @prop {number} definitionCount
@@ -74,6 +83,7 @@ import ContainerView from "../view/containerView.js";
  * @typedef {object} LegendResolutionMemberDebugNode
  * @prop {string} viewId
  * @prop {string} viewPath
+ * @prop {boolean} chrome
  * @prop {string} channel
  */
 
@@ -148,6 +158,7 @@ function createScaleDebugNode(resolution, options) {
     const state = resolution.getDebugState();
     return {
         id: options.getDebugId(resolution),
+        ...createHostViewDebugState(state.hostView, options),
         channel: state.channel,
         name: state.name,
         type: state.type,
@@ -167,6 +178,7 @@ function createScaleDebugNode(resolution, options) {
             (member) => ({
                 viewId: options.getDebugId(member.view),
                 viewPath: member.view.getPathString(),
+                chrome: isInChromeSubtree(member.view),
                 channel: member.channel,
                 field:
                     "field" in member.channelDef
@@ -196,6 +208,7 @@ function createAxisDebugNode(resolution, options) {
     const state = resolution.getDebugState();
     return {
         id: options.getDebugId(resolution),
+        ...createHostViewDebugState(state.hostView, options),
         channel: state.channel,
         title: state.title,
         scaleResolutionId: state.scaleResolution
@@ -210,6 +223,7 @@ function createAxisDebugNode(resolution, options) {
             (member) => ({
                 viewId: options.getDebugId(member.view),
                 viewPath: member.view.getPathString(),
+                chrome: isInChromeSubtree(member.view),
                 channel: member.channel,
                 field:
                     "field" in member.channelDef
@@ -237,6 +251,7 @@ function createLegendDebugNode(resolution, options) {
     const state = resolution.getDebugState();
     return {
         id: options.getDebugId(resolution),
+        ...createHostViewDebugState(state.hostView, options),
         channel: state.channel,
         hasVisibleNonChromeMember: state.hasVisibleNonChromeMember,
         definitionCount: state.legendDefs.length,
@@ -248,8 +263,29 @@ function createLegendDebugNode(resolution, options) {
             (member) => ({
                 viewId: options.getDebugId(member.view),
                 viewPath: member.view.getPathString(),
+                chrome: isInChromeSubtree(member.view),
                 channel: member.channel,
             })
         ),
+    };
+}
+
+/**
+ * @param {import("../view/view.js").default} view
+ * @returns {boolean}
+ */
+function isInChromeSubtree(view) {
+    return isChromeView(view) || view.getLayoutAncestors().some(isChromeView);
+}
+
+/**
+ * @param {import("../view/view.js").default | undefined} view
+ * @param {ResolutionDebugSnapshotOptions} options
+ * @returns {{ hostViewId: string | undefined, hostViewPath: string | undefined }}
+ */
+function createHostViewDebugState(view, options) {
+    return {
+        hostViewId: view ? options.getDebugId(view) : undefined,
+        hostViewPath: view?.getPathString(),
     };
 }

@@ -173,7 +173,7 @@ export class GsInspectorPanel extends LitElement {
                 <div class="toolbar">
                     <strong class="toolbar-title">Inspector</strong>
                     <span class="panel-tabs">
-                        ${this.#renderPanelTab("elements", "Elements")}
+                        ${this.#renderPanelTab("elements", "Views")}
                         ${this.#renderPanelTab("resolutions", "Resolutions")}
                         ${this.#renderPanelTab("dataflow", "Dataflow")}
                         ${this.#renderPanelTab("params", "Params")}
@@ -291,7 +291,7 @@ export class GsInspectorPanel extends LitElement {
                                 );
                             }}
                         />
-                        All chrome
+                        Show view chrome
                     </label>
                 </div>
                 ${root
@@ -583,6 +583,7 @@ export class GsInspectorPanel extends LitElement {
                         <th>name</th>
                         <th>type</th>
                         <th>domain</th>
+                        <th>owner</th>
                         <th>members</th>
                     </tr>
                 </thead>
@@ -599,6 +600,13 @@ export class GsInspectorPanel extends LitElement {
                                 <td>
                                     ${formatValue(
                                         scale.complexDomain ?? scale.domain
+                                    )}
+                                </td>
+                                <td>
+                                    ${this.#renderViewLink(
+                                        scale.hostViewId,
+                                        scale.hostViewPath,
+                                        "Jump to owner view"
                                     )}
                                 </td>
                                 <td>
@@ -631,6 +639,7 @@ export class GsInspectorPanel extends LitElement {
                         <th>channel</th>
                         <th>title</th>
                         <th>scale</th>
+                        <th>owner</th>
                         <th>members</th>
                     </tr>
                 </thead>
@@ -642,6 +651,13 @@ export class GsInspectorPanel extends LitElement {
                                 <td>${axis.channel}</td>
                                 <td>${axis.title ?? "-"}</td>
                                 <td>${axis.scaleResolutionId ?? "-"}</td>
+                                <td>
+                                    ${this.#renderViewLink(
+                                        axis.hostViewId,
+                                        axis.hostViewPath,
+                                        "Jump to owner view"
+                                    )}
+                                </td>
                                 <td>
                                     ${this.#renderResolutionMembers(
                                         axis.id,
@@ -671,6 +687,7 @@ export class GsInspectorPanel extends LitElement {
                         <th>id</th>
                         <th>channel</th>
                         <th>definitions</th>
+                        <th>owner</th>
                         <th>members</th>
                     </tr>
                 </thead>
@@ -681,6 +698,13 @@ export class GsInspectorPanel extends LitElement {
                                 <td>${legend.id}</td>
                                 <td>${legend.channel}</td>
                                 <td>${legend.definitionCount}</td>
+                                <td>
+                                    ${this.#renderViewLink(
+                                        legend.hostViewId,
+                                        legend.hostViewPath,
+                                        "Jump to owner view"
+                                    )}
+                                </td>
                                 <td>
                                     ${this.#renderResolutionMembers(
                                         legend.id,
@@ -697,7 +721,7 @@ export class GsInspectorPanel extends LitElement {
 
     /**
      * @param {string} resolutionId
-     * @param {{ viewId: string, viewPath: string, channel: string }[]} members
+     * @param {{ viewId: string, viewPath: string, chrome?: boolean, channel: string }[]} members
      * @returns {import("lit").TemplateResult}
      */
     #renderResolutionMembers(resolutionId, members) {
@@ -705,8 +729,13 @@ export class GsInspectorPanel extends LitElement {
             return html`<span class="muted">none</span>`;
         }
 
+        const orderedMembers = members.slice().sort((a, b) => {
+            return Number(Boolean(a.chrome)) - Number(Boolean(b.chrome));
+        });
         const expanded = this.expandedResolutionMemberIds.has(resolutionId);
-        const visibleMembers = expanded ? members : members.slice(0, 5);
+        const visibleMembers = expanded
+            ? orderedMembers
+            : orderedMembers.slice(0, 5);
         return html`
             <ul class="member-list">
                 ${visibleMembers.map((member) =>
@@ -716,6 +745,9 @@ export class GsInspectorPanel extends LitElement {
                                   <span class="current-member">
                                       ${member.viewPath}:${member.channel}
                                   </span>
+                                  ${member.chrome
+                                      ? html`<span class="badge">chrome</span>`
+                                      : nothing}
                               </li>
                           `
                         : html`
@@ -724,7 +756,7 @@ export class GsInspectorPanel extends LitElement {
                                       class="link-button"
                                       title="Jump to member view"
                                       @click=${() => {
-                                          void this.#showMemberView(member);
+                                          void this.#showView(member);
                                       }}
                                       @mouseenter=${() =>
                                           this.session?.highlightView(
@@ -737,6 +769,9 @@ export class GsInspectorPanel extends LitElement {
                                   >
                                       ${member.viewPath}:${member.channel}
                                   </button>
+                                  ${member.chrome
+                                      ? html`<span class="badge">chrome</span>`
+                                      : nothing}
                               </li>
                           `
                 )}
@@ -773,17 +808,47 @@ export class GsInspectorPanel extends LitElement {
     }
 
     /**
-     * @param {{ viewId: string }} member
+     * @param {string | undefined} viewId
+     * @param {string | undefined} viewPath
+     * @param {string} title
+     * @returns {import("lit").TemplateResult}
+     */
+    #renderViewLink(viewId, viewPath, title) {
+        if (!viewId || !viewPath) {
+            return html`<span class="muted">-</span>`;
+        }
+
+        if (viewId === this.selectedViewId) {
+            return html`<span class="current-member">${viewPath}</span>`;
+        }
+
+        return html`
+            <button
+                class="link-button"
+                title=${title}
+                @click=${() => {
+                    void this.#showView({ viewId });
+                }}
+                @mouseenter=${() => this.session?.highlightView(viewId)}
+                @mouseleave=${() => this.session?.highlightView(undefined)}
+            >
+                ${viewPath}
+            </button>
+        `;
+    }
+
+    /**
+     * @param {{ viewId: string }} target
      * @returns {Promise<void>}
      */
-    async #showMemberView(member) {
-        if (!this.#hasNode(member.viewId) && this.session) {
+    async #showView(target) {
+        if (!this.#hasNode(target.viewId) && this.session) {
             await this.session.setIncludeChrome(true);
             this.snapshot = this.session.snapshot;
         }
 
-        if (this.#hasNode(member.viewId)) {
-            this.selectedViewId = member.viewId;
+        if (this.#hasNode(target.viewId)) {
+            this.selectedViewId = target.viewId;
         }
         this.activePanel = "elements";
         this.session?.highlightView(undefined);

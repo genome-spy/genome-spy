@@ -207,10 +207,15 @@ export default class LegendResolution {
     }
 
     getDebugState() {
+        const legendDefs = this.getLegendDefs();
         return {
             kind: "legend",
             channel: this.channel,
-            legendDefs: this.getLegendDefs().map((definition) => ({
+            hostView:
+                legendDefs[0]?.scaleResolution.getDebugState().hostView ??
+                this.#viewLevelLegendConfig?.view ??
+                this.#members.values().next().value?.view,
+            legendDefs: legendDefs.map((definition) => ({
                 ...definition,
                 view: definition.view,
                 scaleResolution: definition.scaleResolution,
