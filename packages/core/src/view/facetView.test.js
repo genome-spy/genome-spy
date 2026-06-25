@@ -252,8 +252,8 @@ test("column facet header updates dynamic label data during render", async () =>
     renderToLayout(view, Rectangle.create(0, 0, 210, 78));
 
     expect(updateSpy).toHaveBeenCalledWith([
-        { x: 50 / 210, y: 9 / 78, text: "I" },
-        { x: 160 / 210, y: 9 / 78, text: "II" },
+        { x: 50 / 210, y: 1 - 9 / 78, text: "I" },
+        { x: 160 / 210, y: 1 - 9 / 78, text: "II" },
     ]);
 });
 
