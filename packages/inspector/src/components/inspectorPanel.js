@@ -355,7 +355,7 @@ export class GsInspectorPanel extends LitElement {
         return html`
             <div class="shell">
                 <div class="toolbar">
-                    <strong class="toolbar-title">GenomeSpy Inspector</strong>
+                    <strong class="toolbar-title">Inspector</strong>
                     <span class="panel-tabs">
                         ${this.#renderPanelTab("elements", "Elements")}
                         ${this.#renderPanelTab("resolutions", "Resolutions")}
