@@ -50,6 +50,10 @@ export class GsInspectorPanel extends LitElement {
             background: #292e36;
         }
 
+        .toolbar-title {
+            white-space: nowrap;
+        }
+
         .panel-tabs {
             display: flex;
             gap: 0.2rem;
@@ -88,6 +92,10 @@ export class GsInspectorPanel extends LitElement {
         .status {
             margin-left: auto;
             color: #9aa6b2;
+        }
+
+        .close-button {
+            margin-left: 0;
         }
 
         .main {
@@ -347,7 +355,7 @@ export class GsInspectorPanel extends LitElement {
         return html`
             <div class="shell">
                 <div class="toolbar">
-                    <strong>GenomeSpy Inspector</strong>
+                    <strong class="toolbar-title">GenomeSpy Inspector</strong>
                     <span class="panel-tabs">
                         ${this.#renderPanelTab("elements", "Elements")}
                         ${this.#renderPanelTab("resolutions", "Resolutions")}
@@ -376,10 +384,27 @@ export class GsInspectorPanel extends LitElement {
                             ? "Loading..."
                             : `${this.snapshot.nodes.length} views`}
                     </span>
+                    <button
+                        class="close-button"
+                        title="Close inspector"
+                        aria-label="Close inspector"
+                        @click=${() => this.#close()}
+                    >
+                        x
+                    </button>
                 </div>
                 ${this.#renderActivePanel(root, selected)}
             </div>
         `;
+    }
+
+    #close() {
+        this.dispatchEvent(
+            new CustomEvent("close", {
+                bubbles: true,
+                composed: true,
+            })
+        );
     }
 
     /**

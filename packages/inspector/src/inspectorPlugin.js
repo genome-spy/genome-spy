@@ -45,6 +45,9 @@ export function genomeSpyInspector(options = {}) {
                 session = new InspectorSession(app);
                 panelElement = new GsInspectorPanel();
                 panelElement.session = session;
+                panelElement.addEventListener("close", () => {
+                    panelHandle?.hide();
+                });
                 panelHandle = app.ui.registerSidePanel({
                     id: "genome-spy-inspector",
                     element: panelElement,
