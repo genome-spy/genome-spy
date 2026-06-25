@@ -15,6 +15,10 @@ import {
 import { FlexDimensions } from "./layout/flexLayout.js";
 import Padding from "./layout/padding.js";
 import Rectangle from "./layout/rectangle.js";
+import {
+    initializeViewSubtree,
+    loadViewSubtreeData,
+} from "../data/flowInit.js";
 
 test("factory recognizes facet specs", () => {
     const factory = new ViewFactory();
@@ -414,6 +418,56 @@ test("facet layout culls rectangles outside a clip", () => {
     expect(isRectVisible(Rectangle.create(20, 20, 5, 5), undefined)).toBe(true);
 });
 
+test("facet size grows with wrapped facet count", async () => {
+    const twoFacetView = await createAndInitialize(
+        createFixedSizeFacetSpec(["I", "II"]),
+        FacetView
+    );
+    const fourFacetView = await createAndInitialize(
+        createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
+        FacetView
+    );
+
+    expect(twoFacetView.getSize()).toMatchObject({
+        width: { px: 210, grow: 0 },
+        height: { px: 78, grow: 0 },
+    });
+    expect(fourFacetView.getSize()).toMatchObject({
+        width: { px: 210, grow: 0 },
+        height: { px: 138, grow: 0 },
+    });
+});
+
+test("invisible facet size is zero", async () => {
+    const view = await createAndInitialize(
+        {
+            ...createFixedSizeFacetSpec(["I", "II"]),
+            visible: false,
+        },
+        FacetView
+    );
+    view.context.isViewConfiguredVisible = (candidate) =>
+        candidate.spec.visible ?? true;
+
+    expect(view.getSize()).toMatchObject({
+        width: { px: 0, grow: 0 },
+        height: { px: 0, grow: 0 },
+    });
+});
+
+test("implicit root grid uses facet viewport height", async () => {
+    const root = await createAndInitializeWrappedRoot({
+        ...createFixedSizeFacetSpec(["I", "II", "III", "IV"]),
+        viewportHeight: 80,
+    });
+    const facet = /** @type {FacetView} */ (root.children[0]);
+
+    expect(facet).toBeInstanceOf(FacetView);
+    expect(facet.getSize().height).toEqual({ px: 138, grow: 0 });
+    expect(facet.getViewportSize().height).toEqual({ px: 80, grow: 0 });
+    expect(root.getSize().height).toEqual({ px: 80, grow: 0 });
+});
+
 /**
  * @param {FacetView} view
  * @returns {UnitView}
@@ -433,4 +487,62 @@ function getNonChromeUnitView(view) {
  */
 function rectTuple(rect) {
     return [rect.x, rect.y, rect.width, rect.height];
+}
+
+/**
+ * @param {string[]} series
+ * @returns {import("../spec/root.js").RootSpec}
+ */
+function createFixedSizeFacetSpec(series) {
+    return {
+        data: {
+            values: series.map((Series, index) => ({
+                Series,
+                x: index,
+                y: index,
+            })),
+        },
+        facet: { field: "Series" },
+        columns: 2,
+        spacing: 10,
+        spec: {
+            width: 100,
+            height: 50,
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: null,
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    axis: null,
+                },
+            },
+        },
+    };
+}
+
+/**
+ * @param {import("../spec/root.js").RootSpec} spec
+ * @returns {Promise<ConcatView>}
+ */
+async function createAndInitializeWrappedRoot(spec) {
+    const context = createTestViewContext({ wrapRoot: true });
+    const view = /** @type {ConcatView} */ (
+        await context.createOrImportView(spec, null, null, VIEW_ROOT_NAME)
+    );
+
+    view.visit((candidate) => {
+        if (candidate instanceof UnitView) {
+            candidate.mark.initializeEncoders();
+        }
+    });
+
+    const { dataSources } = initializeViewSubtree(view, view.context.dataFlow);
+    await loadViewSubtreeData(view, dataSources);
+
+    return view;
 }

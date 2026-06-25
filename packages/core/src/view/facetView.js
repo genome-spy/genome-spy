@@ -1,5 +1,7 @@
 import ContainerView from "./containerView.js";
+import { createFacetGrid, getFacetGridSize } from "./facetLayout.js";
 import GridChild from "./gridView/gridChild.js";
+import { ZERO_FLEXDIMENSIONS } from "./layout/flexLayout.js";
 import UnitView from "./unitView.js";
 import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 
@@ -112,6 +114,30 @@ export default class FacetView extends ContainerView {
     getFacetFactors() {
         this.#syncFacetCollectors();
         return this.#facetFactors;
+    }
+
+    /**
+     * @returns {import("./layout/flexLayout.js").FlexDimensions}
+     */
+    getSize() {
+        return this._cache("size/size", () => {
+            if (!this.isConfiguredVisible()) {
+                return ZERO_FLEXDIMENSIONS;
+            } else {
+                this.#syncFacetCollectors();
+                return getFacetGridSize(
+                    createFacetGrid(
+                        this.#facet,
+                        this.#facetFactors,
+                        this.spec.columns
+                    ),
+                    this.child.getViewportSize(),
+                    this.#gridChild.getOverhangAndPadding(),
+                    undefined,
+                    this.spec.spacing ?? 10
+                );
+            }
+        });
     }
 
     #syncFacetCollectors() {
