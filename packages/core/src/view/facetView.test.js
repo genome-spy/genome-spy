@@ -299,6 +299,65 @@ test("row and column facet creates one chrome header view per orientation", asyn
     expect(headers.every((header) => isChromeView(header))).toBe(true);
 });
 
+test("facet headers are centered over plot area excluding overhang", async () => {
+    const view = await createAndInitialize(
+        {
+            data: {
+                values: [
+                    { Origin: "Europe", Cylinders: 4, x: 1, y: 2 },
+                    { Origin: "Japan", Cylinders: 6, x: 3, y: 4 },
+                ],
+            },
+            facet: {
+                row: { field: "Origin" },
+                column: { field: "Cylinders" },
+            },
+            spec: {
+                width: 100,
+                height: 50,
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            },
+        },
+        FacetView
+    );
+    const [columnHeader, rowHeader] = getFacetHeaderViews(view);
+    const columnSource =
+        /** @type {import("../data/sources/inlineSource.js").default} */ (
+            columnHeader.flowHandle.dataSource
+        );
+    const rowSource =
+        /** @type {import("../data/sources/inlineSource.js").default} */ (
+            rowHeader.flowHandle.dataSource
+        );
+    const columnUpdateSpy = vi.spyOn(columnSource, "updateDynamicData");
+    const rowUpdateSpy = vi.spyOn(rowSource, "updateDynamicData");
+
+    const layout = renderToLayout(view);
+    const rootCoords = parseRectString(layout.coords);
+    const firstFacetCoords = parseRectString(
+        findLayoutNodes(layout, "facet0")[0].coords
+    );
+    const viewportCenterX =
+        (firstFacetCoords.x + firstFacetCoords.width / 2) / rootCoords.width;
+    const viewportCenterY =
+        1 -
+        (firstFacetCoords.y + firstFacetCoords.height / 2) / rootCoords.height;
+
+    const columnData = /** @type {{ x: number, y: number, text: string }[]} */ (
+        columnUpdateSpy.mock.calls[0][0]
+    );
+    const rowData = /** @type {{ x: number, y: number, text: string }[]} */ (
+        rowUpdateSpy.mock.calls[0][0]
+    );
+
+    expect(columnData[0].x).toBeGreaterThan(viewportCenterX);
+    expect(rowData[0].y).toBeGreaterThan(viewportCenterY);
+});
+
 test("descendant unit collectors group data by facet fields", async () => {
     const view = await createAndInitialize(
         {
@@ -861,6 +920,27 @@ function getFacetHeaderViews(view) {
  */
 function rectTuple(rect) {
     return [rect.x, rect.y, rect.width, rect.height];
+}
+
+/**
+ * @param {string} value
+ * @returns {{ x: number, y: number, width: number, height: number }}
+ */
+function parseRectString(value) {
+    const match = value.match(
+        /^Rectangle: x: ([\d.-]+), y: ([\d.-]+), width: ([\d.-]+), height: ([\d.-]+)$/
+    );
+
+    if (!match) {
+        throw new Error("Invalid rectangle string: " + value);
+    }
+
+    return {
+        x: Number(match[1]),
+        y: Number(match[2]),
+        width: Number(match[3]),
+        height: Number(match[4]),
+    };
 }
 
 /**
