@@ -2,7 +2,8 @@
  * Browser-side state and runtime bridge for the inspector UI.
  *
  * @typedef {object} InspectorHost
- * @prop {() => any | undefined} getGenomeSpy
+ * @prop {() => any | undefined} [getRootView]
+ * @prop {() => any | undefined} [getGenomeSpy]
  * @prop {(view: object | null) => void} [highlightView]
  */
 export default class InspectorSession extends EventTarget {
@@ -236,7 +237,13 @@ export default class InspectorSession extends EventTarget {
     }
 
     #getRoot() {
-        const genomeSpy = this.#host.getGenomeSpy();
+        if (this.#host.getRootView) {
+            return this.#host.getRootView();
+        }
+
+        const genomeSpy = this.#host.getGenomeSpy
+            ? this.#host.getGenomeSpy()
+            : undefined;
         return genomeSpy ? genomeSpy.viewRoot : undefined;
     }
 
@@ -267,7 +274,11 @@ export default class InspectorSession extends EventTarget {
  */
 function normalizeInspectorHost(host) {
     const maybeHost = /** @type {{ getGenomeSpy?: unknown }} */ (host);
-    if (typeof maybeHost.getGenomeSpy === "function") {
+    const maybeRootHost = /** @type {{ getRootView?: unknown }} */ (host);
+    if (
+        typeof maybeHost.getGenomeSpy === "function" ||
+        typeof maybeRootHost.getRootView === "function"
+    ) {
         return /** @type {InspectorHost} */ (host);
     }
 

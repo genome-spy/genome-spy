@@ -192,7 +192,11 @@ async function ensureInspectorPanel() {
     if (!inspectorHandle) {
         inspectorHandle = await createInspectorPanel(
             {
-                getGenomeSpy: () => undefined,
+                getRootView: () => {
+                    if (embedResult) {
+                        return embedResult.getDebugViewRoot();
+                    }
+                },
             },
             {
                 activePanel: "elements",
@@ -523,6 +527,9 @@ async function update(force = false) {
                 powerPreference: "high-performance",
             }
         );
+        if (inspectorHandle) {
+            await inspectorHandle.session.refresh();
+        }
 
         // To ensure that missing files are shown in file pane
         renderLayout();

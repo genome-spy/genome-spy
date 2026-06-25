@@ -1,5 +1,6 @@
 export interface InspectorHost {
-    getGenomeSpy(): any | undefined;
+    getRootView?(): any | undefined;
+    getGenomeSpy?(): any | undefined;
     highlightView?(view: object | null): void;
 }
 

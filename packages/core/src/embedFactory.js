@@ -90,6 +90,9 @@ export function createEmbed(GenomeSpy) {
             getLogicalCanvasSize:
                 genomeSpy.getLogicalCanvasSize.bind(genomeSpy),
             exportCanvas: genomeSpy.exportCanvas.bind(genomeSpy),
+            getDebugViewRoot() {
+                return genomeSpy ? genomeSpy.viewRoot : undefined;
+            },
         };
     };
 }

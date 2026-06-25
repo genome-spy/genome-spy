@@ -3,7 +3,8 @@ export { default as InspectorSession } from "./inspectorSession.js";
 
 /**
  * @typedef {object} InspectorHost
- * @prop {() => any | undefined} getGenomeSpy
+ * @prop {() => any | undefined} [getRootView]
+ * @prop {() => any | undefined} [getGenomeSpy]
  * @prop {(view: object | null) => void} [highlightView]
  */
 
