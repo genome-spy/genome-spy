@@ -1,4 +1,5 @@
 import ContainerView from "./containerView.js";
+import GridChild from "./gridView/gridChild.js";
 import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
 
 /**
@@ -19,8 +20,14 @@ import { isFacetFieldDef, isFacetMapping } from "./viewUtils.js";
  * @extends {ContainerView<import("../spec/view.js").FacetSpec>}
  */
 export default class FacetView extends ContainerView {
+    /** @type {import("./view.js").default} */
+    child;
+
     /** @type {NormalizedFacet} */
     #facet;
+
+    /** @type {GridChild} */
+    #gridChild;
 
     /**
      * @param {import("../spec/view.js").FacetSpec} spec
@@ -38,11 +45,27 @@ export default class FacetView extends ContainerView {
     }
 
     /**
+     * @override
+     */
+    async initializeChildren() {
+        this.child = await this.context.createOrImportView(
+            this.spec.spec,
+            this,
+            this,
+            this.getNextAutoName("facet"),
+            undefined,
+            { inheritEncoding: true }
+        );
+
+        this.#gridChild = new GridChild(this.child, this, 0);
+        await this.#gridChild.createAxes();
+    }
+
+    /**
      * @returns {IterableIterator<import("./view.js").default>}
      */
     *[Symbol.iterator]() {
-        // Children are added in the implementation tasks that follow factory
-        // registration.
+        yield* this.#gridChild.getChildren();
     }
 
     /**
