@@ -42,7 +42,9 @@ export function genomeSpyInspector(options = {}) {
                     import("./components/inspectorPanel.js"),
                 ]);
 
-                session = new InspectorSession(app);
+                session = new InspectorSession({
+                    getGenomeSpy: () => app.genomeSpy,
+                });
                 panelElement = new GsInspectorPanel();
                 panelElement.session = session;
                 panelElement.addEventListener("close", () => {

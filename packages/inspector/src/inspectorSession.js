@@ -1,9 +1,13 @@
 /**
  * Browser-side state and runtime bridge for the inspector UI.
+ *
+ * @typedef {object} InspectorHost
+ * @prop {() => any | undefined} getGenomeSpy
+ * @prop {(view: object | null) => void} [highlightView]
  */
 export default class InspectorSession extends EventTarget {
-    /** @type {any} */
-    #app;
+    /** @type {InspectorHost} */
+    #host;
 
     /** @type {boolean} */
     #includeChrome = false;
@@ -61,11 +65,11 @@ export default class InspectorSession extends EventTarget {
     };
 
     /**
-     * @param {any} app
+     * @param {InspectorHost | { genomeSpy?: any }} host
      */
-    constructor(app) {
+    constructor(host) {
         super();
-        this.#app = app;
+        this.#host = normalizeInspectorHost(host);
     }
 
     get includeChrome() {
@@ -89,8 +93,7 @@ export default class InspectorSession extends EventTarget {
             return;
         }
 
-        const genomeSpy = this.#app.genomeSpy;
-        const root = genomeSpy.viewRoot;
+        const root = this.#getRoot();
         const [
             viewDebugModule,
             resolutionDebugModule,
@@ -139,12 +142,17 @@ export default class InspectorSession extends EventTarget {
      * @param {string | undefined} viewId
      */
     highlightView(viewId) {
-        const root = this.#app.genomeSpy.viewRoot;
+        const view = viewId ? this.#objectsById.get(viewId) : null;
+        if (this.#host.highlightView) {
+            this.#host.highlightView(view ?? null);
+            return;
+        }
+
+        const root = this.#getRoot();
         if (!root) {
             return;
         }
 
-        const view = viewId ? this.#objectsById.get(viewId) : null;
         root.context.highlightView(view ?? null);
     }
 
@@ -206,7 +214,7 @@ export default class InspectorSession extends EventTarget {
             return;
         }
 
-        const root = this.#app.genomeSpy.viewRoot;
+        const root = this.#getRoot();
         if (!root) {
             return;
         }
@@ -225,6 +233,11 @@ export default class InspectorSession extends EventTarget {
                 root.context.removeBroadcastListener(type, refresh)
             );
         }
+    }
+
+    #getRoot() {
+        const genomeSpy = this.#host.getGenomeSpy();
+        return genomeSpy ? genomeSpy.viewRoot : undefined;
     }
 
     /**
@@ -246,6 +259,22 @@ export default class InspectorSession extends EventTarget {
         this.#objectsById.set(id, object);
         return id;
     }
+}
+
+/**
+ * @param {InspectorHost | { genomeSpy?: any }} host
+ * @returns {InspectorHost}
+ */
+function normalizeInspectorHost(host) {
+    const maybeHost = /** @type {{ getGenomeSpy?: unknown }} */ (host);
+    if (typeof maybeHost.getGenomeSpy === "function") {
+        return /** @type {InspectorHost} */ (host);
+    }
+
+    const app = /** @type {{ genomeSpy?: any }} */ (host);
+    return {
+        getGenomeSpy: () => app.genomeSpy,
+    };
 }
 
 /**
