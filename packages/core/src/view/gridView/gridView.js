@@ -99,6 +99,46 @@ function getLegendParallelSizeConstraints(legends) {
 }
 
 /**
+ * Treat an explicit concat/grid size as preferred available space while still
+ * letting fixed children and guide chrome establish a larger minimum. This
+ * mirrors flexbox behavior more closely than treating the explicit size as a
+ * hard clipping bound.
+ *
+ * @param {import("../layout/flexLayout.js").SizeDef} preferred
+ * @param {import("../layout/flexLayout.js").SizeDef} content
+ * @returns {import("../layout/flexLayout.js").SizeDef}
+ */
+function combinePreferredAndContentSize(preferred, content) {
+    const preferredGrow = preferred.grow ?? 0;
+    const preferredPx = preferred.px ?? 0;
+    const minPx = Math.max(
+        getSizeDefMinPx(preferred),
+        getSizeDefMinPx(content)
+    );
+
+    if (!preferredGrow) {
+        return { px: Math.max(preferredPx, minPx), grow: 0 };
+    }
+
+    /** @type {import("../layout/flexLayout.js").SizeDef} */
+    const size = {
+        px: Math.max(preferredPx, content.px ?? 0),
+        grow: preferredGrow,
+    };
+
+    if (minPx > (size.px ?? 0)) {
+        size.minPx = minPx;
+    }
+
+    const preferredMaxPx = getSizeDefMaxPx(preferred);
+    if (preferredMaxPx !== undefined && preferredMaxPx >= minPx) {
+        size.maxPx = preferredMaxPx;
+    }
+
+    return size;
+}
+
+/**
  * Modeled after: https://vega.github.io/vega/docs/layout/
  *
  * This should take care of the following:
@@ -589,9 +629,15 @@ export default class GridView extends ContainerView {
 
         const explicitSize =
             direction == "row" ? this.spec.height : this.spec.width;
-        if (explicitSize || explicitSize === 0) {
-            return parseSizeDef(explicitSize);
-        }
+        const preferredSize =
+            explicitSize || explicitSize === 0
+                ? parseSizeDef(explicitSize)
+                : undefined;
+        const usePreferredAsViewSlot =
+            preferredSize &&
+            (direction == "column"
+                ? this.#grid.colIndices.length == 1
+                : this.#grid.rowIndices.length == 1);
 
         const sizes = this.#getSizes(direction);
 
@@ -614,11 +660,14 @@ export default class GridView extends ContainerView {
             maxPx += size.axisBefore;
 
             // View
-            px += size.view.px ?? 0;
-            grow += size.view.grow ?? 0;
-            minPx += getSizeDefMinPx(size.view);
+            const viewSize = usePreferredAsViewSlot
+                ? combinePreferredAndContentSize(preferredSize, size.view)
+                : size.view;
+            px += viewSize.px ?? 0;
+            grow += viewSize.grow ?? 0;
+            minPx += getSizeDefMinPx(viewSize);
 
-            const viewMaxPx = getSizeDefMaxPx(size.view);
+            const viewMaxPx = getSizeDefMaxPx(viewSize);
             if (viewMaxPx === undefined) {
                 hasMaxPx = false;
             } else {
@@ -636,12 +685,16 @@ export default class GridView extends ContainerView {
             }
         }
 
-        return {
+        const measuredSize = {
             px,
             grow,
             minPx: minPx || undefined,
             maxPx: sizes.length && hasMaxPx ? maxPx : undefined,
         };
+
+        return preferredSize && !usePreferredAsViewSlot
+            ? combinePreferredAndContentSize(preferredSize, measuredSize)
+            : measuredSize;
     }
 
     /**

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": [
+    "Demonstrates explicit width on a vconcat.",
+    "The width describes the child plot area. The composed view becomes wider when y-axis chrome needs additional space."
+  ],
+
+  "width": 120,
+  "spacing": 8,
+
+  "vconcat": [
+    {
+      "description": "This child has a 120 px plot area plus a y-axis that expands the vconcat's outer width.",
+      "data": { "values": [{ "x": 1, "y": 1000 }] },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative", "axis": null },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    },
+
+    {
+      "description": "The second child receives the same plot-area width from the vconcat.",
+      "data": { "values": [{ "x": 1, "y": 2 }] },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative", "axis": null },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  ]
+}

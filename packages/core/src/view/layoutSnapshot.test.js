@@ -11,6 +11,26 @@ function getRectProp(coords, prop) {
     return Number(coords.match(new RegExp(`${prop}: (-?\\d+)`))[1]);
 }
 
+/**
+ * @param {{ viewName: string, coords?: string, children: any[] }} node
+ * @param {string} viewName
+ * @returns {{ viewName: string, coords: string, children: any[] } | undefined}
+ */
+function findLayoutNode(node, viewName) {
+    if (node.viewName == viewName) {
+        return /** @type {{ viewName: string, coords: string, children: any[] }} */ (
+            node
+        );
+    }
+
+    for (const child of node.children) {
+        const found = findLayoutNode(child, viewName);
+        if (found) {
+            return found;
+        }
+    }
+}
+
 describe("layout snapshot helper", () => {
     test("renders view title in reserved bounds without manual padding", async () => {
         const layout = await specToLayout(
@@ -357,6 +377,101 @@ describe("layout snapshot helper", () => {
         ).toMatchObject({
             coords: "Rectangle: x: 80, y: 0, width: 120, height: 120",
         });
+    });
+
+    test("vconcat width is plot width and child chrome expands outer size", async () => {
+        const layout = await specToLayout({
+            width: 120,
+            spacing: 0,
+            vconcat: [
+                {
+                    name: "top",
+                    data: { values: [{ x: 1, y: 1000 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+                {
+                    name: "bottom",
+                    data: { values: [{ x: 1, y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+            ],
+        });
+
+        expect(getRectProp(layout.coords, "width")).toBeGreaterThan(120);
+        const top = findLayoutNode(layout, "top");
+        if (!top) {
+            throw new Error("top view not found");
+        }
+        expect(getRectProp(top.coords, "width")).toBe(120);
+    });
+
+    test("hconcat width is overridden by fixed child minimums", async () => {
+        const layout = await specToLayout({
+            width: 100,
+            height: 40,
+            spacing: 10,
+            hconcat: [
+                {
+                    name: "left",
+                    width: 80,
+                    data: { values: [{ x: 1, y: 2 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                    },
+                },
+                {
+                    name: "right",
+                    width: 80,
+                    data: { values: [{ x: 3, y: 4 }] },
+                    mark: "point",
+                    encoding: {
+                        x: {
+                            field: "x",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                        y: {
+                            field: "y",
+                            type: "quantitative",
+                            axis: null,
+                        },
+                    },
+                },
+            ],
+        });
+
+        expect(getRectProp(layout.coords, "width")).toBe(170);
+        const right = findLayoutNode(layout, "right");
+        if (!right) {
+            throw new Error("right view not found");
+        }
+        expect(getRectProp(right.coords, "x")).toBe(90);
     });
 
     test("includes px children in nested concat minimum size", async () => {

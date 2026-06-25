@@ -100,7 +100,6 @@
         },
         {
           "name": "sexChart",
-          "width": 200,
           "transform": [
             {
               "type": "filter",

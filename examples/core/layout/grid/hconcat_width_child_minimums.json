@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": [
+    "Demonstrates explicit width on an hconcat.",
+    "The hconcat width is preferred available space, but fixed child widths define the minimum outer width."
+  ],
+
+  "width": 100,
+  "height": 40,
+  "spacing": 10,
+
+  "hconcat": [
+    {
+      "description": "The first child has a fixed 80 px plot width.",
+      "width": 80,
+      "data": { "values": [{ "x": 1, "y": 2 }] },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative", "axis": null },
+        "y": { "field": "y", "type": "quantitative", "axis": null }
+      }
+    },
+
+    {
+      "description": "The second fixed-width child makes the hconcat wider than the requested 100 px.",
+      "width": 80,
+      "data": { "values": [{ "x": 3, "y": 4 }] },
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative", "axis": null },
+        "y": { "field": "y", "type": "quantitative", "axis": null }
+      }
+    }
+  ]
+}
