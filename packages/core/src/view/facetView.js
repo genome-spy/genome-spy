@@ -328,14 +328,23 @@ export default class FacetView extends ContainerView {
     #renderFacetHeaders(context, coords, layouts, options) {
         if (this.#columnHeaderView) {
             this.#columnHeaderView.updateData(
-                createColumnHeaderData(layouts, coords, this.#facet)
+                createColumnHeaderData(
+                    layouts,
+                    coords,
+                    this.#gridChild.getOverhangAndPadding(),
+                    this.#facet
+                )
             );
             this.#columnHeaderView.render(context, coords, options);
         }
 
         if (this.#rowHeaderView) {
             this.#rowHeaderView.updateData(
-                createRowHeaderData(layouts, coords)
+                createRowHeaderData(
+                    layouts,
+                    coords,
+                    this.#gridChild.getOverhangAndPadding()
+                )
             );
             this.#rowHeaderView.render(context, coords, options);
         }
@@ -440,10 +449,11 @@ function translateAxisCoords(coords, orient, axisView) {
 /**
  * @param {import("./facetLayout.js").FacetCellLayout[]} layouts
  * @param {import("./layout/rectangle.js").default} coords
+ * @param {import("./layout/padding.js").default} overhang
  * @param {NormalizedFacet} facet
  * @returns {{ x: number, y: number, text: string }[]}
  */
-function createColumnHeaderData(layouts, coords, facet) {
+function createColumnHeaderData(layouts, coords, overhang, facet) {
     /** @type {{ x: number, y: number, text: string }[]} */
     const data = [];
     /** @type {Set<number>} */
@@ -455,12 +465,9 @@ function createColumnHeaderData(layouts, coords, facet) {
         }
 
         columns.add(layout.cell.column);
+        const plotCoords = layout.viewportCoords.shrink(overhang);
         data.push({
-            x:
-                (layout.viewportCoords.x -
-                    coords.x +
-                    layout.viewportCoords.width / 2) /
-                coords.width,
+            x: (plotCoords.x - coords.x + plotCoords.width / 2) / coords.width,
             y: 1 - DEFAULT_FACET_HEADER_SIZES.column / 2 / coords.height,
             text: String(layout.cell.columnValue),
         });
@@ -472,9 +479,10 @@ function createColumnHeaderData(layouts, coords, facet) {
 /**
  * @param {import("./facetLayout.js").FacetCellLayout[]} layouts
  * @param {import("./layout/rectangle.js").default} coords
+ * @param {import("./layout/padding.js").default} overhang
  * @returns {{ x: number, y: number, text: string }[]}
  */
-function createRowHeaderData(layouts, coords) {
+function createRowHeaderData(layouts, coords, overhang) {
     /** @type {{ x: number, y: number, text: string }[]} */
     const data = [];
     /** @type {Set<number>} */
@@ -486,13 +494,12 @@ function createRowHeaderData(layouts, coords) {
         }
 
         rows.add(layout.cell.row);
+        const plotCoords = layout.viewportCoords.shrink(overhang);
         data.push({
             x: DEFAULT_FACET_HEADER_SIZES.row / 2 / coords.width,
             y:
                 1 -
-                (layout.viewportCoords.y -
-                    coords.y +
-                    layout.viewportCoords.height / 2) /
+                (plotCoords.y - coords.y + plotCoords.height / 2) /
                     coords.height,
             text: String(layout.cell.rowValue),
         });
