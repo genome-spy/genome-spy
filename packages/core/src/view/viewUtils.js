@@ -14,7 +14,7 @@ import { fetchJson } from "../utils/fetchUtils.js";
  * @returns {spec is FacetFieldDef}
  */
 export function isFacetFieldDef(def) {
-    return def && "field" in def && isString(def.field);
+    return isObject(def) && "field" in def && isString(def.field);
 }
 
 /**
@@ -24,8 +24,9 @@ export function isFacetFieldDef(def) {
  */
 export function isFacetMapping(def) {
     return (
-        ("row" in def && isObject(def.row)) ||
-        ("column" in def && isObject(def.column))
+        isObject(def) &&
+        (("row" in def && isObject(def.row)) ||
+            ("column" in def && isObject(def.column)))
     );
 }
 
