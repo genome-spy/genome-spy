@@ -2,6 +2,7 @@ import { html, render } from "lit";
 import { ref, createRef } from "lit/directives/ref.js";
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import {
+    faBug,
     faColumns,
     faFolderOpen,
     faQuestionCircle,
@@ -9,6 +10,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
 import { embed, icon as genomeSpyIcon } from "@genome-spy/core";
+import { createInspectorPanel } from "@genome-spy/inspector";
 import { debounce } from "@genome-spy/core/utils/debounce.js";
 import inferSpecBaseUrl, {
     getCuratedExampleBaseUrl,
@@ -34,6 +36,7 @@ registerJsonSchema();
 const STORAGE_KEY = "playgroundSpec";
 const EXAMPLE_CATALOG_URL = "example-catalog.json";
 const genomeSpyContainerRef = createRef();
+const inspectorPaneRef = createRef();
 
 /** @type {import("lit/directives/ref.js").Ref<import("./codeEditor.js").default>} */
 const editorRef = createRef();
@@ -52,6 +55,12 @@ let suppressNextEditorChange = false;
 
 const layouts = ["vertical", "horizontal"];
 let layout = layouts[0];
+
+const sidePanes = ["editor", "inspector"];
+let sidePane = sidePanes[0];
+
+/** @type {Awaited<ReturnType<typeof createInspectorPanel>> | undefined} */
+let inspectorHandle;
 
 /** @type {string | undefined} */
 let inheritedBaseUrl;
@@ -160,6 +169,44 @@ function toggleLayout() {
     layout = layouts[(layouts.indexOf(layout) + 1) % layouts.length];
     renderLayout();
     window.dispatchEvent(new Event("resize"));
+}
+
+function toggleInspector() {
+    sidePane =
+        sidePane === "inspector"
+            ? sidePanes[0]
+            : /** @type {"inspector"} */ ("inspector");
+    renderLayout();
+}
+
+async function ensureInspectorPanel() {
+    if (sidePane !== "inspector") {
+        return;
+    }
+
+    const pane = inspectorPaneRef.value;
+    if (!pane) {
+        return;
+    }
+
+    if (!inspectorHandle) {
+        inspectorHandle = await createInspectorPanel(
+            {
+                getGenomeSpy: () => undefined,
+            },
+            {
+                activePanel: "elements",
+            }
+        );
+        inspectorHandle.panel.addEventListener("close", () => {
+            sidePane = sidePanes[0];
+            renderLayout();
+        });
+    }
+
+    if (inspectorHandle.panel.parentElement !== pane) {
+        pane.append(inspectorHandle.panel);
+    }
 }
 
 function openExamplePicker() {
@@ -507,6 +554,15 @@ const toolbarTemplate = () => html`
             ${icon(faIndent).node[0]}
             <span>Format code</span>
         </button>
+        <button
+            @click=${toggleInspector}
+            class=${sidePane === "inspector"
+                ? "tool-button selected"
+                : "tool-button"}
+        >
+            ${icon(faBug).node[0]}
+            <span>Inspector</span>
+        </button>
         <a
             href="https://genomespy.app/docs/"
             target="_blank"
@@ -563,39 +619,52 @@ const layoutTemplate = () => html`
                 ${ref(genomeSpyContainerRef)}
                 slot="1"
             ></div>
-            <split-panel
-                .orientation=${layout == "vertical" ? "horizontal" : "vertical"}
-                slot="2"
-                id="editor-and-others"
-            >
-                <section id="editor-pane" slot="1">
-                    ${effectiveBaseUrlInfo
-                        ? html`
-                              <base-url-notice
-                                  .info=${effectiveBaseUrlInfo}
-                                  @clear=${clearBaseUrl}
-                              ></base-url-notice>
-                          `
-                        : null}
-                    <code-editor
-                        ${ref(editorRef)}
-                        @change=${handleEditorChange}
-                    ></code-editor>
-                </section>
-                <section id="file-pane" slot="2">
-                    <file-pane
-                        @upload=${update}
-                        .files=${files}
-                        .missingFiles=${missingFiles}
-                    ></file-pane>
-                </section>
-            </split-panel>
+            ${sidePane === "inspector"
+                ? html`
+                      <section
+                          id="inspector-pane"
+                          ${ref(inspectorPaneRef)}
+                          slot="2"
+                      ></section>
+                  `
+                : html`
+                      <split-panel
+                          .orientation=${layout == "vertical"
+                              ? "horizontal"
+                              : "vertical"}
+                          slot="2"
+                          id="editor-and-others"
+                      >
+                          <section id="editor-pane" slot="1">
+                              ${effectiveBaseUrlInfo
+                                  ? html`
+                                        <base-url-notice
+                                            .info=${effectiveBaseUrlInfo}
+                                            @clear=${clearBaseUrl}
+                                        ></base-url-notice>
+                                    `
+                                  : null}
+                              <code-editor
+                                  ${ref(editorRef)}
+                                  @change=${handleEditorChange}
+                              ></code-editor>
+                          </section>
+                          <section id="file-pane" slot="2">
+                              <file-pane
+                                  @upload=${update}
+                                  .files=${files}
+                                  .missingFiles=${missingFiles}
+                              ></file-pane>
+                          </section>
+                      </split-panel>
+                  `}
         </split-panel>
     </section>
 `;
 
 function renderLayout() {
     render(layoutTemplate(), document.body);
+    void ensureInspectorPanel();
 }
 
 function syncExamplePickerFromUrl() {
