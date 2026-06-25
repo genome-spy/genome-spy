@@ -148,7 +148,14 @@ export function getFacetCellLayouts(
     const rowOffset = grid.hasColumnHeaders ? 1 : 0;
 
     return grid.cells.map((cell) =>
-        getFacetCellLayout(cell, columns, rows, columnOffset, rowOffset)
+        getFacetCellLayout(
+            cell,
+            columns,
+            rows,
+            columnOffset,
+            rowOffset,
+            childOverhang
+        )
     );
 }
 
@@ -305,9 +312,17 @@ function makeSizeItems(cellCount, cellSize, headerSize) {
  * @param {import("./layout/flexLayout.js").LocSize[]} rows
  * @param {number} columnOffset
  * @param {number} rowOffset
+ * @param {import("./layout/padding.js").default} childOverhang
  * @returns {FacetCellLayout}
  */
-function getFacetCellLayout(cell, columns, rows, columnOffset, rowOffset) {
+function getFacetCellLayout(
+    cell,
+    columns,
+    rows,
+    columnOffset,
+    rowOffset,
+    childOverhang
+) {
     const column = columns[columnOffset + cell.column];
     const row = rows[rowOffset + cell.row];
     const viewportCoords = Rectangle.create(
@@ -320,6 +335,6 @@ function getFacetCellLayout(cell, columns, rows, columnOffset, rowOffset) {
     return {
         cell,
         viewportCoords,
-        childCoords: viewportCoords,
+        childCoords: viewportCoords.shrink(childOverhang),
     };
 }
