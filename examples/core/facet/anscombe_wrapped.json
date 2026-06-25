@@ -1,10 +1,12 @@
 {
   "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
   "description": "Anscombe's Quartet",
-  "data": { "url": "data/anscombe.json" },
+  "data": { "url": "vega-datasets/anscombe.json" },
   "facet": { "field": "Series" },
   "columns": 2,
   "spec": {
+    "width": 150,
+    "height": 150,
     "mark": "point",
     "encoding": {
       "x": {
