@@ -252,8 +252,8 @@ test("column facet header updates dynamic label data during render", async () =>
     renderToLayout(view, Rectangle.create(0, 0, 210, 78));
 
     expect(updateSpy).toHaveBeenCalledWith([
-        { x: 50, y: 9, text: "I" },
-        { x: 160, y: 9, text: "II" },
+        { x: 50 / 210, y: 9 / 78, text: "I" },
+        { x: 160 / 210, y: 9 / 78, text: "II" },
     ]);
 });
 
@@ -726,6 +726,8 @@ test("anscombe wrapped facet example renders stable cell layout", async () => {
     const spec = loadSharedExampleSpec(
         "examples/core/facet/anscombe_wrapped.json"
     );
+    spec.spec.width = 300;
+    spec.spec.height = 300;
     spec.data = {
         values: [
             { Series: "I", X: 10, Y: 8.04 },
@@ -741,10 +743,10 @@ test("anscombe wrapped facet example renders stable cell layout", async () => {
     expect(findLayoutNodes(layout, "facet0").map((node) => node.coords))
         .toMatchInlineSnapshot(`
           [
-            "Rectangle: x: 0, y: 28, width: 745, height: 481",
-            "Rectangle: x: 755, y: 28, width: 745, height: 481",
-            "Rectangle: x: 0, y: 519, width: 745, height: 481",
-            "Rectangle: x: 755, y: 519, width: 745, height: 481",
+            "Rectangle: x: 0, y: 28, width: 332, height: 332",
+            "Rectangle: x: 342, y: 28, width: 332, height: 332",
+            "Rectangle: x: 0, y: 370, width: 332, height: 332",
+            "Rectangle: x: 342, y: 370, width: 332, height: 332",
           ]
         `);
 });

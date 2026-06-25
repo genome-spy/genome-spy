@@ -457,10 +457,11 @@ function createColumnHeaderData(layouts, coords, facet) {
         columns.add(layout.cell.column);
         data.push({
             x:
-                layout.viewportCoords.x -
-                coords.x +
-                layout.viewportCoords.width / 2,
-            y: DEFAULT_FACET_HEADER_SIZES.column / 2,
+                (layout.viewportCoords.x -
+                    coords.x +
+                    layout.viewportCoords.width / 2) /
+                coords.width,
+            y: DEFAULT_FACET_HEADER_SIZES.column / 2 / coords.height,
             text: String(layout.cell.columnValue),
         });
     }
@@ -486,11 +487,12 @@ function createRowHeaderData(layouts, coords) {
 
         rows.add(layout.cell.row);
         data.push({
-            x: DEFAULT_FACET_HEADER_SIZES.row / 2,
+            x: DEFAULT_FACET_HEADER_SIZES.row / 2 / coords.width,
             y:
-                layout.viewportCoords.y -
-                coords.y +
-                layout.viewportCoords.height / 2,
+                (layout.viewportCoords.y -
+                    coords.y +
+                    layout.viewportCoords.height / 2) /
+                coords.height,
             text: String(layout.cell.rowValue),
         });
     }
