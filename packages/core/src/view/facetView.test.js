@@ -116,6 +116,75 @@ test("row facet cannot be combined with wrapping columns", async () => {
     );
 });
 
+test("facet rejects independent child scale resolution", async () => {
+    const context = createTestViewContext();
+
+    await expect(() =>
+        context.createOrImportView(
+            {
+                facet: { field: "Series" },
+                spec: {
+                    resolve: { scale: { x: "independent" } },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+            },
+            null,
+            null,
+            "facet"
+        )
+    ).rejects.toThrow(
+        'FacetView currently supports only shared scale resolutions. Channel "x" is resolved independently in child view "facet0".'
+    );
+});
+
+test("facet rejects independent child axis resolution", async () => {
+    const context = createTestViewContext();
+
+    await expect(() =>
+        context.createOrImportView(
+            {
+                facet: { field: "Series" },
+                spec: {
+                    resolve: { axis: { x: "independent" } },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                    },
+                },
+            },
+            null,
+            null,
+            "facet"
+        )
+    ).rejects.toThrow(
+        'FacetView currently supports only shared axis resolutions. Channel "x" is resolved independently in child view "facet0".'
+    );
+});
+
+test("facet rejects an immediate nested facet child", async () => {
+    const context = createTestViewContext();
+
+    await expect(() =>
+        context.createOrImportView(
+            {
+                facet: { field: "Series" },
+                spec: {
+                    facet: { field: "Group" },
+                    spec: { mark: "point" },
+                },
+            },
+            null,
+            null,
+            "facet"
+        )
+    ).rejects.toThrow("Facet specs cannot contain an immediate facet child.");
+});
+
 test("facet creates one non-chrome child view", async () => {
     const context = createTestViewContext();
     const view = /** @type {FacetView} */ (
