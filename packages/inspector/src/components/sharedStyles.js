@@ -78,11 +78,14 @@ export const inspectorPanelStyles = css`
     .main {
         display: grid;
         grid-template-columns: minmax(15rem, 38%) minmax(0, 1fr);
+        height: 100%;
         min-height: 0;
     }
 
     .single-panel {
         display: block;
+        box-sizing: border-box;
+        height: 100%;
         min-height: 0;
         overflow: auto;
         padding: 0.75rem;
