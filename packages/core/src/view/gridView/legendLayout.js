@@ -9,7 +9,9 @@ const LEGEND_ZINDEX = 1;
  * @param {{
  *     getPerpendicularSize: () => number,
  *     getOffset: () => number,
- *     getParallelSize?: () => number | undefined
+ *     getParallelSize?: () => number | undefined,
+ *     getWidth?: () => number,
+ *     getHeight?: () => number
  * }} legendView
  * @param {number} [axisOffset]
  */
@@ -24,6 +26,8 @@ export function translateLegendCoords(
     const parallelSize = legendView.getParallelSize?.() ?? coords.height;
     const cornerParallelSize =
         legendView.getParallelSize?.() ?? coords.height - 2 * offset;
+    const cornerWidth = legendView.getWidth?.() ?? ps;
+    const cornerHeight = legendView.getHeight?.() ?? cornerParallelSize;
 
     if (orient == "bottom") {
         return coords
@@ -44,25 +48,25 @@ export function translateLegendCoords(
     } else if (orient == "top-left") {
         return coords
             .translate(axisOffset + offset, offset)
-            .modify({ width: ps, height: cornerParallelSize });
+            .modify({ width: cornerWidth, height: cornerHeight });
     } else if (orient == "top-right") {
         return coords
-            .translate(coords.width - ps - axisOffset - offset, offset)
-            .modify({ width: ps, height: cornerParallelSize });
+            .translate(coords.width - cornerWidth - axisOffset - offset, offset)
+            .modify({ width: cornerWidth, height: cornerHeight });
     } else if (orient == "bottom-left") {
         return coords
             .translate(
                 axisOffset + offset,
-                coords.height - cornerParallelSize - offset
+                coords.height - cornerHeight - offset
             )
-            .modify({ width: ps, height: cornerParallelSize });
+            .modify({ width: cornerWidth, height: cornerHeight });
     } else if (orient == "bottom-right") {
         return coords
             .translate(
-                coords.width - ps - axisOffset - offset,
-                coords.height - cornerParallelSize - offset
+                coords.width - cornerWidth - axisOffset - offset,
+                coords.height - cornerHeight - offset
             )
-            .modify({ width: ps, height: cornerParallelSize });
+            .modify({ width: cornerWidth, height: cornerHeight });
     } else {
         throw new Error(`Invalid legend orientation: ${orient}`);
     }

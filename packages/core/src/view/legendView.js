@@ -227,8 +227,15 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
 /**
  * @param {LegendConfig} legend
  */
-function isHorizontalLegend(legend) {
+function isTopBottomLegend(legend) {
     return legend.orient == "top" || legend.orient == "bottom";
+}
+
+/**
+ * @param {LegendConfig} legend
+ */
+function isHorizontalLegend(legend) {
+    return isTopBottomLegend(legend) || legend.direction == "horizontal";
 }
 
 /**
@@ -955,6 +962,25 @@ export class LegendRegionView extends ContainerView {
         }
     }
 
+    getWidth() {
+        return Math.max(
+            0,
+            ...this.#getVisibleLegendViews().map((legendView) =>
+                getSizeDefMinPx(legendView.getSize().width)
+            )
+        );
+    }
+
+    getHeight() {
+        return this.#getVisibleLegendViews().reduce(
+            (sum, legendView, index) =>
+                sum +
+                getSizeDefMinPx(legendView.getSize().height) +
+                (index > 0 ? this.#stackSpacing : 0),
+            0
+        );
+    }
+
     getOffset() {
         return Math.max(
             0,
@@ -1188,17 +1214,17 @@ export default class LegendView extends ContainerView {
             return new FlexDimensions({ px: 0, grow: 0 }, { px: 0, grow: 0 });
         }
 
+        const contentHorizontal = isHorizontalLegend(this.legendProps);
         const mainSize = { grow: 1 };
         const perpendicularSize = { px: this.getPerpendicularSize() };
         const parallelSize = this.#hasFlexibleParallelSize()
             ? this.#getFlexibleStackedParallelSize()
             : { px: this.getStackedParallelSize() };
 
-        if (
-            this.legendProps.orient == "top" ||
-            this.legendProps.orient == "bottom"
-        ) {
+        if (isTopBottomLegend(this.legendProps)) {
             return new FlexDimensions(mainSize, perpendicularSize);
+        } else if (contentHorizontal) {
+            return new FlexDimensions(parallelSize, perpendicularSize);
         } else {
             return new FlexDimensions(perpendicularSize, parallelSize);
         }
@@ -1397,6 +1423,7 @@ export default class LegendView extends ContainerView {
  * @typedef {object} MeasuredLabels
  * @prop {number} maxWidth
  * @prop {number} maxEntryWidth
+ * @prop {number} maxX
  * @prop {number} maxY
  */
 
@@ -1407,6 +1434,7 @@ export default class LegendView extends ContainerView {
 function getMeasuredLabels(labelViews) {
     let maxWidth = 0;
     let maxEntryWidth = 0;
+    let maxX = 0;
     let maxY = 0;
     let completed = false;
 
@@ -1426,6 +1454,11 @@ function getMeasuredLabels(labelViews) {
                 maxEntryWidth,
                 Number(datum.entryWidth) || 0
             );
+            maxX = Math.max(
+                maxX,
+                (Number(datum.labelX) || 0) +
+                    (Number(datum[LABEL_WIDTH_FIELD]) || 0)
+            );
             maxY = Math.max(maxY, Number(datum.labelY) || 0);
         });
     }
@@ -1434,6 +1467,7 @@ function getMeasuredLabels(labelViews) {
         ? {
               maxWidth: Math.ceil(maxWidth),
               maxEntryWidth: Math.ceil(maxEntryWidth),
+              maxX: Math.ceil(maxX),
               maxY: Math.ceil(maxY),
           }
         : undefined;
@@ -1505,7 +1539,11 @@ function getStackedLegendParallelSize(legend, type, measuredLabels, context) {
         return combine(DEFAULT_GRADIENT_LEGEND_LENGTH);
     } else if (measuredLabels) {
         const labelFontSize = legend.labelFontSize ?? 10;
-        return combine(measuredLabels.maxY + labelFontSize / 2);
+        const bodyExtent = isHorizontalLegend(legend)
+            ? measuredLabels.maxX
+            : measuredLabels.maxY + labelFontSize / 2;
+
+        return combine(bodyExtent);
     } else {
         return combine(
             Math.sqrt(legend.symbolSize ?? 100) +

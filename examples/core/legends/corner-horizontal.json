@@ -1,0 +1,63 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Legend test case for a horizontal inside-corner legend.",
+    "The right plot uses orient top-right with direction horizontal; the legend should stay inside the plot and align its title and entries cleanly."
+  ],
+
+  "background": "#fafafa",
+
+  "config": {
+    "legend": {
+      "disable": false,
+      "offset": 8,
+      "padding": 4,
+      "backgroundFill": "white",
+      "backgroundFillOpacity": 0.85
+    }
+  },
+
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "color": "independent" }
+  },
+
+  "data": { "url": "vega-datasets/cars.json" },
+
+  "encoding": {
+    "x": { "field": "Horsepower", "type": "quantitative" },
+    "y": { "field": "Miles_per_Gallon", "type": "quantitative" }
+  },
+
+  "hconcat": [
+    {
+      "title": "Default corner legend",
+      "mark": { "type": "point", "filled": true, "opacity": 0.7, "size": 35 },
+      "encoding": {
+        "color": {
+          "field": "Origin",
+          "type": "nominal",
+          "legend": { "orient": "top-right", "title": "Origin" }
+        }
+      }
+    },
+
+    {
+      "title": "Horizontal corner legend",
+      "mark": { "type": "point", "filled": true, "opacity": 0.7, "size": 35 },
+      "encoding": {
+        "color": {
+          "field": "Origin",
+          "type": "nominal",
+          "legend": {
+            "orient": "top-right",
+            "direction": "horizontal",
+            "titleOrient": "left",
+            "title": "Origin"
+          }
+        }
+      }
+    }
+  ]
+}

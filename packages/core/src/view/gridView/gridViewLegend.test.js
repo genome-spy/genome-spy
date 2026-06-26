@@ -143,6 +143,27 @@ describe("legend layout helpers", () => {
             expect(coords.width).toBe(80);
             expect(coords.height).toBe(60);
         });
+
+        test("places a top-right horizontal legend inside the viewport", () => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 24,
+                getParallelSize: () => 180,
+                getWidth: () => 180,
+                getHeight: () => 24,
+                getOffset: () => 12,
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "top-right",
+                legendView
+            );
+
+            expect(coords.x).toBe(118);
+            expect(coords.y).toBe(32);
+            expect(coords.width).toBe(180);
+            expect(coords.height).toBe(24);
+        });
     });
 });
 
@@ -2421,6 +2442,40 @@ describe("GridView legends", () => {
             expect(labelData.map(({ value }) => value)).toEqual([
                 1, 10, 100, 1000,
             ]);
+        });
+
+        test("uses packed entry width for horizontal corner symbol legends", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "USA" },
+                                { x: 2, y: 3, group: "Europe" },
+                                { x: 3, y: 4, group: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: {
+                                    orient: "top-right",
+                                    direction: "horizontal",
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            getLegendData(legend, "labels");
+
+            expect(legend.getSize().width.px).toBeGreaterThan(120);
         });
 
         test("uses stroke-width symbols for rule size legends", async () => {
