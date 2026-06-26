@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { getConfiguredAxisDefaults } from "./axisConfig.js";
 import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
+import { resolveThemeSelection } from "./themes.js";
 
 describe("axisConfig", () => {
     test("merges axis buckets in precedence order", () => {
@@ -25,6 +26,60 @@ describe("axisConfig", () => {
         expect(defaults.tickSize).toBe(11);
         expect(defaults.labelColor).toBe("orange");
         expect(defaults.domainColor).toBe("pink");
+    });
+
+    test("internal defaults express adaptive tick counts through axis length", () => {
+        const xDefaults = getConfiguredAxisDefaults([INTERNAL_DEFAULT_CONFIG], {
+            channel: "x",
+            orient: "bottom",
+            type: "quantitative",
+        });
+        const yDefaults = getConfiguredAxisDefaults([INTERNAL_DEFAULT_CONFIG], {
+            channel: "y",
+            orient: "left",
+            type: "quantitative",
+        });
+        const locusDefaults = getConfiguredAxisDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "locus",
+            }
+        );
+
+        expect(xDefaults.tickCount).toEqual({
+            expr: "round(axisLength / (30 + 55 * smoothstep(100, 700, axisLength)))",
+        });
+        expect(yDefaults.tickCount).toEqual(xDefaults.tickCount);
+        expect(locusDefaults.tickCount).toEqual({
+            expr: "round(axisLength / 85)",
+        });
+    });
+
+    test("vegalite theme uses Vega-Lite axis tick count spacing", () => {
+        const theme = resolveThemeSelection("vegalite");
+        const xDefaults = getConfiguredAxisDefaults(
+            [INTERNAL_DEFAULT_CONFIG, theme],
+            {
+                channel: "x",
+                orient: "bottom",
+                type: "quantitative",
+            }
+        );
+        const yDefaults = getConfiguredAxisDefaults(
+            [INTERNAL_DEFAULT_CONFIG, theme],
+            {
+                channel: "y",
+                orient: "left",
+                type: "quantitative",
+            }
+        );
+
+        expect(xDefaults.tickCount).toEqual({
+            expr: "ceil(axisLength / 40)",
+        });
+        expect(yDefaults.tickCount).toEqual(xDefaults.tickCount);
     });
 
     test("closest scope wins for same axis bucket", () => {

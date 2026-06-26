@@ -7,7 +7,12 @@ import {
     TICK_MARK_DEFAULTS,
     TEXT_MARK_DEFAULTS,
 } from "./defaults/markDefaults.js";
-import { AXIS_DEFAULTS, LOCUS_AXIS_DEFAULTS } from "./defaults/axisDefaults.js";
+import {
+    AXIS_DEFAULTS,
+    AXIS_X_DEFAULTS,
+    AXIS_Y_DEFAULTS,
+    LOCUS_AXIS_DEFAULTS,
+} from "./defaults/axisDefaults.js";
 import {
     LEGEND_DEFAULTS,
     LEGEND_STYLE_DEFAULTS,
@@ -33,6 +38,8 @@ export const INTERNAL_DEFAULT_CONFIG = {
     link: LINK_MARK_DEFAULTS,
 
     axis: AXIS_DEFAULTS,
+    axisX: AXIS_X_DEFAULTS,
+    axisY: AXIS_Y_DEFAULTS,
     axisLocus: LOCUS_AXIS_DEFAULTS,
     legend: LEGEND_DEFAULTS,
     legendTrack: LEGEND_TRACK_DEFAULTS,

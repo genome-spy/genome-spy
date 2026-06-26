@@ -1,5 +1,6 @@
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { ZIndexProps } from "./decoration.js";
+import { ExprRef } from "./parameter.js";
 
 export interface GenomeAxis extends Axis {
     /**
@@ -229,11 +230,20 @@ export interface Axis extends BaseAxis, ZIndexProps {
     offset?: number;
 
     /**
-     * A desired number of ticks, for axes visualizing quantitative scales. The resulting number may be different so that values are "nice" (multiples of `2`, `5`, `10`) and lie within the underlying scale's range.
+     * A desired number of ticks, for axes visualizing quantitative scales.
+     * The resulting number may be different so that values are "nice"
+     * (multiples of `2`, `5`, `10`) and lie within the underlying scale's
+     * range.
+     *
+     * An expression reference can use `axisLength` for the current length of
+     * the axis in pixels. For example, `{ "expr": "ceil(axisLength / 40)" }`
+     * requests one tick per 40 pixels.
+     *
+     * __Default value:__ an expression based on `axisLength`
      *
      * @minimum 0
      */
-    tickCount?: number;
+    tickCount?: number | ExprRef;
 
     /**
      * The minimum desired step between axis ticks, in terms of scale domain values. For example, a value of `1` indicates that ticks should not be less than 1 unit apart. If `tickMinStep` is specified, the `tickCount` value will be adjusted, if necessary, to enforce the minimum step value.

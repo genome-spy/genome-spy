@@ -90,8 +90,10 @@ scrollable viewports, but cannot extend outside the axis span.
 ## Ticks, Labels, and Grid Lines
 
 Use `tickCount` to set the desired number of ticks on quantitative axes. The
-actual number may differ when GenomeSpy chooses nice tick values. Use
-`tickMinStep` to set the minimum step between ticks in domain units.
+actual number may differ when GenomeSpy chooses nice tick values. `tickCount`
+can also be an expression reference. In tick-count expressions, `axisLength` is
+the current length of the axis in pixels. Use `tickMinStep` to set the minimum
+step between ticks in domain units.
 
 Use `values` to set explicit tick and label values. Use `format` to format
 numeric labels with a

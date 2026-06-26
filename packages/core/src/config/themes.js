@@ -33,6 +33,12 @@ const VEGALITE_THEME = {
         titleFontSize: 11,
         titleFontWeight: "bold",
     },
+    axisX: {
+        tickCount: { expr: "ceil(axisLength / 40)" },
+    },
+    axisY: {
+        tickCount: { expr: "ceil(axisLength / 40)" },
+    },
     legend: {
         titleColor: "black",
         titleFontSize: 11,

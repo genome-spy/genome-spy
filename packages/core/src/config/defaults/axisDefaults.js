@@ -46,8 +46,24 @@ export const AXIS_DEFAULTS = {
     gridWidth: 1,
 };
 
+const ADAPTIVE_TICK_COUNT = {
+    expr: "round(axisLength / (30 + 55 * smoothstep(100, 700, axisLength)))",
+};
+
+/** @type {import("../../spec/config.js").AxisConfig} */
+export const AXIS_X_DEFAULTS = {
+    tickCount: ADAPTIVE_TICK_COUNT,
+};
+
+/** @type {import("../../spec/config.js").AxisConfig} */
+export const AXIS_Y_DEFAULTS = {
+    tickCount: ADAPTIVE_TICK_COUNT,
+};
+
 /** @type {import("../../spec/config.js").AxisConfig} */
 export const LOCUS_AXIS_DEFAULTS = {
+    tickCount: { expr: "round(axisLength / 85)" },
+
     chromTicks: true,
     chromTickSize: 18,
     chromTickWidth: 1,
