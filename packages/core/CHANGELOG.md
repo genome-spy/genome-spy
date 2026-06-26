@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.79.1](https://github.com/genome-spy/genome-spy/compare/v0.79.0...v0.79.1) (2026-06-26)
+
+### Bug Fixes
+
+* **core:** keep side legends from growing grids ([6cad49e](https://github.com/genome-spy/genome-spy/commit/6cad49edb621e38ab571aa63d06e266473900485)) by @tuner
+* **core:** keep themed view defaults out of legends ([5b531bf](https://github.com/genome-spy/genome-spy/commit/5b531bf6680fb15c99c02614d460de1a8fcf91d7)) by @tuner
+* **core:** omit unlabeled log legend ticks ([a55d560](https://github.com/genome-spy/genome-spy/commit/a55d5608e88299550782422be6bceacfc294b67c)) by @tuner
+* **core:** size horizontal corner legends ([f3ce2be](https://github.com/genome-spy/genome-spy/commit/f3ce2be8623b2c144dfeeadf4410a1b33c1a7a93)) by @tuner
+* **core:** stack legends outside shared axes ([2a652f2](https://github.com/genome-spy/genome-spy/commit/2a652f28ef77f1189695ce3b904f8a21f76784ae)) by @tuner
+* **core:** use deterministic fonts in layout snapshots ([212cad8](https://github.com/genome-spy/genome-spy/commit/212cad8e36a60405d5ace9981ca13746075fdc89)) by @tuner
+
 # [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
 
 ### Bug Fixes
