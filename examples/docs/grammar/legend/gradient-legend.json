@@ -6,11 +6,7 @@
   "width": 250,
   "height": 250,
 
-  "config": { "legend": { "offset": 12 } },
-
-  "data": {
-    "url": "vega-datasets/penguins.json"
-  },
+  "data": { "url": "vega-datasets/penguins.json" },
 
   "mark": { "type": "point", "filled": true, "size": 45, "opacity": 0.75 },
 
