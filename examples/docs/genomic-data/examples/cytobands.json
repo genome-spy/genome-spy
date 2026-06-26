@@ -9,11 +9,6 @@
 
   "view": { "stroke": "black" },
 
-  "title": {
-    "text": "Chromosome Ideogram",
-    "style": "track-title"
-  },
-
   "height": 24,
 
   "data": {
@@ -35,11 +30,7 @@
     "x2": { "chrom": "chrom", "pos": "chromEnd" }
   },
 
-  "resolve": {
-    "scale": {
-      "color": "independent"
-    }
-  },
+  "resolve": { "scale": { "color": "independent" } },
 
   "layer": [
     {
@@ -70,7 +61,8 @@
               "#338833",
               "#000000"
             ]
-          }
+          },
+          "legend": null
         }
       }
     },
@@ -107,7 +99,8 @@
               "white",
               "white"
             ]
-          }
+          },
+          "legend": null
         },
         "text": {
           "field": "name",
