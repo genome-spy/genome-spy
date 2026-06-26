@@ -3149,14 +3149,6 @@ exports[`shared examples > initializes examples/core/legends/corner-horizontal.j
     },
     {
       "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
       "type": "LegendEntriesSource",
     },
     {

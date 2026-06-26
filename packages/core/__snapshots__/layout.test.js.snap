@@ -2379,23 +2379,23 @@ ViewCoords {
               "children": [
                 ViewCoords {
                   "children": [],
-                  "coords": "Rectangle: x: 351, y: 0, width: 300, height: 16",
+                  "coords": "Rectangle: x: 351, y: 0, width: 0, height: 16",
                   "viewName": "title",
                 },
                 ViewCoords {
                   "children": [
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 351, y: 16, width: 300, height: 12",
+                      "coords": "Rectangle: x: 351, y: 16, width: 0, height: 12",
                       "viewName": "symbols",
                     },
                     ViewCoords {
                       "children": [],
-                      "coords": "Rectangle: x: 351, y: 16, width: 300, height: 12",
+                      "coords": "Rectangle: x: 351, y: 16, width: 0, height: 12",
                       "viewName": "labels",
                     },
                   ],
-                  "coords": "Rectangle: x: 351, y: 16, width: 300, height: 12",
+                  "coords": "Rectangle: x: 351, y: 16, width: 0, height: 12",
                   "viewName": "legendBody",
                 },
               ],

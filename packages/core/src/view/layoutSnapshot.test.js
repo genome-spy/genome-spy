@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { specToLayout } from "./testUtils.js";
 import Rectangle from "./layout/rectangle.js";
 import { loadSharedExampleSpec } from "../spec/exampleFiles.js";
@@ -32,6 +32,26 @@ function findLayoutNode(node, viewName) {
 }
 
 describe("layout snapshot helper", () => {
+    test("uses the embedded default font instead of loading configured variants", async () => {
+        const fetch = vi.spyOn(globalThis, "fetch");
+
+        try {
+            await specToLayout({
+                title: { text: "Bold title", fontWeight: "bold" },
+                data: { values: [{ x: 1, y: 2 }] },
+                mark: "point",
+                encoding: {
+                    x: { field: "x", type: "quantitative" },
+                    y: { field: "y", type: "quantitative" },
+                },
+            });
+
+            expect(fetch).not.toHaveBeenCalled();
+        } finally {
+            fetch.mockRestore();
+        }
+    });
+
     test("renders view title in reserved bounds without manual padding", async () => {
         const layout = await specToLayout(
             {
