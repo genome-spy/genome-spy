@@ -2391,6 +2391,38 @@ describe("GridView legends", () => {
             expect(labelData.length).toBeGreaterThan(2);
         });
 
+        test("omits unlabeled minor ticks from log size legends", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, score: 1 },
+                                { x: 2, y: 3, score: 1000 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            size: {
+                                field: "score",
+                                type: "quantitative",
+                                scale: { type: "log", domain: [1, 1000] },
+                            },
+                        },
+                    },
+                ],
+            });
+            const labelData = getLegendData(getLegends(view)[0], "labels");
+
+            expect(labelData.every(({ label }) => label)).toBe(true);
+            expect(labelData.map(({ value }) => value)).toEqual([
+                1, 10, 100, 1000,
+            ]);
+        });
+
         test("uses stroke-width symbols for rule size legends", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

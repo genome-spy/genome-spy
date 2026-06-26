@@ -183,11 +183,12 @@ export default class LegendEntriesSource extends DataSource {
             ? validTicks(scale, this.params.values, count)
             : tickValues(scale, count);
 
-        return values.map((value, index) => ({
-            value,
-            label: format(value),
-            _legendIndex: index,
-        }));
+        return values
+            .flatMap((value) => {
+                const label = format(value);
+                return label ? [{ value, label }] : [];
+            })
+            .map((entry, index) => ({ ...entry, _legendIndex: index }));
     }
 }
 
