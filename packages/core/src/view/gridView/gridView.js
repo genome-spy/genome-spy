@@ -1238,7 +1238,7 @@ export default class GridView extends ContainerView {
 
             renderLocalLegends(
                 gridChild.legends,
-                axes,
+                this.#getLegendOffsetAxes(axes, col, row, grid),
                 viewportCoords,
                 context,
                 options,
@@ -1324,6 +1324,38 @@ export default class GridView extends ContainerView {
         renderDecorations(overlays);
 
         context.popView(this);
+    }
+
+    /**
+     * Local legends are GridChild-owned, but shared axes are GridView-owned.
+     * When they share an orient, the axis should remain next to the plot and
+     * the legend should move outside it. Give legend placement the applicable
+     * shared edge axes so `renderLocalLegends()` can apply the same offset it
+     * already uses for local axes.
+     *
+     * @param {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} axes
+     * @param {number} col
+     * @param {number} row
+     * @param {Grid} grid
+     */
+    #getLegendOffsetAxes(axes, col, row, grid) {
+        /** @type {Partial<Record<import("../../spec/axis.js").AxisOrient, AxisView>>} */
+        const offsetAxes = { ...axes };
+
+        for (const axisView of Object.values(this.#sharedAxes)) {
+            const orient = axisView.axisProps.orient;
+            const isEdge =
+                (orient == "left" && col == 0) ||
+                (orient == "right" && col == grid.nCols - 1) ||
+                (orient == "top" && row == 0) ||
+                (orient == "bottom" && row == grid.nRows - 1);
+
+            if (isEdge && !offsetAxes[orient]) {
+                offsetAxes[orient] = axisView;
+            }
+        }
+
+        return offsetAxes;
     }
 
     /**

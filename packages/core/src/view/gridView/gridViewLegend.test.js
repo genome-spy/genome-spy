@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
+import AxisView from "../axisView.js";
 import AxisGridView from "../axisGridView.js";
 import LegendView, { LegendRegionView } from "../legendView.js";
 import Rectangle from "../layout/rectangle.js";
@@ -66,6 +67,22 @@ class LegendRecordingRenderingContext extends NoOpRenderingContext {
     pushView(view, coords) {
         if (view instanceof LegendView) {
             this.legendCoords.set(view, coords);
+        }
+    }
+}
+
+class GuideRecordingRenderingContext extends LegendRecordingRenderingContext {
+    /** @type {{ axis: AxisView, coords: Rectangle }[]} */
+    axes = [];
+
+    /**
+     * @param {import("../view.js").default} view
+     * @param {Rectangle} coords
+     */
+    pushView(view, coords) {
+        super.pushView(view, coords);
+        if (view instanceof AxisView) {
+            this.axes.push({ axis: view, coords });
         }
     }
 }
@@ -1170,6 +1187,66 @@ describe("GridView legends", () => {
             expect(region.getPerpendicularSize()).toBe(
                 legendHeights.reduce((sum, height) => sum + height, 0) + 10
             );
+        });
+
+        test("stacks local bottom legends outside shared bottom axes", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                resolve: {
+                    axis: { x: "shared" },
+                    legend: { color: "independent" },
+                },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2 },
+                                { x: 2, y: 3 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                        },
+                    },
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "alpha" },
+                                { x: 2, y: 3, group: "beta" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: { orient: "bottom" },
+                            },
+                        },
+                    },
+                ],
+            });
+
+            const context = new GuideRecordingRenderingContext({
+                picking: false,
+            });
+            view.render(context, Rectangle.create(0, 0, 300, 300), {
+                firstFacet: true,
+            });
+
+            const [legendCoords] = context.legendCoords.values();
+            const axisCoords = context.axes.find(
+                ({ axis }) => axis.axisProps.orient == "bottom"
+            )?.coords;
+            if (!legendCoords || !axisCoords) {
+                throw new Error("Expected a bottom legend and bottom axis!");
+            }
+
+            expect(legendCoords.y).toBeGreaterThanOrEqual(axisCoords.y2);
         });
     });
 
