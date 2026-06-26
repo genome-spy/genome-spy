@@ -2478,6 +2478,53 @@ describe("GridView legends", () => {
             expect(legend.getSize().width.px).toBeGreaterThan(120);
         });
 
+        test("does not apply configured continuous view size defaults to generated legend views", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: { disable: false, titleFontWeight: "bold" },
+                    view: {
+                        continuousWidth: 300,
+                        continuousHeight: 300,
+                    },
+                },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "USA" },
+                                { x: 2, y: 3, group: "Europe" },
+                                { x: 3, y: 4, group: "Japan" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: {
+                                    orient: "top-right",
+                                    direction: "horizontal",
+                                    titleOrient: "left",
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legend = getLegends(view)[0];
+            const body = getLegendChild(legend, "legendBody");
+            const title = getLegendChild(legend, "title");
+            getLegendData(legend, "labels");
+
+            expect(title.getSize().width.px).toBeGreaterThan(5);
+            expect(body.getSize().width).toEqual({ px: 0, grow: 1 });
+            expect(body.getSize().height).toEqual({ grow: 1 });
+            expect(legend.getSize().width.px).toBeLessThan(300);
+            expect(legend.getSize().height.px).toBeLessThan(60);
+        });
+
         test("uses stroke-width symbols for rule size legends", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

@@ -25,6 +25,7 @@ import {
     clipCoords,
     normalizeClipOptions,
 } from "./renderingContext/clipOptions.js";
+import { isInChromeSubtree } from "./viewChrome.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -488,6 +489,10 @@ export default class View {
      * @returns {number | import("../spec/view.js").Step | undefined}
      */
     #getConfiguredDefaultSize(dimension) {
+        if (isInChromeSubtree(this)) {
+            return undefined;
+        }
+
         const viewConfig = this.getConfig().view;
         if (!viewConfig) {
             return undefined;

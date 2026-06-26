@@ -3,6 +3,9 @@ import {
     isSelectionParameter,
     isVariableParameter,
 } from "../paramRuntime/paramUtils.js";
+import { getChromeOverride, setChromeOverride } from "./viewChrome.js";
+
+export { isChromeView } from "./viewChrome.js";
 
 /**
  * Selectors identify views and parameters in a way that stays stable when the
@@ -19,7 +22,6 @@ import {
  * @typedef {{ message: string, scope: string[] }} SelectorValidationIssue
  * @typedef {{ name: string | null }} ImportScopeInfo
  * @typedef {"exclude" | "excludeSubtree"} AddressableOverride
- * @typedef {"exclude" | "excludeSubtree"} ChromeOverride
  * @typedef {{ skipSubtree?: boolean }} AddressableOptions
  * @typedef {{ skipSubtree?: boolean }} ChromeOptions
  * @typedef {{ view: import("./view.js").default, param: import("../spec/parameter.js").Parameter }} ResolvedParam
@@ -32,9 +34,6 @@ const importScopes = new WeakMap();
 
 /** @type {WeakMap<import("./view.js").default, AddressableOverride>} */
 const addressableOverrides = new WeakMap();
-
-/** @type {WeakMap<import("./view.js").default, ChromeOverride>} */
-const chromeOverrides = new WeakMap();
 
 /**
  * Marks a view as the root of an import scope.
@@ -103,17 +102,7 @@ export function markViewAsNonAddressable(view, options = {}) {
 export function markViewAsChrome(view, options = {}) {
     const skipSubtree = options.skipSubtree ?? false;
     const behavior = skipSubtree ? "excludeSubtree" : "exclude";
-    chromeOverrides.set(view, behavior);
-}
-
-/**
- * Returns whether a view has been marked as decorative chrome.
- *
- * @param {import("./view.js").default} view
- * @returns {boolean}
- */
-export function isChromeView(view) {
-    return chromeOverrides.has(view);
+    setChromeOverride(view, behavior);
 }
 
 /**
@@ -215,7 +204,7 @@ export function getAddressableViews(root) {
  */
 export function visitNonChromeViews(root, visitor) {
     root.visit((view) => {
-        const behavior = chromeOverrides.get(view);
+        const behavior = getChromeOverride(view);
         if (behavior === "excludeSubtree") {
             return VISIT_SKIP;
         }

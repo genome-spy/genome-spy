@@ -1631,7 +1631,12 @@ function getTitleWidth(legend, context) {
         fontStyle: legend.titleFontStyle,
         fontWeight: legend.titleFontWeight,
     });
-    const metrics = font.metrics;
+    // Generated legend title width is materialized into the child spec before
+    // asynchronous font loading has necessarily completed. Use fallback metrics
+    // to avoid a padding-only title extent. TODO: Recompute generated legend
+    // specs or make title extent lazy when requested font metrics become ready.
+    const metrics =
+        font.metrics ?? context.fontManager.getDefaultFont().metrics;
     if (!metrics) {
         return 0;
     }
