@@ -203,6 +203,40 @@ describe("generateAttributeContextMenu", () => {
         ]);
     });
 
+    it("groups order-dependent retain actions in a submenu", () => {
+        const attributeInfo = createAttributeInfo("nominal");
+        const { sampleView, dispatchedActions } = createSampleViewStub();
+
+        const items = generateAttributeContextMenu(
+            "",
+            attributeInfo,
+            "AML",
+            sampleView
+        );
+        const retainItems = getSubmenu(findItem(items, "Retain by order"));
+
+        expect(getLabels(retainItems)).toEqual([
+            "First sample of each Age",
+            "First n Age values...",
+        ]);
+
+        retainItems[0].callback();
+
+        expect(
+            dispatchedActions.map((action) => ({
+                type: action.type,
+                payload: action.payload,
+            }))
+        ).toEqual([
+            {
+                type: "sampleView/retainFirstOfEach",
+                payload: {
+                    attribute: attributeInfo.attribute,
+                },
+            },
+        ]);
+    });
+
     it("groups quantitative comparison shortcuts in a submenu", () => {
         const attributeInfo = createAttributeInfo("quantitative");
         const { sampleView, dispatchedActions } = createSampleViewStub();

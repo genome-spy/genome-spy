@@ -7,6 +7,7 @@ import {
     faFilter,
     faFont,
     faHashtag,
+    faMedal,
     faObjectGroup,
 } from "@fortawesome/free-solid-svg-icons";
 import { advancedAttributeFilterDialog } from "./attributeDialogs/advancedAttributeFilterDialog.js";
@@ -196,19 +197,36 @@ export default function generateAttributeContextMenu(
         });
 
         if (type != "identifier") {
-            addActions(actions.retainFirstOfEach({ attribute }));
-
-            items.push(
-                actionToItem(
-                    actions.retainFirstNCategories({
-                        attribute,
-                        n: undefined,
-                    }),
-                    false,
-                    () =>
-                        retainFirstNCategoriesDialog(attributeInfo, sampleView)
-                )
-            );
+            items.push({
+                icon: faMedal,
+                label: "Retain by order",
+                submenu: [
+                    actionToItem(
+                        actions.retainFirstOfEach({ attribute }),
+                        false,
+                        undefined,
+                        html`First sample of each
+                        ${formatShortAttributeName(attributeInfo)}`
+                    ),
+                    actionToItem(
+                        actions.retainFirstNCategories({
+                            attribute,
+                            n: undefined,
+                        }),
+                        false,
+                        () =>
+                            retainFirstNCategoriesDialog(
+                                attributeInfo,
+                                sampleView
+                            ),
+                        html`First
+                            <strong>n</strong> ${formatShortAttributeName(
+                                attributeInfo
+                            )}
+                            values...`
+                    ),
+                ],
+            });
         }
 
         if (type != "identifier") {

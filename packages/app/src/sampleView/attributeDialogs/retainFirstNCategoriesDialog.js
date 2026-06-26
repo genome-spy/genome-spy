@@ -1,5 +1,6 @@
 import { html } from "lit";
-import { faFilter } from "@fortawesome/free-solid-svg-icons";
+import { icon } from "@fortawesome/fontawesome-svg-core";
+import { faFilter, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import BaseDialog, { showDialog } from "../../components/generic/baseDialog.js";
 import { createInputListener } from "../../components/dialogs/saveImageDialog.js";
 
@@ -30,7 +31,17 @@ export class RetainFirstNCategoriesDialog extends BaseDialog {
     }
 
     renderBody() {
+        const title = this.attributeInfo?.title ?? "attribute";
+
         return html`
+            <div class="gs-alert info">
+                ${icon(faInfoCircle).node[0]}
+                <span>
+                    Retain all samples from the first distinct
+                    <em>${title}</em> values in the current sample order. Sort
+                    samples first to control which values come first.
+                </span>
+            </div>
             <div class="gs-form-group">
                 <label>Number of categories to retain:</label>
                 <input

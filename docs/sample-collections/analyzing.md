@@ -161,20 +161,23 @@ choosing open or closed thresholds.
 
 #### Retain the first of each
 
-In many analyses, it is necessary to select a single, representative sample from
-each category. This action retains the first, topmost sample from each category.
-It is not necessary to sort the samples by the categorical attribute, but rather
-they should be sorted according to the attributes used to select the
-representative samples. For a usage example, refer to the _example scenario_
-provided in the box [above](#manipulating-the-sample-collection).
+In many analyses, it is necessary to select a single, representative sample
+from each category. The _Retain by order_ submenu provides an action that
+retains the first, topmost sample from each category. It is not necessary to
+sort the samples by the categorical attribute, but rather they should be sorted
+according to the attributes used to select the representative samples. For a
+usage example, refer to the _example scenario_ provided in the box
+[above](#manipulating-the-sample-collection).
 
 #### Retain first n categories
 
 Sometimes you might be interested in a small number of categories that contain
-samples with the most extreme values in another attribute. For example, if each
-patient (the category) has multiple samples, this action allows you to retain
-all samples from the top-5 patients based on the highest number of mutations
-(the another attribute) in any of their samples.
+samples with the most extreme values in another attribute. The _Retain by
+order_ submenu also provides an action for retaining all samples from the first
+_n_ category values in the current sample order. For example, if each patient
+(the category) has multiple samples, this action allows you to retain all
+samples from the top-5 patients based on the highest number of mutations (the
+another attribute) in any of their samples.
 
 #### Retain values based on another attribute
 
