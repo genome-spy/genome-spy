@@ -104,6 +104,7 @@ export function buildHierarchyBarplot(request) {
                 type: categoryType,
                 title: categoryTitle,
                 scale: colorScale,
+                legend: grouped ? {} : null,
             },
         },
         ...(grouped
