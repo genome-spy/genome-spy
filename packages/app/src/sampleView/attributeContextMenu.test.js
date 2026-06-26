@@ -203,6 +203,38 @@ describe("generateAttributeContextMenu", () => {
         ]);
     });
 
+    it("groups nominal grouping actions in a submenu", () => {
+        const attributeInfo = createAttributeInfo("nominal");
+        const { sampleView, dispatchedActions } = createSampleViewStub();
+
+        const items = generateAttributeContextMenu(
+            "",
+            attributeInfo,
+            "AML",
+            sampleView
+        );
+        const groupItems = getSubmenu(findItem(items, "Group by"));
+
+        expect(getLabels(groupItems)).toEqual(["Age", "Custom groups..."]);
+
+        groupItems[0].callback();
+
+        expect(
+            dispatchedActions.map((action) => ({
+                type: action.type,
+                payload: action.payload,
+            }))
+        ).toEqual([
+            {
+                type: "sampleView/groupByNominal",
+                payload: {
+                    attribute: attributeInfo.attribute,
+                },
+            },
+        ]);
+        expect(groupItems[1].callback).toBeDefined();
+    });
+
     it("groups order-dependent retain actions in a submenu", () => {
         const attributeInfo = createAttributeInfo("nominal");
         const { sampleView, dispatchedActions } = createSampleViewStub();
@@ -235,6 +267,38 @@ describe("generateAttributeContextMenu", () => {
                 },
             },
         ]);
+    });
+
+    it("groups quantitative grouping actions in a submenu", () => {
+        const attributeInfo = createAttributeInfo("quantitative");
+        const { sampleView, dispatchedActions } = createSampleViewStub();
+
+        const items = generateAttributeContextMenu(
+            "",
+            attributeInfo,
+            42,
+            sampleView
+        );
+        const groupItems = getSubmenu(findItem(items, "Group by"));
+
+        expect(getLabels(groupItems)).toEqual(["Quartiles", "Thresholds..."]);
+
+        groupItems[0].callback();
+
+        expect(
+            dispatchedActions.map((action) => ({
+                type: action.type,
+                payload: action.payload,
+            }))
+        ).toEqual([
+            {
+                type: "sampleView/groupToQuartiles",
+                payload: {
+                    attribute: attributeInfo.attribute,
+                },
+            },
+        ]);
+        expect(groupItems[1].callback).toBeDefined();
     });
 
     it("groups quantitative comparison shortcuts in a submenu", () => {

@@ -74,12 +74,6 @@ export default function generateAttributeContextMenu(
         };
     };
 
-    /**
-     * @param {import("@reduxjs/toolkit").PayloadAction<import("./state/payloadTypes.js").PayloadWithAttribute>[]} actions
-     */
-    const addActions = (...actions) =>
-        items.push(...actions.map((action) => actionToItem(action)));
-
     items.push({
         icon: faArrowDownWideShort,
         label: "Sort",
@@ -184,18 +178,55 @@ export default function generateAttributeContextMenu(
         submenu: buildFilterSubmenu(),
     });
 
-    if (type != "quantitative") {
-        if (type != "identifier") {
-            addActions(actions.groupByNominal({ attribute }));
+    const buildGroupSubmenu = () => {
+        /** @type {MenuItem[]} */
+        const groupItems = [];
+
+        if (type != "quantitative") {
+            if (type != "identifier") {
+                groupItems.push(
+                    actionToItem(
+                        actions.groupByNominal({ attribute }),
+                        false,
+                        undefined,
+                        formatShortAttributeName(attributeInfo)
+                    )
+                );
+            }
+
+            groupItems.push({
+                icon: faObjectGroup,
+                label: "Custom groups...",
+                callback: () =>
+                    showCreateCustomGroupsDialog(attributeInfo, sampleView),
+            });
+        } else {
+            groupItems.push(
+                actionToItem(
+                    actions.groupToQuartiles({ attribute }),
+                    false,
+                    undefined,
+                    "Quartiles"
+                ),
+                {
+                    icon: faObjectGroup,
+                    label: "Thresholds...",
+                    callback: () =>
+                        showGroupByThresholdsDialog(attributeInfo, sampleView),
+                }
+            );
         }
 
-        items.push({
-            icon: faObjectGroup,
-            label: "Create custom groups...",
-            callback: () =>
-                showCreateCustomGroupsDialog(attributeInfo, sampleView),
-        });
+        return groupItems;
+    };
 
+    items.push({
+        icon: faObjectGroup,
+        label: "Group by",
+        submenu: buildGroupSubmenu(),
+    });
+
+    if (type != "quantitative") {
         if (type != "identifier") {
             items.push({
                 icon: faMedal,
@@ -239,14 +270,6 @@ export default function generateAttributeContextMenu(
                 )
             );
         }
-    } else {
-        addActions(actions.groupToQuartiles({ attribute }));
-        items.push({
-            icon: faObjectGroup,
-            label: "Group by thresholds...",
-            callback: () =>
-                showGroupByThresholdsDialog(attributeInfo, sampleView),
-        });
     }
 
     return items;
