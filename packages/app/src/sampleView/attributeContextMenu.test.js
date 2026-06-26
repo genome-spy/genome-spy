@@ -126,9 +126,7 @@ describe("generateAttributeContextMenu", () => {
         );
 
         expect(items[0].label).toBe("Sort");
-        expect(templateResultToString(items[1].label).trim()).toBe(
-            "Filter by Age"
-        );
+        expect(items[1].label).toBe("Filter");
         expect(items[0].submenu).toBeDefined();
         const sortItems =
             /** @type {import("../utils/ui/contextMenu.js").MenuItem[]} */ (
@@ -156,22 +154,24 @@ describe("generateAttributeContextMenu", () => {
             "AML",
             sampleView
         );
-        const filterItems = getSubmenu(findItem(items, "Filter by Age"));
+        const filterItems = getSubmenu(findItem(items, "Filter"));
 
         expect(getLabels(filterItems)).toEqual([
             "Retain AML",
             "Remove AML",
+            "",
             "Remove missing values",
             "Retain values based on another attribute",
             "Advanced filter...",
         ]);
-        expect(getLabels(getSubmenu(filterItems[3]))[0]).toBe(
+        expect(filterItems[2].type).toBe("divider");
+        expect(getLabels(getSubmenu(filterItems[4]))[0]).toBe(
             "Select Age using..."
         );
 
         filterItems[0].callback();
         filterItems[1].callback();
-        filterItems[2].callback();
+        filterItems[3].callback();
 
         expect(
             dispatchedActions.map((action) => ({
@@ -213,9 +213,12 @@ describe("generateAttributeContextMenu", () => {
             "AML",
             sampleView
         );
-        const groupItems = getSubmenu(findItem(items, "Group by"));
+        const groupItems = getSubmenu(findItem(items, "Group"));
 
-        expect(getLabels(groupItems)).toEqual(["Age", "Custom groups..."]);
+        expect(getLabels(groupItems)).toEqual([
+            "By Age",
+            "By custom categories...",
+        ]);
 
         groupItems[0].callback();
 
@@ -235,7 +238,7 @@ describe("generateAttributeContextMenu", () => {
         expect(groupItems[1].callback).toBeDefined();
     });
 
-    it("groups order-dependent retain actions in a submenu", () => {
+    it("groups retain actions in a submenu", () => {
         const attributeInfo = createAttributeInfo("nominal");
         const { sampleView, dispatchedActions } = createSampleViewStub();
 
@@ -245,14 +248,20 @@ describe("generateAttributeContextMenu", () => {
             "AML",
             sampleView
         );
-        const retainItems = getSubmenu(findItem(items, "Retain by order"));
+        const retainItems = getSubmenu(findItem(items, "Retain"));
 
         expect(getLabels(retainItems)).toEqual([
+            "By current order",
             "First sample for each Age",
             "First n Age values...",
+            "",
+            "Values present in all groups",
         ]);
+        expect(retainItems[0].type).toBe("header");
+        expect(retainItems[3].type).toBe("divider");
+        expect(retainItems[4].callback).toBeUndefined();
 
-        retainItems[0].callback();
+        retainItems[1].callback();
 
         expect(
             dispatchedActions.map((action) => ({
@@ -279,9 +288,12 @@ describe("generateAttributeContextMenu", () => {
             42,
             sampleView
         );
-        const groupItems = getSubmenu(findItem(items, "Group by"));
+        const groupItems = getSubmenu(findItem(items, "Group"));
 
-        expect(getLabels(groupItems)).toEqual(["Quartiles", "Thresholds..."]);
+        expect(getLabels(groupItems)).toEqual([
+            "By quartiles",
+            "By thresholds...",
+        ]);
 
         groupItems[0].callback();
 
@@ -311,20 +323,21 @@ describe("generateAttributeContextMenu", () => {
             42,
             sampleView
         );
-        const filterItems = getSubmenu(findItem(items, "Filter by Age"));
+        const filterItems = getSubmenu(findItem(items, "Filter"));
 
         expect(getLabels(filterItems)).toEqual([
-            "< 42",
-            "\u2264 42",
-            "= 42",
-            "\u2265 42",
-            "> 42",
+            "Age < 42",
+            "Age \u2264 42",
+            "Age = 42",
+            "Age \u2265 42",
+            "Age > 42",
+            "",
             "Remove missing values",
-            "Retain values based on another attribute",
             "Advanced filter...",
         ]);
+        expect(filterItems[5].type).toBe("divider");
 
-        for (const item of filterItems.slice(0, 6)) {
+        for (const item of [...filterItems.slice(0, 5), filterItems[6]]) {
             item.callback();
         }
 

@@ -23,6 +23,7 @@ import {
 } from "./metadata/metadataUtils.js";
 import { html } from "lit";
 import { formatShortAttributeName } from "./attributeFormatting.js";
+import { DIVIDER } from "../utils/ui/contextMenu.js";
 
 const SAMPLE_ATTRIBUTE = "SAMPLE_ATTRIBUTE";
 const MAX_CATEGORICAL_QUICK_CONDITIONS = 20;
@@ -110,10 +111,12 @@ export default function generateAttributeContextMenu(
                             }),
                             false,
                             undefined,
-                            label + " " + String(attributeValue)
+                            html`${formatShortAttributeName(attributeInfo)}
+                            ${label} ${attributeValue}`
                         )
                     );
                 }
+                filterItems.push(DIVIDER);
             }
         } else if (isDefined(attributeValue)) {
             filterItems.push(
@@ -135,7 +138,8 @@ export default function generateAttributeContextMenu(
                     false,
                     undefined,
                     html`Remove <strong>${attributeValue}</strong>`
-                )
+                ),
+                DIVIDER
             );
         }
 
@@ -148,7 +152,7 @@ export default function generateAttributeContextMenu(
             )
         );
 
-        if (type != "identifier") {
+        if (type != "quantitative" && type != "identifier") {
             const retainCategoriesSubmenu = buildRetainCategoriesSubmenu(
                 attributeInfo,
                 sampleView
@@ -174,7 +178,7 @@ export default function generateAttributeContextMenu(
 
     items.push({
         icon: faFilter,
-        label: html`Filter by ${formatShortAttributeName(attributeInfo)}`,
+        label: "Filter",
         submenu: buildFilterSubmenu(),
     });
 
@@ -189,14 +193,14 @@ export default function generateAttributeContextMenu(
                         actions.groupByNominal({ attribute }),
                         false,
                         undefined,
-                        formatShortAttributeName(attributeInfo)
+                        html`By ${formatShortAttributeName(attributeInfo)}`
                     )
                 );
             }
 
             groupItems.push({
                 icon: faObjectGroup,
-                label: "Custom groups...",
+                label: "By custom categories...",
                 callback: () =>
                     showCreateCustomGroupsDialog(attributeInfo, sampleView),
             });
@@ -206,11 +210,11 @@ export default function generateAttributeContextMenu(
                     actions.groupToQuartiles({ attribute }),
                     false,
                     undefined,
-                    "Quartiles"
+                    "By quartiles"
                 ),
                 {
                     icon: faObjectGroup,
-                    label: "Thresholds...",
+                    label: "By thresholds...",
                     callback: () =>
                         showGroupByThresholdsDialog(attributeInfo, sampleView),
                 }
@@ -222,7 +226,7 @@ export default function generateAttributeContextMenu(
 
     items.push({
         icon: faObjectGroup,
-        label: "Group by",
+        label: "Group",
         submenu: buildGroupSubmenu(),
     });
 
@@ -230,8 +234,12 @@ export default function generateAttributeContextMenu(
         if (type != "identifier") {
             items.push({
                 icon: faMedal,
-                label: "Retain by order",
+                label: "Retain",
                 submenu: [
+                    {
+                        label: "By current order",
+                        type: "header",
+                    },
                     actionToItem(
                         actions.retainFirstOfEach({ attribute }),
                         false,
@@ -256,19 +264,17 @@ export default function generateAttributeContextMenu(
                             )}
                             values...`
                     ),
+                    DIVIDER,
+                    actionToItem(
+                        actions.retainMatched({
+                            attribute,
+                        }),
+                        !sampleHierarchy.groupMetadata.length,
+                        undefined,
+                        "Values present in all groups"
+                    ),
                 ],
             });
-        }
-
-        if (type != "identifier") {
-            items.push(
-                actionToItem(
-                    actions.retainMatched({
-                        attribute,
-                    }),
-                    !sampleHierarchy.groupMetadata.length
-                )
-            );
         }
     }
 

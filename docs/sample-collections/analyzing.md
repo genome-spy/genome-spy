@@ -124,6 +124,83 @@ under the cursor. For example, a context menu opened on a categorical attribute
 will give you actions for retaining or removing samples with the selected
 categorical value.
 
+### The actions
+
+#### Sort
+
+Sorts samples in ascending or descending order by the selected quantitative or
+ordinal attribute.
+
+#### Filter by a categorical attribute
+
+Retains or removes samples whose selected attribute has the value under the
+cursor. You can also remove samples with missing values. Use _Advanced
+filter..._ to choose multiple categories to retain or remove.
+
+#### Filter by a quantitative attribute
+
+Retains samples by comparing the selected attribute to the value under the
+cursor. Shortcut actions are available for all comparison operators. You can
+also remove samples with missing values. Use _Advanced filter..._ for precise
+thresholding with a histogram and open or closed thresholds.
+
+#### Retain values based on another attribute
+
+Retains all samples for category values that have at least one sample matching
+a condition on another attribute. For example, after deriving a
+`TP53_mutation_count` metadata column, you can keep all samples from patients who
+have at least one sample where `TP53_mutation_count > 0`.
+
+The condition can also use categorical attributes. For example, you can retain
+patients whose samples include a particular treatment phase. When selecting
+multiple categorical values, you can require either _any_ selected value or
+_all_ selected values to occur among the samples in the retained category.
+
+#### Group by categorical attribute
+
+Stratifies samples by the selected categorical attribute. The groups are shown
+to the left of the sample names, as shown
+[above](#elements-of-the-user-interface).
+
+#### Group by custom categories
+
+Creates groups from selected category values. Each custom group can contain one
+or more values from the selected attribute.
+
+#### Group by quartiles
+
+Stratifies samples into four groups using the selected quantitative attribute.
+The implementation uses the R-7 method, the default in the R programming
+language and Excel.
+
+#### Group by thresholds
+
+Stratifies samples using custom thresholds on a quantitative attribute. The
+dialog shows a histogram and lets you add any number of thresholds, choose which
+side of each threshold is open or closed, and provide custom group titles.
+
+#### Retain the first sample for each category
+
+Retains the first, topmost sample from each category. Sort the samples by the
+attribute that should determine the representative samples before using this
+action. For a usage example, refer to the _example scenario_ provided in the box
+[above](#manipulating-the-sample-collection).
+
+#### Retain first n categories
+
+Retains all samples from the first _n_ category values in the current sample
+order. For example, if each patient has multiple samples, you can retain all
+samples from the top-5 patients based on the highest number of mutations in
+another attribute.
+
+#### Retain values present in all groups
+
+Retains samples whose selected attribute value appears in every current group.
+For example, suppose each patient has samples from multiple time points. First
+group the samples by time point. Then apply this action to the patient attribute
+to keep only patients that have at least one sample in every time point group.
+Patients missing one or more time points are removed.
+
 ### Undo history and provenance
 
 ![Attribute context menu](../img/provenance-menu.webp){ align="right" width="280" class="screenshot" }
@@ -134,97 +211,6 @@ The provenance button (:fontawesome-solid-ellipsis:) reveals a menu that shows
 the applied actions together with the used attributes and parameters. You can
 jump to different states in the undo history by clicking the menu items or the
 adjacent previous/next buttons.
-
-### The actions
-
-#### Sort
-
-The _Sort_ submenu provides ascending and descending actions for arranging
-samples based on the chosen quantitative or ordinal attribute.
-
-#### Filter by a categorical attribute
-
-The _Filter by_ submenu provides shortcut actions for retaining or removing
-samples having the chosen value in the selected attribute. It also provides an
-action for removing samples with missing values, and options for retaining
-values based on another attribute. The _Advanced filter..._ option allows you to
-choose multiple categories to be retained or removed.
-
-#### Filter by a quantitative attribute
-
-For quantitative attributes, the _Filter by_ submenu offers shortcut actions
-for all comparison operators using the chosen value. It also provides an action
-for removing samples with missing values, and options for retaining values based
-on another attribute. For more precise thresholding, you can use the _Advanced
-filter..._ option, which opens a dialog with a histogram and options for
-choosing open or closed thresholds.
-
-#### Retain the first of each
-
-In many analyses, it is necessary to select a single, representative sample
-from each category. The _Retain by order_ submenu provides an action that
-retains the first, topmost sample from each category. It is not necessary to
-sort the samples by the categorical attribute, but rather they should be sorted
-according to the attributes used to select the representative samples. For a
-usage example, refer to the _example scenario_ provided in the box
-[above](#manipulating-the-sample-collection).
-
-#### Retain first n categories
-
-Sometimes you might be interested in a small number of categories that contain
-samples with the most extreme values in another attribute. The _Retain by
-order_ submenu also provides an action for retaining all samples from the first
-_n_ category values in the current sample order. For example, if each patient
-(the category) has multiple samples, this action allows you to retain all
-samples from the top-5 patients based on the highest number of mutations (the
-another attribute) in any of their samples.
-
-#### Retain values based on another attribute
-
-This action retains all samples for category values that have at least one
-sample matching a condition on another attribute. For example, after deriving a
-`TP53_mutation_count` metadata column, you can keep all samples from all patients
-who have at least one sample where `TP53_mutation_count > 0`.
-
-The condition can also use categorical attributes. For example, you can retain
-patients whose samples include a particular treatment phase. When selecting
-multiple categorical values, you can require either _any_ selected value or
-_all_ selected values to occur among the samples in the retained category.
-
-#### Create custom groups
-
-Use this action to manually select and group multiple categories together
-according to your specific requirements. This feature allows you to create new
-groups that contain any combination of categories from your data, giving you the
-flexibility to organize and view your data in customized groupings.
-
-#### Group by categorical attribute
-
-This action stratifies the data based on the selected categorical attribute. The
-groups will be shown to the left of the sample names, as shown
-[above](#elements-of-the-user-interface).
-
-#### Group by quartiles
-
-This action enables rapid stratification into four groups using a quantitative
-attribute. The implementation uses the R-7 method, the default in the R
-programming language and Excel.
-
-#### Group by thresholds
-
-The _group by thresholds_ action allows stratifying the samples using custom
-thresholds on a quantitative attribute. Upon selecting this action, you are
-shown a dialog with a histogram, where you can add any number of thresholds and
-specify which side of the threshold should be open or closed. You can also
-provide custom group titles.
-
-#### Retain values present in all groups
-
-This action retains samples whose selected attribute value appears in every
-current group. For example, suppose each patient has samples from multiple time
-points. First group the samples by time point. Then apply this action to the
-patient attribute to keep only patients that have at least one sample in every
-time point group. Patients missing one or more time points are removed.
 
 ### Selecting related items in genomic tracks
 
