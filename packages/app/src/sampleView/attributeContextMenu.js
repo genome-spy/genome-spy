@@ -105,6 +105,18 @@ export default function generateAttributeContextMenu(
                 showCreateCustomGroupsDialog(attributeInfo, sampleView),
         });
 
+        addActions(
+            actions.filterByNominal({
+                attribute,
+                values: [attributeValue],
+            }),
+            actions.filterByNominal({
+                attribute,
+                remove: true,
+                values: [attributeValue],
+            })
+        );
+
         if (type != "identifier") {
             addActions(actions.retainFirstOfEach({ attribute }));
 
@@ -134,18 +146,6 @@ export default function generateAttributeContextMenu(
                 });
             }
         }
-
-        addActions(
-            actions.filterByNominal({
-                attribute,
-                values: [attributeValue],
-            }),
-            actions.filterByNominal({
-                attribute,
-                remove: true,
-                values: [attributeValue],
-            })
-        );
 
         if (type != "identifier") {
             items.push(
