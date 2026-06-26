@@ -95,6 +95,8 @@ nav:
           - Genomic Coordinates: "genomic-data/genomic-coordinates.md"
           - Examples:
                 - "genomic-data/examples/index.md"
+                - Chromosome Ideogram from Cytobands: "genomic-data/examples/cytobands.md"
+                - RefSeq Gene Annotations with Scored Labels: "genomic-data/examples/refseq-genes.md"
                 - ASCAT Copy-Number Segmentation: "genomic-data/examples/ascat.md"
                 - ASCAT Algorithm in GenomeSpy: "genomic-data/examples/ascat-algorithm.md"
                 - Sashimi plot from splice junctions: "genomic-data/examples/sashimi-plot.md"

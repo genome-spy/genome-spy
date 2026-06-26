@@ -3,37 +3,54 @@
 ![Logo](./img/do-it-swiftly.svg){ align=right }
 
 GenomeSpy is a toolkit for interactive visualization of genomic and other data.
-It enables tailored visualizations by providing a declarative
-[grammar](grammar/index.md), which allows for mapping data to visual channels
-(position, color, etc.) and composing complex visualization from primitive
-graphical marks ([points](grammar/mark/point.md),
-[rectangles](grammar/mark/rect.md), etc.). The grammar is heavily inspired by
-[Vega-Lite](https://vega.github.io/vega-lite/), providing partial compatibility
-and extending it with features essential in genome visualization.
+It provides a declarative [grammar](grammar/index.md) for mapping data to visual
+channels, such as position and color, and for composing complex visualizations
+from primitive graphical marks, such as [points](grammar/mark/point.md) and
+[rectangles](grammar/mark/rect.md). The grammar is heavily inspired by
+[Vega-Lite](https://vega.github.io/vega-lite/), with partial compatibility and
+extensions for genome visualization.
 
-The visualizations are rendered using a carefully crafted WebGL-based engine,
-enabling fluid interaction and smooth animation for datasets comprising several
-million data points. The high interactive performance is achieved using GPU
+Visualizations are rendered with a carefully crafted WebGL-based engine, which
+enables fluid interaction and smooth animation for datasets with several
+million data points. This performance comes from using GPU
 [shader](https://en.wikipedia.org/wiki/Shader) programs for all
-[scale](grammar/scale.md) transformations and rendering of marks. However,
-shaders are an implementation detail hidden from the end users.
+[scale](grammar/scale.md) transformations and mark rendering, but shaders are
+an implementation detail hidden from end users.
 
 The toolkit comprises two JavaScript packages:
 
 1. The [**core**](grammar/index.md) library implements the visualization grammar
    and rendering engine and can be embedded in web pages or applications.
-2. The [**app**](sample-collections/index.md) extends the core library with support
-   for interactive analysis of large sample collections. It broadens the grammar
-   by introducing a facet operator that repeats a visualization for multiple
-   samples. The app also provides interactions for filtering, sorting, and
-   grouping these samples.
+2. The [**app**](sample-collections/index.md) builds on the core library for
+   interactive analysis of large sample collections, such as cancer cohorts. It
+   repeats a visualization across samples and adds tools for filtering, sorting,
+   grouping, and exploring metadata.
 
 Check the [Getting Started](getting-started.md) page to get started with
 GenomeSpy and make your own tailored visualizations.
 
-## An interactive example
+## Genomic examples
 
-The example below is interactive. You can zoom in using the mouse wheel.
+GenomeSpy includes practical examples for common genomic visualization tasks:
+
+- [Chromosome Ideogram from Cytobands](genomic-data/examples/cytobands.md)
+  shows a compact ideogram built from UCSC cytoband intervals.
+- [RefSeq Gene Annotations with Scored Labels](genomic-data/examples/refseq-genes.md)
+  shows transcript structure, exon intervals, and dynamically fitted gene
+  labels.
+- [ASCAT Copy-Number Segmentation](genomic-data/examples/ascat.md) combines
+  copy-number, LogR, BAF, ideogram, and gene annotation tracks.
+- [Sashimi Plot from Splice Junctions](genomic-data/examples/sashimi-plot.md)
+  combines BigWig coverage with splice-junction arcs.
+
+See [Practical Genomic Data Examples](genomic-data/examples/index.md) for the
+full list.
+
+## Minimal interactive example
+
+The example below introduces basic grammar concepts such as data transforms,
+encodings, marks, and interactive zooming. You can zoom in using the mouse
+wheel.
 
 EXAMPLE examples/docs/index/interactive-overview.json
 
