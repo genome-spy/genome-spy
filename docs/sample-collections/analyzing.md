@@ -218,15 +218,13 @@ shown a dialog with a histogram, where you can add any number of thresholds and
 specify which side of the threshold should be open or closed. You can also
 provide custom group titles.
 
-#### Retain matched
+#### Retain values present in all groups
 
-This action retains categories that are common to all of the current groups.
-For example, suppose you are working with a sample collection with multiple
-samples from each patient. You have grouped the samples into two groups based on
-the anatomical site of the sample. By applying this action to the categorical
-patient attribute, you can ensure that your sample collection comprises only
-those patients with samples from both anatomical sites. In other words, the
-patients with only a single anatomical site are removed.
+This action retains samples whose selected attribute value appears in every
+current group. For example, suppose each patient has samples from multiple time
+points. First group the samples by time point. Then apply this action to the
+patient attribute to keep only patients that have at least one sample in every
+time point group. Patients missing one or more time points are removed.
 
 ### Selecting related items in genomic tracks
 

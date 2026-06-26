@@ -354,9 +354,9 @@ const actionHandlers = {
 
     retainMatched: ({ template, attributeName, attributeTitle }) => ({
         ...template,
-        title: html` Retain group-wise matched samples using ${attributeName} `,
+        title: "Retain values present in all groups",
         provenanceTitle: html`
-            Retain group-wise matched samples using ${attributeTitle}
+            Retain ${attributeTitle} values present in all groups
         `,
         icon: faFilter,
     }),

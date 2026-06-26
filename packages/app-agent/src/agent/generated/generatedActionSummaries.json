@@ -86,7 +86,7 @@
   },
   {
     "actionType": "sampleView/retainMatched",
-    "title": "Retain group-wise matched samples using patient_id",
+    "title": "Retain values present in all groups",
     "description": "Retain samples whose selected value appears in every current non-empty group."
   },
   {
