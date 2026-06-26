@@ -53,10 +53,10 @@
     "vega-util": "2.1.0"
   },
   "devDependencies": {
-    "@genome-spy/app": "^0.78.0",
+    "@genome-spy/app": "^0.79.0",
     "@reduxjs/toolkit": "^2.11.0"
   },
   "peerDependencies": {
-    "@genome-spy/app": "^0.77.0"
+    "@genome-spy/app": "^0.79.0"
   }
 }
