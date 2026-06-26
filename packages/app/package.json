@@ -79,6 +79,7 @@
     "mapsort": "^1.0.5",
     "micromark": "^4.0.0",
     "redux-undo": "^1.0.1",
+    "vega-util": "2.1.0",
     "zarrita": "^0.6.1"
   },
   "devDependencies": {

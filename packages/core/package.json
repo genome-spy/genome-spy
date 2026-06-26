@@ -49,7 +49,7 @@
     "@gmod/bbi": "^9.2.0",
     "@gmod/bed": "^2.1.10",
     "@gmod/indexedfasta": "^5.0.2",
-    "@gmod/tabix": "^3.2.2",
+    "@gmod/tabix": "3.2.2",
     "@gmod/vcf": "^7.0.0",
     "@types/d3-array": "^3.2.2",
     "@types/d3-dsv": "^3.0.7",
@@ -73,7 +73,7 @@
     "vega-expression": "^6.1.0",
     "vega-loader": "^5.1.0",
     "vega-scale": "^8.1.0",
-    "vega-util": "^2.1.0"
+    "vega-util": "2.1.0"
   },
   "devDependencies": {
     "@types/long": "^4.0.1"
