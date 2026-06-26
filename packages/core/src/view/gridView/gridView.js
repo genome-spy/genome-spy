@@ -91,7 +91,11 @@ function getLegendParallelSizeConstraints(legends) {
         if (orient == "top" || orient == "bottom") {
             widths.push(size.width);
         } else {
-            heights.push(size.height);
+            // Side gradients can fill the available viewport height, but that
+            // available height must be determined by the real grid children and
+            // top/bottom chrome. Otherwise a shared right/left legend can make
+            // the grid grow to the browser height and then fill that height.
+            heights.push({ px: getSizeDefMinPx(size.height), grow: 0 });
         }
     }
 

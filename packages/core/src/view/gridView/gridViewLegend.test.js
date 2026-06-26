@@ -422,6 +422,51 @@ describe("GridView legends", () => {
             );
         });
 
+        test("does not let shared side gradient legends grow the grid height", async () => {
+            const view = await createAndInitialize(
+                /** @type {import("../../spec/root.js").RootSpec} */ ({
+                    config: { legend: { disable: false } },
+                    resolve: {
+                        axis: { x: "shared" },
+                        legend: { color: "shared" },
+                    },
+                    data: {
+                        values: [
+                            { x: 1, y: 20, score: 35 },
+                            { x: 2, y: 40, score: 45 },
+                            { x: 3, y: 30, score: 60 },
+                        ],
+                    },
+                    vconcat: [
+                        {
+                            height: 140,
+                            mark: "rect",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                            },
+                        },
+                        {
+                            height: 80,
+                            mark: "rect",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                color: {
+                                    field: "score",
+                                    type: "quantitative",
+                                    legend: { orient: "right" },
+                                },
+                            },
+                        },
+                    ],
+                }),
+                ConcatView
+            );
+
+            expect(getLegends(view)).toHaveLength(1);
+            expect(view.getSize().height.grow).toBe(0);
+        });
+
         test("uses scale resolution when legend resolution is omitted", async () => {
             const view = await createAndInitialize(
                 /** @type {import("../../spec/root.js").RootSpec} */ ({
