@@ -146,7 +146,8 @@
               "domain": [-2.5, 0, 2.5],
               "range": ["#2166ac", "#f7f7f7", "#b2182b"],
               "clamp": true
-            }
+            },
+            "legend": null
           }
         }
       }
