@@ -149,7 +149,7 @@ backgrounds.
 `config.view` can define default sizes for views that do not specify `width` or
 `height` directly. These defaults follow Vega-Lite's continuous/discrete split:
 
-SCHEMA ViewConfig
+SCHEMA ViewConfig continuousWidth discreteWidth continuousHeight discreteHeight step
 
 `discreteWidth` and `discreteHeight` can be fixed pixel values or step objects:
 
