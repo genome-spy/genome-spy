@@ -130,9 +130,9 @@ const actionHandlers = {
 
     retainFirstOfEach: ({ template, attributeName, attributeTitle }) => ({
         ...template,
-        title: html` Retain the first sample of each ${attributeName} `,
+        title: html` Retain the first sample for each ${attributeName} `,
         provenanceTitle: html`
-            Retain the first sample of each ${attributeTitle}
+            Retain the first sample for each ${attributeTitle}
         `,
         icon: faMedal,
     }),

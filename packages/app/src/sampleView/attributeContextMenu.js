@@ -205,7 +205,7 @@ export default function generateAttributeContextMenu(
                         actions.retainFirstOfEach({ attribute }),
                         false,
                         undefined,
-                        html`First sample of each
+                        html`First sample for each
                         ${formatShortAttributeName(attributeInfo)}`
                     ),
                     actionToItem(

@@ -216,7 +216,7 @@ describe("generateAttributeContextMenu", () => {
         const retainItems = getSubmenu(findItem(items, "Retain by order"));
 
         expect(getLabels(retainItems)).toEqual([
-            "First sample of each Age",
+            "First sample for each Age",
             "First n Age values...",
         ]);
 
