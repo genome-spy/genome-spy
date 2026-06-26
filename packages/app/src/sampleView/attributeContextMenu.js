@@ -42,6 +42,7 @@ export default function generateAttributeContextMenu(
     const attribute = attributeInfo.attribute;
 
     const sampleHierarchy = sampleView.sampleHierarchy;
+    const type = attributeInfo?.type ?? "identifier";
 
     /** @type {MenuItem[]} */
     const items = [];
@@ -97,20 +98,90 @@ export default function generateAttributeContextMenu(
         ],
     });
 
-    const type = attributeInfo?.type ?? "identifier";
+    const buildFilterSubmenu = () => {
+        /** @type {MenuItem[]} */
+        const filterItems = [];
 
-    let isCountAggregation = false;
-    const specifier = attributeInfo.attribute.specifier;
-    if (
-        specifier &&
-        typeof specifier === "object" &&
-        "aggregation" in specifier
-    ) {
-        isCountAggregation =
-            /** @type {import("./types.js").AggregationSpec} */ (
-                specifier.aggregation
-            ).op === "count";
-    }
+        if (type === "quantitative") {
+            const operand = Number(attributeValue);
+            if (isDefined(attributeValue) && Number.isFinite(operand)) {
+                for (const { operator, label } of QUANTITATIVE_FILTERS) {
+                    filterItems.push(
+                        actionToItem(
+                            actions.filterByQuantitative({
+                                attribute,
+                                operator,
+                                operand,
+                            }),
+                            false,
+                            undefined,
+                            label + " " + String(attributeValue)
+                        )
+                    );
+                }
+            }
+        } else if (isDefined(attributeValue)) {
+            filterItems.push(
+                actionToItem(
+                    actions.filterByNominal({
+                        attribute,
+                        values: [attributeValue],
+                    }),
+                    false,
+                    undefined,
+                    html`Retain <strong>${attributeValue}</strong>`
+                ),
+                actionToItem(
+                    actions.filterByNominal({
+                        attribute,
+                        remove: true,
+                        values: [attributeValue],
+                    }),
+                    false,
+                    undefined,
+                    html`Remove <strong>${attributeValue}</strong>`
+                )
+            );
+        }
+
+        filterItems.push(
+            actionToItem(
+                actions.removeUndefined({ attribute }),
+                false,
+                undefined,
+                "Remove missing values"
+            )
+        );
+
+        if (type != "identifier") {
+            const retainCategoriesSubmenu = buildRetainCategoriesSubmenu(
+                attributeInfo,
+                sampleView
+            );
+            if (retainCategoriesSubmenu.length) {
+                filterItems.push({
+                    icon: faFilter,
+                    label: "Retain values based on another attribute",
+                    submenu: retainCategoriesSubmenu,
+                });
+            }
+        }
+
+        filterItems.push({
+            icon: faFilter,
+            label: "Advanced filter...",
+            callback: () =>
+                advancedAttributeFilterDialog(attributeInfo, sampleView),
+        });
+
+        return filterItems;
+    };
+
+    items.push({
+        icon: faFilter,
+        label: html`Filter by ${formatShortAttributeName(attributeInfo)}`,
+        submenu: buildFilterSubmenu(),
+    });
 
     if (type != "quantitative") {
         if (type != "identifier") {
@@ -123,18 +194,6 @@ export default function generateAttributeContextMenu(
             callback: () =>
                 showCreateCustomGroupsDialog(attributeInfo, sampleView),
         });
-
-        addActions(
-            actions.filterByNominal({
-                attribute,
-                values: [attributeValue],
-            }),
-            actions.filterByNominal({
-                attribute,
-                remove: true,
-                values: [attributeValue],
-            })
-        );
 
         if (type != "identifier") {
             addActions(actions.retainFirstOfEach({ attribute }));
@@ -150,20 +209,6 @@ export default function generateAttributeContextMenu(
                         retainFirstNCategoriesDialog(attributeInfo, sampleView)
                 )
             );
-
-            const retainCategoriesSubmenu = buildRetainCategoriesSubmenu(
-                attributeInfo,
-                sampleView
-            );
-            if (retainCategoriesSubmenu.length) {
-                items.push({
-                    icon: faFilter,
-                    label: html`Retain
-                    ${formatShortAttributeName(attributeInfo)} values based on
-                    another attribute`,
-                    submenu: retainCategoriesSubmenu,
-                });
-            }
         }
 
         if (type != "identifier") {
@@ -184,46 +229,19 @@ export default function generateAttributeContextMenu(
             callback: () =>
                 showGroupByThresholdsDialog(attributeInfo, sampleView),
         });
-        if (isCountAggregation) {
-            addActions(
-                actions.filterByQuantitative({
-                    attribute,
-                    operator: "gte",
-                    operand: 1,
-                }),
-                actions.filterByQuantitative({
-                    attribute,
-                    operator: "eq",
-                    operand: 0,
-                })
-            );
-        } else if (isDefined(attributeValue)) {
-            addActions(
-                actions.filterByQuantitative({
-                    attribute,
-                    operator: "gte",
-                    operand: +attributeValue,
-                }),
-                actions.filterByQuantitative({
-                    attribute,
-                    operator: "lte",
-                    operand: +attributeValue,
-                })
-            );
-        } else {
-            addActions(actions.removeUndefined({ attribute }));
-        }
     }
-
-    items.push({
-        icon: faFilter,
-        label: "Advanced filter...",
-        callback: () =>
-            advancedAttributeFilterDialog(attributeInfo, sampleView),
-    });
 
     return items;
 }
+
+/** @type {{ operator: import("./state/payloadTypes.js").ComparisonOperatorType, label: string }[]} */
+const QUANTITATIVE_FILTERS = [
+    { operator: "lt", label: "<" },
+    { operator: "lte", label: "\u2264" },
+    { operator: "eq", label: "=" },
+    { operator: "gte", label: "\u2265" },
+    { operator: "gt", label: ">" },
+];
 
 /**
  * @param {import("./types.js").AttributeInfo} categoryAttributeInfo
@@ -260,13 +278,20 @@ function buildRetainCategoriesSubmenu(categoryAttributeInfo, sampleView) {
         })
         .filter((info) => info);
 
-    return buildConditionAttributeMenuTree(
-        categoryAttributeInfo,
-        /** @type {import("./types.js").AttributeInfo[]} */ (
-            candidateAttributes
+    return [
+        {
+            label: html`Select
+            ${formatShortAttributeName(categoryAttributeInfo)} using...`,
+            type: "header",
+        },
+        ...buildConditionAttributeMenuTree(
+            categoryAttributeInfo,
+            /** @type {import("./types.js").AttributeInfo[]} */ (
+                candidateAttributes
+            ),
+            sampleView
         ),
-        sampleView
-    );
+    ];
 }
 
 /**

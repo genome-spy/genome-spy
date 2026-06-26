@@ -144,18 +144,20 @@ samples based on the chosen quantitative or ordinal attribute.
 
 #### Filter by a categorical attribute
 
-The context menu provides two shortcut actions for _retaining_ and _removing_
-samples having the chosen value in the selected attribute. The _Advanced
-filter..._ option allows you to choose multiple categories to be retained or
-removed.
+The _Filter by_ submenu provides shortcut actions for retaining or removing
+samples having the chosen value in the selected attribute. It also provides an
+action for removing samples with missing values, and options for retaining
+values based on another attribute. The _Advanced filter..._ option allows you to
+choose multiple categories to be retained or removed.
 
 #### Filter by a quantitative attribute
 
-For quantitative attributes, the menu offers shortcut actions for retaining
-samples with a value greater or equal to or less or equal to the chosen value.
-For more precise thresholding, you can use the _Advanced filter..._ option,
-which opens a dialog with a histogram and options for choosing open or closed
-thresholds.
+For quantitative attributes, the _Filter by_ submenu offers shortcut actions
+for all comparison operators using the chosen value. It also provides an action
+for removing samples with missing values, and options for retaining values based
+on another attribute. For more precise thresholding, you can use the _Advanced
+filter..._ option, which opens a dialog with a histogram and options for
+choosing open or closed thresholds.
 
 #### Retain the first of each
 
