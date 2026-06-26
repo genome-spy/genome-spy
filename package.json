@@ -56,8 +56,8 @@
     "pretty-quick": "pretty-quick",
     "prepare": "husky install",
     "pre-commit": "lint-staged",
-    "publish": "lerna publish --changelog-include-commits-client-login \" by @%l\"",
-    "preview:publish": "lerna publish --changelog-include-commits-client-login \" by @%l\" --dry-run"
+    "publish": "lerna publish --allow-peer-dependencies-update --sync-workspace-lock --changelog-include-commits-client-login \" by @%l\"",
+    "preview:publish": "lerna publish --allow-peer-dependencies-update --sync-workspace-lock --changelog-include-commits-client-login \" by @%l\" --dry-run"
   },
   "workspaces": [
     "./packages/*"

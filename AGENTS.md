@@ -172,6 +172,9 @@ aware interactions.
 - The repo follows Conventional Commits; prefix commit messages with the relevant type (e.g., `feat:`, `fix:`).
 - Use the monorepo package name as the scope (e.g., `core`, `app`) when the change touches a specific workspace.
 - An example message: `feat(app): cool new feature`.
+- Reserve `fix` and `feat` primarily for user-facing bug fixes and features. Use
+  `build` for dependency, package metadata, release tooling, and other
+  build-system fixes.
 - Before writing a commit message, inspect the full relevant diff with
   `git diff` and, when committing staged changes, `git diff --cached`. Base the
   commit message on everything being committed, not only the latest edits.

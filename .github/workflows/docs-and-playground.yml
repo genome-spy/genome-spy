@@ -47,6 +47,9 @@ jobs:
             - name: Build docs
               run: npm run build:docs
 
+            - name: Build Inspector
+              run: npm -w @genome-spy/inspector run build
+
             - name: Build Playground
               run: npm -w @genome-spy/playground run build
 
