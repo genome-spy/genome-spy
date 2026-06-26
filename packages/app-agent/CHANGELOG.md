@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
+
+### Bug Fixes
+
+* **app:** clarify matched retention wording ([de96d28](https://github.com/genome-spy/genome-spy/commit/de96d28329cecc52a00c821e3fbbf8e04783cf67)) by @tuner
+* **app:** refine first-sample wording ([f0f5a44](https://github.com/genome-spy/genome-spy/commit/f0f5a4467958b4016b89a336eba0f6b8fad42055)) by @tuner
+
+### Features
+
+* **app-agent:** add updated benchmark suite specs ([dc52b4e](https://github.com/genome-spy/genome-spy/commit/dc52b4e21a9878b69c6f6a18d675c6da73a81fcc)) by @okunator
+* **app:** support ascending sample sorting ([7174cf3](https://github.com/genome-spy/genome-spy/commit/7174cf397888d9dd141c77989257c5b4e5c73963)) by @tuner
+* **inspector:** add GenomeSpy runtime inspector ([#425](https://github.com/genome-spy/genome-spy/issues/425)) ([0151c5d](https://github.com/genome-spy/genome-spy/commit/0151c5db16b825af760a9fbedb3a4f4df838c7a1)) by @tuner
+
 # [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
 
 **Note:** Version bump only for package @genome-spy/app-agent

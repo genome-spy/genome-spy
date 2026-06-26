@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.79.0](https://github.com/genome-spy/genome-spy/compare/v0.78.0...v0.79.0) (2026-06-26)
+
+### Features
+
+* **core:** add public view mutation API ([#422](https://github.com/genome-spy/genome-spy/issues/422)) ([4e60399](https://github.com/genome-spy/genome-spy/commit/4e60399c319a0e12bce861ad01cca426bd3e44af)) by @tuner
+* **inspector:** add GenomeSpy runtime inspector ([#425](https://github.com/genome-spy/genome-spy/issues/425)) ([0151c5d](https://github.com/genome-spy/genome-spy/commit/0151c5db16b825af760a9fbedb3a4f4df838c7a1)) by @tuner
+
 # [0.78.0](https://github.com/genome-spy/genome-spy/compare/v0.77.0...v0.78.0) (2026-06-11)
 
 **Note:** Version bump only for package @genome-spy/embed-examples
