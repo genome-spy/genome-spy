@@ -72,10 +72,15 @@ test("parses BED12 rows with BED12 field names", async () => {
     ]);
 });
 
-test("reports malformed chromosome decoding with line context", async () => {
-    await expect(bed("chr1%ZZ\t0\t10")).rejects.toThrow(
-        "Cannot parse BED line 1"
-    );
+test("keeps malformed percent escapes in chromosome names", async () => {
+    expect(await bed("chr1%ZZ\t0\t10")).toEqual([
+        {
+            chrom: "chr1%ZZ",
+            chromStart: 0,
+            chromEnd: 10,
+            strand: 0,
+        },
+    ]);
 });
 
 test("skips trailing empty lines at end of input", async () => {
