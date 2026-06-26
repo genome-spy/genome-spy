@@ -50,9 +50,22 @@ describe("getActionInfo", () => {
 
         const info = getActionInfo(action, () => makeAttributeInfo());
 
-        expect(info.title).toBe("Sort by");
+        expect(info.title).toBe("Sort descending");
         expect(info.provenanceTitle).toBeDefined();
         expect(info.icon).toBe(faSortAmountDown);
+    });
+
+    it("describes sort direction in menu labels and provenance", () => {
+        const action = {
+            type: `${SAMPLE_SLICE_NAME}/sortBy`,
+            payload: { attribute: "age", order: "ascending" },
+        };
+
+        const info = getActionInfo(action, () => makeAttributeInfo());
+        const provenanceTitle = templateResultToString(info.provenanceTitle);
+
+        expect(info.title).toBe("Sort ascending");
+        expect(provenanceTitle).toContain("Sort by Age, ascending");
     });
 
     it("describes source metadata import actions", () => {

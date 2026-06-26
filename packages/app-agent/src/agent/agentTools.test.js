@@ -428,14 +428,18 @@ describe("agentTools", () => {
         expect(result.content).toEqual(
             expect.objectContaining({
                 actionType: "sampleView/sortBy",
-                description:
-                    "Sort samples in descending order by a selected attribute.",
-                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`. Sorting is stable, so ties preserve current sample order.",
+                description: "Sort samples by a selected attribute.",
+                usage: "Use this when samples should be ranked by one quantitative or ordinal attribute before further filtering or grouping. The attribute may be metadata or a selection-derived aggregation candidate from `selectionAggregation.fields`. Sorting is stable, so ties preserve current sample order. The default order is descending.",
                 payloadFields: [
                     expect.objectContaining({
                         name: "attribute",
                         type: "AttributeIdentifier",
                         required: true,
+                    }),
+                    expect.objectContaining({
+                        name: "order",
+                        type: '"ascending" | "descending"',
+                        required: false,
                     }),
                 ],
                 examples: [
@@ -444,6 +448,7 @@ describe("agentTools", () => {
                             type: "SAMPLE_ATTRIBUTE",
                             specifier: "age",
                         },
+                        order: "descending",
                     },
                 ],
             })

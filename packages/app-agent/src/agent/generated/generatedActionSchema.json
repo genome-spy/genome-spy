@@ -1791,11 +1791,16 @@
     },
     "SortBy": {
       "additionalProperties": false,
-      "description": "Payload for sorting samples in descending order by an attribute.",
+      "description": "Payload for sorting samples by an attribute.",
       "properties": {
         "attribute": {
           "$ref": "#/definitions/AttributeIdentifier",
           "description": "Attribute operated on by the action.\n\nIts current values are resolved before the reducer runs and then used by sorting, filtering, grouping, or metadata derivation."
+        },
+        "order": {
+          "description": "Sort direction.\n\n__Default value:__ `\"descending\"`",
+          "enum": ["ascending", "descending"],
+          "type": "string"
         }
       },
       "required": ["attribute"],

@@ -393,6 +393,69 @@ describe("augmentAttributeAction", () => {
 });
 
 describe("sampleSlice reducers", () => {
+    it("sorts samples by the selected order", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const rootGroup =
+            /** @type {import("./sampleState.js").SampleGroup} */ (
+                sampleHierarchy.rootGroup
+            );
+        rootGroup.samples = ["s2", "s1"];
+
+        const action = sampleSlice.actions.sortBy({
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "age",
+            },
+            order: "ascending",
+            [AUGMENTED_KEY]: {
+                values: {
+                    s1: 10,
+                    s2: 5,
+                },
+            },
+        });
+
+        const state = sampleSlice.reducer(sampleHierarchy, action);
+        const stateRootGroup =
+            /** @type {import("./sampleState.js").SampleGroup} */ (
+                state.rootGroup
+            );
+
+        expect(stateRootGroup.samples).toEqual(["s2", "s1"]);
+    });
+
+    it("sorts samples in descending order by default", () => {
+        const sampleHierarchy = createSampleHierarchy();
+        const rootGroup =
+            /** @type {import("./sampleState.js").SampleGroup} */ (
+                sampleHierarchy.rootGroup
+            );
+        rootGroup.samples = ["s2", "s1"];
+
+        const action = sampleSlice.actions.sortBy({
+            attribute: {
+                type: "SAMPLE_ATTRIBUTE",
+                specifier: "age",
+            },
+            [AUGMENTED_KEY]: {
+                values: {
+                    s1: 10,
+                    s2: 5,
+                },
+            },
+        });
+
+        const state = sampleSlice.reducer(sampleHierarchy, action);
+        const stateRootGroup =
+            /** @type {import("./sampleState.js").SampleGroup} */ (
+                state.rootGroup
+            );
+
+        expect(stateRootGroup.samples).toEqual(["s1", "s2"]);
+    });
+});
+
+describe("sampleSlice reducers", () => {
     it("fails when removing a group before samples have been grouped", () => {
         const state = createSampleHierarchy();
 

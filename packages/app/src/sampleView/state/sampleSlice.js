@@ -364,13 +364,14 @@ export const sampleSlice = createSlice({
         },
 
         /**
-         * Sort samples in descending order by a selected attribute.
+         * Sort samples by a selected attribute.
          *
          * Use this when samples should be ranked by one quantitative or
          * ordinal attribute before further filtering or grouping. The
          * attribute may be metadata or a selection-derived aggregation
          * candidate from `selectionAggregation.fields`. Sorting is stable,
-         * so ties preserve current sample order.
+         * so ties preserve current sample order. The default order is
+         * descending.
          *
          * @agent.payloadType SortBy
          * @agent.category sorting
@@ -378,7 +379,8 @@ export const sampleSlice = createSlice({
          * @agent.attributeKinds quantitative,ordinal
          * @example
          * {
-         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "age" }
+         *   "attribute": { "type": "SAMPLE_ATTRIBUTE", "specifier": "age" },
+         *   "order": "descending"
          * }
          */
         sortBy: (
@@ -386,7 +388,11 @@ export const sampleSlice = createSlice({
             /** @type {PayloadAction<import("./payloadTypes.js").SortBy>} */ action
         ) => {
             applyToSamples(state, (samples) =>
-                sort(samples, createObjectAccessor(action), true)
+                sort(
+                    samples,
+                    createObjectAccessor(action),
+                    resolveSortDescending(action.payload.order)
+                )
             );
         },
 
@@ -961,6 +967,21 @@ export const sampleSlice = createSlice({
         },
     },
 });
+
+/**
+ * @param {import("./payloadTypes.js").SortBy["order"]} order
+ * @returns {boolean}
+ */
+function resolveSortDescending(order) {
+    const resolvedOrder = order ?? "descending";
+    if (resolvedOrder === "ascending") {
+        return false;
+    } else if (resolvedOrder === "descending") {
+        return true;
+    } else {
+        throw new Error("Invalid sort order: " + resolvedOrder);
+    }
+}
 
 /**
  * Applies an operation to each group of samples.

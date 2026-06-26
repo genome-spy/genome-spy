@@ -65,6 +65,9 @@ aware interactions.
 - Unit tests with Vitest
 - Tests live next to code, with `.test.` in the filename
 - When writing tests, add a short comment for non-obvious test setup/intent.
+- Do not use TDD for trivial presentation-only changes such as changing a
+  label, icon, tooltip, or other copy/style detail. Apply the small edit
+  directly and verify with the lightest relevant check.
 - Permanent tests should verify behavior, contracts, dataflow, layout
   semantics, or user-visible output rather than duplicating the current
   implementation.

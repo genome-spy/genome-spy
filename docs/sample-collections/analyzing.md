@@ -139,8 +139,8 @@ adjacent previous/next buttons.
 
 #### Sort
 
-The _Sort by_ action arranges the samples in a descending order based on the
-chosen quantitative attribute.
+The _Sort_ submenu provides ascending and descending actions for arranging
+samples based on the chosen quantitative or ordinal attribute.
 
 #### Filter by a categorical attribute
 

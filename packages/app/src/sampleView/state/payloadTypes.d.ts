@@ -263,9 +263,16 @@ export interface PayloadWithAttribute {
 }
 
 /**
- * Payload for sorting samples in descending order by an attribute.
+ * Payload for sorting samples by an attribute.
  */
-export interface SortBy extends PayloadWithAttribute {}
+export interface SortBy extends PayloadWithAttribute {
+    /**
+     * Sort direction.
+     *
+     * __Default value:__ `"descending"`
+     */
+    order?: "ascending" | "descending";
+}
 
 /**
  * Payload for retaining the first sample of each distinct category.

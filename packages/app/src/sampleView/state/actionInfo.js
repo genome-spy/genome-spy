@@ -4,6 +4,7 @@ import { join } from "lit/directives/join.js";
 import { map } from "lit/directives/map.js";
 import {
     faSortAmountDown,
+    faSortAmountUp,
     faFilter,
     faMedal,
     faObjectGroup,
@@ -117,12 +118,15 @@ const actionHandlers = {
         };
     },
 
-    sortBy: ({ template, attributeTitle }) => ({
-        ...template,
-        title: "Sort by",
-        provenanceTitle: html` Sort by ${attributeTitle} `,
-        icon: faSortAmountDown,
-    }),
+    sortBy: ({ payload, template, attributeTitle }) => {
+        const order = payload.order ?? "descending";
+        return {
+            ...template,
+            title: "Sort " + order,
+            provenanceTitle: html` Sort by ${attributeTitle}, ${order} `,
+            icon: order === "ascending" ? faSortAmountUp : faSortAmountDown,
+        };
+    },
 
     retainFirstOfEach: ({ template, attributeName, attributeTitle }) => ({
         ...template,

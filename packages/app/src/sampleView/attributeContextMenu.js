@@ -3,6 +3,7 @@
  */
 
 import {
+    faArrowDownWideShort,
     faFilter,
     faFont,
     faHashtag,
@@ -56,12 +57,13 @@ export default function generateAttributeContextMenu(
      * @param {import("@reduxjs/toolkit").PayloadAction<import("./state/payloadTypes.js").PayloadWithAttribute>} action
      * @param {boolean} [disabled]
      * @param {function} [callback]
+     * @param {string | import("lit").TemplateResult} [label]
      * @returns {MenuItem}
      */
-    const actionToItem = (action, disabled, callback) => {
+    const actionToItem = (action, disabled, callback, label) => {
         const info = sampleView.provenance.getActionInfo(action);
         return {
-            label: info.title,
+            label: label ?? info.title,
             icon: info.icon,
             callback: disabled
                 ? undefined
@@ -76,7 +78,24 @@ export default function generateAttributeContextMenu(
     const addActions = (...actions) =>
         items.push(...actions.map((action) => actionToItem(action)));
 
-    addActions(actions.sortBy({ attribute }));
+    items.push({
+        icon: faArrowDownWideShort,
+        label: "Sort",
+        submenu: [
+            actionToItem(
+                actions.sortBy({ attribute, order: "ascending" }),
+                false,
+                undefined,
+                "Ascending"
+            ),
+            actionToItem(
+                actions.sortBy({ attribute, order: "descending" }),
+                false,
+                undefined,
+                "Descending"
+            ),
+        ],
+    });
 
     const type = attributeInfo?.type ?? "identifier";
 

@@ -11,8 +11,8 @@
   },
   {
     "actionType": "sampleView/sortBy",
-    "title": "Sort by",
-    "description": "Sort samples in descending order by a selected attribute."
+    "title": "Sort descending",
+    "description": "Sort samples by a selected attribute."
   },
   {
     "actionType": "sampleView/retainFirstOfEach",
