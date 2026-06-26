@@ -523,7 +523,11 @@ function makeComparator(sort) {
                 new Function(
                     "a",
                     "b",
-                    `return a[${fieldName}] ${order === "ascending" ? "-" : "+"} b[${fieldName}];`
+                    `return ${
+                        order === "ascending"
+                            ? `a[${fieldName}] - b[${fieldName}]`
+                            : `b[${fieldName}] - a[${fieldName}]`
+                    };`
                 )
             );
         }

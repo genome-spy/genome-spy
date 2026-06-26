@@ -33,6 +33,22 @@ test("Collector collects and sorts data", () => {
     );
 });
 
+test("Collector collects and sorts data in descending order", () => {
+    const collector = new Collector({
+        type: "collect",
+        sort: { field: ["x"], order: "descending" },
+    });
+
+    for (const d of data) {
+        collector.handle(d);
+    }
+    collector.complete();
+
+    expect([...collector.getData()]).toEqual(
+        [5, 4, 3, 2, 1].map((x) => ({ x }))
+    );
+});
+
 test("Collector collects, groups, and sorts data", () => {
     const collector = new Collector({
         type: "collect",
