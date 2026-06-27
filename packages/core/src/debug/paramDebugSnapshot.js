@@ -23,7 +23,7 @@ import { previewValue } from "./valuePreview.js";
 /**
  * @typedef {object} ParamDebugNode
  * @prop {string} name
- * @prop {"auto" | "base" | "derived" | "selection" | "push"} kind
+ * @prop {"auto" | "base" | "derived" | "selection" | "ruler" | "push"} kind
  * @prop {any} value
  * @prop {boolean} writable
  * @prop {boolean} configured

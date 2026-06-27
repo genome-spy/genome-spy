@@ -10,6 +10,52 @@ describe("Single-level ViewParamRuntime", () => {
         expect(pm.getValue("foo")).toBe(42);
     });
 
+    test("ruler params default to inactive tagged values", () => {
+        const pm = new ViewParamRuntime();
+        pm.registerParam({
+            name: "cursor",
+            ruler: { encodings: ["x"] },
+        });
+
+        expect(pm.getValue("cursor")).toEqual({
+            type: "ruler",
+            values: {
+                x: null,
+            },
+        });
+    });
+
+    test("ruler params normalize initial value mappings", () => {
+        const pm = new ViewParamRuntime();
+        pm.registerParam({
+            name: "cursor",
+            ruler: { encodings: ["x", "y"] },
+            value: { x: 3 },
+        });
+
+        expect(pm.getValue("cursor")).toEqual({
+            type: "ruler",
+            values: {
+                x: 3,
+                y: null,
+            },
+        });
+    });
+
+    test("debug state reports local ruler params", () => {
+        const pm = new ViewParamRuntime();
+        pm.registerParam({
+            name: "cursor",
+            ruler: { encodings: ["x"] },
+        });
+
+        expect(pm.getDebugState().params[0]).toMatchObject({
+            name: "cursor",
+            kind: "ruler",
+            writable: true,
+        });
+    });
+
     test("Setter", () => {
         const pm = new ViewParamRuntime();
         const setter = pm.allocateSetter("foo", 42);

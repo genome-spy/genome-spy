@@ -10,6 +10,7 @@ export {
     activateExprRefProps,
     getDefaultParamValue,
     isExprRef,
+    isRulerParameter,
     isSelectionParameter,
     isVariableParameter,
     makeConstantExprRef,
@@ -27,7 +28,7 @@ export {
 /**
  * @typedef {object} ViewParamDebugState
  * @prop {string} name
- * @prop {"auto" | "base" | "derived" | "selection" | "push"} kind
+ * @prop {"auto" | "base" | "derived" | "selection" | "ruler" | "push"} kind
  * @prop {any} value
  * @prop {boolean} writable
  * @prop {boolean} configured
@@ -533,7 +534,7 @@ export default class ViewParamRuntime {
 
 /**
  * @param {import("../spec/parameter.js").Parameter | undefined} config
- * @returns {"auto" | "base" | "derived" | "selection" | "push"}
+ * @returns {"auto" | "base" | "derived" | "selection" | "ruler" | "push"}
  */
 function getParamKind(config) {
     if (!config) {
@@ -544,6 +545,8 @@ function getParamKind(config) {
         return "push";
     } else if ("select" in config) {
         return "selection";
+    } else if ("ruler" in config) {
+        return "ruler";
     } else if ("expr" in config) {
         return "derived";
     } else {
