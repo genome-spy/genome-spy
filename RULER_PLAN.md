@@ -1019,7 +1019,7 @@ Example docs snippet:
   Tentative commit: `feat(core): add linearize expression helper`
 - [x] Add compatibility helpers and unit tests.
   Tentative commit: `feat(core): add ruler compatibility helpers`
-- [ ] Add binding registry and tests for participant resolution.
+- [x] Add binding registry and tests for participant resolution.
   Tentative commit: `feat(core): resolve ruler bindings`
 - [ ] Add per-view overlay rendering with a static source and param-driven reactivity tests.
   Tentative commit: `feat(core): render ruler overlays`
