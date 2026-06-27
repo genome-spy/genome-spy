@@ -126,7 +126,7 @@ export default class GridChild {
         /** @type {RulerViewportController[]} */
         this.rulerViewportControllers = [];
 
-        /** @type {LayerView[]} */
+        /** @type {{ view: LayerView, zindex: number }[]} */
         this.rulerOverlays = [];
 
         /** @type {TitleView} */
@@ -332,7 +332,10 @@ export default class GridChild {
 
         markViewAsNonAddressable(overlay, { skipSubtree: true });
         markViewAsChrome(overlay, { skipSubtree: true });
-        this.rulerOverlays.push(overlay);
+        this.rulerOverlays.push({
+            view: overlay,
+            zindex: ruler.mark?.zindex ?? 1,
+        });
 
         // WARNING! The following is an async method! Mirrors SelectionRect until
         // grid chrome has a shared awaited initialization path.
@@ -836,7 +839,9 @@ export default class GridChild {
         if (this.selectionRect) {
             yield this.selectionRect;
         }
-        yield* this.rulerOverlays;
+        for (const overlay of this.rulerOverlays) {
+            yield overlay.view;
+        }
     }
 
     /**

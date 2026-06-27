@@ -59,6 +59,7 @@ const DECORATION_ORDER = Object.freeze({
     axis: 40,
     legend: 50,
     selectionRect: 80,
+    ruler: 82,
     scrollbar: 90,
     title: 100,
 });
@@ -901,6 +902,7 @@ export default class GridView extends ContainerView {
                 backgroundStroke,
                 title,
                 selectionRect,
+                rulerOverlays,
             } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
@@ -997,6 +999,7 @@ export default class GridView extends ContainerView {
                 backgroundStroke,
                 title,
                 selectionRect,
+                rulerOverlays,
                 viewportCoords,
                 viewCoords,
                 parentClip,
@@ -1107,6 +1110,7 @@ export default class GridView extends ContainerView {
                 backgroundStroke,
                 title,
                 selectionRect,
+                rulerOverlays,
                 viewportCoords,
                 viewCoords,
                 parentClip,
@@ -1289,6 +1293,12 @@ export default class GridView extends ContainerView {
                     selectionRect.getZindex(),
                     DECORATION_ORDER.selectionRect,
                     () => selectionRect?.render(context, viewCoords, options)
+                );
+            }
+
+            for (const overlay of rulerOverlays) {
+                queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
+                    overlay.view.render(context, viewCoords, options)
                 );
             }
 

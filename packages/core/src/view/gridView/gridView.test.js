@@ -718,6 +718,23 @@ describe("GridView separators", () => {
 });
 
 describe("GridView decoration zindex", () => {
+    test("renders generated ruler overlay decorations", async () => {
+        const order = await recordRenderOrder(
+            {
+                params: [
+                    {
+                        name: "cursor",
+                        ruler: { encodings: ["x"] },
+                    },
+                ],
+                vconcat: [makeUnitSpec()],
+            },
+            ["rulerOverlay_cursor"]
+        );
+
+        expect(order).toEqual(["rulerOverlay_cursor"]);
+    });
+
     test("renders default decorations around unclipped content", async () => {
         const order = await recordRenderOrder(
             {
