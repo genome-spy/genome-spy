@@ -1023,7 +1023,7 @@ Example docs snippet:
   Tentative commit: `feat(core): resolve ruler bindings`
 - [x] Add per-view overlay rendering with a static source and param-driven reactivity tests.
   Tentative commit: `feat(core): render ruler overlays`
-- [ ] Add coordinate normalization and snapping helpers used by all ruler update sources.
+- [x] Add coordinate normalization and snapping helpers used by all ruler update sources.
   Tentative commit: `feat(core): normalize ruler coordinates`
 - [ ] Add `on: "mousemove"` event/filter handling for pointer-driven ruler interactions.
   Tentative commit: `feat(core): handle ruler mousemove events`
