@@ -1021,7 +1021,7 @@ Example docs snippet:
   Tentative commit: `feat(core): add ruler compatibility helpers`
 - [x] Add binding registry and tests for participant resolution.
   Tentative commit: `feat(core): resolve ruler bindings`
-- [ ] Add per-view overlay rendering with a static source and param-driven reactivity tests.
+- [x] Add per-view overlay rendering with a static source and param-driven reactivity tests.
   Tentative commit: `feat(core): render ruler overlays`
 - [ ] Add coordinate normalization and snapping helpers used by all ruler update sources.
   Tentative commit: `feat(core): normalize ruler coordinates`
