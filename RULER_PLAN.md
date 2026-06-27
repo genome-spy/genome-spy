@@ -1029,7 +1029,7 @@ Example docs snippet:
   Tentative commit: `feat(core): handle ruler mousemove events`
 - [x] Add mousedown drag tracking and clear behavior.
   Tentative commit: `feat(core): add ruler drag interaction`
-- [ ] Add viewport-following source driven by viewport center and domain/layout changes.
+- [x] Add viewport-following source driven by viewport center and domain/layout changes.
   Tentative commit: `feat(core): add viewport-sourced rulers`
 - [ ] Add index/locus display modes.
   Tentative commit: `feat(core): add ruler snapping and band display`

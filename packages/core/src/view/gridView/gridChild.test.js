@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
 import { iterateLegendViews } from "./gridChildLegends.js";
@@ -266,6 +266,60 @@ describe("GridChild ruler interactions", () => {
 
         expect(listeners.has("mousemove")).toBe(true);
         expect(listeners.has("mouseleave")).toBe(true);
+    });
+
+    test("registers viewport ruler params and seeds their value", () => {
+        const setValue = vi.fn();
+        const scale = (value) => value;
+        scale.type = "linear";
+        scale.invert = (value) => value * 10;
+        const view = /** @type {any} */ ({
+            needsAxes: { x: false, y: false },
+            spec: {},
+            getConfigScopes:
+                /** @returns {import("../../spec/config.js").GenomeSpyConfig[]} */ () => [],
+            getParentGridChromePolicy: () => ({
+                axes: true,
+                background: true,
+            }),
+            getOverhang: () => Padding.zero(),
+            getPadding: () => Padding.zero(),
+            paramRuntime: {
+                paramConfigs: new Map([
+                    [
+                        "center",
+                        {
+                            name: "center",
+                            ruler: {
+                                source: "viewport",
+                                encodings: ["x"],
+                                snap: false,
+                            },
+                        },
+                    ],
+                ]),
+                setValue,
+            },
+            getScaleResolution: () => ({
+                getResolvedScaleType: () => "linear",
+                getScale: () => scale,
+                addEventListener: () => {},
+            }),
+            addInteractionListener: () => {},
+        });
+        const layoutParent = /** @type {any} */ ({
+            context: {},
+            spec: {},
+        });
+
+        new GridChild(view, layoutParent, 0);
+
+        expect(setValue).toHaveBeenCalledWith("center", {
+            type: "ruler",
+            values: {
+                x: 5,
+            },
+        });
     });
 });
 

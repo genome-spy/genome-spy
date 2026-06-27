@@ -41,6 +41,7 @@ import {
     iterateLegendViews,
 } from "./gridChildLegends.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
+import { RulerViewportController } from "../../ruler/rulerViewportController.js";
 
 /**
  * @typedef {{
@@ -115,6 +116,9 @@ export default class GridChild {
 
         /** @type {RulerMouseEventController[]} */
         this.rulerMouseEventControllers = [];
+
+        /** @type {RulerViewportController[]} */
+        this.rulerViewportControllers = [];
 
         /** @type {TitleView} */
         this.title = undefined;
@@ -199,6 +203,7 @@ export default class GridChild {
 
         this.#setupIntervalSelection();
         this.#setupPointerRulers();
+        this.#setupViewportRulers();
     }
 
     #setupPointerRulers() {
@@ -215,18 +220,9 @@ export default class GridChild {
             }
 
             const channels = ruler.encodings ?? ["x"];
-            const scaleResolutions = Object.fromEntries(
-                channels.map((channel) => {
-                    const resolution = view.getScaleResolution(channel);
-
-                    if (!resolution?.getResolvedScaleType?.()) {
-                        throw new Error(
-                            `No scale found for ruler param "${name}" on channel "${channel}".`
-                        );
-                    }
-
-                    return [channel, resolution];
-                })
+            const scaleResolutions = this.#getRulerScaleResolutions(
+                name,
+                channels
             );
 
             this.rulerMouseEventControllers.push(
@@ -239,6 +235,52 @@ export default class GridChild {
                 )
             );
         }
+    }
+
+    #setupViewportRulers() {
+        const view = this.view;
+
+        for (const [name, param] of view.paramRuntime.paramConfigs) {
+            if (!isRulerParameter(param) || param.ruler.source !== "viewport") {
+                continue;
+            }
+
+            const channels = param.ruler.encodings ?? ["x"];
+            const scaleResolutions = this.#getRulerScaleResolutions(
+                name,
+                channels
+            );
+
+            this.rulerViewportControllers.push(
+                new RulerViewportController(
+                    this,
+                    name,
+                    param.ruler,
+                    channels,
+                    scaleResolutions
+                )
+            );
+        }
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     */
+    #getRulerScaleResolutions(paramName, channels) {
+        return Object.fromEntries(
+            channels.map((channel) => {
+                const resolution = this.view.getScaleResolution(channel);
+
+                if (!resolution?.getResolvedScaleType?.()) {
+                    throw new Error(
+                        `No scale found for ruler param "${paramName}" on channel "${channel}".`
+                    );
+                }
+
+                return [channel, resolution];
+            })
+        );
     }
 
     #setupIntervalSelection() {
