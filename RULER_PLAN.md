@@ -1017,7 +1017,7 @@ Example docs snippet:
   Tentative commit: `feat(core): support pushed ruler parameters`
 - [x] Add the scale-aware `linearize(channel, value)` expression helper and tests.
   Tentative commit: `feat(core): add linearize expression helper`
-- [ ] Add compatibility helpers and unit tests.
+- [x] Add compatibility helpers and unit tests.
   Tentative commit: `feat(core): add ruler compatibility helpers`
 - [ ] Add binding registry and tests for participant resolution.
   Tentative commit: `feat(core): resolve ruler bindings`
