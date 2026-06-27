@@ -39,25 +39,11 @@
     },
 
     {
-      "data": {
-        "values": [
-          { "start": 0.5, "end": 1.5, "row": 1 },
-          { "start": 1.5, "end": 2.5, "row": 2 },
-          { "start": 2.5, "end": 3.5, "row": 3 },
-          { "start": 3.5, "end": 4.5, "row": 4 },
-          { "start": 4.5, "end": 5.5, "row": 5 }
-        ]
-      },
-      "transform": [
-        {
-          "type": "filter",
-          "expr": "cursor.type === 'ruler' && cursor.values.x != null && datum.start <= cursor.values.x && cursor.values.x < datum.end"
-        }
-      ],
-      "mark": "point",
+      "data": { "values": [{}] },
+      "transform": [],
+      "mark": "text",
       "encoding": {
-        "x": { "field": "start", "type": "quantitative" },
-        "y": { "field": "row", "type": "quantitative" }
+        "text": { "expr": "'' + cursor.values.x" }
       }
     }
   ]

@@ -1007,6 +1007,31 @@ Example docs snippet:
   expose it because it is useful in user-authored expressions that consume
   complex locus ruler values.
 
+## Current Implementation Status
+
+The current branch contains useful ruler scaffolding, but the interactive ruler
+is not complete. The checked implementation items below include helpers and
+unit-tested pieces that are not yet wired into the runtime view tree:
+
+- `createRulerOverlaySpec()` generates an overlay layer spec, but no runtime
+  code instantiates a `LayerView` from it.
+- `resolveRulerBindings()` and `createRulerBindingStore()` resolve bindings,
+  but nothing calls them during normal view construction.
+- `GridChild` currently installs pointer and viewport controllers only for
+  ruler params declared directly on the rendered child view.
+- A ruler declared on a concat view, such as
+  `examples/core/ruler/vconcat-spanning.json`, is therefore not discovered by
+  the child `GridChild` instances.
+- No ruler overlay views are included in `GridChild.getChildren()`, so even a
+  local ruler parameter can update silently without drawing a visible guide.
+- `extent: "auto"` currently has a resolver, but no container-spanning overlay
+  rendering is attached.
+- Mutation support currently exists only as a refreshable binding store. The
+  public mutation paths do not yet refresh live ruler controllers or overlays.
+
+The remaining steps below are required before the manual examples can be used
+as evidence that rulers work.
+
 ## Implementation Sequence
 
 - [x] Add spec types and schema tests for ruler params.
@@ -1043,3 +1068,156 @@ Example docs snippet:
   Tentative commit: `docs(core): document ruler parameters`
 - [x] Run focused tests, then workspace checks.
   No commit expected unless verification requires fixes.
+
+## Missing Runtime Integration Sequence
+
+- [ ] Add failing integration tests for runtime attachment.
+  Tentative commit: `test(core): cover ruler runtime attachment`
+
+  Required tests:
+
+  - A ruler declared on a `vconcat` owner with compatible child x scales creates
+    ruler bindings for the child views.
+  - Moving over a participating child updates the owner ruler parameter.
+  - A generated ruler overlay appears in `GridChild.getChildren()`.
+  - `examples/core/ruler/vconcat-spanning.json` initializes with attached ruler
+    interaction/overlay state, not only schema-valid structure.
+
+  Suggested files:
+
+  - `packages/core/src/ruler/rulerRuntimeAttachment.test.js`
+  - `packages/core/src/view/gridView/gridChild.test.js`
+  - `packages/core/examples.test.js`
+
+- [ ] Add a generated ruler overlay view attachment helper.
+  Tentative commit: `feat(core): attach ruler overlay views`
+
+  Implement a small helper rather than a heavy class unless lifecycle needs
+  grow:
+
+  - Create a `LayerView` from `createRulerOverlaySpec(...)`.
+  - Use `gridChild.layoutParent.context`, `gridChild.layoutParent`, and the
+    participating child view as the data parent, matching the `SelectionRect`
+    generated-view pattern.
+  - Mark the generated overlay as non-addressable and chrome with
+    `markViewAsNonAddressable(..., { skipSubtree: true })` and
+    `markViewAsChrome(..., { skipSubtree: true })`.
+  - Store generated overlays on `GridChild`, for example
+    `this.rulerOverlays = []`.
+  - Yield those overlays from `GridChild.getChildren()`.
+  - Initialize generated overlay children after creation, following the same
+    practical pattern currently used by `SelectionRect`.
+
+  Suggested files:
+
+  - `packages/core/src/view/gridView/rulerOverlay.js`
+  - `packages/core/src/view/gridView/gridChild.js`
+  - `packages/core/src/view/gridView/gridChild.test.js`
+
+- [ ] Replace local-only ruler setup with binding-driven attachment.
+  Tentative commit: `feat(core): attach ruler bindings to participants`
+
+  Current local scanning in `GridChild#setupPointerRulers()` and
+  `GridChild#setupViewportRulers()` is insufficient because it only sees params
+  declared directly on the child view. Replace or supplement it with a binding
+  attachment phase that:
+
+  - Resolves ruler bindings from a shared owner/root after children and scales
+    exist.
+  - Attaches each binding to its compatible non-chrome participant views.
+  - Installs pointer listeners on each participant `GridChild`.
+  - Writes updates to the declaring owner parameter runtime, not to the
+    participant child unless the child owns the binding.
+  - Uses the pushed setter for `push: "outer"` bindings so siblings observe the
+    outer parameter value.
+  - Keeps the current local-unit case working as the degenerate case where
+    owner and participant are the same view.
+
+  Suggested files:
+
+  - `packages/core/src/ruler/rulerRegistry.js`
+  - `packages/core/src/ruler/rulerBindingStore.js`
+  - `packages/core/src/ruler/rulerMouseEventController.js`
+  - `packages/core/src/ruler/rulerViewportController.js`
+  - `packages/core/src/view/gridView/gridChild.js`
+  - `packages/core/src/view/gridView/gridView.js`
+
+- [ ] Connect ruler overlay specs to parameter reactivity.
+  Tentative commit: `feat(core): render live ruler overlays`
+
+  `createRulerOverlaySpec()` uses a static `[{}]` source and param expressions.
+  Verify that parameter changes invalidate generated overlay geometry and
+  visibility. If ExprRef/filter reactivity is not sufficient, add the smallest
+  overlay-specific subscription that requests a graphics update without
+  replacing the static source.
+
+  Required tests:
+
+  - Updating the ruler parameter changes overlay geometry.
+  - Clearing the ruler hides the overlay.
+  - The generated overlay does not contribute to scale domains.
+  - Overlay views are chrome and non-addressable.
+
+  Suggested files:
+
+  - `packages/core/src/view/gridView/rulerOverlay.js`
+  - `packages/core/src/view/gridView/rulerOverlay.test.js`
+  - `packages/core/src/view/gridView/gridChild.test.js`
+
+- [ ] Implement actual container-spanning overlay attachment.
+  Tentative commit: `feat(core): render container-spanning rulers`
+
+  The existing `extent` resolver only chooses `"view"` vs `"container"`. Add
+  the runtime rendering path for the `"container"` case:
+
+  - For `x` rulers in `vconcat`, create one generated overlay at the concat/grid
+    owner level when projections align.
+  - For `y` rulers in `hconcat`, create one generated overlay at the concat/grid
+    owner level when projections align.
+  - Keep `extent: "auto"` falling back to per-view overlays when alignment is
+    not safe.
+  - Keep `extent: "container"` throwing when alignment is not safe.
+  - Do not include axes, legends, scrollbars, or other chrome in the spanning
+    visual extent.
+
+  Suggested files:
+
+  - `packages/core/src/ruler/rulerExtent.js`
+  - `packages/core/src/view/gridView/gridView.js`
+  - `packages/core/src/view/gridView/gridChild.js`
+  - `packages/core/src/view/gridView/rulerOverlay.js`
+
+- [ ] Integrate binding refresh with live view mutations.
+  Tentative commit: `feat(core): refresh live ruler attachments after mutations`
+
+  The binding store can recompute bindings, but live controllers and overlays
+  must also be refreshed when views are inserted, moved, or removed:
+
+  - Dispose or detach controllers/overlays for removed participants.
+  - Attach controllers/overlays for inserted participants.
+  - Recompute extent decisions after layout-affecting mutations.
+  - Keep mutation refresh scoped to affected subtrees where practical.
+
+  Suggested files:
+
+  - `packages/core/src/view/containerMutationHelper.js`
+  - `packages/core/src/view/concatView.js`
+  - `packages/core/src/view/layerView.js`
+  - `packages/core/src/ruler/rulerBindingStore.js`
+
+- [ ] Add browser/manual verification for ruler examples.
+  Tentative commit: `test(core): verify ruler examples interactively`
+
+  Required checks:
+
+  - Start the dev server with `npm start`.
+  - Open
+    `http://127.0.0.1:8080/?spec=examples/core/ruler/vconcat-spanning.json`.
+  - Move over a child plot and verify the ruler becomes visible.
+  - Verify `examples/core/ruler/vconcat-independent.json` shows per-view
+    rulers.
+  - Verify `examples/core/ruler/hconcat-push-outer.json` updates the sibling
+    computation but does not render a ruler in the sibling unless it declares
+    one.
+  - Add an automated interaction smoke test if the existing test harness can
+    inspect rendered overlay views or canvas changes reliably.
