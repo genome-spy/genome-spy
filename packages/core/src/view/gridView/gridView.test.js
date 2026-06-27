@@ -1942,3 +1942,81 @@ describe("GridView wheel zoom", () => {
         expect(preventDefault).not.toHaveBeenCalled();
     });
 });
+
+describe("GridView ruler interactions", () => {
+    test("vconcat ruler follows mousemove coordinates", async () => {
+        const originalMouseEvent = globalThis.MouseEvent;
+
+        class FakeMouseEvent extends Event {
+            constructor(
+                /** @type {string} */ type,
+                /** @type {Record<string, any>} */ init = {}
+            ) {
+                super(type);
+                Object.assign(this, init);
+            }
+        }
+
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (FakeMouseEvent)
+        );
+
+        try {
+            const view = await createAndInitialize(
+                {
+                    params: [
+                        {
+                            name: "cursor",
+                            ruler: { encodings: ["x"], snap: false },
+                        },
+                    ],
+                    resolve: {
+                        scale: { x: "shared" },
+                    },
+                    vconcat: [makeUnitSpec(), makeUnitSpec()],
+                },
+                ConcatView
+            );
+            const concatView = /** @type {ConcatView} */ (view);
+            const context = new NoOpRenderingContext({ picking: false });
+            concatView.render(context, Rectangle.create(0, 0, 200, 200), {
+                firstFacet: true,
+            });
+            const requestRender = vi.spyOn(
+                concatView.context.animator,
+                "requestRender"
+            );
+
+            const child = /** @type {UnitView} */ (concatView.children[0]);
+            const leftPoint = new Point(
+                child.coords.x + child.coords.width * 0.25,
+                child.coords.y + child.coords.height / 2
+            );
+            const rightPoint = new Point(
+                child.coords.x + child.coords.width * 0.75,
+                child.coords.y + child.coords.height / 2
+            );
+
+            concatView.propagateInteraction(
+                new Interaction(
+                    leftPoint,
+                    /** @type {any} */ (new FakeMouseEvent("mousemove"))
+                )
+            );
+            const leftValue = concatView.paramRuntime.findValue("cursor");
+
+            concatView.propagateInteraction(
+                new Interaction(
+                    rightPoint,
+                    /** @type {any} */ (new FakeMouseEvent("mousemove"))
+                )
+            );
+            const rightValue = concatView.paramRuntime.findValue("cursor");
+
+            expect(leftValue.values.x).toBeLessThan(rightValue.values.x);
+            expect(requestRender).toHaveBeenCalled();
+        } finally {
+            globalThis.MouseEvent = originalMouseEvent;
+        }
+    });
+});
