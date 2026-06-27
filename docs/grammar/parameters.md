@@ -160,3 +160,41 @@ detail domain. A [`"link"`](./mark/link.md) mark with a `"diagonal"` shape
 visually connects the selected region in the overview to the detail view.
 
 EXAMPLE examples/docs/grammar/parameters/genome-overview-detail.json height=150 spechidden
+
+## Ruler Parameters
+
+Ruler parameters track a single domain coordinate and display it as a guide in
+compatible views. They are useful for cursor readouts, genome-browser-style
+center coordinates, and sibling views that compute from a shared cursor
+coordinate.
+
+Rulers are not selections. They store a tagged parameter value such as:
+
+```js
+{
+    type: "ruler",
+    values: {
+        x: 12.5
+    }
+}
+```
+
+Use `persist: false` for hover rulers and other transient cursor state.
+
+Pointer-driven rulers use `ruler.on`:
+
+- `"mousemove"` follows the pointer and clears on mouse leave by default.
+- `"mousedown"` updates on press and continues while dragging. Use an event
+  filter such as `"mousedown[event.shiftKey]"` when plain drag is used for zoom
+  or pan gestures.
+
+Viewport-driven rulers use `"source": "viewport"` and track the center of the
+current scale viewport. A viewport ruler does not define `on` and does not clear
+on mouse leave.
+
+For index and locus scales, `snap: "auto"` snaps ruler values to integer
+coordinates. Use `display: "center"` to draw the guide at the center of the
+snapped coordinate, or `display: "band"` to draw the selected coordinate as a
+rectangular band.
+
+EXAMPLE examples/docs/grammar/parameters/ruler.json height=240

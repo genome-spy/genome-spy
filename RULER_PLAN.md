@@ -1039,7 +1039,7 @@ Example docs snippet:
   Tentative commit: `feat(core): refresh ruler bindings after view mutations`
 - [x] Add manual ruler examples under `examples/core/ruler`.
   Tentative commit: `docs(core): add ruler manual examples`
-- [ ] Add docs and a small example spec.
+- [x] Add docs and a small example spec.
   Tentative commit: `docs(core): document ruler parameters`
 - [ ] Run focused tests, then workspace checks.
   No commit expected unless verification requires fixes.

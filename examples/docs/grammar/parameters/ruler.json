@@ -1,0 +1,30 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Ruler parameter example.",
+
+  "params": [
+    {
+      "name": "cursor",
+      "persist": false,
+      "ruler": {
+        "encodings": ["x"],
+        "on": "mousemove",
+        "extent": "view"
+      }
+    }
+  ],
+
+  "data": { "url": "data/sincos.csv" },
+
+  "mark": { "type": "point", "size": 80 },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "zoom": true }
+    },
+    "y": { "field": "sin", "type": "quantitative" }
+  }
+}
