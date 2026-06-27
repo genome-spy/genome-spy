@@ -8,6 +8,7 @@ import TitleView from "../titleView.js";
 import ContainerView from "../containerView.js";
 import { createTestViewContext } from "../testUtils.js";
 import UnitView from "../unitView.js";
+import { isChromeView } from "../viewSelectors.js";
 
 /**
  * @returns {GridChild}
@@ -157,6 +158,53 @@ function createLegendRegion(
     };
 }
 
+function createRulerGridChildView(
+    /** @type {import("../../spec/parameter.js").Parameter[]} */ params
+) {
+    const context = createTestViewContext();
+    const layoutParent = new ContainerView(
+        { layer: [] },
+        context,
+        null,
+        null,
+        "parent"
+    );
+    const view = new UnitView(
+        {
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            params,
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        },
+        context,
+        layoutParent,
+        layoutParent,
+        "child"
+    );
+    view.getParentGridChromePolicy = () => ({
+        axes: true,
+        background: true,
+    });
+    view.needsAxes.x = false;
+    view.facetCoords.set(null, Rectangle.create(0, 0, 100, 100));
+
+    /** @param {number} value */
+    const scale = (value) => value;
+    scale.type = "linear";
+    /** @param {number} value */
+    scale.invert = (value) => value;
+    view.getScaleResolution = () =>
+        /** @type {any} */ ({
+            getResolvedScaleType: () => "linear",
+            getScale: () => scale,
+            addEventListener: () => {},
+        });
+
+    return { view, layoutParent };
+}
+
 describe("GridChild legend layout", () => {
     test("right legend contributes to right overhang", () => {
         const child = createMinimalGridChild();
@@ -223,102 +271,52 @@ describe("GridChild ruler interactions", () => {
     test("registers mousemove listeners for pointer ruler params", () => {
         /** @type {Map<string, any>} */
         const listeners = new Map();
-        /** @param {number} value */
-        const scale = (value) => value;
-        scale.type = "linear";
-        /** @param {number} value */
-        scale.invert = (value) => value;
-        const view = /** @type {any} */ ({
-            needsAxes: { x: false, y: false },
-            spec: {},
-            getConfigScopes:
-                /** @returns {import("../../spec/config.js").GenomeSpyConfig[]} */ () => [],
-            getParentGridChromePolicy: () => ({
-                axes: true,
-                background: true,
-            }),
-            getOverhang: () => Padding.zero(),
-            getPadding: () => Padding.zero(),
-            paramRuntime: {
-                paramConfigs: new Map([
-                    [
-                        "cursor",
-                        {
-                            name: "cursor",
-                            ruler: { encodings: ["x"] },
-                        },
-                    ],
-                ]),
-                setValue: () => {},
+        const { view, layoutParent } = createRulerGridChildView([
+            {
+                name: "cursor",
+                ruler: { encodings: ["x"] },
             },
-            coords: Rectangle.create(0, 0, 100, 100),
-            getScaleResolution: () => ({
-                getResolvedScaleType: () => "linear",
-                getScale: () => scale,
-            }),
-            addInteractionListener(
-                /** @type {string} */ type,
-                /** @type {any} */ listener
-            ) {
-                listeners.set(type, listener);
-            },
-        });
-        const layoutParent = /** @type {any} */ ({
-            context: {},
-            spec: {},
-        });
+        ]);
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, listener);
+        };
 
-        new GridChild(view, layoutParent, 0);
+        const child = new GridChild(view, layoutParent, 0);
 
         expect(listeners.has("mousemove")).toBe(true);
         expect(listeners.has("mouseleave")).toBe(true);
+
+        const rulerOverlay = Array.from(child.getChildren()).find(
+            (view) => view.defaultName === "rulerOverlay0_cursor"
+        );
+        expect(rulerOverlay).toBeDefined();
+        expect(isChromeView(rulerOverlay)).toBe(true);
     });
 
     test("registers viewport ruler params and seeds their value", () => {
-        const setValue = vi.fn();
+        const { view, layoutParent } = createRulerGridChildView([
+            {
+                name: "center",
+                ruler: {
+                    source: "viewport",
+                    encodings: ["x"],
+                    snap: false,
+                },
+            },
+        ]);
+        const setValue = vi.spyOn(view.paramRuntime, "setValue");
         /** @param {number} value */
         const scale = (value) => value;
         scale.type = "linear";
         /** @param {number} value */
         scale.invert = (value) => value * 10;
-        const view = /** @type {any} */ ({
-            needsAxes: { x: false, y: false },
-            spec: {},
-            getConfigScopes:
-                /** @returns {import("../../spec/config.js").GenomeSpyConfig[]} */ () => [],
-            getParentGridChromePolicy: () => ({
-                axes: true,
-                background: true,
-            }),
-            getOverhang: () => Padding.zero(),
-            getPadding: () => Padding.zero(),
-            paramRuntime: {
-                paramConfigs: new Map([
-                    [
-                        "center",
-                        {
-                            name: "center",
-                            ruler: {
-                                source: "viewport",
-                                encodings: ["x"],
-                                snap: false,
-                            },
-                        },
-                    ],
-                ]),
-                setValue,
-            },
-            getScaleResolution: () => ({
+        view.getScaleResolution = () =>
+            /** @type {any} */ ({
                 getResolvedScaleType: () => "linear",
                 getScale: () => scale,
                 addEventListener: () => {},
-            }),
-            addInteractionListener: () => {},
-        });
-        const layoutParent = /** @type {any} */ ({
-            context: {},
-            spec: {},
-        });
+            });
+        view.addInteractionListener = () => {};
 
         new GridChild(view, layoutParent, 0);
 

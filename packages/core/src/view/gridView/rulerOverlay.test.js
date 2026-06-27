@@ -20,6 +20,10 @@ describe("createRulerOverlaySpec", () => {
                     x: "forced",
                     y: "forced",
                 },
+                axis: {
+                    x: "excluded",
+                    y: "excluded",
+                },
             },
             data: { values: [{}] },
             transform: [
@@ -31,6 +35,7 @@ describe("createRulerOverlaySpec", () => {
             encoding: {
                 x: {
                     expr: "linearize('x', cursor.values.x)",
+                    axis: null,
                     type: null,
                     title: null,
                 },
@@ -64,11 +69,13 @@ describe("createRulerOverlaySpec", () => {
         expect(spec.encoding).toMatchObject({
             x: {
                 expr: "linearize('x', crosshair.values.x)",
+                axis: null,
                 type: null,
                 title: null,
             },
             y: {
                 expr: "linearize('y', crosshair.values.y)",
+                axis: null,
                 type: null,
                 title: null,
             },
@@ -102,11 +109,13 @@ describe("createRulerOverlaySpec", () => {
         expect(spec.encoding).toMatchObject({
             x: {
                 expr: "linearize('x', cursor.values.x)",
+                axis: null,
                 type: null,
                 title: null,
             },
             x2: {
                 expr: "linearize('x', cursor.values.x) + 1",
+                axis: null,
                 type: null,
                 title: null,
             },

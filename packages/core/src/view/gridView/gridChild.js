@@ -42,6 +42,7 @@ import {
 } from "./gridChildLegends.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 import { RulerViewportController } from "../../ruler/rulerViewportController.js";
+import { createRulerOverlaySpec, resolveRulerDisplay } from "./rulerOverlay.js";
 
 /**
  * @typedef {{
@@ -119,6 +120,9 @@ export default class GridChild {
 
         /** @type {RulerViewportController[]} */
         this.rulerViewportControllers = [];
+
+        /** @type {LayerView[]} */
+        this.rulerOverlays = [];
 
         /** @type {TitleView} */
         this.title = undefined;
@@ -234,6 +238,8 @@ export default class GridChild {
                     scaleResolutions
                 )
             );
+
+            this.#addRulerOverlay(name, ruler, channels, scaleResolutions);
         }
     }
 
@@ -260,7 +266,48 @@ export default class GridChild {
                     scaleResolutions
                 )
             );
+
+            this.#addRulerOverlay(
+                name,
+                param.ruler,
+                channels,
+                scaleResolutions
+            );
         }
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {import("../../spec/parameter.js").RulerConfig} ruler
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>>} scaleResolutions
+     */
+    #addRulerOverlay(paramName, ruler, channels, scaleResolutions) {
+        const scaleType = scaleResolutions[channels[0]].getResolvedScaleType();
+        const overlay = new LayerView(
+            createRulerOverlaySpec({
+                paramName,
+                channels,
+                display: resolveRulerDisplay(
+                    scaleType,
+                    ruler.snap,
+                    ruler.display
+                ),
+                mark: ruler.mark,
+            }),
+            this.layoutParent.context,
+            this.layoutParent,
+            this.view,
+            "rulerOverlay" + this.serial + "_" + paramName
+        );
+
+        markViewAsNonAddressable(overlay, { skipSubtree: true });
+        markViewAsChrome(overlay, { skipSubtree: true });
+        this.rulerOverlays.push(overlay);
+
+        // WARNING! The following is an async method! Mirrors SelectionRect until
+        // grid chrome has a shared awaited initialization path.
+        overlay.initializeChildren();
     }
 
     /**
@@ -760,6 +807,7 @@ export default class GridChild {
         if (this.selectionRect) {
             yield this.selectionRect;
         }
+        yield* this.rulerOverlays;
     }
 
     /**
