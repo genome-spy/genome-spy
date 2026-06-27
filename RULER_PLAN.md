@@ -1033,7 +1033,7 @@ Example docs snippet:
   Tentative commit: `feat(core): add viewport-sourced rulers`
 - [x] Add index/locus display modes.
   Tentative commit: `feat(core): add ruler snapping and band display`
-- [ ] Add `extent: "auto"` and narrow container spanning.
+- [x] Add `extent: "auto"` and narrow container spanning.
   Tentative commit: `feat(core): support spanning ruler extents`
 - [ ] Add mutation/update integration so inserted and removed views keep bindings current.
   Tentative commit: `feat(core): refresh ruler bindings after view mutations`

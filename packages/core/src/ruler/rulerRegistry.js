@@ -2,6 +2,7 @@ import { isRulerParameter } from "../paramRuntime/paramUtils.js";
 import { VISIT_SKIP } from "../view/view.js";
 import { isChromeView } from "../view/viewSelectors.js";
 import { areRulerScaleResolutionsCompatible } from "./rulerCompatibility.js";
+import { resolveRulerExtent } from "./rulerExtent.js";
 
 /**
  * @typedef {import("../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
@@ -10,6 +11,7 @@ import { areRulerScaleResolutionsCompatible } from "./rulerCompatibility.js";
  *   paramName: string,
  *   config: import("../spec/parameter.js").RulerConfig,
  *   channels: PrimaryPositionalChannel[],
+ *   extent: import("./rulerExtent.js").ResolvedRulerExtent,
  *   participants: RulerParticipant[]
  * }} RulerBinding
  * @typedef {{
@@ -33,16 +35,24 @@ export function resolveRulerBindings(root) {
         for (const [paramName, param] of view.paramRuntime.paramConfigs) {
             if (isRulerParameter(param)) {
                 const channels = param.ruler.encodings ?? ["x"];
+                const participants = resolveParticipants(
+                    view,
+                    paramName,
+                    channels
+                );
                 bindings.push({
                     owner: view,
                     paramName,
                     config: param.ruler,
                     channels,
-                    participants: resolveParticipants(
-                        view,
+                    extent: resolveRulerExtent({
                         paramName,
-                        channels
-                    ),
+                        requestedExtent: param.ruler.extent,
+                        owner: view,
+                        channels,
+                        participants,
+                    }),
+                    participants,
                 });
             }
         }

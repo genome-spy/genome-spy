@@ -21,6 +21,7 @@ describe("ruler registry", () => {
             owner: root,
             paramName: "cursor",
             channels: ["x"],
+            extent: { type: "view" },
         });
         expect(bindings[0].participants.map((p) => p.view.name)).toEqual([
             "a",
@@ -97,16 +98,39 @@ describe("ruler registry", () => {
             'Multiple ruler parameters would apply to view "child" on channel "x": first, second.'
         );
     });
+
+    test("resolves auto extent to container for aligned vconcat x rulers", () => {
+        const resolution = createResolution("linear");
+        const root = createView(
+            "root",
+            [
+                createView("a", [], { x: resolution }),
+                createView("b", [], { x: resolution }),
+            ],
+            {},
+            { vconcat: [] }
+        );
+        root.paramRuntime.paramConfigs.set("cursor", {
+            name: "cursor",
+            ruler: { encodings: ["x"], extent: "auto" },
+        });
+
+        const bindings = resolveRulerBindings(root);
+
+        expect(bindings[0].extent).toEqual({ type: "container", channel: "x" });
+    });
 });
 
 /**
  * @param {string} name
  * @param {any[]} [children]
  * @param {Record<string, any>} [resolutions]
+ * @param {any} [spec]
  */
-function createView(name, children = [], resolutions = {}) {
+function createView(name, children = [], resolutions = {}, spec = {}) {
     const view = {
         name,
+        spec,
         paramRuntime: {
             paramConfigs: new Map(),
         },
