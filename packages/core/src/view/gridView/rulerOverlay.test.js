@@ -34,7 +34,9 @@ describe("createRulerOverlaySpec", () => {
             ],
             encoding: {
                 x: {
-                    expr: "linearize('x', cursor.values.x)",
+                    datum: {
+                        expr: "linearize('x', cursor.values.x)",
+                    },
                     axis: null,
                     type: null,
                     title: null,
@@ -68,13 +70,17 @@ describe("createRulerOverlaySpec", () => {
         ]);
         expect(spec.encoding).toMatchObject({
             x: {
-                expr: "linearize('x', crosshair.values.x)",
+                datum: {
+                    expr: "linearize('x', crosshair.values.x)",
+                },
                 axis: null,
                 type: null,
                 title: null,
             },
             y: {
-                expr: "linearize('y', crosshair.values.y)",
+                datum: {
+                    expr: "linearize('y', crosshair.values.y)",
+                },
                 axis: null,
                 type: null,
                 title: null,
@@ -93,7 +99,8 @@ describe("createRulerOverlaySpec", () => {
             display: "center",
         });
 
-        expect(/** @type {any} */ (spec.encoding.x).expr).toBe(
+        expect(/** @type {any} */ (spec.encoding.x).expr).toBe(undefined);
+        expect(/** @type {any} */ (spec.encoding.x).datum.expr).toBe(
             "linearize('x', cursor.values.x) + 0.5"
         );
         expect(/** @type {any} */ (spec.layer[0]).mark.type).toBe("rule");
@@ -108,13 +115,17 @@ describe("createRulerOverlaySpec", () => {
 
         expect(spec.encoding).toMatchObject({
             x: {
-                expr: "linearize('x', cursor.values.x)",
+                datum: {
+                    expr: "linearize('x', cursor.values.x)",
+                },
                 axis: null,
                 type: null,
                 title: null,
             },
             x2: {
-                expr: "linearize('x', cursor.values.x) + 1",
+                datum: {
+                    expr: "linearize('x', cursor.values.x) + 1",
+                },
                 axis: null,
                 type: null,
                 title: null,

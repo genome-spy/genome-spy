@@ -2004,6 +2004,8 @@ describe("GridView ruler interactions", () => {
                 )
             );
             const leftValue = concatView.paramRuntime.findValue("cursor");
+            const renderRequestsAfterFirstMove =
+                requestRender.mock.calls.length;
 
             concatView.propagateInteraction(
                 new Interaction(
@@ -2014,7 +2016,9 @@ describe("GridView ruler interactions", () => {
             const rightValue = concatView.paramRuntime.findValue("cursor");
 
             expect(leftValue.values.x).toBeLessThan(rightValue.values.x);
-            expect(requestRender).toHaveBeenCalled();
+            expect(requestRender.mock.calls.length).toBeGreaterThan(
+                renderRequestsAfterFirstMove
+            );
         } finally {
             globalThis.MouseEvent = originalMouseEvent;
         }

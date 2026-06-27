@@ -112,7 +112,7 @@ export function resolveRulerDisplay(scaleType, snap, display) {
  */
 function createExprEncoding(expr) {
     return /** @type {any} */ ({
-        expr,
+        datum: { expr },
         axis: null,
         type: null,
         title: null,
