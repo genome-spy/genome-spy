@@ -8,8 +8,6 @@
   "width": 500,
   "height": 300,
 
-  "config": { "legend": { "disable": false, "offset": 18 } },
-
   "data": { "url": "vega-datasets/gapminder-health-income.csv" },
 
   "mark": {
