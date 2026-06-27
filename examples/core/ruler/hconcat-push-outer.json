@@ -1,0 +1,60 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "A child ruler pushes a coordinate to an outer parameter used by a sibling view.",
+
+  "params": [{ "name": "cursor", "persist": false }],
+
+  "hconcat": [
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 2 },
+          { "x": 2, "y": 4 },
+          { "x": 3, "y": 3 },
+          { "x": 4, "y": 7 },
+          { "x": 5, "y": 5 }
+        ]
+      },
+      "params": [
+        {
+          "name": "cursor",
+          "push": "outer",
+          "ruler": {
+            "encodings": ["x"],
+            "on": "mousemove",
+            "extent": "view"
+          }
+        }
+      ],
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    },
+
+    {
+      "data": {
+        "values": [
+          { "start": 0.5, "end": 1.5, "label": "A" },
+          { "start": 1.5, "end": 2.5, "label": "B" },
+          { "start": 2.5, "end": 3.5, "label": "C" },
+          { "start": 3.5, "end": 4.5, "label": "D" },
+          { "start": 4.5, "end": 5.5, "label": "E" }
+        ]
+      },
+      "transform": [
+        {
+          "filter": "cursor.type === 'ruler' && cursor.values.x != null && datum.start <= cursor.values.x && cursor.values.x < datum.end"
+        }
+      ],
+      "mark": "rect",
+      "encoding": {
+        "x": { "field": "start", "type": "quantitative" },
+        "x2": { "field": "end" },
+        "y": { "field": "label", "type": "nominal" }
+      }
+    }
+  ]
+}

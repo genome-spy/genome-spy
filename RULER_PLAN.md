@@ -1037,7 +1037,7 @@ Example docs snippet:
   Tentative commit: `feat(core): support spanning ruler extents`
 - [x] Add mutation/update integration so inserted and removed views keep bindings current.
   Tentative commit: `feat(core): refresh ruler bindings after view mutations`
-- [ ] Add manual ruler examples under `examples/core/ruler`.
+- [x] Add manual ruler examples under `examples/core/ruler`.
   Tentative commit: `docs(core): add ruler manual examples`
 - [ ] Add docs and a small example spec.
   Tentative commit: `docs(core): document ruler parameters`

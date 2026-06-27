@@ -1,0 +1,62 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Two vertically concatenated views declare independent rulers.",
+
+  "vconcat": [
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 2 },
+          { "x": 2, "y": 5 },
+          { "x": 3, "y": 3 },
+          { "x": 4, "y": 8 }
+        ]
+      },
+      "params": [
+        {
+          "name": "topCursor",
+          "persist": false,
+          "ruler": {
+            "encodings": ["x"],
+            "on": "mousemove",
+            "extent": "view"
+          }
+        }
+      ],
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    },
+
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 9 },
+          { "x": 2, "y": 4 },
+          { "x": 3, "y": 6 },
+          { "x": 4, "y": 2 }
+        ]
+      },
+      "params": [
+        {
+          "name": "bottomCursor",
+          "persist": false,
+          "ruler": {
+            "encodings": ["x"],
+            "on": "mousedown[event.shiftKey]",
+            "clear": false,
+            "extent": "view"
+          }
+        }
+      ],
+      "mark": "bar",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  ]
+}
