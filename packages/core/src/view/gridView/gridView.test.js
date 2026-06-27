@@ -735,6 +735,43 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["rulerOverlay_cursor"]);
     });
 
+    test("renders one container overlay for spanning vconcat rulers", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "cursor",
+                        ruler: { encodings: ["x"], extent: "container" },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "rulerOverlay_cursor");
+        expect(overlays).toHaveLength(1);
+
+        /** @type {string[]} */
+        const order = [];
+        const original = overlays[0].render.bind(overlays[0]);
+        overlays[0].render = (context, coords, options = {}) => {
+            order.push(overlays[0].name);
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        expect(order).toEqual(["rulerOverlay_cursor"]);
+    });
+
     test("renders default decorations around unclipped content", async () => {
         const order = await recordRenderOrder(
             {

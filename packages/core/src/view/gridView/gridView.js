@@ -46,6 +46,12 @@ import {
     createClipOptions,
     normalizeClipOptions,
 } from "../renderingContext/clipOptions.js";
+import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
+import { createRulerOverlaySpec, resolveRulerDisplay } from "./rulerOverlay.js";
+import {
+    markViewAsChrome,
+    markViewAsNonAddressable,
+} from "../viewSelectors.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -206,6 +212,9 @@ export default class GridView extends ContainerView {
 
     /** @type {KeyboardZoomController | null} */
     #keyboardZoomController = null;
+
+    /** @type {{ view: LayerView, zindex: number }[]} */
+    #rulerOverlays = [];
 
     /**
      *
@@ -403,6 +412,7 @@ export default class GridView extends ContainerView {
 
         await this.syncSharedAxes();
         await this.syncSharedLegends();
+        await this.syncRulerOverlays();
         await Promise.all(
             gridChildren.map((gridChild) => gridChild.createAxes())
         );
@@ -472,12 +482,112 @@ export default class GridView extends ContainerView {
         }
     }
 
+    async syncRulerOverlays() {
+        for (const overlay of this.#rulerOverlays) {
+            overlay.view.disposeSubtree();
+        }
+        this.#rulerOverlays = [];
+
+        /** @type {Promise<void>[]} */
+        const promises = [];
+
+        for (const [paramName, param] of this.paramRuntime.paramConfigs) {
+            if (!isRulerParameter(param)) {
+                continue;
+            }
+
+            const channels = param.ruler.encodings ?? ["x"];
+            const channel = channels.length === 1 ? channels[0] : undefined;
+            if (
+                !channel ||
+                !this.#usesContainerRuler(paramName, param.ruler, channel)
+            ) {
+                continue;
+            }
+
+            const scaleResolution = this.getScaleResolution(channel);
+            const scaleType = scaleResolution.getResolvedScaleType();
+            const overlay = new LayerView(
+                createRulerOverlaySpec({
+                    paramName,
+                    channels,
+                    display: resolveRulerDisplay(
+                        scaleType,
+                        param.ruler.snap,
+                        param.ruler.display
+                    ),
+                    mark: param.ruler.mark,
+                }),
+                this.context,
+                this,
+                this,
+                "rulerOverlay" + "_" + paramName
+            );
+
+            markViewAsNonAddressable(overlay, { skipSubtree: true });
+            markViewAsChrome(overlay, { skipSubtree: true });
+            this.#rulerOverlays.push({
+                view: overlay,
+                zindex: param.ruler.mark?.zindex ?? 1,
+            });
+            promises.push(overlay.initializeChildren());
+        }
+
+        await Promise.all(promises);
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {import("../../spec/parameter.js").RulerConfig} config
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
+     */
+    #usesContainerRuler(paramName, config, channel) {
+        const supportsContainer =
+            (channel === "x" && isVConcatSpec(this.spec)) ||
+            (channel === "y" && isHConcatSpec(this.spec));
+
+        if (!supportsContainer) {
+            if (config.extent === "container") {
+                throw new Error(
+                    `Ruler param "${paramName}" cannot use extent "container" for channel "${channel}" in this view.`
+                );
+            } else {
+                return false;
+            }
+        }
+
+        const ownerResolution = this.getScaleResolution(channel);
+        const aligned =
+            ownerResolution &&
+            this.#children.every(
+                (gridChild) =>
+                    gridChild.view.getScaleResolution(channel) ===
+                    ownerResolution
+            );
+
+        if (!aligned) {
+            if (config.extent === "container") {
+                throw new Error(
+                    `Ruler param "${paramName}" cannot use extent "container" because its ${channel} projections do not align.`
+                );
+            } else {
+                return false;
+            }
+        }
+
+        return config.extent === "container" || config.extent === "auto";
+    }
+
     /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
         for (const gridChild of this.#children) {
             yield* gridChild.getChildren();
+        }
+
+        for (const overlay of this.#rulerOverlays) {
+            yield overlay.view;
         }
 
         for (const separatorView of Object.values(this.#separatorViews)) {
@@ -1012,6 +1122,9 @@ export default class GridView extends ContainerView {
         }
 
         const gridOverhang = this.#getGridOverhang();
+        const gridViewCoords = getUnionCoords(
+            renderItems.map((item) => item.viewCoords)
+        );
 
         /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */
         const underlays = [];
@@ -1100,6 +1213,14 @@ export default class GridView extends ContainerView {
                 DECORATION_ORDER.separator,
                 () => horizontalSeparator.render(context, coords, options)
             );
+        }
+
+        if (gridViewCoords) {
+            for (const overlay of this.#rulerOverlays) {
+                queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
+                    overlay.view.render(context, gridViewCoords, options)
+                );
+            }
         }
 
         for (const item of renderItems) {
@@ -1735,6 +1856,23 @@ function getSeparatorDirections(spec) {
     }
 
     return ["horizontal", "vertical"];
+}
+
+/**
+ * @param {Rectangle[]} coords
+ * @returns {Rectangle | undefined}
+ */
+function getUnionCoords(coords) {
+    if (coords.length === 0) {
+        return undefined;
+    }
+
+    const x = Math.min(...coords.map((coord) => coord.x));
+    const y = Math.min(...coords.map((coord) => coord.y));
+    const x2 = Math.max(...coords.map((coord) => coord.x2));
+    const y2 = Math.max(...coords.map((coord) => coord.y2));
+
+    return Rectangle.create(x, y, x2 - x, y2 - y);
 }
 
 /**

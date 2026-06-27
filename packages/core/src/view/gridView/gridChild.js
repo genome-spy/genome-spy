@@ -32,6 +32,7 @@ import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import { createEventFilterFunction } from "../../utils/expression.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
+import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
 import {
     addLegendView,
     createGridChildLegend,
@@ -242,7 +243,21 @@ export default class GridChild {
                 )
             );
 
-            this.#addRulerOverlay(paramName, ruler, channels, scaleResolutions);
+            if (
+                !this.#usesContainerRulerOverlay(
+                    owner,
+                    ruler,
+                    channels,
+                    scaleResolutions
+                )
+            ) {
+                this.#addRulerOverlay(
+                    paramName,
+                    ruler,
+                    channels,
+                    scaleResolutions
+                );
+            }
         }
     }
 
@@ -273,7 +288,21 @@ export default class GridChild {
                 )
             );
 
-            this.#addRulerOverlay(paramName, ruler, channels, scaleResolutions);
+            if (
+                !this.#usesContainerRulerOverlay(
+                    owner,
+                    ruler,
+                    channels,
+                    scaleResolutions
+                )
+            ) {
+                this.#addRulerOverlay(
+                    paramName,
+                    ruler,
+                    channels,
+                    scaleResolutions
+                );
+            }
         }
     }
 
@@ -303,6 +332,32 @@ export default class GridChild {
         }
 
         return bindings;
+    }
+
+    /**
+     * @param {import("../view.js").default} owner
+     * @param {import("../../spec/parameter.js").RulerConfig} ruler
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>>} scaleResolutions
+     */
+    #usesContainerRulerOverlay(owner, ruler, channels, scaleResolutions) {
+        const channel = channels.length === 1 ? channels[0] : undefined;
+        if (!channel) {
+            return false;
+        }
+
+        const supportsContainer =
+            (channel === "x" && isVConcatSpec(owner.spec)) ||
+            (channel === "y" && isHConcatSpec(owner.spec));
+        if (!supportsContainer) {
+            return false;
+        }
+
+        const ownerResolution = owner.getScaleResolution?.(channel);
+        return (
+            ownerResolution === scaleResolutions[channel] &&
+            (ruler.extent === "container" || ruler.extent === "auto")
+        );
     }
 
     /**
