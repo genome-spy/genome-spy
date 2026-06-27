@@ -11,8 +11,16 @@ export class RulerViewportController {
      * @param {import("../spec/parameter.js").RulerConfig} config
      * @param {import("../spec/channel.js").PrimaryPositionalChannel[]} channels
      * @param {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("../scales/scaleResolution.js").default>>} scaleResolutions
+     * @param {import("../paramRuntime/viewParamRuntime.js").default} [paramRuntime]
      */
-    constructor(gridChild, paramName, config, channels, scaleResolutions) {
+    constructor(
+        gridChild,
+        paramName,
+        config,
+        channels,
+        scaleResolutions,
+        paramRuntime = gridChild.view.paramRuntime
+    ) {
         if (config.on !== undefined) {
             throw new Error(
                 `Ruler param "${paramName}" with source "viewport" must not define "on".`
@@ -24,6 +32,7 @@ export class RulerViewportController {
         this.config = config;
         this.channels = channels;
         this.scaleResolutions = scaleResolutions;
+        this.paramRuntime = paramRuntime;
 
         this.update();
         this.#subscribe();
@@ -53,6 +62,6 @@ export class RulerViewportController {
             );
         }
 
-        this.gridChild.view.paramRuntime.setValue(this.paramName, value);
+        this.paramRuntime.setValue(this.paramName, value);
     }
 }

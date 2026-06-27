@@ -13,13 +13,22 @@ export class RulerMouseEventController {
      * @param {import("../spec/parameter.js").RulerConfig} config
      * @param {import("../spec/channel.js").PrimaryPositionalChannel[]} channels
      * @param {Partial<Record<import("../spec/channel.js").PrimaryPositionalChannel, import("../scales/scaleResolution.js").default>>} scaleResolutions
+     * @param {import("../paramRuntime/viewParamRuntime.js").default} [paramRuntime]
      */
-    constructor(gridChild, paramName, config, channels, scaleResolutions) {
+    constructor(
+        gridChild,
+        paramName,
+        config,
+        channels,
+        scaleResolutions,
+        paramRuntime = gridChild.view.paramRuntime
+    ) {
         this.gridChild = gridChild;
         this.paramName = paramName;
         this.config = config;
         this.channels = channels;
         this.scaleResolutions = scaleResolutions;
+        this.paramRuntime = paramRuntime;
 
         this.eventConfig = asRulerEventConfig(config.on ?? "mousemove");
         if (
@@ -164,7 +173,7 @@ export class RulerMouseEventController {
      * @param {ReturnType<typeof createRulerValue>} value
      */
     #setValue(value) {
-        this.gridChild.view.paramRuntime.setValue(this.paramName, value);
+        this.paramRuntime.setValue(this.paramName, value);
     }
 }
 

@@ -25,6 +25,9 @@ function createMinimalGridChild() {
         }),
         getOverhang: () => Padding.zero(),
         getPadding: () => Padding.zero(),
+        getDataAncestors() {
+            return [this];
+        },
         paramRuntime: { paramConfigs: new Map() },
     });
     const layoutParent = /** @type {any} */ ({
@@ -205,6 +208,52 @@ function createRulerGridChildView(
     return { view, layoutParent };
 }
 
+function createInheritedRulerGridChildView(
+    /** @type {import("../../spec/parameter.js").Parameter[]} */ parentParams
+) {
+    const context = createTestViewContext();
+    const layoutParent = new ContainerView(
+        { layer: [], params: parentParams },
+        context,
+        null,
+        null,
+        "parent"
+    );
+    const view = new UnitView(
+        {
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        },
+        context,
+        layoutParent,
+        layoutParent,
+        "child"
+    );
+    view.getParentGridChromePolicy = () => ({
+        axes: true,
+        background: true,
+    });
+    view.needsAxes.x = false;
+    view.facetCoords.set(null, Rectangle.create(0, 0, 100, 100));
+
+    /** @param {number} value */
+    const scale = (value) => value;
+    scale.type = "linear";
+    /** @param {number} value */
+    scale.invert = (value) => value * 10;
+    view.getScaleResolution = () =>
+        /** @type {any} */ ({
+            getResolvedScaleType: () => "linear",
+            getScale: () => scale,
+            addEventListener: () => {},
+        });
+
+    return { view, layoutParent };
+}
+
 describe("GridChild legend layout", () => {
     test("right legend contributes to right overhang", () => {
         const child = createMinimalGridChild();
@@ -324,6 +373,38 @@ describe("GridChild ruler interactions", () => {
             type: "ruler",
             values: {
                 x: 5,
+            },
+        });
+    });
+
+    test("attaches inherited pointer ruler params to child views", () => {
+        /** @type {Map<string, any>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createInheritedRulerGridChildView([
+            {
+                name: "cursor",
+                ruler: { encodings: ["x"] },
+            },
+        ]);
+        const setValue = vi.spyOn(layoutParent.paramRuntime, "setValue");
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, listener);
+        };
+
+        const child = new GridChild(view, layoutParent, 0);
+        listeners.get("mousemove")({
+            point: { x: 2, y: 0 },
+            proxiedMouseEvent: {},
+        });
+
+        const rulerOverlay = Array.from(child.getChildren()).find(
+            (view) => view.defaultName === "rulerOverlay0_cursor"
+        );
+        expect(rulerOverlay).toBeDefined();
+        expect(setValue).toHaveBeenCalledWith("cursor", {
+            type: "ruler",
+            values: {
+                x: 0.2,
             },
         });
     });

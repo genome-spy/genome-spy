@@ -51,6 +51,11 @@ import { createRulerOverlaySpec, resolveRulerDisplay } from "./rulerOverlay.js";
  *     orient: import("../../spec/axis.js").AxisOrient,
  *     resolution: import("../../scales/axisResolution.js").default,
  * }} AxisCandidate
+ * @typedef {{
+ *     owner: import("../view.js").default,
+ *     paramName: string,
+ *     config: import("../../spec/parameter.js").RulerConfig,
+ * }} GridChildRulerBinding
  */
 
 /**
@@ -211,69 +216,93 @@ export default class GridChild {
     }
 
     #setupPointerRulers() {
-        const view = this.view;
-
-        for (const [name, param] of view.paramRuntime.paramConfigs) {
-            if (!isRulerParameter(param)) {
-                continue;
-            }
-
-            const ruler = param.ruler;
+        for (const {
+            owner,
+            paramName,
+            config: ruler,
+        } of this.#getRulerBindings()) {
             if (ruler.source === "viewport") {
                 continue;
             }
 
             const channels = ruler.encodings ?? ["x"];
             const scaleResolutions = this.#getRulerScaleResolutions(
-                name,
+                paramName,
                 channels
             );
 
             this.rulerMouseEventControllers.push(
                 new RulerMouseEventController(
                     this,
-                    name,
+                    paramName,
                     ruler,
                     channels,
-                    scaleResolutions
+                    scaleResolutions,
+                    owner.paramRuntime
                 )
             );
 
-            this.#addRulerOverlay(name, ruler, channels, scaleResolutions);
+            this.#addRulerOverlay(paramName, ruler, channels, scaleResolutions);
         }
     }
 
     #setupViewportRulers() {
-        const view = this.view;
-
-        for (const [name, param] of view.paramRuntime.paramConfigs) {
-            if (!isRulerParameter(param) || param.ruler.source !== "viewport") {
+        for (const {
+            owner,
+            paramName,
+            config: ruler,
+        } of this.#getRulerBindings()) {
+            if (ruler.source !== "viewport") {
                 continue;
             }
 
-            const channels = param.ruler.encodings ?? ["x"];
+            const channels = ruler.encodings ?? ["x"];
             const scaleResolutions = this.#getRulerScaleResolutions(
-                name,
+                paramName,
                 channels
             );
 
             this.rulerViewportControllers.push(
                 new RulerViewportController(
                     this,
-                    name,
-                    param.ruler,
+                    paramName,
+                    ruler,
                     channels,
-                    scaleResolutions
+                    scaleResolutions,
+                    owner.paramRuntime
                 )
             );
 
-            this.#addRulerOverlay(
-                name,
-                param.ruler,
-                channels,
-                scaleResolutions
-            );
+            this.#addRulerOverlay(paramName, ruler, channels, scaleResolutions);
         }
+    }
+
+    /**
+     * @returns {GridChildRulerBinding[]}
+     */
+    #getRulerBindings() {
+        /** @type {GridChildRulerBinding[]} */
+        const bindings = [];
+        const seen = new Set();
+
+        for (const owner of this.view.getDataAncestors()) {
+            for (const [paramName, param] of owner.paramRuntime.paramConfigs) {
+                if (seen.has(paramName)) {
+                    continue;
+                }
+
+                seen.add(paramName);
+                if (isRulerParameter(param)) {
+                    bindings.push({
+                        owner,
+                        paramName,
+                        config: param.ruler,
+                    });
+                }
+            }
+        }
+
+        return bindings;
     }
 
     /**
