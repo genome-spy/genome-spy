@@ -1031,7 +1031,7 @@ Example docs snippet:
   Tentative commit: `feat(core): add ruler drag interaction`
 - [x] Add viewport-following source driven by viewport center and domain/layout changes.
   Tentative commit: `feat(core): add viewport-sourced rulers`
-- [ ] Add index/locus display modes.
+- [x] Add index/locus display modes.
   Tentative commit: `feat(core): add ruler snapping and band display`
 - [ ] Add `extent: "auto"` and narrow container spanning.
   Tentative commit: `feat(core): support spanning ruler extents`

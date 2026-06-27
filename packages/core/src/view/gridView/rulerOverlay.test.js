@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createRulerOverlaySpec } from "./rulerOverlay.js";
+import { createRulerOverlaySpec, resolveRulerDisplay } from "./rulerOverlay.js";
 
 describe("createRulerOverlaySpec", () => {
     test("creates an x ruler overlay with a static source and param filter", () => {
@@ -77,5 +77,64 @@ describe("createRulerOverlaySpec", () => {
             "rulerOverlayRuleX",
             "rulerOverlayRuleY",
         ]);
+    });
+
+    test("creates centered rule positions", () => {
+        const spec = createRulerOverlaySpec({
+            paramName: "cursor",
+            channels: ["x"],
+            display: "center",
+        });
+
+        expect(spec.encoding.x.expr).toBe(
+            "linearize('x', cursor.values.x) + 0.5"
+        );
+        expect(spec.layer[0].mark.type).toBe("rule");
+    });
+
+    test("creates band rectangle bounds", () => {
+        const spec = createRulerOverlaySpec({
+            paramName: "cursor",
+            channels: ["x"],
+            display: "band",
+        });
+
+        expect(spec.encoding).toMatchObject({
+            x: {
+                expr: "linearize('x', cursor.values.x)",
+                type: null,
+                title: null,
+            },
+            x2: {
+                expr: "linearize('x', cursor.values.x) + 1",
+                type: null,
+                title: null,
+            },
+        });
+        expect(spec.layer).toMatchObject([
+            {
+                name: "rulerOverlayBand",
+                mark: {
+                    type: "rect",
+                    clip: true,
+                },
+            },
+        ]);
+    });
+});
+
+describe("resolveRulerDisplay", () => {
+    test("uses explicit display", () => {
+        expect(resolveRulerDisplay("linear", "auto", "band")).toBe("band");
+    });
+
+    test("defaults snapped index and locus rulers to center display", () => {
+        expect(resolveRulerDisplay("index", "auto")).toBe("center");
+        expect(resolveRulerDisplay("locus", "integer")).toBe("center");
+    });
+
+    test("defaults quantitative and unsnapped rulers to line display", () => {
+        expect(resolveRulerDisplay("linear", "auto")).toBe("line");
+        expect(resolveRulerDisplay("index", false)).toBe("line");
     });
 });
