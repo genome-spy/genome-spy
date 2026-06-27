@@ -487,6 +487,60 @@ describe("Nested ViewParamRuntimes", () => {
         ).toThrow('Parameter "foo" already registered in this scope.');
     });
 
+    test("pushed ruler params seed the outer variable parameter", () => {
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
+
+        parent.registerParam({ name: "cursor", value: "unset" });
+        const setter = child.registerParam({
+            name: "cursor",
+            push: "outer",
+            ruler: { encodings: ["x"] },
+        });
+
+        expect(parent.findValue("cursor")).toEqual({
+            type: "ruler",
+            values: {
+                x: null,
+            },
+        });
+        expect(child.findValue("cursor")).toEqual({
+            type: "ruler",
+            values: {
+                x: null,
+            },
+        });
+
+        setter({ type: "ruler", values: { x: 5 } });
+
+        expect(parent.findValue("cursor")).toEqual({
+            type: "ruler",
+            values: {
+                x: 5,
+            },
+        });
+    });
+
+    test("pushed ruler params reject outer ruler parameters", () => {
+        const parent = new ViewParamRuntime();
+        const child = new ViewParamRuntime(() => parent);
+
+        parent.registerParam({
+            name: "cursor",
+            ruler: { encodings: ["x"] },
+        });
+
+        expect(() =>
+            child.registerParam({
+                name: "cursor",
+                push: "outer",
+                ruler: { encodings: ["x"] },
+            })
+        ).toThrow(
+            'The outer parameter "cursor" must not have expr, select, or ruler properties!'
+        );
+    });
+
     test("watchExpression listener is detached when child scope is disposed", () => {
         const parent = new ViewParamRuntime();
         const child = new ViewParamRuntime(() => parent);

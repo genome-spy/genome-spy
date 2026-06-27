@@ -152,9 +152,13 @@ export default class ViewParamRuntime {
                     `Outer parameter "${name}" exists as a value but has no registered config.`
                 );
             }
-            if ("expr" in outerProps || "select" in outerProps) {
+            if (
+                "expr" in outerProps ||
+                "select" in outerProps ||
+                "ruler" in outerProps
+            ) {
                 throw new Error(
-                    `The outer parameter "${name}" must not have expr or select properties!`
+                    `The outer parameter "${name}" must not have expr, select, or ruler properties!`
                 );
             }
             setter = (
@@ -166,6 +170,10 @@ export default class ViewParamRuntime {
             // The following will become a bit fragile if the view hierarchy is going to
             // support mutation (i.e. adding/removing children) in future.
             this.#allocatedSetters.set(name, setter);
+            if ("ruler" in param) {
+                defaultValue = getDefaultParamValue(param, this);
+                setter(defaultValue);
+            }
         } else if ("value" in param) {
             defaultValue = getDefaultParamValue(param, this);
             setter = this.#registerBaseSetter(name, defaultValue);

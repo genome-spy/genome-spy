@@ -1013,7 +1013,7 @@ Example docs snippet:
   Tentative commit: `feat(core): add ruler parameter schema`
 - [x] Add ruler value helpers, default normalization, and runtime kind reporting.
   Tentative commit: `feat(core): normalize ruler parameter values`
-- [ ] Add `push: "outer"` seeding/support and tests for ruler params.
+- [x] Add `push: "outer"` seeding/support and tests for ruler params.
   Tentative commit: `feat(core): support pushed ruler parameters`
 - [ ] Add the scale-aware `linearize(channel, value)` expression helper and tests.
   Tentative commit: `feat(core): add linearize expression helper`
