@@ -5,6 +5,10 @@
 
   "params": [{ "name": "cursor", "persist": false }],
 
+  "resolve": {
+    "scale": { "y": "independent" }
+  },
+
   "hconcat": [
     {
       "data": {
@@ -37,23 +41,23 @@
     {
       "data": {
         "values": [
-          { "start": 0.5, "end": 1.5, "label": "A" },
-          { "start": 1.5, "end": 2.5, "label": "B" },
-          { "start": 2.5, "end": 3.5, "label": "C" },
-          { "start": 3.5, "end": 4.5, "label": "D" },
-          { "start": 4.5, "end": 5.5, "label": "E" }
+          { "start": 0.5, "end": 1.5, "row": 1 },
+          { "start": 1.5, "end": 2.5, "row": 2 },
+          { "start": 2.5, "end": 3.5, "row": 3 },
+          { "start": 3.5, "end": 4.5, "row": 4 },
+          { "start": 4.5, "end": 5.5, "row": 5 }
         ]
       },
       "transform": [
         {
-          "filter": "cursor.type === 'ruler' && cursor.values.x != null && datum.start <= cursor.values.x && cursor.values.x < datum.end"
+          "type": "filter",
+          "expr": "cursor.type === 'ruler' && cursor.values.x != null && datum.start <= cursor.values.x && cursor.values.x < datum.end"
         }
       ],
-      "mark": "rect",
+      "mark": "point",
       "encoding": {
         "x": { "field": "start", "type": "quantitative" },
-        "x2": { "field": "end" },
-        "y": { "field": "label", "type": "nominal" }
+        "y": { "field": "row", "type": "quantitative" }
       }
     }
   ]

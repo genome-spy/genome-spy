@@ -31,7 +31,7 @@
 
   "vconcat": [
     {
-      "mark": "line",
+      "mark": "point",
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "a", "type": "quantitative" }
@@ -39,7 +39,7 @@
     },
 
     {
-      "mark": "bar",
+      "mark": "point",
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "b", "type": "quantitative" }

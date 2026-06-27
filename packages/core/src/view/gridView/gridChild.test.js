@@ -221,9 +221,12 @@ describe("GridChild parent chrome policy", () => {
 
 describe("GridChild ruler interactions", () => {
     test("registers mousemove listeners for pointer ruler params", () => {
+        /** @type {Map<string, any>} */
         const listeners = new Map();
+        /** @param {number} value */
         const scale = (value) => value;
         scale.type = "linear";
+        /** @param {number} value */
         scale.invert = (value) => value;
         const view = /** @type {any} */ ({
             needsAxes: { x: false, y: false },
@@ -253,7 +256,10 @@ describe("GridChild ruler interactions", () => {
                 getResolvedScaleType: () => "linear",
                 getScale: () => scale,
             }),
-            addInteractionListener(type, listener) {
+            addInteractionListener(
+                /** @type {string} */ type,
+                /** @type {any} */ listener
+            ) {
                 listeners.set(type, listener);
             },
         });
@@ -270,8 +276,10 @@ describe("GridChild ruler interactions", () => {
 
     test("registers viewport ruler params and seeds their value", () => {
         const setValue = vi.fn();
+        /** @param {number} value */
         const scale = (value) => value;
         scale.type = "linear";
+        /** @param {number} value */
         scale.invert = (value) => value * 10;
         const view = /** @type {any} */ ({
             needsAxes: { x: false, y: false },

@@ -150,7 +150,7 @@ function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
                 invert: (/** @type {number} */ value) => value / 3,
             });
         },
-        fromComplex(value) {
+        fromComplex(/** @type {any} */ value) {
             return fromComplex ? fromComplex(value) : value;
         },
         setDomain(/** @type {number[]} */ nextDomain) {

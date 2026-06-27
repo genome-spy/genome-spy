@@ -42,7 +42,10 @@ export class RulerViewportController {
 
         for (const channel of this.channels) {
             const scaleResolution = this.scaleResolutions[channel];
-            const coordinate = scaleResolution.getScale().invert(0.5);
+            const scale = /** @type {{ invert: (value: number) => number }} */ (
+                scaleResolution.getScale()
+            );
+            const coordinate = scale.invert(0.5);
             value.values[channel] = normalizeRulerCoordinate(
                 coordinate,
                 scaleResolution,

@@ -7,8 +7,10 @@ import { RulerMouseEventController } from "./rulerMouseEventController.js";
  * @param {(value: number) => any} [toComplex]
  */
 function createScaleResolution(type, toComplex) {
+    /** @param {number} value */
     const scale = (value) => value / 100;
     scale.type = type;
+    /** @param {number} value */
     scale.invert = (value) => value * 100;
 
     return {
@@ -27,12 +29,17 @@ function createScaleResolution(type, toComplex) {
  * @param {Record<string, any>} scaleResolutions
  */
 function createController(ruler, scaleResolutions) {
+    /** @type {Map<string, any>} */
     const listeners = new Map();
+    /** @type {Map<string, any>} */
     const documentListeners = new Map();
     const setValue = vi.fn();
     const view = {
         coords: Rectangle.create(0, 0, 200, 100),
-        addInteractionListener(type, listener) {
+        addInteractionListener(
+            /** @type {string} */ type,
+            /** @type {any} */ listener
+        ) {
             listeners.set(type, listener);
         },
         paramRuntime: {
@@ -40,28 +47,43 @@ function createController(ruler, scaleResolutions) {
         },
     };
     const previousDocument = globalThis.document;
-    globalThis.document = /** @type {Document} */ ({
-        addEventListener(type, listener) {
-            documentListeners.set(type, listener);
-        },
-        removeEventListener(type, listener) {
-            if (documentListeners.get(type) === listener) {
-                documentListeners.delete(type);
-            }
-        },
-    });
+    installMockDocument(documentListeners);
     const gridChild = { view };
     const controller = new RulerMouseEventController(
         /** @type {any} */ (gridChild),
         "cursor",
         ruler,
-        Object.keys(scaleResolutions),
+        /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */ (
+            Object.keys(scaleResolutions)
+        ),
         scaleResolutions
     );
 
     globalThis.document = previousDocument;
 
     return { controller, listeners, documentListeners, setValue };
+}
+
+/**
+ * @param {Map<string, any>} documentListeners
+ */
+function installMockDocument(documentListeners) {
+    globalThis.document = /** @type {Document} */ ({
+        addEventListener(
+            /** @type {string} */ type,
+            /** @type {any} */ listener
+        ) {
+            documentListeners.set(type, listener);
+        },
+        removeEventListener(
+            /** @type {string} */ type,
+            /** @type {any} */ listener
+        ) {
+            if (documentListeners.get(type) === listener) {
+                documentListeners.delete(type);
+            }
+        },
+    });
 }
 
 /**
@@ -185,16 +207,7 @@ describe("RulerMouseEventController", () => {
             { x: createScaleResolution("linear") }
         );
         const stopPropagation = vi.fn();
-        globalThis.document = /** @type {Document} */ ({
-            addEventListener(type, listener) {
-                documentListeners.set(type, listener);
-            },
-            removeEventListener(type, listener) {
-                if (documentListeners.get(type) === listener) {
-                    documentListeners.delete(type);
-                }
-            },
-        });
+        installMockDocument(documentListeners);
 
         listeners.get("mousedown")({
             point: { x: 50, y: 25 },
@@ -232,16 +245,7 @@ describe("RulerMouseEventController", () => {
             },
             { x: createScaleResolution("linear") }
         );
-        globalThis.document = /** @type {Document} */ ({
-            addEventListener(type, listener) {
-                documentListeners.set(type, listener);
-            },
-            removeEventListener(type, listener) {
-                if (documentListeners.get(type) === listener) {
-                    documentListeners.delete(type);
-                }
-            },
-        });
+        installMockDocument(documentListeners);
 
         listeners.get("mousedown")({
             point: { x: 50, y: 25 },
@@ -265,16 +269,7 @@ describe("RulerMouseEventController", () => {
             { encodings: ["x"], on: "mousedown", clear: "mouseup" },
             { x: createScaleResolution("linear") }
         );
-        globalThis.document = /** @type {Document} */ ({
-            addEventListener(type, listener) {
-                documentListeners.set(type, listener);
-            },
-            removeEventListener(type, listener) {
-                if (documentListeners.get(type) === listener) {
-                    documentListeners.delete(type);
-                }
-            },
-        });
+        installMockDocument(documentListeners);
 
         listeners.get("mousedown")({
             point: { x: 50, y: 25 },

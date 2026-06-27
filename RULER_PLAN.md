@@ -1041,5 +1041,5 @@ Example docs snippet:
   Tentative commit: `docs(core): add ruler manual examples`
 - [x] Add docs and a small example spec.
   Tentative commit: `docs(core): document ruler parameters`
-- [ ] Run focused tests, then workspace checks.
+- [x] Run focused tests, then workspace checks.
   No commit expected unless verification requires fixes.

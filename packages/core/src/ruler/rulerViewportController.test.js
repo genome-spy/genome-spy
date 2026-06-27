@@ -6,19 +6,20 @@ import { RulerViewportController } from "./rulerViewportController.js";
  * @param {[number, number]} domain
  */
 function createScaleResolution(type, domain) {
+    /** @type {Record<"domain" | "range", Set<any>>} */
     const listeners = {
         domain: new Set(),
         range: new Set(),
     };
     const scale = {
-        invert(value) {
+        invert(/** @type {number} */ value) {
             return domain[0] + value * (domain[1] - domain[0]);
         },
     };
 
     return {
         listeners,
-        setDomain(nextDomain) {
+        setDomain(/** @type {[number, number]} */ nextDomain) {
             domain = nextDomain;
         },
         getResolvedScaleType() {
@@ -27,10 +28,16 @@ function createScaleResolution(type, domain) {
         getScale() {
             return scale;
         },
-        addEventListener(type, listener) {
+        addEventListener(
+            /** @type {"domain" | "range"} */ type,
+            /** @type {any} */ listener
+        ) {
             listeners[type].add(listener);
         },
-        removeEventListener(type, listener) {
+        removeEventListener(
+            /** @type {"domain" | "range"} */ type,
+            /** @type {any} */ listener
+        ) {
             listeners[type].delete(listener);
         },
     };
@@ -51,7 +58,9 @@ function createController(ruler, scaleResolutions) {
         /** @type {any} */ ({ view }),
         "center",
         ruler,
-        Object.keys(scaleResolutions),
+        /** @type {import("../spec/channel.js").PrimaryPositionalChannel[]} */ (
+            Object.keys(scaleResolutions)
+        ),
         scaleResolutions
     );
 

@@ -86,10 +86,10 @@ describe("createRulerOverlaySpec", () => {
             display: "center",
         });
 
-        expect(spec.encoding.x.expr).toBe(
+        expect(/** @type {any} */ (spec.encoding.x).expr).toBe(
             "linearize('x', cursor.values.x) + 0.5"
         );
-        expect(spec.layer[0].mark.type).toBe("rule");
+        expect(/** @type {any} */ (spec.layer[0]).mark.type).toBe("rule");
     });
 
     test("creates band rectangle bounds", () => {

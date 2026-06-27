@@ -126,18 +126,19 @@ describe("ruler registry", () => {
  * @param {any[]} [children]
  * @param {Record<string, any>} [resolutions]
  * @param {any} [spec]
+ * @returns {any}
  */
 function createView(name, children = [], resolutions = {}, spec = {}) {
-    const view = {
+    const view = /** @type {any} */ ({
         name,
         spec,
         paramRuntime: {
             paramConfigs: new Map(),
         },
-        getScaleResolution(channel) {
+        getScaleResolution(/** @type {string} */ channel) {
             return resolutions[channel];
         },
-        visit(visitor) {
+        visit(/** @type {(view: any) => unknown} */ visitor) {
             const result = visitor(this);
             if (result === "VISIT_SKIP") {
                 return;
@@ -146,24 +147,25 @@ function createView(name, children = [], resolutions = {}, spec = {}) {
                 child.visit(visitor);
             }
         },
-    };
+    });
 
     return view;
 }
 
 /**
  * @param {string} type
+ * @returns {any}
  */
 function createResolution(type) {
-    return {
+    return /** @type {any} */ ({
         getResolvedScaleType() {
             return type;
         },
         getAssemblyRequirement() {
             return {
-                assembly: undefined,
+                assembly: /** @type {undefined} */ (undefined),
                 needsDefaultAssembly: false,
             };
         },
-    };
+    });
 }

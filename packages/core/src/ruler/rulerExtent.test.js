@@ -1,12 +1,17 @@
 import { describe, expect, test } from "vitest";
 import { resolveRulerExtent } from "./rulerExtent.js";
 
+/**
+ * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
+ * @param {any} [scaleResolution]
+ * @returns {any}
+ */
 function createParticipant(channel, scaleResolution = {}) {
-    return {
+    return /** @type {any} */ ({
         view: {},
         channel,
         scaleResolution,
-    };
+    });
 }
 
 describe("resolveRulerExtent", () => {
@@ -14,7 +19,7 @@ describe("resolveRulerExtent", () => {
         const extent = resolveRulerExtent({
             paramName: "cursor",
             requestedExtent: "view",
-            owner: { spec: { vconcat: [] } },
+            owner: /** @type {any} */ ({ spec: { vconcat: [] } }),
             channels: ["x"],
             participants: [createParticipant("x")],
         });
@@ -27,7 +32,7 @@ describe("resolveRulerExtent", () => {
         const extent = resolveRulerExtent({
             paramName: "cursor",
             requestedExtent: "auto",
-            owner: { spec: { vconcat: [] } },
+            owner: /** @type {any} */ ({ spec: { vconcat: [] } }),
             channels: ["x"],
             participants: [
                 createParticipant("x", resolution),
@@ -43,7 +48,7 @@ describe("resolveRulerExtent", () => {
         const extent = resolveRulerExtent({
             paramName: "cursor",
             requestedExtent: "auto",
-            owner: { spec: { hconcat: [] } },
+            owner: /** @type {any} */ ({ spec: { hconcat: [] } }),
             channels: ["y"],
             participants: [
                 createParticipant("y", resolution),
@@ -58,7 +63,7 @@ describe("resolveRulerExtent", () => {
         const extent = resolveRulerExtent({
             paramName: "cursor",
             requestedExtent: "auto",
-            owner: { spec: { vconcat: [] } },
+            owner: /** @type {any} */ ({ spec: { vconcat: [] } }),
             channels: ["x"],
             participants: [createParticipant("x"), createParticipant("x")],
         });
@@ -71,7 +76,7 @@ describe("resolveRulerExtent", () => {
             resolveRulerExtent({
                 paramName: "cursor",
                 requestedExtent: "container",
-                owner: { spec: { vconcat: [] } },
+                owner: /** @type {any} */ ({ spec: { vconcat: [] } }),
                 channels: ["x"],
                 participants: [createParticipant("x"), createParticipant("x")],
             })
@@ -85,7 +90,7 @@ describe("resolveRulerExtent", () => {
             resolveRulerExtent({
                 paramName: "cursor",
                 requestedExtent: "container",
-                owner: { spec: { hconcat: [] } },
+                owner: /** @type {any} */ ({ spec: { hconcat: [] } }),
                 channels: ["x"],
                 participants: [createParticipant("x")],
             })

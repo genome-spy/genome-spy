@@ -1,4 +1,3 @@
-import { asEventConfig } from "../selection/selection.js";
 import { createEventFilterFunction } from "../utils/expression.js";
 import Point from "../view/layout/point.js";
 import { createRulerValue } from "./rulerValue.js";
@@ -22,7 +21,7 @@ export class RulerMouseEventController {
         this.channels = channels;
         this.scaleResolutions = scaleResolutions;
 
-        this.eventConfig = asEventConfig(config.on ?? "mousemove");
+        this.eventConfig = asRulerEventConfig(config.on ?? "mousemove");
         if (
             this.eventConfig.type !== "mousemove" &&
             this.eventConfig.type !== "mousedown"
@@ -145,7 +144,9 @@ export class RulerMouseEventController {
 
         for (const channel of this.channels) {
             const scaleResolution = this.scaleResolutions[channel];
-            const scale = scaleResolution.getScale();
+            const scale = /** @type {{ invert: (value: number) => number }} */ (
+                scaleResolution.getScale()
+            );
             const coordinate = scale.invert(
                 channel === "x" ? normalizedPoint.x : normalizedPoint.y
             );
@@ -164,5 +165,32 @@ export class RulerMouseEventController {
      */
     #setValue(value) {
         this.gridChild.view.paramRuntime.setValue(this.paramName, value);
+    }
+}
+
+/**
+ * @param {import("../spec/parameter.js").RulerConfig["on"]} eventType
+ * @returns {import("../spec/parameter.js").RulerEventConfig}
+ */
+function asRulerEventConfig(eventType) {
+    if (typeof eventType === "string") {
+        const match = eventType.match(/^([a-zA-Z]+)(?:\[(.+)\])?$/);
+        if (!match) {
+            throw new Error(`Invalid event type string: ${eventType}`);
+        }
+
+        const [, type, filter] = match;
+        /** @type {import("../spec/parameter.js").RulerEventConfig} */
+        const eventSpec = {
+            type: /** @type {import("../spec/parameter.js").RulerEventType} */ (
+                type
+            ),
+        };
+        if (filter) {
+            eventSpec.filter = filter;
+        }
+        return eventSpec;
+    } else {
+        return eventType;
     }
 }

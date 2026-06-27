@@ -3,6 +3,7 @@ import { createRulerBindingStore } from "./rulerBindingStore.js";
 
 describe("ruler binding store", () => {
     test("refreshes bindings after a child is inserted", () => {
+        /** @type {any[]} */
         const children = [];
         const root = createView("root", children);
         root.paramRuntime.paramConfigs.set("cursor", {
@@ -42,18 +43,19 @@ describe("ruler binding store", () => {
  * @param {string} name
  * @param {any[]} [children]
  * @param {Record<string, any>} [resolutions]
+ * @returns {any}
  */
 function createView(name, children = [], resolutions = {}) {
-    return {
+    return /** @type {any} */ ({
         name,
         spec: {},
         paramRuntime: {
             paramConfigs: new Map(),
         },
-        getScaleResolution(channel) {
+        getScaleResolution(/** @type {string} */ channel) {
             return resolutions[channel];
         },
-        visit(visitor) {
+        visit(/** @type {(view: any) => unknown} */ visitor) {
             const result = visitor(this);
             if (result === "VISIT_SKIP") {
                 return;
@@ -62,19 +64,20 @@ function createView(name, children = [], resolutions = {}) {
                 child.visit(visitor);
             }
         },
-    };
+    });
 }
 
+/** @returns {any} */
 function createResolution() {
-    return {
+    return /** @type {any} */ ({
         getResolvedScaleType() {
             return "linear";
         },
         getAssemblyRequirement() {
             return {
-                assembly: undefined,
+                assembly: /** @type {undefined} */ (undefined),
                 needsDefaultAssembly: false,
             };
         },
-    };
+    });
 }

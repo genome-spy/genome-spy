@@ -42,11 +42,12 @@ export function createRulerOverlaySpec({
     };
 
     if (display === "band") {
+        const encoding = /** @type {any} */ (spec.encoding);
         for (const channel of channels) {
             spec.encoding[channel] = createExprEncoding(
                 makeRulerPositionExpression(paramName, channel)
             );
-            spec.encoding[channel + "2"] = createExprEncoding(
+            encoding[channel + "2"] = createExprEncoding(
                 makeRulerBandEndExpression(paramName, channel)
             );
         }
@@ -86,7 +87,7 @@ export function createRulerOverlaySpec({
 /**
  * @param {string} scaleType
  * @param {import("../../spec/parameter.js").RulerSnap | undefined} snap
- * @param {import("../../spec/parameter.js").RulerDisplay | undefined} display
+ * @param {import("../../spec/parameter.js").RulerDisplay} [display]
  * @returns {import("../../spec/parameter.js").RulerDisplay}
  */
 export function resolveRulerDisplay(scaleType, snap, display) {
@@ -106,11 +107,11 @@ export function resolveRulerDisplay(scaleType, snap, display) {
  * @param {string} expr
  */
 function createExprEncoding(expr) {
-    return {
+    return /** @type {any} */ ({
         expr,
         type: null,
         title: null,
-    };
+    });
 }
 
 /**
