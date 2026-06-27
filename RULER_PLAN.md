@@ -1027,7 +1027,7 @@ Example docs snippet:
   Tentative commit: `feat(core): normalize ruler coordinates`
 - [x] Add `on: "mousemove"` event/filter handling for pointer-driven ruler interactions.
   Tentative commit: `feat(core): handle ruler mousemove events`
-- [ ] Add mousedown drag tracking and clear behavior.
+- [x] Add mousedown drag tracking and clear behavior.
   Tentative commit: `feat(core): add ruler drag interaction`
 - [ ] Add viewport-following source driven by viewport center and domain/layout changes.
   Tentative commit: `feat(core): add viewport-sourced rulers`

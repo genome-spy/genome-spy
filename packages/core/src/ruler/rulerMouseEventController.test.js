@@ -28,6 +28,7 @@ function createScaleResolution(type, toComplex) {
  */
 function createController(ruler, scaleResolutions) {
     const listeners = new Map();
+    const documentListeners = new Map();
     const setValue = vi.fn();
     const view = {
         coords: Rectangle.create(0, 0, 200, 100),
@@ -38,6 +39,17 @@ function createController(ruler, scaleResolutions) {
             setValue,
         },
     };
+    const previousDocument = globalThis.document;
+    globalThis.document = /** @type {Document} */ ({
+        addEventListener(type, listener) {
+            documentListeners.set(type, listener);
+        },
+        removeEventListener(type, listener) {
+            if (documentListeners.get(type) === listener) {
+                documentListeners.delete(type);
+            }
+        },
+    });
     const gridChild = { view };
     const controller = new RulerMouseEventController(
         /** @type {any} */ (gridChild),
@@ -47,7 +59,9 @@ function createController(ruler, scaleResolutions) {
         scaleResolutions
     );
 
-    return { controller, listeners, setValue };
+    globalThis.document = previousDocument;
+
+    return { controller, listeners, documentListeners, setValue };
 }
 
 /**
@@ -58,6 +72,8 @@ function createMouseEvent(props = {}) {
     return /** @type {MouseEvent} */ ({
         shiftKey: false,
         button: 0,
+        clientX: 0,
+        clientY: 0,
         ...props,
     });
 }
@@ -156,6 +172,120 @@ describe("RulerMouseEventController", () => {
         listeners.get("mouseleave")({});
 
         expect(setValue).toHaveBeenCalledWith("cursor", {
+            type: "ruler",
+            values: {
+                x: null,
+            },
+        });
+    });
+
+    test("updates immediately on mousedown and tracks document mousemove", () => {
+        const { listeners, documentListeners, setValue } = createController(
+            { encodings: ["x"], on: "mousedown", snap: false },
+            { x: createScaleResolution("linear") }
+        );
+        const stopPropagation = vi.fn();
+        globalThis.document = /** @type {Document} */ ({
+            addEventListener(type, listener) {
+                documentListeners.set(type, listener);
+            },
+            removeEventListener(type, listener) {
+                if (documentListeners.get(type) === listener) {
+                    documentListeners.delete(type);
+                }
+            },
+        });
+
+        listeners.get("mousedown")({
+            point: { x: 50, y: 25 },
+            mouseEvent: createMouseEvent({ button: 0, clientX: 150 }),
+            proxiedMouseEvent: createMouseEvent(),
+            stopPropagation,
+        });
+        documentListeners.get("mousemove")(createMouseEvent({ clientX: 170 }));
+        documentListeners.get("mouseup")(createMouseEvent({ clientX: 170 }));
+        globalThis.document = undefined;
+
+        expect(stopPropagation).toHaveBeenCalledOnce();
+        expect(setValue).toHaveBeenNthCalledWith(1, "cursor", {
+            type: "ruler",
+            values: {
+                x: 25,
+            },
+        });
+        expect(setValue).toHaveBeenNthCalledWith(2, "cursor", {
+            type: "ruler",
+            values: {
+                x: 35,
+            },
+        });
+        expect(documentListeners.has("mousemove")).toBe(false);
+        expect(documentListeners.has("mouseup")).toBe(false);
+    });
+
+    test("applies mousedown filters before starting drag", () => {
+        const { listeners, documentListeners, setValue } = createController(
+            {
+                encodings: ["x"],
+                on: "mousedown[event.shiftKey]",
+                snap: false,
+            },
+            { x: createScaleResolution("linear") }
+        );
+        globalThis.document = /** @type {Document} */ ({
+            addEventListener(type, listener) {
+                documentListeners.set(type, listener);
+            },
+            removeEventListener(type, listener) {
+                if (documentListeners.get(type) === listener) {
+                    documentListeners.delete(type);
+                }
+            },
+        });
+
+        listeners.get("mousedown")({
+            point: { x: 50, y: 25 },
+            mouseEvent: createMouseEvent({ button: 0, shiftKey: false }),
+            proxiedMouseEvent: createMouseEvent({ shiftKey: false }),
+            stopPropagation: () => {},
+        });
+        listeners.get("mousedown")({
+            point: { x: 50, y: 25 },
+            mouseEvent: createMouseEvent({ button: 0, shiftKey: true }),
+            proxiedMouseEvent: createMouseEvent({ shiftKey: true }),
+            stopPropagation: () => {},
+        });
+        globalThis.document = undefined;
+
+        expect(setValue).toHaveBeenCalledOnce();
+    });
+
+    test("clears mousedown rulers on mouseup when configured", () => {
+        const { listeners, documentListeners, setValue } = createController(
+            { encodings: ["x"], on: "mousedown", clear: "mouseup" },
+            { x: createScaleResolution("linear") }
+        );
+        globalThis.document = /** @type {Document} */ ({
+            addEventListener(type, listener) {
+                documentListeners.set(type, listener);
+            },
+            removeEventListener(type, listener) {
+                if (documentListeners.get(type) === listener) {
+                    documentListeners.delete(type);
+                }
+            },
+        });
+
+        listeners.get("mousedown")({
+            point: { x: 50, y: 25 },
+            mouseEvent: createMouseEvent({ button: 0 }),
+            proxiedMouseEvent: createMouseEvent(),
+            stopPropagation: () => {},
+        });
+        documentListeners.get("mouseup")(createMouseEvent());
+        globalThis.document = undefined;
+
+        expect(setValue).toHaveBeenLastCalledWith("cursor", {
             type: "ruler",
             values: {
                 x: null,

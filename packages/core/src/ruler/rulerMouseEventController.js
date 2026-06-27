@@ -1,5 +1,6 @@
 import { asEventConfig } from "../selection/selection.js";
 import { createEventFilterFunction } from "../utils/expression.js";
+import Point from "../view/layout/point.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
 
@@ -21,20 +22,28 @@ export class RulerMouseEventController {
         this.channels = channels;
         this.scaleResolutions = scaleResolutions;
 
-        const eventConfig = asEventConfig(config.on ?? "mousemove");
-        if (eventConfig.type !== "mousemove") {
+        this.eventConfig = asEventConfig(config.on ?? "mousemove");
+        if (
+            this.eventConfig.type !== "mousemove" &&
+            this.eventConfig.type !== "mousedown"
+        ) {
             throw new Error(
-                `Ruler param "${paramName}" currently supports only "mousemove" in "on".`
+                `Ruler param "${paramName}" currently supports only "mousemove" and "mousedown" in "on".`
             );
         }
 
-        this.eventPredicate = eventConfig.filter
-            ? createEventFilterFunction(eventConfig.filter)
+        this.eventPredicate = this.eventConfig.filter
+            ? createEventFilterFunction(this.eventConfig.filter)
             : () => true;
-        this.clear = config.clear ?? "mouseleave";
+        this.clear =
+            config.clear ??
+            (this.eventConfig.type === "mousemove" ? "mouseleave" : false);
 
         this.#addListeners();
     }
+
+    /** @type {import("../spec/parameter.js").RulerEventConfig} */
+    eventConfig;
 
     /** @type {(event: MouseEvent) => boolean} */
     eventPredicate;
@@ -42,7 +51,17 @@ export class RulerMouseEventController {
     /** @type {import("../spec/parameter.js").RulerClear | undefined} */
     clear;
 
+    dragging = false;
+
     #addListeners() {
+        if (this.eventConfig.type === "mousemove") {
+            this.#addMousemoveListeners();
+        } else {
+            this.#addMousedownListeners();
+        }
+    }
+
+    #addMousemoveListeners() {
         const { view } = this.gridChild;
 
         view.addInteractionListener("mousemove", (event) => {
@@ -58,6 +77,57 @@ export class RulerMouseEventController {
         } else if (this.clear !== false) {
             throw new Error(
                 `Ruler param "${this.paramName}" currently supports only "mouseleave" or false in "clear" for mousemove rulers.`
+            );
+        }
+    }
+
+    #addMousedownListeners() {
+        const { view } = this.gridChild;
+
+        view.addInteractionListener("mousedown", (event) => {
+            if (
+                event.mouseEvent.button !== 0 ||
+                !this.eventPredicate(event.proxiedMouseEvent)
+            ) {
+                return;
+            }
+
+            event.stopPropagation();
+            this.dragging = true;
+            this.#setValue(this.#pointToRulerValue(event.point));
+
+            const viewOffset = Point.fromMouseEvent(event.mouseEvent).subtract(
+                new Point(event.point.x, event.point.y)
+            );
+
+            const mouseMoveListener = (/** @type {MouseEvent} */ event) => {
+                const point = Point.fromMouseEvent(event).subtract(viewOffset);
+                this.#setValue(this.#pointToRulerValue(point));
+            };
+
+            const mouseUpListener = () => {
+                document.removeEventListener("mousemove", mouseMoveListener);
+                document.removeEventListener("mouseup", mouseUpListener);
+                this.dragging = false;
+
+                if (this.clear === "mouseup") {
+                    this.#setValue(createRulerValue(this.channels));
+                }
+            };
+
+            document.addEventListener("mousemove", mouseMoveListener);
+            document.addEventListener("mouseup", mouseUpListener);
+        });
+
+        if (this.clear === "mouseleave") {
+            view.addInteractionListener("mouseleave", () => {
+                if (!this.dragging) {
+                    this.#setValue(createRulerValue(this.channels));
+                }
+            });
+        } else if (this.clear !== false && this.clear !== "mouseup") {
+            throw new Error(
+                `Ruler param "${this.paramName}" currently supports only "mouseleave", "mouseup", or false in "clear" for mousedown rulers.`
             );
         }
     }
