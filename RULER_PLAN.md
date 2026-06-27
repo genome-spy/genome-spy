@@ -1025,7 +1025,7 @@ Example docs snippet:
   Tentative commit: `feat(core): render ruler overlays`
 - [x] Add coordinate normalization and snapping helpers used by all ruler update sources.
   Tentative commit: `feat(core): normalize ruler coordinates`
-- [ ] Add `on: "mousemove"` event/filter handling for pointer-driven ruler interactions.
+- [x] Add `on: "mousemove"` event/filter handling for pointer-driven ruler interactions.
   Tentative commit: `feat(core): handle ruler mousemove events`
 - [ ] Add mousedown drag tracking and clear behavior.
   Tentative commit: `feat(core): add ruler drag interaction`

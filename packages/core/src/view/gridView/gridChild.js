@@ -1,4 +1,5 @@
 import { isContinuous } from "vega-scale";
+import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import {
     asEventConfig,
     asSelectionConfig,
@@ -39,6 +40,7 @@ import {
     getOrderedLegendEntries,
     iterateLegendViews,
 } from "./gridChildLegends.js";
+import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 
 /**
  * @typedef {{
@@ -110,6 +112,9 @@ export default class GridChild {
 
         /** @type {SelectionRect} */
         this.selectionRect = undefined;
+
+        /** @type {RulerMouseEventController[]} */
+        this.rulerMouseEventControllers = [];
 
         /** @type {TitleView} */
         this.title = undefined;
@@ -193,6 +198,47 @@ export default class GridChild {
         }
 
         this.#setupIntervalSelection();
+        this.#setupPointerRulers();
+    }
+
+    #setupPointerRulers() {
+        const view = this.view;
+
+        for (const [name, param] of view.paramRuntime.paramConfigs) {
+            if (!isRulerParameter(param)) {
+                continue;
+            }
+
+            const ruler = param.ruler;
+            if (ruler.source === "viewport") {
+                continue;
+            }
+
+            const channels = ruler.encodings ?? ["x"];
+            const scaleResolutions = Object.fromEntries(
+                channels.map((channel) => {
+                    const resolution = view.getScaleResolution(channel);
+
+                    if (!resolution?.getResolvedScaleType?.()) {
+                        throw new Error(
+                            `No scale found for ruler param "${name}" on channel "${channel}".`
+                        );
+                    }
+
+                    return [channel, resolution];
+                })
+            );
+
+            this.rulerMouseEventControllers.push(
+                new RulerMouseEventController(
+                    this,
+                    name,
+                    ruler,
+                    channels,
+                    scaleResolutions
+                )
+            );
+        }
     }
 
     #setupIntervalSelection() {

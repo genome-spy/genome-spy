@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
 import { iterateLegendViews } from "./gridChildLegends.js";
 import Padding from "../layout/padding.js";
+import Rectangle from "../layout/rectangle.js";
 import TitleView from "../titleView.js";
 import ContainerView from "../containerView.js";
 import { createTestViewContext } from "../testUtils.js";
@@ -215,6 +216,56 @@ describe("GridChild parent chrome policy", () => {
 
         expect(child.backgroundStroke).toBeUndefined();
         expect(child.axisCandidates).toHaveLength(0);
+    });
+});
+
+describe("GridChild ruler interactions", () => {
+    test("registers mousemove listeners for pointer ruler params", () => {
+        const listeners = new Map();
+        const scale = (value) => value;
+        scale.type = "linear";
+        scale.invert = (value) => value;
+        const view = /** @type {any} */ ({
+            needsAxes: { x: false, y: false },
+            spec: {},
+            getConfigScopes:
+                /** @returns {import("../../spec/config.js").GenomeSpyConfig[]} */ () => [],
+            getParentGridChromePolicy: () => ({
+                axes: true,
+                background: true,
+            }),
+            getOverhang: () => Padding.zero(),
+            getPadding: () => Padding.zero(),
+            paramRuntime: {
+                paramConfigs: new Map([
+                    [
+                        "cursor",
+                        {
+                            name: "cursor",
+                            ruler: { encodings: ["x"] },
+                        },
+                    ],
+                ]),
+                setValue: () => {},
+            },
+            coords: Rectangle.create(0, 0, 100, 100),
+            getScaleResolution: () => ({
+                getResolvedScaleType: () => "linear",
+                getScale: () => scale,
+            }),
+            addInteractionListener(type, listener) {
+                listeners.set(type, listener);
+            },
+        });
+        const layoutParent = /** @type {any} */ ({
+            context: {},
+            spec: {},
+        });
+
+        new GridChild(view, layoutParent, 0);
+
+        expect(listeners.has("mousemove")).toBe(true);
+        expect(listeners.has("mouseleave")).toBe(true);
     });
 });
 
