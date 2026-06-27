@@ -1,4 +1,5 @@
 import { PrimaryPositionalChannel, Scalar } from "./channel.js";
+import { ChromosomalLocus } from "./genome.js";
 import { ShadowProps } from "./mark.js";
 import { ZIndexProps } from "./decoration.js";
 
@@ -390,4 +391,154 @@ export type SelectionInitIntervalMapping = Partial<
 export type SelectionConfig = PointSelectionConfig | IntervalSelectionConfig;
 export type SelectionTypeOrConfig = SelectionType | SelectionConfig;
 
-export type Parameter = VariableParameter | SelectionParameter;
+export interface RulerParameter extends ParameterBase, PersistedParameter {
+    /**
+     * Tracks a domain coordinate and displays it as a ruler in compatible views.
+     */
+    ruler: RulerConfig;
+
+    /**
+     * Initial ruler value.
+     */
+    value?: RulerInitMapping;
+}
+
+export interface RulerConfig {
+    /**
+     * Positional channels whose domain coordinates are tracked by the ruler.
+     *
+     * __Default value:__ `["x"]`
+     */
+    encodings?: PrimaryPositionalChannel[];
+
+    /**
+     * Source of the ruler coordinate. `"pointer"` uses pointer events configured
+     * by `on`. `"viewport"` tracks the center of the current viewport.
+     *
+     * __Default value:__ `"pointer"`
+     */
+    source?: RulerSource;
+
+    /**
+     * Event that updates a pointer-driven ruler.
+     *
+     * `"mousemove"` follows the pointer. `"mousedown"` updates on press and
+     * continues while dragging. Event filters can require modifier keys.
+     *
+     * __Default value:__ `"mousemove"`
+     */
+    on?: RulerEventType | RulerEventConfig | string;
+
+    /**
+     * Event that clears the ruler, or `false` to keep the current value.
+     *
+     * __Default value:__ `"mouseleave"` for `on: "mousemove"`, otherwise `false`.
+     */
+    clear?: RulerClear;
+
+    /**
+     * Visual extent of the ruler.
+     *
+     * `"view"` draws one guide per participating view. `"container"` draws one
+     * spanning guide when participating projections align. `"auto"` chooses a
+     * spanning guide only when it is safe.
+     *
+     * __Default value:__ `"auto"`
+     */
+    extent?: RulerExtent;
+
+    /**
+     * Quantization applied before writing the ruler value.
+     *
+     * `"auto"` snaps index and locus scales to integer coordinates. `"integer"`
+     * snaps all numeric coordinates. `false` keeps the original coordinate.
+     *
+     * __Default value:__ `"auto"` for index and locus scales, otherwise `false`.
+     */
+    snap?: RulerSnap;
+
+    /**
+     * How the ruler is drawn for snapped index or locus coordinates.
+     *
+     * `"line"` draws at the coordinate. `"center"` draws at the center of the
+     * coordinate band. `"band"` draws a rectangle covering the coordinate band.
+     *
+     * __Default value:__ `"center"` for snapped index and locus scales, otherwise `"line"`.
+     */
+    display?: RulerDisplay;
+
+    /**
+     * Rule or band appearance.
+     */
+    mark?: RulerMarkConfig;
+}
+
+export type RulerSource = "pointer" | "viewport";
+
+export type RulerEventType = "mousemove" | "mousedown";
+
+export interface RulerEventConfig {
+    /**
+     * Event that updates a pointer-driven ruler.
+     */
+    type: RulerEventType;
+
+    /**
+     * Optional filter expression that must evaluate to true before the event
+     * updates the ruler.
+     */
+    filter?: string;
+}
+
+export type RulerClear = "mouseleave" | "mouseup" | false;
+
+export type RulerExtent = "auto" | "view" | "container";
+
+export type RulerSnap = "auto" | "integer" | false;
+
+export type RulerDisplay = "line" | "center" | "band";
+
+export interface RulerMarkConfig extends ShadowProps, ZIndexProps {
+    /**
+     * Stroke color of ruler lines and band outlines.
+     */
+    stroke?: string;
+
+    /**
+     * Stroke width of ruler lines and band outlines, in pixels.
+     */
+    strokeWidth?: number;
+
+    /**
+     * Alternating stroke and gap lengths for dashed ruler lines and band outlines.
+     */
+    strokeDash?: number[];
+
+    /**
+     * Opacity of ruler lines and bands.
+     */
+    opacity?: number;
+
+    /**
+     * Fill color for `display: "band"`.
+     */
+    fill?: string;
+
+    /**
+     * Fill opacity for `display: "band"`.
+     */
+    fillOpacity?: number;
+}
+
+export type RulerChannelValue = Scalar | ChromosomalLocus | null;
+
+export interface RulerValue {
+    type: "ruler";
+    values: Partial<Record<PrimaryPositionalChannel, RulerChannelValue>>;
+}
+
+export type RulerInitMapping = Partial<
+    Record<PrimaryPositionalChannel, RulerChannelValue>
+>;
+
+export type Parameter = VariableParameter | SelectionParameter | RulerParameter;

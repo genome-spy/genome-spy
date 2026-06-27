@@ -1009,7 +1009,7 @@ Example docs snippet:
 
 ## Implementation Sequence
 
-- [ ] Add spec types and schema tests for ruler params.
+- [x] Add spec types and schema tests for ruler params.
   Tentative commit: `feat(core): add ruler parameter schema`
 - [ ] Add ruler value helpers, default normalization, and runtime kind reporting.
   Tentative commit: `feat(core): normalize ruler parameter values`
