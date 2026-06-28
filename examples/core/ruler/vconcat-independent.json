@@ -1,7 +1,24 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "description": "Two vertically concatenated views declare independent rulers.",
+  "description": "A parent ruler is rendered separately in each vconcat child.",
+
+  "params": [
+    {
+      "name": "cursor",
+      "persist": false,
+      "ruler": {
+        "encodings": ["x"],
+        "on": "mousemove",
+        "extent": "view",
+        "mark": { "stroke": "black", "strokeDash": [4, 2] }
+      }
+    }
+  ],
+
+  "resolve": {
+    "scale": { "x": "shared" }
+  },
 
   "vconcat": [
     {
@@ -13,17 +30,6 @@
           { "x": 4, "y": 8 }
         ]
       },
-      "params": [
-        {
-          "name": "topCursor",
-          "persist": false,
-          "ruler": {
-            "encodings": ["x"],
-            "on": "mousemove",
-            "extent": "view"
-          }
-        }
-      ],
       "mark": "point",
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
@@ -40,23 +46,18 @@
           { "x": 4, "y": 2 }
         ]
       },
-      "params": [
-        {
-          "name": "bottomCursor",
-          "persist": false,
-          "ruler": {
-            "encodings": ["x"],
-            "on": "mousedown[event.shiftKey]",
-            "clear": false,
-            "extent": "view"
-          }
-        }
-      ],
-      "mark": "point",
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "y", "type": "quantitative" }
-      }
+      },
+      "layer": [
+        {
+          "mark": { "type": "point", "size": 180, "opacity": 0.25 }
+        },
+        {
+          "mark": { "type": "point", "size": 40, "filled": true }
+        }
+      ]
     }
   ]
 }
