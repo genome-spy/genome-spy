@@ -1007,7 +1007,54 @@ Example docs snippet:
   expose it because it is useful in user-authored expressions that consume
   complex locus ruler values.
 
-## Current Implementation Status
+## Complexity Review
+
+The current branch makes the ruler largely behave as intended, but the code
+added so far is larger and more complex than the feature needs. Before adding
+more behavior, reduce the implementation to one ownership model and remove
+scaffolding that is not on the live runtime path.
+
+1. Remove or defer the unused registry/store model.
+
+   The branch currently has both a generic binding model
+   (`rulerRegistry.js`, `rulerBindingStore.js`, `rulerExtent.js`) and direct
+   `GridChild`/`GridView` runtime wiring. The live behavior is driven by
+   `GridChild` walking data ancestors and by `GridView` creating spanning
+   overlays. The registry/store path is therefore an unintegrated alternative
+   architecture. Either make it the single source of truth or, preferably for
+   v1, delete/defer it.
+
+2. Make container extent resolution single-owned.
+
+   `GridView` decides whether to create container-spanning overlays, while
+   `GridChild` separately decides whether to suppress per-view overlays. That
+   split makes the `extent: "auto"` behavior harder to reason about. One place
+   should decide `view` vs `container`, and both rendering paths should consume
+   that decision.
+
+3. Consider deferring `source: "viewport"`.
+
+   Viewport-centered rulers are useful, but they are not required for the
+   initial pointer-following ruler. They add a controller, scale subscriptions,
+   lifecycle concerns, and tests. If the first PR should be smaller, ship
+   pointer-driven rulers first and add viewport-following rulers in a follow-up.
+
+4. Keep the static overlay source with parameter-backed `ExprRef` positions.
+
+   The static `[{}]` source plus a param-driven filter is still the right
+   overlay model. Coordinate movement should come from positional datum
+   expressions that read the ruler parameter. Dataflow repropagation should only
+   be needed for active/inactive visibility changes, not for every coordinate
+   update.
+
+5. Trim or remove this plan before merging.
+
+   `RULER_PLAN.md` is useful during design, but it is much larger than the
+   final user-facing change. Before merging, either remove it from the branch
+   or reduce it to a short design note that documents the accepted model and
+   the remaining follow-up work.
+
+## Historical Implementation Status
 
 The current branch contains useful ruler scaffolding, but the interactive ruler
 is not complete. The checked implementation items below include helpers and
