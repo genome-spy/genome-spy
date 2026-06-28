@@ -1,5 +1,8 @@
+import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
+
 /**
  * @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
+ * @typedef {"view" | "container"} RulerOverlayExtent
  * @typedef {{
  *   paramName: string,
  *   channels: PrimaryPositionalChannel[],
@@ -105,6 +108,64 @@ export function resolveRulerDisplay(scaleType, snap, display) {
     } else {
         return "line";
     }
+}
+
+/**
+ * Resolves whether a generated ruler overlay should be per-view or
+ * container-spanning.
+ *
+ * @param {{
+ *     paramName: string,
+ *     config: import("../../spec/parameter.js").RulerConfig,
+ *     ownerSpec: import("../../spec/view.js").ViewSpec,
+ *     channels: PrimaryPositionalChannel[],
+ *     isAligned: (channel: PrimaryPositionalChannel) => boolean,
+ * }} options
+ * @returns {RulerOverlayExtent}
+ */
+export function resolveRulerOverlayExtent({
+    paramName,
+    config,
+    ownerSpec,
+    channels,
+    isAligned,
+}) {
+    const channel = channels.length === 1 ? channels[0] : undefined;
+    if (!channel) {
+        return "view";
+    }
+
+    const requestsContainer =
+        config.extent === "container" || config.extent === "auto";
+    if (!requestsContainer) {
+        return "view";
+    }
+
+    const supportsContainer =
+        (channel === "x" && isVConcatSpec(ownerSpec)) ||
+        (channel === "y" && isHConcatSpec(ownerSpec));
+
+    if (!supportsContainer) {
+        if (config.extent === "container") {
+            throw new Error(
+                `Ruler param "${paramName}" cannot use extent "container" for channel "${channel}" in this view.`
+            );
+        } else {
+            return "view";
+        }
+    }
+
+    if (!isAligned(channel)) {
+        if (config.extent === "container") {
+            throw new Error(
+                `Ruler param "${paramName}" cannot use extent "container" because its ${channel} projections do not align.`
+            );
+        } else {
+            return "view";
+        }
+    }
+
+    return "container";
 }
 
 /**

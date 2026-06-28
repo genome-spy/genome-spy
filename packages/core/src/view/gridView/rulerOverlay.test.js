@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { createRulerOverlaySpec, resolveRulerDisplay } from "./rulerOverlay.js";
+import {
+    createRulerOverlaySpec,
+    resolveRulerDisplay,
+    resolveRulerOverlayExtent,
+} from "./rulerOverlay.js";
 
 describe("createRulerOverlaySpec", () => {
     test("creates an x ruler overlay with a static source and param filter", () => {
@@ -156,5 +160,81 @@ describe("resolveRulerDisplay", () => {
     test("defaults quantitative and unsnapped rulers to line display", () => {
         expect(resolveRulerDisplay("linear", "auto")).toBe("line");
         expect(resolveRulerDisplay("index", false)).toBe("line");
+    });
+});
+
+describe("resolveRulerOverlayExtent", () => {
+    test("keeps explicit view extent per-view", () => {
+        expect(
+            resolveRulerOverlayExtent({
+                paramName: "cursor",
+                config: { extent: "view" },
+                ownerSpec: { vconcat: [] },
+                channels: ["x"],
+                isAligned: () => true,
+            })
+        ).toBe("view");
+    });
+
+    test("uses container extent for aligned concat rulers", () => {
+        expect(
+            resolveRulerOverlayExtent({
+                paramName: "cursor",
+                config: { extent: "auto" },
+                ownerSpec: { vconcat: [] },
+                channels: ["x"],
+                isAligned: () => true,
+            })
+        ).toBe("container");
+
+        expect(
+            resolveRulerOverlayExtent({
+                paramName: "cursor",
+                config: { extent: "container" },
+                ownerSpec: { hconcat: [] },
+                channels: ["y"],
+                isAligned: () => true,
+            })
+        ).toBe("container");
+    });
+
+    test("falls back to per-view for auto when projections differ", () => {
+        expect(
+            resolveRulerOverlayExtent({
+                paramName: "cursor",
+                config: { extent: "auto" },
+                ownerSpec: { vconcat: [] },
+                channels: ["x"],
+                isAligned: () => false,
+            })
+        ).toBe("view");
+    });
+
+    test("rejects forced container extent when projections differ", () => {
+        expect(() =>
+            resolveRulerOverlayExtent({
+                paramName: "cursor",
+                config: { extent: "container" },
+                ownerSpec: { vconcat: [] },
+                channels: ["x"],
+                isAligned: () => false,
+            })
+        ).toThrow(
+            'Ruler param "cursor" cannot use extent "container" because its x projections do not align.'
+        );
+    });
+
+    test("rejects forced container extent for unsupported concat direction", () => {
+        expect(() =>
+            resolveRulerOverlayExtent({
+                paramName: "cursor",
+                config: { extent: "container" },
+                ownerSpec: { hconcat: [] },
+                channels: ["x"],
+                isAligned: () => true,
+            })
+        ).toThrow(
+            'Ruler param "cursor" cannot use extent "container" for channel "x" in this view.'
+        );
     });
 });

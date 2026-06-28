@@ -1069,7 +1069,7 @@ scaffolding that is not on the live runtime path.
 - [x] Remove or fully replace the unused registry/store path.
   The direct `GridChild`/`GridView` attachment model remains the v1 runtime
   model.
-- [ ] Centralize the `extent` decision so per-view and container-spanning
+- [x] Centralize the `extent` decision so per-view and container-spanning
   overlays cannot disagree.
 - [ ] Keep viewport mode, but verify scale subscription cleanup and domain/range
   update behavior.

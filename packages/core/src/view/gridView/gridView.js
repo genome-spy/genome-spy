@@ -47,7 +47,11 @@ import {
     normalizeClipOptions,
 } from "../renderingContext/clipOptions.js";
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
-import { createRulerOverlaySpec, resolveRulerDisplay } from "./rulerOverlay.js";
+import {
+    createRulerOverlaySpec,
+    resolveRulerDisplay,
+    resolveRulerOverlayExtent,
+} from "./rulerOverlay.js";
 import {
     markViewAsChrome,
     markViewAsNonAddressable,
@@ -500,7 +504,14 @@ export default class GridView extends ContainerView {
             const channel = channels.length === 1 ? channels[0] : undefined;
             if (
                 !channel ||
-                !this.#usesContainerRuler(paramName, param.ruler, channel)
+                resolveRulerOverlayExtent({
+                    paramName,
+                    config: param.ruler,
+                    ownerSpec: this.spec,
+                    channels,
+                    isAligned: (channel) =>
+                        this.#hasAlignedRulerProjection(channel),
+                }) !== "container"
             ) {
                 continue;
             }
@@ -536,46 +547,17 @@ export default class GridView extends ContainerView {
         await Promise.all(promises);
     }
 
-    /**
-     * @param {string} paramName
-     * @param {import("../../spec/parameter.js").RulerConfig} config
-     * @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel
-     */
-    #usesContainerRuler(paramName, config, channel) {
-        const supportsContainer =
-            (channel === "x" && isVConcatSpec(this.spec)) ||
-            (channel === "y" && isHConcatSpec(this.spec));
-
-        if (!supportsContainer) {
-            if (config.extent === "container") {
-                throw new Error(
-                    `Ruler param "${paramName}" cannot use extent "container" for channel "${channel}" in this view.`
-                );
-            } else {
-                return false;
-            }
-        }
-
+    /** @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel */
+    #hasAlignedRulerProjection(channel) {
         const ownerResolution = this.getScaleResolution(channel);
-        const aligned =
-            ownerResolution &&
+        return (
+            ownerResolution != null &&
             this.#children.every(
                 (gridChild) =>
                     gridChild.view.getScaleResolution(channel) ===
                     ownerResolution
-            );
-
-        if (!aligned) {
-            if (config.extent === "container") {
-                throw new Error(
-                    `Ruler param "${paramName}" cannot use extent "container" because its ${channel} projections do not align.`
-                );
-            } else {
-                return false;
-            }
-        }
-
-        return config.extent === "container" || config.extent === "auto";
+            )
+        );
     }
 
     /**
