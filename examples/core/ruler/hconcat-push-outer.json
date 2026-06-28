@@ -3,13 +3,17 @@
 
   "description": "A child ruler pushes a coordinate to an outer parameter used by a sibling view.",
 
-  "params": [{ "name": "cursor", "persist": false }],
+  "params": [{ "name": "cursor" }],
 
-  "resolve": {
-    "scale": { "y": "independent" }
-  },
-
-  "hconcat": [
+  "vconcat": [
+    {
+      "height": 25,
+      "data": { "values": [{}] },
+      "mark": {
+        "type": "text",
+        "text": { "expr": "'x = ' + cursor.values.x" }
+      }
+    },
     {
       "data": {
         "values": [
@@ -26,8 +30,7 @@
           "push": "outer",
           "ruler": {
             "encodings": ["x"],
-            "on": "mousemove",
-            "extent": "view"
+            "mark": { "stroke": "gray", "strokeDash": [4, 4] }
           }
         }
       ],
@@ -36,15 +39,8 @@
         "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "y", "type": "quantitative" }
       }
-    },
-
-    {
-      "data": { "values": [{}] },
-      "transform": [],
-      "mark": "text",
-      "encoding": {
-        "text": { "expr": "'' + cursor.values.x" }
-      }
     }
-  ]
+  ],
+
+  "config": { "view": { "stroke": "lightgray" } }
 }
