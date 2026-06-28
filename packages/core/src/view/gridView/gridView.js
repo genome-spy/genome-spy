@@ -48,14 +48,10 @@ import {
 } from "../renderingContext/clipOptions.js";
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import {
-    createRulerOverlaySpec,
+    createRulerOverlayView,
     resolveRulerDisplay,
     resolveRulerOverlayExtent,
 } from "./rulerOverlay.js";
-import {
-    markViewAsChrome,
-    markViewAsNonAddressable,
-} from "../viewSelectors.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -518,30 +514,22 @@ export default class GridView extends ContainerView {
 
             const scaleResolution = this.getScaleResolution(channel);
             const scaleType = scaleResolution.getResolvedScaleType();
-            const overlay = new LayerView(
-                createRulerOverlaySpec({
-                    paramName,
-                    channels,
-                    display: resolveRulerDisplay(
-                        scaleType,
-                        param.ruler.snap,
-                        param.ruler.display
-                    ),
-                    mark: param.ruler.mark,
-                }),
-                this.context,
-                this,
-                this,
-                "rulerOverlay" + "_" + paramName
-            );
-
-            markViewAsNonAddressable(overlay, { skipSubtree: true });
-            markViewAsChrome(overlay, { skipSubtree: true });
-            this.#rulerOverlays.push({
-                view: overlay,
-                zindex: param.ruler.mark?.zindex ?? 1,
+            const overlay = createRulerOverlayView({
+                paramName,
+                channels,
+                display: resolveRulerDisplay(
+                    scaleType,
+                    param.ruler.snap,
+                    param.ruler.display
+                ),
+                mark: param.ruler.mark,
+                context: this.context,
+                layoutParent: this,
+                dataParent: this,
+                name: "rulerOverlay" + "_" + paramName,
             });
-            promises.push(overlay.initializeChildren());
+            this.#rulerOverlays.push(overlay);
+            promises.push(overlay.view.initializeChildren());
         }
 
         await Promise.all(promises);

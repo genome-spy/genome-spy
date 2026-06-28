@@ -1,4 +1,5 @@
 import { createEventFilterFunction } from "../utils/expression.js";
+import { asEventConfig } from "../selection/selection.js";
 import Point from "../view/layout/point.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
@@ -30,7 +31,10 @@ export class RulerMouseEventController {
         this.scaleResolutions = scaleResolutions;
         this.paramRuntime = paramRuntime;
 
-        this.eventConfig = asRulerEventConfig(config.on ?? "mousemove");
+        this.eventConfig =
+            /** @type {import("../spec/parameter.js").RulerEventConfig} */ (
+                asEventConfig(config.on ?? "mousemove")
+            );
         if (
             this.eventConfig.type !== "mousemove" &&
             this.eventConfig.type !== "mousedown"
@@ -174,32 +178,5 @@ export class RulerMouseEventController {
      */
     #setValue(value) {
         this.paramRuntime.setValue(this.paramName, value);
-    }
-}
-
-/**
- * @param {import("../spec/parameter.js").RulerConfig["on"]} eventType
- * @returns {import("../spec/parameter.js").RulerEventConfig}
- */
-function asRulerEventConfig(eventType) {
-    if (typeof eventType === "string") {
-        const match = eventType.match(/^([a-zA-Z]+)(?:\[(.+)\])?$/);
-        if (!match) {
-            throw new Error(`Invalid event type string: ${eventType}`);
-        }
-
-        const [, type, filter] = match;
-        /** @type {import("../spec/parameter.js").RulerEventConfig} */
-        const eventSpec = {
-            type: /** @type {import("../spec/parameter.js").RulerEventType} */ (
-                type
-            ),
-        };
-        if (filter) {
-            eventSpec.filter = filter;
-        }
-        return eventSpec;
-    } else {
-        return eventType;
     }
 }

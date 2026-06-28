@@ -1,14 +1,26 @@
+import LayerView from "../layerView.js";
+import {
+    markViewAsChrome,
+    markViewAsNonAddressable,
+} from "../viewSelectors.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
 
 /**
  * @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
  * @typedef {"view" | "container"} RulerOverlayExtent
+ * @typedef {{ view: LayerView, zindex: number }} RulerOverlayView
  * @typedef {{
  *   paramName: string,
  *   channels: PrimaryPositionalChannel[],
  *   display?: import("../../spec/parameter.js").RulerDisplay,
  *   mark?: import("../../spec/parameter.js").RulerMarkConfig
  * }} RulerOverlaySpecOptions
+ * @typedef {RulerOverlaySpecOptions & {
+ *   context: import("../../types/viewContext.js").default,
+ *   layoutParent: import("../containerView.js").default,
+ *   dataParent: import("../view.js").default,
+ *   name: string,
+ * }} RulerOverlayViewOptions
  */
 
 /**
@@ -91,6 +103,44 @@ export function createRulerOverlaySpec({
     }
 
     return spec;
+}
+
+/**
+ * Creates a generated chrome view for rendering a ruler overlay.
+ *
+ * @param {RulerOverlayViewOptions} options
+ * @returns {RulerOverlayView}
+ */
+export function createRulerOverlayView({
+    paramName,
+    channels,
+    display,
+    mark,
+    context,
+    layoutParent,
+    dataParent,
+    name,
+}) {
+    const overlay = new LayerView(
+        createRulerOverlaySpec({
+            paramName,
+            channels,
+            display,
+            mark,
+        }),
+        context,
+        layoutParent,
+        dataParent,
+        name
+    );
+
+    markViewAsNonAddressable(overlay, { skipSubtree: true });
+    markViewAsChrome(overlay, { skipSubtree: true });
+
+    return {
+        view: overlay,
+        zindex: mark?.zindex ?? 1,
+    };
 }
 
 /**
