@@ -65,7 +65,9 @@ export function createRulerOverlaySpec({
                 type: "rect",
                 clip: true,
                 fill: "black",
-                opacity: 0.12,
+                fillOpacity: 0.15,
+                stroke: "black",
+                strokeWidth: 1,
                 ...mark,
             },
         });

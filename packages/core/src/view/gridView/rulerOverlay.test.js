@@ -141,6 +141,8 @@ describe("createRulerOverlaySpec", () => {
                 mark: {
                     type: "rect",
                     clip: true,
+                    fillOpacity: 0.15,
+                    strokeWidth: 1,
                 },
             },
         ]);

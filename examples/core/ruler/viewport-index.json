@@ -14,8 +14,7 @@
         "display": "band",
         "mark": {
           "stroke": "black",
-          "fill": "orange",
-          "fillOpacity": 0.2
+          "fill": "orange"
         }
       }
     }
@@ -25,9 +24,7 @@
     "sequence": { "start": 0, "stop": 10001, "step": 250, "as": "x" }
   },
 
-  "transform": [
-    { "type": "formula", "expr": "sin(datum.x / 500)", "as": "y" }
-  ],
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 500)", "as": "y" }],
 
   "mark": "point",
   "encoding": {
