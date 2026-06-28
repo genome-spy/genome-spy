@@ -1029,13 +1029,10 @@ scaffolding that is not on the live runtime path.
 
 1. Remove or defer the unused registry/store model.
 
-   The branch currently has both a generic binding model
-   (`rulerRegistry.js`, `rulerBindingStore.js`, `rulerExtent.js`) and direct
+   The branch previously had both a generic binding model and direct
    `GridChild`/`GridView` runtime wiring. The live behavior is driven by
    `GridChild` walking data ancestors and by `GridView` creating spanning
-   overlays. The registry/store path is therefore an unintegrated alternative
-   architecture. Either make it the single source of truth or, preferably for
-   v1, delete/defer it.
+   overlays. The unused registry/store path has been removed for v1.
 
 2. Make container extent resolution single-owned.
 
@@ -1069,10 +1066,9 @@ scaffolding that is not on the live runtime path.
 
 ## Remaining Cleanup Sequence
 
-- [ ] Remove or fully replace the unused registry/store path.
-  Recommendation: delete or defer `rulerRegistry.js`, `rulerBindingStore.js`,
-  and the current standalone `rulerExtent.js` if the live implementation keeps
-  the direct `GridChild`/`GridView` attachment model.
+- [x] Remove or fully replace the unused registry/store path.
+  The direct `GridChild`/`GridView` attachment model remains the v1 runtime
+  model.
 - [ ] Centralize the `extent` decision so per-view and container-spanning
   overlays cannot disagree.
 - [ ] Keep viewport mode, but verify scale subscription cleanup and domain/range
