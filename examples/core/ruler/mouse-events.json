@@ -16,6 +16,21 @@
     ]
   },
 
+  "resolve": { "scale": { "y": "independent" } },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 10] }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [0, 10] }
+    }
+  },
+
   "hconcat": [
     {
       "title": "mousemove",
@@ -30,15 +45,7 @@
           }
         }
       ],
-      "mark": "point",
-      "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "y", "type": "quantitative" }
-      },
-      "scales": {
-        "x": { "domain": [0, 10] },
-        "y": { "domain": [0, 10] }
-      }
+      "mark": "point"
     },
 
     {
@@ -50,20 +57,11 @@
           "ruler": {
             "encodings": ["x"],
             "on": "mousedown",
-            "clear": false,
             "mark": { "stroke": "#d95f02", "strokeWidth": 2 }
           }
         }
       ],
-      "mark": "point",
-      "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "y", "type": "quantitative" }
-      },
-      "scales": {
-        "x": { "domain": [0, 10] },
-        "y": { "domain": [0, 10] }
-      }
+      "mark": "point"
     },
 
     {
@@ -75,7 +73,7 @@
           "ruler": {
             "encodings": ["x"],
             "on": "mousedown[event.shiftKey]",
-            "clear": false,
+            "clear": "mouseup",
             "mark": {
               "stroke": "#2ca02c",
               "strokeWidth": 2,
@@ -84,15 +82,7 @@
           }
         }
       ],
-      "mark": "point",
-      "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
-        "y": { "field": "y", "type": "quantitative" }
-      },
-      "scales": {
-        "x": { "domain": [0, 10] },
-        "y": { "domain": [0, 10] }
-      }
+      "mark": "point"
     }
   ],
 
