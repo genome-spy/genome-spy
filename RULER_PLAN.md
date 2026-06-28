@@ -1,10 +1,8 @@
 # Ruler Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Add ruler parameters that track an interaction-derived domain coordinate and render synchronized guide rules across compatible views.
 
-**Architecture:** A ruler is a parameter-owned cursor coordinate, not a selection. The declaring view owns the parameter value, while a ruler binding layer maps that value to compatible non-chrome descendant views and creates the overlay views needed to render it. Synchronization and rendering extent are separate: one value can be projected into many independent scales, and the guide can be drawn per view or as a container-spanning rule when projections align.
+**Architecture:** A ruler is a parameter-owned cursor coordinate, not a selection. The declaring view owns the parameter value, while rendered grid children attach interaction controllers and generated overlay views for applicable ruler parameters. Synchronization and rendering extent are separate: one value can be projected into many independent scales, and the guide can be drawn per view or as a container-spanning rule when projections align.
 
 **Tech Stack:** GenomeSpy Core view hierarchy, JSDoc-typed JavaScript, TypeScript spec declarations, param runtime, GridView/GridChild chrome overlays, Vitest layout/interaction tests.
 
@@ -202,7 +200,7 @@ The intended pattern is:
 
 - Declare a plain outer parameter with the target name.
 - Declare a same-name child ruler parameter with `push: "outer"`.
-- Create the ruler binding from the child declaration, because the child owns
+- Attach the ruler behavior from the child declaration, because the child owns
   the interaction surface.
 - Immediately push the child's inactive tagged ruler value to the outer
   parameter during registration, before any pointer or viewport update.
@@ -226,24 +224,29 @@ The outer target must be a writable variable parameter. As with existing
 `push: "outer"` semantics, pushing to an outer derived parameter, selection
 parameter, or ruler parameter should fail with a clear error.
 
-Pushed ruler bindings do not render in sibling views automatically. The pushed
+Pushed ruler declarations do not render in sibling views automatically. The pushed
 outer value is available to siblings for expressions and dataflow, but visual
-ruler overlays remain scoped to the view that declares the ruler binding. A
-sibling that should also show a ruler must declare its own ruler binding.
+ruler overlays remain scoped to the view that declares the ruler. A sibling
+that should also show a ruler must declare its own ruler.
 
 ### Participant Discovery
 
-Ruler participants are resolved by a compile/attachment step, not by descendants searching for params at runtime.
+Rendered grid children discover applicable ruler parameters from their data
+ancestors, nearest declaration first.
 
-- Scan the view tree for parameters with a `ruler` property.
-- For each ruler parameter, create a `RulerBinding` owned by the declaring view.
-- The binding scans the owner's non-chrome descendants.
-- A descendant channel participates when:
+- A ruler declared on a unit view applies to that unit view.
+- A ruler declared on a concat/grid owner applies to compatible rendered
+  descendants.
+- A child declaration with the same parameter name shadows an ancestor
+  declaration for that subtree.
+- A rendered child channel participates when:
   - the view has the requested positional channel,
   - the channel has a scale resolution,
   - the scale type is compatible with the source scale type,
   - for locus scales, the assembly is compatible.
-- Chrome views are excluded before compatibility checks. This excludes axes, grids, legends, backgrounds, scrollbars, selection overlays, and other generated chrome.
+- Chrome views are excluded from participation. This excludes axes, grids,
+  legends, backgrounds, scrollbars, selection overlays, ruler overlays, and
+  other generated chrome.
 
 Initial compatibility heuristic:
 
@@ -259,7 +262,7 @@ smallest shared ancestor that represents the intended coordinate space.
 
 ### Multiple Ruler Parameters
 
-For v1, a rendered non-chrome view may have only one ruler binding after
+For v1, a rendered non-chrome view may have only one ruler attachment after
 shadowing has been resolved. This matches the existing conservative interval
 selection model and avoids stacking multiple generated overlays on the same
 view before there is a clear use case.
@@ -267,8 +270,8 @@ view before there is a clear use case.
 - Different parameter names may exist in the same spec when their participant
   sets do not overlap.
 - Same-name parameters in nested scopes follow lexical ownership. The nearest
-  declaration owns the local binding for its subtree.
-- Same-name ruler params with `push: "outer"` are interaction bindings for the
+  declaration owns the local attachment for its subtree.
+- Same-name ruler params with `push: "outer"` are interaction declarations for the
   child scope but write to the nearest outer writable variable parameter.
 - A single ruler may still track both `x` and `y`, producing a crosshair or
   cell band.
@@ -695,47 +698,56 @@ Plan:
 - Reject pushing a ruler to an outer parameter with `expr`, `select`, or `ruler`.
   The target should remain a plain writable variable parameter.
 - Extend debug state kind reporting with `"ruler"` for locally registered ruler
-  parameters and keep `"push"` for pushed ruler bindings.
+  parameters and keep `"push"` for pushed ruler declarations.
 - Add a scale-aware expression helper named `linearize(channel, value)`.
   The channel must be a literal positional channel, matching existing helpers
   such as `scale("x", value)`. Quantitative and index values pass through as
   numbers; locus values are converted with the channel's scale resolution and
   assembly. `null` returns `null`.
 
-### Ruler Binding Model
+### Runtime Attachment Model
 
-Likely new files:
+Likely files:
 
-- `packages/core/src/ruler/rulerBinding.js`
-- `packages/core/src/ruler/rulerRegistry.js`
 - `packages/core/src/ruler/rulerCompatibility.js`
 - `packages/core/src/ruler/rulerValue.js`
+- `packages/core/src/view/gridView/gridChild.js`
+- `packages/core/src/view/gridView/gridView.js`
+- `packages/core/src/view/gridView/rulerOverlay.js`
 
 Plan:
 
-- Create a small binding object per ruler parameter.
-- Store owner view, param name, ruler config, channels, participant list, expression reader, and setter.
-- For pushed ruler params, keep the binding owner as the declaring child view but use the runtime-provided setter so updates go to the outer parameter.
-- Resolve participants after scale resolutions and child views are available.
-- Resolve the effective activation event from `on`, defaulting pointer-driven rulers to `"mousemove"`.
-- Exclude chrome views using existing view selector helpers.
+- Let `GridChild` attach pointer and viewport controllers for applicable ruler
+  parameters discovered from data ancestors.
+- Use the declaring owner's parameter runtime for ordinary ancestor-declared
+  rulers so one value is shared across compatible children.
+- Use the pushed setter for `push: "outer"` ruler parameters so sibling views
+  observe the outer parameter value through normal param scoping.
+- Let `GridChild` create per-view generated overlay views when the effective
+  extent is `view`.
+- Let `GridView` create container-spanning generated overlay views when the
+  effective extent is `container`.
 - Keep compatibility logic separate from overlay rendering.
+- Avoid a separate registry/store until dynamic mutation behavior or more
+  complex ownership rules require one integrated source of truth.
 
 ### View Integration
 
 Likely files:
 
-- `packages/core/src/view/view.js`
 - `packages/core/src/view/gridView/gridView.js`
 - `packages/core/src/view/gridView/gridChild.js`
 - `packages/core/src/view/viewSelectors.js`
 
 Plan:
 
-- Add a view-level hook for creating ruler bindings after child initialization and guide/chrome setup.
-- Attach applicable bindings to `GridChild` instances.
+- Attach applicable ruler controllers and overlays from `GridChild`, near the
+  existing interval selection integration.
+- Attach container-spanning overlays from `GridView`, near shared guide/chrome
+  creation.
 - Keep interaction listeners near `GridChild`, as interval selection interaction is handled there today.
-- Ensure view mutation APIs re-run ruler binding attachment when views are inserted, moved, or removed.
+- Ensure view mutation APIs re-run the relevant guide/chrome synchronization
+  when views are inserted, moved, or removed.
 
 ### Ruler Overlay Rendering
 
@@ -752,7 +764,8 @@ Plan:
 - Use a static generated data source with one empty row, `data: { values: [{}] }`.
 - Gate visibility with a generated param-driven filter transform, for example
   `cursor.type === 'ruler' && cursor.values.x != null`.
-- One overlay instance can represent one ruler binding for one view or one container-spanning extent.
+- One overlay instance can represent one ruler in one view or one
+  container-spanning ruler.
 - Generate rule or rect mark specs from the ruler `mark` config, reusing
   existing rule/rect mark styling semantics where possible.
 - For x rulers, encode `x` from the ruler value and let the rule span the view height.
@@ -777,7 +790,8 @@ Plan:
 Likely files:
 
 - `packages/core/src/view/gridView/gridChild.js`
-- `packages/core/src/ruler/rulerBinding.js`
+- `packages/core/src/ruler/rulerMouseEventController.js`
+- `packages/core/src/ruler/rulerViewportController.js`
 
 Plan:
 
@@ -818,14 +832,14 @@ Focused Vitest coverage should live close to the changed code.
 Suggested tests:
 
 - Spec schema accepts ruler params with `source`, `on`, `extent`, `clear`, and `mark`.
-- Ruler bindings attach only to non-chrome descendants.
+- Ruler attachments apply only to non-chrome descendants.
 - A ruler declared on a unit view attaches locally.
 - A ruler declared on `vconcat` attaches to compatible descendant x scales.
 - Independent quantitative x scales under the same owner share one ruler value but render per view.
 - Locus rulers attach only to locus scales with the same assembly.
 - Multiple differently named ruler params can exist when their participant sets do not overlap.
 - Multiple differently named ruler params that would apply to one rendered view fail with a clear error.
-- Nested same-name ruler params shadow ancestor bindings.
+- Nested same-name ruler params shadow ancestor declarations.
 - A child ruler with `push: "outer"` updates the outer variable parameter.
 - Registering a child ruler with `push: "outer"` seeds the outer variable with
   an inactive tagged ruler value before any interaction.
@@ -886,11 +900,11 @@ and formatted according to `examples/README.md`.
 
 Planned files:
 
-- `examples/core/ruler/push-outer-hconcat.json`
+- `examples/core/ruler/hconcat-push-outer.json`
 - `examples/core/ruler/vconcat-independent.json`
 - `examples/core/ruler/vconcat-spanning.json`
 
-`push-outer-hconcat.json` should exercise the dataflow use case:
+`hconcat-push-outer.json` should exercise the dataflow use case:
 
 - The top-level `hconcat` declares a plain outer `cursor` parameter.
 - The left child declares a same-name ruler with `push: "outer"` and
@@ -899,8 +913,7 @@ Planned files:
 - The right child does a param-driven transform or expression using the pushed
   `cursor` value, such as highlighting or filtering intervals that overlap the
   ruler coordinate.
-- The right child should not render a ruler unless it declares its own ruler
-  binding.
+- The right child should not render a ruler unless it declares its own ruler.
 
 Manual checks:
 
@@ -943,7 +956,7 @@ Manual checks:
 Useful manual URLs after starting the dev server with `npm start`:
 
 ```text
-http://127.0.0.1:8080/?spec=examples/core/ruler/push-outer-hconcat.json
+http://127.0.0.1:8080/?spec=examples/core/ruler/hconcat-push-outer.json
 http://127.0.0.1:8080/?spec=examples/core/ruler/vconcat-independent.json
 http://127.0.0.1:8080/?spec=examples/core/ruler/vconcat-spanning.json
 ```
@@ -967,7 +980,7 @@ Docs should explain:
 - Independent zoom levels are supported.
 - Rulers should be declared on the smallest shared ancestor that represents the
   intended coordinate space.
-- V1 allows only one ruler binding per rendered view.
+- V1 allows only one ruler attachment per rendered view.
 - `extent` controls visual drawing, not synchronization.
 - `on` controls pointer-driven ruler interaction.
 - `source: "viewport"` keeps the ruler value synchronized with the viewport center.
@@ -1032,12 +1045,12 @@ scaffolding that is not on the live runtime path.
    should decide `view` vs `container`, and both rendering paths should consume
    that decision.
 
-3. Consider deferring `source: "viewport"`.
+3. Keep `source: "viewport"` in scope, but keep it local.
 
-   Viewport-centered rulers are useful, but they are not required for the
-   initial pointer-following ruler. They add a controller, scale subscriptions,
-   lifecycle concerns, and tests. If the first PR should be smaller, ship
-   pointer-driven rulers first and add viewport-following rulers in a follow-up.
+   Viewport-centered rulers are part of the intended feature. They should not
+   force a generic binding registry, though. Keep the viewport controller small,
+   make its scale subscriptions and disposal semantics explicit, and test that
+   domain/range changes update the ruler value.
 
 4. Keep the static overlay source with parameter-backed `ExprRef` positions.
 
@@ -1054,217 +1067,19 @@ scaffolding that is not on the live runtime path.
    or reduce it to a short design note that documents the accepted model and
    the remaining follow-up work.
 
-## Historical Implementation Status
+## Remaining Cleanup Sequence
 
-The current branch contains useful ruler scaffolding, but the interactive ruler
-is not complete. The checked implementation items below include helpers and
-unit-tested pieces that are not yet wired into the runtime view tree:
-
-- `createRulerOverlaySpec()` generates an overlay layer spec, but no runtime
-  code instantiates a `LayerView` from it.
-- `resolveRulerBindings()` and `createRulerBindingStore()` resolve bindings,
-  but nothing calls them during normal view construction.
-- `GridChild` currently installs pointer and viewport controllers only for
-  ruler params declared directly on the rendered child view.
-- A ruler declared on a concat view, such as
-  `examples/core/ruler/vconcat-spanning.json`, is therefore not discovered by
-  the child `GridChild` instances.
-- No ruler overlay views are included in `GridChild.getChildren()`, so even a
-  local ruler parameter can update silently without drawing a visible guide.
-- `extent: "auto"` currently has a resolver, but no container-spanning overlay
-  rendering is attached.
-- Mutation support currently exists only as a refreshable binding store. The
-  public mutation paths do not yet refresh live ruler controllers or overlays.
-
-The remaining steps below are required before the manual examples can be used
-as evidence that rulers work.
-
-## Implementation Sequence
-
-- [x] Add spec types and schema tests for ruler params.
-  Tentative commit: `feat(core): add ruler parameter schema`
-- [x] Add ruler value helpers, default normalization, and runtime kind reporting.
-  Tentative commit: `feat(core): normalize ruler parameter values`
-- [x] Add `push: "outer"` seeding/support and tests for ruler params.
-  Tentative commit: `feat(core): support pushed ruler parameters`
-- [x] Add the scale-aware `linearize(channel, value)` expression helper and tests.
-  Tentative commit: `feat(core): add linearize expression helper`
-- [x] Add compatibility helpers and unit tests.
-  Tentative commit: `feat(core): add ruler compatibility helpers`
-- [x] Add binding registry and tests for participant resolution.
-  Tentative commit: `feat(core): resolve ruler bindings`
-- [x] Add per-view overlay rendering with a static source and param-driven reactivity tests.
-  Tentative commit: `feat(core): render ruler overlays`
-- [x] Add coordinate normalization and snapping helpers used by all ruler update sources.
-  Tentative commit: `feat(core): normalize ruler coordinates`
-- [x] Add `on: "mousemove"` event/filter handling for pointer-driven ruler interactions.
-  Tentative commit: `feat(core): handle ruler mousemove events`
-- [x] Add mousedown drag tracking and clear behavior.
-  Tentative commit: `feat(core): add ruler drag interaction`
-- [x] Add viewport-following source driven by viewport center and domain/layout changes.
-  Tentative commit: `feat(core): add viewport-sourced rulers`
-- [x] Add index/locus display modes.
-  Tentative commit: `feat(core): add ruler snapping and band display`
-- [x] Add `extent: "auto"` and narrow container spanning.
-  Tentative commit: `feat(core): support spanning ruler extents`
-- [x] Add mutation/update integration so inserted and removed views keep bindings current.
-  Tentative commit: `feat(core): refresh ruler bindings after view mutations`
-- [x] Add manual ruler examples under `examples/core/ruler`.
-  Tentative commit: `docs(core): add ruler manual examples`
-- [x] Add docs and a small example spec.
-  Tentative commit: `docs(core): document ruler parameters`
-- [x] Run focused tests, then workspace checks.
-  No commit expected unless verification requires fixes.
-
-## Missing Runtime Integration Sequence
-
-- [ ] Add failing integration tests for runtime attachment.
-  Tentative commit: `test(core): cover ruler runtime attachment`
-
-  Required tests:
-
-  - A ruler declared on a `vconcat` owner with compatible child x scales creates
-    ruler bindings for the child views.
-  - Moving over a participating child updates the owner ruler parameter.
-  - A generated ruler overlay appears in `GridChild.getChildren()`.
-  - `examples/core/ruler/vconcat-spanning.json` initializes with attached ruler
-    interaction/overlay state, not only schema-valid structure.
-
-  Suggested files:
-
-  - `packages/core/src/ruler/rulerRuntimeAttachment.test.js`
-  - `packages/core/src/view/gridView/gridChild.test.js`
-  - `packages/core/examples.test.js`
-
-- [ ] Add a generated ruler overlay view attachment helper.
-  Tentative commit: `feat(core): attach ruler overlay views`
-
-  Implement a small helper rather than a heavy class unless lifecycle needs
-  grow:
-
-  - Create a `LayerView` from `createRulerOverlaySpec(...)`.
-  - Use `gridChild.layoutParent.context`, `gridChild.layoutParent`, and the
-    participating child view as the data parent, matching the `SelectionRect`
-    generated-view pattern.
-  - Mark the generated overlay as non-addressable and chrome with
-    `markViewAsNonAddressable(..., { skipSubtree: true })` and
-    `markViewAsChrome(..., { skipSubtree: true })`.
-  - Store generated overlays on `GridChild`, for example
-    `this.rulerOverlays = []`.
-  - Yield those overlays from `GridChild.getChildren()`.
-  - Initialize generated overlay children after creation, following the same
-    practical pattern currently used by `SelectionRect`.
-
-  Suggested files:
-
-  - `packages/core/src/view/gridView/rulerOverlay.js`
-  - `packages/core/src/view/gridView/gridChild.js`
-  - `packages/core/src/view/gridView/gridChild.test.js`
-
-- [ ] Replace local-only ruler setup with binding-driven attachment.
-  Tentative commit: `feat(core): attach ruler bindings to participants`
-
-  Current local scanning in `GridChild#setupPointerRulers()` and
-  `GridChild#setupViewportRulers()` is insufficient because it only sees params
-  declared directly on the child view. Replace or supplement it with a binding
-  attachment phase that:
-
-  - Resolves ruler bindings from a shared owner/root after children and scales
-    exist.
-  - Attaches each binding to its compatible non-chrome participant views.
-  - Installs pointer listeners on each participant `GridChild`.
-  - Writes updates to the declaring owner parameter runtime, not to the
-    participant child unless the child owns the binding.
-  - Uses the pushed setter for `push: "outer"` bindings so siblings observe the
-    outer parameter value.
-  - Keeps the current local-unit case working as the degenerate case where
-    owner and participant are the same view.
-
-  Suggested files:
-
-  - `packages/core/src/ruler/rulerRegistry.js`
-  - `packages/core/src/ruler/rulerBindingStore.js`
-  - `packages/core/src/ruler/rulerMouseEventController.js`
-  - `packages/core/src/ruler/rulerViewportController.js`
-  - `packages/core/src/view/gridView/gridChild.js`
-  - `packages/core/src/view/gridView/gridView.js`
-
-- [ ] Connect ruler overlay specs to parameter reactivity.
-  Tentative commit: `feat(core): render live ruler overlays`
-
-  `createRulerOverlaySpec()` uses a static `[{}]` source and param expressions.
-  Verify that parameter changes invalidate generated overlay geometry and
-  visibility. If ExprRef/filter reactivity is not sufficient, add the smallest
-  overlay-specific subscription that requests a graphics update without
-  replacing the static source.
-
-  Required tests:
-
-  - Updating the ruler parameter changes overlay geometry.
-  - Clearing the ruler hides the overlay.
-  - The generated overlay does not contribute to scale domains.
-  - Overlay views are chrome and non-addressable.
-
-  Suggested files:
-
-  - `packages/core/src/view/gridView/rulerOverlay.js`
-  - `packages/core/src/view/gridView/rulerOverlay.test.js`
-  - `packages/core/src/view/gridView/gridChild.test.js`
-
-- [ ] Implement actual container-spanning overlay attachment.
-  Tentative commit: `feat(core): render container-spanning rulers`
-
-  The existing `extent` resolver only chooses `"view"` vs `"container"`. Add
-  the runtime rendering path for the `"container"` case:
-
-  - For `x` rulers in `vconcat`, create one generated overlay at the concat/grid
-    owner level when projections align.
-  - For `y` rulers in `hconcat`, create one generated overlay at the concat/grid
-    owner level when projections align.
-  - Keep `extent: "auto"` falling back to per-view overlays when alignment is
-    not safe.
-  - Keep `extent: "container"` throwing when alignment is not safe.
-  - Do not include axes, legends, scrollbars, or other chrome in the spanning
-    visual extent.
-
-  Suggested files:
-
-  - `packages/core/src/ruler/rulerExtent.js`
-  - `packages/core/src/view/gridView/gridView.js`
-  - `packages/core/src/view/gridView/gridChild.js`
-  - `packages/core/src/view/gridView/rulerOverlay.js`
-
-- [ ] Integrate binding refresh with live view mutations.
-  Tentative commit: `feat(core): refresh live ruler attachments after mutations`
-
-  The binding store can recompute bindings, but live controllers and overlays
-  must also be refreshed when views are inserted, moved, or removed:
-
-  - Dispose or detach controllers/overlays for removed participants.
-  - Attach controllers/overlays for inserted participants.
-  - Recompute extent decisions after layout-affecting mutations.
-  - Keep mutation refresh scoped to affected subtrees where practical.
-
-  Suggested files:
-
-  - `packages/core/src/view/containerMutationHelper.js`
-  - `packages/core/src/view/concatView.js`
-  - `packages/core/src/view/layerView.js`
-  - `packages/core/src/ruler/rulerBindingStore.js`
-
-- [ ] Add browser/manual verification for ruler examples.
-  Tentative commit: `test(core): verify ruler examples interactively`
-
-  Required checks:
-
-  - Start the dev server with `npm start`.
-  - Open
-    `http://127.0.0.1:8080/?spec=examples/core/ruler/vconcat-spanning.json`.
-  - Move over a child plot and verify the ruler becomes visible.
-  - Verify `examples/core/ruler/vconcat-independent.json` shows per-view
-    rulers.
-  - Verify `examples/core/ruler/hconcat-push-outer.json` updates the sibling
-    computation but does not render a ruler in the sibling unless it declares
-    one.
-  - Add an automated interaction smoke test if the existing test harness can
-    inspect rendered overlay views or canvas changes reliably.
+- [ ] Remove or fully replace the unused registry/store path.
+  Recommendation: delete or defer `rulerRegistry.js`, `rulerBindingStore.js`,
+  and the current standalone `rulerExtent.js` if the live implementation keeps
+  the direct `GridChild`/`GridView` attachment model.
+- [ ] Centralize the `extent` decision so per-view and container-spanning
+  overlays cannot disagree.
+- [ ] Keep viewport mode, but verify scale subscription cleanup and domain/range
+  update behavior.
+- [ ] Keep focused tests for the live runtime path:
+  pointer updates, viewport updates, pushed outer values, per-view overlays,
+  container-spanning overlays, inactive filter behavior, and generated overlay
+  geometry updates from parameter-backed `ExprRef`s.
+- [ ] Remove this plan or reduce it to a short design note before merging the
+  final feature branch.
