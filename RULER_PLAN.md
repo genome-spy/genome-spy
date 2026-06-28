@@ -1077,5 +1077,17 @@ scaffolding that is not on the live runtime path.
   pointer updates, viewport updates, pushed outer values, per-view overlays,
   container-spanning overlays, inactive filter behavior, and generated overlay
   geometry updates from parameter-backed `ExprRef`s.
+- [ ] Reuse the selection event-config parser for ruler `on`.
+  Keep ruler-specific validation for the allowed event types, but do not keep a
+  second compact event-string parser.
+- [ ] Merge the pointer and viewport ruler setup loops in `GridChild`.
+  The binding discovery, scale-resolution lookup, overlay decision, and overlay
+  creation are shared; only the controller class differs.
+- [ ] Centralize generated ruler overlay view creation.
+  `GridChild` and `GridView` should not duplicate `LayerView` construction,
+  chrome marking, z-index extraction, and initialization setup.
+- [ ] Consider a tiny document-drag helper only if it deletes more code than it
+  adds. Avoid a broad selection/ruler interaction abstraction because interval
+  selection has substantially different behavior.
 - [ ] Remove this plan or reduce it to a short design note before merging the
   final feature branch.
