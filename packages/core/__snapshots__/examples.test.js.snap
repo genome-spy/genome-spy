@@ -4962,10 +4962,6 @@ exports[`shared examples > initializes examples/core/ruler/vconcat-independent.j
       "identifier": null,
       "type": "InlineSource",
     },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
   ],
   "hierarchy": {
     "baseUrl": "examples/",
@@ -4978,22 +4974,9 @@ exports[`shared examples > initializes examples/core/ruler/vconcat-independent.j
       },
       {
         "baseUrl": "examples/",
-        "children": [
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "layer0",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "layer1",
-            "type": "UnitView",
-          },
-        ],
+        "children": [],
         "name": "grid1",
-        "type": "LayerView",
+        "type": "UnitView",
       },
     ],
     "name": "viewRoot",

@@ -6,7 +6,6 @@
   "params": [
     {
       "name": "cursor",
-      "persist": false,
       "ruler": {
         "encodings": ["x"],
         "on": "mousemove",
@@ -16,48 +15,34 @@
     }
   ],
 
-  "resolve": {
-    "scale": { "x": "shared" }
+  "resolve": { "scale": { "x": "independent" } },
+
+  "data": {
+    "values": [
+      { "x": 1, "y": 2 },
+      { "x": 2, "y": 5 },
+      { "x": 3, "y": 3 },
+      { "x": 7, "y": 8 }
+    ]
   },
 
   "vconcat": [
     {
-      "data": {
-        "values": [
-          { "x": 1, "y": 2 },
-          { "x": 2, "y": 5 },
-          { "x": 3, "y": 3 },
-          { "x": 4, "y": 8 }
-        ]
-      },
       "mark": "point",
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "y", "type": "quantitative" }
-      }
+      },
+      "scales": { "x": { "domain": [1, 9] } }
     },
 
     {
-      "data": {
-        "values": [
-          { "x": 1, "y": 9 },
-          { "x": 2, "y": 4 },
-          { "x": 3, "y": 6 },
-          { "x": 4, "y": 2 }
-        ]
-      },
+      "mark": { "type": "point", "color": "orange" },
       "encoding": {
         "x": { "field": "x", "type": "quantitative" },
         "y": { "field": "y", "type": "quantitative" }
       },
-      "layer": [
-        {
-          "mark": { "type": "point", "size": 180, "opacity": 0.25 }
-        },
-        {
-          "mark": { "type": "point", "size": 40, "filled": true }
-        }
-      ]
+      "scales": { "x": { "domain": [0, 10] } }
     }
   ]
 }
