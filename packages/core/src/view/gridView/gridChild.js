@@ -254,8 +254,10 @@ export default class GridChild {
                 );
             }
 
-            if (
-                !this.#usesContainerRulerOverlay(
+            if (ruler.display === "none") {
+                continue;
+            } else if (
+                this.#usesContainerRulerOverlay(
                     owner,
                     paramName,
                     ruler,
@@ -263,6 +265,8 @@ export default class GridChild {
                     scaleResolutions
                 )
             ) {
+                continue;
+            } else {
                 this.#addRulerOverlay(
                     paramName,
                     ruler,

@@ -772,6 +772,33 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["rulerOverlay_cursor"]);
     });
 
+    test("does not render container ruler overlays when display is none", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "cursor",
+                        ruler: {
+                            encodings: ["x"],
+                            extent: "container",
+                            display: "none",
+                        },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "rulerOverlay_cursor");
+
+        expect(overlays).toHaveLength(0);
+    });
+
     test("renders default decorations around unclipped content", async () => {
         const order = await recordRenderOrder(
             {

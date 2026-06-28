@@ -202,6 +202,7 @@ function createRulerGridChildView(
         /** @type {any} */ ({
             getResolvedScaleType: () => "linear",
             getScale: () => scale,
+            isZoomable: () => false,
             addEventListener: () => {},
         });
 
@@ -248,6 +249,7 @@ function createInheritedRulerGridChildView(
         /** @type {any} */ ({
             getResolvedScaleType: () => "linear",
             getScale: () => scale,
+            isZoomable: () => false,
             addEventListener: () => {},
         });
 
@@ -342,6 +344,38 @@ describe("GridChild ruler interactions", () => {
         expect(isChromeView(rulerOverlay)).toBe(true);
     });
 
+    test("tracks pointer rulers without rendering an overlay when display is none", () => {
+        /** @type {Map<string, any>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createRulerGridChildView([
+            {
+                name: "cursor",
+                ruler: { encodings: ["x"], display: "none" },
+            },
+        ]);
+        const setValue = vi.spyOn(view.paramRuntime, "setValue");
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, listener);
+        };
+
+        const child = new GridChild(view, layoutParent, 0);
+        listeners.get("mousemove")({
+            point: { x: 2, y: 0 },
+            proxiedMouseEvent: {},
+        });
+
+        const rulerOverlay = Array.from(child.getChildren()).find(
+            (view) => view.defaultName === "rulerOverlay0_cursor"
+        );
+        expect(rulerOverlay).toBeUndefined();
+        expect(setValue).toHaveBeenCalledWith("cursor", {
+            type: "ruler",
+            values: {
+                x: 0.02,
+            },
+        });
+    });
+
     test("registers viewport ruler params and seeds their value", () => {
         const { view, layoutParent } = createRulerGridChildView([
             {
@@ -401,10 +435,16 @@ describe("GridChild ruler interactions", () => {
             /** @type {any} */ ({
                 getResolvedScaleType: () => "linear",
                 getScale: () => scale,
-                addEventListener: (type, listener) => {
+                addEventListener: (
+                    /** @type {"domain" | "range"} */ type,
+                    /** @type {() => void} */ listener
+                ) => {
                     listeners[type].add(listener);
                 },
-                removeEventListener: (type, listener) => {
+                removeEventListener: (
+                    /** @type {"domain" | "range"} */ type,
+                    /** @type {() => void} */ listener
+                ) => {
                     listeners[type].delete(listener);
                 },
             });

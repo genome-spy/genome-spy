@@ -496,6 +496,10 @@ export default class GridView extends ContainerView {
                 continue;
             }
 
+            if (param.ruler.display === "none") {
+                continue;
+            }
+
             const channels = param.ruler.encodings ?? ["x"];
             const channel = channels.length === 1 ? channels[0] : undefined;
             if (

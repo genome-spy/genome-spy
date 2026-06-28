@@ -191,6 +191,7 @@ export type InteractionEventType =
     | "mouseenter"
     | "mouseleave"
     | "mouseover"
+    | "mousemove"
     | "mousedown"
     | "wheel";
 
@@ -462,13 +463,14 @@ export interface RulerConfig {
      *
      * `"line"` draws at the coordinate. `"center"` draws at the center of the
      * coordinate band. `"band"` draws a rectangle covering the coordinate band.
+     * `"none"` tracks the ruler value without drawing a guide.
      *
      * __Default value:__ `"center"` for snapped index and locus scales, otherwise `"line"`.
      */
     display?: RulerDisplay;
 
     /**
-     * Rule or band appearance.
+     * Rule or band appearance. Has no effect when `display` is `"none"`.
      */
     mark?: RulerMarkConfig;
 }
@@ -496,7 +498,7 @@ export type RulerExtent = "auto" | "view" | "container";
 
 export type RulerSnap = "auto" | "integer" | false;
 
-export type RulerDisplay = "line" | "center" | "band";
+export type RulerDisplay = "line" | "center" | "band" | "none";
 
 export interface RulerMarkConfig extends ShadowProps, ZIndexProps {
     /**

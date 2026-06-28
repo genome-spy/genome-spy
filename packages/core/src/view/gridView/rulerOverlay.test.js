@@ -154,6 +154,11 @@ describe("resolveRulerDisplay", () => {
         expect(resolveRulerDisplay("linear", "auto", "band")).toBe("band");
     });
 
+    test("uses explicit none display", () => {
+        expect(resolveRulerDisplay("linear", "auto", "none")).toBe("none");
+        expect(resolveRulerDisplay("index", "auto", "none")).toBe("none");
+    });
+
     test("defaults snapped index and locus rulers to center display", () => {
         expect(resolveRulerDisplay("index", "auto")).toBe("center");
         expect(resolveRulerDisplay("locus", "integer")).toBe("center");
