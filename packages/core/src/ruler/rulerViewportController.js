@@ -34,16 +34,37 @@ export class RulerViewportController {
         this.scaleResolutions = scaleResolutions;
         this.paramRuntime = paramRuntime;
 
+        this.listeners = [];
+
         this.update();
         this.#subscribe();
     }
 
+    /** @type {{ scaleResolution: import("../scales/scaleResolution.js").default, type: "domain" | "range", listener: () => void }[]} */
+    listeners;
+
     #subscribe() {
         for (const channel of this.channels) {
             const scaleResolution = this.scaleResolutions[channel];
-            scaleResolution.addEventListener("domain", () => this.update());
-            scaleResolution.addEventListener("range", () => this.update());
+            const listener = () => this.update();
+
+            scaleResolution.addEventListener("domain", listener);
+            scaleResolution.addEventListener("range", listener);
+            this.listeners.push(
+                { scaleResolution, type: "domain", listener },
+                { scaleResolution, type: "range", listener }
+            );
         }
+    }
+
+    /**
+     * Removes scale event listeners owned by this controller.
+     */
+    dispose() {
+        for (const { scaleResolution, type, listener } of this.listeners) {
+            scaleResolution.removeEventListener(type, listener);
+        }
+        this.listeners = [];
     }
 
     update() {

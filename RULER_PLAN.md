@@ -1071,9 +1071,9 @@ scaffolding that is not on the live runtime path.
   model.
 - [x] Centralize the `extent` decision so per-view and container-spanning
   overlays cannot disagree.
-- [ ] Keep viewport mode, but verify scale subscription cleanup and domain/range
+- [x] Keep viewport mode, but verify scale subscription cleanup and domain/range
   update behavior.
-- [ ] Keep focused tests for the live runtime path:
+- [x] Keep focused tests for the live runtime path:
   pointer updates, viewport updates, pushed outer values, per-view overlays,
   container-spanning overlays, inactive filter behavior, and generated overlay
   geometry updates from parameter-backed `ExprRef`s.

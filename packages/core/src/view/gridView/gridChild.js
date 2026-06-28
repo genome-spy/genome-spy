@@ -1158,6 +1158,19 @@ export default class GridChild {
     }
 
     /**
+     * Disposes GridChild-owned controllers and generated guide views.
+     */
+    dispose() {
+        for (const controller of this.rulerViewportControllers) {
+            controller.dispose();
+        }
+        this.rulerViewportControllers = [];
+        this.rulerMouseEventControllers = [];
+
+        this.disposeAxisViews();
+    }
+
+    /**
      * Disposes axis and gridline views so axes can be recreated safely.
      */
     disposeAxisViews() {

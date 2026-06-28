@@ -380,7 +380,7 @@ export default class GridView extends ContainerView {
      * @param {GridChild} gridChild
      */
     #disposeGridChild(gridChild) {
-        gridChild.disposeAxisViews();
+        gridChild.dispose();
         for (const view of gridChild.getChildren()) {
             view.disposeSubtree();
         }

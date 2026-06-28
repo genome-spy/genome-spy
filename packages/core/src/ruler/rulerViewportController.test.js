@@ -116,6 +116,29 @@ describe("RulerViewportController", () => {
         expect(setValue).toHaveBeenCalledTimes(2);
     });
 
+    test("removes scale listeners on dispose", () => {
+        const resolution = createScaleResolution("linear", [0, 10]);
+        const { controller, setValue } = createController(
+            { source: "viewport", encodings: ["x"], snap: false },
+            { x: resolution }
+        );
+
+        expect(resolution.listeners.domain.size).toBe(1);
+        expect(resolution.listeners.range.size).toBe(1);
+
+        controller.dispose();
+
+        expect(resolution.listeners.domain.size).toBe(0);
+        expect(resolution.listeners.range.size).toBe(0);
+
+        resolution.setDomain([10, 20]);
+        for (const listener of resolution.listeners.domain) {
+            listener({ type: "domain", scaleResolution: resolution });
+        }
+
+        expect(setValue).toHaveBeenCalledTimes(1);
+    });
+
     test("snaps discrete viewport coordinates", () => {
         const { setValue } = createController(
             { source: "viewport", encodings: ["x"], snap: "auto" },

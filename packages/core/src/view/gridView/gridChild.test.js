@@ -377,6 +377,49 @@ describe("GridChild ruler interactions", () => {
         });
     });
 
+    test("disposes viewport ruler scale listeners", () => {
+        const { view, layoutParent } = createRulerGridChildView([
+            {
+                name: "center",
+                ruler: {
+                    source: "viewport",
+                    encodings: ["x"],
+                    snap: false,
+                },
+            },
+        ]);
+        /** @type {Record<"domain" | "range", Set<any>>} */
+        const listeners = {
+            domain: new Set(),
+            range: new Set(),
+        };
+        /** @param {number} value */
+        const scale = (value) => value;
+        scale.type = "linear";
+        scale.invert = (/** @type {number} */ value) => value * 10;
+        view.getScaleResolution = () =>
+            /** @type {any} */ ({
+                getResolvedScaleType: () => "linear",
+                getScale: () => scale,
+                addEventListener: (type, listener) => {
+                    listeners[type].add(listener);
+                },
+                removeEventListener: (type, listener) => {
+                    listeners[type].delete(listener);
+                },
+            });
+        view.addInteractionListener = () => {};
+
+        const child = new GridChild(view, layoutParent, 0);
+        expect(listeners.domain.size).toBe(1);
+        expect(listeners.range.size).toBe(1);
+
+        child.dispose();
+
+        expect(listeners.domain.size).toBe(0);
+        expect(listeners.range.size).toBe(0);
+    });
+
     test("attaches inherited pointer ruler params to child views", () => {
         /** @type {Map<string, any>} */
         const listeners = new Map();
