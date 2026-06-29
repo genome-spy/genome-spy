@@ -1,0 +1,182 @@
+import { primaryPositionalChannels } from "../../encoder/encoder.js";
+
+export const INTERVAL_DRAG_ACTIVE_PARAM = "intervalDragActive";
+
+/**
+ * @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
+ * @typedef {import("../../types/selectionTypes.js").IntervalSelection} IntervalSelection
+ */
+
+/**
+ * @param {{
+ *     gridChild: import("./gridChild.js").default,
+ *     selection: IntervalSelection,
+ *     brushConfig?: import("../../spec/parameter.js").BrushConfig,
+ * }} options
+ * @returns {import("../../spec/view.js").LayerSpec}
+ */
+export function createSelectionRectSpec({
+    gridChild,
+    selection,
+    brushConfig = {},
+}) {
+    const channels = Object.keys(selection.intervals);
+    const brushMarkProps = { ...brushConfig };
+    delete brushMarkProps.zindex;
+
+    if (primaryPositionalChannels.every((c) => !channels.includes(c))) {
+        throw new Error(
+            "SelectionRect requires at least one of the channels 'x' or 'y' to be present in the selection."
+        );
+    }
+
+    /** @type {import("../../spec/view.js").LayerSpec} */
+    const layerSpec = {
+        name: "selectionRect",
+        domainInert: true,
+        params: [
+            {
+                name: INTERVAL_DRAG_ACTIVE_PARAM,
+                value: false,
+            },
+        ],
+        resolve: {
+            scale: {
+                x: "forced",
+                y: "forced",
+            },
+        },
+        data: { values: selectionToData(selection) },
+        encoding: {},
+        layer: [],
+    };
+
+    if (channels.includes("x")) {
+        layerSpec.encoding.x = {
+            field: "_x",
+            type: null,
+            title: null,
+        };
+        layerSpec.encoding.x2 = {
+            field: "_x2",
+        };
+    }
+    if (channels.includes("y")) {
+        layerSpec.encoding.y = {
+            field: "_y",
+            type: null,
+            title: null,
+        };
+        layerSpec.encoding.y2 = {
+            field: "_y2",
+        };
+    }
+
+    layerSpec.layer.push({
+        name: "selectionRectRect",
+        mark: {
+            type: "rect",
+            clip: true,
+            ...{
+                fill: "#808080",
+                fillOpacity: 0.05,
+                stroke: "black",
+                strokeWidth: 1,
+                strokeOpacity: 0.2,
+                cursor: brushMarkProps.cursor ?? {
+                    expr: `${INTERVAL_DRAG_ACTIVE_PARAM} ? 'grabbing' : 'move'`,
+                },
+                ...brushMarkProps,
+            },
+        },
+    });
+
+    const makeExpr = (/** @type {PrimaryPositionalChannel} */ channel) => {
+        const resolution = gridChild.view.getScaleResolution(channel);
+        return (
+            `format(datum._${channel}2 - datum._${channel}, '.3s')` +
+            (resolution.type === "locus" ? " + 'b'" : "")
+        );
+    };
+
+    const labelOffset =
+        brushConfig.measure == "inside"
+            ? 9
+            : brushConfig.measure == "outside"
+              ? -9
+              : 0;
+
+    if (channels.includes("x") && labelOffset != 0) {
+        layerSpec.layer.push({
+            name: "selectionRectTextX",
+            mark: {
+                type: "text",
+                align: "center",
+                paddingX: 5,
+                dy: labelOffset,
+                tooltip: null,
+            },
+            encoding: {
+                text: { expr: makeExpr("x") },
+                y: channels.includes("y")
+                    ? {
+                          field: "_y2",
+                          type: null,
+                          title: null,
+                      }
+                    : {
+                          value: 1,
+                      },
+                y2: null,
+            },
+        });
+    }
+
+    if (channels.includes("y") && labelOffset != 0) {
+        layerSpec.layer.push({
+            name: "selectionRectTextY",
+            mark: {
+                type: "text",
+                align: "center",
+                paddingY: 5,
+                dy: labelOffset,
+                tooltip: null,
+                angle: -90,
+            },
+            encoding: {
+                text: { expr: makeExpr("y") },
+                x2: null,
+            },
+        });
+    }
+
+    return layerSpec;
+}
+
+/**
+ *  @param {IntervalSelection} selection
+ */
+export function selectionToData(selection) {
+    const x = selection.intervals.x;
+    const y = selection.intervals.y;
+
+    if (!x && !y) {
+        return [];
+    } else {
+        return [
+            {
+                // Using a hack here. All properties are prefixed with an underscore
+                // to prevent them from being visible in the tooltip.
+                // No properties, no tooltip. This still enables picking, masking
+                // elements under the selection rect and preventing them being
+                // selected or tooltipped.
+                // An alternative solution would necessitate adding more flags or
+                // logic to force picking in the absence of tooltips.
+                _x: x?.[0],
+                _x2: x?.[1],
+                _y: y?.[0],
+                _y2: y?.[1],
+            },
+        ];
+    }
+}
