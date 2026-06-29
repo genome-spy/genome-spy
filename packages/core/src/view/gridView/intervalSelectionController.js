@@ -184,7 +184,8 @@ export class IntervalSelectionController {
         this.gridChild.selectionRect = new SelectionRect(
             this.gridChild,
             selectionExpr,
-            select.mark
+            select.mark,
+            name
         );
         const setIntervalDragActive = (/** @type {boolean} */ active) => {
             this.gridChild.selectionRect.paramRuntime.setValue(

@@ -9,7 +9,7 @@ import { optimizeDataFlow } from "../../data/flowOptimizer.js";
 import { syncFlowHandles } from "../../data/flowInit.js";
 
 describe("SelectionRect", () => {
-    it("uses flow handles for dynamic data updates", () => {
+    it("uses static overlay data and parameter-backed expressions", () => {
         const context = createTestViewContext();
         const parent = new ConcatView(
             { hconcat: [] },
@@ -32,17 +32,12 @@ describe("SelectionRect", () => {
         const unitView = new UnitView(unitSpec, context, parent, parent, "u");
 
         let selection = {
+            type: "interval",
             intervals: { x: [0, 1], y: [2, 3] },
         };
 
-        /** @type {() => void} */
-        let selectionListener;
-
         /** @type {(listener: () => void) => () => void} */
-        const subscribe = (listener) => {
-            selectionListener = listener;
-            return () => undefined;
-        };
+        const subscribe = vi.fn(() => () => undefined);
         /** @type {() => void} */
         const invalidate = () => undefined;
 
@@ -64,6 +59,14 @@ describe("SelectionRect", () => {
         );
 
         const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        expect(selectionRect.spec.data).toEqual({ values: [{}] });
+        expect(selectionRect.spec.encoding).toMatchObject({
+            x: { datum: { expr: "selection.intervals.x[0]" } },
+            x2: { datum: { expr: "selection.intervals.x[1]" } },
+            y: { datum: { expr: "selection.intervals.y[0]" } },
+            y2: { datum: { expr: "selection.intervals.y[1]" } },
+        });
+        expect(subscribe).not.toHaveBeenCalled();
 
         const flow = buildDataFlow(selectionRect, context.dataFlow);
         syncFlowHandles(selectionRect, optimizeDataFlow(flow));
@@ -73,19 +76,12 @@ describe("SelectionRect", () => {
                 selectionRect.flowHandle?.dataSource
             );
         expect(dataSource).toBeDefined();
-
-        // Selection updates should push new interval data to the inline source.
-        const updateSpy = vi.spyOn(dataSource, "updateDynamicData");
         selection = {
+            type: "interval",
             intervals: { x: [5, 6], y: [7, 8] },
         };
 
-        selectionListener();
-
-        expect(updateSpy).toHaveBeenCalledTimes(1);
-        expect(updateSpy).toHaveBeenCalledWith([
-            { _x: 5, _x2: 6, _y: 7, _y2: 8 },
-        ]);
+        expect(dataSource.params.values).toEqual([{}]);
     });
 
     it("marks the view as domain inert", () => {

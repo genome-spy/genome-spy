@@ -3,13 +3,14 @@ import { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { createSelectionRectSpec } from "./selectionRectSpec.js";
 
 describe("createSelectionRectSpec", () => {
-    test("builds the dynamic-source selection rectangle spec", () => {
+    test("builds the expression-backed selection rectangle spec", () => {
         const spec = createSelectionRectSpec({
             gridChild: /** @type {any} */ ({
                 view: {
                     getScaleResolution: () => ({ type: "linear" }),
                 },
             }),
+            selectionExpression: "brush",
             selection: {
                 type: "interval",
                 intervals: { x: [0, 1], y: [2, 3] },
@@ -17,8 +18,18 @@ describe("createSelectionRectSpec", () => {
             brushConfig: {},
         });
 
-        expect(spec.data).toEqual({
-            values: [{ _x: 0, _x2: 1, _y: 2, _y2: 3 }],
+        expect(spec.data).toEqual({ values: [{}] });
+        expect(spec.transform).toEqual([
+            {
+                type: "filter",
+                expr: "brush.type === 'interval' && brush.intervals.x != null && brush.intervals.y != null",
+            },
+        ]);
+        expect(spec.encoding).toMatchObject({
+            x: { datum: { expr: "brush.intervals.x[0]" } },
+            x2: { datum: { expr: "brush.intervals.x[1]" } },
+            y: { datum: { expr: "brush.intervals.y[0]" } },
+            y2: { datum: { expr: "brush.intervals.y[1]" } },
         });
         expect(spec.params).toEqual([
             { name: INTERVAL_DRAG_ACTIVE_PARAM, value: false },
@@ -35,6 +46,7 @@ describe("createSelectionRectSpec", () => {
                     getScaleResolution: () => ({ type: "locus" }),
                 },
             }),
+            selectionExpression: "brush",
             selection: {
                 type: "interval",
                 intervals: { x: [0, 1], y: [2, 3] },
@@ -47,7 +59,7 @@ describe("createSelectionRectSpec", () => {
 
         expect(spec.layer[0].mark.cursor).toEqual({ expr: "'copy'" });
         expect(spec.layer[1].encoding.text).toEqual({
-            expr: "format(datum._x2 - datum._x, '.3s') + 'b'",
+            expr: "format(brush.intervals.x[1] - brush.intervals.x[0], '.3s') + 'b'",
         });
     });
 });

@@ -10,6 +10,7 @@ export const INTERVAL_DRAG_ACTIVE_PARAM = "intervalDragActive";
 /**
  * @param {{
  *     gridChild: import("./gridChild.js").default,
+ *     selectionExpression: string,
  *     selection: IntervalSelection,
  *     brushConfig?: import("../../spec/parameter.js").BrushConfig,
  * }} options
@@ -17,6 +18,7 @@ export const INTERVAL_DRAG_ACTIVE_PARAM = "intervalDragActive";
  */
 export function createSelectionRectSpec({
     gridChild,
+    selectionExpression,
     selection,
     brushConfig = {},
 }) {
@@ -46,30 +48,43 @@ export function createSelectionRectSpec({
                 y: "forced",
             },
         },
-        data: { values: selectionToData(selection) },
+        data: { values: [{}] },
+        transform: [
+            {
+                type: "filter",
+                expr: makeSelectionRectFilterExpression(
+                    selectionExpression,
+                    channels
+                ),
+            },
+        ],
         encoding: {},
         layer: [],
     };
 
     if (channels.includes("x")) {
-        layerSpec.encoding.x = {
-            field: "_x",
-            type: null,
-            title: null,
-        };
-        layerSpec.encoding.x2 = {
-            field: "_x2",
-        };
+        layerSpec.encoding.x = createIntervalBoundEncoding(
+            selectionExpression,
+            "x",
+            0
+        );
+        layerSpec.encoding.x2 = createIntervalBoundEncoding(
+            selectionExpression,
+            "x",
+            1
+        );
     }
     if (channels.includes("y")) {
-        layerSpec.encoding.y = {
-            field: "_y",
-            type: null,
-            title: null,
-        };
-        layerSpec.encoding.y2 = {
-            field: "_y2",
-        };
+        layerSpec.encoding.y = createIntervalBoundEncoding(
+            selectionExpression,
+            "y",
+            0
+        );
+        layerSpec.encoding.y2 = createIntervalBoundEncoding(
+            selectionExpression,
+            "y",
+            1
+        );
     }
 
     layerSpec.layer.push({
@@ -94,7 +109,7 @@ export function createSelectionRectSpec({
     const makeExpr = (/** @type {PrimaryPositionalChannel} */ channel) => {
         const resolution = gridChild.view.getScaleResolution(channel);
         return (
-            `format(datum._${channel}2 - datum._${channel}, '.3s')` +
+            `format(${selectionExpression}.intervals.${channel}[1] - ${selectionExpression}.intervals.${channel}[0], '.3s')` +
             (resolution.type === "locus" ? " + 'b'" : "")
         );
     };
@@ -119,11 +134,7 @@ export function createSelectionRectSpec({
             encoding: {
                 text: { expr: makeExpr("x") },
                 y: channels.includes("y")
-                    ? {
-                          field: "_y2",
-                          type: null,
-                          title: null,
-                      }
+                    ? createIntervalBoundEncoding(selectionExpression, "y", 1)
                     : {
                           value: 1,
                       },
@@ -154,29 +165,30 @@ export function createSelectionRectSpec({
 }
 
 /**
- *  @param {IntervalSelection} selection
+ * @param {string} selectionExpression
+ * @param {string[]} channels
  */
-export function selectionToData(selection) {
-    const x = selection.intervals.x;
-    const y = selection.intervals.y;
+function makeSelectionRectFilterExpression(selectionExpression, channels) {
+    return [
+        selectionExpression + ".type === 'interval'",
+        ...channels.map(
+            (channel) =>
+                selectionExpression + ".intervals." + channel + " != null"
+        ),
+    ].join(" && ");
+}
 
-    if (!x && !y) {
-        return [];
-    } else {
-        return [
-            {
-                // Using a hack here. All properties are prefixed with an underscore
-                // to prevent them from being visible in the tooltip.
-                // No properties, no tooltip. This still enables picking, masking
-                // elements under the selection rect and preventing them being
-                // selected or tooltipped.
-                // An alternative solution would necessitate adding more flags or
-                // logic to force picking in the absence of tooltips.
-                _x: x?.[0],
-                _x2: x?.[1],
-                _y: y?.[0],
-                _y2: y?.[1],
-            },
-        ];
-    }
+/**
+ * @param {string} selectionExpression
+ * @param {PrimaryPositionalChannel} channel
+ * @param {0 | 1} index
+ */
+function createIntervalBoundEncoding(selectionExpression, channel, index) {
+    return /** @type {any} */ ({
+        datum: {
+            expr: `${selectionExpression}.intervals.${channel}[${index}]`,
+        },
+        type: null,
+        title: null,
+    });
 }

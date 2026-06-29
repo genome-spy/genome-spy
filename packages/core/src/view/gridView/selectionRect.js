@@ -1,9 +1,6 @@
 import LayerView from "../layerView.js";
 import { markGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
-import {
-    createSelectionRectSpec,
-    selectionToData,
-} from "./selectionRectSpec.js";
+import { createSelectionRectSpec } from "./selectionRectSpec.js";
 
 export { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRectSpec.js";
 
@@ -16,8 +13,14 @@ export default class SelectionRect extends LayerView {
      * @param {import("./gridChild.js").default} gridChild
      * @param {import("../../paramRuntime/types.js").ExprRefFunction} selectionExpr
      * @param {import("../../spec/parameter.js").BrushConfig} [brushConfig]
+     * @param {string} [selectionExpression]
      */
-    constructor(gridChild, selectionExpr, brushConfig = {}) {
+    constructor(
+        gridChild,
+        selectionExpr,
+        brushConfig = {},
+        selectionExpression = selectionExpr.code
+    ) {
         const initialSelection = /** @type {IntervalSelection} */ (
             selectionExpr()
         );
@@ -26,6 +29,7 @@ export default class SelectionRect extends LayerView {
         super(
             createSelectionRectSpec({
                 gridChild,
+                selectionExpression,
                 selection: initialSelection,
                 brushConfig: brushMarkProps,
             }),
@@ -39,28 +43,6 @@ export default class SelectionRect extends LayerView {
         this._zindex = zindex;
 
         markGeneratedChromeOverlay(this);
-
-        const selectionListener = () => {
-            const selection =
-                /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
-                    selectionExpr()
-                );
-
-            const datasource =
-                /** @type {import("../../data/sources/inlineSource.js").default} */ (
-                    this.flowHandle?.dataSource
-                );
-
-            if (!datasource) {
-                throw new Error(
-                    "Cannot find selection rect data source handle!"
-                );
-            }
-
-            datasource.updateDynamicData(selectionToData(selection));
-        };
-
-        this.registerDisposer(selectionExpr.subscribe(selectionListener));
     }
 
     getZindex() {
