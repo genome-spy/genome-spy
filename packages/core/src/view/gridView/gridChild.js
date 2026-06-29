@@ -113,7 +113,7 @@ export default class GridChild {
         /** @type {Partial<Record<import("./scrollbar.js").ScrollDirection, Scrollbar>>} */
         this.scrollbars = {};
 
-        /** @type {import("./selectionRect.js").default} */
+        /** @type {import("./selectionRect.js").SelectionRectOverlay} */
         this.selectionRect = undefined;
 
         /** @type {IntervalSelectionController[]} */
@@ -348,8 +348,8 @@ export default class GridChild {
 
         this.rulerOverlays.push(overlay);
 
-        // WARNING! The following is an async method! Mirrors SelectionRect until
-        // grid chrome has a shared awaited initialization path.
+        // WARNING! The following is an async method! Mirrors selection overlays
+        // until grid chrome has a shared awaited initialization path.
         overlay.view.initializeChildren();
     }
 
@@ -412,7 +412,7 @@ export default class GridChild {
         yield this.view;
         yield* Object.values(this.scrollbars);
         if (this.selectionRect) {
-            yield this.selectionRect;
+            yield this.selectionRect.view;
         }
         for (const overlay of this.rulerOverlays) {
             yield overlay.view;

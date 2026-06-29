@@ -3,7 +3,10 @@ import { createPrimitiveEventProxy } from "../../utils/interactionEvent.js";
 import { createEventPredicate } from "../../utils/interactionConfig.js";
 import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
-import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
+import {
+    createSelectionRectOverlay,
+    INTERVAL_DRAG_ACTIVE_PARAM,
+} from "./selectionRect.js";
 import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
 import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
 import {
@@ -181,14 +184,14 @@ export class IntervalSelectionController {
             setter(createIntervalSelection(channels));
         };
 
-        this.gridChild.selectionRect = new SelectionRect(
-            this.gridChild,
+        this.gridChild.selectionRect = createSelectionRectOverlay({
+            gridChild: this.gridChild,
             selectionExpr,
-            select.mark,
-            name
-        );
+            selectionExpression: name,
+            brushConfig: select.mark,
+        });
         const setIntervalDragActive = (/** @type {boolean} */ active) => {
-            this.gridChild.selectionRect.paramRuntime.setValue(
+            this.gridChild.selectionRect.view.paramRuntime.setValue(
                 INTERVAL_DRAG_ACTIVE_PARAM,
                 active
             );
@@ -197,7 +200,7 @@ export class IntervalSelectionController {
         // WARNING! The following is an async method! Seems to work (by chance).
         // TODO: Should be called and awaited in a sensible place. Maybe provide some
         // registration logic for such post-creation initializations?
-        this.gridChild.selectionRect.initializeChildren();
+        this.gridChild.selectionRect.view.initializeChildren();
 
         const invertPoint = (
             /** @type {import("../layout/point.js").default} */ point

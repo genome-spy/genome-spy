@@ -11,7 +11,6 @@ import { createTestViewContext } from "../testUtils.js";
 import LayerView from "../layerView.js";
 import UnitView from "../unitView.js";
 import { isChromeView } from "../viewSelectors.js";
-import SelectionRect from "./selectionRect.js";
 
 /**
  * @returns {GridChild}
@@ -571,10 +570,9 @@ describe("GridChild ruler interactions", () => {
 
 describe("GridChild interval selection interactions", () => {
     beforeEach(() => {
-        vi.spyOn(
-            SelectionRect.prototype,
-            "initializeChildren"
-        ).mockResolvedValue(undefined);
+        vi.spyOn(LayerView.prototype, "initializeChildren").mockResolvedValue(
+            undefined
+        );
     });
 
     afterEach(() => {

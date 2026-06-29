@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
 import UnitView from "../unitView.js";
-import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
+import {
+    createSelectionRectOverlay,
+    INTERVAL_DRAG_ACTIVE_PARAM,
+} from "./selectionRect.js";
 import { createTestViewContext } from "../testUtils.js";
 import { buildDataFlow } from "../flowBuilder.js";
 import { optimizeDataFlow } from "../../data/flowOptimizer.js";
@@ -67,7 +70,12 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        const overlay = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+        });
+        const selectionRect = overlay.view;
         expect(selectionRect.spec.data).toEqual({ values: [{}] });
         expect(selectionRect.spec.encoding).toMatchObject({
             x: {
@@ -148,7 +156,7 @@ describe("SelectionRect", () => {
             }
         );
 
-        // Use a real unit view so SelectionRect can resolve scales if needed.
+        // Use a real unit view so selection rectangle spec can resolve scales.
         const gridChild = /** @type {import("./gridChild.js").default} */ (
             /** @type {unknown} */ ({
                 layoutParent: parent,
@@ -156,11 +164,15 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        const selectionRect = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+        }).view;
         expect(selectionRect.isDomainInert()).toBe(true);
     });
 
-    it("exposes brush zindex for GridView ordering", () => {
+    it("returns an overlay descriptor with brush zindex", () => {
         const context = createTestViewContext();
         const parent = new ConcatView(
             { hconcat: [] },
@@ -206,11 +218,17 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr, {
-            zindex: 7,
+        const overlay = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+            brushConfig: {
+                zindex: 7,
+            },
         });
 
-        expect(selectionRect.getZindex()).toBe(7);
+        expect(overlay.view).toBeDefined();
+        expect(overlay.zindex).toBe(7);
     });
 
     it("declares a default cursor ExprRef backed by the drag param", () => {
@@ -255,7 +273,11 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        const selectionRect = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+        }).view;
         const rectLayer = /** @type {any} */ (selectionRect.spec.layer[0]);
 
         expect(selectionRect.spec.params).toEqual([
@@ -308,10 +330,15 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr, {
-            cursor: { expr: "'copy'" },
+        const selectionRect = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+            brushConfig: {
+                cursor: { expr: "'copy'" },
+            },
         });
-        const rectLayer = /** @type {any} */ (selectionRect.spec.layer[0]);
+        const rectLayer = /** @type {any} */ (selectionRect.view.spec.layer[0]);
 
         expect(rectLayer.mark.cursor).toEqual({ expr: "'copy'" });
     });

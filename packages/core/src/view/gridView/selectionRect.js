@@ -1,51 +1,46 @@
-import LayerView from "../layerView.js";
-import { markGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
+import { createGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
 import { createSelectionRectSpec } from "./selectionRectSpec.js";
 
 export { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRectSpec.js";
 
-export default class SelectionRect extends LayerView {
-    /**
-     * @typedef {import("../../types/selectionTypes.js").IntervalSelection} IntervalSelection
-     */
+/**
+ * @typedef {import("./generatedChromeOverlay.js").GeneratedChromeOverlay} SelectionRectOverlay
+ */
 
-    /**
-     * @param {import("./gridChild.js").default} gridChild
-     * @param {import("../../paramRuntime/types.js").ExprRefFunction} selectionExpr
-     * @param {import("../../spec/parameter.js").BrushConfig} [brushConfig]
-     * @param {string} [selectionExpression]
-     */
-    constructor(
-        gridChild,
-        selectionExpr,
-        brushConfig = {},
-        selectionExpression = selectionExpr.code
-    ) {
-        const initialSelection = /** @type {IntervalSelection} */ (
+/**
+ * Creates a generated chrome overlay for an interval selection rectangle.
+ *
+ * @param {{
+ *     gridChild: import("./gridChild.js").default,
+ *     selectionExpr: import("../../paramRuntime/types.js").ExprRefFunction,
+ *     selectionExpression: string,
+ *     brushConfig?: import("../../spec/parameter.js").BrushConfig,
+ * }} options
+ * @returns {SelectionRectOverlay}
+ */
+export function createSelectionRectOverlay({
+    gridChild,
+    selectionExpr,
+    selectionExpression,
+    brushConfig = {},
+}) {
+    const initialSelection =
+        /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ (
             selectionExpr()
         );
-        const { zindex = 1, ...brushMarkProps } = brushConfig;
+    const { zindex = 1, ...brushMarkProps } = brushConfig;
 
-        super(
-            createSelectionRectSpec({
-                gridChild,
-                selectionExpression,
-                selection: initialSelection,
-                brushConfig: brushMarkProps,
-            }),
-            gridChild.layoutParent.context,
-            gridChild.layoutParent,
-            gridChild.view,
-            "selectionRect" // TODO: Serial
-        );
-
-        /** @type {number} */
-        this._zindex = zindex;
-
-        markGeneratedChromeOverlay(this);
-    }
-
-    getZindex() {
-        return this._zindex;
-    }
+    return createGeneratedChromeOverlay({
+        spec: createSelectionRectSpec({
+            gridChild,
+            selectionExpression,
+            selection: initialSelection,
+            brushConfig: brushMarkProps,
+        }),
+        context: gridChild.layoutParent.context,
+        layoutParent: gridChild.layoutParent,
+        dataParent: gridChild.view,
+        name: "selectionRect", // TODO: Serial
+        zindex,
+    });
 }

@@ -1385,9 +1385,10 @@ export default class GridView extends ContainerView {
 
             if (selectionRect) {
                 queueDecoration(
-                    selectionRect.getZindex(),
+                    selectionRect.zindex,
                     DECORATION_ORDER.selectionRect,
-                    () => selectionRect?.render(context, viewCoords, options)
+                    () =>
+                        selectionRect.view.render(context, viewCoords, options)
                 );
             }
 
