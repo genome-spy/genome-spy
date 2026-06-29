@@ -7,6 +7,7 @@ import {
     isIntervalSelectionConfig,
     isPointSelectionConfig,
 } from "../selection/selection.js";
+import { createRulerValue } from "../ruler/rulerValue.js";
 
 /**
  * @typedef {import("../utils/expression.js").ExpressionFunction & {
@@ -67,7 +68,11 @@ export function withoutExprRef(x) {
  * @returns {param is import("../spec/parameter.js").VariableParameter}
  */
 export function isVariableParameter(param) {
-    return ("expr" in param || "bind" in param) && !("select" in param);
+    return (
+        ("expr" in param || "bind" in param) &&
+        !("select" in param) &&
+        !("ruler" in param)
+    );
 }
 
 /**
@@ -76,6 +81,17 @@ export function isVariableParameter(param) {
  */
 export function isSelectionParameter(param) {
     return !("expr" in param || "bind" in param) && "select" in param;
+}
+
+/**
+ * @param {import("../spec/parameter.js").Parameter} param
+ * @returns {param is import("../spec/parameter.js").RulerParameter}
+ */
+export function isRulerParameter(param) {
+    return (
+        !("expr" in param || "bind" in param || "select" in param) &&
+        "ruler" in param
+    );
 }
 
 /**
@@ -126,6 +142,10 @@ export function getDefaultParamValue(param, paramRuntime, exprFn) {
         throw new Error(
             'Unknown selection config for parameter "' + param.name + '".'
         );
+    }
+
+    if ("ruler" in param) {
+        return createRulerValue(param.ruler.encodings, param.value);
     }
 
     if ("expr" in param) {

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "A crosshair ruler example.",
+    "Point mark follows the cursor position and is drawn at the intersection of the x and y rulers."
+  ],
+
+  "params": [
+    {
+      "name": "cursor",
+      "ruler": {
+        "encodings": ["x", "y"]
+      }
+    }
+  ],
+
+  "data": {
+    "values": [{}]
+  },
+
+  "transform": [
+    {
+      "type": "filter",
+      "expr": "cursor.values.x !== null && cursor.values.y !== null"
+    }
+  ],
+
+  "mark": {
+    "type": "point",
+    "size": 2000,
+    "color": "black",
+    "filled": false,
+    "strokeWidth": 1
+  },
+
+  "encoding": {
+    "x": {
+      "datum": { "expr": "cursor.values.x" },
+      "type": "quantitative",
+      "scale": { "domain": [0, 10] }
+    },
+    "y": {
+      "datum": { "expr": "cursor.values.y" },
+      "type": "quantitative",
+      "scale": { "domain": [0, 10] }
+    }
+  }
+}

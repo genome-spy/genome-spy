@@ -100,4 +100,53 @@ describe("generated core schema", () => {
             true
         );
     });
+
+    test("accepts ruler parameter configuration", () => {
+        const schema = createCoreSchema();
+        const validate = new Ajv.default({
+            allErrors: true,
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            params: [
+                {
+                    name: "cursor",
+                    persist: false,
+                    ruler: {
+                        encodings: ["x"],
+                        on: {
+                            type: "mousedown",
+                            filter: "event.shiftKey",
+                        },
+                        clear: "mouseleave",
+                        extent: "auto",
+                        snap: "auto",
+                        display: "center",
+                        mark: {
+                            stroke: "black",
+                            strokeWidth: 1,
+                            strokeDash: [4, 2],
+                            opacity: 0.8,
+                            fill: "black",
+                            fillOpacity: 0.05,
+                            zindex: 1,
+                        },
+                    },
+                    value: { x: 1 },
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
 });

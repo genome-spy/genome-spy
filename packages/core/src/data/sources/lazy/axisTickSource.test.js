@@ -29,6 +29,14 @@ function createViewStub({ axisLength }) {
                 lastDomainListener = listener;
             }
         },
+        removeEventListener: (
+            /** @type {string} */ type,
+            /** @type {() => void} */ listener
+        ) => {
+            if (type == "domain" && lastDomainListener === listener) {
+                lastDomainListener = undefined;
+            }
+        },
         getAxisLength: () => axisLength,
         getDomain: () => [0, 100],
         getScale: () => scale,
@@ -48,6 +56,8 @@ function createViewStub({ axisLength }) {
             isVisible: () => true,
             context: {
                 addBroadcastListener: /** @returns {undefined} */ () =>
+                    undefined,
+                removeBroadcastListener: /** @returns {undefined} */ () =>
                     undefined,
                 animator: {
                     requestRender: /** @returns {undefined} */ () => undefined,
@@ -124,5 +134,25 @@ describe("AxisTickSource", () => {
         expect([...collector.getData()].map((datum) => datum.value)).toEqual([
             0, 1, 2, 3, 4, 5, 6, 7,
         ]);
+    });
+
+    test("removes domain listeners on dispose", () => {
+        const { getDomainListener, view } = createViewStub({
+            axisLength: 160,
+        });
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: { tickCount: { expr: "axisLength / 20" } },
+            },
+            /** @type {any} */ (view)
+        );
+        const domainListener = getDomainListener();
+
+        source.dispose();
+
+        expect(getDomainListener()).toBeUndefined();
+        expect(() => domainListener()).not.toThrow();
     });
 });

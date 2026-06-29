@@ -1,0 +1,90 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Ruler interaction modes: hover, drag, and modifier-gated drag.",
+
+  "data": {
+    "values": [
+      { "x": 1, "y": 2 },
+      { "x": 2, "y": 5 },
+      { "x": 3, "y": 3 },
+      { "x": 4, "y": 7 },
+      { "x": 5, "y": 4 },
+      { "x": 6, "y": 8 },
+      { "x": 7, "y": 6 },
+      { "x": 8, "y": 9 }
+    ]
+  },
+
+  "resolve": { "scale": { "y": "independent" } },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 10] }
+    },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [0, 10] }
+    }
+  },
+
+  "hconcat": [
+    {
+      "title": "mousemove",
+      "params": [
+        {
+          "name": "hoverCursor",
+          "persist": false,
+          "ruler": {
+            "encodings": ["x"],
+            "on": "mousemove",
+            "mark": { "stroke": "#1f77b4", "strokeWidth": 2 }
+          }
+        }
+      ],
+      "mark": "point"
+    },
+
+    {
+      "title": "mousedown",
+      "params": [
+        {
+          "name": "dragCursor",
+          "persist": false,
+          "ruler": {
+            "encodings": ["x"],
+            "on": "mousedown",
+            "mark": { "stroke": "#d95f02", "strokeWidth": 2 }
+          }
+        }
+      ],
+      "mark": "point"
+    },
+
+    {
+      "title": "Shift + mousedown",
+      "params": [
+        {
+          "name": "shiftDragCursor",
+          "persist": false,
+          "ruler": {
+            "encodings": ["x"],
+            "on": "mousedown[event.shiftKey]",
+            "clear": "mouseup",
+            "mark": {
+              "stroke": "#2ca02c",
+              "strokeWidth": 2,
+              "strokeDash": [4, 3]
+            }
+          }
+        }
+      ],
+      "mark": "point"
+    }
+  ],
+
+  "config": { "view": { "stroke": "lightgray" } }
+}

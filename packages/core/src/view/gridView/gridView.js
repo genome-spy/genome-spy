@@ -46,6 +46,12 @@ import {
     createClipOptions,
     normalizeClipOptions,
 } from "../renderingContext/clipOptions.js";
+import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
+import {
+    createRulerOverlayView,
+    resolveRulerDisplay,
+    resolveRulerOverlayExtent,
+} from "./rulerOverlay.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -59,6 +65,7 @@ const DECORATION_ORDER = Object.freeze({
     axis: 40,
     legend: 50,
     selectionRect: 80,
+    ruler: 82,
     scrollbar: 90,
     title: 100,
 });
@@ -205,6 +212,9 @@ export default class GridView extends ContainerView {
 
     /** @type {KeyboardZoomController | null} */
     #keyboardZoomController = null;
+
+    /** @type {{ view: LayerView, zindex: number }[]} */
+    #rulerOverlays = [];
 
     /**
      *
@@ -366,7 +376,7 @@ export default class GridView extends ContainerView {
      * @param {GridChild} gridChild
      */
     #disposeGridChild(gridChild) {
-        gridChild.disposeAxisViews();
+        gridChild.dispose();
         for (const view of gridChild.getChildren()) {
             view.disposeSubtree();
         }
@@ -402,6 +412,7 @@ export default class GridView extends ContainerView {
 
         await this.syncSharedAxes();
         await this.syncSharedLegends();
+        await this.syncRulerOverlays();
         await Promise.all(
             gridChildren.map((gridChild) => gridChild.createAxes())
         );
@@ -471,12 +482,86 @@ export default class GridView extends ContainerView {
         }
     }
 
+    async syncRulerOverlays() {
+        for (const overlay of this.#rulerOverlays) {
+            overlay.view.disposeSubtree();
+        }
+        this.#rulerOverlays = [];
+
+        /** @type {Promise<void>[]} */
+        const promises = [];
+
+        for (const [paramName, param] of this.paramRuntime.paramConfigs) {
+            if (!isRulerParameter(param)) {
+                continue;
+            }
+
+            if (param.ruler.display === "none") {
+                continue;
+            }
+
+            const channels = param.ruler.encodings ?? ["x"];
+            const channel = channels.length === 1 ? channels[0] : undefined;
+            if (
+                !channel ||
+                resolveRulerOverlayExtent({
+                    paramName,
+                    config: param.ruler,
+                    ownerSpec: this.spec,
+                    channels,
+                    isAligned: (channel) =>
+                        this.#hasAlignedRulerProjection(channel),
+                }) !== "container"
+            ) {
+                continue;
+            }
+
+            const scaleResolution = this.getScaleResolution(channel);
+            const scaleType = scaleResolution.getResolvedScaleType();
+            const overlay = createRulerOverlayView({
+                paramName,
+                channels,
+                display: resolveRulerDisplay(
+                    scaleType,
+                    param.ruler.snap,
+                    param.ruler.display
+                ),
+                mark: param.ruler.mark,
+                context: this.context,
+                layoutParent: this,
+                dataParent: this,
+                name: "rulerOverlay" + "_" + paramName,
+            });
+            this.#rulerOverlays.push(overlay);
+            promises.push(overlay.view.initializeChildren());
+        }
+
+        await Promise.all(promises);
+    }
+
+    /** @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel */
+    #hasAlignedRulerProjection(channel) {
+        const ownerResolution = this.getScaleResolution(channel);
+        return (
+            ownerResolution != null &&
+            this.#children.every(
+                (gridChild) =>
+                    gridChild.view.getScaleResolution(channel) ===
+                    ownerResolution
+            )
+        );
+    }
+
     /**
      * @returns {IterableIterator<View>}
      */
     *[Symbol.iterator]() {
         for (const gridChild of this.#children) {
             yield* gridChild.getChildren();
+        }
+
+        for (const overlay of this.#rulerOverlays) {
+            yield overlay.view;
         }
 
         for (const separatorView of Object.values(this.#separatorViews)) {
@@ -901,6 +986,7 @@ export default class GridView extends ContainerView {
                 backgroundStroke,
                 title,
                 selectionRect,
+                rulerOverlays,
             } = gridChild;
 
             const [col, row] = grid.getCellCoords(i);
@@ -997,6 +1083,7 @@ export default class GridView extends ContainerView {
                 backgroundStroke,
                 title,
                 selectionRect,
+                rulerOverlays,
                 viewportCoords,
                 viewCoords,
                 parentClip,
@@ -1009,6 +1096,9 @@ export default class GridView extends ContainerView {
         }
 
         const gridOverhang = this.#getGridOverhang();
+        const gridViewCoords = getUnionCoords(
+            renderItems.map((item) => item.viewCoords)
+        );
 
         /** @type {{ zindex: number, order: number, sequence: number, render: () => void }[]} */
         const underlays = [];
@@ -1099,6 +1189,14 @@ export default class GridView extends ContainerView {
             );
         }
 
+        if (gridViewCoords) {
+            for (const overlay of this.#rulerOverlays) {
+                queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
+                    overlay.view.render(context, gridViewCoords, options)
+                );
+            }
+        }
+
         for (const item of renderItems) {
             const {
                 view,
@@ -1107,6 +1205,7 @@ export default class GridView extends ContainerView {
                 backgroundStroke,
                 title,
                 selectionRect,
+                rulerOverlays,
                 viewportCoords,
                 viewCoords,
                 parentClip,
@@ -1289,6 +1388,12 @@ export default class GridView extends ContainerView {
                     selectionRect.getZindex(),
                     DECORATION_ORDER.selectionRect,
                     () => selectionRect?.render(context, viewCoords, options)
+                );
+            }
+
+            for (const overlay of rulerOverlays) {
+                queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
+                    overlay.view.render(context, viewCoords, options)
                 );
             }
 
@@ -1725,6 +1830,23 @@ function getSeparatorDirections(spec) {
     }
 
     return ["horizontal", "vertical"];
+}
+
+/**
+ * @param {Rectangle[]} coords
+ * @returns {Rectangle | undefined}
+ */
+function getUnionCoords(coords) {
+    if (coords.length === 0) {
+        return undefined;
+    }
+
+    const x = Math.min(...coords.map((coord) => coord.x));
+    const y = Math.min(...coords.map((coord) => coord.y));
+    const x2 = Math.max(...coords.map((coord) => coord.x2));
+    const y2 = Math.max(...coords.map((coord) => coord.y2));
+
+    return Rectangle.create(x, y, x2 - x, y2 - y);
 }
 
 /**

@@ -366,6 +366,20 @@ describe("Domain caching and notifications", () => {
 
         expect(calls).toBe(1);
     });
+
+    test("Collector observers are notified after repropagation", () => {
+        const collector = new Collector();
+        let calls = 0;
+        collector.observe(() => {
+            calls += 1;
+        });
+
+        collector.handle({ x: 1 });
+        collector.complete();
+        collector.repropagate();
+
+        expect(calls).toBe(2);
+    });
 });
 
 /**

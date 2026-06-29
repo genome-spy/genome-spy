@@ -160,3 +160,61 @@ detail domain. A [`"link"`](./mark/link.md) mark with a `"diagonal"` shape
 visually connects the selected region in the overview to the detail view.
 
 EXAMPLE examples/docs/grammar/parameters/genome-overview-detail.json height=150 spechidden
+
+## Ruler Parameters
+
+Ruler parameters track one domain coordinate per configured positional channel
+and display it as a guide in compatible views. They are useful for cursor
+readouts, genome-browser-style center coordinates, and sibling views that
+compute from a shared cursor coordinate.
+
+Rulers are not selections. They store a tagged parameter value such as:
+
+```js
+{
+    type: "ruler",
+    values: {
+        x: 12.5
+    }
+}
+```
+
+Rulers can be pointer-driven, following the mouse pointer, or viewport-driven,
+following the center of the current scale viewport.
+
+Pointer-driven rulers use `ruler.on`:
+
+- `"mousemove"` follows the pointer and clears on mouse leave by default.
+- `"mousedown"` updates on press and continues while dragging. Use an event
+  filter such as `"mousedown[event.shiftKey]"` when plain drag is used for zoom
+  or pan gestures.
+
+Viewport-driven rulers use `"source": "viewport"` and track the center of the
+current scale viewport. A viewport ruler must not define `on` and does not clear
+on mouse leave.
+
+### Ruler Guides in Descendant Views
+
+Rulers can be shown separately in each view with a compatible scale or drawn
+across a container (`hconcat` or `vconcat`) when the participating views share
+the relevant scale and layout alignment.
+
+The example below shows a pointer-driven ruler drawn inside two views with
+independent x scales.
+
+EXAMPLE examples/docs/grammar/parameters/ruler.json height=240
+
+### Pushing Ruler Values to Ancestor Scopes
+
+Like selection parameters, ruler parameters can use `push: "outer"` to update a
+parameter declared in an ancestor scope. This allows one view to provide the
+coordinate while a sibling view reads the same parameter in expressions,
+transforms, or encodings.
+
+EXAMPLE examples/docs/grammar/parameters/ruler-push-outer.json height=240
+
+### Properties
+
+`ruler` supports the following properties:
+
+SCHEMA RulerConfig

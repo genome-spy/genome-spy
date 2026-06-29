@@ -1,0 +1,39 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "A viewport ruler tracks the center of an index-scaled view.",
+
+  "params": [
+    {
+      "name": "center",
+      "ruler": {
+        "encodings": ["x"],
+        "source": "viewport",
+        "extent": "view",
+        "snap": "auto",
+        "display": "band",
+        "mark": {
+          "stroke": "black",
+          "fill": "orange"
+        }
+      }
+    }
+  ],
+
+  "data": {
+    "sequence": { "start": 0, "stop": 10001, "step": 250, "as": "x" }
+  },
+
+  "transform": [{ "type": "formula", "expr": "sin(datum.x / 500)", "as": "y" }],
+
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "x", "type": "index" },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [-1, 1] }
+    }
+  },
+  "scales": { "x": { "domain": [0, 5000] } }
+}

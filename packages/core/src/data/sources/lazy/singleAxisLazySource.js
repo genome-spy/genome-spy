@@ -62,7 +62,7 @@ export default class SingleAxisLazySource extends DataSource {
         }
 
         const fireDomainChanged = () => {
-            if (this.view.isVisible()) {
+            if (!this.disposed && this.view.isVisible()) {
                 this.onDomainChanged(
                     this.scaleResolution.getDomain(),
                     /** @type {import("../../../spec/genome.js").ChromosomalLocus[]} */
@@ -72,9 +72,21 @@ export default class SingleAxisLazySource extends DataSource {
         };
 
         this.scaleResolution.addEventListener("domain", fireDomainChanged);
+        this.registerDisposer(() =>
+            this.scaleResolution.removeEventListener(
+                "domain",
+                fireDomainChanged
+            )
+        );
         this.view.context.addBroadcastListener(
             "layoutComputed",
             fireDomainChanged
+        );
+        this.registerDisposer(() =>
+            this.view.context.removeBroadcastListener(
+                "layoutComputed",
+                fireDomainChanged
+            )
         );
     }
 

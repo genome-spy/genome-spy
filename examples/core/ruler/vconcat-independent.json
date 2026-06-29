@@ -1,0 +1,48 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "A parent ruler is rendered separately in each vconcat child.",
+
+  "params": [
+    {
+      "name": "cursor",
+      "ruler": {
+        "encodings": ["x"],
+        "on": "mousemove",
+        "extent": "view",
+        "mark": { "stroke": "black", "strokeDash": [4, 2] }
+      }
+    }
+  ],
+
+  "resolve": { "scale": { "x": "independent" } },
+
+  "data": {
+    "values": [
+      { "x": 1, "y": 2 },
+      { "x": 2, "y": 5 },
+      { "x": 3, "y": 3 },
+      { "x": 7, "y": 8 }
+    ]
+  },
+
+  "vconcat": [
+    {
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      },
+      "scales": { "x": { "domain": [1, 9] } }
+    },
+
+    {
+      "mark": { "type": "point", "color": "orange" },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      },
+      "scales": { "x": { "domain": [0, 10] } }
+    }
+  ]
+}

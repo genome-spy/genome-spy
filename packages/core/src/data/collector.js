@@ -147,10 +147,7 @@ export default class Collector extends FlowNode {
         super.complete();
 
         this.#invalidateDomains();
-
-        for (const observer of this.observers) {
-            observer(this);
-        }
+        this.#notifyObservers();
     }
 
     /**
@@ -193,6 +190,13 @@ export default class Collector extends FlowNode {
         }
 
         this.#invalidateDomains();
+        this.#notifyObservers();
+    }
+
+    #notifyObservers() {
+        for (const observer of this.observers) {
+            observer(this);
+        }
     }
 
     /**

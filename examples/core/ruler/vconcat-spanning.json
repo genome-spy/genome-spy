@@ -1,0 +1,49 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "A parent ruler spans a vconcat when child x projections align.",
+
+  "data": {
+    "values": [
+      { "x": 1, "a": 3, "b": 7 },
+      { "x": 2, "a": 5, "b": 4 },
+      { "x": 3, "a": 2, "b": 6 },
+      { "x": 4, "a": 8, "b": 3 }
+    ]
+  },
+
+  "params": [
+    {
+      "name": "cursor",
+      "persist": false,
+      "ruler": {
+        "encodings": ["x"],
+        "on": "mousemove",
+        "extent": "auto",
+        "mark": { "stroke": "black", "strokeDash": [4, 2] }
+      }
+    }
+  ],
+
+  "resolve": {
+    "scale": { "x": "shared" }
+  },
+
+  "vconcat": [
+    {
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "a", "type": "quantitative" }
+      }
+    },
+
+    {
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "b", "type": "quantitative" }
+      }
+    }
+  ]
+}

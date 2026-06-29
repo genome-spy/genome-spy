@@ -718,6 +718,114 @@ describe("GridView separators", () => {
 });
 
 describe("GridView decoration zindex", () => {
+    test("renders generated ruler overlay decorations", async () => {
+        const order = await recordRenderOrder(
+            {
+                params: [
+                    {
+                        name: "cursor",
+                        ruler: { encodings: ["x"] },
+                    },
+                ],
+                vconcat: [makeUnitSpec()],
+            },
+            ["rulerOverlay_cursor"]
+        );
+
+        expect(order).toEqual(["rulerOverlay_cursor"]);
+    });
+
+    test("creates crosshair ruler overlays", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeUnitSpec(),
+                        params: [
+                            {
+                                name: "crosshair",
+                                ruler: { encodings: ["x", "y"] },
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+        const overlays = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant.defaultName === "rulerOverlay0_crosshair"
+            );
+
+        expect(overlays).toHaveLength(1);
+    });
+
+    test("renders one container overlay for spanning vconcat rulers", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "cursor",
+                        ruler: { encodings: ["x"], extent: "container" },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "rulerOverlay_cursor");
+        expect(overlays).toHaveLength(1);
+
+        /** @type {string[]} */
+        const order = [];
+        const original = overlays[0].render.bind(overlays[0]);
+        overlays[0].render = (context, coords, options = {}) => {
+            order.push(overlays[0].name);
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        expect(order).toEqual(["rulerOverlay_cursor"]);
+    });
+
+    test("does not render container ruler overlays when display is none", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "cursor",
+                        ruler: {
+                            encodings: ["x"],
+                            extent: "container",
+                            display: "none",
+                        },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "rulerOverlay_cursor");
+
+        expect(overlays).toHaveLength(0);
+    });
+
     test("renders default decorations around unclipped content", async () => {
         const order = await recordRenderOrder(
             {
@@ -1886,5 +1994,87 @@ describe("GridView wheel zoom", () => {
         expect(firstXZoomSpy).not.toHaveBeenCalled();
         expect(secondXZoomSpy).not.toHaveBeenCalled();
         expect(preventDefault).not.toHaveBeenCalled();
+    });
+});
+
+describe("GridView ruler interactions", () => {
+    test("vconcat ruler follows mousemove coordinates", async () => {
+        const originalMouseEvent = globalThis.MouseEvent;
+
+        class FakeMouseEvent extends Event {
+            constructor(
+                /** @type {string} */ type,
+                /** @type {Record<string, any>} */ init = {}
+            ) {
+                super(type);
+                Object.assign(this, init);
+            }
+        }
+
+        globalThis.MouseEvent = /** @type {typeof MouseEvent} */ (
+            /** @type {any} */ (FakeMouseEvent)
+        );
+
+        try {
+            const view = await createAndInitialize(
+                {
+                    params: [
+                        {
+                            name: "cursor",
+                            ruler: { encodings: ["x"], snap: false },
+                        },
+                    ],
+                    resolve: {
+                        scale: { x: "shared" },
+                    },
+                    vconcat: [makeUnitSpec(), makeUnitSpec()],
+                },
+                ConcatView
+            );
+            const concatView = /** @type {ConcatView} */ (view);
+            const context = new NoOpRenderingContext({ picking: false });
+            concatView.render(context, Rectangle.create(0, 0, 200, 200), {
+                firstFacet: true,
+            });
+            const requestRender = vi.spyOn(
+                concatView.context.animator,
+                "requestRender"
+            );
+
+            const child = /** @type {UnitView} */ (concatView.children[0]);
+            const leftPoint = new Point(
+                child.coords.x + child.coords.width * 0.25,
+                child.coords.y + child.coords.height / 2
+            );
+            const rightPoint = new Point(
+                child.coords.x + child.coords.width * 0.75,
+                child.coords.y + child.coords.height / 2
+            );
+
+            concatView.propagateInteraction(
+                new Interaction(
+                    leftPoint,
+                    /** @type {any} */ (new FakeMouseEvent("mousemove"))
+                )
+            );
+            const leftValue = concatView.paramRuntime.findValue("cursor");
+            const renderRequestsAfterFirstMove =
+                requestRender.mock.calls.length;
+
+            concatView.propagateInteraction(
+                new Interaction(
+                    rightPoint,
+                    /** @type {any} */ (new FakeMouseEvent("mousemove"))
+                )
+            );
+            const rightValue = concatView.paramRuntime.findValue("cursor");
+
+            expect(leftValue.values.x).toBeLessThan(rightValue.values.x);
+            expect(requestRender.mock.calls.length).toBeGreaterThan(
+                renderRequestsAfterFirstMove
+            );
+        } finally {
+            globalThis.MouseEvent = originalMouseEvent;
+        }
     });
 });

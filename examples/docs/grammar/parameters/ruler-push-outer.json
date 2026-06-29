@@ -1,0 +1,50 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "A child ruler pushes a coordinate to an outer parameter used by a sibling view.",
+
+  "params": [{ "name": "cursor" }],
+
+  "vconcat": [
+    {
+      "height": 25,
+      "data": { "values": [{}] },
+      "mark": {
+        "type": "text",
+        "text": { "expr": "'x = ' + cursor.values.x" }
+      }
+    },
+    {
+      "title": {
+        "text": "Move your mouse here!",
+        "style": "overlay-title"
+      },
+      "data": {
+        "values": [
+          { "x": 1, "y": 2 },
+          { "x": 2, "y": 4 },
+          { "x": 3, "y": 3 },
+          { "x": 4, "y": 7 },
+          { "x": 5, "y": 5 }
+        ]
+      },
+      "params": [
+        {
+          "name": "cursor",
+          "push": "outer",
+          "ruler": {
+            "encodings": ["x"],
+            "mark": { "stroke": "gray", "strokeDash": [4, 4] }
+          }
+        }
+      ],
+      "mark": "point",
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" }
+      }
+    }
+  ],
+
+  "config": { "view": { "stroke": "lightgray" } }
+}

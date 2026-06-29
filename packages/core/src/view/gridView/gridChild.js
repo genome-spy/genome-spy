@@ -1,4 +1,5 @@
 import { isContinuous } from "vega-scale";
+import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import {
     asEventConfig,
     asSelectionConfig,
@@ -39,6 +40,13 @@ import {
     getOrderedLegendEntries,
     iterateLegendViews,
 } from "./gridChildLegends.js";
+import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
+import { RulerViewportController } from "../../ruler/rulerViewportController.js";
+import {
+    createRulerOverlayView,
+    resolveRulerDisplay,
+    resolveRulerOverlayExtent,
+} from "./rulerOverlay.js";
 
 /**
  * @typedef {{
@@ -47,6 +55,11 @@ import {
  *     orient: import("../../spec/axis.js").AxisOrient,
  *     resolution: import("../../scales/axisResolution.js").default,
  * }} AxisCandidate
+ * @typedef {{
+ *     owner: import("../view.js").default,
+ *     paramName: string,
+ *     config: import("../../spec/parameter.js").RulerConfig,
+ * }} GridChildRulerBinding
  */
 
 /**
@@ -110,6 +123,15 @@ export default class GridChild {
 
         /** @type {SelectionRect} */
         this.selectionRect = undefined;
+
+        /** @type {RulerMouseEventController[]} */
+        this.rulerMouseEventControllers = [];
+
+        /** @type {RulerViewportController[]} */
+        this.rulerViewportControllers = [];
+
+        /** @type {{ view: LayerView, zindex: number }[]} */
+        this.rulerOverlays = [];
 
         /** @type {TitleView} */
         this.title = undefined;
@@ -193,6 +215,167 @@ export default class GridChild {
         }
 
         this.#setupIntervalSelection();
+        this.#setupRulers();
+    }
+
+    #setupRulers() {
+        for (const {
+            owner,
+            paramName,
+            config: ruler,
+        } of this.#getRulerBindings()) {
+            const channels = ruler.encodings ?? ["x"];
+            const scaleResolutions = this.#getRulerScaleResolutions(
+                paramName,
+                channels
+            );
+
+            if (ruler.source === "viewport") {
+                this.rulerViewportControllers.push(
+                    new RulerViewportController(
+                        this,
+                        paramName,
+                        ruler,
+                        channels,
+                        scaleResolutions,
+                        owner.paramRuntime
+                    )
+                );
+            } else {
+                this.rulerMouseEventControllers.push(
+                    new RulerMouseEventController(
+                        this,
+                        paramName,
+                        ruler,
+                        channels,
+                        scaleResolutions,
+                        owner.paramRuntime
+                    )
+                );
+            }
+
+            if (ruler.display === "none") {
+                continue;
+            } else if (
+                this.#usesContainerRulerOverlay(
+                    owner,
+                    paramName,
+                    ruler,
+                    channels,
+                    scaleResolutions
+                )
+            ) {
+                continue;
+            } else {
+                this.#addRulerOverlay(
+                    paramName,
+                    ruler,
+                    channels,
+                    scaleResolutions
+                );
+            }
+        }
+    }
+
+    /**
+     * @returns {GridChildRulerBinding[]}
+     */
+    #getRulerBindings() {
+        /** @type {GridChildRulerBinding[]} */
+        const bindings = [];
+        const seen = new Set();
+
+        for (const owner of this.view.getDataAncestors()) {
+            for (const [paramName, param] of owner.paramRuntime.paramConfigs) {
+                if (seen.has(paramName)) {
+                    continue;
+                }
+
+                seen.add(paramName);
+                if (isRulerParameter(param)) {
+                    bindings.push({
+                        owner,
+                        paramName,
+                        config: param.ruler,
+                    });
+                }
+            }
+        }
+
+        return bindings;
+    }
+
+    /**
+     * @param {import("../view.js").default} owner
+     * @param {string} paramName
+     * @param {import("../../spec/parameter.js").RulerConfig} ruler
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>>} scaleResolutions
+     */
+    #usesContainerRulerOverlay(
+        owner,
+        paramName,
+        ruler,
+        channels,
+        scaleResolutions
+    ) {
+        return (
+            resolveRulerOverlayExtent({
+                paramName,
+                config: ruler,
+                ownerSpec: owner.spec,
+                channels,
+                isAligned: (channel) =>
+                    owner.getScaleResolution?.(channel) ===
+                    scaleResolutions[channel],
+            }) === "container"
+        );
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {import("../../spec/parameter.js").RulerConfig} ruler
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>>} scaleResolutions
+     */
+    #addRulerOverlay(paramName, ruler, channels, scaleResolutions) {
+        const scaleType = scaleResolutions[channels[0]].getResolvedScaleType();
+        const overlay = createRulerOverlayView({
+            paramName,
+            channels,
+            display: resolveRulerDisplay(scaleType, ruler.snap, ruler.display),
+            mark: ruler.mark,
+            context: this.layoutParent.context,
+            layoutParent: this.layoutParent,
+            dataParent: this.view,
+            name: "rulerOverlay" + this.serial + "_" + paramName,
+        });
+
+        this.rulerOverlays.push(overlay);
+
+        // WARNING! The following is an async method! Mirrors SelectionRect until
+        // grid chrome has a shared awaited initialization path.
+        overlay.view.initializeChildren();
+    }
+
+    /**
+     * @param {string} paramName
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     */
+    #getRulerScaleResolutions(paramName, channels) {
+        return Object.fromEntries(
+            channels.map((channel) => {
+                const resolution = this.view.getScaleResolution(channel);
+
+                if (!resolution?.getResolvedScaleType?.()) {
+                    throw new Error(
+                        `No scale found for ruler param "${paramName}" on channel "${channel}".`
+                    );
+                }
+
+                return [channel, resolution];
+            })
+        );
     }
 
     #setupIntervalSelection() {
@@ -672,6 +855,9 @@ export default class GridChild {
         if (this.selectionRect) {
             yield this.selectionRect;
         }
+        for (const overlay of this.rulerOverlays) {
+            yield overlay.view;
+        }
     }
 
     /**
@@ -924,6 +1110,19 @@ export default class GridChild {
                 candidate.orient === orient &&
                 candidate.resolution.hasVisibleNonChromeMember()
         );
+    }
+
+    /**
+     * Disposes GridChild-owned controllers and generated guide views.
+     */
+    dispose() {
+        for (const controller of this.rulerViewportControllers) {
+            controller.dispose();
+        }
+        this.rulerViewportControllers = [];
+        this.rulerMouseEventControllers = [];
+
+        this.disposeAxisViews();
     }
 
     /**

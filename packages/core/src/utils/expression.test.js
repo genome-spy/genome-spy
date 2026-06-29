@@ -90,14 +90,36 @@ describe("expression helpers", () => {
 
         expect(expr()).toEqual([6, 2, [0, 10]]);
     });
+
+    test("supports linearize helper", () => {
+        const resolution = createFakeScaleResolution(
+            [0, 10],
+            (value) => value * 3,
+            (value) =>
+                typeof value == "number" ? value : value.chromOffset + value.pos
+        );
+        const expr = createFunction(
+            "linearize('x', datum.value)",
+            {},
+            {
+                resolveScaleResolution: (channel) =>
+                    channel == "x" ? resolution : undefined,
+            }
+        );
+
+        expect(expr({ value: 5 })).toBe(5);
+        expect(expr({ value: { chromOffset: 100, pos: 7 } })).toBe(107);
+        expect(expr({ value: null })).toBeNull();
+    });
 });
 
 /**
  * @param {number[]} initialDomain
  * @param {(value: number) => number} scaleFn
+ * @param {(value: any) => number} [fromComplex]
  * @returns {any}
  */
-function createFakeScaleResolution(initialDomain, scaleFn) {
+function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
     let domain = initialDomain;
     const range = [0, 10];
     /** @type {Record<"domain" | "range", Set<() => void>>} */
@@ -127,6 +149,9 @@ function createFakeScaleResolution(initialDomain, scaleFn) {
                 range: () => range,
                 invert: (/** @type {number} */ value) => value / 3,
             });
+        },
+        fromComplex(/** @type {any} */ value) {
+            return fromComplex ? fromComplex(value) : value;
         },
         setDomain(/** @type {number[]} */ nextDomain) {
             domain = nextDomain;

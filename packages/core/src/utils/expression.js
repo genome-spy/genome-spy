@@ -133,6 +133,7 @@ function buildFunctions(codegen, context) {
         "invert",
         "domain",
         "range",
+        "linearize",
     ])) {
         fn[kind] = (
             /** @type {any[]} */
@@ -155,17 +156,19 @@ function buildFunctions(codegen, context) {
  * @typedef {object} ExpressionCompileContext
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
  *
+ * @typedef {"scale" | "invert" | "domain" | "range" | "linearize"} ScaleHelperKind
+ *
  * @typedef {ExpressionCompileContext & {
  *   globalvar: string,
  *   globalObject: Record<string, any>,
- *   getScaleHelper: (kind: "scale" | "invert" | "domain" | "range", channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
+ *   getScaleHelper: (kind: ScaleHelperKind, channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
  * }} ScaleHelperCompileContext
  */
 
 /**
  * @param {typeof codegenExpression} codegen
  * @param {ScaleHelperCompileContext} context
- * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {ScaleHelperKind} kind
  * @param {any[]} args
  * @returns {string}
  */
@@ -176,7 +179,10 @@ function buildScaleHelperCall(codegen, context, kind, args) {
         );
     }
 
-    if ((kind === "scale" || kind === "invert") && args.length < 2) {
+    if (
+        (kind === "scale" || kind === "invert" || kind === "linearize") &&
+        args.length < 2
+    ) {
         throw new Error(
             `Scale helper "${kind}" requires a channel name and a value.`
         );
@@ -215,7 +221,7 @@ function getLiteralString(node) {
 }
 
 /**
- * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {ScaleHelperKind} kind
  * @param {import("../scales/scaleResolution.js").default} resolution
  * @returns {(...args: any[]) => any}
  */
@@ -241,6 +247,16 @@ function createScaleHelperFunction(kind, resolution) {
         return (value) =>
             run(() => /** @type {any} */ (resolution.getScale()).invert(value));
     }
+    if (kind === "linearize") {
+        return (value) =>
+            run(() =>
+                value == null
+                    ? null
+                    : typeof resolution.fromComplex === "function"
+                      ? resolution.fromComplex(value)
+                      : value
+            );
+    }
     throw new Error("Unknown scale helper: " + kind);
 }
 
@@ -250,7 +266,7 @@ const activeScaleHelperResolutions = new WeakSet();
 /**
  * @template T
  * @param {import("../scales/scaleResolution.js").default} resolution
- * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {ScaleHelperKind} kind
  * @param {() => T} fn
  * @returns {T}
  */
@@ -270,7 +286,7 @@ function runWithActiveScaleResolution(resolution, kind, fn) {
 }
 
 /**
- * @param {"scale" | "invert" | "domain" | "range"} kind
+ * @param {ScaleHelperKind} kind
  * @param {string} channel
  * @param {import("../scales/scaleResolution.js").default} resolution
  * @param {string} codeName
@@ -360,7 +376,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
          * @type {ExpressionCompileContext & {
          *   globalvar: string,
          *   globalObject: Record<string, any>,
-         *   getScaleHelper: (kind: "scale" | "invert" | "domain" | "range", channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
+         *   getScaleHelper: (kind: ScaleHelperKind, channel: string, resolution: import("../scales/scaleResolution.js").default) => { codeName: string, dependency: import("../paramRuntime/types.js").ParamRef<any> }
          * }}
          */
         const helperContext = {
