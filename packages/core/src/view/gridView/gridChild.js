@@ -443,6 +443,11 @@ export default class GridChild {
                 name
             );
             const zoomEventPredicate = createEventPredicate(zoomEventConfig);
+            const clearEventConfig =
+                /** @type {import("../../spec/parameter.js").EventConfig | undefined} */ (
+                    select.clear
+                );
+            const clearEventPredicate = createEventPredicate(clearEventConfig);
 
             if (this.selectionRect) {
                 throw new Error(
@@ -596,7 +601,10 @@ export default class GridChild {
                     if (startSelection) {
                         clearSelection();
                         nowBrushing = true;
-                    } else if (isActiveIntervalSelection(selectionExpr())) {
+                    } else if (
+                        clearEventConfig &&
+                        isActiveIntervalSelection(selectionExpr())
+                    ) {
                         // If mouse button is released and there was a selection,
                         // it should be cleared unless the viewport was panned by dragging.
                         /** @type {import("../view.js").InteractionListener} */
@@ -731,17 +739,21 @@ export default class GridChild {
             const isPointInsideSelection = (/** @type {Point} */ point) =>
                 selectionContainsPoint(selectionExpr(), invertPoint(point));
 
-            // TODO: Make behavior configurable
-            view.addInteractionListener(
-                "dblclick",
-                (event) => {
-                    if (isPointInsideSelection(event.point)) {
-                        clearSelection();
-                        event.stopPropagation();
-                    }
-                },
-                true
-            );
+            if (clearEventConfig) {
+                view.addInteractionListener(
+                    clearEventConfig.type,
+                    (event) => {
+                        if (
+                            clearEventPredicate(event.proxiedMouseEvent) &&
+                            isPointInsideSelection(event.point)
+                        ) {
+                            clearSelection();
+                            event.stopPropagation();
+                        }
+                    },
+                    true
+                );
+            }
 
             view.addInteractionListener("wheel", (event) => {
                 const wheelEvent = event.wheelEvent;
