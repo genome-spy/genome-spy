@@ -1,14 +1,10 @@
-import LayerView from "../layerView.js";
-import {
-    markViewAsChrome,
-    markViewAsNonAddressable,
-} from "../viewSelectors.js";
 import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
+import { createGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
 
 /**
  * @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
  * @typedef {"view" | "container"} RulerOverlayExtent
- * @typedef {{ view: LayerView, zindex: number }} RulerOverlayView
+ * @typedef {import("./generatedChromeOverlay.js").GeneratedChromeOverlay} RulerOverlayView
  * @typedef {{
  *   paramName: string,
  *   channels: PrimaryPositionalChannel[],
@@ -129,8 +125,8 @@ export function createRulerOverlayView({
     dataParent,
     name,
 }) {
-    const overlay = new LayerView(
-        createRulerOverlaySpec({
+    return createGeneratedChromeOverlay({
+        spec: createRulerOverlaySpec({
             paramName,
             channels,
             display,
@@ -139,16 +135,9 @@ export function createRulerOverlayView({
         context,
         layoutParent,
         dataParent,
-        name
-    );
-
-    markViewAsNonAddressable(overlay, { skipSubtree: true });
-    markViewAsChrome(overlay, { skipSubtree: true });
-
-    return {
-        view: overlay,
+        name,
         zindex: mark?.zindex ?? 1,
-    };
+    });
 }
 
 /**
