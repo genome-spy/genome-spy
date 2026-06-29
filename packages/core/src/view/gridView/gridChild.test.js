@@ -451,6 +451,34 @@ describe("GridChild ruler interactions", () => {
         });
     });
 
+    test("disposes pointer ruler view listeners", () => {
+        /** @type {Map<string, any>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createRulerGridChildView([
+            {
+                name: "cursor",
+                ruler: { encodings: ["x"] },
+            },
+        ]);
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, listener);
+        };
+        view.removeInteractionListener = (type, listener) => {
+            if (listeners.get(type) === listener) {
+                listeners.delete(type);
+            }
+        };
+
+        const child = new GridChild(view, layoutParent, 0);
+        expect(listeners.has("mousemove")).toBe(true);
+        expect(listeners.has("mouseleave")).toBe(true);
+
+        child.dispose();
+
+        expect(listeners.has("mousemove")).toBe(false);
+        expect(listeners.has("mouseleave")).toBe(false);
+    });
+
     test("registers viewport ruler params and seeds their value", () => {
         const { view, layoutParent } = createRulerGridChildView([
             {

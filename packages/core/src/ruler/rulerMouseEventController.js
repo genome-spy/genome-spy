@@ -52,6 +52,11 @@ export class RulerMouseEventController {
         this.#addListeners();
     }
 
+    /**
+     * @type {{ type: string, listener: import("../view/view.js").InteractionListener, capture?: boolean }[]}
+     */
+    #viewListeners = [];
+
     /** @type {import("../spec/parameter.js").RulerEventConfig} */
     eventConfig;
 
@@ -63,6 +68,27 @@ export class RulerMouseEventController {
 
     dragging = false;
 
+    /**
+     * @param {string} type
+     * @param {import("../view/view.js").InteractionListener} listener
+     * @param {boolean} [capture]
+     */
+    #addViewInteractionListener(type, listener, capture) {
+        this.gridChild.view.addInteractionListener(type, listener, capture);
+        this.#viewListeners.push({ type, listener, capture });
+    }
+
+    dispose() {
+        for (const { type, listener, capture } of this.#viewListeners) {
+            this.gridChild.view.removeInteractionListener(
+                type,
+                listener,
+                capture
+            );
+        }
+        this.#viewListeners = [];
+    }
+
     #addListeners() {
         if (this.eventConfig.type === "mousemove") {
             this.#addMousemoveListeners();
@@ -72,16 +98,14 @@ export class RulerMouseEventController {
     }
 
     #addMousemoveListeners() {
-        const { view } = this.gridChild;
-
-        view.addInteractionListener("mousemove", (event) => {
+        this.#addViewInteractionListener("mousemove", (event) => {
             if (this.eventPredicate(event.proxiedMouseEvent)) {
                 this.#setValue(this.#pointToRulerValue(event.point));
             }
         });
 
         if (this.clear === "mouseleave") {
-            view.addInteractionListener("mouseleave", () => {
+            this.#addViewInteractionListener("mouseleave", () => {
                 this.#setValue(createRulerValue(this.channels));
             });
         } else if (this.clear !== false) {
@@ -92,9 +116,7 @@ export class RulerMouseEventController {
     }
 
     #addMousedownListeners() {
-        const { view } = this.gridChild;
-
-        view.addInteractionListener("mousedown", (event) => {
+        this.#addViewInteractionListener("mousedown", (event) => {
             if (
                 event.mouseEvent.button !== 0 ||
                 !this.eventPredicate(event.proxiedMouseEvent)
@@ -130,7 +152,7 @@ export class RulerMouseEventController {
         });
 
         if (this.clear === "mouseleave") {
-            view.addInteractionListener("mouseleave", () => {
+            this.#addViewInteractionListener("mouseleave", () => {
                 if (!this.dragging) {
                     this.#setValue(createRulerValue(this.channels));
                 }

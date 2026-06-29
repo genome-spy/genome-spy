@@ -681,6 +681,9 @@ export default class GridChild {
         for (const controller of this.rulerViewportControllers) {
             controller.dispose();
         }
+        for (const controller of this.rulerMouseEventControllers) {
+            controller.dispose();
+        }
         this.intervalSelectionControllers = [];
         this.rulerViewportControllers = [];
         this.rulerMouseEventControllers = [];
