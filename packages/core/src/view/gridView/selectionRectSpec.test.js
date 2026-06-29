@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import createFunction from "../../utils/expression.js";
 import { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { createSelectionRectSpec } from "./selectionRectSpec.js";
 
@@ -26,10 +27,26 @@ describe("createSelectionRectSpec", () => {
             },
         ]);
         expect(spec.encoding).toMatchObject({
-            x: { datum: { expr: "brush.intervals.x[0]" } },
-            x2: { datum: { expr: "brush.intervals.x[1]" } },
-            y: { datum: { expr: "brush.intervals.y[0]" } },
-            y2: { datum: { expr: "brush.intervals.y[1]" } },
+            x: {
+                datum: {
+                    expr: "(brush.intervals.x != null ? brush.intervals.x[0] : 0)",
+                },
+            },
+            x2: {
+                datum: {
+                    expr: "(brush.intervals.x != null ? brush.intervals.x[1] : 0)",
+                },
+            },
+            y: {
+                datum: {
+                    expr: "(brush.intervals.y != null ? brush.intervals.y[0] : 0)",
+                },
+            },
+            y2: {
+                datum: {
+                    expr: "(brush.intervals.y != null ? brush.intervals.y[1] : 0)",
+                },
+            },
         });
         expect(spec.params).toEqual([
             { name: INTERVAL_DRAG_ACTIVE_PARAM, value: false },
@@ -64,5 +81,36 @@ describe("createSelectionRectSpec", () => {
         expect(textLayer.encoding.text).toEqual({
             expr: "format(brush.intervals.x[1] - brush.intervals.x[0], '.3s') + 'b'",
         });
+    });
+
+    test("bound expressions tolerate inactive interval selections", () => {
+        const spec = createSelectionRectSpec({
+            gridChild: /** @type {any} */ ({
+                view: {
+                    getScaleResolution: () => ({ type: "linear" }),
+                },
+            }),
+            selectionExpression: "brush",
+            selection: {
+                type: "interval",
+                intervals: { x: null },
+            },
+            brushConfig: {},
+        });
+
+        const globalObject = {
+            brush: {
+                type: "interval",
+                intervals: { x: null },
+            },
+        };
+
+        const x = /** @type {any} */ (spec.encoding.x);
+        const x2 = /** @type {any} */ (spec.encoding.x2);
+
+        // Datum ExprRefs become mark uniforms and are evaluated before the
+        // filter transform can hide the empty overlay row.
+        expect(createFunction(x.datum.expr, globalObject)()).toBe(0);
+        expect(createFunction(x2.datum.expr, globalObject)()).toBe(0);
     });
 });

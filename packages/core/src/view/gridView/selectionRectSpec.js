@@ -186,9 +186,23 @@ function makeSelectionRectFilterExpression(selectionExpression, channels) {
 function createIntervalBoundEncoding(selectionExpression, channel, index) {
     return /** @type {any} */ ({
         datum: {
-            expr: `${selectionExpression}.intervals.${channel}[${index}]`,
+            expr: makeIntervalBoundExpression(
+                selectionExpression,
+                channel,
+                index
+            ),
         },
         type: null,
         title: null,
     });
+}
+
+/**
+ * @param {string} selectionExpression
+ * @param {PrimaryPositionalChannel} channel
+ * @param {0 | 1} index
+ */
+function makeIntervalBoundExpression(selectionExpression, channel, index) {
+    const interval = `${selectionExpression}.intervals.${channel}`;
+    return `(${interval} != null ? ${interval}[${index}] : 0)`;
 }

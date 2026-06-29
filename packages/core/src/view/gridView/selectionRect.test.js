@@ -70,10 +70,26 @@ describe("SelectionRect", () => {
         const selectionRect = new SelectionRect(gridChild, selectionExpr);
         expect(selectionRect.spec.data).toEqual({ values: [{}] });
         expect(selectionRect.spec.encoding).toMatchObject({
-            x: { datum: { expr: "selection.intervals.x[0]" } },
-            x2: { datum: { expr: "selection.intervals.x[1]" } },
-            y: { datum: { expr: "selection.intervals.y[0]" } },
-            y2: { datum: { expr: "selection.intervals.y[1]" } },
+            x: {
+                datum: {
+                    expr: "(selection.intervals.x != null ? selection.intervals.x[0] : 0)",
+                },
+            },
+            x2: {
+                datum: {
+                    expr: "(selection.intervals.x != null ? selection.intervals.x[1] : 0)",
+                },
+            },
+            y: {
+                datum: {
+                    expr: "(selection.intervals.y != null ? selection.intervals.y[0] : 0)",
+                },
+            },
+            y2: {
+                datum: {
+                    expr: "(selection.intervals.y != null ? selection.intervals.y[1] : 0)",
+                },
+            },
         });
         expect(subscribe).not.toHaveBeenCalled();
 
