@@ -82,6 +82,15 @@ export default class GridChild {
      *   dataflow are kept in sync.
      */
 
+    /** @type {IntervalSelectionController[]} */
+    #intervalSelectionControllers = [];
+
+    /** @type {RulerMouseEventController[]} */
+    #rulerMouseEventControllers = [];
+
+    /** @type {RulerViewportController[]} */
+    #rulerViewportControllers = [];
+
     /**
      * @param {import("../view.js").default} view
      * @param {import("../containerView.js").default} layoutParent
@@ -115,15 +124,6 @@ export default class GridChild {
 
         /** @type {import("./selectionRect.js").SelectionRectOverlay} */
         this.selectionRect = undefined;
-
-        /** @type {IntervalSelectionController[]} */
-        this.intervalSelectionControllers = [];
-
-        /** @type {RulerMouseEventController[]} */
-        this.rulerMouseEventControllers = [];
-
-        /** @type {RulerViewportController[]} */
-        this.rulerViewportControllers = [];
 
         /** @type {{ view: LayerView, zindex: number }[]} */
         this.rulerOverlays = [];
@@ -226,7 +226,7 @@ export default class GridChild {
             );
 
             if (ruler.source === "viewport") {
-                this.rulerViewportControllers.push(
+                this.#rulerViewportControllers.push(
                     new RulerViewportController(
                         this,
                         paramName,
@@ -237,7 +237,7 @@ export default class GridChild {
                     )
                 );
             } else {
-                this.rulerMouseEventControllers.push(
+                this.#rulerMouseEventControllers.push(
                     new RulerMouseEventController(
                         this,
                         paramName,
@@ -388,7 +388,7 @@ export default class GridChild {
                 continue;
             }
 
-            this.intervalSelectionControllers.push(
+            this.#intervalSelectionControllers.push(
                 new IntervalSelectionController(this, name, param, select)
             );
         }
@@ -675,18 +675,18 @@ export default class GridChild {
      * Disposes GridChild-owned controllers and generated guide views.
      */
     dispose() {
-        for (const controller of this.intervalSelectionControllers) {
+        for (const controller of this.#intervalSelectionControllers) {
             controller.dispose();
         }
-        for (const controller of this.rulerViewportControllers) {
+        for (const controller of this.#rulerViewportControllers) {
             controller.dispose();
         }
-        for (const controller of this.rulerMouseEventControllers) {
+        for (const controller of this.#rulerMouseEventControllers) {
             controller.dispose();
         }
-        this.intervalSelectionControllers = [];
-        this.rulerViewportControllers = [];
-        this.rulerMouseEventControllers = [];
+        this.#intervalSelectionControllers = [];
+        this.#rulerViewportControllers = [];
+        this.#rulerMouseEventControllers = [];
 
         this.disposeAxisViews();
     }
