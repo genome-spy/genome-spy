@@ -741,6 +741,37 @@ describe("GridChild interval selection interactions", () => {
 
         expect(setValue).not.toHaveBeenCalled();
     });
+
+    test("disposes interval selection view listeners", () => {
+        /** @type {Map<string, any[]>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createIntervalGridChildView([
+            {
+                name: "brush",
+                select: { type: "interval", encodings: ["x"] },
+            },
+        ]);
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+        };
+        view.removeInteractionListener = (type, listener) => {
+            listeners.set(
+                type,
+                (listeners.get(type) ?? []).filter(
+                    (candidate) => candidate !== listener
+                )
+            );
+        };
+        const listenerCount = () =>
+            Array.from(listeners.values()).flat().length;
+
+        const child = new GridChild(view, layoutParent, 0);
+        expect(listenerCount()).toBeGreaterThan(0);
+
+        child.dispose();
+
+        expect(listenerCount()).toBe(0);
+    });
 });
 
 describe("GridChild title layout", () => {

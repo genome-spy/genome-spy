@@ -31,55 +31,46 @@ export class IntervalSelectionController {
      */
     constructor(gridChild, name, param, select) {
         this.gridChild = gridChild;
-        this.name = name;
-        this.param = param;
-        this.select = select;
-        this.viewListeners = [];
 
-        this.#setup();
+        this.#setup(name, param, select);
     }
 
     /** @type {import("./gridChild.js").default} */
     gridChild;
 
-    /** @type {string} */
-    name;
-
-    /** @type {import("../../spec/parameter.js").Parameter} */
-    param;
-
-    /** @type {import("../../spec/parameter.js").IntervalSelectionConfig} */
-    select;
-
     /**
      * @type {{ type: string, listener: import("../view.js").InteractionListener, capture?: boolean }[]}
      */
-    viewListeners;
+    #viewListeners = [];
 
     /**
      * @param {string} type
      * @param {import("../view.js").InteractionListener} listener
      * @param {boolean} [capture]
      */
-    addViewInteractionListener(type, listener, capture) {
+    #addViewInteractionListener(type, listener, capture) {
         this.gridChild.view.addInteractionListener(type, listener, capture);
-        this.viewListeners.push({ type, listener, capture });
+        this.#viewListeners.push({ type, listener, capture });
     }
 
     dispose() {
-        for (const { type, listener, capture } of this.viewListeners) {
+        for (const { type, listener, capture } of this.#viewListeners) {
             this.gridChild.view.removeInteractionListener(
                 type,
                 listener,
                 capture
             );
         }
-        this.viewListeners = [];
+        this.#viewListeners = [];
     }
 
-    #setup() {
+    /**
+     * @param {string} name
+     * @param {import("../../spec/parameter.js").Parameter} param
+     * @param {import("../../spec/parameter.js").IntervalSelectionConfig} select
+     */
+    #setup(name, param, select) {
         const view = this.gridChild.view;
-        const { name, param, select } = this;
         const channels = select.encodings;
 
         const scaleResolutions = Object.fromEntries(
@@ -251,7 +242,7 @@ export class IntervalSelectionController {
             return Rectangle.create(a.x, a.y, b.x - a.x, b.y - a.y);
         };
 
-        this.addViewInteractionListener("mousedown", (event) => {
+        this.#addViewInteractionListener("mousedown", (event) => {
             if (event.mouseEvent.button != 0) {
                 return;
             }
@@ -303,6 +294,8 @@ export class IntervalSelectionController {
                             clearSelection();
                         }
                     };
+                    // This listener is intentionally one-shot and removes
+                    // itself on the first mouseup.
                     view.addInteractionListener("mouseup", listener);
                     return;
                 } else {
@@ -402,7 +395,7 @@ export class IntervalSelectionController {
             document.addEventListener("mouseup", mouseUpListener);
         });
 
-        this.addViewInteractionListener(
+        this.#addViewInteractionListener(
             "click",
             (event) => {
                 if (event.mouseEvent.button == 0) {
@@ -419,7 +412,7 @@ export class IntervalSelectionController {
             selectionContainsPoint(selectionExpr(), invertPoint(point));
 
         if (clearEventConfig) {
-            this.addViewInteractionListener(
+            this.#addViewInteractionListener(
                 clearEventConfig.type,
                 (event) => {
                     if (
@@ -434,7 +427,7 @@ export class IntervalSelectionController {
             );
         }
 
-        this.addViewInteractionListener("wheel", (event) => {
+        this.#addViewInteractionListener("wheel", (event) => {
             const wheelEvent = event.wheelEvent;
 
             if (
@@ -510,7 +503,7 @@ export class IntervalSelectionController {
         });
 
         // Handle mouse cursor changes
-        this.addViewInteractionListener("mousemove", (event) => {
+        this.#addViewInteractionListener("mousemove", (event) => {
             if (isPointInsideSelection(event.point)) {
                 // Brushing and translating the existing brush are different actions.
                 if (!nowBrushing) {
