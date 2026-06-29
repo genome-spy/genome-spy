@@ -179,13 +179,6 @@ Rulers are not selections. They store a tagged parameter value such as:
 }
 ```
 
-Use `persist: false` for hover rulers and other transient cursor state.
-
-Like selection parameters, ruler parameters can use `push: "outer"` to update a
-parameter declared in an ancestor scope. This allows one view to provide the
-coordinate while a sibling view reads the same parameter in expressions,
-transforms, or encodings.
-
 Pointer-driven rulers use `ruler.on`:
 
 - `"mousemove"` follows the pointer and clears on mouse leave by default.
@@ -197,17 +190,21 @@ Viewport-driven rulers use `"source": "viewport"` and track the center of the
 current scale viewport. A viewport ruler does not define `on` and does not clear
 on mouse leave.
 
-For index and locus scales, `snap: "auto"` snaps ruler values to integer
-coordinates. Use `display: "center"` to draw the guide at the center of the
-snapped coordinate, or `display: "band"` to draw the selected coordinate as a
-rectangular band.
+### Ruler Guides in Descendant Views
 
 EXAMPLE examples/docs/grammar/parameters/ruler.json height=240
 
-The following example defines an outer `cursor` parameter and updates it from a
-child view using `push: "outer"`. The text mark reads the same ruler parameter
-from a sibling view.
+### Pushing Ruler Values to Ancestor Scopes
+
+Like selection parameters, ruler parameters can use `push: "outer"` to update a
+parameter declared in an ancestor scope. This allows one view to provide the
+coordinate while a sibling view reads the same parameter in expressions,
+transforms, or encodings.
 
 EXAMPLE examples/docs/grammar/parameters/ruler-push-outer.json height=240
+
+### Properties
+
+`ruler` supports the following properties:
 
 SCHEMA RulerConfig

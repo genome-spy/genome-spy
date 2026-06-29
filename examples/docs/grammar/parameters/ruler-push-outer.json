@@ -15,6 +15,10 @@
       }
     },
     {
+      "title": {
+        "text": "Move your mouse here!",
+        "style": "overlay-title"
+      },
       "data": {
         "values": [
           { "x": 1, "y": 2 },
