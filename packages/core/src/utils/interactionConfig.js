@@ -1,6 +1,10 @@
 import { createEventFilterFunction } from "./expression.js";
 
 /**
+ * @typedef {import("./interactionEvent.js").InteractionUiEvent} InteractionUiEvent
+ */
+
+/**
  * @param {import("../spec/parameter.js").SelectionConfig["on"]} eventType
  * @returns {import("../spec/parameter.js").EventConfig}
  */
@@ -28,7 +32,7 @@ export function asEventConfig(eventType) {
 
 /**
  * @param {import("../spec/parameter.js").EventConfig | undefined} eventConfig
- * @returns {(event: Event) => boolean}
+ * @returns {(event: InteractionUiEvent) => boolean}
  */
 export function createEventPredicate(eventConfig) {
     return eventConfig?.filter

@@ -34,7 +34,8 @@ describe("createSelectionRectSpec", () => {
         expect(spec.params).toEqual([
             { name: INTERVAL_DRAG_ACTIVE_PARAM, value: false },
         ]);
-        expect(spec.layer[0].mark.cursor).toEqual({
+        const rectLayer = /** @type {any} */ (spec.layer[0]);
+        expect(rectLayer.mark.cursor).toEqual({
             expr: `${INTERVAL_DRAG_ACTIVE_PARAM} ? 'grabbing' : 'move'`,
         });
     });
@@ -57,8 +58,10 @@ describe("createSelectionRectSpec", () => {
             },
         });
 
-        expect(spec.layer[0].mark.cursor).toEqual({ expr: "'copy'" });
-        expect(spec.layer[1].encoding.text).toEqual({
+        const rectLayer = /** @type {any} */ (spec.layer[0]);
+        const textLayer = /** @type {any} */ (spec.layer[1]);
+        expect(rectLayer.mark.cursor).toEqual({ expr: "'copy'" });
+        expect(textLayer.encoding.text).toEqual({
             expr: "format(brush.intervals.x[1] - brush.intervals.x[0], '.3s') + 'b'",
         });
     });

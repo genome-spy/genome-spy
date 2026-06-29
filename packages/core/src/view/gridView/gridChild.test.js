@@ -264,7 +264,7 @@ function createIntervalGridChildView(
 }
 
 function createInteractionEvent(
-    /** @type {Partial<import("../view.js").InteractionEvent>} */ event = {}
+    /** @type {Partial<import("../../utils/interaction.js").default>} */ event = {}
 ) {
     return {
         point: new Point(50, 50),
@@ -630,12 +630,16 @@ describe("GridChild interval selection interactions", () => {
         setValue.mockClear();
         setValue.mockImplementation(() => {});
         listeners.get("dblclick")[0](
-            createInteractionEvent({ proxiedMouseEvent: { shiftKey: false } })
+            createInteractionEvent({
+                proxiedMouseEvent: /** @type {any} */ ({ shiftKey: false }),
+            })
         );
         expect(setValue).not.toHaveBeenCalled();
 
         listeners.get("dblclick")[0](
-            createInteractionEvent({ proxiedMouseEvent: { shiftKey: true } })
+            createInteractionEvent({
+                proxiedMouseEvent: /** @type {any} */ ({ shiftKey: true }),
+            })
         );
         expect(setValue).toHaveBeenCalledWith("brush", {
             type: "interval",
@@ -701,7 +705,9 @@ describe("GridChild interval selection interactions", () => {
         setValue.mockClear();
         setValue.mockImplementation(() => {});
         listeners.get("mousedown")[0](
-            createInteractionEvent({ proxiedMouseEvent: { shiftKey: false } })
+            createInteractionEvent({
+                proxiedMouseEvent: /** @type {any} */ ({ shiftKey: false }),
+            })
         );
         for (const listener of listeners.get("mouseup") ?? []) {
             listener(createInteractionEvent());

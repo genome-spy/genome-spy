@@ -18,7 +18,11 @@ describe("asEventConfig", () => {
     });
 
     test("returns event config objects as-is", () => {
-        const config = { type: "mousedown", filter: "event.altKey" };
+        const config =
+            /** @type {import("../spec/parameter.js").EventConfig} */ ({
+                type: "mousedown",
+                filter: "event.altKey",
+            });
         expect(asEventConfig(config)).toBe(config);
     });
 });
@@ -26,7 +30,7 @@ describe("asEventConfig", () => {
 describe("createEventPredicate", () => {
     test("accepts events when no filter is configured", () => {
         const predicate = createEventPredicate({ type: "click" });
-        expect(predicate(/** @type {Event} */ ({ type: "click" }))).toBe(true);
+        expect(predicate(/** @type {any} */ ({ type: "click" }))).toBe(true);
     });
 
     test("evaluates configured event filter expressions", () => {
@@ -35,16 +39,17 @@ describe("createEventPredicate", () => {
             filter: "event.shiftKey",
         });
 
-        expect(predicate(/** @type {Event} */ ({ shiftKey: false }))).toBe(
-            false
-        );
-        expect(predicate(/** @type {Event} */ ({ shiftKey: true }))).toBe(true);
+        expect(predicate(/** @type {any} */ ({ shiftKey: false }))).toBe(false);
+        expect(predicate(/** @type {any} */ ({ shiftKey: true }))).toBe(true);
     });
 });
 
 describe("validateEventType", () => {
     test("returns the event config when the type is allowed", () => {
-        const config = { type: "mousedown" };
+        const config =
+            /** @type {import("../spec/parameter.js").EventConfig} */ ({
+                type: "mousedown",
+            });
         expect(
             validateEventType(config, ["mousedown"], "Example supports only")
         ).toBe(config);
@@ -53,7 +58,9 @@ describe("validateEventType", () => {
     test("throws with a feature-specific message when the type is not allowed", () => {
         expect(() =>
             validateEventType(
-                { type: "click" },
+                /** @type {import("../spec/parameter.js").EventConfig} */ ({
+                    type: "click",
+                }),
                 ["mousedown"],
                 "Example supports only mousedown"
             )

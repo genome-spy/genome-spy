@@ -7,20 +7,30 @@ describe("IntervalSelectionController", () => {
         const listeners = [];
         const gridChild = /** @type {any} */ ({
             view: {
-                addInteractionListener(type, listener, capture) {
+                addInteractionListener(
+                    /** @type {string} */ type,
+                    /** @type {Function} */ listener,
+                    /** @type {boolean | undefined} */ capture
+                ) {
                     listeners.push({ type, listener, capture });
                 },
-                removeInteractionListener: vi.fn((type, listener, capture) => {
-                    const index = listeners.findIndex(
-                        (entry) =>
-                            entry.type === type &&
-                            entry.listener === listener &&
-                            entry.capture === capture
-                    );
-                    if (index >= 0) {
-                        listeners.splice(index, 1);
+                removeInteractionListener: vi.fn(
+                    (
+                        /** @type {string} */ type,
+                        /** @type {Function} */ listener,
+                        /** @type {boolean | undefined} */ capture
+                    ) => {
+                        const index = listeners.findIndex(
+                            (entry) =>
+                                entry.type === type &&
+                                entry.listener === listener &&
+                                entry.capture === capture
+                        );
+                        if (index >= 0) {
+                            listeners.splice(index, 1);
+                        }
                     }
-                }),
+                ),
             },
         });
 

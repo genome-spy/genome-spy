@@ -31,18 +31,27 @@ describe("SelectionRect", () => {
 
         const unitView = new UnitView(unitSpec, context, parent, parent, "u");
 
+        /** @type {import("../../types/selectionTypes.js").IntervalSelection} */
         let selection = {
             type: "interval",
             intervals: { x: [0, 1], y: [2, 3] },
         };
 
         /** @type {(listener: () => void) => () => void} */
-        const subscribe = vi.fn(() => () => undefined);
+        const subscribe = vi.fn((listener) => {
+            /** @returns {void} */
+            function unsubscribe() {}
+
+            return unsubscribe;
+        });
         /** @type {() => void} */
         const invalidate = () => undefined;
 
+        /** @returns {import("../../types/selectionTypes.js").IntervalSelection} */
+        const getSelection = () => selection;
+
         /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
-        const selectionExpr = Object.assign(() => selection, {
+        const selectionExpr = Object.assign(getSelection, {
             subscribe,
             invalidate,
             identifier: () => "selection",
