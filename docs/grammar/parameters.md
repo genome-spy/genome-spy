@@ -181,6 +181,11 @@ Rulers are not selections. They store a tagged parameter value such as:
 
 Use `persist: false` for hover rulers and other transient cursor state.
 
+Like selection parameters, ruler parameters can use `push: "outer"` to update a
+parameter declared in an ancestor scope. This allows one view to provide the
+coordinate while a sibling view reads the same parameter in expressions,
+transforms, or encodings.
+
 Pointer-driven rulers use `ruler.on`:
 
 - `"mousemove"` follows the pointer and clears on mouse leave by default.
@@ -198,3 +203,11 @@ snapped coordinate, or `display: "band"` to draw the selected coordinate as a
 rectangular band.
 
 EXAMPLE examples/docs/grammar/parameters/ruler.json height=240
+
+The following example defines an outer `cursor` parameter and updates it from a
+child view using `push: "outer"`. The text mark reads the same ruler parameter
+from a sibling view.
+
+EXAMPLE examples/docs/grammar/parameters/ruler-push-outer.json height=240
+
+SCHEMA RulerConfig
