@@ -1142,7 +1142,7 @@ export default class SampleView extends ContainerView {
 
         renderLocationIndependentDecorations();
 
-        gridChild.selectionRect?.render(context, coords, options);
+        gridChild.selectionRect?.view.render(context, coords, options);
     }
 
     /**
