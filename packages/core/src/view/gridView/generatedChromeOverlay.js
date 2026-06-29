@@ -13,7 +13,7 @@ import {
  *
  * @param {import("../view.js").default} view
  */
-export function markGeneratedChromeOverlay(view) {
+function markGeneratedChromeOverlay(view) {
     markViewAsNonAddressable(view, { skipSubtree: true });
     markViewAsChrome(view, { skipSubtree: true });
 }
