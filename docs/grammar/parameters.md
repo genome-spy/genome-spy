@@ -163,10 +163,10 @@ EXAMPLE examples/docs/grammar/parameters/genome-overview-detail.json height=150 
 
 ## Ruler Parameters
 
-Ruler parameters track a single domain coordinate and display it as a guide in
-compatible views. They are useful for cursor readouts, genome-browser-style
-center coordinates, and sibling views that compute from a shared cursor
-coordinate.
+Ruler parameters track one domain coordinate per configured positional channel
+and display it as a guide in compatible views. They are useful for cursor
+readouts, genome-browser-style center coordinates, and sibling views that
+compute from a shared cursor coordinate.
 
 Rulers are not selections. They store a tagged parameter value such as:
 
@@ -179,6 +179,9 @@ Rulers are not selections. They store a tagged parameter value such as:
 }
 ```
 
+Rulers can be pointer-driven, following the mouse pointer, or viewport-driven,
+following the center of the current scale viewport.
+
 Pointer-driven rulers use `ruler.on`:
 
 - `"mousemove"` follows the pointer and clears on mouse leave by default.
@@ -187,10 +190,17 @@ Pointer-driven rulers use `ruler.on`:
   or pan gestures.
 
 Viewport-driven rulers use `"source": "viewport"` and track the center of the
-current scale viewport. A viewport ruler does not define `on` and does not clear
+current scale viewport. A viewport ruler must not define `on` and does not clear
 on mouse leave.
 
 ### Ruler Guides in Descendant Views
+
+Rulers can be shown separately in each view with a compatible scale or drawn
+across a container (`hconcat` or `vconcat`) when the participating views share
+the relevant scale and layout alignment.
+
+The example below shows a pointer-driven ruler drawn inside two views with
+independent x scales.
 
 EXAMPLE examples/docs/grammar/parameters/ruler.json height=240
 
