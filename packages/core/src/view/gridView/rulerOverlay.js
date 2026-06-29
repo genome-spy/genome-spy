@@ -85,10 +85,10 @@ export function createRulerOverlaySpec({
         });
     } else {
         for (const channel of channels) {
-            spec.encoding[channel] = createExprEncoding(
+            const encoding = createExprEncoding(
                 makeRulerPositionExpression(paramName, channel, display)
             );
-            spec.layer.push({
+            const ruleLayer = /** @type {any} */ ({
                 name: "rulerOverlayRule" + channel.toUpperCase(),
                 mark: {
                     type: "rule",
@@ -99,6 +99,14 @@ export function createRulerOverlaySpec({
                     ...mark,
                 },
             });
+
+            if (channels.length === 1) {
+                spec.encoding[channel] = encoding;
+            } else {
+                ruleLayer.encoding = { [channel]: encoding };
+            }
+
+            spec.layer.push(ruleLayer);
         }
     }
 

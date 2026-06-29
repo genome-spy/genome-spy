@@ -72,22 +72,29 @@ describe("createRulerOverlaySpec", () => {
                 expr: "crosshair.type === 'ruler' && crosshair.values.x != null && crosshair.values.y != null",
             },
         ]);
-        expect(spec.encoding).toMatchObject({
-            x: {
-                datum: {
-                    expr: "linearize('x', crosshair.values.x)",
+        expect(spec.encoding).toEqual({});
+        expect(spec.layer[0]).toMatchObject({
+            encoding: {
+                x: {
+                    datum: {
+                        expr: "linearize('x', crosshair.values.x)",
+                    },
+                    axis: null,
+                    type: null,
+                    title: null,
                 },
-                axis: null,
-                type: null,
-                title: null,
             },
-            y: {
-                datum: {
-                    expr: "linearize('y', crosshair.values.y)",
+        });
+        expect(spec.layer[1]).toMatchObject({
+            encoding: {
+                y: {
+                    datum: {
+                        expr: "linearize('y', crosshair.values.y)",
+                    },
+                    axis: null,
+                    type: null,
+                    title: null,
                 },
-                axis: null,
-                type: null,
-                title: null,
             },
         });
         expect(spec.layer.map((layer) => layer.name)).toEqual([

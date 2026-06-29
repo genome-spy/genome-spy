@@ -735,6 +735,33 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["rulerOverlay_cursor"]);
     });
 
+    test("creates crosshair ruler overlays", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeUnitSpec(),
+                        params: [
+                            {
+                                name: "crosshair",
+                                ruler: { encodings: ["x", "y"] },
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+        const overlays = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant.defaultName === "rulerOverlay0_crosshair"
+            );
+
+        expect(overlays).toHaveLength(1);
+    });
+
     test("renders one container overlay for spanning vconcat rulers", async () => {
         const view = await createAndInitialize(
             {
