@@ -21,7 +21,7 @@ import {
 } from "../selection/selection.js";
 import { getEncodingSearchFields } from "../encoder/metadataChannels.js";
 import { UNIQUE_ID_KEY } from "../data/transforms/identifier.js";
-import { createEventFilterFunction } from "../utils/expression.js";
+import { createEventPredicate } from "../utils/interactionConfig.js";
 import { field } from "../utils/field.js";
 import { collectDomainSensitiveScaleChannels } from "../data/flowNode.js";
 import { resolveViewResolutions } from "./resolutionPlanner.js";
@@ -170,9 +170,7 @@ export default class UnitView extends View {
                     return h?.mark?.unitView === this ? h.datum : null;
                 };
 
-                const eventPredicate = eventConfig.filter
-                    ? createEventFilterFunction(eventConfig.filter)
-                    : () => true;
+                const eventPredicate = createEventPredicate(eventConfig);
 
                 const listener = (
                     /** @type {import("../utils/interaction.js").default} */ event
@@ -225,9 +223,8 @@ export default class UnitView extends View {
                 );
 
                 if (clearEventConfig) {
-                    const clearPredicate = clearEventConfig.filter
-                        ? createEventFilterFunction(clearEventConfig.filter)
-                        : () => true;
+                    const clearPredicate =
+                        createEventPredicate(clearEventConfig);
 
                     const clearListener = (
                         /** @type {import("../utils/interaction.js").default} */ event

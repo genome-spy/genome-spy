@@ -1,5 +1,8 @@
-import { createEventFilterFunction } from "../utils/expression.js";
-import { asEventConfig } from "../selection/selection.js";
+import {
+    asEventConfig,
+    createEventPredicate,
+    validateEventType,
+} from "../utils/interactionConfig.js";
 import Point from "../view/layout/point.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
@@ -35,18 +38,13 @@ export class RulerMouseEventController {
             /** @type {import("../spec/parameter.js").RulerEventConfig} */ (
                 asEventConfig(config.on ?? "mousemove")
             );
-        if (
-            this.eventConfig.type !== "mousemove" &&
-            this.eventConfig.type !== "mousedown"
-        ) {
-            throw new Error(
-                `Ruler param "${paramName}" currently supports only "mousemove" and "mousedown" in "on".`
-            );
-        }
+        validateEventType(
+            this.eventConfig,
+            ["mousemove", "mousedown"],
+            `Ruler param "${paramName}" currently supports only "mousemove" and "mousedown" in "on".`
+        );
 
-        this.eventPredicate = this.eventConfig.filter
-            ? createEventFilterFunction(this.eventConfig.filter)
-            : () => true;
+        this.eventPredicate = createEventPredicate(this.eventConfig);
         this.clear =
             config.clear ??
             (this.eventConfig.type === "mousemove" ? "mouseleave" : false);

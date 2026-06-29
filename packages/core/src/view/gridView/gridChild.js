@@ -1,7 +1,6 @@
 import { isContinuous } from "vega-scale";
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import {
-    asEventConfig,
     asSelectionConfig,
     createIntervalSelection,
     isActiveIntervalSelection,
@@ -29,7 +28,11 @@ import Scrollbar from "./scrollbar.js";
 import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
 import { normalizeIntervalForSelection } from "../../scales/selectionDomainUtils.js";
 import { zoomDomainByScaleType } from "../../scales/zoomDomainUtils.js";
-import { createEventFilterFunction } from "../../utils/expression.js";
+import {
+    asEventConfig,
+    createEventPredicate,
+    validateEventType,
+} from "../../utils/interactionConfig.js";
 import { getConfiguredViewBackground } from "../../config/viewConfig.js";
 import { getConfiguredAxisDefaults } from "../../config/axisConfig.js";
 import {
@@ -432,18 +435,14 @@ export default class GridChild {
                 );
             }
 
-            const eventPredicate = eventConfig.filter
-                ? createEventFilterFunction(eventConfig.filter)
-                : () => true;
+            const eventPredicate = createEventPredicate(eventConfig);
 
             const zoomEventConfig = resolveIntervalZoomEventConfig(
                 select.zoom,
                 requiresShiftToBrush,
                 name
             );
-            const zoomEventPredicate = zoomEventConfig?.filter
-                ? createEventFilterFunction(zoomEventConfig.filter)
-                : () => true;
+            const zoomEventPredicate = createEventPredicate(zoomEventConfig);
 
             if (this.selectionRect) {
                 throw new Error(
@@ -1276,11 +1275,11 @@ export function resolveIntervalZoomEventConfig(
     }
 
     const eventConfig = asEventConfig(resolved);
-    if (eventConfig.type !== "wheel") {
-        throw new Error(
-            `Interval selection param "${paramName}" currently supports only "wheel" in "zoom".`
-        );
-    }
+    validateEventType(
+        eventConfig,
+        ["wheel"],
+        `Interval selection param "${paramName}" currently supports only "wheel" in "zoom".`
+    );
 
     return eventConfig;
 }
