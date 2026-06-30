@@ -409,9 +409,11 @@ export default class GridView extends ContainerView {
     async syncGuideViews(options = {}) {
         const gridChildren = options.gridChildren ?? this.#children;
 
-        await this.#syncSharedAxes();
-        await this.#syncSharedLegends();
-        await this.#syncRulerOverlays();
+        await Promise.all([
+            this.#syncSharedAxes(),
+            this.#syncSharedLegends(),
+            this.#syncRulerOverlays(),
+        ]);
         await Promise.all(
             gridChildren.map((gridChild) => gridChild.createAxes())
         );
