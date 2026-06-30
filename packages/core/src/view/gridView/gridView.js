@@ -47,14 +47,9 @@ import {
     normalizeClipOptions,
 } from "../renderingContext/clipOptions.js";
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
-import {
-    createConfiguredRulerOverlayView,
-    resolveRulerOverlayExtent,
-} from "./rulerOverlay.js";
-import {
-    createSelectionRectOverlay,
-    resolveSelectionRectOverlayExtent,
-} from "./selectionRect.js";
+import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
+import { createSelectionRectOverlay } from "./selectionRect.js";
+import { resolveOverlayExtent } from "./overlayExtent.js";
 import {
     asSelectionConfig,
     createIntervalSelection,
@@ -512,13 +507,13 @@ export default class GridView extends ContainerView {
             const channel = channels.length === 1 ? channels[0] : undefined;
             if (
                 !channel ||
-                resolveRulerOverlayExtent({
-                    paramName,
-                    config: param.ruler,
+                resolveOverlayExtent({
+                    extent: param.ruler.extent,
                     ownerSpec: this.spec,
                     channels,
                     isAligned: (channel) =>
                         this.#hasAlignedOverlayProjection(channel),
+                    label: `Ruler param "${paramName}"`,
                 }) !== "container"
             ) {
                 continue;
@@ -564,13 +559,13 @@ export default class GridView extends ContainerView {
             const channel = channels.length === 1 ? channels[0] : undefined;
             if (
                 !channel ||
-                resolveSelectionRectOverlayExtent({
-                    paramName,
-                    config: select,
+                resolveOverlayExtent({
+                    extent: select.extent,
                     ownerSpec: this.spec,
                     channels,
                     isAligned: (channel) =>
                         this.#hasAlignedOverlayProjection(channel),
+                    label: `Interval selection param "${paramName}"`,
                 }) !== "container"
             ) {
                 continue;

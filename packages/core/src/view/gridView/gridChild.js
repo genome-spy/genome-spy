@@ -31,12 +31,9 @@ import {
 } from "./gridChildLegends.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 import { RulerViewportController } from "../../ruler/rulerViewportController.js";
-import {
-    createConfiguredRulerOverlayView,
-    resolveRulerOverlayExtent,
-} from "./rulerOverlay.js";
+import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
 import { IntervalSelectionController } from "./intervalSelectionController.js";
-import { resolveSelectionRectOverlayExtent } from "./selectionRect.js";
+import { resolveOverlayExtent } from "./overlayExtent.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -320,14 +317,14 @@ export default class GridChild {
         scaleResolutions
     ) {
         return (
-            resolveRulerOverlayExtent({
-                paramName,
-                config: ruler,
+            resolveOverlayExtent({
+                extent: ruler.extent,
                 ownerSpec: owner.spec,
                 channels,
                 isAligned: (channel) =>
                     owner.getScaleResolution?.(channel) ===
                     scaleResolutions[channel],
+                label: `Ruler param "${paramName}"`,
             }) === "container"
         );
     }
@@ -436,14 +433,14 @@ export default class GridChild {
      */
     #usesContainerSelectionRectOverlay(owner, paramName, select, channels) {
         return (
-            resolveSelectionRectOverlayExtent({
-                paramName,
-                config: select,
+            resolveOverlayExtent({
+                extent: select.extent,
                 ownerSpec: owner.spec,
                 channels,
                 isAligned: (channel) =>
                     owner.getScaleResolution?.(channel) ===
                     this.view.getScaleResolution(channel),
+                label: `Interval selection param "${paramName}"`,
             }) === "container"
         );
     }

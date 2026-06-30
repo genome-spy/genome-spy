@@ -1,6 +1,5 @@
 import { createGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
 import { createSelectionRectSpec } from "./selectionRectSpec.js";
-import { resolveOverlayExtent } from "./overlayExtent.js";
 import { createIntervalSelection } from "../../selection/selection.js";
 
 export { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRectSpec.js";
@@ -56,33 +55,5 @@ export function createSelectionRectOverlay({
         dataParent,
         name,
         zindex,
-    });
-}
-
-/**
- * Resolves whether a generated interval selection rectangle should be per-view
- * or container-spanning.
- *
- * @param {{
- *     paramName: string,
- *     config: import("../../spec/parameter.js").IntervalSelectionConfig,
- *     ownerSpec: import("../../spec/view.js").ViewSpec,
- *     channels: PrimaryPositionalChannel[],
- *     isAligned: (channel: PrimaryPositionalChannel) => boolean,
- * }} options
- */
-export function resolveSelectionRectOverlayExtent({
-    paramName,
-    config,
-    ownerSpec,
-    channels,
-    isAligned,
-}) {
-    return resolveOverlayExtent({
-        extent: config.extent,
-        ownerSpec,
-        channels,
-        isAligned,
-        label: `Interval selection param "${paramName}"`,
     });
 }
