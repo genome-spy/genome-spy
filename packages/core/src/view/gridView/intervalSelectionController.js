@@ -18,6 +18,7 @@ import {
     asEventConfig,
     validateEventType,
 } from "../../utils/interactionConfig.js";
+import { ViewInteractionListenerTracker } from "../viewInteractionListenerTracker.js";
 
 /**
  * Handles interval selection interaction listeners for one grid child.
@@ -31,6 +32,9 @@ export class IntervalSelectionController {
      */
     constructor(gridChild, name, param, select) {
         this.gridChild = gridChild;
+        this.#viewListeners = new ViewInteractionListenerTracker(
+            gridChild.view
+        );
 
         this.#setup(name, param, select);
     }
@@ -38,10 +42,8 @@ export class IntervalSelectionController {
     /** @type {import("./gridChild.js").default} */
     gridChild;
 
-    /**
-     * @type {{ type: string, listener: import("../view.js").InteractionListener, capture?: boolean }[]}
-     */
-    #viewListeners = [];
+    /** @type {ViewInteractionListenerTracker} */
+    #viewListeners;
 
     /**
      * @param {string} type
@@ -49,19 +51,11 @@ export class IntervalSelectionController {
      * @param {boolean} [capture]
      */
     #addViewInteractionListener(type, listener, capture) {
-        this.gridChild.view.addInteractionListener(type, listener, capture);
-        this.#viewListeners.push({ type, listener, capture });
+        this.#viewListeners.add(type, listener, capture);
     }
 
     dispose() {
-        for (const { type, listener, capture } of this.#viewListeners) {
-            this.gridChild.view.removeInteractionListener(
-                type,
-                listener,
-                capture
-            );
-        }
-        this.#viewListeners = [];
+        this.#viewListeners.dispose();
     }
 
     /**

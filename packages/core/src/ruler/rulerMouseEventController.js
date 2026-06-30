@@ -4,6 +4,7 @@ import {
     validateEventType,
 } from "../utils/interactionConfig.js";
 import Point from "../view/layout/point.js";
+import { ViewInteractionListenerTracker } from "../view/viewInteractionListenerTracker.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
 
@@ -33,6 +34,9 @@ export class RulerMouseEventController {
         this.channels = channels;
         this.scaleResolutions = scaleResolutions;
         this.paramRuntime = paramRuntime;
+        this.#viewListeners = new ViewInteractionListenerTracker(
+            gridChild.view
+        );
 
         this.eventConfig =
             /** @type {import("../spec/parameter.js").RulerEventConfig} */ (
@@ -52,10 +56,8 @@ export class RulerMouseEventController {
         this.#addListeners();
     }
 
-    /**
-     * @type {{ type: string, listener: import("../view/view.js").InteractionListener, capture?: boolean }[]}
-     */
-    #viewListeners = [];
+    /** @type {ViewInteractionListenerTracker} */
+    #viewListeners;
 
     /** @type {import("../spec/parameter.js").RulerEventConfig} */
     eventConfig;
@@ -74,19 +76,11 @@ export class RulerMouseEventController {
      * @param {boolean} [capture]
      */
     #addViewInteractionListener(type, listener, capture) {
-        this.gridChild.view.addInteractionListener(type, listener, capture);
-        this.#viewListeners.push({ type, listener, capture });
+        this.#viewListeners.add(type, listener, capture);
     }
 
     dispose() {
-        for (const { type, listener, capture } of this.#viewListeners) {
-            this.gridChild.view.removeInteractionListener(
-                type,
-                listener,
-                capture
-            );
-        }
-        this.#viewListeners = [];
+        this.#viewListeners.dispose();
     }
 
     #addListeners() {
