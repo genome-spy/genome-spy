@@ -84,6 +84,11 @@ describe("createSelectionRectSpec", () => {
     });
 
     test("bound expressions tolerate inactive interval selections", () => {
+        const inactiveSelection =
+            /** @type {import("../../types/selectionTypes.js").IntervalSelection} */ ({
+                type: "interval",
+                intervals: { x: null },
+            });
         const spec = createSelectionRectSpec({
             gridChild: /** @type {any} */ ({
                 view: {
@@ -91,18 +96,12 @@ describe("createSelectionRectSpec", () => {
                 },
             }),
             selectionExpression: "brush",
-            selection: {
-                type: "interval",
-                intervals: { x: null },
-            },
+            selection: inactiveSelection,
             brushConfig: {},
         });
 
         const globalObject = {
-            brush: {
-                type: "interval",
-                intervals: { x: null },
-            },
+            brush: inactiveSelection,
         };
 
         const x = /** @type {any} */ (spec.encoding.x);
