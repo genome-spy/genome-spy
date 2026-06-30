@@ -36,6 +36,7 @@ import {
     resolveRulerOverlayExtent,
 } from "./rulerOverlay.js";
 import { IntervalSelectionController } from "./intervalSelectionController.js";
+import { resolveSelectionRectOverlayExtent } from "./selectionRect.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -51,6 +52,12 @@ export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js
  *     paramName: string,
  *     config: import("../../spec/parameter.js").RulerConfig,
  * }} GridChildRulerBinding
+ * @typedef {{
+ *     owner: import("../view.js").default,
+ *     paramName: string,
+ *     param: import("../../spec/parameter.js").SelectionParameter<"interval">,
+ *     config: import("../../spec/parameter.js").IntervalSelectionConfig,
+ * }} GridChildIntervalSelectionBinding
  */
 
 /**
@@ -387,24 +394,86 @@ export default class GridChild {
     }
 
     #setupIntervalSelection() {
-        const view = this.view;
-
-        // TODO: If the child is a LayerView, selection params should be pulled from its children as well
-        for (const [name, param] of view.paramRuntime.paramConfigs) {
-            if (!("select" in param)) {
-                continue;
-            }
-
-            const select = asSelectionConfig(param.select);
-
-            if (!isIntervalSelectionConfig(select)) {
-                continue;
-            }
+        for (const {
+            owner,
+            paramName,
+            param,
+            config: select,
+        } of this.#getIntervalSelectionBindings()) {
+            const channels = select.encodings ?? ["x"];
+            const renderOverlay = !this.#usesContainerSelectionRectOverlay(
+                owner,
+                paramName,
+                select,
+                channels
+            );
 
             this.#intervalSelectionControllers.push(
-                new IntervalSelectionController(this, name, param, select)
+                new IntervalSelectionController(
+                    this,
+                    paramName,
+                    param,
+                    select,
+                    owner.paramRuntime,
+                    renderOverlay
+                )
             );
         }
+    }
+
+    /**
+     * @returns {GridChildIntervalSelectionBinding[]}
+     */
+    #getIntervalSelectionBindings() {
+        /** @type {GridChildIntervalSelectionBinding[]} */
+        const bindings = [];
+        const seen = new Set();
+
+        for (const owner of this.view.getDataAncestors()) {
+            for (const [paramName, param] of owner.paramRuntime.paramConfigs) {
+                if (seen.has(paramName) || !("select" in param)) {
+                    continue;
+                }
+
+                seen.add(paramName);
+                const config = asSelectionConfig(param.select);
+                if (
+                    isIntervalSelectionConfig(config) &&
+                    (owner === this.view || config.extent != null)
+                ) {
+                    bindings.push({
+                        owner,
+                        paramName,
+                        param: /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                            param
+                        ),
+                        config,
+                    });
+                }
+            }
+        }
+
+        return bindings;
+    }
+
+    /**
+     * @param {import("../view.js").default} owner
+     * @param {string} paramName
+     * @param {import("../../spec/parameter.js").IntervalSelectionConfig} select
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     */
+    #usesContainerSelectionRectOverlay(owner, paramName, select, channels) {
+        return (
+            resolveSelectionRectOverlayExtent({
+                paramName,
+                config: select,
+                ownerSpec: owner.spec,
+                channels,
+                isAligned: (channel) =>
+                    owner.getScaleResolution?.(channel) ===
+                    this.view.getScaleResolution(channel),
+            }) === "container"
+        );
     }
 
     *getChildren() {

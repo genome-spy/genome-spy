@@ -826,6 +826,75 @@ describe("GridView decoration zindex", () => {
         expect(overlays).toHaveLength(0);
     });
 
+    test("renders one container overlay for spanning vconcat interval selections", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "brush",
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                            extent: "container",
+                        },
+                        value: { x: [1, 2] },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "selectionRect");
+        expect(overlays).toHaveLength(1);
+
+        /** @type {string[]} */
+        const order = [];
+        const original = overlays[0].render.bind(overlays[0]);
+        overlays[0].render = (context, coords, options = {}) => {
+            order.push(overlays[0].name);
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        expect(order).toEqual(["selectionRect"]);
+    });
+
+    test("rejects forced container interval selection extent when projections differ", async () => {
+        await expect(
+            createAndInitialize(
+                {
+                    params: [
+                        {
+                            name: "brush",
+                            select: {
+                                type: "interval",
+                                encodings: ["x"],
+                                extent: "container",
+                            },
+                        },
+                    ],
+                    resolve: {
+                        scale: { x: "independent" },
+                    },
+                    vconcat: [makeUnitSpec(), makeUnitSpec()],
+                },
+                ConcatView
+            )
+        ).rejects.toThrow(
+            'Interval selection param "brush" cannot use extent "container" because its x projections do not align.'
+        );
+    });
+
     test("renders default decorations around unclipped content", async () => {
         const order = await recordRenderOrder(
             {

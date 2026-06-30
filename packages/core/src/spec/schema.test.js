@@ -149,4 +149,36 @@ describe("generated core schema", () => {
             true
         );
     });
+
+    test("accepts interval selection extent configuration", () => {
+        const schema = createCoreSchema();
+        const validate = new Ajv.default({
+            allErrors: true,
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            params: [
+                {
+                    name: "brush",
+                    select: {
+                        type: "interval",
+                        encodings: ["x"],
+                        extent: "container",
+                    },
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
 });

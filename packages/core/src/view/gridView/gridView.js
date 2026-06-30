@@ -51,6 +51,16 @@ import {
     createConfiguredRulerOverlayView,
     resolveRulerOverlayExtent,
 } from "./rulerOverlay.js";
+import {
+    createSelectionRectOverlay,
+    resolveSelectionRectOverlayExtent,
+} from "./selectionRect.js";
+import {
+    asSelectionConfig,
+    createIntervalSelection,
+    isIntervalSelection,
+    isIntervalSelectionConfig,
+} from "../../selection/selection.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -214,6 +224,9 @@ export default class GridView extends ContainerView {
 
     /** @type {{ view: LayerView, zindex: number }[]} */
     #rulerOverlays = [];
+
+    /** @type {import("./selectionRect.js").SelectionRectOverlay[]} */
+    #selectionRectOverlays = [];
 
     /**
      *
@@ -405,6 +418,7 @@ export default class GridView extends ContainerView {
         await Promise.all([
             this.#syncSharedAxes(),
             this.#syncSharedLegends(),
+            this.#syncSelectionRectOverlays(),
             this.#syncRulerOverlays(),
         ]);
         await Promise.all(
@@ -504,7 +518,7 @@ export default class GridView extends ContainerView {
                     ownerSpec: this.spec,
                     channels,
                     isAligned: (channel) =>
-                        this.#hasAlignedRulerProjection(channel),
+                        this.#hasAlignedOverlayProjection(channel),
                 }) !== "container"
             ) {
                 continue;
@@ -527,8 +541,71 @@ export default class GridView extends ContainerView {
         await Promise.all(promises);
     }
 
+    async #syncSelectionRectOverlays() {
+        for (const overlay of this.#selectionRectOverlays) {
+            overlay.view.disposeSubtree();
+        }
+        this.#selectionRectOverlays = [];
+
+        /** @type {Promise<void>[]} */
+        const promises = [];
+
+        for (const [paramName, param] of this.paramRuntime.paramConfigs) {
+            if (!("select" in param)) {
+                continue;
+            }
+
+            const select = asSelectionConfig(param.select);
+            if (!isIntervalSelectionConfig(select)) {
+                continue;
+            }
+
+            const channels = select.encodings ?? ["x"];
+            const channel = channels.length === 1 ? channels[0] : undefined;
+            if (
+                !channel ||
+                resolveSelectionRectOverlayExtent({
+                    paramName,
+                    config: select,
+                    ownerSpec: this.spec,
+                    channels,
+                    isAligned: (channel) =>
+                        this.#hasAlignedOverlayProjection(channel),
+                }) !== "container"
+            ) {
+                continue;
+            }
+
+            const selectionExpr = this.paramRuntime.createExpression(paramName);
+            const selection = selectionExpr();
+            if (!selection || !isIntervalSelection(selection)) {
+                this.paramRuntime.setValue(
+                    paramName,
+                    param.value
+                        ? { type: "interval", intervals: param.value }
+                        : createIntervalSelection(channels)
+                );
+            }
+
+            const overlay = createSelectionRectOverlay({
+                selectionExpr,
+                selectionExpression: paramName,
+                channels,
+                brushConfig: select.mark,
+                context: this.context,
+                layoutParent: this,
+                dataParent: this,
+                scaleResolutionSource: this,
+            });
+            this.#selectionRectOverlays.push(overlay);
+            promises.push(overlay.view.initializeChildren());
+        }
+
+        await Promise.all(promises);
+    }
+
     /** @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel */
-    #hasAlignedRulerProjection(channel) {
+    #hasAlignedOverlayProjection(channel) {
         const ownerResolution = this.getScaleResolution(channel);
         return (
             ownerResolution != null &&
@@ -546,6 +623,10 @@ export default class GridView extends ContainerView {
     *[Symbol.iterator]() {
         for (const gridChild of this.#children) {
             yield* gridChild.getChildren();
+        }
+
+        for (const overlay of this.#selectionRectOverlays) {
+            yield overlay.view;
         }
 
         for (const overlay of this.#rulerOverlays) {
@@ -1178,6 +1259,14 @@ export default class GridView extends ContainerView {
         }
 
         if (gridViewCoords) {
+            for (const overlay of this.#selectionRectOverlays) {
+                queueDecoration(
+                    overlay.zindex,
+                    DECORATION_ORDER.selectionRect,
+                    () => overlay.view.render(context, gridViewCoords, options)
+                );
+            }
+
             for (const overlay of this.#rulerOverlays) {
                 queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
                     overlay.view.render(context, gridViewCoords, options)

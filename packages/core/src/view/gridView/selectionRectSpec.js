@@ -9,20 +9,23 @@ export const INTERVAL_DRAG_ACTIVE_PARAM = "intervalDragActive";
 
 /**
  * @param {{
- *     gridChild: import("./gridChild.js").default,
+ *     scaleResolutionSource: { getScaleResolution: (channel: PrimaryPositionalChannel) => import("../../scales/scaleResolution.js").default },
  *     selectionExpression: string,
  *     selection: IntervalSelection,
+ *     channels?: PrimaryPositionalChannel[],
  *     brushConfig?: import("../../spec/parameter.js").BrushConfig,
  * }} options
  * @returns {import("../../spec/view.js").LayerSpec}
  */
 export function createSelectionRectSpec({
-    gridChild,
+    scaleResolutionSource,
     selectionExpression,
     selection,
+    channels = /** @type {PrimaryPositionalChannel[]} */ (
+        Object.keys(selection.intervals)
+    ),
     brushConfig = {},
 }) {
-    const channels = Object.keys(selection.intervals);
     const brushMarkProps = { ...brushConfig };
     delete brushMarkProps.zindex;
 
@@ -107,7 +110,7 @@ export function createSelectionRectSpec({
     });
 
     const makeExpr = (/** @type {PrimaryPositionalChannel} */ channel) => {
-        const resolution = gridChild.view.getScaleResolution(channel);
+        const resolution = scaleResolutionSource.getScaleResolution(channel);
         return (
             `format(${selectionExpression}.intervals.${channel}[1] - ${selectionExpression}.intervals.${channel}[0], '.3s')` +
             (resolution.type === "locus" ? " + 'b'" : "")
