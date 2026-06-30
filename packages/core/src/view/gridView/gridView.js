@@ -409,9 +409,9 @@ export default class GridView extends ContainerView {
     async syncGuideViews(options = {}) {
         const gridChildren = options.gridChildren ?? this.#children;
 
-        await this.syncSharedAxes();
-        await this.syncSharedLegends();
-        await this.syncRulerOverlays();
+        await this.#syncSharedAxes();
+        await this.#syncSharedLegends();
+        await this.#syncRulerOverlays();
         await Promise.all(
             gridChildren.map((gridChild) => gridChild.createAxes())
         );
@@ -423,7 +423,7 @@ export default class GridView extends ContainerView {
      *
      * This is used after dynamic child insert/remove to keep shared axes in sync.
      */
-    async syncSharedAxes() {
+    async #syncSharedAxes() {
         for (const axisView of Object.values(this.#sharedAxes)) {
             axisView.disposeSubtree();
         }
@@ -469,7 +469,7 @@ export default class GridView extends ContainerView {
      * their placement is relative to the whole child grid, not any individual
      * GridChild.
      */
-    async syncSharedLegends() {
+    async #syncSharedLegends() {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
 
@@ -481,7 +481,7 @@ export default class GridView extends ContainerView {
         }
     }
 
-    async syncRulerOverlays() {
+    async #syncRulerOverlays() {
         for (const overlay of this.#rulerOverlays) {
             overlay.view.disposeSubtree();
         }
