@@ -141,6 +141,31 @@ export function createRulerOverlayView({
 }
 
 /**
+ * Creates a ruler overlay from the user-facing ruler config and resolved scale.
+ *
+ * @param {Omit<RulerOverlayViewOptions, "display" | "mark"> & {
+ *   config: import("../../spec/parameter.js").RulerConfig,
+ *   scaleResolution: import("../../scales/scaleResolution.js").default,
+ * }} options
+ * @returns {RulerOverlayView}
+ */
+export function createConfiguredRulerOverlayView({
+    config,
+    scaleResolution,
+    ...options
+}) {
+    return createRulerOverlayView({
+        ...options,
+        display: resolveRulerDisplay(
+            scaleResolution.getResolvedScaleType(),
+            config.snap,
+            config.display
+        ),
+        mark: config.mark,
+    });
+}
+
+/**
  * @param {string} scaleType
  * @param {import("../../spec/parameter.js").RulerSnap | undefined} snap
  * @param {import("../../spec/parameter.js").RulerDisplay} [display]

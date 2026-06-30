@@ -48,8 +48,7 @@ import {
 } from "../renderingContext/clipOptions.js";
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import {
-    createRulerOverlayView,
-    resolveRulerDisplay,
+    createConfiguredRulerOverlayView,
     resolveRulerOverlayExtent,
 } from "./rulerOverlay.js";
 
@@ -516,17 +515,11 @@ export default class GridView extends ContainerView {
                 continue;
             }
 
-            const scaleResolution = this.getScaleResolution(channel);
-            const scaleType = scaleResolution.getResolvedScaleType();
-            const overlay = createRulerOverlayView({
+            const overlay = createConfiguredRulerOverlayView({
                 paramName,
                 channels,
-                display: resolveRulerDisplay(
-                    scaleType,
-                    param.ruler.snap,
-                    param.ruler.display
-                ),
-                mark: param.ruler.mark,
+                config: param.ruler,
+                scaleResolution: this.getScaleResolution(channel),
                 context: this.context,
                 layoutParent: this,
                 dataParent: this,

@@ -32,8 +32,7 @@ import {
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 import { RulerViewportController } from "../../ruler/rulerViewportController.js";
 import {
-    createRulerOverlayView,
-    resolveRulerDisplay,
+    createConfiguredRulerOverlayView,
     resolveRulerOverlayExtent,
 } from "./rulerOverlay.js";
 import { IntervalSelectionController } from "./intervalSelectionController.js";
@@ -336,12 +335,11 @@ export default class GridChild {
      * @param {Partial<Record<import("../../spec/channel.js").PrimaryPositionalChannel, import("../../scales/scaleResolution.js").default>>} scaleResolutions
      */
     #addRulerOverlay(paramName, ruler, channels, scaleResolutions) {
-        const scaleType = scaleResolutions[channels[0]].getResolvedScaleType();
-        const overlay = createRulerOverlayView({
+        const overlay = createConfiguredRulerOverlayView({
             paramName,
             channels,
-            display: resolveRulerDisplay(scaleType, ruler.snap, ruler.display),
-            mark: ruler.mark,
+            config: ruler,
+            scaleResolution: scaleResolutions[channels[0]],
             context: this.layoutParent.context,
             layoutParent: this.layoutParent,
             dataParent: this.view,
