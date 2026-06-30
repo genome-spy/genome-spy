@@ -52,12 +52,6 @@ export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js
  *     paramName: string,
  *     config: import("../../spec/parameter.js").RulerConfig,
  * }} GridChildRulerBinding
- * @typedef {{
- *     owner: import("../view.js").default,
- *     paramName: string,
- *     param: import("../../spec/parameter.js").SelectionParameter<"interval">,
- *     config: import("../../spec/parameter.js").IntervalSelectionConfig,
- * }} GridChildIntervalSelectionBinding
  */
 
 /**
@@ -394,39 +388,6 @@ export default class GridChild {
     }
 
     #setupIntervalSelection() {
-        for (const {
-            owner,
-            paramName,
-            param,
-            config: select,
-        } of this.#getIntervalSelectionBindings()) {
-            const channels = select.encodings ?? ["x"];
-            const renderOverlay = !this.#usesContainerSelectionRectOverlay(
-                owner,
-                paramName,
-                select,
-                channels
-            );
-
-            this.#intervalSelectionControllers.push(
-                new IntervalSelectionController(
-                    this,
-                    paramName,
-                    param,
-                    select,
-                    owner.paramRuntime,
-                    renderOverlay
-                )
-            );
-        }
-    }
-
-    /**
-     * @returns {GridChildIntervalSelectionBinding[]}
-     */
-    #getIntervalSelectionBindings() {
-        /** @type {GridChildIntervalSelectionBinding[]} */
-        const bindings = [];
         const seen = new Set();
 
         for (const owner of this.view.getDataAncestors()) {
@@ -436,24 +397,35 @@ export default class GridChild {
                 }
 
                 seen.add(paramName);
-                const config = asSelectionConfig(param.select);
+                const select = asSelectionConfig(param.select);
                 if (
-                    isIntervalSelectionConfig(config) &&
-                    (owner === this.view || config.extent != null)
+                    isIntervalSelectionConfig(select) &&
+                    (owner === this.view || select.extent != null)
                 ) {
-                    bindings.push({
-                        owner,
-                        paramName,
-                        param: /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
-                            param
-                        ),
-                        config,
-                    });
+                    const channels = select.encodings ?? ["x"];
+                    const renderOverlay =
+                        !this.#usesContainerSelectionRectOverlay(
+                            owner,
+                            paramName,
+                            select,
+                            channels
+                        );
+
+                    this.#intervalSelectionControllers.push(
+                        new IntervalSelectionController(
+                            this,
+                            paramName,
+                            /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                                param
+                            ),
+                            select,
+                            owner.paramRuntime,
+                            renderOverlay
+                        )
+                    );
                 }
             }
         }
-
-        return bindings;
     }
 
     /**
