@@ -5,6 +5,7 @@ import {
 } from "../encoder/encoder.js";
 import { validateParameterName } from "../paramRuntime/paramUtils.js";
 import { field } from "../utils/field.js";
+import { asEventConfig } from "../utils/interactionConfig.js";
 
 /**
  * @param {import("../data/flowNode.js").Datum} datum
@@ -334,30 +335,4 @@ export function selectionContainsPoint(selection, point) {
             interval[0] <= point[channel] &&
             interval[1] >= point[channel]
     );
-}
-
-/**
- * @param {import("../spec/parameter.js").SelectionConfig["on"]} eventType
- * @returns {import("../spec/parameter.js").EventConfig}
- */
-export function asEventConfig(eventType) {
-    if (typeof eventType === "string") {
-        const m = eventType.match(/^([a-zA-Z]+)(?:\[(.+)\])?$/);
-        if (!m) {
-            throw new Error(`Invalid event type string: ${eventType}`);
-        }
-        const [, type, filter] = m;
-        /** @type {import("../spec/parameter.js").EventConfig} */
-        const eventSpec = {
-            type: /** @type {import("../spec/parameter.js").DomEventType} */ (
-                type
-            ),
-        };
-        if (filter) {
-            eventSpec.filter = filter;
-        }
-        return eventSpec;
-    } else {
-        return eventType;
-    }
 }

@@ -48,8 +48,7 @@ import {
 } from "../renderingContext/clipOptions.js";
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
 import {
-    createRulerOverlayView,
-    resolveRulerDisplay,
+    createConfiguredRulerOverlayView,
     resolveRulerOverlayExtent,
 } from "./rulerOverlay.js";
 
@@ -394,13 +393,6 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @protected
-     */
-    async createAxes() {
-        await this.syncGuideViews();
-    }
-
-    /**
      * Recreates guide and chrome views that depend on the child hierarchy.
      * Shared guides always depend on the whole container. Grid-child guides can
      * be limited to newly inserted children during mutations.
@@ -410,11 +402,13 @@ export default class GridView extends ContainerView {
     async syncGuideViews(options = {}) {
         const gridChildren = options.gridChildren ?? this.#children;
 
-        await this.syncSharedAxes();
-        await this.syncSharedLegends();
-        await this.syncRulerOverlays();
+        await Promise.all([
+            this.#syncSharedAxes(),
+            this.#syncSharedLegends(),
+            this.#syncRulerOverlays(),
+        ]);
         await Promise.all(
-            gridChildren.map((gridChild) => gridChild.createAxes())
+            gridChildren.map((gridChild) => gridChild.syncGuideViews())
         );
         this.invalidateSizeCache();
     }
@@ -424,7 +418,7 @@ export default class GridView extends ContainerView {
      *
      * This is used after dynamic child insert/remove to keep shared axes in sync.
      */
-    async syncSharedAxes() {
+    async #syncSharedAxes() {
         for (const axisView of Object.values(this.#sharedAxes)) {
             axisView.disposeSubtree();
         }
@@ -470,7 +464,7 @@ export default class GridView extends ContainerView {
      * their placement is relative to the whole child grid, not any individual
      * GridChild.
      */
-    async syncSharedLegends() {
+    async #syncSharedLegends() {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
 
@@ -482,7 +476,7 @@ export default class GridView extends ContainerView {
         }
     }
 
-    async syncRulerOverlays() {
+    async #syncRulerOverlays() {
         for (const overlay of this.#rulerOverlays) {
             overlay.view.disposeSubtree();
         }
@@ -516,17 +510,11 @@ export default class GridView extends ContainerView {
                 continue;
             }
 
-            const scaleResolution = this.getScaleResolution(channel);
-            const scaleType = scaleResolution.getResolvedScaleType();
-            const overlay = createRulerOverlayView({
+            const overlay = createConfiguredRulerOverlayView({
                 paramName,
                 channels,
-                display: resolveRulerDisplay(
-                    scaleType,
-                    param.ruler.snap,
-                    param.ruler.display
-                ),
-                mark: param.ruler.mark,
+                config: param.ruler,
+                scaleResolution: this.getScaleResolution(channel),
                 context: this.context,
                 layoutParent: this,
                 dataParent: this,
@@ -1385,9 +1373,10 @@ export default class GridView extends ContainerView {
 
             if (selectionRect) {
                 queueDecoration(
-                    selectionRect.getZindex(),
+                    selectionRect.zindex,
                     DECORATION_ORDER.selectionRect,
-                    () => selectionRect?.render(context, viewCoords, options)
+                    () =>
+                        selectionRect.view.render(context, viewCoords, options)
                 );
             }
 

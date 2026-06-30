@@ -1,6 +1,10 @@
-import { createEventFilterFunction } from "../utils/expression.js";
-import { asEventConfig } from "../selection/selection.js";
+import {
+    asEventConfig,
+    createEventPredicate,
+    validateEventType,
+} from "../utils/interactionConfig.js";
 import Point from "../view/layout/point.js";
+import { ViewInteractionListenerTracker } from "../view/viewInteractionListenerTracker.js";
 import { createRulerValue } from "./rulerValue.js";
 import { normalizeRulerCoordinate } from "./rulerCoordinate.js";
 
@@ -30,29 +34,30 @@ export class RulerMouseEventController {
         this.channels = channels;
         this.scaleResolutions = scaleResolutions;
         this.paramRuntime = paramRuntime;
+        this.#viewListeners = new ViewInteractionListenerTracker(
+            gridChild.view
+        );
 
         this.eventConfig =
             /** @type {import("../spec/parameter.js").RulerEventConfig} */ (
                 asEventConfig(config.on ?? "mousemove")
             );
-        if (
-            this.eventConfig.type !== "mousemove" &&
-            this.eventConfig.type !== "mousedown"
-        ) {
-            throw new Error(
-                `Ruler param "${paramName}" currently supports only "mousemove" and "mousedown" in "on".`
-            );
-        }
+        validateEventType(
+            this.eventConfig,
+            ["mousemove", "mousedown"],
+            `Ruler param "${paramName}" currently supports only "mousemove" and "mousedown" in "on".`
+        );
 
-        this.eventPredicate = this.eventConfig.filter
-            ? createEventFilterFunction(this.eventConfig.filter)
-            : () => true;
+        this.eventPredicate = createEventPredicate(this.eventConfig);
         this.clear =
             config.clear ??
             (this.eventConfig.type === "mousemove" ? "mouseleave" : false);
 
         this.#addListeners();
     }
+
+    /** @type {ViewInteractionListenerTracker} */
+    #viewListeners;
 
     /** @type {import("../spec/parameter.js").RulerEventConfig} */
     eventConfig;
@@ -65,6 +70,19 @@ export class RulerMouseEventController {
 
     dragging = false;
 
+    /**
+     * @param {string} type
+     * @param {import("../view/view.js").InteractionListener} listener
+     * @param {boolean} [capture]
+     */
+    #addViewInteractionListener(type, listener, capture) {
+        this.#viewListeners.add(type, listener, capture);
+    }
+
+    dispose() {
+        this.#viewListeners.dispose();
+    }
+
     #addListeners() {
         if (this.eventConfig.type === "mousemove") {
             this.#addMousemoveListeners();
@@ -74,16 +92,14 @@ export class RulerMouseEventController {
     }
 
     #addMousemoveListeners() {
-        const { view } = this.gridChild;
-
-        view.addInteractionListener("mousemove", (event) => {
+        this.#addViewInteractionListener("mousemove", (event) => {
             if (this.eventPredicate(event.proxiedMouseEvent)) {
                 this.#setValue(this.#pointToRulerValue(event.point));
             }
         });
 
         if (this.clear === "mouseleave") {
-            view.addInteractionListener("mouseleave", () => {
+            this.#addViewInteractionListener("mouseleave", () => {
                 this.#setValue(createRulerValue(this.channels));
             });
         } else if (this.clear !== false) {
@@ -94,9 +110,7 @@ export class RulerMouseEventController {
     }
 
     #addMousedownListeners() {
-        const { view } = this.gridChild;
-
-        view.addInteractionListener("mousedown", (event) => {
+        this.#addViewInteractionListener("mousedown", (event) => {
             if (
                 event.mouseEvent.button !== 0 ||
                 !this.eventPredicate(event.proxiedMouseEvent)
@@ -132,7 +146,7 @@ export class RulerMouseEventController {
         });
 
         if (this.clear === "mouseleave") {
-            view.addInteractionListener("mouseleave", () => {
+            this.#addViewInteractionListener("mouseleave", () => {
                 if (!this.dragging) {
                     this.#setValue(createRulerValue(this.channels));
                 }

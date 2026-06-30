@@ -208,7 +208,7 @@ describe("GridView incremental child management", () => {
         );
 
         const gridChild = parent.insertChildViewAt(child, 0);
-        await gridChild.createAxes();
+        await gridChild.syncGuideViews();
         const axisCount = Object.keys(gridChild.axes).length;
 
         // Axis views must not contribute to shared scale domains.
@@ -217,7 +217,7 @@ describe("GridView incremental child management", () => {
         }
 
         // Recreating axes should not leak or duplicate axis views.
-        await gridChild.createAxes();
+        await gridChild.syncGuideViews();
         expect(Object.keys(gridChild.axes)).toHaveLength(axisCount);
     });
 

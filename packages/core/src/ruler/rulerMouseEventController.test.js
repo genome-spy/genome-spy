@@ -42,6 +42,14 @@ function createController(ruler, scaleResolutions) {
         ) {
             listeners.set(type, listener);
         },
+        removeInteractionListener(
+            /** @type {string} */ type,
+            /** @type {any} */ listener
+        ) {
+            if (listeners.get(type) === listener) {
+                listeners.delete(type);
+            }
+        },
         paramRuntime: {
             setValue,
         },
@@ -199,6 +207,21 @@ describe("RulerMouseEventController", () => {
                 x: null,
             },
         });
+    });
+
+    test("dispose removes registered view interaction listeners", () => {
+        const { controller, listeners } = createController(
+            { encodings: ["x"], on: "mousemove" },
+            { x: createScaleResolution("linear") }
+        );
+
+        expect(listeners.has("mousemove")).toBe(true);
+        expect(listeners.has("mouseleave")).toBe(true);
+
+        controller.dispose();
+
+        expect(listeners.has("mousemove")).toBe(false);
+        expect(listeners.has("mouseleave")).toBe(false);
     });
 
     test("updates immediately on mousedown and tracks document mousemove", () => {

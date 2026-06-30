@@ -735,13 +735,12 @@ export default class SampleView extends ContainerView {
         attachViewLevelAxisConfigs(this);
         attachViewLevelLegendConfigs(this);
 
-        await this.#gridChild.createAxes();
+        await this.#gridChild.syncGuideViews();
         await this.#createSummaryViews();
         attachViewLevelScaleConfigs(this);
         attachViewLevelAxisConfigs(this);
         attachViewLevelLegendConfigs(this);
-        // @ts-expect-error TODO: Resolve this
-        await this.#gridChild.summaryViews.createAxes();
+        await this.#gridChild.summaryViews.syncGuideViews();
 
         await this.sampleGroupView.initializeChildren();
         await this.metadataView.initializeChildren();
@@ -1142,7 +1141,7 @@ export default class SampleView extends ContainerView {
 
         renderLocationIndependentDecorations();
 
-        gridChild.selectionRect?.render(context, coords, options);
+        gridChild.selectionRect?.view.render(context, coords, options);
     }
 
     /**
@@ -1989,8 +1988,8 @@ class SampleGridChild extends GridChild {
      * use the outside-left legend region. Inside-left corner regions are still
      * valid because they are placed over the plot area.
      */
-    async createAxes() {
-        await super.createAxes();
+    async syncGuideViews() {
+        await super.syncGuideViews();
 
         if (this.legends.left) {
             throw new Error(

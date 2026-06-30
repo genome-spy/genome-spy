@@ -2,14 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 
 import ConcatView from "../concatView.js";
 import UnitView from "../unitView.js";
-import SelectionRect, { INTERVAL_DRAG_ACTIVE_PARAM } from "./selectionRect.js";
+import {
+    createSelectionRectOverlay,
+    INTERVAL_DRAG_ACTIVE_PARAM,
+} from "./selectionRect.js";
 import { createTestViewContext } from "../testUtils.js";
 import { buildDataFlow } from "../flowBuilder.js";
 import { optimizeDataFlow } from "../../data/flowOptimizer.js";
 import { syncFlowHandles } from "../../data/flowInit.js";
 
 describe("SelectionRect", () => {
-    it("uses flow handles for dynamic data updates", () => {
+    it("uses static overlay data and parameter-backed expressions", () => {
         const context = createTestViewContext();
         const parent = new ConcatView(
             { hconcat: [] },
@@ -31,23 +34,27 @@ describe("SelectionRect", () => {
 
         const unitView = new UnitView(unitSpec, context, parent, parent, "u");
 
+        /** @type {import("../../types/selectionTypes.js").IntervalSelection} */
         let selection = {
+            type: "interval",
             intervals: { x: [0, 1], y: [2, 3] },
         };
 
-        /** @type {() => void} */
-        let selectionListener;
-
         /** @type {(listener: () => void) => () => void} */
-        const subscribe = (listener) => {
-            selectionListener = listener;
-            return () => undefined;
-        };
+        const subscribe = vi.fn((listener) => {
+            /** @returns {void} */
+            function unsubscribe() {}
+
+            return unsubscribe;
+        });
         /** @type {() => void} */
         const invalidate = () => undefined;
 
+        /** @returns {import("../../types/selectionTypes.js").IntervalSelection} */
+        const getSelection = () => selection;
+
         /** @type {import("../../paramRuntime/types.js").ExprRefFunction} */
-        const selectionExpr = Object.assign(() => selection, {
+        const selectionExpr = Object.assign(getSelection, {
             subscribe,
             invalidate,
             identifier: () => "selection",
@@ -63,7 +70,36 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        const overlay = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+        });
+        const selectionRect = overlay.view;
+        expect(selectionRect.spec.data).toEqual({ values: [{}] });
+        expect(selectionRect.spec.encoding).toMatchObject({
+            x: {
+                datum: {
+                    expr: "(selection.intervals.x != null ? selection.intervals.x[0] : 0)",
+                },
+            },
+            x2: {
+                datum: {
+                    expr: "(selection.intervals.x != null ? selection.intervals.x[1] : 0)",
+                },
+            },
+            y: {
+                datum: {
+                    expr: "(selection.intervals.y != null ? selection.intervals.y[0] : 0)",
+                },
+            },
+            y2: {
+                datum: {
+                    expr: "(selection.intervals.y != null ? selection.intervals.y[1] : 0)",
+                },
+            },
+        });
+        expect(subscribe).not.toHaveBeenCalled();
 
         const flow = buildDataFlow(selectionRect, context.dataFlow);
         syncFlowHandles(selectionRect, optimizeDataFlow(flow));
@@ -73,19 +109,12 @@ describe("SelectionRect", () => {
                 selectionRect.flowHandle?.dataSource
             );
         expect(dataSource).toBeDefined();
-
-        // Selection updates should push new interval data to the inline source.
-        const updateSpy = vi.spyOn(dataSource, "updateDynamicData");
         selection = {
+            type: "interval",
             intervals: { x: [5, 6], y: [7, 8] },
         };
 
-        selectionListener();
-
-        expect(updateSpy).toHaveBeenCalledTimes(1);
-        expect(updateSpy).toHaveBeenCalledWith([
-            { _x: 5, _x2: 6, _y: 7, _y2: 8 },
-        ]);
+        expect(dataSource.params.values).toEqual([{}]);
     });
 
     it("marks the view as domain inert", () => {
@@ -127,7 +156,7 @@ describe("SelectionRect", () => {
             }
         );
 
-        // Use a real unit view so SelectionRect can resolve scales if needed.
+        // Use a real unit view so selection rectangle spec can resolve scales.
         const gridChild = /** @type {import("./gridChild.js").default} */ (
             /** @type {unknown} */ ({
                 layoutParent: parent,
@@ -135,11 +164,15 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        const selectionRect = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+        }).view;
         expect(selectionRect.isDomainInert()).toBe(true);
     });
 
-    it("exposes brush zindex for GridView ordering", () => {
+    it("returns an overlay descriptor with brush zindex", () => {
         const context = createTestViewContext();
         const parent = new ConcatView(
             { hconcat: [] },
@@ -185,11 +218,17 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr, {
-            zindex: 7,
+        const overlay = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+            brushConfig: {
+                zindex: 7,
+            },
         });
 
-        expect(selectionRect.getZindex()).toBe(7);
+        expect(overlay.view).toBeDefined();
+        expect(overlay.zindex).toBe(7);
     });
 
     it("declares a default cursor ExprRef backed by the drag param", () => {
@@ -234,7 +273,11 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr);
+        const selectionRect = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+        }).view;
         const rectLayer = /** @type {any} */ (selectionRect.spec.layer[0]);
 
         expect(selectionRect.spec.params).toEqual([
@@ -287,10 +330,15 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = new SelectionRect(gridChild, selectionExpr, {
-            cursor: { expr: "'copy'" },
+        const selectionRect = createSelectionRectOverlay({
+            gridChild,
+            selectionExpr,
+            selectionExpression: "selection",
+            brushConfig: {
+                cursor: { expr: "'copy'" },
+            },
         });
-        const rectLayer = /** @type {any} */ (selectionRect.spec.layer[0]);
+        const rectLayer = /** @type {any} */ (selectionRect.view.spec.layer[0]);
 
         expect(rectLayer.mark.cursor).toEqual({ expr: "'copy'" });
     });

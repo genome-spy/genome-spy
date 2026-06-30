@@ -74,7 +74,7 @@ export default class ConcatView extends GridView {
             )
         );
 
-        await this.createAxes();
+        await this.syncGuideViews();
     }
 
     /**

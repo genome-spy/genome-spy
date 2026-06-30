@@ -1,12 +1,14 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import GridChild, { resolveIntervalZoomEventConfig } from "./gridChild.js";
 import { iterateLegendViews } from "./gridChildLegends.js";
 import Padding from "../layout/padding.js";
+import Point from "../layout/point.js";
 import Rectangle from "../layout/rectangle.js";
 import TitleView from "../titleView.js";
 import ContainerView from "../containerView.js";
 import { createTestViewContext } from "../testUtils.js";
+import LayerView from "../layerView.js";
 import UnitView from "../unitView.js";
 import { isChromeView } from "../viewSelectors.js";
 
@@ -191,6 +193,7 @@ function createRulerGridChildView(
         background: true,
     });
     view.needsAxes.x = false;
+    view.getConfiguredOrDefaultResolution = () => "excluded";
     view.facetCoords.set(null, Rectangle.create(0, 0, 100, 100));
 
     /** @param {number} value */
@@ -207,6 +210,68 @@ function createRulerGridChildView(
         });
 
     return { view, layoutParent };
+}
+
+function createIntervalGridChildView(
+    /** @type {import("../../spec/parameter.js").Parameter[]} */ params
+) {
+    const context = createTestViewContext();
+    context.suspendHoverTracking = vi.fn();
+    context.resumeHoverTracking = vi.fn();
+    const layoutParent = new ContainerView(
+        { layer: [] },
+        context,
+        null,
+        null,
+        "parent"
+    );
+    const view = new UnitView(
+        {
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            params,
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+            },
+        },
+        context,
+        layoutParent,
+        layoutParent,
+        "child"
+    );
+    view.getParentGridChromePolicy = () => ({
+        axes: true,
+        background: true,
+    });
+    view.needsAxes.x = false;
+    view.facetCoords.set(null, Rectangle.create(0, 0, 100, 100));
+
+    /** @param {number} value */
+    const scale = (value) => value;
+    scale.type = "linear";
+    /** @param {number} value */
+    scale.invert = (value) => value;
+    view.getScaleResolution = () =>
+        /** @type {any} */ ({
+            getResolvedScaleType: () => "linear",
+            getScale: () => scale,
+            isZoomable: () => false,
+            zoomExtent: [0, 1],
+        });
+
+    return { view, layoutParent };
+}
+
+function createInteractionEvent(
+    /** @type {Partial<import("../../utils/interaction.js").default>} */ event = {}
+) {
+    return {
+        point: new Point(50, 50),
+        mouseEvent: { button: 0 },
+        proxiedMouseEvent: {},
+        stopPropagation: vi.fn(),
+        ...event,
+    };
 }
 
 function createInheritedRulerGridChildView(
@@ -311,7 +376,7 @@ describe("GridChild parent chrome policy", () => {
             background: false,
         });
 
-        await child.createAxes();
+        await child.syncGuideViews();
 
         expect(child.backgroundStroke).toBeUndefined();
         expect(child.axisCandidates).toHaveLength(0);
@@ -319,6 +384,16 @@ describe("GridChild parent chrome policy", () => {
 });
 
 describe("GridChild ruler interactions", () => {
+    beforeEach(() => {
+        vi.spyOn(LayerView.prototype, "initializeChildren").mockResolvedValue(
+            undefined
+        );
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     test("registers mousemove listeners for pointer ruler params", () => {
         /** @type {Map<string, any>} */
         const listeners = new Map();
@@ -374,6 +449,34 @@ describe("GridChild ruler interactions", () => {
                 x: 0.02,
             },
         });
+    });
+
+    test("disposes pointer ruler view listeners", () => {
+        /** @type {Map<string, any>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createRulerGridChildView([
+            {
+                name: "cursor",
+                ruler: { encodings: ["x"] },
+            },
+        ]);
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, listener);
+        };
+        view.removeInteractionListener = (type, listener) => {
+            if (listeners.get(type) === listener) {
+                listeners.delete(type);
+            }
+        };
+
+        const child = new GridChild(view, layoutParent, 0);
+        expect(listeners.has("mousemove")).toBe(true);
+        expect(listeners.has("mouseleave")).toBe(true);
+
+        child.dispose();
+
+        expect(listeners.has("mousemove")).toBe(false);
+        expect(listeners.has("mouseleave")).toBe(false);
     });
 
     test("registers viewport ruler params and seeds their value", () => {
@@ -490,6 +593,184 @@ describe("GridChild ruler interactions", () => {
                 x: 0.2,
             },
         });
+    });
+});
+
+describe("GridChild interval selection interactions", () => {
+    beforeEach(() => {
+        vi.spyOn(LayerView.prototype, "initializeChildren").mockResolvedValue(
+            undefined
+        );
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    test("clears interval selections on dblclick by default", () => {
+        /** @type {Map<string, any[]>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createIntervalGridChildView([
+            {
+                name: "brush",
+                value: { x: [0.1, 0.8] },
+                select: { type: "interval", encodings: ["x"] },
+            },
+        ]);
+        const setValue = vi.spyOn(view.paramRuntime, "setValue");
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+        };
+
+        new GridChild(view, layoutParent, 0);
+        setValue.mockClear();
+        setValue.mockImplementation(() => {});
+        listeners.get("dblclick")[0](createInteractionEvent());
+
+        expect(setValue).toHaveBeenCalledWith("brush", {
+            type: "interval",
+            intervals: { x: null },
+        });
+    });
+
+    test("honors filtered interval selection clear events", () => {
+        /** @type {Map<string, any[]>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createIntervalGridChildView([
+            {
+                name: "brush",
+                value: { x: [0.1, 0.8] },
+                select: {
+                    type: "interval",
+                    encodings: ["x"],
+                    clear: "dblclick[event.shiftKey]",
+                },
+            },
+        ]);
+        const setValue = vi.spyOn(view.paramRuntime, "setValue");
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+        };
+
+        new GridChild(view, layoutParent, 0);
+        setValue.mockClear();
+        setValue.mockImplementation(() => {});
+        listeners.get("dblclick")[0](
+            createInteractionEvent({
+                proxiedMouseEvent: /** @type {any} */ ({ shiftKey: false }),
+            })
+        );
+        expect(setValue).not.toHaveBeenCalled();
+
+        listeners.get("dblclick")[0](
+            createInteractionEvent({
+                proxiedMouseEvent: /** @type {any} */ ({ shiftKey: true }),
+            })
+        );
+        expect(setValue).toHaveBeenCalledWith("brush", {
+            type: "interval",
+            intervals: { x: null },
+        });
+    });
+
+    test("does not clear interval selections on dblclick when clear is false", () => {
+        /** @type {Map<string, any[]>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createIntervalGridChildView([
+            {
+                name: "brush",
+                value: { x: [0.1, 0.8] },
+                select: {
+                    type: "interval",
+                    encodings: ["x"],
+                    clear: false,
+                },
+            },
+        ]);
+        const setValue = vi.spyOn(view.paramRuntime, "setValue");
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+        };
+
+        new GridChild(view, layoutParent, 0);
+        setValue.mockClear();
+        setValue.mockImplementation(() => {});
+
+        expect(listeners.has("dblclick")).toBe(false);
+    });
+
+    test("does not clear active intervals on click-release when clear is false", () => {
+        /** @type {Map<string, any[]>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createIntervalGridChildView([
+            {
+                name: "brush",
+                value: { x: [0.1, 0.8] },
+                select: {
+                    type: "interval",
+                    encodings: ["x"],
+                    on: "mousedown[event.shiftKey]",
+                    clear: false,
+                },
+            },
+        ]);
+        const setValue = vi.spyOn(view.paramRuntime, "setValue");
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+        };
+        view.removeInteractionListener = (type, listener) => {
+            listeners.set(
+                type,
+                (listeners.get(type) ?? []).filter(
+                    (candidate) => candidate !== listener
+                )
+            );
+        };
+
+        new GridChild(view, layoutParent, 0);
+        setValue.mockClear();
+        setValue.mockImplementation(() => {});
+        listeners.get("mousedown")[0](
+            createInteractionEvent({
+                proxiedMouseEvent: /** @type {any} */ ({ shiftKey: false }),
+            })
+        );
+        for (const listener of listeners.get("mouseup") ?? []) {
+            listener(createInteractionEvent());
+        }
+
+        expect(setValue).not.toHaveBeenCalled();
+    });
+
+    test("disposes interval selection view listeners", () => {
+        /** @type {Map<string, any[]>} */
+        const listeners = new Map();
+        const { view, layoutParent } = createIntervalGridChildView([
+            {
+                name: "brush",
+                select: { type: "interval", encodings: ["x"] },
+            },
+        ]);
+        view.addInteractionListener = (type, listener) => {
+            listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+        };
+        view.removeInteractionListener = (type, listener) => {
+            listeners.set(
+                type,
+                (listeners.get(type) ?? []).filter(
+                    (candidate) => candidate !== listener
+                )
+            );
+        };
+        const listenerCount = () =>
+            Array.from(listeners.values()).flat().length;
+
+        const child = new GridChild(view, layoutParent, 0);
+        expect(listenerCount()).toBeGreaterThan(0);
+
+        child.dispose();
+
+        expect(listenerCount()).toBe(0);
     });
 });
 

@@ -1,14 +1,10 @@
-import LayerView from "../layerView.js";
-import {
-    markViewAsChrome,
-    markViewAsNonAddressable,
-} from "../viewSelectors.js";
-import { isHConcatSpec, isVConcatSpec } from "../viewSpecGuards.js";
+import { createGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
+import { resolveOverlayExtent } from "./overlayExtent.js";
 
 /**
  * @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
  * @typedef {"view" | "container"} RulerOverlayExtent
- * @typedef {{ view: LayerView, zindex: number }} RulerOverlayView
+ * @typedef {import("./generatedChromeOverlay.js").GeneratedChromeOverlay} RulerOverlayView
  * @typedef {{
  *   paramName: string,
  *   channels: PrimaryPositionalChannel[],
@@ -129,8 +125,8 @@ export function createRulerOverlayView({
     dataParent,
     name,
 }) {
-    const overlay = new LayerView(
-        createRulerOverlaySpec({
+    return createGeneratedChromeOverlay({
+        spec: createRulerOverlaySpec({
             paramName,
             channels,
             display,
@@ -139,16 +135,34 @@ export function createRulerOverlayView({
         context,
         layoutParent,
         dataParent,
-        name
-    );
-
-    markViewAsNonAddressable(overlay, { skipSubtree: true });
-    markViewAsChrome(overlay, { skipSubtree: true });
-
-    return {
-        view: overlay,
+        name,
         zindex: mark?.zindex ?? 1,
-    };
+    });
+}
+
+/**
+ * Creates a ruler overlay from the user-facing ruler config and resolved scale.
+ *
+ * @param {Omit<RulerOverlayViewOptions, "display" | "mark"> & {
+ *   config: import("../../spec/parameter.js").RulerConfig,
+ *   scaleResolution: import("../../scales/scaleResolution.js").default,
+ * }} options
+ * @returns {RulerOverlayView}
+ */
+export function createConfiguredRulerOverlayView({
+    config,
+    scaleResolution,
+    ...options
+}) {
+    return createRulerOverlayView({
+        ...options,
+        display: resolveRulerDisplay(
+            scaleResolution.getResolvedScaleType(),
+            config.snap,
+            config.display
+        ),
+        mark: config.mark,
+    });
 }
 
 /**
@@ -190,42 +204,13 @@ export function resolveRulerOverlayExtent({
     channels,
     isAligned,
 }) {
-    const channel = channels.length === 1 ? channels[0] : undefined;
-    if (!channel) {
-        return "view";
-    }
-
-    const requestsContainer =
-        config.extent === "container" || config.extent === "auto";
-    if (!requestsContainer) {
-        return "view";
-    }
-
-    const supportsContainer =
-        (channel === "x" && isVConcatSpec(ownerSpec)) ||
-        (channel === "y" && isHConcatSpec(ownerSpec));
-
-    if (!supportsContainer) {
-        if (config.extent === "container") {
-            throw new Error(
-                `Ruler param "${paramName}" cannot use extent "container" for channel "${channel}" in this view.`
-            );
-        } else {
-            return "view";
-        }
-    }
-
-    if (!isAligned(channel)) {
-        if (config.extent === "container") {
-            throw new Error(
-                `Ruler param "${paramName}" cannot use extent "container" because its ${channel} projections do not align.`
-            );
-        } else {
-            return "view";
-        }
-    }
-
-    return "container";
+    return resolveOverlayExtent({
+        extent: config.extent,
+        ownerSpec,
+        channels,
+        isAligned,
+        label: `Ruler param "${paramName}"`,
+    });
 }
 
 /**

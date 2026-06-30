@@ -341,7 +341,7 @@ export class MetadataView extends ConcatView {
 
         try {
             await this.#createViews();
-            await this.createAxes();
+            await this.syncGuideViews();
             if (this.#isMetadataStale(metadataGeneration)) {
                 finalizeReady();
                 return;
