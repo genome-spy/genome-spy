@@ -188,11 +188,6 @@ export class IntervalSelectionController {
             );
         };
 
-        // WARNING! The following is an async method! Seems to work (by chance).
-        // TODO: Should be called and awaited in a sensible place. Maybe provide some
-        // registration logic for such post-creation initializations?
-        this.gridChild.selectionRect.view.initializeChildren();
-
         const invertPoint = (
             /** @type {import("../layout/point.js").default} */ point
         ) => {

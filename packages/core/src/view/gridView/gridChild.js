@@ -91,6 +91,8 @@ export default class GridChild {
     /** @type {RulerViewportController[]} */
     #rulerViewportControllers = [];
 
+    #generatedOverlaysInitialized = false;
+
     /**
      * @param {import("../view.js").default} view
      * @param {import("../containerView.js").default} layoutParent
@@ -347,10 +349,20 @@ export default class GridChild {
         });
 
         this.rulerOverlays.push(overlay);
+    }
 
-        // WARNING! The following is an async method! Mirrors selection overlays
-        // until grid chrome has a shared awaited initialization path.
-        overlay.view.initializeChildren();
+    async #initializeGeneratedOverlays() {
+        if (!this.#generatedOverlaysInitialized) {
+            const overlays = [
+                ...(this.selectionRect ? [this.selectionRect] : []),
+                ...this.rulerOverlays,
+            ];
+
+            await Promise.all(
+                overlays.map((overlay) => overlay.view.initializeChildren())
+            );
+            this.#generatedOverlaysInitialized = true;
+        }
     }
 
     /**
@@ -424,6 +436,7 @@ export default class GridChild {
      */
     async createAxes() {
         this.disposeAxisViews();
+        await this.#initializeGeneratedOverlays();
 
         const { view, axes, gridLines } = this;
         const parentChromePolicy = view.getParentGridChromePolicy();
