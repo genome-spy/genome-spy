@@ -415,7 +415,7 @@ export default class GridView extends ContainerView {
             this.#syncRulerOverlays(),
         ]);
         await Promise.all(
-            gridChildren.map((gridChild) => gridChild.createAxes())
+            gridChildren.map((gridChild) => gridChild.syncGuideViews())
         );
         this.invalidateSizeCache();
     }

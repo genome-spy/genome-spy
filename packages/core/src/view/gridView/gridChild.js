@@ -433,9 +433,9 @@ export default class GridChild {
     }
 
     /**
-     * Create view decorations, grid lines, axes, etc.
+     * Recreates GridChild-owned guide and generated chrome views.
      */
-    async createAxes() {
+    async syncGuideViews() {
         this.#disposeAxisViews();
         await this.#initializeGeneratedOverlays();
 

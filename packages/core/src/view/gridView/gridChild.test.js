@@ -376,7 +376,7 @@ describe("GridChild parent chrome policy", () => {
             background: false,
         });
 
-        await child.createAxes();
+        await child.syncGuideViews();
 
         expect(child.backgroundStroke).toBeUndefined();
         expect(child.axisCandidates).toHaveLength(0);

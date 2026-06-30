@@ -735,7 +735,7 @@ export default class SampleView extends ContainerView {
         attachViewLevelAxisConfigs(this);
         attachViewLevelLegendConfigs(this);
 
-        await this.#gridChild.createAxes();
+        await this.#gridChild.syncGuideViews();
         await this.#createSummaryViews();
         attachViewLevelScaleConfigs(this);
         attachViewLevelAxisConfigs(this);
@@ -1989,8 +1989,8 @@ class SampleGridChild extends GridChild {
      * use the outside-left legend region. Inside-left corner regions are still
      * valid because they are placed over the plot area.
      */
-    async createAxes() {
-        await super.createAxes();
+    async syncGuideViews() {
+        await super.syncGuideViews();
 
         if (this.legends.left) {
             throw new Error(
