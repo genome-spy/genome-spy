@@ -393,13 +393,6 @@ export default class GridView extends ContainerView {
     }
 
     /**
-     * @protected
-     */
-    async createAxes() {
-        await this.syncGuideViews();
-    }
-
-    /**
      * Recreates guide and chrome views that depend on the child hierarchy.
      * Shared guides always depend on the whole container. Grid-child guides can
      * be limited to newly inserted children during mutations.

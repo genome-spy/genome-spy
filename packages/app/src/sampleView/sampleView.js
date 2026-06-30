@@ -740,8 +740,7 @@ export default class SampleView extends ContainerView {
         attachViewLevelScaleConfigs(this);
         attachViewLevelAxisConfigs(this);
         attachViewLevelLegendConfigs(this);
-        // @ts-expect-error TODO: Resolve this
-        await this.#gridChild.summaryViews.createAxes();
+        await this.#gridChild.summaryViews.syncGuideViews();
 
         await this.sampleGroupView.initializeChildren();
         await this.metadataView.initializeChildren();
