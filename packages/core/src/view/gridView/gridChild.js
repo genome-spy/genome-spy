@@ -90,6 +90,9 @@ export default class GridChild {
     /** @type {RulerViewportController[]} */
     #rulerViewportControllers = [];
 
+    /** @type {number} */
+    #serial;
+
     #generatedOverlaysInitialized = false;
 
     /**
@@ -100,7 +103,7 @@ export default class GridChild {
     constructor(view, layoutParent, serial) {
         this.layoutParent = layoutParent;
         this.view = view;
-        this.serial = serial;
+        this.#serial = serial;
 
         /** @type {UnitView} */
         this.background = undefined;
@@ -343,7 +346,7 @@ export default class GridChild {
             context: this.layoutParent.context,
             layoutParent: this.layoutParent,
             dataParent: this.view,
-            name: "rulerOverlay" + this.serial + "_" + paramName,
+            name: "rulerOverlay" + this.#serial + "_" + paramName,
         });
 
         this.rulerOverlays.push(overlay);
@@ -433,7 +436,7 @@ export default class GridChild {
      * Create view decorations, grid lines, axes, etc.
      */
     async createAxes() {
-        this.disposeAxisViews();
+        this.#disposeAxisViews();
         await this.#initializeGeneratedOverlays();
 
         const { view, axes, gridLines } = this;
@@ -667,14 +670,14 @@ export default class GridChild {
      */
     getActiveAxisCandidate(orient) {
         // Later candidates win, matching the existing layer draw order.
-        return this.getActiveAxisCandidates(orient).at(-1);
+        return this.#getActiveAxisCandidates(orient).at(-1);
     }
 
     /**
      * @param {import("../../spec/axis.js").AxisOrient} orient
      * @returns {AxisCandidate[]}
      */
-    getActiveAxisCandidates(orient) {
+    #getActiveAxisCandidates(orient) {
         return this.axisCandidates.filter(
             (candidate) =>
                 candidate.orient === orient &&
@@ -699,13 +702,13 @@ export default class GridChild {
         this.#rulerViewportControllers = [];
         this.#rulerMouseEventControllers = [];
 
-        this.disposeAxisViews();
+        this.#disposeAxisViews();
     }
 
     /**
      * Disposes axis and gridline views so axes can be recreated safely.
      */
-    disposeAxisViews() {
+    #disposeAxisViews() {
         for (const candidate of this.axisCandidates) {
             candidate.axisView.disposeSubtree();
         }
@@ -745,12 +748,12 @@ export default class GridChild {
 
     getOverhang() {
         // Axes and overhang should be mutually exclusive, so we can just add them together
-        return this.getGuideOverhang()
-            .add(this.getTitleOverhang())
+        return this.#getGuideOverhang()
+            .add(this.#getTitleOverhang())
             .add(this.view.getOverhang());
     }
 
-    getGuideOverhang() {
+    #getGuideOverhang() {
         const calculate = (
             /** @type {import("../../spec/axis.js").AxisOrient} */ orient
         ) => getExternalAxisOverhang(this.axes[orient]);
@@ -766,7 +769,7 @@ export default class GridChild {
         );
     }
 
-    getTitleOverhang() {
+    #getTitleOverhang() {
         return this.title?.getOverhang() ?? Padding.zero();
     }
 
@@ -782,7 +785,7 @@ export default class GridChild {
     renderTitle(context, viewportCoords, options) {
         this.title?.render(
             context,
-            this.getTitleCoords(viewportCoords),
+            this.#getTitleCoords(viewportCoords),
             options
         );
     }
@@ -794,13 +797,13 @@ export default class GridChild {
      *
      * @param {Rectangle} viewportCoords
      */
-    getTitleCoords(viewportCoords) {
+    #getTitleCoords(viewportCoords) {
         const titleSpec = this.title?.titleSpec;
         if (!titleSpec) {
             return viewportCoords;
         }
 
-        const guideCoords = viewportCoords.expand(this.getGuideOverhang());
+        const guideCoords = viewportCoords.expand(this.#getGuideOverhang());
         const frame = titleSpec.frame ?? "group";
         if (titleSpec.reserve === false) {
             return frame == "bounds" ? guideCoords : viewportCoords;
