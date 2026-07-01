@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import {
     getBookmarkableParams,
+    hasChromeAncestor,
     getNonChromeViews,
     getParamSelector,
     getViewScopeChain,
@@ -112,6 +113,24 @@ describe("view selectors", () => {
                 (view) => view.name
             )
         ).toEqual(["root"]);
+    });
+
+    test("hasChromeAncestor detects chrome layout ancestors", () => {
+        const root = /** @type {any} */ ({
+            getLayoutAncestors: () => [],
+        });
+        const chromeParent = /** @type {any} */ ({
+            getLayoutAncestors: () => [root],
+        });
+        const child = /** @type {any} */ ({
+            getLayoutAncestors: () => [chromeParent, root],
+        });
+
+        markViewAsChrome(chromeParent, { skipSubtree: true });
+
+        expect(hasChromeAncestor(root)).toBe(false);
+        expect(hasChromeAncestor(chromeParent)).toBe(false);
+        expect(hasChromeAncestor(child)).toBe(true);
     });
 
     test("resolveViewSelector separates named import scopes", async () => {

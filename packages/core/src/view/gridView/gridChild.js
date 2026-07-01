@@ -14,7 +14,7 @@ import Rectangle from "../layout/rectangle.js";
 import TitleView from "../titleView.js";
 import UnitView from "../unitView.js";
 import {
-    isChromeView,
+    hasChromeAncestor,
     markViewAsChrome,
     markViewAsNonAddressable,
 } from "../viewSelectors.js";
@@ -61,7 +61,7 @@ export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js
  * @returns {import("../view.js").default[]}
  */
 function getLegendOwners(view) {
-    if (isInChromeSubtree(view)) {
+    if (hasChromeAncestor(view)) {
         return [];
     } else if (view instanceof UnitView) {
         return Object.keys(view.resolutions.legend).length > 0 ? [view] : [];
@@ -80,13 +80,6 @@ function getLegendOwners(view) {
  */
 function isAnyConcatSpec(spec) {
     return isVConcatSpec(spec) || isHConcatSpec(spec) || isConcatSpec(spec);
-}
-
-/**
- * @param {import("../view.js").default} view
- */
-function isInChromeSubtree(view) {
-    return view.getLayoutAncestors().some(isChromeView);
 }
 
 export default class GridChild {
@@ -230,9 +223,7 @@ export default class GridChild {
             this.scrollbars.vertical = new Scrollbar(this, "vertical");
         }
 
-        // TODO(#413): Replace this ad-hoc chrome-subtree guard with
-        // centralized generated guide/chrome subtree isolation.
-        if (!isInChromeSubtree(view)) {
+        if (!hasChromeAncestor(view)) {
             this.#setupIntervalSelection();
             this.#setupRulers();
         }
