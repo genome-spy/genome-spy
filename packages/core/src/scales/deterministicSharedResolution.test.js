@@ -15,6 +15,9 @@ function createAxisMember({ path, tickColor, title, sharedScaleResolution }) {
     return {
         view: {
             getScaleResolution: () => sharedScaleResolution,
+            getLayoutAncestors() {
+                return [this];
+            },
             getPathString: () => path,
             mark: {
                 encoding: {
