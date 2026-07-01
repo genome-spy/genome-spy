@@ -10504,18 +10504,6 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/penguins
     },
     {
       "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
       "type": "LegendEntriesSource",
     },
     {

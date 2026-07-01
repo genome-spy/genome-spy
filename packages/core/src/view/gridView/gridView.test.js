@@ -103,6 +103,17 @@ const makeUnitSpec = () => ({
 /**
  * @returns {import("../../spec/view.js").UnitSpec}
  */
+const makeLegendUnitSpec = () => ({
+    ...makeUnitSpec(),
+    encoding: {
+        ...makeUnitSpec().encoding,
+        color: { field: "x", type: "quantitative" },
+    },
+});
+
+/**
+ * @returns {import("../../spec/view.js").UnitSpec}
+ */
 const makeUnitSpecWithoutAxes = () => ({
     ...makeUnitSpec(),
     encoding: {
@@ -762,6 +773,34 @@ describe("GridView decoration zindex", () => {
         expect(overlays).toHaveLength(1);
     });
 
+    test("does not create ruler overlays inside legend chrome", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeLegendUnitSpec(),
+                        params: [
+                            {
+                                name: "cursor",
+                                ruler: { encodings: ["x"] },
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const legendOverlays = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant.name?.startsWith("rulerOverlay") &&
+                    descendant.getPathString().includes("/legend_")
+            );
+        expect(legendOverlays).toHaveLength(0);
+    });
+
     test("renders one container overlay for spanning vconcat rulers", async () => {
         const view = await createAndInitialize(
             {
@@ -950,6 +989,38 @@ describe("GridView decoration zindex", () => {
         expect(overlays.every((overlay) => overlay.layoutParent === view)).toBe(
             true
         );
+    });
+
+    test("does not create interval selection overlays inside legend chrome", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeLegendUnitSpec(),
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x", "y"],
+                                },
+                                value: { x: [1, 2], y: [1, 2] },
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const legendOverlays = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant.name === "selectionRect" &&
+                    descendant.getPathString().includes("/legend_")
+            );
+        expect(legendOverlays).toHaveLength(0);
     });
 
     test("rejects forced container interval selection extent when projections differ", async () => {
