@@ -3,9 +3,13 @@ import {
     isSelectionParameter,
     isVariableParameter,
 } from "../paramRuntime/paramUtils.js";
-import { getChromeOverride, setChromeOverride } from "./viewChrome.js";
+import {
+    getChromeOverride,
+    isChromeView,
+    setChromeOverride,
+} from "./viewChrome.js";
 
-export { isChromeView } from "./viewChrome.js";
+export { isChromeView };
 
 /**
  * Selectors identify views and parameters in a way that stays stable when the
@@ -103,6 +107,16 @@ export function markViewAsChrome(view, options = {}) {
     const skipSubtree = options.skipSubtree ?? false;
     const behavior = skipSubtree ? "excludeSubtree" : "exclude";
     setChromeOverride(view, behavior);
+}
+
+/**
+ * Returns whether a view has a chrome view in its layout ancestry.
+ *
+ * @param {import("./view.js").default} view
+ * @returns {boolean}
+ */
+export function hasChromeAncestor(view) {
+    return view.getLayoutAncestors().some(isChromeView);
 }
 
 /**
