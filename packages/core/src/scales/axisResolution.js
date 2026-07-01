@@ -106,11 +106,8 @@ export default class AxisResolution {
      * @returns {boolean} True when at least one non-chrome axis-contributing view is visible.
      */
     hasVisibleNonChromeMember() {
-        for (const member of this.#members) {
-            if (
-                member.view.isVisible() &&
-                !member.view.getLayoutAncestors().some(isChromeView)
-            ) {
+        for (const member of this.#getNonChromeMembers()) {
+            if (member.view.isVisible()) {
                 return true;
             }
         }
@@ -146,13 +143,21 @@ export default class AxisResolution {
 
     getAxisProps() {
         return getCachedOrCall(this, "axisProps", () => {
-            const propArray = this.#viewLevelAxisConfig
-                ? [this.#viewLevelAxisConfig.config]
-                : orderResolutionMembers(this.#members).map((member) => {
-                      const channelDef =
-                          member.view.mark.encoding[member.channel];
-                      return "axis" in channelDef && channelDef.axis;
-                  });
+            /** @type {(false | null | Partial<import("../spec/axis.js").Axis & import("../spec/axis.js").GenomeAxis> | undefined)[]} */
+            let propArray;
+            if (this.#viewLevelAxisConfig) {
+                propArray = [this.#viewLevelAxisConfig.config];
+            } else {
+                const members = this.#getNonChromeMembers();
+                if (!members.length) {
+                    return null;
+                }
+                propArray = members.map((member) => {
+                    const channelDef =
+                        member.view.mark.encoding[member.channel];
+                    return "axis" in channelDef && channelDef.axis;
+                });
+            }
 
             if (
                 propArray.length > 0 &&
@@ -207,7 +212,7 @@ export default class AxisResolution {
             };
         };
 
-        const titles = orderResolutionMembers(this.#members).map(computeTitle);
+        const titles = this.#getNonChromeMembers().map(computeTitle);
         const explicitAxisTitle = titles
             .map((title) => title.axisTitle)
             .find((title) => title !== undefined);
@@ -284,6 +289,15 @@ export default class AxisResolution {
 
     getViewLevelAxisConfig() {
         return this.#viewLevelAxisConfig;
+    }
+
+    /**
+     * @returns {AxisResolutionMember[]}
+     */
+    #getNonChromeMembers() {
+        return orderResolutionMembers(this.#members).filter(
+            (member) => !member.view.getLayoutAncestors().some(isChromeView)
+        );
     }
 
     /**

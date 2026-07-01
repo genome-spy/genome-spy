@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
+import AxisResolution from "./axisResolution.js";
 import { createAndInitialize } from "../view/testUtils.js";
 import UnitView from "../view/unitView.js";
 import View from "../view/view.js";
+import { markViewAsChrome } from "../view/viewSelectors.js";
 
 /** @type {import("../spec/view.js").LayerSpec} */
 const spec = {
@@ -42,6 +44,59 @@ const layer1 = /** @type {import("../spec/view.js").UnitSpec} */ (
 );
 
 describe("Axes resolve properly", () => {
+    test("Chrome members do not suppress non-chrome axes", () => {
+        const scaleResolution = {};
+        const chromeAncestor = {};
+        markViewAsChrome(/** @type {any} */ (chromeAncestor), {
+            skipSubtree: true,
+        });
+
+        const resolution = new AxisResolution("x");
+        resolution.registerMember(
+            makeAxisResolutionMember({
+                scaleResolution,
+                channelDef: { field: "x", type: "quantitative" },
+            })
+        );
+        resolution.registerMember(
+            makeAxisResolutionMember({
+                scaleResolution,
+                channelDef: {
+                    datum: { expr: "brush.intervals.x[0]" },
+                    type: "quantitative",
+                    axis: null,
+                },
+                layoutAncestors: [chromeAncestor],
+            })
+        );
+
+        expect(resolution.getAxisProps()).not.toBeNull();
+        expect(resolution.getTitle()).toBe("x");
+    });
+
+    test("Chrome-only members do not create axes", () => {
+        const scaleResolution = {};
+        const chromeAncestor = {};
+        markViewAsChrome(/** @type {any} */ (chromeAncestor), {
+            skipSubtree: true,
+        });
+
+        const resolution = new AxisResolution("x");
+        resolution.registerMember(
+            makeAxisResolutionMember({
+                scaleResolution,
+                channelDef: {
+                    field: "x",
+                    type: "quantitative",
+                    axis: null,
+                },
+                layoutAncestors: [chromeAncestor],
+            })
+        );
+
+        expect(resolution.getAxisProps()).toBeNull();
+    });
+
     test("Independent axes are independent", async () => {
         const view = await createAndInitialize(
             {
@@ -349,3 +404,29 @@ describe("Axes resolve properly", () => {
         expect(view4.getAxisResolution("x").getTitle()).toBeNull();
     });
 });
+
+/**
+ * @param {{
+ *     scaleResolution: object,
+ *     channelDef: any,
+ *     layoutAncestors?: object[],
+ * }} options
+ * @returns {import("./axisResolution.js").AxisResolutionMember}
+ */
+function makeAxisResolutionMember({
+    scaleResolution,
+    channelDef,
+    layoutAncestors = [],
+}) {
+    return {
+        view: /** @type {any} */ ({
+            mark: { encoding: { x: channelDef } },
+            getScaleResolution: () => scaleResolution,
+            getLayoutAncestors: () => layoutAncestors,
+            isVisible: () => true,
+            getPathString: () => "test",
+        }),
+        channel: "x",
+        channelDef,
+    };
+}

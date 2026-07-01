@@ -6151,6 +6151,18 @@ exports[`shared examples > initializes examples/core/selection/interval_genome.j
   "dataSources": [
     {
       "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -6189,6 +6201,18 @@ exports[`shared examples > initializes examples/core/selection/interval_linked_d
     {
       "identifier": null,
       "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -6263,6 +6287,18 @@ exports[`shared examples > initializes examples/core/selection/interval_linked_d
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -6326,6 +6362,18 @@ exports[`shared examples > initializes examples/core/selection/interval_points.j
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -6364,6 +6412,18 @@ exports[`shared examples > initializes examples/core/selection/interval_ranged.j
     {
       "identifier": null,
       "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -6418,6 +6478,18 @@ exports[`shared examples > initializes examples/core/selection/interval_ranged_t
     {
       "identifier": null,
       "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -10299,6 +10371,18 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/interval
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -10353,6 +10437,18 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/penguins
     {
       "identifier": null,
       "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -10700,6 +10796,18 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/two-way-
     {
       "identifier": null,
       "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -11369,6 +11477,18 @@ exports[`shared examples > initializes examples/docs/grammar/transform/filter/se
     {
       "identifier": null,
       "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
     },
     {
       "identifier": null,
