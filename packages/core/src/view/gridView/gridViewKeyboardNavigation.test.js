@@ -170,6 +170,7 @@ describe("GridView keyboard navigation", () => {
                 background: true,
             }),
             getDataAncestors: () => [childView],
+            getLayoutAncestors: () => [childView],
             getKeyboardZoomAnchorX,
             getScaleResolution: /** @returns {undefined} */ () => undefined,
             propagateInteraction: /** @returns {void} */ () => undefined,

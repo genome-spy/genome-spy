@@ -1,9 +1,7 @@
 import { createGeneratedChromeOverlay } from "./generatedChromeOverlay.js";
-import { resolveOverlayExtent } from "./overlayExtent.js";
 
 /**
  * @typedef {import("../../spec/channel.js").PrimaryPositionalChannel} PrimaryPositionalChannel
- * @typedef {"view" | "container"} RulerOverlayExtent
  * @typedef {import("./generatedChromeOverlay.js").GeneratedChromeOverlay} RulerOverlayView
  * @typedef {{
  *   paramName: string,
@@ -182,35 +180,6 @@ export function resolveRulerDisplay(scaleType, snap, display) {
     } else {
         return "line";
     }
-}
-
-/**
- * Resolves whether a generated ruler overlay should be per-view or
- * container-spanning.
- *
- * @param {{
- *     paramName: string,
- *     config: import("../../spec/parameter.js").RulerConfig,
- *     ownerSpec: import("../../spec/view.js").ViewSpec,
- *     channels: PrimaryPositionalChannel[],
- *     isAligned: (channel: PrimaryPositionalChannel) => boolean,
- * }} options
- * @returns {RulerOverlayExtent}
- */
-export function resolveRulerOverlayExtent({
-    paramName,
-    config,
-    ownerSpec,
-    channels,
-    isAligned,
-}) {
-    return resolveOverlayExtent({
-        extent: config.extent,
-        ownerSpec,
-        channels,
-        isAligned,
-        label: `Ruler param "${paramName}"`,
-    });
 }
 
 /**

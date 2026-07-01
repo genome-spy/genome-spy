@@ -47,10 +47,15 @@ import {
     normalizeClipOptions,
 } from "../renderingContext/clipOptions.js";
 import { isRulerParameter } from "../../paramRuntime/paramUtils.js";
+import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
+import { createSelectionRectOverlay } from "./selectionRect.js";
+import { resolveOverlayExtent } from "./overlayExtent.js";
 import {
-    createConfiguredRulerOverlayView,
-    resolveRulerOverlayExtent,
-} from "./rulerOverlay.js";
+    asSelectionConfig,
+    createIntervalSelection,
+    isIntervalSelection,
+    isIntervalSelectionConfig,
+} from "../../selection/selection.js";
 
 // Secondary ordering within a z-index bucket for GridView-owned decorations.
 // These are not z-indices themselves: actual layering is decided first by the
@@ -212,8 +217,8 @@ export default class GridView extends ContainerView {
     /** @type {KeyboardZoomController | null} */
     #keyboardZoomController = null;
 
-    /** @type {{ view: LayerView, zindex: number }[]} */
-    #rulerOverlays = [];
+    /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number }[]} */
+    #containerOverlays = [];
 
     /**
      *
@@ -405,7 +410,7 @@ export default class GridView extends ContainerView {
         await Promise.all([
             this.#syncSharedAxes(),
             this.#syncSharedLegends(),
-            this.#syncRulerOverlays(),
+            this.#syncContainerOverlays(),
         ]);
         await Promise.all(
             gridChildren.map((gridChild) => gridChild.syncGuideViews())
@@ -476,14 +481,68 @@ export default class GridView extends ContainerView {
         }
     }
 
-    async #syncRulerOverlays() {
-        for (const overlay of this.#rulerOverlays) {
+    async #syncContainerOverlays() {
+        for (const { overlay } of this.#containerOverlays) {
             overlay.view.disposeSubtree();
         }
-        this.#rulerOverlays = [];
+        this.#containerOverlays = [];
 
         /** @type {Promise<void>[]} */
         const promises = [];
+
+        for (const [paramName, param] of this.paramRuntime.paramConfigs) {
+            if (!("select" in param)) {
+                continue;
+            }
+
+            const select = asSelectionConfig(param.select);
+            if (!isIntervalSelectionConfig(select)) {
+                continue;
+            }
+
+            const channels = select.encodings ?? ["x"];
+            const channel = channels.length === 1 ? channels[0] : undefined;
+            if (
+                !channel ||
+                resolveOverlayExtent({
+                    extent: select.extent,
+                    ownerSpec: this.spec,
+                    channels,
+                    isAligned: (channel) =>
+                        this.#hasAlignedOverlayProjection(channel),
+                    label: `Interval selection param "${paramName}"`,
+                }) !== "container"
+            ) {
+                continue;
+            }
+
+            const selectionExpr = this.paramRuntime.createExpression(paramName);
+            const selection = selectionExpr();
+            if (!selection || !isIntervalSelection(selection)) {
+                this.paramRuntime.setValue(
+                    paramName,
+                    param.value
+                        ? { type: "interval", intervals: param.value }
+                        : createIntervalSelection(channels)
+                );
+            }
+
+            const overlay = createSelectionRectOverlay({
+                selectionExpr,
+                selectionExpression: paramName,
+                channels,
+                brushConfig: select.mark,
+                context: this.context,
+                layoutParent: this,
+                dataParent: this,
+                scaleResolutionSource: this,
+            });
+            this.#containerOverlays.push({
+                overlay,
+                order: DECORATION_ORDER.selectionRect,
+            });
+            promises.push(overlay.view.initializeChildren());
+        }
 
         for (const [paramName, param] of this.paramRuntime.paramConfigs) {
             if (!isRulerParameter(param)) {
@@ -498,13 +557,13 @@ export default class GridView extends ContainerView {
             const channel = channels.length === 1 ? channels[0] : undefined;
             if (
                 !channel ||
-                resolveRulerOverlayExtent({
-                    paramName,
-                    config: param.ruler,
+                resolveOverlayExtent({
+                    extent: param.ruler.extent,
                     ownerSpec: this.spec,
                     channels,
                     isAligned: (channel) =>
-                        this.#hasAlignedRulerProjection(channel),
+                        this.#hasAlignedOverlayProjection(channel),
+                    label: `Ruler param "${paramName}"`,
                 }) !== "container"
             ) {
                 continue;
@@ -520,7 +579,10 @@ export default class GridView extends ContainerView {
                 dataParent: this,
                 name: "rulerOverlay" + "_" + paramName,
             });
-            this.#rulerOverlays.push(overlay);
+            this.#containerOverlays.push({
+                overlay,
+                order: DECORATION_ORDER.ruler,
+            });
             promises.push(overlay.view.initializeChildren());
         }
 
@@ -528,7 +590,7 @@ export default class GridView extends ContainerView {
     }
 
     /** @param {import("../../spec/channel.js").PrimaryPositionalChannel} channel */
-    #hasAlignedRulerProjection(channel) {
+    #hasAlignedOverlayProjection(channel) {
         const ownerResolution = this.getScaleResolution(channel);
         return (
             ownerResolution != null &&
@@ -548,7 +610,7 @@ export default class GridView extends ContainerView {
             yield* gridChild.getChildren();
         }
 
-        for (const overlay of this.#rulerOverlays) {
+        for (const { overlay } of this.#containerOverlays) {
             yield overlay.view;
         }
 
@@ -1178,8 +1240,8 @@ export default class GridView extends ContainerView {
         }
 
         if (gridViewCoords) {
-            for (const overlay of this.#rulerOverlays) {
-                queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
+            for (const { overlay, order } of this.#containerOverlays) {
+                queueDecoration(overlay.zindex, order, () =>
                     overlay.view.render(context, gridViewCoords, options)
                 );
             }

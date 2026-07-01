@@ -9,20 +9,23 @@ export const INTERVAL_DRAG_ACTIVE_PARAM = "intervalDragActive";
 
 /**
  * @param {{
- *     gridChild: import("./gridChild.js").default,
+ *     scaleResolutionSource: { getScaleResolution: (channel: PrimaryPositionalChannel) => import("../../scales/scaleResolution.js").default },
  *     selectionExpression: string,
  *     selection: IntervalSelection,
+ *     channels?: PrimaryPositionalChannel[],
  *     brushConfig?: import("../../spec/parameter.js").BrushConfig,
  * }} options
  * @returns {import("../../spec/view.js").LayerSpec}
  */
 export function createSelectionRectSpec({
-    gridChild,
+    scaleResolutionSource,
     selectionExpression,
     selection,
+    channels = /** @type {PrimaryPositionalChannel[]} */ (
+        Object.keys(selection.intervals)
+    ),
     brushConfig = {},
 }) {
-    const channels = Object.keys(selection.intervals);
     const brushMarkProps = { ...brushConfig };
     delete brushMarkProps.zindex;
 
@@ -64,11 +67,13 @@ export function createSelectionRectSpec({
 
     if (channels.includes("x")) {
         layerSpec.encoding.x = createIntervalBoundEncoding(
+            scaleResolutionSource,
             selectionExpression,
             "x",
             0
         );
         layerSpec.encoding.x2 = createIntervalBoundEncoding(
+            scaleResolutionSource,
             selectionExpression,
             "x",
             1
@@ -76,11 +81,13 @@ export function createSelectionRectSpec({
     }
     if (channels.includes("y")) {
         layerSpec.encoding.y = createIntervalBoundEncoding(
+            scaleResolutionSource,
             selectionExpression,
             "y",
             0
         );
         layerSpec.encoding.y2 = createIntervalBoundEncoding(
+            scaleResolutionSource,
             selectionExpression,
             "y",
             1
@@ -107,7 +114,7 @@ export function createSelectionRectSpec({
     });
 
     const makeExpr = (/** @type {PrimaryPositionalChannel} */ channel) => {
-        const resolution = gridChild.view.getScaleResolution(channel);
+        const resolution = scaleResolutionSource.getScaleResolution(channel);
         return (
             `format(${selectionExpression}.intervals.${channel}[1] - ${selectionExpression}.intervals.${channel}[0], '.3s')` +
             (resolution.type === "locus" ? " + 'b'" : "")
@@ -134,7 +141,12 @@ export function createSelectionRectSpec({
             encoding: {
                 text: { expr: makeExpr("x") },
                 y: channels.includes("y")
-                    ? createIntervalBoundEncoding(selectionExpression, "y", 1)
+                    ? createIntervalBoundEncoding(
+                          scaleResolutionSource,
+                          selectionExpression,
+                          "y",
+                          1
+                      )
                     : {
                           value: 1,
                       },
@@ -179,11 +191,17 @@ function makeSelectionRectFilterExpression(selectionExpression, channels) {
 }
 
 /**
+ * @param {{ getScaleResolution: (channel: PrimaryPositionalChannel) => import("../../scales/scaleResolution.js").default }} scaleResolutionSource
  * @param {string} selectionExpression
  * @param {PrimaryPositionalChannel} channel
  * @param {0 | 1} index
  */
-function createIntervalBoundEncoding(selectionExpression, channel, index) {
+function createIntervalBoundEncoding(
+    scaleResolutionSource,
+    selectionExpression,
+    channel,
+    index
+) {
     return /** @type {any} */ ({
         datum: {
             expr: makeIntervalBoundExpression(
@@ -192,8 +210,9 @@ function createIntervalBoundEncoding(selectionExpression, channel, index) {
                 index
             ),
         },
-        type: null,
+        type: scaleResolutionSource.getScaleResolution(channel).type,
         title: null,
+        axis: null,
     });
 }
 

@@ -30,6 +30,9 @@ function createMinimalGridChild() {
         getDataAncestors() {
             return [this];
         },
+        getLayoutAncestors() {
+            return [this];
+        },
         paramRuntime: { paramConfigs: new Map() },
     });
     const layoutParent = /** @type {any} */ ({

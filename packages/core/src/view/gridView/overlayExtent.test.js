@@ -17,6 +17,15 @@ describe("resolveOverlayExtent", () => {
     test("uses container extent for aligned concat overlays", () => {
         expect(
             resolveOverlayExtent({
+                ownerSpec: { vconcat: [] },
+                channels: ["x"],
+                isAligned: () => true,
+                label: "Overlay",
+            })
+        ).toBe("container");
+
+        expect(
+            resolveOverlayExtent({
                 extent: "auto",
                 ownerSpec: { vconcat: [] },
                 channels: ["x"],
@@ -73,6 +82,20 @@ describe("resolveOverlayExtent", () => {
             })
         ).toThrow(
             'Ruler param "cursor" cannot use extent "container" for channel "x" in this view.'
+        );
+    });
+
+    test("rejects forced container extent for multiple channels", () => {
+        expect(() =>
+            resolveOverlayExtent({
+                extent: "container",
+                ownerSpec: { vconcat: [] },
+                channels: ["x", "y"],
+                isAligned: () => true,
+                label: 'Interval selection param "brush"',
+            })
+        ).toThrow(
+            'Interval selection param "brush" cannot use extent "container" for multiple channels.'
         );
     });
 });

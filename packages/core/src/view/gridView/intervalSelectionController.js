@@ -29,14 +29,23 @@ export class IntervalSelectionController {
      * @param {string} name
      * @param {import("../../spec/parameter.js").Parameter} param
      * @param {import("../../spec/parameter.js").IntervalSelectionConfig} select
+     * @param {import("../../paramRuntime/viewParamRuntime.js").default} [paramRuntime]
+     * @param {boolean} [renderOverlay]
      */
-    constructor(gridChild, name, param, select) {
+    constructor(
+        gridChild,
+        name,
+        param,
+        select,
+        paramRuntime = gridChild.view.paramRuntime,
+        renderOverlay = true
+    ) {
         this.gridChild = gridChild;
         this.#viewListeners = new ViewInteractionListenerTracker(
             gridChild.view
         );
 
-        this.#setup(name, param, select);
+        this.#setup(name, param, select, paramRuntime, renderOverlay);
     }
 
     /** @type {import("./gridChild.js").default} */
@@ -62,10 +71,12 @@ export class IntervalSelectionController {
      * @param {string} name
      * @param {import("../../spec/parameter.js").Parameter} param
      * @param {import("../../spec/parameter.js").IntervalSelectionConfig} select
+     * @param {import("../../paramRuntime/viewParamRuntime.js").default} paramRuntime
+     * @param {boolean} renderOverlay
      */
-    #setup(name, param, select) {
+    #setup(name, param, select, paramRuntime, renderOverlay) {
         const view = this.gridChild.view;
-        const channels = select.encodings;
+        const channels = select.encodings ?? ["x"];
 
         const scaleResolutions = Object.fromEntries(
             channels.map((channel) => {
@@ -118,7 +129,7 @@ export class IntervalSelectionController {
             );
         const clearEventPredicate = createEventPredicate(clearEventConfig);
 
-        if (this.gridChild.selectionRect) {
+        if (renderOverlay && this.gridChild.selectionRect) {
             throw new Error(
                 "Only one interval selection per container is currently allowed!"
             );
@@ -153,12 +164,12 @@ export class IntervalSelectionController {
                 ])
             );
 
-        const selectionExpr = view.paramRuntime.createExpression(name);
+        const selectionExpr = paramRuntime.createExpression(name);
         const setter = (
             /** @type {import("../../types/selectionTypes.js").IntervalSelection} */
             selection
         ) => {
-            view.paramRuntime.setValue(name, selection);
+            paramRuntime.setValue(name, selection);
         };
 
         if (param.value) {
@@ -169,18 +180,26 @@ export class IntervalSelectionController {
             setter(createIntervalSelection(channels));
         };
 
-        this.gridChild.selectionRect = createSelectionRectOverlay({
-            gridChild: this.gridChild,
-            selectionExpr,
-            selectionExpression: name,
-            brushConfig: select.mark,
-        });
-        const setIntervalDragActive = (/** @type {boolean} */ active) => {
-            this.gridChild.selectionRect.view.paramRuntime.setValue(
-                INTERVAL_DRAG_ACTIVE_PARAM,
-                active
-            );
-        };
+        if (renderOverlay) {
+            this.gridChild.selectionRect = createSelectionRectOverlay({
+                selectionExpr,
+                selectionExpression: name,
+                channels,
+                brushConfig: select.mark,
+                context: this.gridChild.layoutParent.context,
+                layoutParent: this.gridChild.layoutParent,
+                dataParent: view,
+                scaleResolutionSource: view,
+            });
+        }
+        const setIntervalDragActive = renderOverlay
+            ? (/** @type {boolean} */ active) => {
+                  this.gridChild.selectionRect.view.paramRuntime.setValue(
+                      INTERVAL_DRAG_ACTIVE_PARAM,
+                      active
+                  );
+              }
+            : () => {};
 
         const invertPoint = (
             /** @type {import("../layout/point.js").default} */ point

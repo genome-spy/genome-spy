@@ -25,10 +25,18 @@ export function resolveOverlayExtent({
 }) {
     const channel = channels.length === 1 ? channels[0] : undefined;
     if (!channel) {
-        return "view";
+        if (extent === "container") {
+            throw new Error(
+                `${label} cannot use extent "container" for multiple channels.`
+            );
+        } else {
+            return "view";
+        }
     }
 
-    const requestsContainer = extent === "container" || extent === "auto";
+    const effectiveExtent = extent ?? "auto";
+    const requestsContainer =
+        effectiveExtent === "container" || effectiveExtent === "auto";
     if (!requestsContainer) {
         return "view";
     }
@@ -38,7 +46,7 @@ export function resolveOverlayExtent({
         (channel === "y" && isHConcatSpec(ownerSpec));
 
     if (!supportsContainer) {
-        if (extent === "container") {
+        if (effectiveExtent === "container") {
             throw new Error(
                 `${label} cannot use extent "container" for channel "${channel}" in this view.`
             );
@@ -48,7 +56,7 @@ export function resolveOverlayExtent({
     }
 
     if (!isAligned(channel)) {
-        if (extent === "container") {
+        if (effectiveExtent === "container") {
             throw new Error(
                 `${label} cannot use extent "container" because its ${channel} projections do not align.`
             );

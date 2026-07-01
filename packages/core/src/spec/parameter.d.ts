@@ -265,6 +265,17 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
     encodings?: PrimaryPositionalChannel[];
 
     /**
+     * Visual extent of the interval selection rectangle.
+     *
+     * `"auto"` draws one spanning rectangle when the selected channel can span
+     * a concat safely. `"view"` draws one rectangle per participating view.
+     * `"container"` requires one spanning rectangle.
+     *
+     * __Default value:__ `"auto"`
+     */
+    extent?: SelectionExtent;
+
+    /**
      * Interval selections display a rectangle mark to show the selected range.
      * Use the `mark` property to adjust the appearance of this rectangle.
      */
@@ -388,6 +399,8 @@ export interface SelectionParameter<T extends SelectionType = SelectionType>
 export type SelectionInitIntervalMapping = Partial<
     Record<PrimaryPositionalChannel, [number, number]>
 >;
+
+export type SelectionExtent = "auto" | "view" | "container";
 
 export type SelectionConfig = PointSelectionConfig | IntervalSelectionConfig;
 export type SelectionTypeOrConfig = SelectionType | SelectionConfig;

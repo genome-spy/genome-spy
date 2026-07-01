@@ -6,10 +6,8 @@ import { createSelectionRectSpec } from "./selectionRectSpec.js";
 describe("createSelectionRectSpec", () => {
     test("builds the expression-backed selection rectangle spec", () => {
         const spec = createSelectionRectSpec({
-            gridChild: /** @type {any} */ ({
-                view: {
-                    getScaleResolution: () => ({ type: "linear" }),
-                },
+            scaleResolutionSource: /** @type {any} */ ({
+                getScaleResolution: () => ({ type: "linear" }),
             }),
             selectionExpression: "brush",
             selection: {
@@ -31,21 +29,29 @@ describe("createSelectionRectSpec", () => {
                 datum: {
                     expr: "(brush.intervals.x != null ? brush.intervals.x[0] : 0)",
                 },
+                type: "linear",
+                axis: null,
             },
             x2: {
                 datum: {
                     expr: "(brush.intervals.x != null ? brush.intervals.x[1] : 0)",
                 },
+                type: "linear",
+                axis: null,
             },
             y: {
                 datum: {
                     expr: "(brush.intervals.y != null ? brush.intervals.y[0] : 0)",
                 },
+                type: "linear",
+                axis: null,
             },
             y2: {
                 datum: {
                     expr: "(brush.intervals.y != null ? brush.intervals.y[1] : 0)",
                 },
+                type: "linear",
+                axis: null,
             },
         });
         expect(spec.params).toEqual([
@@ -59,10 +65,8 @@ describe("createSelectionRectSpec", () => {
 
     test("preserves custom cursor and measurement label expressions", () => {
         const spec = createSelectionRectSpec({
-            gridChild: /** @type {any} */ ({
-                view: {
-                    getScaleResolution: () => ({ type: "locus" }),
-                },
+            scaleResolutionSource: /** @type {any} */ ({
+                getScaleResolution: () => ({ type: "locus" }),
             }),
             selectionExpression: "brush",
             selection: {
@@ -90,10 +94,8 @@ describe("createSelectionRectSpec", () => {
                 intervals: { x: null },
             });
         const spec = createSelectionRectSpec({
-            gridChild: /** @type {any} */ ({
-                view: {
-                    getScaleResolution: () => ({ type: "linear" }),
-                },
+            scaleResolutionSource: /** @type {any} */ ({
+                getScaleResolution: () => ({ type: "linear" }),
             }),
             selectionExpression: "brush",
             selection: inactiveSelection,

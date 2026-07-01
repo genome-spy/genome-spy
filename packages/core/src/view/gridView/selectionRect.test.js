@@ -11,6 +11,28 @@ import { buildDataFlow } from "../flowBuilder.js";
 import { optimizeDataFlow } from "../../data/flowOptimizer.js";
 import { syncFlowHandles } from "../../data/flowInit.js";
 
+/**
+ * @param {import("./gridChild.js").default} gridChild
+ * @param {import("../../paramRuntime/types.js").ExprRefFunction} selectionExpr
+ * @param {import("../../spec/parameter.js").BrushConfig} [brushConfig]
+ */
+function createOverlayOptions(gridChild, selectionExpr, brushConfig) {
+    return {
+        selectionExpr,
+        selectionExpression: "selection",
+        channels:
+            /** @type {import("../../spec/channel.js").PrimaryPositionalChannel[]} */ ([
+                "x",
+                "y",
+            ]),
+        brushConfig,
+        context: gridChild.layoutParent.context,
+        layoutParent: gridChild.layoutParent,
+        dataParent: gridChild.view,
+        scaleResolutionSource: gridChild.view,
+    };
+}
+
 describe("SelectionRect", () => {
     it("uses static overlay data and parameter-backed expressions", () => {
         const context = createTestViewContext();
@@ -70,11 +92,9 @@ describe("SelectionRect", () => {
             })
         );
 
-        const overlay = createSelectionRectOverlay({
-            gridChild,
-            selectionExpr,
-            selectionExpression: "selection",
-        });
+        const overlay = createSelectionRectOverlay(
+            createOverlayOptions(gridChild, selectionExpr)
+        );
         const selectionRect = overlay.view;
         expect(selectionRect.spec.data).toEqual({ values: [{}] });
         expect(selectionRect.spec.encoding).toMatchObject({
@@ -164,11 +184,9 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = createSelectionRectOverlay({
-            gridChild,
-            selectionExpr,
-            selectionExpression: "selection",
-        }).view;
+        const selectionRect = createSelectionRectOverlay(
+            createOverlayOptions(gridChild, selectionExpr)
+        ).view;
         expect(selectionRect.isDomainInert()).toBe(true);
     });
 
@@ -218,14 +236,11 @@ describe("SelectionRect", () => {
             })
         );
 
-        const overlay = createSelectionRectOverlay({
-            gridChild,
-            selectionExpr,
-            selectionExpression: "selection",
-            brushConfig: {
+        const overlay = createSelectionRectOverlay(
+            createOverlayOptions(gridChild, selectionExpr, {
                 zindex: 7,
-            },
-        });
+            })
+        );
 
         expect(overlay.view).toBeDefined();
         expect(overlay.zindex).toBe(7);
@@ -273,11 +288,9 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = createSelectionRectOverlay({
-            gridChild,
-            selectionExpr,
-            selectionExpression: "selection",
-        }).view;
+        const selectionRect = createSelectionRectOverlay(
+            createOverlayOptions(gridChild, selectionExpr)
+        ).view;
         const rectLayer = /** @type {any} */ (selectionRect.spec.layer[0]);
 
         expect(selectionRect.spec.params).toEqual([
@@ -330,14 +343,11 @@ describe("SelectionRect", () => {
             })
         );
 
-        const selectionRect = createSelectionRectOverlay({
-            gridChild,
-            selectionExpr,
-            selectionExpression: "selection",
-            brushConfig: {
+        const selectionRect = createSelectionRectOverlay(
+            createOverlayOptions(gridChild, selectionExpr, {
                 cursor: { expr: "'copy'" },
-            },
-        });
+            })
+        );
         const rectLayer = /** @type {any} */ (selectionRect.view.spec.layer[0]);
 
         expect(rectLayer.mark.cursor).toEqual({ expr: "'copy'" });

@@ -31,11 +31,14 @@ import {
 } from "./gridChildLegends.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
 import { RulerViewportController } from "../../ruler/rulerViewportController.js";
-import {
-    createConfiguredRulerOverlayView,
-    resolveRulerOverlayExtent,
-} from "./rulerOverlay.js";
+import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
 import { IntervalSelectionController } from "./intervalSelectionController.js";
+import { resolveOverlayExtent } from "./overlayExtent.js";
+import {
+    isConcatSpec,
+    isHConcatSpec,
+    isVConcatSpec,
+} from "../viewSpecGuards.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -58,7 +61,7 @@ export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js
  * @returns {import("../view.js").default[]}
  */
 function getLegendOwners(view) {
-    if (isChromeView(view) || view.getLayoutAncestors().some(isChromeView)) {
+    if (isInChromeSubtree(view)) {
         return [];
     } else if (view instanceof UnitView) {
         return Object.keys(view.resolutions.legend).length > 0 ? [view] : [];
@@ -70,6 +73,20 @@ function getLegendOwners(view) {
     } else {
         return [];
     }
+}
+
+/**
+ * @param {import("../../spec/view.js").ViewSpec} spec
+ */
+function isAnyConcatSpec(spec) {
+    return isVConcatSpec(spec) || isHConcatSpec(spec) || isConcatSpec(spec);
+}
+
+/**
+ * @param {import("../view.js").default} view
+ */
+function isInChromeSubtree(view) {
+    return view.getLayoutAncestors().some(isChromeView);
 }
 
 export default class GridChild {
@@ -213,8 +230,12 @@ export default class GridChild {
             this.scrollbars.vertical = new Scrollbar(this, "vertical");
         }
 
-        this.#setupIntervalSelection();
-        this.#setupRulers();
+        // TODO(#413): Replace this ad-hoc chrome-subtree guard with
+        // centralized generated guide/chrome subtree isolation.
+        if (!isInChromeSubtree(view)) {
+            this.#setupIntervalSelection();
+            this.#setupRulers();
+        }
     }
 
     #setupRulers() {
@@ -319,14 +340,14 @@ export default class GridChild {
         scaleResolutions
     ) {
         return (
-            resolveRulerOverlayExtent({
-                paramName,
-                config: ruler,
+            resolveOverlayExtent({
+                extent: ruler.extent,
                 ownerSpec: owner.spec,
                 channels,
                 isAligned: (channel) =>
                     owner.getScaleResolution?.(channel) ===
                     scaleResolutions[channel],
+                label: `Ruler param "${paramName}"`,
             }) === "container"
         );
     }
@@ -387,24 +408,64 @@ export default class GridChild {
     }
 
     #setupIntervalSelection() {
-        const view = this.view;
+        const seen = new Set();
 
-        // TODO: If the child is a LayerView, selection params should be pulled from its children as well
-        for (const [name, param] of view.paramRuntime.paramConfigs) {
-            if (!("select" in param)) {
-                continue;
+        for (const owner of this.view.getDataAncestors()) {
+            for (const [paramName, param] of owner.paramRuntime.paramConfigs) {
+                if (seen.has(paramName) || !("select" in param)) {
+                    continue;
+                }
+
+                seen.add(paramName);
+                const select = asSelectionConfig(param.select);
+                if (
+                    isIntervalSelectionConfig(select) &&
+                    (owner !== this.view || !isAnyConcatSpec(owner.spec))
+                ) {
+                    const channels = select.encodings ?? ["x"];
+                    const renderOverlay =
+                        !this.#usesContainerSelectionRectOverlay(
+                            owner,
+                            paramName,
+                            select,
+                            channels
+                        );
+
+                    this.#intervalSelectionControllers.push(
+                        new IntervalSelectionController(
+                            this,
+                            paramName,
+                            /** @type {import("../../spec/parameter.js").SelectionParameter<"interval">} */ (
+                                param
+                            ),
+                            select,
+                            owner.paramRuntime,
+                            renderOverlay
+                        )
+                    );
+                }
             }
-
-            const select = asSelectionConfig(param.select);
-
-            if (!isIntervalSelectionConfig(select)) {
-                continue;
-            }
-
-            this.#intervalSelectionControllers.push(
-                new IntervalSelectionController(this, name, param, select)
-            );
         }
+    }
+
+    /**
+     * @param {import("../view.js").default} owner
+     * @param {string} paramName
+     * @param {import("../../spec/parameter.js").IntervalSelectionConfig} select
+     * @param {import("../../spec/channel.js").PrimaryPositionalChannel[]} channels
+     */
+    #usesContainerSelectionRectOverlay(owner, paramName, select, channels) {
+        return (
+            resolveOverlayExtent({
+                extent: select.extent,
+                ownerSpec: owner.spec,
+                channels,
+                isAligned: (channel) =>
+                    owner.getScaleResolution?.(channel) ===
+                    this.view.getScaleResolution(channel),
+                label: `Interval selection param "${paramName}"`,
+            }) === "container"
+        );
     }
 
     *getChildren() {

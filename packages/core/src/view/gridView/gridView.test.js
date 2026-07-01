@@ -103,6 +103,17 @@ const makeUnitSpec = () => ({
 /**
  * @returns {import("../../spec/view.js").UnitSpec}
  */
+const makeLegendUnitSpec = () => ({
+    ...makeUnitSpec(),
+    encoding: {
+        ...makeUnitSpec().encoding,
+        color: { field: "x", type: "quantitative" },
+    },
+});
+
+/**
+ * @returns {import("../../spec/view.js").UnitSpec}
+ */
 const makeUnitSpecWithoutAxes = () => ({
     ...makeUnitSpec(),
     encoding: {
@@ -762,6 +773,34 @@ describe("GridView decoration zindex", () => {
         expect(overlays).toHaveLength(1);
     });
 
+    test("does not create ruler overlays inside legend chrome", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeLegendUnitSpec(),
+                        params: [
+                            {
+                                name: "cursor",
+                                ruler: { encodings: ["x"] },
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const legendOverlays = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant.name?.startsWith("rulerOverlay") &&
+                    descendant.getPathString().includes("/legend_")
+            );
+        expect(legendOverlays).toHaveLength(0);
+    });
+
     test("renders one container overlay for spanning vconcat rulers", async () => {
         const view = await createAndInitialize(
             {
@@ -799,6 +838,30 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["rulerOverlay_cursor"]);
     });
 
+    test("renders one container overlay for auto vconcat rulers", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "cursor",
+                        ruler: { encodings: ["x"] },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "rulerOverlay_cursor");
+        expect(overlays).toHaveLength(1);
+        expect(overlays[0].layoutParent).toBe(view);
+    });
+
     test("does not render container ruler overlays when display is none", async () => {
         const view = await createAndInitialize(
             {
@@ -824,6 +887,212 @@ describe("GridView decoration zindex", () => {
             .filter((descendant) => descendant.name === "rulerOverlay_cursor");
 
         expect(overlays).toHaveLength(0);
+    });
+
+    test("renders one container overlay for auto vconcat interval selections", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "brush",
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                        },
+                        value: { x: [1, 2] },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "selectionRect");
+        expect(overlays).toHaveLength(1);
+        expect(overlays[0].layoutParent).toBe(view);
+    });
+
+    test("renders one container overlay for forced vconcat interval selections", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "brush",
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                            extent: "container",
+                        },
+                        value: { x: [1, 2] },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "selectionRect");
+        expect(overlays).toHaveLength(1);
+
+        /** @type {string[]} */
+        const order = [];
+        const original = overlays[0].render.bind(overlays[0]);
+        overlays[0].render = (context, coords, options = {}) => {
+            order.push(overlays[0].name);
+            return original(context, coords, options);
+        };
+
+        const context = new NoOpRenderingContext({ picking: false });
+        view.render(context, Rectangle.create(0, 0, 200, 200), {
+            firstFacet: true,
+        });
+
+        expect(order).toEqual(["selectionRect"]);
+    });
+
+    test("renders per-view overlays for explicit view interval selection extent", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "brush",
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                            extent: "view",
+                        },
+                        value: { x: [1, 2] },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "selectionRect");
+        expect(overlays).toHaveLength(2);
+        expect(overlays.every((overlay) => overlay.layoutParent === view)).toBe(
+            true
+        );
+    });
+
+    test("does not create interval selection overlays inside legend chrome", async () => {
+        const view = await createAndInitialize(
+            {
+                vconcat: [
+                    {
+                        ...makeLegendUnitSpec(),
+                        params: [
+                            {
+                                name: "brush",
+                                select: {
+                                    type: "interval",
+                                    encodings: ["x", "y"],
+                                },
+                                value: { x: [1, 2], y: [1, 2] },
+                            },
+                        ],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const legendOverlays = view
+            .getDescendants()
+            .filter(
+                (descendant) =>
+                    descendant.name === "selectionRect" &&
+                    descendant.getPathString().includes("/legend_")
+            );
+        expect(legendOverlays).toHaveLength(0);
+    });
+
+    test("rejects forced container interval selection extent when projections differ", async () => {
+        await expect(
+            createAndInitialize(
+                {
+                    params: [
+                        {
+                            name: "brush",
+                            select: {
+                                type: "interval",
+                                encodings: ["x"],
+                                extent: "container",
+                            },
+                        },
+                    ],
+                    resolve: {
+                        scale: { x: "independent" },
+                    },
+                    vconcat: [makeUnitSpec(), makeUnitSpec()],
+                },
+                ConcatView
+            )
+        ).rejects.toThrow(
+            'Interval selection param "brush" cannot use extent "container" because its x projections do not align.'
+        );
+    });
+
+    test("rejects forced container interval selection extent for unsupported concat direction", async () => {
+        await expect(
+            createAndInitialize(
+                {
+                    params: [
+                        {
+                            name: "brush",
+                            select: {
+                                type: "interval",
+                                encodings: ["x"],
+                                extent: "container",
+                            },
+                        },
+                    ],
+                    hconcat: [makeUnitSpec(), makeUnitSpec()],
+                },
+                ConcatView
+            )
+        ).rejects.toThrow(
+            'Interval selection param "brush" cannot use extent "container" for channel "x" in this view.'
+        );
+    });
+
+    test("rejects forced container interval selection extent for multiple channels", async () => {
+        await expect(
+            createAndInitialize(
+                {
+                    params: [
+                        {
+                            name: "brush",
+                            select: {
+                                type: "interval",
+                                encodings: ["x", "y"],
+                                extent: "container",
+                            },
+                        },
+                    ],
+                    vconcat: [makeUnitSpec(), makeUnitSpec()],
+                },
+                ConcatView
+            )
+        ).rejects.toThrow(
+            'Interval selection param "brush" cannot use extent "container" for multiple channels.'
+        );
     });
 
     test("renders default decorations around unclipped content", async () => {
