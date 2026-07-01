@@ -117,13 +117,14 @@ describe("view selectors", () => {
 
     test("hasChromeAncestor detects chrome layout ancestors", () => {
         const root = /** @type {any} */ ({
-            getLayoutAncestors: () => [],
+            getLayoutAncestors: () => /** @type {any[]} */ ([]),
         });
         const chromeParent = /** @type {any} */ ({
-            getLayoutAncestors: () => [root],
+            getLayoutAncestors: () => /** @type {any[]} */ ([root]),
         });
         const child = /** @type {any} */ ({
-            getLayoutAncestors: () => [chromeParent, root],
+            getLayoutAncestors: () =>
+                /** @type {any[]} */ ([chromeParent, root]),
         });
 
         markViewAsChrome(chromeParent, { skipSubtree: true });
