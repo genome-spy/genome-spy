@@ -34,6 +34,11 @@ import { RulerViewportController } from "../../ruler/rulerViewportController.js"
 import { createConfiguredRulerOverlayView } from "./rulerOverlay.js";
 import { IntervalSelectionController } from "./intervalSelectionController.js";
 import { resolveOverlayExtent } from "./overlayExtent.js";
+import {
+    isConcatSpec,
+    isHConcatSpec,
+    isVConcatSpec,
+} from "../viewSpecGuards.js";
 
 export { resolveIntervalZoomEventConfig } from "./intervalSelectionController.js";
 
@@ -68,6 +73,13 @@ function getLegendOwners(view) {
     } else {
         return [];
     }
+}
+
+/**
+ * @param {import("../../spec/view.js").ViewSpec} spec
+ */
+function isAnyConcatSpec(spec) {
+    return isVConcatSpec(spec) || isHConcatSpec(spec) || isConcatSpec(spec);
 }
 
 export default class GridChild {
@@ -397,7 +409,7 @@ export default class GridChild {
                 const select = asSelectionConfig(param.select);
                 if (
                     isIntervalSelectionConfig(select) &&
-                    (owner === this.view || select.extent != null)
+                    (owner !== this.view || !isAnyConcatSpec(owner.spec))
                 ) {
                     const channels = select.encodings ?? ["x"];
                     const renderOverlay =

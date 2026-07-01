@@ -799,6 +799,30 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["rulerOverlay_cursor"]);
     });
 
+    test("renders one container overlay for auto vconcat rulers", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "cursor",
+                        ruler: { encodings: ["x"] },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "rulerOverlay_cursor");
+        expect(overlays).toHaveLength(1);
+        expect(overlays[0].layoutParent).toBe(view);
+    });
+
     test("does not render container ruler overlays when display is none", async () => {
         const view = await createAndInitialize(
             {
@@ -826,7 +850,35 @@ describe("GridView decoration zindex", () => {
         expect(overlays).toHaveLength(0);
     });
 
-    test("renders one container overlay for spanning vconcat interval selections", async () => {
+    test("renders one container overlay for auto vconcat interval selections", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "brush",
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                        },
+                        value: { x: [1, 2] },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "selectionRect");
+        expect(overlays).toHaveLength(1);
+        expect(overlays[0].layoutParent).toBe(view);
+    });
+
+    test("renders one container overlay for forced vconcat interval selections", async () => {
         const view = await createAndInitialize(
             {
                 params: [
@@ -869,6 +921,37 @@ describe("GridView decoration zindex", () => {
         expect(order).toEqual(["selectionRect"]);
     });
 
+    test("renders per-view overlays for explicit view interval selection extent", async () => {
+        const view = await createAndInitialize(
+            {
+                params: [
+                    {
+                        name: "brush",
+                        select: {
+                            type: "interval",
+                            encodings: ["x"],
+                            extent: "view",
+                        },
+                        value: { x: [1, 2] },
+                    },
+                ],
+                resolve: {
+                    scale: { x: "shared" },
+                },
+                vconcat: [makeUnitSpec(), makeUnitSpec()],
+            },
+            ConcatView
+        );
+
+        const overlays = view
+            .getDescendants()
+            .filter((descendant) => descendant.name === "selectionRect");
+        expect(overlays).toHaveLength(2);
+        expect(overlays.every((overlay) => overlay.layoutParent === view)).toBe(
+            true
+        );
+    });
+
     test("rejects forced container interval selection extent when projections differ", async () => {
         await expect(
             createAndInitialize(
@@ -892,6 +975,52 @@ describe("GridView decoration zindex", () => {
             )
         ).rejects.toThrow(
             'Interval selection param "brush" cannot use extent "container" because its x projections do not align.'
+        );
+    });
+
+    test("rejects forced container interval selection extent for unsupported concat direction", async () => {
+        await expect(
+            createAndInitialize(
+                {
+                    params: [
+                        {
+                            name: "brush",
+                            select: {
+                                type: "interval",
+                                encodings: ["x"],
+                                extent: "container",
+                            },
+                        },
+                    ],
+                    hconcat: [makeUnitSpec(), makeUnitSpec()],
+                },
+                ConcatView
+            )
+        ).rejects.toThrow(
+            'Interval selection param "brush" cannot use extent "container" for channel "x" in this view.'
+        );
+    });
+
+    test("rejects forced container interval selection extent for multiple channels", async () => {
+        await expect(
+            createAndInitialize(
+                {
+                    params: [
+                        {
+                            name: "brush",
+                            select: {
+                                type: "interval",
+                                encodings: ["x", "y"],
+                                extent: "container",
+                            },
+                        },
+                    ],
+                    vconcat: [makeUnitSpec(), makeUnitSpec()],
+                },
+                ConcatView
+            )
+        ).rejects.toThrow(
+            'Interval selection param "brush" cannot use extent "container" for multiple channels.'
         );
     });
 

@@ -267,11 +267,11 @@ export interface IntervalSelectionConfig extends BaseSelectionConfig<"interval">
     /**
      * Visual extent of the interval selection rectangle.
      *
-     * `"view"` draws one rectangle per participating view. `"container"` draws
-     * one spanning rectangle when participating projections align. `"auto"`
-     * chooses a spanning rectangle only when it is safe.
+     * `"auto"` draws one spanning rectangle when the selected channel can span
+     * a concat safely. `"view"` draws one rectangle per participating view.
+     * `"container"` requires one spanning rectangle.
      *
-     * __Default value:__ `"view"`
+     * __Default value:__ `"auto"`
      */
     extent?: SelectionExtent;
 

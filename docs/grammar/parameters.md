@@ -87,10 +87,10 @@ You can override the behavior with `select.zoom: true/false` or an explicit
 wheel event definition such as `"zoom": "wheel[event.altKey]"`.
 
 In concatenated views, `select.extent` controls where the selection rectangle is
-drawn. The default `"view"` draws a rectangle in each participating view.
-`"container"` draws one rectangle across the concat container when the selected
-channel uses aligned projections in the child views. `"auto"` uses the
-container only when this is safe.
+drawn. The default `"auto"` draws one rectangle across the concat container when
+the selected channel uses aligned projections in the child views. Otherwise, it
+draws a rectangle in each participating view. `"container"` requires the
+spanning rectangle, and `"view"` always draws per-view rectangles.
 
 EXAMPLE examples/docs/grammar/parameters/interval-selection.json height=240
 

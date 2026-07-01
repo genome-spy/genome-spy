@@ -6143,90 +6143,12 @@ exports[`shared examples > initializes examples/core/selection/interval_concat.j
 }
 `;
 
-exports[`shared examples > initializes examples/core/selection/interval_concat_spanning.json 1`] = `
-{
-  "assemblies": [],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "SequenceSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": null,
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "grid0",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "grid1",
-            "type": "UnitView",
-          },
-        ],
-        "name": "grid0",
-        "type": "ConcatView",
-      },
-    ],
-    "name": "implicitRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
 exports[`shared examples > initializes examples/core/selection/interval_genome.json 1`] = `
 {
   "assemblies": [
     "hg38",
   ],
   "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisGenomeSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
     {
       "identifier": null,
       "type": "InlineSource",
@@ -6267,18 +6189,6 @@ exports[`shared examples > initializes examples/core/selection/interval_linked_d
     {
       "identifier": null,
       "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -6353,18 +6263,6 @@ exports[`shared examples > initializes examples/core/selection/interval_linked_d
     },
     {
       "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -6428,18 +6326,6 @@ exports[`shared examples > initializes examples/core/selection/interval_points.j
     },
     {
       "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -6478,18 +6364,6 @@ exports[`shared examples > initializes examples/core/selection/interval_ranged.j
     {
       "identifier": null,
       "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -6544,18 +6418,6 @@ exports[`shared examples > initializes examples/core/selection/interval_ranged_t
     {
       "identifier": null,
       "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -10437,18 +10299,6 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/interval
     },
     {
       "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -10506,7 +10356,7 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/penguins
     },
     {
       "identifier": null,
-      "type": "AxisTickSource",
+      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -10850,18 +10700,6 @@ exports[`shared examples > initializes examples/docs/grammar/parameters/two-way-
     {
       "identifier": null,
       "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
     },
     {
       "identifier": null,
@@ -11531,18 +11369,6 @@ exports[`shared examples > initializes examples/docs/grammar/transform/filter/se
     {
       "identifier": null,
       "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
     },
     {
       "identifier": null,
