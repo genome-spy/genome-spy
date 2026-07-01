@@ -1,22 +1,26 @@
 /**
- * Runtime hooks used by the inspector to read and highlight a live GenomeSpy
- * view hierarchy.
+ * Runtime hooks used by the inspector to read a live GenomeSpy view hierarchy.
  */
 export interface InspectorHost {
     /**
      * Returns the current internal root view.
      *
-     * Core embed results expose this through `getDebugViewRoot()`.
+     * Core embed results expose this through `api.debug.getViewRoot()`.
      */
-    getRootView(): object | undefined;
+    getViewRoot(): object | undefined;
 
     /**
-     * Highlights a view while the user hovers items in the inspector.
-     *
-     * Omit this to use the default Core view highlighter.
+     * Loads Core debug modules from the same runtime bundle as the inspected
+     * view hierarchy. App provides this to avoid loading a second Core copy.
      */
-    highlightView?(view: object | null): void;
+    getModules(): Promise<InspectorDebugModules>;
 }
+
+/**
+ * Core debug helpers used by the inspector session.
+ */
+export type InspectorDebugModules =
+    typeof import("@genome-spy/core/debug/index.js");
 
 /**
  * Maintains inspector state for one embedded GenomeSpy runtime.
@@ -129,9 +133,14 @@ export declare function attachInspectorOverlay(
 /**
  * Creates the App plugin that adds the inspector to GenomeSpy App.
  */
-export declare function genomeSpyInspector(options?: {
+export declare function appInspector(options?: {
     /**
      * Preferred App side-panel width.
      */
     preferredWidth?: string;
 }): any;
+
+/**
+ * @deprecated Use `appInspector`.
+ */
+export declare const genomeSpyInspector: typeof appInspector;

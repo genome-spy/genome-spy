@@ -1,11 +1,11 @@
-import { getViewIdentityRegistry } from "@genome-spy/core/view/viewIdentityRegistry.js";
-
 /**
  * Browser-side state and runtime bridge for the inspector UI.
  *
  * @typedef {object} InspectorHost
- * @prop {() => any | undefined} getRootView
- * @prop {(view: object | null) => void} [highlightView]
+ * @prop {() => any | undefined} getViewRoot
+ * @prop {() => Promise<InspectorDebugModules>} getModules
+ *
+ * @typedef {typeof import("@genome-spy/core/debug/index.js")} InspectorDebugModules
  */
 export default class InspectorSession extends EventTarget {
     /** @type {InspectorHost} */
@@ -26,20 +26,11 @@ export default class InspectorSession extends EventTarget {
     /** @type {WeakSet<object>} */
     #views = new WeakSet();
 
-    /** @type {Promise<typeof import("@genome-spy/core/debug/viewDebugSnapshot.js")> | undefined} */
-    #viewDebugModulePromise;
+    /** @type {Promise<InspectorDebugModules> | undefined} */
+    #debugModulesPromise;
 
-    /** @type {Promise<typeof import("@genome-spy/core/debug/resolutionDebugSnapshot.js")> | undefined} */
-    #resolutionDebugModulePromise;
-
-    /** @type {Promise<typeof import("@genome-spy/core/debug/dataflowDebugSnapshot.js")> | undefined} */
-    #dataflowDebugModulePromise;
-
-    /** @type {Promise<typeof import("@genome-spy/core/debug/paramDebugSnapshot.js")> | undefined} */
-    #paramDebugModulePromise;
-
-    /** @type {Promise<typeof import("@genome-spy/core/debug/markDebugSnapshot.js")> | undefined} */
-    #markDebugModulePromise;
+    /** @type {InspectorDebugModules | undefined} */
+    #debugModules;
 
     /** @type {(() => void)[]} */
     #disposers = [];
@@ -99,44 +90,30 @@ export default class InspectorSession extends EventTarget {
         }
 
         const root = this.#getRoot();
-        const [
-            viewDebugModule,
-            resolutionDebugModule,
-            dataflowDebugModule,
-            paramDebugModule,
-            markDebugModule,
-        ] = await Promise.all([
-            this.#getViewDebugModule(),
-            this.#getResolutionDebugModule(),
-            this.#getDataflowDebugModule(),
-            this.#getParamDebugModule(),
-            this.#getMarkDebugModule(),
-        ]);
+        const debugModules = await this.#getDebugModules();
+        this.#debugModules = debugModules;
         this.#objectsById = new Map();
         this.#views = collectViews(root);
-        const viewSnapshot = viewDebugModule.createViewDebugSnapshot(root, {
+        const viewSnapshot = debugModules.createViewDebugSnapshot(root, {
             includeChrome: this.#includeChrome,
             getDebugId: (object) => this.#getDebugId(object),
         });
         this.snapshot = {
             ...viewSnapshot,
-            resolutions: resolutionDebugModule.createResolutionDebugSnapshot(
-                root,
-                {
-                    getDebugId: (object) => this.#getDebugId(object),
-                }
-            ),
-            dataflow: dataflowDebugModule.createDataflowDebugSnapshot(
+            resolutions: debugModules.createResolutionDebugSnapshot(root, {
+                getDebugId: (object) => this.#getDebugId(object),
+            }),
+            dataflow: debugModules.createDataflowDebugSnapshot(
                 root?.context.dataFlow,
                 {
                     getDebugId: (object) => this.#getDebugId(object),
                     rootView: root,
                 }
             ),
-            params: paramDebugModule.createParamDebugSnapshot(root, {
+            params: debugModules.createParamDebugSnapshot(root, {
                 getDebugId: (object) => this.#getDebugId(object),
             }),
-            marks: markDebugModule.createMarkDebugSnapshot(root, {
+            marks: debugModules.createMarkDebugSnapshot(root, {
                 getDebugId: (object) => this.#getDebugId(object),
             }),
         };
@@ -149,11 +126,6 @@ export default class InspectorSession extends EventTarget {
      */
     highlightView(viewId) {
         const view = viewId ? this.#objectsById.get(viewId) : null;
-        if (this.#host.highlightView) {
-            this.#host.highlightView(view ?? null);
-            return;
-        }
-
         const root = this.#getRoot();
         if (!root) {
             return;
@@ -171,48 +143,11 @@ export default class InspectorSession extends EventTarget {
     }
 
     /**
-     * @returns {Promise<typeof import("@genome-spy/core/debug/viewDebugSnapshot.js")>}
+     * @returns {Promise<InspectorDebugModules>}
      */
-    #getViewDebugModule() {
-        this.#viewDebugModulePromise ??=
-            import("@genome-spy/core/debug/viewDebugSnapshot.js");
-        return this.#viewDebugModulePromise;
-    }
-
-    /**
-     * @returns {Promise<typeof import("@genome-spy/core/debug/resolutionDebugSnapshot.js")>}
-     */
-    #getResolutionDebugModule() {
-        this.#resolutionDebugModulePromise ??=
-            import("@genome-spy/core/debug/resolutionDebugSnapshot.js");
-        return this.#resolutionDebugModulePromise;
-    }
-
-    /**
-     * @returns {Promise<typeof import("@genome-spy/core/debug/dataflowDebugSnapshot.js")>}
-     */
-    #getDataflowDebugModule() {
-        this.#dataflowDebugModulePromise ??=
-            import("@genome-spy/core/debug/dataflowDebugSnapshot.js");
-        return this.#dataflowDebugModulePromise;
-    }
-
-    /**
-     * @returns {Promise<typeof import("@genome-spy/core/debug/paramDebugSnapshot.js")>}
-     */
-    #getParamDebugModule() {
-        this.#paramDebugModulePromise ??=
-            import("@genome-spy/core/debug/paramDebugSnapshot.js");
-        return this.#paramDebugModulePromise;
-    }
-
-    /**
-     * @returns {Promise<typeof import("@genome-spy/core/debug/markDebugSnapshot.js")>}
-     */
-    #getMarkDebugModule() {
-        this.#markDebugModulePromise ??=
-            import("@genome-spy/core/debug/markDebugSnapshot.js");
-        return this.#markDebugModulePromise;
+    #getDebugModules() {
+        this.#debugModulesPromise ??= this.#host.getModules();
+        return this.#debugModulesPromise;
     }
 
     #ensureRuntimeSubscriptions() {
@@ -242,7 +177,7 @@ export default class InspectorSession extends EventTarget {
     }
 
     #getRoot() {
-        return this.#host.getRootView();
+        return this.#host.getViewRoot();
     }
 
     /**
@@ -252,9 +187,16 @@ export default class InspectorSession extends EventTarget {
     #getDebugId(object) {
         if (this.#views.has(object)) {
             const root = this.#getRoot();
-            const id = getViewIdentityRegistry(root).getId(
-                /** @type {any} */ (object)
-            );
+            const debugModules = this.#debugModules;
+            if (!debugModules) {
+                throw new Error(
+                    "Inspector debug modules have not been loaded."
+                );
+            }
+
+            const id = debugModules
+                .getViewIdentityRegistry(root)
+                .getId(/** @type {any} */ (object));
             this.#objectsById.set(id, object);
             return id;
         }

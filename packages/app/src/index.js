@@ -37,6 +37,8 @@ export async function embed(el, spec, options = {}) {
 
     /** @type {import("@genome-spy/core/genomeSpy.js").default} */
     let genomeSpy;
+    /** @type {App | undefined} */
+    let app;
     /** @type {(() => void)[]} */
     let pluginDisposers = [];
 
@@ -57,7 +59,7 @@ export async function embed(el, spec, options = {}) {
                 embedOptions
             );
 
-        const app = new App(element, specObject, appEmbedOptions);
+        app = new App(element, specObject, appEmbedOptions);
         genomeSpy = app.genomeSpy;
         pluginDisposers = await installAppPlugins(app, plugins);
         applyOptions(genomeSpy, appEmbedOptions);
@@ -69,6 +71,8 @@ export async function embed(el, spec, options = {}) {
 
     return {
         views: createViewMutationApi(genomeSpy),
+
+        debug: app.debug,
 
         finalize() {
             const disposers = pluginDisposers;
@@ -103,9 +107,6 @@ export async function embed(el, spec, options = {}) {
         updateNamedData: genomeSpy.updateNamedData.bind(genomeSpy),
         getLogicalCanvasSize: genomeSpy.getLogicalCanvasSize.bind(genomeSpy),
         exportCanvas: genomeSpy.exportCanvas.bind(genomeSpy),
-        getDebugViewRoot() {
-            return genomeSpy ? genomeSpy.viewRoot : undefined;
-        },
     };
 }
 

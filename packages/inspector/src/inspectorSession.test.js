@@ -1,11 +1,13 @@
 import { describe, expect, test } from "vitest";
+import * as debugModules from "@genome-spy/core/debug/index.js";
 import { getViewIdentityRegistry } from "@genome-spy/core/view/viewIdentityRegistry.js";
 import InspectorSession from "./inspectorSession.js";
 
 describe("InspectorSession", () => {
     test("refreshes through a root-view embedder host without App shape", async () => {
         const session = new InspectorSession({
-            getRootView: () => undefined,
+            getViewRoot: () => undefined,
+            getModules: async () => debugModules,
         });
         let snapshotEvents = 0;
         session.addEventListener("snapshot", () => {
@@ -22,7 +24,8 @@ describe("InspectorSession", () => {
     test("uses core runtime view ids for view nodes", async () => {
         const view = createFakeView();
         const session = new InspectorSession({
-            getRootView: () => view,
+            getViewRoot: () => view,
+            getModules: async () => debugModules,
         });
 
         await session.refresh();

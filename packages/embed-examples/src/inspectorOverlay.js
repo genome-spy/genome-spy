@@ -35,12 +35,7 @@ openButton.addEventListener("click", async () => {
     if (inspector) {
         inspector.dispose();
     }
-    inspector = await attachInspectorOverlay(
-        {
-            getRootView: () => api.getDebugViewRoot(),
-        },
-        {
-            activePanel: "elements",
-        }
-    );
+    inspector = await attachInspectorOverlay(api.debug, {
+        activePanel: "elements",
+    });
 });

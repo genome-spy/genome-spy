@@ -130,6 +130,12 @@ export default class App {
             this.options
         );
 
+        /** @type {import("@genome-spy/core/types/embedApi.js").EmbedDebugApi} */
+        this.debug = {
+            getViewRoot: () => this.genomeSpy?.viewRoot,
+            getModules: () => this.getDebugModules(),
+        };
+
         this.genomeSpy.viewFactory.addViewType(
             isSampleSpec,
             /** @type {any} */ (
@@ -178,6 +184,16 @@ export default class App {
         }
 
         return this.#agentApiPromise;
+    }
+
+    /**
+     * Loads optional Core debug helpers from App's bundled Core instance.
+     *
+     * The inspector uses these modules to avoid loading a second Core copy,
+     * which would break runtime identity checks and shared view ids.
+     */
+    async getDebugModules() {
+        return import("@genome-spy/core/debug/index.js");
     }
 
     #setupStoreAndProvenance() {

@@ -25,10 +25,10 @@ explicitly:
 
 ```js
 import { embed } from "@genome-spy/app";
-import { genomeSpyInspector } from "@genome-spy/inspector";
+import { appInspector } from "@genome-spy/inspector";
 
 await embed(element, spec, {
-  plugins: [genomeSpyInspector()],
+  plugins: [appInspector()],
 });
 ```
 
@@ -44,8 +44,8 @@ Core does not load the inspector by itself. Applications that embed Core can
 install `@genome-spy/inspector` and attach the inspector from their own debug
 UI.
 
-The Core embed result exposes `getDebugViewRoot()`, which gives the inspector
-access to the live internal root view:
+The Core embed result exposes `api.debug`, which gives the inspector access to
+the live internal root view and loads debug helpers from the same Core runtime:
 
 ```js
 import { embed } from "@genome-spy/core";
@@ -53,9 +53,7 @@ import { attachInspectorOverlay } from "@genome-spy/inspector";
 
 const api = await embed(element, spec);
 
-const inspector = await attachInspectorOverlay({
-  getRootView: () => api.getDebugViewRoot(),
-});
+const inspector = await attachInspectorOverlay(api.debug);
 
 // Later, when the host page is destroyed:
 inspector.dispose();

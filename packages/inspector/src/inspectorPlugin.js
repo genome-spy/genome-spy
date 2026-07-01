@@ -11,13 +11,13 @@ import InspectorSession from "./inspectorSession.js";
  *
  * @param {InspectorPluginOptions} [options]
  */
-export function genomeSpyInspector(options = {}) {
+export function appInspector(options = {}) {
     return {
         name: "@genome-spy/inspector",
 
         async install(/** @type {any} */ app) {
             if (!app.ui?.registerToolbarMenuItem) {
-                throw new Error("genomeSpyInspector requires an App UI host.");
+                throw new Error("inspector requires an App UI host.");
             }
 
             /** @type {InspectorSession | undefined} */
@@ -33,19 +33,14 @@ export function genomeSpyInspector(options = {}) {
                 }
 
                 if (!app.ui.registerSidePanel) {
-                    throw new Error(
-                        "genomeSpyInspector requires side panel support."
-                    );
+                    throw new Error("inspector requires side panel support.");
                 }
 
                 const [{ GsInspectorPanel }] = await Promise.all([
                     import("./components/inspectorPanel.js"),
                 ]);
 
-                session = new InspectorSession({
-                    getRootView: () =>
-                        app.genomeSpy ? app.genomeSpy.viewRoot : undefined,
-                });
+                session = new InspectorSession(app.debug);
                 panelElement = new GsInspectorPanel();
                 panelElement.session = session;
                 panelElement.addEventListener("close", () => {
@@ -95,3 +90,8 @@ export function genomeSpyInspector(options = {}) {
         },
     };
 }
+
+/**
+ * @deprecated Use `appInspector`.
+ */
+export const genomeSpyInspector = appInspector;

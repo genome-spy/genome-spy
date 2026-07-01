@@ -11,10 +11,10 @@
   <body>
     <script type="module">
       import { embed } from "https://cdn.jsdelivr.net/npm/@genome-spy/app@{{APP_VERSION}}/dist/index.es.js";
-      import { genomeSpyInspector } from "https://cdn.jsdelivr.net/npm/@genome-spy/inspector@{{INSPECTOR_VERSION}}/dist/index.es.js";
+      import { appInspector } from "https://cdn.jsdelivr.net/npm/@genome-spy/inspector@{{INSPECTOR_VERSION}}/dist/index.es.js";
 
       await embed(document.body, "spec.json", {
-        plugins: [genomeSpyInspector()],
+        plugins: [appInspector()],
       });
     </script>
   </body>

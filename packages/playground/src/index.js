@@ -193,18 +193,13 @@ async function ensureInspectorPanel() {
     }
 
     if (!inspectorHandle) {
-        inspectorHandle = await createInspectorPanel(
-            {
-                getRootView: () => {
-                    if (embedResult) {
-                        return embedResult.getDebugViewRoot();
-                    }
-                },
-            },
-            {
-                activePanel: "elements",
-            }
-        );
+        if (!embedResult) {
+            return;
+        }
+
+        inspectorHandle = await createInspectorPanel(embedResult.debug, {
+            activePanel: "elements",
+        });
         inspectorHandle.panel.addEventListener("close", () => {
             editorState.syncFromEditor(editorRef.value);
             sidePane = sidePanes[0];

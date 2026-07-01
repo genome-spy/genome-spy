@@ -88,7 +88,7 @@ describe("embed factory", () => {
         expect(api.views.root().name).toBe("root");
     });
 
-    test("exposes the internal root view for debug tooling", async () => {
+    test("exposes debug hooks for developer tooling", async () => {
         /** @type {any} */
         const viewRoot = {
             explicitName: "root",
@@ -113,7 +113,10 @@ describe("embed factory", () => {
         const element = document.createElement("div");
         const api = await embed(element, /** @type {any} */ ({}));
 
-        expect(api.getDebugViewRoot()).toBe(viewRoot);
+        expect(api.debug.getViewRoot()).toBe(viewRoot);
+        await expect(api.debug.getModules()).resolves.toHaveProperty(
+            "createViewDebugSnapshot"
+        );
     });
 
     test("leaves missing width implicit", async () => {

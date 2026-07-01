@@ -5,10 +5,10 @@ import { embed } from "./index.js";
 const specUrl = new URLSearchParams(window.location.search).get("spec");
 if (specUrl) {
     const plugins = [];
-    const { genomeSpyInspector } = await import("@genome-spy/inspector");
+    const { appInspector } = await import("@genome-spy/inspector");
     const agentBaseUrl = import.meta.env.VITE_AGENT_BASE_URL;
 
-    plugins.push(genomeSpyInspector());
+    plugins.push(appInspector());
 
     if (agentBaseUrl) {
         const { appAgent } = await import("@genome-spy/app-agent");

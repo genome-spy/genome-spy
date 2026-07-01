@@ -17,10 +17,10 @@ integration points are refined.
 GenomeSpy App uses the inspector through the App plugin surface:
 
 ```js
-import { genomeSpyInspector } from "@genome-spy/inspector";
+import { appInspector } from "@genome-spy/inspector";
 
 await embed(element, spec, {
-  plugins: [genomeSpyInspector()],
+  plugins: [appInspector()],
 });
 ```
 
@@ -28,9 +28,7 @@ In the App development single-page entry, the inspector is installed
 automatically so it is available from the three-dot menu in the App toolbar
 during local development.
 
-The plugin uses App UI hooks to register a menu item and a side panel. It also
-registers an inspector launcher so App-side development commands can open this
-panel directly to a specific inspector view.
+The plugin uses App UI hooks to register a menu item and a side panel.
 
 ### Playground
 
@@ -43,9 +41,7 @@ Playground uses the embeddable panel API:
 ```js
 import { createInspectorPanel } from "@genome-spy/inspector";
 
-const inspector = await createInspectorPanel({
-  getRootView: () => embedResult.getDebugViewRoot(),
-});
+const inspector = await createInspectorPanel(embedResult.debug);
 
 inspectorContainer.append(inspector.panel);
 await inspector.session.refresh();
@@ -60,16 +56,16 @@ Core does not load the inspector by itself. Applications that embed Core can
 install this package and attach the inspector only in development builds or
 behind their own debug UI.
 
-The Core embed result exposes a small debug hook:
+The Core embed result exposes a small debug object:
 
 ```js
 const api = await embed(element, spec);
 
-api.getDebugViewRoot();
+api.debug.getViewRoot();
 ```
 
-That hook gives the inspector access to the live root view without adding a
-plugin system or loading debug UI into Core.
+That object gives the inspector access to the live root view and the matching
+Core debug helpers without adding a plugin system or loading debug UI into Core.
 
 For quick integration, use the floating overlay helper:
 
@@ -79,9 +75,7 @@ import { attachInspectorOverlay } from "@genome-spy/inspector";
 
 const api = await embed(element, spec);
 
-await attachInspectorOverlay({
-  getRootView: () => api.getDebugViewRoot(),
-});
+await attachInspectorOverlay(api.debug);
 ```
 
 For applications with their own panels or split layouts, use
@@ -99,14 +93,15 @@ runtime through a small host object:
 
 ```ts
 interface InspectorHost {
-  getRootView(): object | undefined;
-  highlightView?(view: object | null): void;
+  getViewRoot(): object | undefined;
+  getModules(): Promise<InspectorDebugModules>;
 }
 ```
 
-The session dynamically imports Core debug snapshot helpers from
-`@genome-spy/core/debug/...` when it refreshes. This keeps debug-only collection
-code out of normal startup paths.
+The session loads Core debug snapshot helpers when it refreshes. App provides
+this object as `app.debug`, and Core embeds expose the same shape as
+`api.debug`. This keeps the inspector on the same Core runtime that owns the
+live views.
 
 `GsInspectorPanel` is a LitElement component that renders a session snapshot.
 `createInspectorPanel(...)` wires a session to the panel. App, Playground, and

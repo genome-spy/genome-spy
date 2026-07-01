@@ -1,10 +1,10 @@
-export { genomeSpyInspector } from "./inspectorPlugin.js";
+export { appInspector, genomeSpyInspector } from "./inspectorPlugin.js";
 export { default as InspectorSession } from "./inspectorSession.js";
 
 /**
  * @typedef {object} InspectorHost
- * @prop {() => any | undefined} getRootView
- * @prop {(view: object | null) => void} [highlightView]
+ * @prop {() => any | undefined} getViewRoot
+ * @prop {() => Promise<typeof import("@genome-spy/core/debug/index.js")>} getModules
  */
 
 /**

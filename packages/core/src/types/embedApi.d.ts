@@ -340,6 +340,24 @@ export interface ViewApi {
 export type ViewMutationApi = ViewApi;
 
 /**
+ * Developer-only hooks for optional runtime inspection tools.
+ *
+ * These hooks expose internal runtime objects and are not intended for normal
+ * visualization control or persisted application state.
+ */
+export interface EmbedDebugApi {
+    /**
+     * Returns the internal root view for optional developer tooling.
+     */
+    getViewRoot: () => object | undefined;
+
+    /**
+     * Loads Core debug helpers from the same runtime that owns the view tree.
+     */
+    getModules: () => Promise<typeof import("../debug/index.js")>;
+}
+
+/**
  * An API for controlling the embedded GenomeSpy instance.
  */
 export interface EmbedResult {
@@ -347,6 +365,11 @@ export interface EmbedResult {
      * Inspects and controls the live view hierarchy.
      */
     views: ViewApi;
+
+    /**
+     * Developer-only hooks for optional runtime inspection tools.
+     */
+    debug: EmbedDebugApi;
 
     /**
      * Releases all resources and unregisters event listeners, etc.
@@ -426,12 +449,4 @@ export interface EmbedResult {
         devicePixelRatio?: number,
         clearColor?: string
     ) => string;
-
-    /**
-     * Returns the internal root view for optional developer tooling.
-     *
-     * This API is intended for debug inspectors that need access to internal
-     * runtime structures without forcing debug modules into normal Core use.
-     */
-    getDebugViewRoot: () => object | undefined;
 }
