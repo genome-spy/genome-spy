@@ -217,11 +217,8 @@ export default class GridView extends ContainerView {
     /** @type {KeyboardZoomController | null} */
     #keyboardZoomController = null;
 
-    /** @type {{ view: LayerView, zindex: number }[]} */
-    #rulerOverlays = [];
-
-    /** @type {import("./selectionRect.js").SelectionRectOverlay[]} */
-    #selectionRectOverlays = [];
+    /** @type {{ overlay: import("./generatedChromeOverlay.js").GeneratedChromeOverlay, order: number }[]} */
+    #containerOverlays = [];
 
     /**
      *
@@ -413,8 +410,7 @@ export default class GridView extends ContainerView {
         await Promise.all([
             this.#syncSharedAxes(),
             this.#syncSharedLegends(),
-            this.#syncSelectionRectOverlays(),
-            this.#syncRulerOverlays(),
+            this.#syncContainerOverlays(),
         ]);
         await Promise.all(
             gridChildren.map((gridChild) => gridChild.syncGuideViews())
@@ -485,62 +481,11 @@ export default class GridView extends ContainerView {
         }
     }
 
-    async #syncRulerOverlays() {
-        for (const overlay of this.#rulerOverlays) {
+    async #syncContainerOverlays() {
+        for (const { overlay } of this.#containerOverlays) {
             overlay.view.disposeSubtree();
         }
-        this.#rulerOverlays = [];
-
-        /** @type {Promise<void>[]} */
-        const promises = [];
-
-        for (const [paramName, param] of this.paramRuntime.paramConfigs) {
-            if (!isRulerParameter(param)) {
-                continue;
-            }
-
-            if (param.ruler.display === "none") {
-                continue;
-            }
-
-            const channels = param.ruler.encodings ?? ["x"];
-            const channel = channels.length === 1 ? channels[0] : undefined;
-            if (
-                !channel ||
-                resolveOverlayExtent({
-                    extent: param.ruler.extent,
-                    ownerSpec: this.spec,
-                    channels,
-                    isAligned: (channel) =>
-                        this.#hasAlignedOverlayProjection(channel),
-                    label: `Ruler param "${paramName}"`,
-                }) !== "container"
-            ) {
-                continue;
-            }
-
-            const overlay = createConfiguredRulerOverlayView({
-                paramName,
-                channels,
-                config: param.ruler,
-                scaleResolution: this.getScaleResolution(channel),
-                context: this.context,
-                layoutParent: this,
-                dataParent: this,
-                name: "rulerOverlay" + "_" + paramName,
-            });
-            this.#rulerOverlays.push(overlay);
-            promises.push(overlay.view.initializeChildren());
-        }
-
-        await Promise.all(promises);
-    }
-
-    async #syncSelectionRectOverlays() {
-        for (const overlay of this.#selectionRectOverlays) {
-            overlay.view.disposeSubtree();
-        }
-        this.#selectionRectOverlays = [];
+        this.#containerOverlays = [];
 
         /** @type {Promise<void>[]} */
         const promises = [];
@@ -592,7 +537,52 @@ export default class GridView extends ContainerView {
                 dataParent: this,
                 scaleResolutionSource: this,
             });
-            this.#selectionRectOverlays.push(overlay);
+            this.#containerOverlays.push({
+                overlay,
+                order: DECORATION_ORDER.selectionRect,
+            });
+            promises.push(overlay.view.initializeChildren());
+        }
+
+        for (const [paramName, param] of this.paramRuntime.paramConfigs) {
+            if (!isRulerParameter(param)) {
+                continue;
+            }
+
+            if (param.ruler.display === "none") {
+                continue;
+            }
+
+            const channels = param.ruler.encodings ?? ["x"];
+            const channel = channels.length === 1 ? channels[0] : undefined;
+            if (
+                !channel ||
+                resolveOverlayExtent({
+                    extent: param.ruler.extent,
+                    ownerSpec: this.spec,
+                    channels,
+                    isAligned: (channel) =>
+                        this.#hasAlignedOverlayProjection(channel),
+                    label: `Ruler param "${paramName}"`,
+                }) !== "container"
+            ) {
+                continue;
+            }
+
+            const overlay = createConfiguredRulerOverlayView({
+                paramName,
+                channels,
+                config: param.ruler,
+                scaleResolution: this.getScaleResolution(channel),
+                context: this.context,
+                layoutParent: this,
+                dataParent: this,
+                name: "rulerOverlay" + "_" + paramName,
+            });
+            this.#containerOverlays.push({
+                overlay,
+                order: DECORATION_ORDER.ruler,
+            });
             promises.push(overlay.view.initializeChildren());
         }
 
@@ -620,11 +610,7 @@ export default class GridView extends ContainerView {
             yield* gridChild.getChildren();
         }
 
-        for (const overlay of this.#selectionRectOverlays) {
-            yield overlay.view;
-        }
-
-        for (const overlay of this.#rulerOverlays) {
+        for (const { overlay } of this.#containerOverlays) {
             yield overlay.view;
         }
 
@@ -1254,16 +1240,8 @@ export default class GridView extends ContainerView {
         }
 
         if (gridViewCoords) {
-            for (const overlay of this.#selectionRectOverlays) {
-                queueDecoration(
-                    overlay.zindex,
-                    DECORATION_ORDER.selectionRect,
-                    () => overlay.view.render(context, gridViewCoords, options)
-                );
-            }
-
-            for (const overlay of this.#rulerOverlays) {
-                queueDecoration(overlay.zindex, DECORATION_ORDER.ruler, () =>
+            for (const { overlay, order } of this.#containerOverlays) {
+                queueDecoration(overlay.zindex, order, () =>
                     overlay.view.render(context, gridViewCoords, options)
                 );
             }
