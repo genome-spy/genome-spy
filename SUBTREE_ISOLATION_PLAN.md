@@ -893,23 +893,28 @@ Best use:
 
 ## Recommendation
 
-Split the work into two tracks. The first track has now landed locally in two
-commits:
+Split the work into two tracks. The first track has now landed on `master` in
+these commits:
 
 - `7b46d1f2 test(core): cover encoding inheritance in compositions`
 - `1678887d refactor(core): invert encoding inheritance`
+- `992db17f test(core): type render coordinator test double`
 
-The branch now has default-off encoding inheritance, explicit opt-in at authored
+`master` now has default-off encoding inheritance, explicit opt-in at authored
 composition boundaries, and no `blockEncodingInheritance` compatibility path in
 source. The intermediate idea of a `guideResolution`/`legendResolution` view
 option was discarded: helper chrome views do not create legends once encoding
 inheritance is off, and generated legend specs already exclude recursive
 axis/legend resolution explicitly.
 
-The next decision is manual validation and upstreaming of the encoding branch.
-Later branches should handle the broader attachment-role and internal-subtree
-work. Those branches can build on the safer inheritance baseline without also
-changing one of the most surprising behaviors in the view hierarchy.
+The rebase on newer `master` also introduced a concrete
+`generatedChromeOverlay` helper for selection and ruler overlays. Phase 3
+centralized the related chrome-ancestor detection used by `GridChild`, so that
+helper can now be treated as the seed of the subtree-preset track rather than
+designing a helper module from scratch.
+
+The next implementation work should use the cleaned-up generated-overlay
+infrastructure to decide the shape of internal `attachmentRole`.
 
 ### First Track: Encoding Inheritance
 
@@ -950,8 +955,10 @@ not a public grammar feature.
 
 ### Later Track: Consolidate Internal Subtree Presets
 
-Add a small internal helper module and migrate call sites to it. This gives the
-team an explicit vocabulary without destabilizing resolution planning.
+Build on the existing `packages/core/src/view/gridView/generatedChromeOverlay.js`
+helper and migrate call sites only where the new vocabulary removes real
+duplication. This gives the team an explicit vocabulary without destabilizing
+resolution planning.
 
 Recommended presets:
 
@@ -968,9 +975,10 @@ Recommended presets:
 - `appChromeSubtree`: chrome, addressability configurable, no automatic
   non-addressable mark. Sample sidebar belongs here.
 
-The first helper should not infer everything from one boolean. It should make
+The helper track should not infer everything from one boolean. It should make
 the individual policies visible at the call site while bundling the common
-defaults.
+defaults. The first low-risk extraction, chrome-ancestor detection for
+generated-overlay suppression, is complete.
 
 ### Later Track: Promote Stable Runtime Policy
 
@@ -1044,10 +1052,11 @@ Implemented behavior:
 This phase leaves the source tree with one positive encoding-inheritance
 mechanism, not two redundant flags.
 
-### Phase 2: Validate and Upstream the Encoding Branch
+### Phase 2: Validate Encoding-Inheritance Behavior
 
-Status: partially complete locally. Automated verification has passed; manual
-validation and upstreaming remain.
+Status: code is on `master`. Automated verification passed locally before
+upstreaming; manual smoke testing remains useful before building later
+subtree-isolation work on top of it.
 
 Completed automated verification:
 
@@ -1072,10 +1081,41 @@ Remaining manual smoke coverage:
 - sample view, sample sidebar, and metadata/sidebar workflows
 - template/import specs and dynamic child insertion paths
 
-Upstream this branch only after the manual smoke pass does not reveal
-regressions. `blockEncodingInheritance` is already gone from source.
+Treat regressions found during this smoke pass as stabilization work before
+starting broader attachment-role changes. `blockEncodingInheritance` is already
+gone from source.
 
-### Phase 3: Add Internal Attachment Role in a Later Branch
+### Phase 3: Consolidate Generated Chrome Overlay Infrastructure
+
+Status: complete in `c42a4e617` on this branch and cherry-picked to `master` as
+`99aaf4d37`.
+
+Existing seed:
+
+- `packages/core/src/view/gridView/generatedChromeOverlay.js` creates generated
+  chrome layer views and applies chrome/non-addressable runtime marks.
+- `packages/core/src/view/gridView/selectionRect.js` and
+  `packages/core/src/view/gridView/rulerOverlay.js` use that helper.
+- `packages/core/src/view/gridView/gridChild.js` now uses
+  `hasChromeAncestor()` from `viewSelectors.js` instead of carrying a private
+  chrome-subtree helper and `TODO(#413)` guard.
+
+Completed work:
+
+- Added shared `hasChromeAncestor()` detection in `viewSelectors.js`.
+- Added focused selector tests that preserve the ancestor-only semantics used
+  by generated overlay suppression.
+- Kept `generatedChromeOverlay` narrow: it still marks and returns generated
+  chrome overlays, not become a broad resolution-policy object.
+- Did not change legend generation in this phase.
+
+Verification:
+
+- `npx vitest run packages/core/src/view/viewSelectors.test.js packages/core/src/view/gridView/gridChild.test.js`
+- `npm test` on the branch before committing
+- `npm test` on `master` after cherry-picking
+
+### Phase 4: Add Internal Attachment Role in a Later Branch
 
 Implementation tasks:
 
@@ -1095,9 +1135,12 @@ Implementation tasks:
 Tests for this branch should prove that auxiliary resolution defaults are
 internal construction behavior rather than public spec behavior.
 
-### Phase 4: Add Helper Module in a Later Branch
+### Phase 5: Generalize Guide/Chrome Spec Helpers in a Later Branch
 
-Create `packages/core/src/view/internalSubtree.js`.
+Create or extend an internal helper module only after the generated overlay
+helper has clarified what is common. A possible destination is
+`packages/core/src/view/internalSubtree.js`, but extending
+`generatedChromeOverlay.js` or adding adjacent small helpers may be enough.
 
 Responsibilities:
 
@@ -1116,7 +1159,7 @@ Initial public-internal functions:
 
 Use JSDoc types. Keep the module internal to Core and do not add schema docs.
 
-### Phase 5: Migrate Legends First
+### Phase 6: Migrate Legends First
 
 Replace `excludeLegendGuideResolutions()` in `legendView.js` with the generic
 helper.
@@ -1133,7 +1176,7 @@ Keep the current behavior exactly:
 This is the highest-value helper migration because legends are the known
 failing case.
 
-### Phase 6: Migrate Core Decorative Chrome
+### Phase 7: Migrate Core Decorative Chrome
 
 Move repeated runtime marking and boundary options to helper calls in:
 
@@ -1152,7 +1195,7 @@ Do not change behavior during this phase. In particular:
   attachment-role defaults for topology and keep source-scale exceptions
   explicit and tested.
 
-### Phase 7: Migrate App Chrome Carefully
+### Phase 8: Migrate App Chrome Carefully
 
 Move App call sites to helper presets only after Core presets support the
 needed distinction between chrome and non-addressable.
@@ -1170,7 +1213,7 @@ Preserve current App behavior:
 - sample group backgrounds remain chrome
 - do not silently change App selector/settings behavior
 
-### Phase 8: Consider Runtime Policy
+### Phase 9: Consider Runtime Policy
 
 After the inversion, contextual resolution defaults, and helper migration,
 evaluate whether remaining complexity justifies Option 2. Good signs that it is
@@ -1204,13 +1247,15 @@ migrate one subsystem at a time, starting with legends.
 - Should top-level `SampleSpec.encoding` be normalized into
   `SampleSpec.spec.encoding` in a later user-visible cleanup, or should the
   current compatibility path remain indefinitely?
-- Which manual smoke specs and App workflows are mandatory before upstreaming
-  the encoding-inheritance branch?
+- Which manual smoke specs and App workflows are mandatory before starting the
+  attachment-role follow-up work?
 - Should `attachmentRole: "auxiliary"` default all scale, axis, and legend
   resolutions to `"excluded"`, with explicit `resolve` overrides such as
   `"forced"` for source-scale links?
 - Which defaults should come directly from `attachmentRole`, and which should
   require explicit helper presets so special cases stay visible?
+- Should `generatedChromeOverlay` remain a grid-overlay helper, or should its
+  marking/chrome-subtree-detection pieces move into more general view helpers?
 - Should `LegendEntriesSource.findLegendScaleResolution()` be replaced with an
   explicit source-scale reference on the generated legend view?
 - Should `domainInert` remain spec-level, or should generated views get a
@@ -1222,10 +1267,11 @@ migrate one subsystem at a time, starting with legends.
 ## Preferred Immediate Outcome
 
 The immediate implementation work is complete for the encoding-inheritance
-track. The next step is extensive manual validation of the branch, then
-upstreaming the two commits if no regressions appear.
+track and for the first generated-overlay cleanup. Both are already on
+`master`.
 
 Continue attachment roles, auxiliary resolution defaults, helper presets, and
-chrome/domain/addressability consolidation in later branches. The first branch
-kept the inheritance change separate from the broader child-versus-auxiliary
-model, which should make those later refactors easier to review.
+chrome/domain/addressability consolidation in later branches. The current
+`generatedChromeOverlay` helper is a useful seed, but it should not become a
+large policy object before the attachment-role follow-up clarifies which
+policies belong together.
