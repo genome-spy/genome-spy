@@ -97,6 +97,72 @@ describe("Axes resolve properly", () => {
         expect(resolution.getAxisProps()).toBeNull();
     });
 
+    test("Chrome members do not conflict with view-level axes", () => {
+        const scaleResolution = {};
+        const chromeAncestor = {};
+        markViewAsChrome(/** @type {any} */ (chromeAncestor), {
+            skipSubtree: true,
+        });
+
+        const resolution = new AxisResolution("x");
+        resolution.registerMember(
+            makeAxisResolutionMember({
+                scaleResolution,
+                channelDef: { field: "x", type: "quantitative" },
+            })
+        );
+        resolution.attachViewLevelAxisConfig(/** @type {any} */ ({}), {
+            grid: true,
+        });
+
+        expect(() =>
+            resolution.registerMember(
+                makeAxisResolutionMember({
+                    scaleResolution,
+                    channelDef: {
+                        datum: { expr: "brush.intervals.x[0]" },
+                        type: "quantitative",
+                        axis: null,
+                    },
+                    layoutAncestors: [chromeAncestor],
+                })
+            )
+        ).not.toThrow();
+    });
+
+    test("View-level axes do not conflict with existing chrome members", () => {
+        const scaleResolution = {};
+        const chromeAncestor = {};
+        markViewAsChrome(/** @type {any} */ (chromeAncestor), {
+            skipSubtree: true,
+        });
+
+        const resolution = new AxisResolution("x");
+        resolution.registerMember(
+            makeAxisResolutionMember({
+                scaleResolution,
+                channelDef: { field: "x", type: "quantitative" },
+            })
+        );
+        resolution.registerMember(
+            makeAxisResolutionMember({
+                scaleResolution,
+                channelDef: {
+                    datum: { expr: "brush.intervals.x[0]" },
+                    type: "quantitative",
+                    axis: null,
+                },
+                layoutAncestors: [chromeAncestor],
+            })
+        );
+
+        expect(() =>
+            resolution.attachViewLevelAxisConfig(/** @type {any} */ ({}), {
+                grid: true,
+            })
+        ).not.toThrow();
+    });
+
     test("Independent axes are independent", async () => {
         const view = await createAndInitialize(
             {

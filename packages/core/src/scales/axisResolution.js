@@ -264,7 +264,7 @@ export default class AxisResolution {
             );
         }
 
-        for (const member of this.#members) {
+        for (const member of this.#getNonChromeMembers()) {
             const channelDef = member.view.mark.encoding[member.channel];
             if ("axis" in channelDef && channelDef.axis !== undefined) {
                 throw new Error(
@@ -296,8 +296,15 @@ export default class AxisResolution {
      */
     #getNonChromeMembers() {
         return orderResolutionMembers(this.#members).filter(
-            (member) => !member.view.getLayoutAncestors().some(isChromeView)
+            (member) => !this.#isChromeMember(member)
         );
+    }
+
+    /**
+     * @param {AxisResolutionMember} member
+     */
+    #isChromeMember(member) {
+        return member.view.getLayoutAncestors().some(isChromeView);
     }
 
     /**
@@ -305,6 +312,10 @@ export default class AxisResolution {
      */
     #assertNoMixing(member) {
         if (!this.#viewLevelAxisConfig) {
+            return;
+        }
+
+        if (this.#isChromeMember(member)) {
             return;
         }
 
