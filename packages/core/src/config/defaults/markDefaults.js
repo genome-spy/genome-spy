@@ -36,6 +36,26 @@ export const RECT_MARK_DEFAULTS = {
     minOpacity: 1.0,
 };
 
+/** @type {import("../../spec/config.js").ArrowConfig} */
+export const ARROW_MARK_DEFAULTS = {
+    x2: undefined,
+    y2: undefined,
+    filled: true,
+    strokeWidth: 1,
+    orient: "horizontal",
+    direction: "forward",
+    heads: "end",
+    headShape: "triangle",
+    headLength: 18,
+    headLengthUnit: "px",
+    headWidth: 1,
+    headWidthUnit: "proportion",
+    stemWidth: 0.45,
+    stemWidthUnit: "proportion",
+    shortArrow: "shrinkHead",
+    endpointMode: "tip",
+};
+
 /** @type {import("../../spec/config.js").RuleConfig} */
 export const RULE_MARK_DEFAULTS = {
     x2: undefined,

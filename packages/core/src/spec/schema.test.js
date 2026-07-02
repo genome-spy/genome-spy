@@ -181,4 +181,46 @@ describe("generated core schema", () => {
             true
         );
     });
+
+    test("accepts arrow mark shape parameters", () => {
+        const schema = createCoreSchema();
+        const validate = new Ajv.default({
+            allErrors: true,
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+
+        const spec = {
+            data: {
+                values: [{ start: 8, end: 32, band: "A" }],
+            },
+            mark: {
+                type: "arrow",
+                orient: "horizontal",
+                direction: "forward",
+                heads: "end",
+                headShape: "triangle",
+                headLength: { expr: "18" },
+                headLengthUnit: "px",
+                headWidth: 1,
+                headWidthUnit: "proportion",
+                stemWidth: 0.45,
+                stemWidthUnit: "proportion",
+                shortArrow: "shrinkHead",
+                endpointMode: "tip",
+                fill: "#5B8DEF",
+                stroke: "black",
+                strokeWidth: 1,
+            },
+            encoding: {
+                x: { field: "start", type: "index" },
+                x2: { field: "end" },
+                y: { field: "band", type: "nominal" },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
 });

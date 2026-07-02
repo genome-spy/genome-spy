@@ -3,7 +3,14 @@ import { ExprRef } from "./parameter.js";
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
 
-export type MarkType = "rect" | "point" | "rule" | "tick" | "text" | "link";
+export type MarkType =
+    | "rect"
+    | "point"
+    | "rule"
+    | "tick"
+    | "text"
+    | "link"
+    | "arrow";
 
 export interface MarkPropsBase {
     type: MarkType;
@@ -324,6 +331,98 @@ export interface RectProps
         | "rings"
         | "ringsLarge"
         | ExprRef;
+}
+
+export interface ArrowProps
+    extends MarkPropsBase, SecondaryPositionProps, FillAndStrokeProps {
+    type: "arrow";
+
+    /**
+     * Orientation of the arrow body.
+     *
+     * __Default value:__ `"horizontal"`
+     */
+    orient?: "horizontal" | "vertical" | ExprRef;
+
+    /**
+     * Direction of the arrow after sorting the interval endpoints.
+     *
+     * __Default value:__ `"forward"`
+     */
+    direction?: "forward" | "reverse" | ExprRef;
+
+    /**
+     * Endpoint or endpoints where arrowheads are drawn.
+     *
+     * __Default value:__ `"end"`
+     */
+    heads?: "end" | "start" | "both" | "none" | ExprRef;
+
+    /**
+     * Shape of the arrowhead.
+     *
+     * __Default value:__ `"triangle"`
+     */
+    headShape?: "triangle" | "angle" | "stealth" | ExprRef;
+
+    /**
+     * Length of the arrowhead in pixels or as a proportion of the arrow length.
+     * The unit is controlled by `headLengthUnit`.
+     *
+     * __Default value:__ `18`
+     */
+    headLength?: number | ExprRef;
+
+    /**
+     * Unit used for `headLength`.
+     *
+     * __Default value:__ `"px"`
+     */
+    headLengthUnit?: "px" | "proportion" | ExprRef;
+
+    /**
+     * Width of the arrowhead in pixels or as a proportion of the mark thickness.
+     * The unit is controlled by `headWidthUnit`.
+     *
+     * __Default value:__ `1`
+     */
+    headWidth?: number | ExprRef;
+
+    /**
+     * Unit used for `headWidth`.
+     *
+     * __Default value:__ `"proportion"`
+     */
+    headWidthUnit?: "px" | "proportion" | ExprRef;
+
+    /**
+     * Width of the arrow stem in pixels or as a proportion of the mark thickness.
+     * The unit is controlled by `stemWidthUnit`.
+     *
+     * __Default value:__ `0.45`
+     */
+    stemWidth?: number | ExprRef;
+
+    /**
+     * Unit used for `stemWidth`.
+     *
+     * __Default value:__ `"proportion"`
+     */
+    stemWidthUnit?: "px" | "proportion" | ExprRef;
+
+    /**
+     * Behavior when the interval is too short for the configured arrowhead.
+     *
+     * __Default value:__ `"shrinkHead"`
+     */
+    shortArrow?: "shrinkHead" | "triangle" | "hide" | ExprRef;
+
+    /**
+     * Whether the secondary position marks the arrow tip or the full interval edge.
+     *
+     * __Default value:__ `"tip"`
+     */
+    endpointMode?: "inside" | "tip" | ExprRef;
 }
 
 export interface StrokeStyleProps {
@@ -696,6 +795,7 @@ export interface LinkProps
 
 export type MarkProps =
     | RectProps
+    | ArrowProps
     | TextProps
     | RuleProps
     | TickProps
