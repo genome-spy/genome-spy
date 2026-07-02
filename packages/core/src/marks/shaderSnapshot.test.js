@@ -275,6 +275,12 @@ describe("generated shader snapshots", () => {
         );
 
         expect(sources).toMatchSnapshot();
+        expect(sources.fragment).toContain("float sdArrow");
+        expect(sources.fragment).toContain("float sdTriangleHead");
+        expect(sources.fragment).toContain("float sdAngleHead");
+        expect(sources.fragment).toContain("float sdStealthHead");
+        expect(sources.fragment).toContain("uHeadShape");
+        expect(sources.fragment).toContain("uHeads");
     });
 
     test("text shader supports visible-range culling", async () => {
