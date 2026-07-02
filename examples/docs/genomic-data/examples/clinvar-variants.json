@@ -2,8 +2,8 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "ClinVar variants track example.",
-    "Replicates the small-variant classification view described in NCBI's \"New ClinVar graphical display\" post.",
+    "ClinVar small-variant classification track.",
+    "Recreates the small-variant classification view described in NCBI's \"New ClinVar graphical display\" post.",
     "Data source: mirrored copy of the ClinVar GRCh38 VCF release from NCBI FTP (`/pub/clinvar/vcf_GRCh38/`). Terms: attribute ClinVar as the data source."
   ],
 
@@ -18,6 +18,15 @@
   "height": { "step": 13 },
 
   "view": { "fill": "#f8f8f8" },
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr18", "pos": 31524101 },
+        { "chrom": "chr18", "pos": 31525003 }
+      ]
+    }
+  },
 
   "layer": [
     {
@@ -40,14 +49,6 @@
           "url": "https://data.genomespy.app/sample-data/clinvar_20241215.vcf.gz",
           "addChrPrefix": true,
           "windowSize": 1000000
-        }
-      },
-      "scales": {
-        "x": {
-          "domain": [
-            { "chrom": "chr18", "pos": 31524101 },
-            { "chrom": "chr18", "pos": 31525003 }
-          ]
         }
       },
       "transform": [
@@ -97,8 +98,7 @@
           "chrom": "CHROM",
           "pos": "POS",
           "type": "locus",
-          "offset": 1,
-          "axis": null
+          "offset": 1
         },
         "y": {
           "field": "Germline classification",

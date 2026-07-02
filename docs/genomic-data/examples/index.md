@@ -22,6 +22,9 @@ layout.
 - [Sashimi Plot from Splice Junctions](sashimi-plot.md) shows IGV's
   splice-junction demo data as a lazy BigWig coverage track plus dome-shaped
   splice arcs from a BED file.
+- [ClinVar Small-Variant Classifications](clinvar-variants.md) shows ClinVar
+  variants from a lazy VCF source as a lollipop-like track colored by germline
+  classification.
 
 ## More examples
 

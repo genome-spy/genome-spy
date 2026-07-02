@@ -38,6 +38,8 @@ GenomeSpy includes practical examples for common genomic visualization tasks:
 - [RefSeq Gene Annotations with Scored Labels](genomic-data/examples/refseq-genes.md)
   shows transcript structure, exon intervals, and dynamically fitted gene
   labels.
+- [ClinVar Small-Variant Classifications](genomic-data/examples/clinvar-variants.md)
+  shows ClinVar VCF variants colored by germline classification.
 - [ASCAT Copy-Number Segmentation](genomic-data/examples/ascat.md) combines
   copy-number, LogR, BAF, ideogram, and gene annotation tracks.
 - [Sashimi Plot from Splice Junctions](genomic-data/examples/sashimi-plot.md)

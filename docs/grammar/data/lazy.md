@@ -173,7 +173,7 @@ described in NCBI's
 post. It places ClinVar variants by genomic position and germline
 classification and uses color to distinguish the classification categories.
 
-EXAMPLE examples/docs/grammar/data/lazy/vcf-clinvar.json height=100 spechidden
+EXAMPLE examples/docs/genomic-data/examples/clinvar-variants.json height=130 spechidden
 
 !!! disclaimer ""
 
