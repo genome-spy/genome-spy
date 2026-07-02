@@ -393,6 +393,14 @@ float sdFilledArrow(
             squaredDistance,
             inside
         );
+    } else {
+        addPolygonVertex(
+            p,
+            vec2(left, -stemHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
     }
 
     addPolygonVertex(p, first, previous, squaredDistance, inside);

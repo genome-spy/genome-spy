@@ -289,6 +289,7 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("uShortArrow");
         expect(sources.fragment).toContain("uHeadPlacement");
         expect(sources.fragment).toContain("vBodyLengthInPixels");
+        expect(sources.fragment).toContain("vec2(left, -stemHalfWidth)");
         expect(sources.fragment).toContain("float stemEndForHead");
         expect(sources.vertex).toContain("vec2 getOutsideHeadExpansion");
     });
