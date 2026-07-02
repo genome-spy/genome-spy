@@ -9,6 +9,8 @@ specification alone does not explain the runtime state. Typical use cases
 include checking which views were created, how scales are shared, which params
 exist, and where data objects flow through transforms.
 
+![Inspector screenshot](../img/inspector.avif)
+
 ## App
 
 To use the inspector in GenomeSpy App, load the App and Inspector bundles,
