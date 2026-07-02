@@ -2,7 +2,8 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "ASCAT algorithm in GenomeSpy",
+    "ASCAT Algorithm in GenomeSpy",
+    "Visualizes the ASCAT purity/ploidy fit for simulated sample S96 and shows how rounded allele-specific copy-number estimates change when rho and psi are adjusted.",
     "Loo P Van, Nordgard SH, Lingjærde OC, et al.",
     "Allele-specific copy number analysis of tumors",
     "Proc Natl Acad Sci. 2010;107(39):16910-16915. doi:10.1073/pnas.1009843107"

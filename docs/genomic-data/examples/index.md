@@ -8,23 +8,13 @@ reference material.
 The example specs below are self-contained and focus on a single track or
 layout.
 
-- [Chromosome Ideogram from Cytobands](cytobands.md) shows a compact ideogram
-  built from UCSC cytoband data with layered rectangles, ranged text labels, and
-  dashed chromosome separators.
-- [RefSeq Gene Annotations with Scored Labels](refseq-genes.md) shows a gene
-  annotation track with transcript bodies, exon rectangles, scored labels, and
-  strand arrows.
-- [ASCAT Copy-Number Segmentation](ascat.md) shows vertically concatenated
-  views for allele-specific copy numbers, LogR, and B-allele frequency, with
-  ideogram and RefSeq gene annotation tracks.
-- [ASCAT Algorithm in GenomeSpy](ascat-algorithm.md) visualizes the core ASCAT
-  fit and shows how the estimates change when `rho` and `psi` are adjusted.
-- [Sashimi Plot from Splice Junctions](sashimi-plot.md) shows IGV's
-  splice-junction demo data as a lazy BigWig coverage track plus dome-shaped
-  splice arcs from a BED file.
-- [ClinVar Small-Variant Classifications](clinvar-variants.md) shows ClinVar
-  variants from a lazy VCF source as a lollipop-like track colored by germline
-  classification.
+EXAMPLE_GALLERY examples/docs/genomic-data/examples
+- [Chromosome Ideogram from Cytobands](cytobands.md) cytobands.json
+- [RefSeq Gene Annotations with Scored Labels](refseq-genes.md) scored-refSeq-genes.json
+- [ASCAT Copy-Number Segmentation](ascat.md) ASCAT.json
+- [ASCAT Algorithm in GenomeSpy](ascat-algorithm.md) ASCAT-algorithm.json
+- [Sashimi Plot from Splice Junctions](sashimi-plot.md) sashimi-plot.json
+- [ClinVar Small-Variant Classifications](clinvar-variants.md) clinvar-variants.json
 
 ## More examples
 

@@ -1,7 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A track showing RefSeq gene annotations across the human genome, with labels scored and filtered to avoid overlap.",
+  "description": [
+    "RefSeq Gene Annotations with Scored Labels",
+    "Shows hg38 RefSeq gene annotations with transcript bodies, exon rectangles, scored gene labels, and strand arrows that appear at detailed zoom levels.",
+    "Data source: RefSeq gene annotations from NCBI, mirrored as a preprocessed GenomeSpy TSV with citation-count scores and compressed exon intervals."
+  ],
 
   "assembly": "hg38",
 

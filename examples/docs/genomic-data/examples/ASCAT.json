@@ -2,7 +2,8 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "ASCAT segmentation and copy number estimates",
+    "ASCAT Copy-Number Segmentation",
+    "Shows simulated ASCAT sample S96 as aligned allele-specific copy-number, LogR, and B-allele-frequency tracks with segment estimates over raw probe values.",
     "Loo P Van, Nordgard SH, Lingjærde OC, et al.",
     "Allele-specific copy number analysis of tumors",
     "Proc Natl Acad Sci. 2010;107(39):16910-16915. doi:10.1073/pnas.1009843107"

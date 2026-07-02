@@ -7,6 +7,8 @@ import shlex
 from markdown.preprocessors import Preprocessor
 from markdown.extensions import Extension
 
+from .example_gallery import render_example_gallery
+
 # TODO: Don't use absolute URLs. Instead generate relative links.
 docs_baseurl = 'https://genomespy.app/docs'
 
@@ -62,13 +64,17 @@ class MyPreprocessor(Preprocessor):
         self.repo_root = repo_root
         self.schema_pattern = re.compile(r'^(SCHEMA|APP_SCHEMA)\s+(\w+)(?:\s+(.+))?$')
         self.example_pattern = re.compile(r'^EXAMPLE\s+(.+)$')
+        self.example_gallery_pattern = re.compile(r'^EXAMPLE_GALLERY(?:\s+(.+))?$')
         self.snippet_pattern = re.compile(r'^SNIPPET\s+(.+)$')
 
     def run(self, lines):
         new_lines = []
-        for line in lines:
+        index = 0
+        while index < len(lines):
+            line = lines[index]
             m = self.schema_pattern.match(line)
             example_match = self.example_pattern.match(line)
+            example_gallery_match = self.example_gallery_pattern.match(line)
             snippet_match = self.snippet_pattern.match(line)
             if m:
                 prop_list = []
@@ -78,10 +84,26 @@ class MyPreprocessor(Preprocessor):
                 new_lines.extend(self.getType(m.group(2), prop_list, schema))
             elif example_match:
                 new_lines.extend(self.getExample(example_match.group(1)))
+            elif example_gallery_match:
+                item_lines = []
+                index += 1
+                while index < len(lines) and lines[index].lstrip().startswith('- '):
+                    item_lines.append(lines[index])
+                    index += 1
+                new_lines.extend(
+                    render_example_gallery(
+                        self.repo_root,
+                        example_gallery_match.group(1) or '',
+                        item_lines,
+                    )
+                )
+                continue
             elif snippet_match:
                 new_lines.extend(self.getSnippet(snippet_match.group(1)))
             else:
                 new_lines.append(line)
+
+            index += 1
 
         return new_lines
 

@@ -1,7 +1,11 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "An ideogram track example showing cytobands across the human genome, based on UCSC's hg38 cytoBand track.",
+  "description": [
+    "Chromosome Ideogram from Cytobands",
+    "Shows a compact hg38 ideogram built from UCSC cytoband intervals with layered rectangles, ranged band labels, and dashed chromosome separators.",
+    "Data source: mirrored copy of UCSC's hg38 cytoBand track (`cytoBand.txt.gz`). UCSC states that its downloadable data files and database tables are freely available for public and commercial use."
+  ],
 
   "assembly": "hg38",
 

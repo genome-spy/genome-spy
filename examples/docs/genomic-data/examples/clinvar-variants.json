@@ -2,8 +2,8 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "ClinVar small-variant classification track.",
-    "Recreates the small-variant classification view described in NCBI's \"New ClinVar graphical display\" post.",
+    "ClinVar Small-Variant Classifications",
+    "Recreates NCBI's ClinVar graphical classification view for small variants in a DSG2 region, using genomic position, row placement, and color to show germline classifications.",
     "Data source: mirrored copy of the ClinVar GRCh38 VCF release from NCBI FTP (`/pub/clinvar/vcf_GRCh38/`). Terms: attribute ClinVar as the data source."
   ],
 
