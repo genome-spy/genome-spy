@@ -267,6 +267,16 @@ describe("generated shader snapshots", () => {
         expect(sources).toMatchSnapshot();
     });
 
+    test("arrow mark playground spec", async () => {
+        const sources = await captureShaderSources(
+            loadSpec(
+                "../../../../examples/core/marks/arrow/arrow_playground.json"
+            )
+        );
+
+        expect(sources).toMatchSnapshot();
+    });
+
     test("text shader supports visible-range culling", async () => {
         const sources = await captureShaderSources({
             data: {
