@@ -50,6 +50,163 @@ float sdTriangleHead(vec2 p, float tipX, float baseX, float halfWidth) {
     );
 }
 
+void addPolygonEdge(
+    vec2 p,
+    vec2 a,
+    vec2 b,
+    inout float squaredDistance,
+    inout bool inside
+) {
+    vec2 edge = b - a;
+    vec2 pa = p - a;
+    float edgeSquaredLength = max(dot(edge, edge), 1e-6);
+    vec2 closest =
+        pa - edge * clamp(dot(pa, edge) / edgeSquaredLength, 0.0, 1.0);
+    squaredDistance = min(squaredDistance, dot(closest, closest));
+
+    bool crosses =
+        (a.y > p.y && b.y <= p.y) || (b.y > p.y && a.y <= p.y);
+    if (crosses) {
+        float x = a.x + (p.y - a.y) * edge.x / edge.y;
+        if (p.x < x) {
+            inside = !inside;
+        }
+    }
+}
+
+void addPolygonVertex(
+    vec2 p,
+    vec2 vertex,
+    inout vec2 previous,
+    inout float squaredDistance,
+    inout bool inside
+) {
+    addPolygonEdge(p, previous, vertex, squaredDistance, inside);
+    previous = vertex;
+}
+
+float sdPolygonDistance(float squaredDistance, bool inside) {
+    return (inside ? -1.0 : 1.0) * sqrt(squaredDistance);
+}
+
+float sdFilledArrow(
+    vec2 p,
+    float left,
+    float right,
+    bool drawStartHead,
+    bool drawEndHead,
+    float headLength,
+    float headHalfWidth,
+    float stemHalfWidth
+) {
+    bool startHead =
+        drawStartHead && headLength > 0.0 && headHalfWidth > 0.0;
+    bool endHead = drawEndHead && headLength > 0.0 && headHalfWidth > 0.0;
+
+    if (!startHead && !endHead) {
+        if (stemHalfWidth <= 0.0) {
+            return 1e20;
+        }
+
+        vec2 center = vec2((left + right) * 0.5, 0.0);
+        vec2 halfSize = vec2((right - left) * 0.5, stemHalfWidth);
+        return sdSharpBox(p - center, halfSize);
+    }
+
+    float startBase = startHead ? left + headLength : left;
+    float endBase = endHead ? right - headLength : right;
+
+    vec2 first = startHead ? vec2(left, 0.0) : vec2(left, stemHalfWidth);
+    vec2 previous = first;
+    float squaredDistance = 1e20;
+    bool inside = false;
+
+    if (startHead) {
+        addPolygonVertex(
+            p,
+            vec2(startBase, headHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
+        addPolygonVertex(
+            p,
+            vec2(startBase, stemHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
+    }
+
+    addPolygonVertex(
+        p,
+        vec2(endBase, stemHalfWidth),
+        previous,
+        squaredDistance,
+        inside
+    );
+
+    if (endHead) {
+        addPolygonVertex(
+            p,
+            vec2(endBase, headHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
+        addPolygonVertex(
+            p,
+            vec2(right, 0.0),
+            previous,
+            squaredDistance,
+            inside
+        );
+        addPolygonVertex(
+            p,
+            vec2(endBase, -headHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
+        addPolygonVertex(
+            p,
+            vec2(endBase, -stemHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
+    } else {
+        addPolygonVertex(
+            p,
+            vec2(right, -stemHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
+    }
+
+    if (startHead) {
+        addPolygonVertex(
+            p,
+            vec2(startBase, -stemHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
+        addPolygonVertex(
+            p,
+            vec2(startBase, -headHalfWidth),
+            previous,
+            squaredDistance,
+            inside
+        );
+    }
+
+    addPolygonVertex(p, first, previous, squaredDistance, inside);
+
+    return sdPolygonDistance(squaredDistance, inside);
+}
+
 float sdAngleHead(
     vec2 p,
     float tipX,
@@ -198,6 +355,19 @@ float sdArrow(vec2 p, vec2 halfSize) {
     stemHalfWidth = clamp(stemHalfWidth, 0.0, b.y);
     if (shortForHeads && uShortArrow == SHORT_ARROW_TRIANGLE) {
         stemHalfWidth = 0.0;
+    }
+
+    if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
+        return sdFilledArrow(
+            q,
+            -b.x,
+            b.x,
+            drawStartHead,
+            drawEndHead,
+            headLength,
+            headHalfWidth,
+            stemHalfWidth
+        );
     }
 
     float startInset = drawStartHead ? headLength : 0.0;
