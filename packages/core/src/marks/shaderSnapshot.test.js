@@ -306,11 +306,12 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain(
             "unitValue(uHeadLength, uHeadLengthUnit, thickness)"
         );
-        expect(sources.fragment).toContain("float terminalHeadLength");
+        expect(sources.fragment).toContain("float anchorTipX");
+        expect(sources.fragment).toContain("float stemEndForHeadTip");
         expect(sources.fragment).not.toContain("float minStemLength");
         expect(sources.fragment).toContain("float stemLength =");
         expect(sources.fragment).toContain(
-            "max(arrowLength - terminalHeadLength * headCount, 0.0);"
+            "max(arrowLength - headLength, 0.0);"
         );
         expect(sources.fragment).toContain("headNotchDepth *= notchScale;");
         expect(sources.fragment).toContain("float startNotchLength = min(");

@@ -419,7 +419,7 @@ float sdArrowHead(
 
 float sdArrowHeads(
     vec2 p,
-    float terminalTipX,
+    float anchorTipX,
     float repeatLeft,
     float repeatRight,
     float headLength,
@@ -434,7 +434,7 @@ float sdArrowHeads(
 
     float d = sdArrowHead(
         p,
-        terminalTipX,
+        anchorTipX,
         headLength,
         headHalfWidth,
         stemHalfWidth,
@@ -448,7 +448,7 @@ float sdArrowHeads(
 
     float spacing = max(uHeadSpacing, 1.0);
     float offset = mod(uHeadOffset, spacing);
-    float repeatX = terminalTipX - offset - p.x;
+    float repeatX = anchorTipX - offset - p.x;
     float cellX = mod(repeatX, spacing);
     float previousTipX = p.x + cellX;
     float nextTipX = previousTipX - spacing;
@@ -485,15 +485,17 @@ float sdArrowHeads(
     return d;
 }
 
-float stemHeadOverlap(float headLength) {
-    return min(headLength, vHalfStrokeWidth + 1.0 / uDevicePixelRatio);
-}
-
-float stemEndForHead(float edge, float headInset, float overlap) {
+float stemEndForHeadTip(
+    float tipX,
+    float headLength,
+    float headNotchDepth
+) {
     if (uHeadShape == HEAD_SHAPE_ANGLE) {
-        return edge;
+        return tipX;
     } else {
-        return edge - max(headInset - overlap, 0.0);
+        float headBaseX = tipX - headLength;
+        float notchX = mix(headBaseX, tipX, headNotchDepth);
+        return notchX;
     }
 }
 
@@ -532,16 +534,14 @@ float sdArrow(vec2 p, vec2 halfSize) {
         unitValue(uStemWidth, uStemWidthUnit, thickness) * 0.5;
     stemHalfWidth = clamp(stemHalfWidth, 0.0, b.y);
 
-    float terminalHeadLength = headLength;
-    float headCount = 1.0;
     float maxHeadLength = arrowLength;
     bool squeezeHead = uHeadPlacement == HEAD_PLACEMENT_INSIDE;
-    bool shortForHeads = squeezeHead && terminalHeadLength > maxHeadLength;
+    bool shortForHeads = squeezeHead && headLength > maxHeadLength;
     if (shortForHeads && uShortArrow == SHORT_ARROW_HIDE) {
         return 1.0;
     }
     if (squeezeHead) {
-        terminalHeadLength = min(terminalHeadLength, maxHeadLength);
+        headLength = min(headLength, maxHeadLength);
     }
 
     if (shortForHeads && uShortArrow == SHORT_ARROW_TRIANGLE) {
@@ -549,30 +549,25 @@ float sdArrow(vec2 p, vec2 halfSize) {
     }
 
     float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
-    float stemLength = max(arrowLength - terminalHeadLength * headCount, 0.0);
+    float stemLength = max(arrowLength - headLength, 0.0);
     if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
         if (squeezeHead) {
-            float notchScale = terminalHeadLength > 0.0
-                ? clamp(stemLength / terminalHeadLength, 0.0, 1.0)
+            float notchScale = headLength > 0.0
+                ? clamp(stemLength / headLength, 0.0, 1.0)
                 : 0.0;
             headNotchDepth *= notchScale;
         }
     }
 
+    float anchorTipX = b.x;
     float stemLeft = -b.x;
     float stemRight = b.x;
-    if (terminalHeadLength > 0.0) {
-        if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
-            float headBaseX = b.x - terminalHeadLength;
-            stemRight = mix(headBaseX, b.x, headNotchDepth);
-        } else {
-            float overlap = stemHeadOverlap(terminalHeadLength);
-            stemRight = stemEndForHead(
-                b.x,
-                terminalHeadLength,
-                overlap
-            );
-        }
+    if (headLength > 0.0) {
+        stemRight = stemEndForHeadTip(
+            anchorTipX,
+            headLength,
+            headNotchDepth
+        );
     }
 
     float startNotchLength = min(
@@ -595,18 +590,18 @@ float sdArrow(vec2 p, vec2 halfSize) {
         );
     }
 
-    if (terminalHeadLength > 0.0 && headHalfWidth > 0.0) {
+    if (headLength > 0.0 && headHalfWidth > 0.0) {
         float repeatRight = uHeadRepeatMode == HEAD_REPEAT_MODE_BODY
             ? stemRight
-            : b.x;
+            : anchorTipX;
         d = min(
             d,
             sdArrowHeads(
                 q,
-                b.x,
+                anchorTipX,
                 stemLeft,
                 repeatRight,
-                terminalHeadLength,
+                headLength,
                 headHalfWidth,
                 stemHalfWidth,
                 headNotchDepth,
