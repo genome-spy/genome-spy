@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
+
+### Bug Fixes
+
+* **inspector:** use embed debug host ([9c12121](https://github.com/genome-spy/genome-spy/commit/9c12121a6882b7e047e2bc6f9a57a9ceed7223a3)) by @tuner
+
 ## [0.79.1](https://github.com/genome-spy/genome-spy/compare/v0.79.0...v0.79.1) (2026-06-26)
 
 **Note:** Version bump only for package @genome-spy/playground

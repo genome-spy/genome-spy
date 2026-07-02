@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
+
+**Note:** Version bump only for package @genome-spy/app-agent
+
 ## [0.79.1](https://github.com/genome-spy/genome-spy/compare/v0.79.0...v0.79.1) (2026-06-26)
 
 ### Bug Fixes

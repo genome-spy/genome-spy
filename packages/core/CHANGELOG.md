@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
+
+### Bug Fixes
+
+* **inspector:** use embed debug host ([9c12121](https://github.com/genome-spy/genome-spy/commit/9c12121a6882b7e047e2bc6f9a57a9ceed7223a3)) by @tuner
+
+### Features
+
+* **core:** add ruler parameters ([#427](https://github.com/genome-spy/genome-spy/issues/427)) ([4947753](https://github.com/genome-spy/genome-spy/commit/49477539919d85bbc3ba83b59356f49d63b5c607)) by @tuner
+* **core:** support expression axis tick counts ([3fab6c9](https://github.com/genome-spy/genome-spy/commit/3fab6c984a105b58ccb56ab9c6b7e0e63a7a8656)) by @tuner
+* **core:** support spanning interval selections ([#429](https://github.com/genome-spy/genome-spy/issues/429)) ([a02b97f](https://github.com/genome-spy/genome-spy/commit/a02b97f327e7db04bcaa97ea635f19f4d8ac4044)) by @tuner
+
 ## [0.79.1](https://github.com/genome-spy/genome-spy/compare/v0.79.0...v0.79.1) (2026-06-26)
 
 ### Bug Fixes
