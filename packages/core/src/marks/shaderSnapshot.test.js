@@ -276,37 +276,52 @@ describe("generated shader snapshots", () => {
 
         expect(sources).toMatchSnapshot();
         expect(sources.fragment).toContain("float sdArrow");
+        expect(sources.fragment).toContain("float sdArrowStem");
+        expect(sources.fragment).toContain("float sdArrowHead");
+        expect(sources.fragment).toContain("float sdArrowHeads");
         expect(sources.fragment).toContain("float sdAngleHead");
-        expect(sources.fragment).toContain("float sdNotchedFilledArrow");
+        expect(sources.fragment).toContain("float sdFilledArrowHead");
         expect(sources.fragment).toContain("float headNotchDepth");
         expect(sources.fragment).toContain("uHeadNotch");
         expect(sources.fragment).toContain("uStartNotch");
+        expect(sources.fragment).toContain("uHeadRepeat");
+        expect(sources.fragment).toContain("uHeadSpacing");
+        expect(sources.fragment).toContain("uHeadOffset");
+        expect(sources.fragment).toContain("uHeadRepeatMode");
         expect(sources.fragment).toContain(
             "float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);"
         );
         expect(sources.fragment).not.toContain("HEAD_SHAPE_STEALTH");
+        expect(sources.fragment).not.toContain("HEADS_END");
+        expect(sources.fragment).not.toContain("HEADS_NONE");
         expect(sources.fragment).not.toContain("HEADS_START");
         expect(sources.fragment).not.toContain("HEADS_BOTH");
         expect(sources.fragment).toContain("uHeadShape");
-        expect(sources.fragment).toContain("uHeads");
+        expect(sources.fragment).not.toContain("uHeads");
         expect(sources.fragment).toContain("float unitValue");
         expect(sources.fragment).toContain("uHeadLengthUnit");
         expect(sources.fragment).toContain("uHeadWidthUnit");
         expect(sources.fragment).toContain("uStemWidthUnit");
+        expect(sources.fragment).toContain("float headLength = max(");
         expect(sources.fragment).toContain(
-            "float headLength = unitValue(uHeadLength, uHeadLengthUnit, thickness);"
+            "unitValue(uHeadLength, uHeadLengthUnit, thickness)"
         );
+        expect(sources.fragment).toContain("float terminalHeadLength");
         expect(sources.fragment).not.toContain("float minStemLength");
         expect(sources.fragment).toContain("float stemLength =");
         expect(sources.fragment).toContain(
-            "max(arrowLength - headLength * headCount, 0.0);"
+            "max(arrowLength - terminalHeadLength * headCount, 0.0);"
         );
         expect(sources.fragment).toContain("headNotchDepth *= notchScale;");
         expect(sources.fragment).toContain("float startNotchLength = min(");
         expect(sources.fragment).toContain(
             "clamp(uStartNotch, 0.0, 1.0) * thickness"
         );
+        expect(sources.fragment).toContain("mod(repeatX, spacing)");
+        expect(sources.fragment).toContain("HEAD_REPEAT_MODE_BODY");
+        expect(sources.fragment).toContain("sdArrowHeads(");
         expect(sources.vertex).not.toContain("hasStartHead");
+        expect(sources.vertex).not.toContain("hasEndHead");
         expect(sources.vertex).toContain(
             "float headLengthReference = uOrient == ORIENT_HORIZONTAL"
         );

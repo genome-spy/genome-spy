@@ -30,10 +30,6 @@ float unitValue(float value, int unit, float reference) {
     }
 }
 
-bool hasEndHead() {
-    return uHeads == HEADS_END;
-}
-
 vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
     if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
         return vec2(0.0);
@@ -47,8 +43,8 @@ vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
         0.0
     );
 
-    bool endHeadPositive = hasEndHead() && uDirection == DIRECTION_FORWARD;
-    bool endHeadNegative = hasEndHead() && uDirection == DIRECTION_REVERSE;
+    bool endHeadPositive = uDirection == DIRECTION_FORWARD;
+    bool endHeadNegative = uDirection == DIRECTION_REVERSE;
 
     float negative = endHeadNegative ? headLength : 0.0;
     float positive = endHeadPositive ? headLength : 0.0;

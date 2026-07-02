@@ -352,13 +352,6 @@ export interface ArrowProps
     direction?: "forward" | "reverse" | ExprRef;
 
     /**
-     * Whether the arrowhead is drawn at the forward end.
-     *
-     * __Default value:__ `"end"`
-     */
-    heads?: "end" | "none" | ExprRef;
-
-    /**
      * Shape of the arrowhead. `"triangle"` draws a filled head. `"angle"`
      * draws an open head using the stroke width.
      *
@@ -406,13 +399,43 @@ export interface ArrowProps
     headNotch?: number | ExprRef;
 
     /**
-     * Length of the notch at the start of a filled arrow as a proportion of the
-     * mark thickness. Values are clamped to `[0, 1]` and to the available stem
-     * length. Applies when `headShape` is `"triangle"`.
+     * Length of the notch at the start of the arrow as a proportion of the mark
+     * thickness. Values are clamped to `[0, 1]` and to the available stem
+     * length.
      *
      * __Default value:__ `0`
      */
     startNotch?: number | ExprRef;
+
+    /**
+     * Whether arrowheads are repeated along the arrow.
+     *
+     * __Default value:__ `false`
+     */
+    headRepeat?: boolean | ExprRef;
+
+    /**
+     * Spacing between repeated arrowheads in pixels.
+     *
+     * __Default value:__ `24`
+     */
+    headSpacing?: number | ExprRef;
+
+    /**
+     * Pixel offset applied to repeated arrowhead placement.
+     *
+     * __Default value:__ `0`
+     */
+    headOffset?: number | ExprRef;
+
+    /**
+     * Region used for repeated arrowheads behind the terminal head. `"body"`
+     * repeats heads only where stem space remains outside the terminal head.
+     * `"whole"` repeats heads across the full arrow extent.
+     *
+     * __Default value:__ `"body"`
+     */
+    headRepeatMode?: "body" | "whole" | ExprRef;
 
     /**
      * Width of the arrow stem in pixels or as a proportion of the mark thickness.

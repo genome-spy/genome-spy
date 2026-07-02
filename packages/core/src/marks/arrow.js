@@ -10,8 +10,8 @@ import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 export const ARROW_UNIFORM_ENUMS = {
     orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
-    heads: ["end", "none"],
     headShapes: ["triangle", "angle"],
+    headRepeatModes: ["body", "whole"],
     units: ["px", "proportion"],
     shortArrows: ["shrinkHead", "triangle", "hide"],
     headPlacements: ["inside", "outside"],
@@ -94,9 +94,6 @@ export default class ArrowMark extends Mark {
         this.registerMarkUniformValue("uDirection", props.direction, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.directions, value)
         );
-        this.registerMarkUniformValue("uHeads", props.heads, (value) =>
-            enumIndex(ARROW_UNIFORM_ENUMS.heads, value)
-        );
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
         );
@@ -114,6 +111,14 @@ export default class ArrowMark extends Mark {
         );
         this.registerMarkUniformValue("uHeadNotch", props.headNotch);
         this.registerMarkUniformValue("uStartNotch", props.startNotch);
+        this.registerMarkUniformValue("uHeadRepeat", props.headRepeat);
+        this.registerMarkUniformValue("uHeadSpacing", props.headSpacing);
+        this.registerMarkUniformValue("uHeadOffset", props.headOffset);
+        this.registerMarkUniformValue(
+            "uHeadRepeatMode",
+            props.headRepeatMode,
+            (value) => enumIndex(ARROW_UNIFORM_ENUMS.headRepeatModes, value)
+        );
         this.registerMarkUniformValue("uStemWidth", props.stemWidth);
         this.registerMarkUniformValue(
             "uStemWidthUnit",

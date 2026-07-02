@@ -37,11 +37,10 @@ to be uniform-backed and constant for a mark layer.
 
 - `orient`: `"horizontal"` or `"vertical"`.
 - `direction`: `"forward"` or `"reverse"`.
-- `heads`: `"end"` or `"none"`.
 
 `orient` controls whether the arrow runs along x or y. `direction` controls
-which side is considered forward after the interval has been sorted. `heads`
-controls whether a head is drawn at the forward end.
+which side is considered forward after the interval has been sorted. The arrow
+head is always drawn at the forward end.
 
 ### Head Shape
 
@@ -52,8 +51,8 @@ controls whether a head is drawn at the forward end.
 - `headWidthUnit`: `"px"` or `"proportion"`.
 - `headNotch`: concavity for filled heads. `0` produces a triangle; larger
   values move the stem/head join toward the tip.
-- `startNotch`: length of the notch at the start of a filled arrow, as a
-  proportion of mark thickness.
+- `startNotch`: length of the notch at the start of an arrow, as a proportion
+  of mark thickness.
 
 `triangle` is the filled block arrowhead and should be the default. `headNotch`
 turns the filled head into a more compact, stealth-like shape for dense
@@ -78,9 +77,11 @@ stable across varying row heights.
 - `repeatPhase`: `"mark"` or `"view"`.
 
 Repeated heads support UCSC-style gene tracks and other strand-direction cues.
-`body` repeats heads only where there is stem space. `whole` allows repeated
-heads across the full arrow extent. `mark` anchors the pattern to each interval;
-`view` anchors it to screen space so adjacent marks align visually.
+The terminal head is the anchor for the repeated pattern. `body` repeats
+additional heads only where there is stem space behind the terminal head.
+`whole` allows repeated heads across the full arrow extent. `mark` anchors the
+pattern to each interval; `view` anchors it to screen space so adjacent marks
+align visually.
 
 ### Short and Clipped Intervals
 
@@ -123,15 +124,15 @@ conventions rather than copied wholesale.
 The first implementation should prioritize a compact, stable API:
 
 - Interval geometry based on `x`, `x2`, `y`, and `y2`.
-- `orient`, `direction`, and `heads`.
+- `orient` and `direction`.
 - `triangle` and `angle` head shapes.
 - Pixel and proportional `headLength`, `headWidth`, and `stemWidth`.
-- Configurable `headNotch` and `startNotch` for filled arrows.
+- Configurable `headNotch` and `startNotch`.
+- Repeated heads anchored at the terminal arrowhead.
 - Fill, stroke, opacity, and picking behavior aligned with `rect`.
 
-Repeated heads and viewport-edge clipped heads can be added after the base mark
-is stable, because they add patterning and clipping semantics that should be
-tested separately.
+Viewport-edge clipped heads can be added after the base mark is stable, because
+they add clipping semantics that should be tested separately.
 
 ## Documentation and Testing Notes
 
@@ -170,7 +171,6 @@ Work:
 - Add the first-pass props:
   - `orient`
   - `direction`
-  - `heads`
   - `headShape`
   - `headLength`
   - `headLengthUnit`
@@ -182,8 +182,10 @@ Work:
   - `stemWidthUnit`
   - `shortArrow`
   - `headPlacement`
-- Add repetition props only if the first implementation includes repeated
-  heads. Otherwise keep them documented in this plan and add them in Step 8.
+  - `headRepeat`
+  - `headSpacing`
+  - `headOffset`
+  - `headRepeatMode`
 - Write user-facing JSDoc for every public prop, including default values.
 
 Verification:
@@ -273,10 +275,10 @@ Work:
 - Normalize orientation and direction at the start of the fragment shader so
   the core SDF can assume a left-to-right horizontal arrow.
 - Build the arrow as a union of stem and head distances.
-- Implement `heads: "end"` and `"none"`.
+- Always draw a head at the forward end.
 - Implement `headShape: "triangle"` and `"angle"`.
 - Implement `headNotch` for filled arrowheads.
-- Implement `startNotch` for filled arrow tails.
+- Implement `startNotch` for arrow tails.
 
 Verification:
 
@@ -326,8 +328,8 @@ Work:
 
 - Keep the playground self-contained with inline data.
 - Bind params to mark props through `{ "expr": "paramName" }`.
-- Include controls for direction, heads, head shape, head length, head width,
-  head notch, start notch, stem width, head placement, and short-arrow behavior.
+- Include controls for direction, head shape, head length, head width, head
+  notch, start notch, stem width, head placement, and short-arrow behavior.
 - Keep positional and color values in normal encodings.
 
 Verification:
@@ -380,8 +382,8 @@ Work:
 
 - Add `headRepeat`, `headSpacing`, `headOffset`, `repeatMode`, and
   `repeatPhase`.
-- Implement repeated `angle` heads first, because repeated filled triangle heads
-  can visually dominate dense gene tracks.
+- Anchor repeated heads at the terminal arrowhead and place additional heads
+  backward from it.
 - Keep the repetition loop bounded or formula-based so fragment cost stays
   predictable.
 - Decide whether repeated heads participate in picking as visible geometry; the

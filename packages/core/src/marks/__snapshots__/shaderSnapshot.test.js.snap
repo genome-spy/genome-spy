@@ -10,7 +10,6 @@ precision highp int;
 layout(std140) uniform Mark {
     uniform int uOrient;
     uniform int uDirection;
-    uniform int uHeads;
     uniform int uHeadShape;
 
     uniform float uHeadLength;
@@ -19,6 +18,10 @@ layout(std140) uniform Mark {
     uniform int uHeadWidthUnit;
     uniform float uHeadNotch;
     uniform float uStartNotch;
+    uniform bool uHeadRepeat;
+    uniform float uHeadSpacing;
+    uniform float uHeadOffset;
+    uniform int uHeadRepeatMode;
     uniform float uStemWidth;
     uniform int uStemWidthUnit;
 
@@ -43,11 +46,11 @@ const int ORIENT_VERTICAL = 1;
 const int DIRECTION_FORWARD = 0;
 const int DIRECTION_REVERSE = 1;
 
-const int HEADS_END = 0;
-const int HEADS_NONE = 1;
-
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_ANGLE = 1;
+
+const int HEAD_REPEAT_MODE_BODY = 0;
+const int HEAD_REPEAT_MODE_WHOLE = 1;
 
 const int UNIT_PX = 0;
 const int UNIT_PROPORTION = 1;
@@ -250,32 +253,25 @@ float sdPolygonDistance(float squaredDistance, bool inside) {
     return (inside ? -1.0 : 1.0) * sqrt(squaredDistance);
 }
 
-float sdNotchedFilledArrow(
+float sdArrowStem(
     vec2 p,
     float left,
     float right,
-    bool drawEndHead,
-    float headLength,
-    float headHalfWidth,
     float stemHalfWidth,
-    float headNotchDepth,
     float startNotchLength
 ) {
-    bool endHead = drawEndHead && headLength > 0.0 && headHalfWidth > 0.0;
     bool startNotch = startNotchLength > 0.0 && stemHalfWidth > 0.0;
 
-    if (!startNotch && !endHead) {
-        if (stemHalfWidth <= 0.0) {
-            return 1e20;
-        }
+    if (stemHalfWidth <= 0.0 || right <= left) {
+        return 1e20;
+    }
 
+    if (!startNotch) {
         vec2 center = vec2((left + right) * 0.5, 0.0);
         vec2 halfSize = vec2((right - left) * 0.5, stemHalfWidth);
         return sdSharpBox(p - center, halfSize);
     }
 
-    float endBase = endHead ? right - headLength : right;
-    float endNotch = mix(endBase, right, headNotchDepth);
     float startNotchX = left + startNotchLength;
 
     vec2 first = vec2(left, stemHalfWidth);
@@ -285,51 +281,18 @@ float sdNotchedFilledArrow(
 
     addPolygonVertex(
         p,
-        vec2(endNotch, stemHalfWidth),
+        vec2(right, stemHalfWidth),
         previous,
         squaredDistance,
         inside
     );
-
-    if (endHead) {
-        addPolygonVertex(
-            p,
-            vec2(endBase, headHalfWidth),
-            previous,
-            squaredDistance,
-            inside
-        );
-        addPolygonVertex(
-            p,
-            vec2(right, 0.0),
-            previous,
-            squaredDistance,
-            inside
-        );
-        addPolygonVertex(
-            p,
-            vec2(endBase, -headHalfWidth),
-            previous,
-            squaredDistance,
-            inside
-        );
-        addPolygonVertex(
-            p,
-            vec2(endNotch, -stemHalfWidth),
-            previous,
-            squaredDistance,
-            inside
-        );
-    } else {
-        addPolygonVertex(
-            p,
-            vec2(right, -stemHalfWidth),
-            previous,
-            squaredDistance,
-            inside
-        );
-    }
-
+    addPolygonVertex(
+        p,
+        vec2(right, -stemHalfWidth),
+        previous,
+        squaredDistance,
+        inside
+    );
     addPolygonVertex(
         p,
         vec2(left, -stemHalfWidth),
@@ -337,17 +300,66 @@ float sdNotchedFilledArrow(
         squaredDistance,
         inside
     );
+    addPolygonVertex(
+        p,
+        vec2(startNotchX, 0.0),
+        previous,
+        squaredDistance,
+        inside
+    );
+    addPolygonVertex(p, first, previous, squaredDistance, inside);
 
-    if (startNotch) {
-        addPolygonVertex(
-            p,
-            vec2(startNotchX, 0.0),
-            previous,
-            squaredDistance,
-            inside
-        );
+    return sdPolygonDistance(squaredDistance, inside);
+}
+
+float sdFilledArrowHead(
+    vec2 p,
+    float tipX,
+    float headLength,
+    float headHalfWidth,
+    float stemHalfWidth,
+    float headNotchDepth
+) {
+    if (headLength <= 0.0 || headHalfWidth <= 0.0) {
+        return 1e20;
     }
 
+    float baseX = tipX - headLength;
+    float notchX = mix(baseX, tipX, headNotchDepth);
+
+    vec2 first = vec2(notchX, stemHalfWidth);
+    vec2 previous = first;
+    float squaredDistance = 1e20;
+    bool inside = false;
+
+    addPolygonVertex(
+        p,
+        vec2(baseX, headHalfWidth),
+        previous,
+        squaredDistance,
+        inside
+    );
+    addPolygonVertex(
+        p,
+        vec2(tipX, 0.0),
+        previous,
+        squaredDistance,
+        inside
+    );
+    addPolygonVertex(
+        p,
+        vec2(baseX, -headHalfWidth),
+        previous,
+        squaredDistance,
+        inside
+    );
+    addPolygonVertex(
+        p,
+        vec2(notchX, -stemHalfWidth),
+        previous,
+        squaredDistance,
+        inside
+    );
     addPolygonVertex(p, first, previous, squaredDistance, inside);
 
     return sdPolygonDistance(squaredDistance, inside);
@@ -376,31 +388,109 @@ float unitValue(float value, int unit, float reference) {
     }
 }
 
-bool hasEndHead() {
-    return uHeads == HEADS_END;
-}
-
-float sdConfiguredHead(
+float sdArrowHead(
     vec2 p,
     float tipX,
-    float baseX,
+    float headLength,
     float halfWidth,
+    float stemHalfWidth,
+    float headNotchDepth,
     float halfLineWidth
 ) {
-    return sdAngleHead(p, tipX, baseX, halfWidth, halfLineWidth);
+    if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
+        return sdFilledArrowHead(
+            p,
+            tipX,
+            headLength,
+            halfWidth,
+            stemHalfWidth,
+            headNotchDepth
+        );
+    } else {
+        return sdAngleHead(
+            p,
+            tipX,
+            tipX - headLength,
+            halfWidth,
+            halfLineWidth
+        );
+    }
+}
+
+float sdArrowHeads(
+    vec2 p,
+    float terminalTipX,
+    float repeatLeft,
+    float repeatRight,
+    float headLength,
+    float headHalfWidth,
+    float stemHalfWidth,
+    float headNotchDepth,
+    float halfLineWidth
+) {
+    if (headLength <= 0.0 || headHalfWidth <= 0.0) {
+        return 1e20;
+    }
+
+    float d = sdArrowHead(
+        p,
+        terminalTipX,
+        headLength,
+        headHalfWidth,
+        stemHalfWidth,
+        headNotchDepth,
+        halfLineWidth
+    );
+
+    if (!uHeadRepeat || repeatRight <= repeatLeft) {
+        return d;
+    }
+
+    float spacing = max(uHeadSpacing, 1.0);
+    float offset = mod(uHeadOffset, spacing);
+    float repeatX = terminalTipX - offset - p.x;
+    float cellX = mod(repeatX, spacing);
+    float previousTipX = p.x + cellX;
+    float nextTipX = previousTipX - spacing;
+
+    if (previousTipX >= repeatLeft && previousTipX <= repeatRight) {
+        d = min(
+            d,
+            sdArrowHead(
+                p,
+                previousTipX,
+                headLength,
+                headHalfWidth,
+                stemHalfWidth,
+                headNotchDepth,
+                halfLineWidth
+            )
+        );
+    }
+    if (nextTipX >= repeatLeft && nextTipX <= repeatRight) {
+        d = min(
+            d,
+            sdArrowHead(
+                p,
+                nextTipX,
+                headLength,
+                headHalfWidth,
+                stemHalfWidth,
+                headNotchDepth,
+                halfLineWidth
+            )
+        );
+    }
+
+    return d;
 }
 
 float stemHeadOverlap(float headLength) {
     return min(headLength, vHalfStrokeWidth + 1.0 / uDevicePixelRatio);
 }
 
-float stemEndForHead(
-    bool drawHead,
-    float edge,
-    float headInset,
-    float overlap
-) {
-    if (!drawHead || uHeadShape == HEAD_SHAPE_ANGLE) {
+float stemEndForHead(float edge, float headInset, float overlap) {
+    if (uHeadShape == HEAD_SHAPE_ANGLE) {
         return edge;
     } else {
         return edge - max(headInset - overlap, 0.0);
@@ -430,10 +520,10 @@ float sdArrow(vec2 p, vec2 halfSize) {
         return 1.0;
     }
 
-    bool drawEndHead = hasEndHead();
-    float headCount = drawEndHead ? 1.0 : 0.0;
-
-    float headLength = unitValue(uHeadLength, uHeadLengthUnit, thickness);
+    float headLength = max(
+        unitValue(uHeadLength, uHeadLengthUnit, thickness),
+        0.0
+    );
     float headHalfWidth =
         unitValue(uHeadWidth, uHeadWidthUnit, thickness) * 0.5;
     headHalfWidth = clamp(headHalfWidth, 0.0, b.y);
@@ -442,76 +532,89 @@ float sdArrow(vec2 p, vec2 halfSize) {
         unitValue(uStemWidth, uStemWidthUnit, thickness) * 0.5;
     stemHalfWidth = clamp(stemHalfWidth, 0.0, b.y);
 
-    float maxHeadLength = headCount > 0.0 ? arrowLength / headCount : 0.0;
+    float terminalHeadLength = headLength;
+    float headCount = 1.0;
+    float maxHeadLength = arrowLength;
     bool squeezeHead = uHeadPlacement == HEAD_PLACEMENT_INSIDE;
-    bool shortForHeads =
-        squeezeHead && headCount > 0.0 && headLength > maxHeadLength;
+    bool shortForHeads = squeezeHead && terminalHeadLength > maxHeadLength;
     if (shortForHeads && uShortArrow == SHORT_ARROW_HIDE) {
         return 1.0;
     }
-    if (headCount == 0.0) {
-        headLength = 0.0;
-    } else if (squeezeHead) {
-        headLength = min(max(headLength, 0.0), maxHeadLength);
-    } else {
-        headLength = max(headLength, 0.0);
+    if (squeezeHead) {
+        terminalHeadLength = min(terminalHeadLength, maxHeadLength);
     }
 
     if (shortForHeads && uShortArrow == SHORT_ARROW_TRIANGLE) {
         stemHalfWidth = 0.0;
     }
 
+    float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
+    float stemLength = max(arrowLength - terminalHeadLength * headCount, 0.0);
     if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
-        float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
-        float stemLength = max(arrowLength - headLength * headCount, 0.0);
         if (squeezeHead) {
-            float notchScale = headLength > 0.0
-                ? clamp(stemLength / headLength, 0.0, 1.0)
+            float notchScale = terminalHeadLength > 0.0
+                ? clamp(stemLength / terminalHeadLength, 0.0, 1.0)
                 : 0.0;
             headNotchDepth *= notchScale;
         }
-        float startNotchLength = min(
-            clamp(uStartNotch, 0.0, 1.0) * thickness,
-            stemLength
-        );
-        return sdNotchedFilledArrow(
-            q,
-            -b.x,
-            b.x,
-            drawEndHead,
-            headLength,
-            headHalfWidth,
-            stemHalfWidth,
-            headNotchDepth,
-            startNotchLength
-        );
     }
 
-    float endInset = drawEndHead ? headLength : 0.0;
-    float overlap = stemHeadOverlap(headLength);
     float stemLeft = -b.x;
-    float stemRight = stemEndForHead(drawEndHead, b.x, endInset, overlap);
+    float stemRight = b.x;
+    if (terminalHeadLength > 0.0) {
+        if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
+            float headBaseX = b.x - terminalHeadLength;
+            stemRight = mix(headBaseX, b.x, headNotchDepth);
+        } else {
+            float overlap = stemHeadOverlap(terminalHeadLength);
+            stemRight = stemEndForHead(
+                b.x,
+                terminalHeadLength,
+                overlap
+            );
+        }
+    }
+
+    float startNotchLength = min(
+        clamp(uStartNotch, 0.0, 1.0) * thickness,
+        max(stemRight - stemLeft, 0.0)
+    );
 
     float d = 1e20;
 
     if (stemRight >= stemLeft && stemHalfWidth > 0.0) {
-        vec2 stemCenter = vec2((stemLeft + stemRight) * 0.5, 0.0);
-        vec2 stemHalfSize = vec2((stemRight - stemLeft) * 0.5, stemHalfWidth);
-        d = min(d, sdSharpBox(q - stemCenter, stemHalfSize));
-    }
-
-    if (drawEndHead && headLength > 0.0 && headHalfWidth > 0.0) {
         d = min(
             d,
-            sdConfiguredHead(
+            sdArrowStem(
+                q,
+                stemLeft,
+                stemRight,
+                stemHalfWidth,
+                startNotchLength
+            )
+        );
+    }
+
+    if (terminalHeadLength > 0.0 && headHalfWidth > 0.0) {
+        float repeatRight = uHeadRepeatMode == HEAD_REPEAT_MODE_BODY
+            ? stemRight
+            : b.x;
+        d = min(
+            d,
+            sdArrowHeads(
                 q,
                 b.x,
-                b.x - headLength,
+                stemLeft,
+                repeatRight,
+                terminalHeadLength,
                 headHalfWidth,
+                stemHalfWidth,
+                headNotchDepth,
                 max(stemHalfWidth, 0.5)
             )
         );
     }
+
     return d;
 }
 
@@ -543,7 +646,6 @@ precision highp int;
 layout(std140) uniform Mark {
     uniform int uOrient;
     uniform int uDirection;
-    uniform int uHeads;
     uniform int uHeadShape;
 
     uniform float uHeadLength;
@@ -552,6 +654,10 @@ layout(std140) uniform Mark {
     uniform int uHeadWidthUnit;
     uniform float uHeadNotch;
     uniform float uStartNotch;
+    uniform bool uHeadRepeat;
+    uniform float uHeadSpacing;
+    uniform float uHeadOffset;
+    uniform int uHeadRepeatMode;
     uniform float uStemWidth;
     uniform int uStemWidthUnit;
 
@@ -576,11 +682,11 @@ const int ORIENT_VERTICAL = 1;
 const int DIRECTION_FORWARD = 0;
 const int DIRECTION_REVERSE = 1;
 
-const int HEADS_END = 0;
-const int HEADS_NONE = 1;
-
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_ANGLE = 1;
+
+const int HEAD_REPEAT_MODE_BODY = 0;
+const int HEAD_REPEAT_MODE_WHOLE = 1;
 
 const int UNIT_PX = 0;
 const int UNIT_PROPORTION = 1;
@@ -1239,10 +1345,6 @@ float unitValue(float value, int unit, float reference) {
     }
 }
 
-bool hasEndHead() {
-    return uHeads == HEADS_END;
-}
-
 vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
     if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
         return vec2(0.0);
@@ -1256,8 +1358,8 @@ vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
         0.0
     );
 
-    bool endHeadPositive = hasEndHead() && uDirection == DIRECTION_FORWARD;
-    bool endHeadNegative = hasEndHead() && uDirection == DIRECTION_REVERSE;
+    bool endHeadPositive = uDirection == DIRECTION_FORWARD;
+    bool endHeadNegative = uDirection == DIRECTION_REVERSE;
 
     float negative = endHeadNegative ? headLength : 0.0;
     float positive = endHeadPositive ? headLength : 0.0;
