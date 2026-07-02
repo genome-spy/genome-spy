@@ -418,11 +418,14 @@ export interface ArrowProps
     shortArrow?: "shrinkHead" | "triangle" | "hide" | ExprRef;
 
     /**
-     * Whether the secondary position marks the arrow tip or the full interval edge.
+     * Placement of the arrowhead relative to the encoded interval.
+     * `"inside"` keeps the arrowhead within the encoded interval and squeezes it
+     * when the interval is shorter than the configured arrowheads.
+     * `"outside"` places the arrowhead beyond the encoded stem endpoint.
      *
-     * __Default value:__ `"tip"`
+     * __Default value:__ `"inside"`
      */
-    endpointMode?: "inside" | "tip" | ExprRef;
+    headPlacement?: "inside" | "outside" | ExprRef;
 }
 
 export interface StrokeStyleProps {

@@ -94,12 +94,12 @@
       }
     },
     {
-      "name": "endpointMode",
-      "value": "tip",
+      "name": "headPlacement",
+      "value": "inside",
       "bind": {
         "input": "radio",
-        "options": ["inside", "tip"],
-        "name": "Endpoint mode"
+        "options": ["inside", "outside"],
+        "name": "Head placement"
       }
     },
     {
@@ -133,7 +133,7 @@
     "headWidthUnit": { "expr": "headWidthUnit" },
     "stemWidth": { "expr": "stemWidth" },
     "stemWidthUnit": { "expr": "stemWidthUnit" },
-    "endpointMode": { "expr": "endpointMode" },
+    "headPlacement": { "expr": "headPlacement" },
     "shortArrow": { "expr": "shortArrow" },
     "fill": "#5B8DEF",
     "stroke": "black",

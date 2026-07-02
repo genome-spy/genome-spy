@@ -21,7 +21,7 @@ layout(std140) uniform Mark {
     uniform int uStemWidthUnit;
 
     uniform int uShortArrow;
-    uniform int uEndpointMode;
+    uniform int uHeadPlacement;
 
     highp vec3 uDomain_x;
 
@@ -32,6 +32,31 @@ layout(std140) uniform Mark {
 
 
 };
+
+const int ORIENT_HORIZONTAL = 0;
+const int ORIENT_VERTICAL = 1;
+
+const int DIRECTION_FORWARD = 0;
+const int DIRECTION_REVERSE = 1;
+
+const int HEADS_END = 0;
+const int HEADS_START = 1;
+const int HEADS_BOTH = 2;
+const int HEADS_NONE = 3;
+
+const int HEAD_SHAPE_TRIANGLE = 0;
+const int HEAD_SHAPE_ANGLE = 1;
+const int HEAD_SHAPE_STEALTH = 2;
+
+const int UNIT_PX = 0;
+const int UNIT_PROPORTION = 1;
+
+const int SHORT_ARROW_SHRINK_HEAD = 0;
+const int SHORT_ARROW_TRIANGLE = 1;
+const int SHORT_ARROW_HIDE = 2;
+
+const int HEAD_PLACEMENT_INSIDE = 0;
+const int HEAD_PLACEMENT_OUTSIDE = 1;
 
 
 #define PI 3.141593
@@ -167,36 +192,12 @@ in highp vec4 vPickingColor;
 in vec2 vPosInPixels;
 
 flat in vec2 vHalfSizeInPixels;
+flat in float vBodyLengthInPixels;
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
 
 out lowp vec4 fragColor;
-
-const int ORIENT_HORIZONTAL = 0;
-const int ORIENT_VERTICAL = 1;
-
-const int DIRECTION_FORWARD = 0;
-const int DIRECTION_REVERSE = 1;
-
-const int HEADS_END = 0;
-const int HEADS_START = 1;
-const int HEADS_BOTH = 2;
-const int HEADS_NONE = 3;
-
-const int HEAD_SHAPE_TRIANGLE = 0;
-const int HEAD_SHAPE_ANGLE = 1;
-const int HEAD_SHAPE_STEALTH = 2;
-
-const int UNIT_PX = 0;
-const int UNIT_PROPORTION = 1;
-
-const int SHORT_ARROW_SHRINK_HEAD = 0;
-const int SHORT_ARROW_TRIANGLE = 1;
-const int SHORT_ARROW_HIDE = 2;
-
-const int ENDPOINT_MODE_INSIDE = 0;
-const int ENDPOINT_MODE_TIP = 1;
 
 float sdSharpBox(vec2 p, vec2 b) {
     vec2 q = abs(p) - b;
@@ -340,10 +341,10 @@ float sdArrow(vec2 p, vec2 halfSize) {
         q.x = -q.x;
     }
 
-    float endpointInset = uEndpointMode == ENDPOINT_MODE_INSIDE
+    float shapeInset = uHeadPlacement == HEAD_PLACEMENT_INSIDE
         ? vHalfStrokeWidth
         : 0.0;
-    b = max(b - vec2(endpointInset, 0.0), vec2(0.0));
+    b = max(b - vec2(shapeInset, 0.0), vec2(0.0));
 
     float arrowLength = b.x * 2.0;
     float thickness = b.y * 2.0;
@@ -356,16 +357,27 @@ float sdArrow(vec2 p, vec2 halfSize) {
     float headCount =
         (drawEndHead ? 1.0 : 0.0) + (drawStartHead ? 1.0 : 0.0);
 
-    float headLength = unitValue(uHeadLength, uHeadLengthUnit, arrowLength);
+    float headLengthReference = uHeadPlacement == HEAD_PLACEMENT_OUTSIDE
+        ? vBodyLengthInPixels
+        : arrowLength;
+    float headLength = unitValue(
+        uHeadLength,
+        uHeadLengthUnit,
+        headLengthReference
+    );
     float maxHeadLength = headCount > 0.0 ? arrowLength / headCount : 0.0;
-    bool shortForHeads = headCount > 0.0 && headLength > maxHeadLength;
+    bool squeezeHead = uHeadPlacement == HEAD_PLACEMENT_INSIDE;
+    bool shortForHeads =
+        squeezeHead && headCount > 0.0 && headLength > maxHeadLength;
     if (shortForHeads && uShortArrow == SHORT_ARROW_HIDE) {
         return 1.0;
     }
     if (headCount == 0.0) {
         headLength = 0.0;
-    } else {
+    } else if (squeezeHead) {
         headLength = min(max(headLength, 0.0), maxHeadLength);
+    } else {
+        headLength = max(headLength, 0.0);
     }
 
     float headHalfWidth =
@@ -461,7 +473,7 @@ layout(std140) uniform Mark {
     uniform int uStemWidthUnit;
 
     uniform int uShortArrow;
-    uniform int uEndpointMode;
+    uniform int uHeadPlacement;
 
     highp vec3 uDomain_x;
 
@@ -472,6 +484,31 @@ layout(std140) uniform Mark {
 
 
 };
+
+const int ORIENT_HORIZONTAL = 0;
+const int ORIENT_VERTICAL = 1;
+
+const int DIRECTION_FORWARD = 0;
+const int DIRECTION_REVERSE = 1;
+
+const int HEADS_END = 0;
+const int HEADS_START = 1;
+const int HEADS_BOTH = 2;
+const int HEADS_NONE = 3;
+
+const int HEAD_SHAPE_TRIANGLE = 0;
+const int HEAD_SHAPE_ANGLE = 1;
+const int HEAD_SHAPE_STEALTH = 2;
+
+const int UNIT_PX = 0;
+const int UNIT_PROPORTION = 1;
+
+const int SHORT_ARROW_SHRINK_HEAD = 0;
+const int SHORT_ARROW_TRIANGLE = 1;
+const int SHORT_ARROW_HIDE = 2;
+
+const int HEAD_PLACEMENT_INSIDE = 0;
+const int HEAD_PLACEMENT_OUTSIDE = 1;
 
 
 #define PI 3.141593
@@ -1095,6 +1132,7 @@ flat out float vHalfStrokeWidth;
 out vec2 vPosInPixels;
 
 flat out vec2 vHalfSizeInPixels;
+flat out float vBodyLengthInPixels;
 
 void sort(inout float a, inout float b) {
     if (a > b) {
@@ -1110,6 +1148,46 @@ vec2 getVertexPos() {
         index == 0 || index == 1 || index == 3 ? 0.0 : 1.0,
         index == 0 || index == 1 || index == 2 ? 0.0 : 1.0
     );
+}
+
+float unitValue(float value, int unit, float reference) {
+    if (unit == UNIT_PROPORTION) {
+        return value * reference;
+    } else {
+        return value;
+    }
+}
+
+bool hasEndHead() {
+    return uHeads == HEADS_END || uHeads == HEADS_BOTH;
+}
+
+bool hasStartHead() {
+    return uHeads == HEADS_START || uHeads == HEADS_BOTH;
+}
+
+vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
+    if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
+        return vec2(0.0);
+    }
+
+    float bodyLength = uOrient == ORIENT_HORIZONTAL
+        ? sizeInPixels.x
+        : sizeInPixels.y;
+    float headLength = max(
+        unitValue(uHeadLength, uHeadLengthUnit, bodyLength),
+        0.0
+    );
+
+    bool endHeadPositive = hasEndHead() && uDirection == DIRECTION_FORWARD;
+    bool endHeadNegative = hasEndHead() && uDirection == DIRECTION_REVERSE;
+    bool startHeadNegative = hasStartHead() && uDirection == DIRECTION_FORWARD;
+    bool startHeadPositive = hasStartHead() && uDirection == DIRECTION_REVERSE;
+
+    float negative = endHeadNegative || startHeadNegative ? headLength : 0.0;
+    float positive = endHeadPositive || startHeadPositive ? headLength : 0.0;
+
+    return vec2(negative, positive);
 }
 
 void main(void) {
@@ -1138,6 +1216,22 @@ void main(void) {
     size.y *= getSampleFacetHeight(pos);
     pos = applySampleFacet(pos);
 
+    vec2 sizeInPixels = size * uViewportSize;
+    vBodyLengthInPixels = uOrient == ORIENT_HORIZONTAL
+        ? sizeInPixels.x
+        : sizeInPixels.y;
+
+    vec2 outsideHeadExpansion = getOutsideHeadExpansion(sizeInPixels);
+    if (uOrient == ORIENT_HORIZONTAL) {
+        vec2 expansion = outsideHeadExpansion / uViewportSize.x;
+        pos.x += mix(-expansion.x, expansion.y, frac.x);
+        size.x += expansion.x + expansion.y;
+    } else {
+        vec2 expansion = outsideHeadExpansion / uViewportSize.y;
+        pos.y += mix(-expansion.x, expansion.y, frac.y);
+        size.y += expansion.x + expansion.y;
+    }
+
     float strokeWidth = getScaled_strokeWidth();
     float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
 
@@ -1146,7 +1240,7 @@ void main(void) {
     vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
     pos += expand;
 
-    vec2 sizeInPixels = size * uViewportSize;
+    sizeInPixels = size * uViewportSize;
     vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
     vHalfSizeInPixels = sizeInPixels / 2.0;
 

@@ -5,6 +5,7 @@ flat out float vHalfStrokeWidth;
 out vec2 vPosInPixels;
 
 flat out vec2 vHalfSizeInPixels;
+flat out float vBodyLengthInPixels;
 
 void sort(inout float a, inout float b) {
     if (a > b) {
@@ -20,6 +21,46 @@ vec2 getVertexPos() {
         index == 0 || index == 1 || index == 3 ? 0.0 : 1.0,
         index == 0 || index == 1 || index == 2 ? 0.0 : 1.0
     );
+}
+
+float unitValue(float value, int unit, float reference) {
+    if (unit == UNIT_PROPORTION) {
+        return value * reference;
+    } else {
+        return value;
+    }
+}
+
+bool hasEndHead() {
+    return uHeads == HEADS_END || uHeads == HEADS_BOTH;
+}
+
+bool hasStartHead() {
+    return uHeads == HEADS_START || uHeads == HEADS_BOTH;
+}
+
+vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
+    if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
+        return vec2(0.0);
+    }
+
+    float bodyLength = uOrient == ORIENT_HORIZONTAL
+        ? sizeInPixels.x
+        : sizeInPixels.y;
+    float headLength = max(
+        unitValue(uHeadLength, uHeadLengthUnit, bodyLength),
+        0.0
+    );
+
+    bool endHeadPositive = hasEndHead() && uDirection == DIRECTION_FORWARD;
+    bool endHeadNegative = hasEndHead() && uDirection == DIRECTION_REVERSE;
+    bool startHeadNegative = hasStartHead() && uDirection == DIRECTION_FORWARD;
+    bool startHeadPositive = hasStartHead() && uDirection == DIRECTION_REVERSE;
+
+    float negative = endHeadNegative || startHeadNegative ? headLength : 0.0;
+    float positive = endHeadPositive || startHeadPositive ? headLength : 0.0;
+
+    return vec2(negative, positive);
 }
 
 void main(void) {
@@ -48,6 +89,22 @@ void main(void) {
     size.y *= getSampleFacetHeight(pos);
     pos = applySampleFacet(pos);
 
+    vec2 sizeInPixels = size * uViewportSize;
+    vBodyLengthInPixels = uOrient == ORIENT_HORIZONTAL
+        ? sizeInPixels.x
+        : sizeInPixels.y;
+
+    vec2 outsideHeadExpansion = getOutsideHeadExpansion(sizeInPixels);
+    if (uOrient == ORIENT_HORIZONTAL) {
+        vec2 expansion = outsideHeadExpansion / uViewportSize.x;
+        pos.x += mix(-expansion.x, expansion.y, frac.x);
+        size.x += expansion.x + expansion.y;
+    } else {
+        vec2 expansion = outsideHeadExpansion / uViewportSize.y;
+        pos.y += mix(-expansion.x, expansion.y, frac.y);
+        size.y += expansion.x + expansion.y;
+    }
+
     float strokeWidth = getScaled_strokeWidth();
     float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
 
@@ -56,7 +113,7 @@ void main(void) {
     vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
     pos += expand;
 
-    vec2 sizeInPixels = size * uViewportSize;
+    sizeInPixels = size * uViewportSize;
     vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
     vHalfSizeInPixels = sizeInPixels / 2.0;
 

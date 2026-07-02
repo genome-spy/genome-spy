@@ -207,7 +207,7 @@ describe("generated core schema", () => {
                 stemWidth: 0.45,
                 stemWidthUnit: "proportion",
                 shortArrow: "shrinkHead",
-                endpointMode: "tip",
+                headPlacement: "inside",
                 fill: "#5B8DEF",
                 stroke: "black",
                 strokeWidth: 1,

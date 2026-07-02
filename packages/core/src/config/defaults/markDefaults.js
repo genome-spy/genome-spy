@@ -53,7 +53,7 @@ export const ARROW_MARK_DEFAULTS = {
     stemWidth: 0.45,
     stemWidthUnit: "proportion",
     shortArrow: "shrinkHead",
-    endpointMode: "tip",
+    headPlacement: "inside",
 };
 
 /** @type {import("../../spec/config.js").RuleConfig} */

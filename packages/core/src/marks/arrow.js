@@ -14,7 +14,7 @@ export const ARROW_UNIFORM_ENUMS = {
     headShapes: ["triangle", "angle", "stealth"],
     units: ["px", "proportion"],
     shortArrows: ["shrinkHead", "triangle", "hide"],
-    endpointModes: ["inside", "tip"],
+    headPlacements: ["inside", "outside"],
 };
 
 /**
@@ -124,9 +124,9 @@ export default class ArrowMark extends Mark {
             (value) => enumIndex(ARROW_UNIFORM_ENUMS.shortArrows, value)
         );
         this.registerMarkUniformValue(
-            "uEndpointMode",
-            props.endpointMode,
-            (value) => enumIndex(ARROW_UNIFORM_ENUMS.endpointModes, value)
+            "uHeadPlacement",
+            props.headPlacement,
+            (value) => enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, value)
         );
     }
 

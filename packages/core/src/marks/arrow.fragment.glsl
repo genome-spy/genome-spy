@@ -1,36 +1,12 @@
 in vec2 vPosInPixels;
 
 flat in vec2 vHalfSizeInPixels;
+flat in float vBodyLengthInPixels;
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
 
 out lowp vec4 fragColor;
-
-const int ORIENT_HORIZONTAL = 0;
-const int ORIENT_VERTICAL = 1;
-
-const int DIRECTION_FORWARD = 0;
-const int DIRECTION_REVERSE = 1;
-
-const int HEADS_END = 0;
-const int HEADS_START = 1;
-const int HEADS_BOTH = 2;
-const int HEADS_NONE = 3;
-
-const int HEAD_SHAPE_TRIANGLE = 0;
-const int HEAD_SHAPE_ANGLE = 1;
-const int HEAD_SHAPE_STEALTH = 2;
-
-const int UNIT_PX = 0;
-const int UNIT_PROPORTION = 1;
-
-const int SHORT_ARROW_SHRINK_HEAD = 0;
-const int SHORT_ARROW_TRIANGLE = 1;
-const int SHORT_ARROW_HIDE = 2;
-
-const int ENDPOINT_MODE_INSIDE = 0;
-const int ENDPOINT_MODE_TIP = 1;
 
 float sdSharpBox(vec2 p, vec2 b) {
     vec2 q = abs(p) - b;
@@ -174,10 +150,10 @@ float sdArrow(vec2 p, vec2 halfSize) {
         q.x = -q.x;
     }
 
-    float endpointInset = uEndpointMode == ENDPOINT_MODE_INSIDE
+    float shapeInset = uHeadPlacement == HEAD_PLACEMENT_INSIDE
         ? vHalfStrokeWidth
         : 0.0;
-    b = max(b - vec2(endpointInset, 0.0), vec2(0.0));
+    b = max(b - vec2(shapeInset, 0.0), vec2(0.0));
 
     float arrowLength = b.x * 2.0;
     float thickness = b.y * 2.0;
@@ -190,16 +166,27 @@ float sdArrow(vec2 p, vec2 halfSize) {
     float headCount =
         (drawEndHead ? 1.0 : 0.0) + (drawStartHead ? 1.0 : 0.0);
 
-    float headLength = unitValue(uHeadLength, uHeadLengthUnit, arrowLength);
+    float headLengthReference = uHeadPlacement == HEAD_PLACEMENT_OUTSIDE
+        ? vBodyLengthInPixels
+        : arrowLength;
+    float headLength = unitValue(
+        uHeadLength,
+        uHeadLengthUnit,
+        headLengthReference
+    );
     float maxHeadLength = headCount > 0.0 ? arrowLength / headCount : 0.0;
-    bool shortForHeads = headCount > 0.0 && headLength > maxHeadLength;
+    bool squeezeHead = uHeadPlacement == HEAD_PLACEMENT_INSIDE;
+    bool shortForHeads =
+        squeezeHead && headCount > 0.0 && headLength > maxHeadLength;
     if (shortForHeads && uShortArrow == SHORT_ARROW_HIDE) {
         return 1.0;
     }
     if (headCount == 0.0) {
         headLength = 0.0;
-    } else {
+    } else if (squeezeHead) {
         headLength = min(max(headLength, 0.0), maxHeadLength);
+    } else {
+        headLength = max(headLength, 0.0);
     }
 
     float headHalfWidth =

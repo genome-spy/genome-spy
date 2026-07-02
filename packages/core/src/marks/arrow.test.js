@@ -24,8 +24,10 @@ describe("arrow mark uniform enums", () => {
         );
         expect(enumIndex(ARROW_UNIFORM_ENUMS.shortArrows, "triangle")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.shortArrows, "hide")).toBe(2);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.endpointModes, "inside")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.endpointModes, "tip")).toBe(1);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "inside")).toBe(0);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "outside")).toBe(
+            1
+        );
     });
 
     test("fails fast on unknown values", () => {

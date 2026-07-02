@@ -80,7 +80,7 @@ heads across the full arrow extent. `mark` anchors the pattern to each interval;
 ### Short and Clipped Intervals
 
 - `shortArrow`: `"shrinkHead"`, `"triangle"`, or `"hide"`.
-- `endpointMode`: `"inside"` or `"tip"`.
+- `headPlacement`: `"inside"` or `"outside"`.
 - `clippedHead`: `"hide"` or `"showAtViewportEdge"`.
 
 `shortArrow` defines behavior when the arrow is too short for the configured
@@ -88,9 +88,12 @@ head and stem. `shrinkHead` preserves the arrow shape by reducing head length.
 `triangle` collapses the mark to a triangular glyph. `hide` suppresses geometry
 that cannot be drawn legibly.
 
-`endpointMode` defines whether encoded `x2` or `y2` represents the arrow tip or
-the full interval edge containing the head. `clippedHead` controls whether a
-head is shown when the true endpoint is outside the visible viewport.
+`headPlacement` defines whether the arrowhead is included in the encoded
+interval or placed outside the encoded stem endpoint. The `"inside"` mode keeps
+the whole arrow within the encoded interval and squeezes the head when the
+interval becomes short. The `"outside"` mode extends the head beyond the
+encoded endpoint. `clippedHead` controls whether a head is shown when the true
+endpoint is outside the visible viewport.
 
 ## High-Level Design
 
@@ -170,7 +173,7 @@ Work:
   - `stemWidth`
   - `stemWidthUnit`
   - `shortArrow`
-  - `endpointMode`
+  - `headPlacement`
 - Add repetition props only if the first implementation includes repeated
   heads. Otherwise keep them documented in this plan and add them in Step 8.
 - Write user-facing JSDoc for every public prop, including default values.
@@ -291,7 +294,7 @@ Work:
   `stemWidth`.
 - Interpret proportional width relative to the mark thickness in the orthogonal
   direction.
-- Implement `endpointMode: "inside"` and `"tip"`.
+- Implement `headPlacement: "inside"` and `"outside"`.
 - Implement `shortArrow: "shrinkHead"`, `"triangle"`, and `"hide"`.
 - Fail fast in JavaScript for unknown enum values.
 
@@ -314,7 +317,7 @@ Work:
 - Keep the playground self-contained with inline data.
 - Bind params to mark props through `{ "expr": "paramName" }`.
 - Include controls for direction, heads, head shape, head length, head width,
-  stem width, endpoint mode, and short-arrow behavior.
+  stem width, head placement, and short-arrow behavior.
 - Keep positional and color values in normal encodings.
 
 Verification:
