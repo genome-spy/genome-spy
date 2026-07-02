@@ -283,6 +283,7 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain(
             "float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);"
         );
+        expect(sources.fragment).toContain("headNotchDepth = 0.0;");
         expect(sources.fragment).not.toContain("HEAD_SHAPE_STEALTH");
         expect(sources.fragment).toContain("uHeadShape");
         expect(sources.fragment).toContain("uHeads");

@@ -315,6 +315,9 @@ float sdArrow(vec2 p, vec2 halfSize) {
 
     if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
         float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
+        if (shortForHeads) {
+            headNotchDepth = 0.0;
+        }
         return sdNotchedFilledArrow(
             q,
             -b.x,
