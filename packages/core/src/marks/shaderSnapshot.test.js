@@ -287,6 +287,7 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("uStemWidthUnit");
         expect(sources.fragment).toContain("uShortArrow");
         expect(sources.fragment).toContain("uEndpointMode");
+        expect(sources.fragment).toContain("float stemEndForHead");
     });
 
     test("text shader supports visible-range culling", async () => {

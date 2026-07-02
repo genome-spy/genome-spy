@@ -132,6 +132,36 @@ float sdConfiguredHead(
     }
 }
 
+float stemHeadOverlap(float headLength) {
+    return min(headLength, vHalfStrokeWidth + 1.0 / uDevicePixelRatio);
+}
+
+float stemStartForHead(
+    bool drawHead,
+    float edge,
+    float headInset,
+    float overlap
+) {
+    if (!drawHead || uHeadShape == HEAD_SHAPE_ANGLE) {
+        return edge;
+    } else {
+        return edge + max(headInset - overlap, 0.0);
+    }
+}
+
+float stemEndForHead(
+    bool drawHead,
+    float edge,
+    float headInset,
+    float overlap
+) {
+    if (!drawHead || uHeadShape == HEAD_SHAPE_ANGLE) {
+        return edge;
+    } else {
+        return edge - max(headInset - overlap, 0.0);
+    }
+}
+
 float sdArrow(vec2 p, vec2 halfSize) {
     vec2 q = p;
     vec2 b = halfSize;
@@ -185,8 +215,9 @@ float sdArrow(vec2 p, vec2 halfSize) {
 
     float startInset = drawStartHead ? headLength : 0.0;
     float endInset = drawEndHead ? headLength : 0.0;
-    float stemLeft = -b.x + startInset;
-    float stemRight = b.x - endInset;
+    float overlap = stemHeadOverlap(headLength);
+    float stemLeft = stemStartForHead(drawStartHead, -b.x, startInset, overlap);
+    float stemRight = stemEndForHead(drawEndHead, b.x, endInset, overlap);
 
     float d = 1e20;
 
