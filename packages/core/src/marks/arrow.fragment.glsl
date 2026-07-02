@@ -19,36 +19,6 @@ float segmentDistance(vec2 p, vec2 a, vec2 b) {
     return length(pa - ba * h);
 }
 
-float edgeSide(vec2 p, vec2 a, vec2 b) {
-    vec2 ba = b - a;
-    vec2 pa = p - a;
-    return ba.x * pa.y - ba.y * pa.x;
-}
-
-float sdTriangle(vec2 p, vec2 a, vec2 b, vec2 c) {
-    float d = min(
-        segmentDistance(p, a, b),
-        min(segmentDistance(p, b, c), segmentDistance(p, c, a))
-    );
-
-    float ab = edgeSide(p, a, b);
-    float bc = edgeSide(p, b, c);
-    float ca = edgeSide(p, c, a);
-    bool inside = (ab <= 0.0 && bc <= 0.0 && ca <= 0.0) ||
-        (ab >= 0.0 && bc >= 0.0 && ca >= 0.0);
-
-    return inside ? -d : d;
-}
-
-float sdTriangleHead(vec2 p, float tipX, float baseX, float halfWidth) {
-    return sdTriangle(
-        p,
-        vec2(tipX, 0.0),
-        vec2(baseX, halfWidth),
-        vec2(baseX, -halfWidth)
-    );
-}
-
 void addPolygonEdge(
     vec2 p,
     vec2 a,
@@ -88,7 +58,7 @@ float sdPolygonDistance(float squaredDistance, bool inside) {
     return (inside ? -1.0 : 1.0) * sqrt(squaredDistance);
 }
 
-float sdFilledArrow(
+float sdNotchedFilledArrow(
     vec2 p,
     float left,
     float right,
@@ -96,7 +66,8 @@ float sdFilledArrow(
     bool drawEndHead,
     float headLength,
     float headHalfWidth,
-    float stemHalfWidth
+    float stemHalfWidth,
+    float headNotchDepth
 ) {
     bool startHead =
         drawStartHead && headLength > 0.0 && headHalfWidth > 0.0;
@@ -114,6 +85,8 @@ float sdFilledArrow(
 
     float startBase = startHead ? left + headLength : left;
     float endBase = endHead ? right - headLength : right;
+    float startNotch = mix(startBase, left, headNotchDepth);
+    float endNotch = mix(endBase, right, headNotchDepth);
 
     vec2 first = startHead ? vec2(left, 0.0) : vec2(left, stemHalfWidth);
     vec2 previous = first;
@@ -130,7 +103,7 @@ float sdFilledArrow(
         );
         addPolygonVertex(
             p,
-            vec2(startBase, stemHalfWidth),
+            vec2(startNotch, stemHalfWidth),
             previous,
             squaredDistance,
             inside
@@ -139,7 +112,7 @@ float sdFilledArrow(
 
     addPolygonVertex(
         p,
-        vec2(endBase, stemHalfWidth),
+        vec2(endNotch, stemHalfWidth),
         previous,
         squaredDistance,
         inside
@@ -169,7 +142,7 @@ float sdFilledArrow(
         );
         addPolygonVertex(
             p,
-            vec2(endBase, -stemHalfWidth),
+            vec2(endNotch, -stemHalfWidth),
             previous,
             squaredDistance,
             inside
@@ -187,7 +160,7 @@ float sdFilledArrow(
     if (startHead) {
         addPolygonVertex(
             p,
-            vec2(startBase, -stemHalfWidth),
+            vec2(startNotch, -stemHalfWidth),
             previous,
             squaredDistance,
             inside
@@ -229,17 +202,6 @@ float sdAngleHead(
     return d - halfLineWidth;
 }
 
-float sdStealthHead(vec2 p, float tipX, float baseX, float halfWidth) {
-    float notchX = mix(baseX, tipX, 0.28);
-    vec2 tip = vec2(tipX, 0.0);
-    vec2 notch = vec2(notchX, 0.0);
-
-    return min(
-        sdTriangle(p, tip, vec2(baseX, halfWidth), notch),
-        sdTriangle(p, tip, notch, vec2(baseX, -halfWidth))
-    );
-}
-
 float unitValue(float value, int unit, float reference) {
     if (unit == UNIT_PROPORTION) {
         return value * reference;
@@ -263,13 +225,7 @@ float sdConfiguredHead(
     float halfWidth,
     float halfLineWidth
 ) {
-    if (uHeadShape == HEAD_SHAPE_ANGLE) {
-        return sdAngleHead(p, tipX, baseX, halfWidth, halfLineWidth);
-    } else if (uHeadShape == HEAD_SHAPE_STEALTH) {
-        return sdStealthHead(p, tipX, baseX, halfWidth);
-    } else {
-        return sdTriangleHead(p, tipX, baseX, halfWidth);
-    }
+    return sdAngleHead(p, tipX, baseX, halfWidth, halfLineWidth);
 }
 
 float stemHeadOverlap(float headLength) {
@@ -357,8 +313,10 @@ float sdArrow(vec2 p, vec2 halfSize) {
         stemHalfWidth = 0.0;
     }
 
-    if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
-        return sdFilledArrow(
+    if (uHeadShape == HEAD_SHAPE_TRIANGLE || uHeadShape == HEAD_SHAPE_STEALTH) {
+        float headNotchDepth =
+            uHeadShape == HEAD_SHAPE_STEALTH ? 0.28 : 0.0;
+        return sdNotchedFilledArrow(
             q,
             -b.x,
             b.x,
@@ -366,7 +324,8 @@ float sdArrow(vec2 p, vec2 halfSize) {
             drawEndHead,
             headLength,
             headHalfWidth,
-            stemHalfWidth
+            stemHalfWidth,
+            headNotchDepth
         );
     }
 
