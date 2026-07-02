@@ -87,6 +87,8 @@ class MyPreprocessor(Preprocessor):
             elif example_gallery_match:
                 item_lines = []
                 index += 1
+                while index < len(lines) and lines[index].strip() == '':
+                    index += 1
                 while index < len(lines) and lines[index].lstrip().startswith('- '):
                     item_lines.append(lines[index])
                     index += 1

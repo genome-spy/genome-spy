@@ -45,8 +45,7 @@ GenomeSpy includes practical examples for common genomic visualization tasks:
 - [Sashimi Plot from Splice Junctions](genomic-data/examples/sashimi-plot.md)
   combines BigWig coverage with splice-junction arcs.
 
-See [Practical Genomic Data Examples](genomic-data/examples/index.md) for the
-full list.
+See [Genomic Data Examples](genomic-data/examples/index.md) for the full list.
 
 ## Minimal interactive example
 

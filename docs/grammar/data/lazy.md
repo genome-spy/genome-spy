@@ -47,15 +47,12 @@ SCHEMA IndexedFastaData
 
 ### Example
 
-The visualization below shows how to specify a sequence track using an indexed FASTA
-file. The sequence chunks are split into separate data objects using the
-[`"flattenSequence"`](../transform/flatten-sequence.md) transform, and the final
-position of each nucleotide is computed using the
-[`"formula"`](../transform/formula.md) transform. Please note that new data are
-fetched only when the user zooms into a region smaller than the window size
-(default: 7000 bp).
+The visualization below shows a sequence track backed by an indexed FASTA
+source. GenomeSpy fetches new sequence only when the visible region is smaller
+than the source window size (default: 7000 bp). For a fuller explanation of the
+track, see [Indexed FASTA Sequence Track](../../genomic-data/examples/indexed-fasta-sequence-track.md).
 
-EXAMPLE examples/docs/grammar/data/lazy/indexed-fasta-sequence-track.json height=60 spechidden
+EXAMPLE examples/docs/genomic-data/examples/indexed-fasta-sequence-track.json height=60 spechidden
 
 !!! disclaimer ""
 
@@ -167,11 +164,9 @@ SCHEMA VcfData
 
 ### Example
 
-The visualization below replicates the small-variant classification view
-described in NCBI's
-["New ClinVar graphical display"](https://ncbiinsights.ncbi.nlm.nih.gov/2022/08/30/clinvar-graphical-view/)
-post. It places ClinVar variants by genomic position and germline
-classification and uses color to distinguish the classification categories.
+The visualization below shows ClinVar variants loaded from a tabix-indexed VCF
+file and reshaped for a small-variant classification track. For a fuller
+explanation of the track, see [ClinVar Small-Variant Classifications](../../genomic-data/examples/clinvar-variants.md).
 
 EXAMPLE examples/docs/genomic-data/examples/clinvar-variants.json height=130 spechidden
 
@@ -202,12 +197,12 @@ SCHEMA Gff3Data
 
 ### Example
 
-The visualization below displays the human (GRCh38.p13)
-[GENCODE](https://www.gencodegenes.org/) v43 annotation dataset. Please note
-that the example shows a maximum of ten overlapping features per locus as
-vertical scrolling is currently not supported properly.
+The visualization below loads the human (GRCh38.p13)
+[GENCODE](https://www.gencodegenes.org/) v43 annotation dataset from a
+tabix-indexed GFF3 file. For a fuller explanation of the track, see [GENCODE
+Gene Annotations from GFF3](../../genomic-data/examples/gencode-gff3-gene-annotations.md).
 
-EXAMPLE examples/docs/grammar/data/lazy/gff3-gene-annotations.json height=360 spechidden
+EXAMPLE examples/docs/genomic-data/examples/gff3-gene-annotations.json height=360 spechidden
 
 !!! disclaimer ""
 

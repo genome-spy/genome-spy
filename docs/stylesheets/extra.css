@@ -73,7 +73,7 @@
 
 .example-gallery-card img {
     width: 100%;
-    aspect-ratio: 4 / 2;
+    aspect-ratio: 9 / 5;
     object-fit: cover;
     object-position: center;
     border-radius: 0.15rem;

@@ -96,7 +96,9 @@ nav:
           - Examples:
                 - "genomic-data/examples/index.md"
                 - Chromosome Ideogram from Cytobands: "genomic-data/examples/cytobands.md"
+                - Indexed FASTA Sequence Track: "genomic-data/examples/indexed-fasta-sequence-track.md"
                 - RefSeq Gene Annotations with Scored Labels: "genomic-data/examples/refseq-genes.md"
+                - GENCODE Gene Annotations from GFF3: "genomic-data/examples/gencode-gff3-gene-annotations.md"
                 - ASCAT Copy-Number Segmentation: "genomic-data/examples/ascat.md"
                 - ASCAT Algorithm in GenomeSpy: "genomic-data/examples/ascat-algorithm.md"
                 - Sashimi plot from splice junctions: "genomic-data/examples/sashimi-plot.md"
