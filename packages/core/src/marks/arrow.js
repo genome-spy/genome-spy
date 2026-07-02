@@ -7,13 +7,15 @@ import { RectVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 
-const orientations = ["horizontal", "vertical"];
-const directions = ["forward", "reverse"];
-const heads = ["end", "start", "both", "none"];
-const headShapes = ["triangle", "angle", "stealth"];
-const units = ["px", "proportion"];
-const shortArrows = ["shrinkHead", "triangle", "hide"];
-const endpointModes = ["inside", "tip"];
+export const ARROW_UNIFORM_ENUMS = {
+    orientations: ["horizontal", "vertical"],
+    directions: ["forward", "reverse"],
+    heads: ["end", "start", "both", "none"],
+    headShapes: ["triangle", "angle", "stealth"],
+    units: ["px", "proportion"],
+    shortArrows: ["shrinkHead", "triangle", "hide"],
+    endpointModes: ["inside", "tip"],
+};
 
 /**
  * @extends {Mark<import("../spec/mark.js").ArrowProps>}
@@ -87,44 +89,44 @@ export default class ArrowMark extends Mark {
         const props = this.properties;
 
         this.registerMarkUniformValue("uOrient", props.orient, (value) =>
-            enumIndex(orientations, value)
+            enumIndex(ARROW_UNIFORM_ENUMS.orientations, value)
         );
         this.registerMarkUniformValue("uDirection", props.direction, (value) =>
-            enumIndex(directions, value)
+            enumIndex(ARROW_UNIFORM_ENUMS.directions, value)
         );
         this.registerMarkUniformValue("uHeads", props.heads, (value) =>
-            enumIndex(heads, value)
+            enumIndex(ARROW_UNIFORM_ENUMS.heads, value)
         );
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
-            enumIndex(headShapes, value)
+            enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
         );
         this.registerMarkUniformValue("uHeadLength", props.headLength);
         this.registerMarkUniformValue(
             "uHeadLengthUnit",
             props.headLengthUnit,
-            (value) => enumIndex(units, value)
+            (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
         );
         this.registerMarkUniformValue("uHeadWidth", props.headWidth);
         this.registerMarkUniformValue(
             "uHeadWidthUnit",
             props.headWidthUnit,
-            (value) => enumIndex(units, value)
+            (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
         );
         this.registerMarkUniformValue("uStemWidth", props.stemWidth);
         this.registerMarkUniformValue(
             "uStemWidthUnit",
             props.stemWidthUnit,
-            (value) => enumIndex(units, value)
+            (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
         );
         this.registerMarkUniformValue(
             "uShortArrow",
             props.shortArrow,
-            (value) => enumIndex(shortArrows, value)
+            (value) => enumIndex(ARROW_UNIFORM_ENUMS.shortArrows, value)
         );
         this.registerMarkUniformValue(
             "uEndpointMode",
             props.endpointMode,
-            (value) => enumIndex(endpointModes, value)
+            (value) => enumIndex(ARROW_UNIFORM_ENUMS.endpointModes, value)
         );
     }
 
@@ -193,7 +195,7 @@ export default class ArrowMark extends Mark {
  * @param {string[]} values
  * @param {string} value
  */
-function enumIndex(values, value) {
+export function enumIndex(values, value) {
     const index = values.indexOf(value);
     if (index < 0) {
         throw new Error(`Unsupported arrow mark value: ${value}`);
