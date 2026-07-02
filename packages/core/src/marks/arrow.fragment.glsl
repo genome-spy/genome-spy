@@ -287,7 +287,20 @@ float sdArrow(vec2 p, vec2 halfSize) {
         (drawEndHead ? 1.0 : 0.0) + (drawStartHead ? 1.0 : 0.0);
 
     float headLength = unitValue(uHeadLength, uHeadLengthUnit, thickness);
-    float maxHeadLength = headCount > 0.0 ? arrowLength / headCount : 0.0;
+    float headHalfWidth =
+        unitValue(uHeadWidth, uHeadWidthUnit, thickness) * 0.5;
+    headHalfWidth = clamp(headHalfWidth, 0.0, b.y);
+
+    float stemHalfWidth =
+        unitValue(uStemWidth, uStemWidthUnit, thickness) * 0.5;
+    stemHalfWidth = clamp(stemHalfWidth, 0.0, b.y);
+
+    float minStemLength = uShortArrow == SHORT_ARROW_TRIANGLE
+        ? 0.0
+        : stemHalfWidth * 2.0;
+    float maxHeadLength = headCount > 0.0
+        ? max((arrowLength - minStemLength) / headCount, 0.0)
+        : 0.0;
     bool squeezeHead = uHeadPlacement == HEAD_PLACEMENT_INSIDE;
     bool shortForHeads =
         squeezeHead && headCount > 0.0 && headLength > maxHeadLength;
@@ -302,22 +315,12 @@ float sdArrow(vec2 p, vec2 halfSize) {
         headLength = max(headLength, 0.0);
     }
 
-    float headHalfWidth =
-        unitValue(uHeadWidth, uHeadWidthUnit, thickness) * 0.5;
-    headHalfWidth = clamp(headHalfWidth, 0.0, b.y);
-
-    float stemHalfWidth =
-        unitValue(uStemWidth, uStemWidthUnit, thickness) * 0.5;
-    stemHalfWidth = clamp(stemHalfWidth, 0.0, b.y);
     if (shortForHeads && uShortArrow == SHORT_ARROW_TRIANGLE) {
         stemHalfWidth = 0.0;
     }
 
     if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
         float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
-        if (shortForHeads) {
-            headNotchDepth = 0.0;
-        }
         return sdNotchedFilledArrow(
             q,
             -b.x,

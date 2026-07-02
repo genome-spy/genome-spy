@@ -283,7 +283,6 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain(
             "float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);"
         );
-        expect(sources.fragment).toContain("headNotchDepth = 0.0;");
         expect(sources.fragment).not.toContain("HEAD_SHAPE_STEALTH");
         expect(sources.fragment).toContain("uHeadShape");
         expect(sources.fragment).toContain("uHeads");
@@ -293,6 +292,12 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("uStemWidthUnit");
         expect(sources.fragment).toContain(
             "float headLength = unitValue(uHeadLength, uHeadLengthUnit, thickness);"
+        );
+        expect(sources.fragment).toContain(
+            "float minStemLength = uShortArrow == SHORT_ARROW_TRIANGLE"
+        );
+        expect(sources.fragment).toContain(
+            "max((arrowLength - minStemLength) / headCount, 0.0)"
         );
         expect(sources.vertex).toContain(
             "float headLengthReference = uOrient == ORIENT_HORIZONTAL"
