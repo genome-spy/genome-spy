@@ -19,6 +19,7 @@ float segmentDistance(vec2 p, vec2 a, vec2 b) {
     return length(pa - ba * h);
 }
 
+// Polygon SDF helpers: track closest edge distance and winding state in one pass.
 void addPolygonEdge(
     vec2 p,
     vec2 a,
@@ -58,6 +59,7 @@ float sdPolygonDistance(float squaredDistance, bool inside) {
     return (inside ? -1.0 : 1.0) * sqrt(squaredDistance);
 }
 
+// Stem body with an optional V-notch at the tail.
 float sdArrowStem(
     vec2 p,
     float left,
@@ -117,6 +119,7 @@ float sdArrowStem(
     return sdPolygonDistance(squaredDistance, inside);
 }
 
+// Filled arrowhead. `headNotchDepth` moves the stem/head join toward the tip.
 float sdFilledArrowHead(
     vec2 p,
     float tipX,
@@ -193,6 +196,7 @@ float unitValue(float value, int unit, float reference) {
     }
 }
 
+// Dispatch the configured head shape while keeping placement logic shared.
 float sdArrowHead(
     vec2 p,
     float tipX,
@@ -222,6 +226,7 @@ float sdArrowHead(
     }
 }
 
+// Draw the anchored head and optional repeated heads behind it.
 float sdArrowHeads(
     vec2 p,
     float anchorTipX,
@@ -290,6 +295,7 @@ float sdArrowHeads(
     return d;
 }
 
+// The stem ends at the anchor head's stem-facing join.
 float stemEndForHeadTip(
     float tipX,
     float headLength,
@@ -308,6 +314,7 @@ float sdArrow(vec2 p, vec2 halfSize) {
     vec2 q = p;
     vec2 b = halfSize;
 
+    // Normalize to a left-to-right horizontal arrow before evaluating SDFs.
     if (uOrient == ORIENT_VERTICAL) {
         q = q.yx;
         b = b.yx;
@@ -316,6 +323,7 @@ float sdArrow(vec2 p, vec2 halfSize) {
         q.x = -q.x;
     }
 
+    // Inside placement keeps the final visible shape within the encoded interval.
     float shapeInset = uHeadPlacement == HEAD_PLACEMENT_INSIDE
         ? vHalfStrokeWidth
         : 0.0;
@@ -353,6 +361,7 @@ float sdArrow(vec2 p, vec2 halfSize) {
         stemHalfWidth = 0.0;
     }
 
+    // Reduce the filled-head notch for squeezed arrows so short marks stay sane.
     float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
     float stemLength = max(arrowLength - headLength, 0.0);
     if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
@@ -367,6 +376,8 @@ float sdArrow(vec2 p, vec2 halfSize) {
     float anchorTipX = b.x;
     float stemLeft = -b.x;
     float stemRight = b.x;
+
+    // Clip the stem at the anchored head so the head notch remains visible.
     if (headLength > 0.0) {
         stemRight = stemEndForHeadTip(
             anchorTipX,
@@ -396,6 +407,7 @@ float sdArrow(vec2 p, vec2 halfSize) {
     }
 
     if (headLength > 0.0 && headHalfWidth > 0.0) {
+        // Repeated heads are placed backward from the anchor head.
         float repeatRight = uHeadRepeatMode == HEAD_REPEAT_MODE_BODY
             ? stemRight
             : anchorTipX;
