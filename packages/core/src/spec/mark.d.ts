@@ -359,11 +359,12 @@ export interface ArrowProps
     heads?: "end" | "start" | "both" | "none" | ExprRef;
 
     /**
-     * Shape of the arrowhead.
+     * Shape of the arrowhead. `"triangle"` draws a filled head. `"angle"`
+     * draws an open head using the stroke width.
      *
      * __Default value:__ `"triangle"`
      */
-    headShape?: "triangle" | "angle" | "stealth" | ExprRef;
+    headShape?: "triangle" | "angle" | ExprRef;
 
     /**
      * Length of the arrowhead in pixels or as a proportion of the mark thickness.
@@ -394,6 +395,15 @@ export interface ArrowProps
      * __Default value:__ `"proportion"`
      */
     headWidthUnit?: "px" | "proportion" | ExprRef;
+
+    /**
+     * Concavity of the filled arrowhead. `0` produces a triangular head.
+     * Larger values move the stem/head join toward the tip. Values are clamped
+     * to `[0, 0.95]`. Applies when `headShape` is `"triangle"`.
+     *
+     * __Default value:__ `0`
+     */
+    headNotch?: number | ExprRef;
 
     /**
      * Width of the arrow stem in pixels or as a proportion of the mark thickness.

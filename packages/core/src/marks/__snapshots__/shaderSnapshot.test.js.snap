@@ -17,6 +17,7 @@ layout(std140) uniform Mark {
     uniform int uHeadLengthUnit;
     uniform float uHeadWidth;
     uniform int uHeadWidthUnit;
+    uniform float uHeadNotch;
     uniform float uStemWidth;
     uniform int uStemWidthUnit;
 
@@ -48,7 +49,6 @@ const int HEADS_NONE = 3;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_ANGLE = 1;
-const int HEAD_SHAPE_STEALTH = 2;
 
 const int UNIT_PX = 0;
 const int UNIT_PROPORTION = 1;
@@ -506,9 +506,8 @@ float sdArrow(vec2 p, vec2 halfSize) {
         stemHalfWidth = 0.0;
     }
 
-    if (uHeadShape == HEAD_SHAPE_TRIANGLE || uHeadShape == HEAD_SHAPE_STEALTH) {
-        float headNotchDepth =
-            uHeadShape == HEAD_SHAPE_STEALTH ? 0.28 : 0.0;
+    if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
+        float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
         return sdNotchedFilledArrow(
             q,
             -b.x,
@@ -600,6 +599,7 @@ layout(std140) uniform Mark {
     uniform int uHeadLengthUnit;
     uniform float uHeadWidth;
     uniform int uHeadWidthUnit;
+    uniform float uHeadNotch;
     uniform float uStemWidth;
     uniform int uStemWidthUnit;
 
@@ -631,7 +631,6 @@ const int HEADS_NONE = 3;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_ANGLE = 1;
-const int HEAD_SHAPE_STEALTH = 2;
 
 const int UNIT_PX = 0;
 const int UNIT_PROPORTION = 1;

@@ -204,6 +204,7 @@ describe("generated core schema", () => {
                 headLengthUnit: "px",
                 headWidth: 1,
                 headWidthUnit: "proportion",
+                headNotch: { expr: "0.28" },
                 stemWidth: 0.45,
                 stemWidthUnit: "proportion",
                 shortArrow: "shrinkHead",

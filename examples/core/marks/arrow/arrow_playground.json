@@ -29,7 +29,7 @@
       "value": "triangle",
       "bind": {
         "input": "select",
-        "options": ["triangle", "angle", "stealth"],
+        "options": ["triangle", "angle"],
         "name": "Head shape"
       }
     },
@@ -71,6 +71,17 @@
         "input": "radio",
         "options": ["px", "proportion"],
         "name": "Head width unit"
+      }
+    },
+    {
+      "name": "headNotch",
+      "value": 0,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 0.95,
+        "step": 0.01,
+        "name": "Head notch"
       }
     },
     {
@@ -142,6 +153,7 @@
     "headLengthUnit": { "expr": "headLengthUnit" },
     "headWidth": { "expr": "headWidth" },
     "headWidthUnit": { "expr": "headWidthUnit" },
+    "headNotch": { "expr": "headNotch" },
     "stemWidth": { "expr": "stemWidth" },
     "stemWidthUnit": { "expr": "stemWidthUnit" },
     "headPlacement": { "expr": "headPlacement" },

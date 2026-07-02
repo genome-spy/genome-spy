@@ -45,15 +45,17 @@ controls where arrowheads are drawn.
 
 ### Head Shape
 
-- `headShape`: `"triangle"`, `"angle"`, or `"stealth"`.
+- `headShape`: `"triangle"` or `"angle"`.
 - `headLength`: numeric length.
 - `headLengthUnit`: `"px"` or `"proportion"`.
 - `headWidth`: numeric width.
 - `headWidthUnit`: `"px"` or `"proportion"`.
+- `headNotch`: concavity for filled heads. `0` produces a triangle; larger
+  values move the stem/head join toward the tip.
 
-`triangle` is the filled block arrowhead and should be the default. `angle`
-covers chevrons and strand arrows. `stealth` provides a more compact filled head
-for dense annotation tracks.
+`triangle` is the filled block arrowhead and should be the default. `headNotch`
+turns the filled head into a more compact, stealth-like shape for dense
+annotation tracks. `angle` covers chevrons and strand arrows.
 
 ### Stem Shape
 
@@ -111,9 +113,9 @@ opacity, picking, and antialiasing should reuse the same conventions as existing
 mark shaders.
 
 Rougier's antialiased arrow shader snippets are useful references for the
-triangle, angle, stealth, line-distance, and segment-distance SDF math. They
-should be adapted to GenomeSpy's current GLSL style and rendering conventions
-rather than copied wholesale.
+triangle, angle, notched filled-head, line-distance, and segment-distance SDF
+math. They should be adapted to GenomeSpy's current GLSL style and rendering
+conventions rather than copied wholesale.
 
 The first implementation should prioritize a compact, stable API:
 
@@ -266,7 +268,8 @@ Work:
   the core SDF can assume a left-to-right horizontal arrow.
 - Build the arrow as a union of stem and head distances.
 - Implement `heads: "end"`, `"start"`, `"both"`, and `"none"`.
-- Implement `headShape: "triangle"`, `"angle"`, and `"stealth"`.
+- Implement `headShape: "triangle"` and `"angle"`.
+- Implement `headNotch` for filled arrowheads.
 
 Verification:
 

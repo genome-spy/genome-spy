@@ -279,6 +279,11 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("float sdAngleHead");
         expect(sources.fragment).toContain("float sdNotchedFilledArrow");
         expect(sources.fragment).toContain("float headNotchDepth");
+        expect(sources.fragment).toContain("uHeadNotch");
+        expect(sources.fragment).toContain(
+            "float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);"
+        );
+        expect(sources.fragment).not.toContain("HEAD_SHAPE_STEALTH");
         expect(sources.fragment).toContain("uHeadShape");
         expect(sources.fragment).toContain("uHeads");
         expect(sources.fragment).toContain("float unitValue");
@@ -296,7 +301,7 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("uHeadPlacement");
         expect(sources.fragment).toContain("vec2(left, -stemHalfWidth)");
         expect(sources.fragment).toContain(
-            "uHeadShape == HEAD_SHAPE_TRIANGLE || uHeadShape == HEAD_SHAPE_STEALTH"
+            "if (uHeadShape == HEAD_SHAPE_TRIANGLE)"
         );
         expect(sources.vertex).toContain("vec2 getOutsideHeadExpansion");
     });

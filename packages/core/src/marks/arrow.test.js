@@ -16,7 +16,6 @@ describe("arrow mark uniform enums", () => {
         expect(enumIndex(ARROW_UNIFORM_ENUMS.heads, "none")).toBe(3);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "angle")).toBe(1);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "stealth")).toBe(2);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.units, "px")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.units, "proportion")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.shortArrows, "shrinkHead")).toBe(

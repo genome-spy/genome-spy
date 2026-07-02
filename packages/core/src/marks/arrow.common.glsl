@@ -8,6 +8,7 @@ layout(std140) uniform Mark {
     uniform int uHeadLengthUnit;
     uniform float uHeadWidth;
     uniform int uHeadWidthUnit;
+    uniform float uHeadNotch;
     uniform float uStemWidth;
     uniform int uStemWidthUnit;
 
@@ -30,7 +31,6 @@ const int HEADS_NONE = 3;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_ANGLE = 1;
-const int HEAD_SHAPE_STEALTH = 2;
 
 const int UNIT_PX = 0;
 const int UNIT_PROPORTION = 1;

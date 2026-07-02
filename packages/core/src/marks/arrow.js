@@ -11,7 +11,7 @@ export const ARROW_UNIFORM_ENUMS = {
     orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
     heads: ["end", "start", "both", "none"],
-    headShapes: ["triangle", "angle", "stealth"],
+    headShapes: ["triangle", "angle"],
     units: ["px", "proportion"],
     shortArrows: ["shrinkHead", "triangle", "hide"],
     headPlacements: ["inside", "outside"],
@@ -112,6 +112,7 @@ export default class ArrowMark extends Mark {
             props.headWidthUnit,
             (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
         );
+        this.registerMarkUniformValue("uHeadNotch", props.headNotch);
         this.registerMarkUniformValue("uStemWidth", props.stemWidth);
         this.registerMarkUniformValue(
             "uStemWidthUnit",
