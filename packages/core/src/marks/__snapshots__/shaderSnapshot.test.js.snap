@@ -23,6 +23,8 @@ layout(std140) uniform Mark {
     uniform int uShortArrow;
     uniform int uHeadPlacement;
 
+    // Dynamic value
+    uniform float uStrokeWidth_0;
     highp vec3 uDomain_x;
 
 
@@ -475,6 +477,8 @@ layout(std140) uniform Mark {
     uniform int uShortArrow;
     uniform int uHeadPlacement;
 
+    // Dynamic value
+    uniform float uStrokeWidth_0;
     highp vec3 uDomain_x;
 
 
@@ -852,8 +856,8 @@ return accessor_stroke_0();
 
 
 float accessor_strokeWidth_0() {
-    // Constant value
-    return float(1.0);
+    // Dynamic value
+    return uStrokeWidth_0;
 }
 
 float getScaled_strokeWidth() {
