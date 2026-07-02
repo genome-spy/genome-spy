@@ -10,7 +10,7 @@ import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 export const ARROW_UNIFORM_ENUMS = {
     orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
-    heads: ["end", "start", "both", "none"],
+    heads: ["end", "none"],
     headShapes: ["triangle", "angle"],
     units: ["px", "proportion"],
     shortArrows: ["shrinkHead", "triangle", "hide"],
@@ -113,6 +113,7 @@ export default class ArrowMark extends Mark {
             (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
         );
         this.registerMarkUniformValue("uHeadNotch", props.headNotch);
+        this.registerMarkUniformValue("uStartNotch", props.startNotch);
         this.registerMarkUniformValue("uStemWidth", props.stemWidth);
         this.registerMarkUniformValue(
             "uStemWidthUnit",

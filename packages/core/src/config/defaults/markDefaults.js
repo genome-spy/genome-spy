@@ -51,6 +51,7 @@ export const ARROW_MARK_DEFAULTS = {
     headWidth: 1,
     headWidthUnit: "proportion",
     headNotch: 0,
+    startNotch: 0,
     stemWidth: 0.45,
     stemWidthUnit: "proportion",
     shortArrow: "shrinkHead",

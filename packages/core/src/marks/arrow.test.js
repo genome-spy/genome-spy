@@ -11,9 +11,7 @@ describe("arrow mark uniform enums", () => {
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "forward")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "reverse")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.heads, "end")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.heads, "start")).toBe(1);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.heads, "both")).toBe(2);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.heads, "none")).toBe(3);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.heads, "none")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "angle")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.units, "px")).toBe(0);
@@ -33,5 +31,8 @@ describe("arrow mark uniform enums", () => {
         expect(() =>
             enumIndex(ARROW_UNIFORM_ENUMS.directions, "sideways")
         ).toThrow("Unsupported arrow mark value: sideways");
+        expect(() => enumIndex(ARROW_UNIFORM_ENUMS.heads, "start")).toThrow(
+            "Unsupported arrow mark value: start"
+        );
     });
 });

@@ -37,11 +37,11 @@ to be uniform-backed and constant for a mark layer.
 
 - `orient`: `"horizontal"` or `"vertical"`.
 - `direction`: `"forward"` or `"reverse"`.
-- `heads`: `"end"`, `"start"`, `"both"`, or `"none"`.
+- `heads`: `"end"` or `"none"`.
 
 `orient` controls whether the arrow runs along x or y. `direction` controls
 which side is considered forward after the interval has been sorted. `heads`
-controls where arrowheads are drawn.
+controls whether a head is drawn at the forward end.
 
 ### Head Shape
 
@@ -52,10 +52,13 @@ controls where arrowheads are drawn.
 - `headWidthUnit`: `"px"` or `"proportion"`.
 - `headNotch`: concavity for filled heads. `0` produces a triangle; larger
   values move the stem/head join toward the tip.
+- `startNotch`: length of the notch at the start of a filled arrow, as a
+  proportion of mark thickness.
 
 `triangle` is the filled block arrowhead and should be the default. `headNotch`
 turns the filled head into a more compact, stealth-like shape for dense
-annotation tracks. `angle` covers chevrons and strand arrows.
+annotation tracks. `startNotch` cuts a configurable V-shaped notch into the
+tail. `angle` covers chevrons and strand arrows.
 
 ### Stem Shape
 
@@ -123,6 +126,7 @@ The first implementation should prioritize a compact, stable API:
 - `orient`, `direction`, and `heads`.
 - `triangle` and `angle` head shapes.
 - Pixel and proportional `headLength`, `headWidth`, and `stemWidth`.
+- Configurable `headNotch` and `startNotch` for filled arrows.
 - Fill, stroke, opacity, and picking behavior aligned with `rect`.
 
 Repeated heads and viewport-edge clipped heads can be added after the base mark
@@ -172,6 +176,8 @@ Work:
   - `headLengthUnit`
   - `headWidth`
   - `headWidthUnit`
+  - `headNotch`
+  - `startNotch`
   - `stemWidth`
   - `stemWidthUnit`
   - `shortArrow`
@@ -267,16 +273,17 @@ Work:
 - Normalize orientation and direction at the start of the fragment shader so
   the core SDF can assume a left-to-right horizontal arrow.
 - Build the arrow as a union of stem and head distances.
-- Implement `heads: "end"`, `"start"`, `"both"`, and `"none"`.
+- Implement `heads: "end"` and `"none"`.
 - Implement `headShape: "triangle"` and `"angle"`.
 - Implement `headNotch` for filled arrowheads.
+- Implement `startNotch` for filled arrow tails.
 
 Verification:
 
 - Add shader snapshots for representative combinations:
   - horizontal forward triangle
   - horizontal reverse triangle
-  - both-headed triangle
+  - start-notched triangle
   - angle head
 - Run `npx vitest run packages/core/src/marks/shaderSnapshot.test.js`.
 
@@ -320,7 +327,7 @@ Work:
 - Keep the playground self-contained with inline data.
 - Bind params to mark props through `{ "expr": "paramName" }`.
 - Include controls for direction, heads, head shape, head length, head width,
-  stem width, head placement, and short-arrow behavior.
+  head notch, start notch, stem width, head placement, and short-arrow behavior.
 - Keep positional and color values in normal encodings.
 
 Verification:

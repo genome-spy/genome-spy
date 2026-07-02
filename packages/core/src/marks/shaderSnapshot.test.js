@@ -280,10 +280,13 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("float sdNotchedFilledArrow");
         expect(sources.fragment).toContain("float headNotchDepth");
         expect(sources.fragment).toContain("uHeadNotch");
+        expect(sources.fragment).toContain("uStartNotch");
         expect(sources.fragment).toContain(
             "float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);"
         );
         expect(sources.fragment).not.toContain("HEAD_SHAPE_STEALTH");
+        expect(sources.fragment).not.toContain("HEADS_START");
+        expect(sources.fragment).not.toContain("HEADS_BOTH");
         expect(sources.fragment).toContain("uHeadShape");
         expect(sources.fragment).toContain("uHeads");
         expect(sources.fragment).toContain("float unitValue");
@@ -299,6 +302,11 @@ describe("generated shader snapshots", () => {
             "max(arrowLength - headLength * headCount, 0.0);"
         );
         expect(sources.fragment).toContain("headNotchDepth *= notchScale;");
+        expect(sources.fragment).toContain("float startNotchLength = min(");
+        expect(sources.fragment).toContain(
+            "clamp(uStartNotch, 0.0, 1.0) * thickness"
+        );
+        expect(sources.vertex).not.toContain("hasStartHead");
         expect(sources.vertex).toContain(
             "float headLengthReference = uOrient == ORIENT_HORIZONTAL"
         );

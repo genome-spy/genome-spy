@@ -62,18 +62,17 @@ float sdNotchedFilledArrow(
     vec2 p,
     float left,
     float right,
-    bool drawStartHead,
     bool drawEndHead,
     float headLength,
     float headHalfWidth,
     float stemHalfWidth,
-    float headNotchDepth
+    float headNotchDepth,
+    float startNotchLength
 ) {
-    bool startHead =
-        drawStartHead && headLength > 0.0 && headHalfWidth > 0.0;
     bool endHead = drawEndHead && headLength > 0.0 && headHalfWidth > 0.0;
+    bool startNotch = startNotchLength > 0.0 && stemHalfWidth > 0.0;
 
-    if (!startHead && !endHead) {
+    if (!startNotch && !endHead) {
         if (stemHalfWidth <= 0.0) {
             return 1e20;
         }
@@ -83,32 +82,14 @@ float sdNotchedFilledArrow(
         return sdSharpBox(p - center, halfSize);
     }
 
-    float startBase = startHead ? left + headLength : left;
     float endBase = endHead ? right - headLength : right;
-    float startNotch = mix(startBase, left, headNotchDepth);
     float endNotch = mix(endBase, right, headNotchDepth);
+    float startNotchX = left + startNotchLength;
 
-    vec2 first = startHead ? vec2(left, 0.0) : vec2(left, stemHalfWidth);
+    vec2 first = vec2(left, stemHalfWidth);
     vec2 previous = first;
     float squaredDistance = 1e20;
     bool inside = false;
-
-    if (startHead) {
-        addPolygonVertex(
-            p,
-            vec2(startBase, headHalfWidth),
-            previous,
-            squaredDistance,
-            inside
-        );
-        addPolygonVertex(
-            p,
-            vec2(startNotch, stemHalfWidth),
-            previous,
-            squaredDistance,
-            inside
-        );
-    }
 
     addPolygonVertex(
         p,
@@ -157,25 +138,18 @@ float sdNotchedFilledArrow(
         );
     }
 
-    if (startHead) {
+    addPolygonVertex(
+        p,
+        vec2(left, -stemHalfWidth),
+        previous,
+        squaredDistance,
+        inside
+    );
+
+    if (startNotch) {
         addPolygonVertex(
             p,
-            vec2(startNotch, -stemHalfWidth),
-            previous,
-            squaredDistance,
-            inside
-        );
-        addPolygonVertex(
-            p,
-            vec2(startBase, -headHalfWidth),
-            previous,
-            squaredDistance,
-            inside
-        );
-    } else {
-        addPolygonVertex(
-            p,
-            vec2(left, -stemHalfWidth),
+            vec2(startNotchX, 0.0),
             previous,
             squaredDistance,
             inside
@@ -211,11 +185,7 @@ float unitValue(float value, int unit, float reference) {
 }
 
 bool hasEndHead() {
-    return uHeads == HEADS_END || uHeads == HEADS_BOTH;
-}
-
-bool hasStartHead() {
-    return uHeads == HEADS_START || uHeads == HEADS_BOTH;
+    return uHeads == HEADS_END;
 }
 
 float sdConfiguredHead(
@@ -230,19 +200,6 @@ float sdConfiguredHead(
 
 float stemHeadOverlap(float headLength) {
     return min(headLength, vHalfStrokeWidth + 1.0 / uDevicePixelRatio);
-}
-
-float stemStartForHead(
-    bool drawHead,
-    float edge,
-    float headInset,
-    float overlap
-) {
-    if (!drawHead || uHeadShape == HEAD_SHAPE_ANGLE) {
-        return edge;
-    } else {
-        return edge + max(headInset - overlap, 0.0);
-    }
 }
 
 float stemEndForHead(
@@ -282,9 +239,7 @@ float sdArrow(vec2 p, vec2 halfSize) {
     }
 
     bool drawEndHead = hasEndHead();
-    bool drawStartHead = hasStartHead();
-    float headCount =
-        (drawEndHead ? 1.0 : 0.0) + (drawStartHead ? 1.0 : 0.0);
+    float headCount = drawEndHead ? 1.0 : 0.0;
 
     float headLength = unitValue(uHeadLength, uHeadLengthUnit, thickness);
     float headHalfWidth =
@@ -316,31 +271,33 @@ float sdArrow(vec2 p, vec2 halfSize) {
 
     if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
         float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
+        float stemLength = max(arrowLength - headLength * headCount, 0.0);
         if (squeezeHead) {
-            float stemLength =
-                max(arrowLength - headLength * headCount, 0.0);
             float notchScale = headLength > 0.0
                 ? clamp(stemLength / headLength, 0.0, 1.0)
                 : 0.0;
             headNotchDepth *= notchScale;
         }
+        float startNotchLength = min(
+            clamp(uStartNotch, 0.0, 1.0) * thickness,
+            stemLength
+        );
         return sdNotchedFilledArrow(
             q,
             -b.x,
             b.x,
-            drawStartHead,
             drawEndHead,
             headLength,
             headHalfWidth,
             stemHalfWidth,
-            headNotchDepth
+            headNotchDepth,
+            startNotchLength
         );
     }
 
-    float startInset = drawStartHead ? headLength : 0.0;
     float endInset = drawEndHead ? headLength : 0.0;
     float overlap = stemHeadOverlap(headLength);
-    float stemLeft = stemStartForHead(drawStartHead, -b.x, startInset, overlap);
+    float stemLeft = -b.x;
     float stemRight = stemEndForHead(drawEndHead, b.x, endInset, overlap);
 
     float d = 1e20;
@@ -363,20 +320,6 @@ float sdArrow(vec2 p, vec2 halfSize) {
             )
         );
     }
-    if (drawStartHead && headLength > 0.0 && headHalfWidth > 0.0) {
-        vec2 startHeadPoint = vec2(-q.x, q.y);
-        d = min(
-            d,
-            sdConfiguredHead(
-                startHeadPoint,
-                b.x,
-                b.x - headLength,
-                headHalfWidth,
-                max(stemHalfWidth, 0.5)
-            )
-        );
-    }
-
     return d;
 }
 

@@ -352,11 +352,11 @@ export interface ArrowProps
     direction?: "forward" | "reverse" | ExprRef;
 
     /**
-     * Endpoint or endpoints where arrowheads are drawn.
+     * Whether the arrowhead is drawn at the forward end.
      *
      * __Default value:__ `"end"`
      */
-    heads?: "end" | "start" | "both" | "none" | ExprRef;
+    heads?: "end" | "none" | ExprRef;
 
     /**
      * Shape of the arrowhead. `"triangle"` draws a filled head. `"angle"`
@@ -404,6 +404,15 @@ export interface ArrowProps
      * __Default value:__ `0`
      */
     headNotch?: number | ExprRef;
+
+    /**
+     * Length of the notch at the start of a filled arrow as a proportion of the
+     * mark thickness. Values are clamped to `[0, 1]` and to the available stem
+     * length. Applies when `headShape` is `"triangle"`.
+     *
+     * __Default value:__ `0`
+     */
+    startNotch?: number | ExprRef;
 
     /**
      * Width of the arrow stem in pixels or as a proportion of the mark thickness.
