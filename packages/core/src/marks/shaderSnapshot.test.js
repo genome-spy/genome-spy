@@ -293,12 +293,12 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain(
             "float headLength = unitValue(uHeadLength, uHeadLengthUnit, thickness);"
         );
+        expect(sources.fragment).not.toContain("float minStemLength");
+        expect(sources.fragment).toContain("float stemLength =");
         expect(sources.fragment).toContain(
-            "float minStemLength = uShortArrow == SHORT_ARROW_TRIANGLE"
+            "max(arrowLength - headLength * headCount, 0.0);"
         );
-        expect(sources.fragment).toContain(
-            "max((arrowLength - minStemLength) / headCount, 0.0)"
-        );
+        expect(sources.fragment).toContain("headNotchDepth *= notchScale;");
         expect(sources.vertex).toContain(
             "float headLengthReference = uOrient == ORIENT_HORIZONTAL"
         );
