@@ -1,7 +1,6 @@
 in vec2 vPosInPixels;
 
 flat in vec2 vHalfSizeInPixels;
-flat in float vBodyLengthInPixels;
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
@@ -331,14 +330,7 @@ float sdArrow(vec2 p, vec2 halfSize) {
     float headCount =
         (drawEndHead ? 1.0 : 0.0) + (drawStartHead ? 1.0 : 0.0);
 
-    float headLengthReference = uHeadPlacement == HEAD_PLACEMENT_OUTSIDE
-        ? vBodyLengthInPixels
-        : arrowLength;
-    float headLength = unitValue(
-        uHeadLength,
-        uHeadLengthUnit,
-        headLengthReference
-    );
+    float headLength = unitValue(uHeadLength, uHeadLengthUnit, thickness);
     float maxHeadLength = headCount > 0.0 ? arrowLength / headCount : 0.0;
     bool squeezeHead = uHeadPlacement == HEAD_PLACEMENT_INSIDE;
     bool shortForHeads =

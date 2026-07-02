@@ -5,7 +5,6 @@ flat out float vHalfStrokeWidth;
 out vec2 vPosInPixels;
 
 flat out vec2 vHalfSizeInPixels;
-flat out float vBodyLengthInPixels;
 
 void sort(inout float a, inout float b) {
     if (a > b) {
@@ -44,11 +43,11 @@ vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
         return vec2(0.0);
     }
 
-    float bodyLength = uOrient == ORIENT_HORIZONTAL
-        ? sizeInPixels.x
-        : sizeInPixels.y;
+    float headLengthReference = uOrient == ORIENT_HORIZONTAL
+        ? sizeInPixels.y
+        : sizeInPixels.x;
     float headLength = max(
-        unitValue(uHeadLength, uHeadLengthUnit, bodyLength),
+        unitValue(uHeadLength, uHeadLengthUnit, headLengthReference),
         0.0
     );
 
@@ -90,9 +89,6 @@ void main(void) {
     pos = applySampleFacet(pos);
 
     vec2 sizeInPixels = size * uViewportSize;
-    vBodyLengthInPixels = uOrient == ORIENT_HORIZONTAL
-        ? sizeInPixels.x
-        : sizeInPixels.y;
 
     vec2 outsideHeadExpansion = getOutsideHeadExpansion(sizeInPixels);
     if (uOrient == ORIENT_HORIZONTAL) {

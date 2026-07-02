@@ -366,7 +366,7 @@ export interface ArrowProps
     headShape?: "triangle" | "angle" | "stealth" | ExprRef;
 
     /**
-     * Length of the arrowhead in pixels or as a proportion of the arrow length.
+     * Length of the arrowhead in pixels or as a proportion of the mark thickness.
      * The unit is controlled by `headLengthUnit`.
      *
      * __Default value:__ `18`

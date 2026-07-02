@@ -286,9 +286,15 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("uHeadLengthUnit");
         expect(sources.fragment).toContain("uHeadWidthUnit");
         expect(sources.fragment).toContain("uStemWidthUnit");
+        expect(sources.fragment).toContain(
+            "float headLength = unitValue(uHeadLength, uHeadLengthUnit, thickness);"
+        );
+        expect(sources.vertex).toContain(
+            "float headLengthReference = uOrient == ORIENT_HORIZONTAL"
+        );
+        expect(sources.vertex).toContain("? sizeInPixels.y");
         expect(sources.fragment).toContain("uShortArrow");
         expect(sources.fragment).toContain("uHeadPlacement");
-        expect(sources.fragment).toContain("vBodyLengthInPixels");
         expect(sources.fragment).toContain("vec2(left, -stemHalfWidth)");
         expect(sources.fragment).toContain("float stemEndForHead");
         expect(sources.vertex).toContain("vec2 getOutsideHeadExpansion");
