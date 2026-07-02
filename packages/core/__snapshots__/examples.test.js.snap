@@ -9163,6 +9163,51 @@ exports[`shared examples > initializes examples/docs/grammar/legend/symbol-legen
 }
 `;
 
+exports[`shared examples > initializes examples/docs/grammar/mark/arrow/arrow-mark.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/grammar/mark/link/dome-height.json 1`] = `
 {
   "assemblies": [],

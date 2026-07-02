@@ -69,6 +69,7 @@ nav:
                 - Stack: "grammar/transform/stack.md"
           - Graphical Marks:
                 - "grammar/mark/index.md"
+                - Arrow: "grammar/mark/arrow.md"
                 - Link: "grammar/mark/link.md"
                 - Point: "grammar/mark/point.md"
                 - Rect: "grammar/mark/rect.md"
