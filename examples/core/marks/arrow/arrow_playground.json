@@ -1,0 +1,158 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Interactive playground for the arrow mark shape parameters.",
+
+  "padding": 20,
+
+  "params": [
+    {
+      "name": "direction",
+      "value": "forward",
+      "bind": {
+        "input": "radio",
+        "options": ["forward", "reverse"],
+        "name": "Direction"
+      }
+    },
+    {
+      "name": "heads",
+      "value": "end",
+      "bind": {
+        "input": "select",
+        "options": ["end", "start", "both", "none"],
+        "name": "Heads"
+      }
+    },
+    {
+      "name": "headShape",
+      "value": "triangle",
+      "bind": {
+        "input": "select",
+        "options": ["triangle", "angle", "stealth"],
+        "name": "Head shape"
+      }
+    },
+    {
+      "name": "headLength",
+      "value": 18,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 80,
+        "step": 1,
+        "name": "Head length"
+      }
+    },
+    {
+      "name": "headLengthUnit",
+      "value": "px",
+      "bind": {
+        "input": "radio",
+        "options": ["px", "proportion"],
+        "name": "Head length unit"
+      }
+    },
+    {
+      "name": "headWidth",
+      "value": 1,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 1.5,
+        "step": 0.05,
+        "name": "Head width"
+      }
+    },
+    {
+      "name": "headWidthUnit",
+      "value": "proportion",
+      "bind": {
+        "input": "radio",
+        "options": ["px", "proportion"],
+        "name": "Head width unit"
+      }
+    },
+    {
+      "name": "stemWidth",
+      "value": 0.45,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 1,
+        "step": 0.05,
+        "name": "Stem width"
+      }
+    },
+    {
+      "name": "stemWidthUnit",
+      "value": "proportion",
+      "bind": {
+        "input": "radio",
+        "options": ["px", "proportion"],
+        "name": "Stem width unit"
+      }
+    },
+    {
+      "name": "endpointMode",
+      "value": "tip",
+      "bind": {
+        "input": "radio",
+        "options": ["inside", "tip"],
+        "name": "Endpoint mode"
+      }
+    },
+    {
+      "name": "shortArrow",
+      "value": "shrinkHead",
+      "bind": {
+        "input": "select",
+        "options": ["shrinkHead", "triangle", "hide"],
+        "name": "Short arrows"
+      }
+    }
+  ],
+
+  "data": {
+    "values": [
+      { "band": "pair", "start": 8, "end": 24 },
+      { "band": "pair", "start": 34, "end": 74 },
+      { "band": "single", "start": 10, "end": 92 }
+    ]
+  },
+
+  "mark": {
+    "type": "arrow",
+    "orient": "horizontal",
+    "direction": { "expr": "direction" },
+    "heads": { "expr": "heads" },
+    "headShape": { "expr": "headShape" },
+    "headLength": { "expr": "headLength" },
+    "headLengthUnit": { "expr": "headLengthUnit" },
+    "headWidth": { "expr": "headWidth" },
+    "headWidthUnit": { "expr": "headWidthUnit" },
+    "stemWidth": { "expr": "stemWidth" },
+    "stemWidthUnit": { "expr": "stemWidthUnit" },
+    "endpointMode": { "expr": "endpointMode" },
+    "shortArrow": { "expr": "shortArrow" },
+    "fill": "#5B8DEF",
+    "stroke": "black",
+    "strokeWidth": 1
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "index",
+      "scale": { "domain": [0, 100], "zoom": true },
+      "axis": { "title": "Position" }
+    },
+    "x2": { "field": "end" },
+    "y": {
+      "field": "band",
+      "type": "nominal",
+      "scale": { "type": "band", "domain": ["pair", "single"], "padding": 0.25 },
+      "axis": { "title": null }
+    }
+  }
+}
