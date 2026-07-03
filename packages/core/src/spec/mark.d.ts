@@ -359,7 +359,7 @@ export interface ArrowProps
     /**
      * Angle in degrees between the arrow axis and an outer edge of the
      * arrowhead. Smaller values produce longer, narrower heads. Larger values
-     * produce shorter, blunter heads. Values are clamped to `[5, 90]`.
+     * produce shorter, blunter heads. Values are clamped to `[1, 90]`.
      *
      * __Default value:__ `45`
      */
@@ -370,7 +370,7 @@ export interface ArrowProps
      * `90` places the notch point at the tip, producing a triangular head when
      * `headAngle` is less than `90`. Applies to `"triangle"` heads. `"open"`
      * heads use `headAngle` for the notch edge as well. Values are clamped to
-     * `[5, 90]`.
+     * `[1, 90]`.
      *
      * __Default value:__ `90`
      */

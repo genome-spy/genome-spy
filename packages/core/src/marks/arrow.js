@@ -10,7 +10,7 @@ import { isChannelDefWithScale } from "../encoder/encoder.js";
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const MIN_HEAD_SLOPE = 1e-6;
-const MIN_HEAD_ANGLE = 5;
+const MIN_HEAD_ANGLE = 1;
 const MAX_HEAD_ANGLE = 90;
 
 export const ARROW_UNIFORM_ENUMS = {
