@@ -25,6 +25,28 @@
       }
     },
     {
+      "name": "headAngle",
+      "value": 45,
+      "bind": {
+        "input": "range",
+        "min": 5,
+        "max": 90,
+        "step": 1,
+        "name": "Head angle"
+      }
+    },
+    {
+      "name": "headNotchAngle",
+      "value": 90,
+      "bind": {
+        "input": "range",
+        "min": 5,
+        "max": 90,
+        "step": 1,
+        "name": "Head notch angle"
+      }
+    },
+    {
       "name": "headLength",
       "value": 18,
       "bind": {
@@ -189,6 +211,8 @@
     "orient": "horizontal",
     "direction": { "expr": "direction" },
     "headShape": { "expr": "headShape" },
+    "headAngle": { "expr": "headAngle" },
+    "headNotchAngle": { "expr": "headNotchAngle" },
     "headLength": { "expr": "headLength" },
     "headLengthUnit": { "expr": "headLengthUnit" },
     "headWidth": { "expr": "headWidth" },

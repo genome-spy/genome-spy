@@ -4,6 +4,7 @@ layout(std140) uniform Mark {
     uniform int uHeadShape;
 
     uniform float uHeadSlope;
+    uniform float uHeadNotchSlope;
 
     uniform float uHeadLength;
     uniform int uHeadLengthUnit;

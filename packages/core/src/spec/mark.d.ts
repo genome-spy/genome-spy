@@ -351,7 +351,23 @@ export interface ArrowProps
      */
     direction?: "forward" | "reverse" | ExprRef;
 
-    headSlope?: number | ExprRef;
+    /**
+     * Angle in degrees between the arrow axis and an outer edge of the
+     * arrowhead. Smaller values produce longer, narrower heads. Larger values
+     * produce shorter, blunter heads. Values are clamped to `[5, 90]`.
+     *
+     * __Default value:__ `45`
+     */
+    headAngle?: number | ExprRef;
+
+    /**
+     * Angle in degrees between the arrow axis and the arrowhead notch edge.
+     * `90` places the notch point at the tip, producing a triangular head when
+     * `headAngle` is less than `90`. Values are clamped to `[5, 90]`.
+     *
+     * __Default value:__ `90`
+     */
+    headNotchAngle?: number | ExprRef;
 
     /**
      * Shape of the arrowhead. `"triangle"` draws a filled head. `"angle"`

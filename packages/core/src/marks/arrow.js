@@ -7,6 +7,11 @@ import { RectVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 
+const DEGREES_TO_RADIANS = Math.PI / 180;
+const MIN_HEAD_SLOPE = 1e-6;
+const MIN_HEAD_ANGLE = 5;
+const MAX_HEAD_ANGLE = 90;
+
 export const ARROW_UNIFORM_ENUMS = {
     orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
@@ -94,7 +99,16 @@ export default class ArrowMark extends Mark {
         this.registerMarkUniformValue("uDirection", props.direction, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.directions, value)
         );
-        this.registerMarkUniformValue("uHeadSlope", props.headSlope);
+        this.registerMarkUniformValue(
+            "uHeadSlope",
+            props.headAngle,
+            headAngleToSlope
+        );
+        this.registerMarkUniformValue(
+            "uHeadNotchSlope",
+            props.headNotchAngle,
+            headAngleToSlope
+        );
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
         );
@@ -209,4 +223,12 @@ export function enumIndex(values, value) {
         throw new Error(`Unsupported arrow mark value: ${value}`);
     }
     return index;
+}
+
+/**
+ * @param {number} value
+ */
+function headAngleToSlope(value) {
+    const angle = Math.min(Math.max(value, MIN_HEAD_ANGLE), MAX_HEAD_ANGLE);
+    return Math.max(Math.tan(angle * DEGREES_TO_RADIANS), MIN_HEAD_SLOPE);
 }

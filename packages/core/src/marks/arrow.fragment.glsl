@@ -63,8 +63,8 @@ float repeat(float x, float spacing) {
 }
 
 float sdArrow(vec2 p, vec2 halfSize) {
-    float headSlope = uHeadSlope;
-    float rHeadSlope = 1.0 / headSlope;
+    float rHeadSlope = 1.0 / uHeadSlope;
+    float rHeadNotchSlope = min(1.0 / uHeadNotchSlope, rHeadSlope);
 
     float spacing = uHeadRepeat
         ? max(uHeadSpacing, arrowSize(halfSize.y, rHeadSlope, 40.0))
@@ -73,7 +73,7 @@ float sdArrow(vec2 p, vec2 halfSize) {
 
     return min(
         sdStem(p, vec2(halfSize.x, halfSize.y * 0.2), rHeadSlope),
-        sdArrowHead(vec2(arrowHeadX, vPosInPixels.y), halfSize.y, rHeadSlope, rHeadSlope, 40.0)
+        sdArrowHead(vec2(arrowHeadX, vPosInPixels.y), halfSize.y, rHeadSlope, rHeadNotchSlope, 40.0)
     );
 }
 
