@@ -217,12 +217,12 @@ void main(void) {
     float headHalfWidth = resolveHeadHalfWidth(arrowHalfSizeBeforeExpansion.y);
     float stemHalfWidth = resolveStemHalfWidth(arrowHalfSizeBeforeExpansion.y);
     float physicalStemHalfWidth = abs(stemHalfWidth);
-    float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
+    float headStrokeWidth = uHeadShape == HEAD_SHAPE_OPEN
         ? physicalStemHalfWidth * 2.0
         : 0.0;
     float configuredRHeadSlope = 1.0 / uHeadSlope;
     float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
-    float outsideRHeadNotchSlope = uHeadShape == HEAD_SHAPE_ANGLE
+    float outsideRHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
         ? configuredRHeadSlope
         : min(configuredRHeadNotchSlope, configuredRHeadSlope);
 
@@ -267,7 +267,7 @@ void main(void) {
         configuredRHeadSlope,
         configuredRHeadNotchSlope
     );
-    vRHeadNotchSlope = uHeadShape == HEAD_SHAPE_ANGLE
+    vRHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
         ? vRHeadSlope
         : min(configuredRHeadNotchSlope, vRHeadSlope);
     vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;

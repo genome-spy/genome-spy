@@ -27,7 +27,7 @@ const int DIRECTION_FORWARD = 0;
 const int DIRECTION_REVERSE = 1;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
-const int HEAD_SHAPE_ANGLE = 1;
+const int HEAD_SHAPE_OPEN = 1;
 
 const int UNIT_PX = 0;
 const int UNIT_PROPORTION = 1;

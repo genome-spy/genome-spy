@@ -44,13 +44,13 @@ head is always drawn at the forward end.
 
 ### Head Shape
 
-- `headShape`: `"triangle"` or `"angle"`.
+- `headShape`: `"triangle"` or `"open"`.
 - `headWidth`: numeric width.
 - `headWidthUnit`: `"px"` or `"proportion"`.
 - `startNotch`: boolean flag for a notch at the start of an arrow.
 
 `triangle` is the filled block arrowhead and should be the default.
-`startNotch` cuts a V-shaped notch into the tail. `angle` covers chevrons and
+`startNotch` cuts a V-shaped notch into the tail. `open` covers chevrons and
 strand arrows.
 
 ### Stem Shape
@@ -249,12 +249,12 @@ Work:
   - line distance
   - segment distance
   - triangle head SDF
-  - angle head SDF
+  - open head SDF
 - Normalize orientation and direction at the start of the fragment shader so
   the core SDF can assume a left-to-right horizontal arrow.
 - Build the arrow as a union of stem and head distances.
 - Always draw a head at the forward end.
-- Implement `headShape: "triangle"` and `"angle"`.
+- Implement `headShape: "triangle"` and `"open"`.
 - Implement `startNotch` for arrow tails.
 
 Verification:
@@ -263,7 +263,7 @@ Verification:
   - horizontal forward triangle
   - horizontal reverse triangle
   - start-notched triangle
-  - angle head
+  - open head
 - Run `npx vitest run packages/core/src/marks/shaderSnapshot.test.js`.
 
 Tentative commit: `feat(core): add arrow signed-distance shapes`

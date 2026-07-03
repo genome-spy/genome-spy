@@ -370,12 +370,12 @@ export interface ArrowProps
     headNotchAngle?: number | ExprRef;
 
     /**
-     * Shape of the arrowhead. `"triangle"` draws a filled head. `"angle"`
+     * Shape of the arrowhead. `"triangle"` draws a filled head. `"open"`
      * draws an open head whose thickness matches the stem width.
      *
      * __Default value:__ `"triangle"`
      */
-    headShape?: "triangle" | "angle" | ExprRef;
+    headShape?: "triangle" | "open" | ExprRef;
 
     /**
      * Width of the arrowhead in pixels or as a proportion of the mark thickness.

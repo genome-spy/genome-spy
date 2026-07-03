@@ -15,7 +15,7 @@ const MAX_HEAD_ANGLE = 90;
 export const ARROW_UNIFORM_ENUMS = {
     orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
-    headShapes: ["triangle", "angle"],
+    headShapes: ["triangle", "open"],
     units: ["px", "proportion"],
     headPlacements: ["inside", "outside"],
 };

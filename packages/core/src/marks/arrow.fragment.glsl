@@ -57,7 +57,7 @@ float sdStem(
     return sdPolygon(vertices, p);
 }
 
-// Inner corner of an open angle head, offset perpendicular to the outer edge.
+// Inner corner of an open head, offset perpendicular to the outer edge.
 vec2 headInnerCorner(float halfWidth, float rHeadSlope, float headStrokeWidth) {
     float headAxisLength = halfWidth * rHeadSlope;
     vec2 topOuter = vec2(headAxisLength, halfWidth);

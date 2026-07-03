@@ -11,7 +11,7 @@ describe("arrow mark uniform enums", () => {
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "forward")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "reverse")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "angle")).toBe(1);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "open")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headRepeatModes, "body")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headRepeatModes, "whole")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.units, "px")).toBe(0);
