@@ -39,7 +39,13 @@ float unitValue(float value, int unit, float reference) {
 float resolveStemHalfWidth(float markHalfWidth) {
     float markWidth = markHalfWidth * 2.0;
     float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markWidth);
-    return clamp(stemWidth, 0.0, markWidth) * 0.5;
+    if (stemWidth < 0.0) {
+        // The negative sign hides stem geometry; the magnitude remains
+        // available for angle-head thickness.
+        return clamp(stemWidth, -markWidth, 0.0) * 0.5;
+    } else {
+        return clamp(stemWidth, 0.0, markWidth) * 0.5;
+    }
 }
 
 // Resolve head width against the mark thickness. The render quad currently
@@ -107,6 +113,7 @@ float effectiveHeadSlope(
         uHeadPlacement == HEAD_PLACEMENT_OUTSIDE ||
         uHeadRepeat ||
         uHeadShape != HEAD_SHAPE_TRIANGLE ||
+        stemHalfWidth < 0.0 ||
         uMinStemLength <= 0.0
     ) {
         return configuredRHeadSlope;
@@ -209,8 +216,9 @@ void main(void) {
     vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
     float headHalfWidth = resolveHeadHalfWidth(arrowHalfSizeBeforeExpansion.y);
     float stemHalfWidth = resolveStemHalfWidth(arrowHalfSizeBeforeExpansion.y);
+    float physicalStemHalfWidth = abs(stemHalfWidth);
     float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
-        ? stemHalfWidth * 2.0
+        ? physicalStemHalfWidth * 2.0
         : 0.0;
     float configuredRHeadSlope = 1.0 / uHeadSlope;
     float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;

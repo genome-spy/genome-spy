@@ -425,7 +425,7 @@ export interface ArrowProps
 
     /**
      * Width of the arrow stem in pixels or as a proportion of the mark thickness.
-     * The unit is controlled by `stemWidthUnit`.
+     * The unit is controlled by `stemWidthUnit`. Negative values hide the stem.
      *
      * __Default value:__ `0.45`
      */

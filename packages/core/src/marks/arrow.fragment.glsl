@@ -15,6 +15,7 @@ flat in float vHeadRepeatFootprintLength;
 out lowp vec4 fragColor;
 
 const int N = 6;
+const float FAR_OUTSIDE = 1e20;
 
 // Adapted from: https://iquilezles.org/articles/distfunctions2d/
 float sdPolygon(vec2[N] v, vec2 p) {
@@ -38,6 +39,10 @@ float sdStem(
     float rHeadSlope,
     float rStartNotchSlope
 ) {
+    if (halfWidth < 0.0) {
+        return FAR_OUTSIDE;
+    }
+
     float headSideLength = halfWidth * rHeadSlope;
     float startNotchLength = halfWidth * rStartNotchSlope;
     vec2 vertices[6] = vec2[6](
