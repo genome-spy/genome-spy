@@ -224,7 +224,9 @@ void main(void) {
         configuredRHeadSlope,
         configuredRHeadNotchSlope
     );
-    vRHeadNotchSlope = min(configuredRHeadNotchSlope, vRHeadSlope);
+    vRHeadNotchSlope = uHeadShape == HEAD_SHAPE_ANGLE
+        ? vRHeadSlope
+        : min(configuredRHeadNotchSlope, vRHeadSlope);
     vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
     vHeadFootprintLength = headFootprintLength(
         vHeadHalfWidth,

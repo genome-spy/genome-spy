@@ -3,8 +3,6 @@
 
   "description": "Interactive playground for the arrow mark shape parameters.",
 
-  "padding": 20,
-
   "params": [
     {
       "name": "direction",
@@ -148,9 +146,9 @@
 
   "data": {
     "values": [
-      { "band": "pair", "start": 8, "end": 24 },
-      { "band": "pair", "start": 34, "end": 74 },
-      { "band": "single", "start": 10, "end": 92 }
+      { "band": "pair", "start": 10, "end": 20 },
+      { "band": "pair", "start": 40, "end": 80 },
+      { "band": "single", "start": 20, "end": 90 }
     ]
   },
 
