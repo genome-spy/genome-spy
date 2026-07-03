@@ -12,25 +12,23 @@ layout(std140) uniform Mark {
     uniform int uDirection;
     uniform int uHeadShape;
 
-    uniform float uHeadLength;
-    uniform int uHeadLengthUnit;
+    uniform float uHeadSlope;
+    uniform float uHeadNotchSlope;
+
     uniform float uHeadWidth;
     uniform int uHeadWidthUnit;
-    uniform float uHeadNotch;
-    uniform float uStartNotch;
+    uniform bool uStartNotch;
+    uniform float uMinStemLength;
     uniform bool uHeadRepeat;
     uniform float uHeadSpacing;
-    uniform float uHeadOffset;
-    uniform int uHeadRepeatMode;
     uniform float uStemWidth;
     uniform int uStemWidthUnit;
 
-    uniform int uShortArrow;
     uniform int uHeadPlacement;
 
     // Dynamic value
     uniform float uStrokeWidth_0;
-    highp vec3 uDomain_x;
+    mediump float uDomain_x[2];
 
 
 
@@ -47,20 +45,19 @@ const int DIRECTION_FORWARD = 0;
 const int DIRECTION_REVERSE = 1;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
-const int HEAD_SHAPE_ANGLE = 1;
-
-const int HEAD_REPEAT_MODE_BODY = 0;
-const int HEAD_REPEAT_MODE_WHOLE = 1;
+const int HEAD_SHAPE_OPEN = 1;
 
 const int UNIT_PX = 0;
 const int UNIT_PROPORTION = 1;
 
-const int SHORT_ARROW_SHRINK_HEAD = 0;
-const int SHORT_ARROW_TRIANGLE = 1;
-const int SHORT_ARROW_HIDE = 2;
-
 const int HEAD_PLACEMENT_INSIDE = 0;
 const int HEAD_PLACEMENT_OUTSIDE = 1;
+
+// Arrow space uses x for arrow length and y for width perpendicular to it.
+// Negative x points toward the arrowhead in the canonical "reverse" direction.
+vec2 toArrowSpace(vec2 v) {
+    return uOrient == ORIENT_HORIZONTAL ? v : v.yx;
+}
 
 
 #define PI 3.141593
@@ -195,438 +192,168 @@ in highp vec4 vPickingColor;
 
 in vec2 vPosInPixels;
 
-flat in vec2 vHalfSizeInPixels;
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
+flat in vec2 vArrowHalfSizeInPixels;
+flat in float vHeadHalfWidth;
+flat in float vStemHalfWidth;
+flat in float vHeadStrokeWidth;
+flat in float vRHeadSlope;
+flat in float vRHeadNotchSlope;
+flat in float vRStartNotchSlope;
+flat in float vHeadRepeatFootprintLength;
 
 out lowp vec4 fragColor;
 
-float sdSharpBox(vec2 p, vec2 b) {
-    vec2 q = abs(p) - b;
-    return max(q.x, q.y);
-}
+const int N = 6;
+const float FAR_OUTSIDE = 1e20;
 
-float segmentDistance(vec2 p, vec2 a, vec2 b) {
-    vec2 pa = p - a;
-    vec2 ba = b - a;
-    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-    return length(pa - ba * h);
-}
-
-// Polygon SDF helpers: track closest edge distance and winding state in one pass.
-void addPolygonEdge(
-    vec2 p,
-    vec2 a,
-    vec2 b,
-    inout float squaredDistance,
-    inout bool inside
-) {
-    vec2 edge = b - a;
-    vec2 pa = p - a;
-    float edgeSquaredLength = max(dot(edge, edge), 1e-6);
-    vec2 closest =
-        pa - edge * clamp(dot(pa, edge) / edgeSquaredLength, 0.0, 1.0);
-    squaredDistance = min(squaredDistance, dot(closest, closest));
-
-    bool crosses =
-        (a.y > p.y && b.y <= p.y) || (b.y > p.y && a.y <= p.y);
-    if (crosses) {
-        float x = a.x + (p.y - a.y) * edge.x / edge.y;
-        if (p.x < x) {
-            inside = !inside;
-        }
+// Adapted from: https://iquilezles.org/articles/distfunctions2d/
+float sdPolygon(vec2[N] v, vec2 p) {
+    float d = dot(p-v[0],p-v[0]);
+    float s = 1.0;
+    for( int i=0, j=N-1; i<N; j=i, i++ ) {
+        vec2 e = v[j] - v[i];
+        vec2 w =    p - v[i];
+        vec2 b = w - e*clamp( dot(w,e)/dot(e,e), 0.0, 1.0 );
+        d = min( d, dot(b,b) );
+        bvec3 c = bvec3(p.y>=v[i].y,p.y<v[j].y,e.x*w.y>e.y*w.x);
+        if( all(c) || all(not(c)) ) s*=-1.0;  
     }
+    return s*sqrt(d);
 }
 
-void addPolygonVertex(
+float sdStem(
     vec2 p,
-    vec2 vertex,
-    inout vec2 previous,
-    inout float squaredDistance,
-    inout bool inside
-) {
-    addPolygonEdge(p, previous, vertex, squaredDistance, inside);
-    previous = vertex;
-}
-
-float sdPolygonDistance(float squaredDistance, bool inside) {
-    return (inside ? -1.0 : 1.0) * sqrt(squaredDistance);
-}
-
-// Stem body with an optional V-notch at the tail.
-float sdArrowStem(
-    vec2 p,
-    float left,
-    float right,
-    float stemHalfWidth,
-    float startNotchLength
-) {
-    bool startNotch = startNotchLength > 0.0 && stemHalfWidth > 0.0;
-
-    if (stemHalfWidth <= 0.0 || right <= left) {
-        return 1e20;
-    }
-
-    if (!startNotch) {
-        vec2 center = vec2((left + right) * 0.5, 0.0);
-        vec2 halfSize = vec2((right - left) * 0.5, stemHalfWidth);
-        return sdSharpBox(p - center, halfSize);
-    }
-
-    float startNotchX = left + startNotchLength;
-
-    vec2 first = vec2(left, stemHalfWidth);
-    vec2 previous = first;
-    float squaredDistance = 1e20;
-    bool inside = false;
-
-    addPolygonVertex(
-        p,
-        vec2(right, stemHalfWidth),
-        previous,
-        squaredDistance,
-        inside
-    );
-    addPolygonVertex(
-        p,
-        vec2(right, -stemHalfWidth),
-        previous,
-        squaredDistance,
-        inside
-    );
-    addPolygonVertex(
-        p,
-        vec2(left, -stemHalfWidth),
-        previous,
-        squaredDistance,
-        inside
-    );
-    addPolygonVertex(
-        p,
-        vec2(startNotchX, 0.0),
-        previous,
-        squaredDistance,
-        inside
-    );
-    addPolygonVertex(p, first, previous, squaredDistance, inside);
-
-    return sdPolygonDistance(squaredDistance, inside);
-}
-
-// Filled arrowhead. \`headNotchDepth\` moves the stem/head join toward the tip.
-float sdFilledArrowHead(
-    vec2 p,
-    float tipX,
-    float headLength,
-    float headHalfWidth,
-    float stemHalfWidth,
-    float headNotchDepth
-) {
-    if (headLength <= 0.0 || headHalfWidth <= 0.0) {
-        return 1e20;
-    }
-
-    float baseX = tipX - headLength;
-    float notchX = mix(baseX, tipX, headNotchDepth);
-
-    vec2 first = vec2(notchX, stemHalfWidth);
-    vec2 previous = first;
-    float squaredDistance = 1e20;
-    bool inside = false;
-
-    addPolygonVertex(
-        p,
-        vec2(baseX, headHalfWidth),
-        previous,
-        squaredDistance,
-        inside
-    );
-    addPolygonVertex(
-        p,
-        vec2(tipX, 0.0),
-        previous,
-        squaredDistance,
-        inside
-    );
-    addPolygonVertex(
-        p,
-        vec2(baseX, -headHalfWidth),
-        previous,
-        squaredDistance,
-        inside
-    );
-    addPolygonVertex(
-        p,
-        vec2(notchX, -stemHalfWidth),
-        previous,
-        squaredDistance,
-        inside
-    );
-    addPolygonVertex(p, first, previous, squaredDistance, inside);
-
-    return sdPolygonDistance(squaredDistance, inside);
-}
-
-float sdAngleHead(
-    vec2 p,
-    float tipX,
-    float baseX,
+    float halfLength,
     float halfWidth,
-    float halfLineWidth
+    float rHeadSlope,
+    float rStartNotchSlope
 ) {
-    vec2 tip = vec2(tipX, 0.0);
-    float d = min(
-        segmentDistance(p, tip, vec2(baseX, halfWidth)),
-        segmentDistance(p, tip, vec2(baseX, -halfWidth))
-    );
-    return d - halfLineWidth;
-}
-
-float unitValue(float value, int unit, float reference) {
-    if (unit == UNIT_PROPORTION) {
-        return value * reference;
-    } else {
-        return value;
+    if (halfWidth < 0.0) {
+        return FAR_OUTSIDE;
     }
+
+    float headSideLength = halfWidth * rHeadSlope;
+    float startNotchLength = halfWidth * rStartNotchSlope;
+    vec2 vertices[6] = vec2[6](
+        vec2(-halfLength, 0.0),
+        vec2(-halfLength + headSideLength, halfWidth),
+        vec2(halfLength, halfWidth),
+        vec2(halfLength - startNotchLength, 0.0),
+        vec2(halfLength, -halfWidth),
+        vec2(-halfLength + headSideLength, -halfWidth)
+    );
+
+    return sdPolygon(vertices, p);
 }
 
-// Dispatch the configured head shape while keeping placement logic shared.
+// Inner corner of an open head, offset perpendicular to the outer edge.
+vec2 headInnerCorner(float halfWidth, float rHeadSlope, float headStrokeWidth) {
+    float headAxisLength = halfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, halfWidth);
+    vec2 normalOffset = headStrokeWidth
+        * normalize(vec2(halfWidth, -headAxisLength));
+    return topOuter + normalOffset;
+}
+
+// X coordinate where the arrowhead notch edge crosses the centerline.
+float headNotchX(
+    float halfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    vec2 topInner = headInnerCorner(halfWidth, rHeadSlope, headStrokeWidth);
+    return topInner.x - topInner.y * rHeadNotchSlope;
+}
+
 float sdArrowHead(
     vec2 p,
-    float tipX,
-    float headLength,
     float halfWidth,
-    float stemHalfWidth,
-    float headNotchDepth,
-    float halfLineWidth
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
 ) {
-    if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
-        return sdFilledArrowHead(
-            p,
-            tipX,
-            headLength,
-            halfWidth,
-            stemHalfWidth,
-            headNotchDepth
-        );
-    } else {
-        return sdAngleHead(
-            p,
-            tipX,
-            tipX - headLength,
-            halfWidth,
-            halfLineWidth
-        );
-    }
-}
-
-// Draw the anchored head and optional repeated heads behind it.
-float sdArrowHeads(
-    vec2 p,
-    float anchorTipX,
-    float repeatLeft,
-    float repeatRight,
-    float headLength,
-    float headHalfWidth,
-    float stemHalfWidth,
-    float headNotchDepth,
-    float halfLineWidth
-) {
-    if (headLength <= 0.0 || headHalfWidth <= 0.0) {
-        return 1e20;
-    }
-
-    float d = sdArrowHead(
-        p,
-        anchorTipX,
-        headLength,
-        headHalfWidth,
-        stemHalfWidth,
-        headNotchDepth,
-        halfLineWidth
+    float headAxisLength = halfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, halfWidth);
+    vec2 bottomOuter = vec2(headAxisLength, -halfWidth);
+    vec2 topInner = headInnerCorner(halfWidth, rHeadSlope, headStrokeWidth);
+    vec2 normalOffset = topInner - topOuter;
+    vec2 bottomInner = bottomOuter + vec2(normalOffset.x, -normalOffset.y);
+    float notchX = headNotchX(
+        halfWidth,
+        rHeadSlope,
+        rHeadNotchSlope,
+        headStrokeWidth
     );
 
-    if (!uHeadRepeat || repeatRight <= repeatLeft) {
-        return d;
-    }
-
-    float spacing = max(uHeadSpacing, 1.0);
-    float offset = mod(uHeadOffset, spacing);
-    float repeatX = anchorTipX - offset - p.x;
-    float cellX = mod(repeatX, spacing);
-    float previousTipX = p.x + cellX;
-    float nextTipX = previousTipX - spacing;
-
-    if (previousTipX >= repeatLeft && previousTipX <= repeatRight) {
-        d = min(
-            d,
-            sdArrowHead(
-                p,
-                previousTipX,
-                headLength,
-                headHalfWidth,
-                stemHalfWidth,
-                headNotchDepth,
-                halfLineWidth
-            )
-        );
-    }
-    if (nextTipX >= repeatLeft && nextTipX <= repeatRight) {
-        d = min(
-            d,
-            sdArrowHead(
-                p,
-                nextTipX,
-                headLength,
-                headHalfWidth,
-                stemHalfWidth,
-                headNotchDepth,
-                halfLineWidth
-            )
-        );
-    }
-
-    return d;
-}
-
-// The stem ends at the anchor head's stem-facing join.
-float stemEndForHeadTip(
-    float tipX,
-    float headLength,
-    float headNotchDepth
-) {
-    if (uHeadShape == HEAD_SHAPE_ANGLE) {
-        return tipX;
-    } else {
-        float headBaseX = tipX - headLength;
-        float notchX = mix(headBaseX, tipX, headNotchDepth);
-        return notchX;
-    }
-}
-
-float sdArrow(vec2 p, vec2 halfSize) {
-    vec2 q = p;
-    vec2 b = halfSize;
-
-    // Normalize to a left-to-right horizontal arrow before evaluating SDFs.
-    if (uOrient == ORIENT_VERTICAL) {
-        q = q.yx;
-        b = b.yx;
-    }
-    if (uDirection == DIRECTION_REVERSE) {
-        q.x = -q.x;
-    }
-
-    // Inside placement keeps the final visible shape within the encoded interval.
-    float shapeInset = uHeadPlacement == HEAD_PLACEMENT_INSIDE
-        ? vHalfStrokeWidth
-        : 0.0;
-    b = max(b - vec2(shapeInset, 0.0), vec2(0.0));
-
-    float arrowLength = b.x * 2.0;
-    float thickness = b.y * 2.0;
-    if (arrowLength <= 0.0 || thickness <= 0.0) {
-        return 1.0;
-    }
-
-    float headLength = max(
-        unitValue(uHeadLength, uHeadLengthUnit, thickness),
-        0.0
+    vec2 vertices[6] = vec2[6](
+        vec2(0.0, 0.0),
+        topOuter,
+        topInner,
+        vec2(notchX, 0.0),
+        bottomInner,
+        bottomOuter
     );
-    float headHalfWidth =
-        unitValue(uHeadWidth, uHeadWidthUnit, thickness) * 0.5;
-    headHalfWidth = clamp(headHalfWidth, 0.0, b.y);
 
-    float stemHalfWidth =
-        unitValue(uStemWidth, uStemWidthUnit, thickness) * 0.5;
-    stemHalfWidth = clamp(stemHalfWidth, 0.0, b.y);
+    return sdPolygon(vertices, p);
+}
 
-    float maxHeadLength = arrowLength;
-    bool squeezeHead = uHeadPlacement == HEAD_PLACEMENT_INSIDE;
-    bool shortForHeads = squeezeHead && headLength > maxHeadLength;
-    if (shortForHeads && uShortArrow == SHORT_ARROW_HIDE) {
-        return 1.0;
-    }
-    if (squeezeHead) {
-        headLength = min(headLength, maxHeadLength);
-    }
+float repeat(float x, float spacing) {
+    return x >= spacing ? x - floor(x / spacing) * spacing : x;
+}
 
-    if (shortForHeads && uShortArrow == SHORT_ARROW_TRIANGLE) {
-        stemHalfWidth = 0.0;
-    }
+float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
+    float stemDistance = sdStem(
+        arrowPos,
+        arrowHalfSize.x,
+        vStemHalfWidth,
+        vRHeadSlope,
+        vRStartNotchSlope
+    );
 
-    // Reduce the filled-head notch for squeezed arrows so short marks stay sane.
-    float headNotchDepth = clamp(uHeadNotch, 0.0, 0.95);
-    float stemLength = max(arrowLength - headLength, 0.0);
-    if (uHeadShape == HEAD_SHAPE_TRIANGLE) {
-        if (squeezeHead) {
-            float notchScale = headLength > 0.0
-                ? clamp(stemLength / headLength, 0.0, 1.0)
-                : 0.0;
-            headNotchDepth *= notchScale;
+    float spacing = uHeadRepeat
+        ? max(uHeadSpacing, vHeadRepeatFootprintLength)
+        : 1.0 / 0.0;
+    float distanceFromStart = arrowPos.x + arrowHalfSize.x;
+
+    // Keep the stroked tip inside the repeated head's local window.
+    float arrowHeadX = repeat(
+        distanceFromStart + vHalfStrokeWidth,
+        spacing
+    ) - vHalfStrokeWidth;
+
+    float headDistance = sdArrowHead(
+        vec2(arrowHeadX, arrowPos.y),
+        vHeadHalfWidth,
+        vRHeadSlope,
+        vRHeadNotchSlope,
+        vHeadStrokeWidth
+    );
+
+    if (uHeadRepeat) {
+        // Cull heads that would be partially clipped.
+        float headTipDistance = distanceFromStart - arrowHeadX;
+        float headEndDistance = headTipDistance
+            + vHeadRepeatFootprintLength
+            - vHalfStrokeWidth;
+
+        if (headTipDistance > 0.0 && headEndDistance > arrowHalfSize.x * 2.0) {
+            headDistance = FAR_OUTSIDE;
         }
     }
 
-    float anchorTipX = b.x;
-    float stemLeft = -b.x;
-    float stemRight = b.x;
-
-    // Clip the stem at the anchored head so the head notch remains visible.
-    if (headLength > 0.0) {
-        stemRight = stemEndForHeadTip(
-            anchorTipX,
-            headLength,
-            headNotchDepth
-        );
-    }
-
-    float startNotchLength = min(
-        clamp(uStartNotch, 0.0, 1.0) * thickness,
-        max(stemRight - stemLeft, 0.0)
-    );
-
-    float d = 1e20;
-
-    if (stemRight >= stemLeft && stemHalfWidth > 0.0) {
-        d = min(
-            d,
-            sdArrowStem(
-                q,
-                stemLeft,
-                stemRight,
-                stemHalfWidth,
-                startNotchLength
-            )
-        );
-    }
-
-    if (headLength > 0.0 && headHalfWidth > 0.0) {
-        // Repeated heads are placed backward from the anchor head.
-        float repeatRight = uHeadRepeatMode == HEAD_REPEAT_MODE_BODY
-            ? stemRight
-            : anchorTipX;
-        d = min(
-            d,
-            sdArrowHeads(
-                q,
-                anchorTipX,
-                stemLeft,
-                repeatRight,
-                headLength,
-                headHalfWidth,
-                stemHalfWidth,
-                headNotchDepth,
-                max(stemHalfWidth, 0.5)
-            )
-        );
-    }
-
-    return d;
+    return min(stemDistance, headDistance);
 }
 
 void main(void) {
-    float d = sdArrow(vPosInPixels, vHalfSizeInPixels);
+    vec2 arrowPos = toArrowSpace(vPosInPixels);
+    if (uDirection == DIRECTION_FORWARD) {
+        arrowPos.x = -arrowPos.x;
+    }
+    float d = sdArrow(arrowPos, vArrowHalfSizeInPixels);
 
     fragColor = distanceToColor(
         d,
@@ -655,25 +382,23 @@ layout(std140) uniform Mark {
     uniform int uDirection;
     uniform int uHeadShape;
 
-    uniform float uHeadLength;
-    uniform int uHeadLengthUnit;
+    uniform float uHeadSlope;
+    uniform float uHeadNotchSlope;
+
     uniform float uHeadWidth;
     uniform int uHeadWidthUnit;
-    uniform float uHeadNotch;
-    uniform float uStartNotch;
+    uniform bool uStartNotch;
+    uniform float uMinStemLength;
     uniform bool uHeadRepeat;
     uniform float uHeadSpacing;
-    uniform float uHeadOffset;
-    uniform int uHeadRepeatMode;
     uniform float uStemWidth;
     uniform int uStemWidthUnit;
 
-    uniform int uShortArrow;
     uniform int uHeadPlacement;
 
     // Dynamic value
     uniform float uStrokeWidth_0;
-    highp vec3 uDomain_x;
+    mediump float uDomain_x[2];
 
 
 
@@ -690,20 +415,19 @@ const int DIRECTION_FORWARD = 0;
 const int DIRECTION_REVERSE = 1;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
-const int HEAD_SHAPE_ANGLE = 1;
-
-const int HEAD_REPEAT_MODE_BODY = 0;
-const int HEAD_REPEAT_MODE_WHOLE = 1;
+const int HEAD_SHAPE_OPEN = 1;
 
 const int UNIT_PX = 0;
 const int UNIT_PROPORTION = 1;
 
-const int SHORT_ARROW_SHRINK_HEAD = 0;
-const int SHORT_ARROW_TRIANGLE = 1;
-const int SHORT_ARROW_HIDE = 2;
-
 const int HEAD_PLACEMENT_INSIDE = 0;
 const int HEAD_PLACEMENT_OUTSIDE = 1;
+
+// Arrow space uses x for arrow length and y for width perpendicular to it.
+// Negative x points toward the arrowhead in the canonical "reverse" direction.
+vec2 toArrowSpace(vec2 v) {
+    return uOrient == ORIENT_HORIZONTAL ? v : v.yx;
+}
 
 
 #define PI 3.141593
@@ -1005,8 +729,8 @@ float scaleBandHp(uvec2 value, vec3 domainExtent, vec2 range,
 
 
 in highp uint attr_uniqueId;
-in highp uint attr_x;
-in highp uint attr_x2;
+in highp float attr_x;
+in highp float attr_x2;
 in highp uint attr_y;
 in highp uint attr_y2;
 
@@ -1058,7 +782,7 @@ return accessor_strokeWidth_0();
 #define strokeWidth_DEFINED
 
 
-uint accessor_x_0() {
+float accessor_x_0() {
     return attr_x;
 }
 
@@ -1068,10 +792,10 @@ uint accessor_x_0() {
 
 const vec2 range_x = vec2(0.0, 1.0);
 
-float scale_x(uint value) {
+float scale_x(float value) {
     int slot = 0;
-    vec3 domain = uDomain_x;
-    float transformed = scaleBandHp(value, domain, range_x, 0.0, 0.0, 0.5, 0.0);
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
     return transformed;
 
 }
@@ -1083,7 +807,7 @@ return scale_x(accessor_x_0());
 #define x_DEFINED
 
 
-uint accessor_x2_0() {
+float accessor_x2_0() {
     return attr_x2;
 }
 
@@ -1092,10 +816,10 @@ uint accessor_x2_0() {
 // Channel: x2
 
 
-float scale_x2(uint value) {
+float scale_x2(float value) {
     int slot = 0;
-    vec3 domain = uDomain_x;
-    float transformed = scaleBandHp(value, domain, range_x, 0.0, 0.0, 0.5, 0.0);
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
     return transformed;
 
 }
@@ -1323,10 +1047,16 @@ bool setupPicking() {
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
+flat out vec2 vArrowHalfSizeInPixels;
+flat out float vHeadHalfWidth;
+flat out float vStemHalfWidth;
+flat out float vHeadStrokeWidth;
+flat out float vRHeadSlope;
+flat out float vRHeadNotchSlope;
+flat out float vRStartNotchSlope;
+flat out float vHeadRepeatFootprintLength;
 
 out vec2 vPosInPixels;
-
-flat out vec2 vHalfSizeInPixels;
 
 void sort(inout float a, inout float b) {
     if (a > b) {
@@ -1352,26 +1082,165 @@ float unitValue(float value, int unit, float reference) {
     }
 }
 
-vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
-    if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
-        return vec2(0.0);
+float resolveStemHalfWidth(float markHalfWidth) {
+    float markWidth = markHalfWidth * 2.0;
+    float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markWidth);
+    if (stemWidth < 0.0) {
+        // The negative sign hides stem geometry; the magnitude remains
+        // available for open-head thickness.
+        return clamp(stemWidth, -markWidth, 0.0) * 0.5;
+    } else {
+        return clamp(stemWidth, 0.0, markWidth) * 0.5;
+    }
+}
+
+// Resolve head width against the mark thickness. The render quad currently
+// only covers the mark thickness, so clamp the head to that extent.
+float resolveHeadHalfWidth(float markHalfWidth) {
+    float markWidth = markHalfWidth * 2.0;
+    float headWidth = unitValue(uHeadWidth, uHeadWidthUnit, markWidth);
+    return clamp(headWidth, 0.0, markWidth) * 0.5;
+}
+
+// Width along the arrow axis needed by one repeated head, including stroke.
+float headRepeatFootprintLength(
+    float halfWidth,
+    float rHeadSlope,
+    float headStrokeWidth,
+    float halfStrokeWidth
+) {
+    float headAxisLength = halfWidth * rHeadSlope;
+    float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
+    return headAxisLength + headStrokeLength + halfStrokeWidth * 2.0;
+}
+
+// Distance from the head tip to its centerline notch/join point.
+float headNotchOffset(
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    if (headHalfWidth <= 0.0) {
+        return 0.0;
     }
 
-    float headLengthReference = uOrient == ORIENT_HORIZONTAL
-        ? sizeInPixels.y
-        : sizeInPixels.x;
-    float headLength = max(
-        unitValue(uHeadLength, uHeadLengthUnit, headLengthReference),
+    float headAxisLength = headHalfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, headHalfWidth);
+    vec2 normalOffset = headStrokeWidth
+        * normalize(vec2(headHalfWidth, -headAxisLength));
+    vec2 topInner = topOuter + normalOffset;
+    return topInner.x - topInner.y * rHeadNotchSlope;
+}
+
+// Distance from the arrow tip to where the stem outer edge meets a filled
+// triangle head's notch edge. This is the effective occupied head length for
+// deciding when a short inside arrow needs to blunt its head angle.
+float triangleHeadStemJoinLength(
+    float stemHalfWidth,
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope
+) {
+    float clampedRHeadNotchSlope = min(rHeadNotchSlope, rHeadSlope);
+    return headHalfWidth * rHeadSlope
+        - (headHalfWidth - stemHalfWidth) * clampedRHeadNotchSlope;
+}
+
+// Blunt non-repeated heads toward 90 degrees to preserve visible stem length.
+float effectiveHeadSlope(
+    float halfLength,
+    float headHalfWidth,
+    float stemHalfWidth,
+    float configuredRHeadSlope,
+    float configuredRHeadNotchSlope
+) {
+    if (
+        uHeadRepeat ||
+        stemHalfWidth < 0.0
+    ) {
+        return configuredRHeadSlope;
+    }
+
+    if (uHeadPlacement == HEAD_PLACEMENT_OUTSIDE) {
+        if (!uStartNotch || stemHalfWidth <= 0.0) {
+            return configuredRHeadSlope;
+        }
+
+        // Outside heads start at the encoded endpoint. The preserved length is
+        // therefore the encoded arrow length minus the start notch depth.
+        float maxStartNotchLength = max(
+            halfLength * 2.0 - uMinStemLength,
+            0.0
+        );
+        return min(
+            configuredRHeadSlope,
+            maxStartNotchLength / stemHalfWidth
+        );
+    }
+
+    if (uHeadShape != HEAD_SHAPE_TRIANGLE) {
+        return configuredRHeadSlope;
+    }
+
+    float maxJoinLength = max(
+        halfLength * 2.0 - uMinStemLength,
         0.0
     );
+    float configuredJoinLength = triangleHeadStemJoinLength(
+        stemHalfWidth,
+        headHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope
+    );
 
-    bool endHeadPositive = uDirection == DIRECTION_FORWARD;
-    bool endHeadNegative = uDirection == DIRECTION_REVERSE;
+    if (configuredJoinLength <= maxJoinLength) {
+        return configuredRHeadSlope;
+    }
 
-    float negative = endHeadNegative ? headLength : 0.0;
-    float positive = endHeadPositive ? headLength : 0.0;
+    float boundaryJoinLength = stemHalfWidth * configuredRHeadNotchSlope;
+    if (maxJoinLength < boundaryJoinLength) {
+        return stemHalfWidth > 0.0
+            ? clamp(maxJoinLength / stemHalfWidth, 0.0, configuredRHeadSlope)
+            : 0.0;
+    } else {
+        return clamp(
+            (
+                maxJoinLength +
+                (headHalfWidth - stemHalfWidth) * configuredRHeadNotchSlope
+            ) / headHalfWidth,
+            0.0,
+            configuredRHeadSlope
+        );
+    }
+}
 
-    return vec2(negative, positive);
+// Outside placement extends the vertex quad so the head can protrude past the
+// encoded interval while its notch/join point stays on the endpoint.
+float getOutsideHeadOffset(
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
+        return 0.0;
+    }
+
+    return headNotchOffset(
+        headHalfWidth,
+        rHeadSlope,
+        rHeadNotchSlope,
+        headStrokeWidth
+    );
+}
+
+vec2 getOutsideHeadExpansion(float outsideHeadOffset) {
+    // Expansion is stored as negative/positive arrow-axis growth. In the
+    // canonical reverse direction, the head is on the negative side.
+    return uDirection == DIRECTION_REVERSE
+        ? vec2(outsideHeadOffset, 0.0)
+        : vec2(0.0, outsideHeadOffset);
 }
 
 void main(void) {
@@ -1400,9 +1269,42 @@ void main(void) {
     size.y *= getSampleFacetHeight(pos);
     pos = applySampleFacet(pos);
 
+    float strokeWidth = getScaled_strokeWidth();
+    float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
+    vHalfStrokeWidth = strokeWidth / 2.0;
+
     vec2 sizeInPixels = size * uViewportSize;
 
-    vec2 outsideHeadExpansion = getOutsideHeadExpansion(sizeInPixels);
+    // Width-like quantities are based on mark thickness, which is unaffected
+    // by outside head expansion. Compute them before length expansion and reuse.
+    vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
+    float headHalfWidth = resolveHeadHalfWidth(arrowHalfSizeBeforeExpansion.y);
+    float stemHalfWidth = resolveStemHalfWidth(arrowHalfSizeBeforeExpansion.y);
+    float physicalStemHalfWidth = abs(stemHalfWidth);
+    float headStrokeWidth = uHeadShape == HEAD_SHAPE_OPEN
+        ? physicalStemHalfWidth * 2.0
+        : 0.0;
+    float configuredRHeadSlope = 1.0 / uHeadSlope;
+    float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
+    float rHeadSlope = effectiveHeadSlope(
+        arrowHalfSizeBeforeExpansion.x,
+        headHalfWidth,
+        stemHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope
+    );
+    float rHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
+        ? rHeadSlope
+        : min(configuredRHeadNotchSlope, rHeadSlope);
+
+    // Grow only the head side of the vertex quad for outside placement.
+    float outsideHeadOffset = getOutsideHeadOffset(
+        headHalfWidth,
+        rHeadSlope,
+        rHeadNotchSlope,
+        headStrokeWidth
+    );
+    vec2 outsideHeadExpansion = getOutsideHeadExpansion(outsideHeadOffset);
     if (uOrient == ORIENT_HORIZONTAL) {
         vec2 expansion = outsideHeadExpansion / uViewportSize.x;
         pos.x += mix(-expansion.x, expansion.y, frac.x);
@@ -1413,9 +1315,6 @@ void main(void) {
         size.y += expansion.x + expansion.y;
     }
 
-    float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
-
     float aaPadding = 1.0 / uDevicePixelRatio;
     vec2 centeredFrac = frac - 0.5;
     vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
@@ -1423,9 +1322,24 @@ void main(void) {
 
     sizeInPixels = size * uViewportSize;
     vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
-    vHalfSizeInPixels = sizeInPixels / 2.0;
+    vec2 halfSizeInPixels = sizeInPixels / 2.0;
 
-    vHalfStrokeWidth = strokeWidth / 2.0;
+    vArrowHalfSizeInPixels = toArrowSpace(halfSizeInPixels);
+
+    // These flat varyings are per-arrow geometry constants used by the fragment
+    // SDF. Keeping them here avoids repeating this math per fragment.
+    vHeadHalfWidth = headHalfWidth;
+    vStemHalfWidth = stemHalfWidth;
+    vHeadStrokeWidth = headStrokeWidth;
+    vRHeadSlope = rHeadSlope;
+    vRHeadNotchSlope = rHeadNotchSlope;
+    vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
+    vHeadRepeatFootprintLength = headRepeatFootprintLength(
+        vHeadHalfWidth,
+        vRHeadSlope,
+        vHeadStrokeWidth,
+        vHalfStrokeWidth
+    );
     vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
 
     gl_Position = unitToNdc(pos);

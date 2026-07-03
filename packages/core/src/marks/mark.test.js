@@ -13,8 +13,8 @@ describe("mark factory", () => {
                 data: { values: [{ start: 8, end: 32, band: "A" }] },
                 mark: {
                     type: "arrow",
-                    headLength: 18,
-                    headLengthUnit: "px",
+                    headAngle: 45,
+                    headNotchAngle: 90,
                     headWidth: 1,
                     headWidthUnit: "proportion",
                     stemWidth: 0.45,

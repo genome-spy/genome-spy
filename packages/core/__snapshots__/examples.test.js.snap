@@ -3965,6 +3965,10 @@ exports[`shared examples > initializes examples/core/marks/arrow/arrow_playgroun
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
