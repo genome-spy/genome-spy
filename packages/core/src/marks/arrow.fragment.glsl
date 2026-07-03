@@ -28,16 +28,18 @@ float sdStem(
     vec2 p,
     float halfLength,
     float halfWidth,
-    float rHeadSlope
+    float rHeadSlope,
+    float rStartNotchSlope
 ) {
-    float notchLength = halfWidth * rHeadSlope;
+    float headSideLength = halfWidth * rHeadSlope;
+    float startNotchLength = halfWidth * rStartNotchSlope;
     vec2 vertices[6] = vec2[6](
         vec2(-halfLength, 0.0),
-        vec2(-halfLength + notchLength, halfWidth),
+        vec2(-halfLength + headSideLength, halfWidth),
         vec2(halfLength, halfWidth),
-        vec2(halfLength - notchLength, 0.0),
+        vec2(halfLength - startNotchLength, 0.0),
         vec2(halfLength, -halfWidth),
-        vec2(-halfLength + notchLength, -halfWidth)
+        vec2(-halfLength + headSideLength, -halfWidth)
     );
 
     return sdPolygon(vertices, p);
@@ -104,6 +106,7 @@ vec2 toArrowSpace(vec2 v) {
 float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
     float rHeadSlope = 1.0 / uHeadSlope;
     float rHeadNotchSlope = min(1.0 / uHeadNotchSlope, rHeadSlope);
+    float rStartNotchSlope = uStartNotch ? rHeadSlope : 0.0;
     float stemHalfWidth = resolveStemHalfWidth(arrowHalfSize.y);
     float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
         ? stemHalfWidth * 2.0
@@ -119,7 +122,13 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
     float arrowHeadX = repeat(distanceFromStart, spacing);
 
     return min(
-        sdStem(arrowPos, arrowHalfSize.x, stemHalfWidth, rHeadSlope),
+        sdStem(
+            arrowPos,
+            arrowHalfSize.x,
+            stemHalfWidth,
+            rHeadSlope,
+            rStartNotchSlope
+        ),
         sdArrowHead(
             vec2(arrowHeadX, arrowPos.y),
             arrowHalfSize.y,

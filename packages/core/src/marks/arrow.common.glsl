@@ -11,7 +11,7 @@ layout(std140) uniform Mark {
     uniform float uHeadWidth;
     uniform int uHeadWidthUnit;
     uniform float uHeadNotch;
-    uniform float uStartNotch;
+    uniform bool uStartNotch;
     uniform bool uHeadRepeat;
     uniform float uHeadSpacing;
     uniform float uHeadOffset;

@@ -417,13 +417,12 @@ export interface ArrowProps
     headNotch?: number | ExprRef;
 
     /**
-     * Length of the notch at the start of the arrow as a proportion of the mark
-     * thickness. Values are clamped to `[0, 1]` and to the available stem
-     * length.
+     * Whether to draw a notch at the start of the arrow. The start notch uses
+     * the same slope as the arrowhead edge.
      *
-     * __Default value:__ `0`
+     * __Default value:__ `false`
      */
-    startNotch?: number | ExprRef;
+    startNotch?: boolean | ExprRef;
 
     /**
      * Whether arrowheads are repeated along the arrow.
