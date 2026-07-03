@@ -24,31 +24,42 @@ float sdPolygon(vec2[N] v, vec2 p) {
     return s*sqrt(d);
 }
 
-float sdStem(vec2 p, vec2 halfSize, float rHeadSlope) {
-    float notchLength = halfSize.y * rHeadSlope;
+float sdStem(
+    vec2 p,
+    float halfLength,
+    float halfWidth,
+    float rHeadSlope
+) {
+    float notchLength = halfWidth * rHeadSlope;
     vec2 vertices[6] = vec2[6](
-        vec2(-halfSize.x, 0.0),
-        vec2(-halfSize.x + notchLength, halfSize.y),
-        vec2(halfSize.x, halfSize.y),
-        vec2(halfSize.x - notchLength, 0.0),
-        vec2(halfSize.x, -halfSize.y),
-        vec2(-halfSize.x + notchLength, -halfSize.y)
+        vec2(-halfLength, 0.0),
+        vec2(-halfLength + notchLength, halfWidth),
+        vec2(halfLength, halfWidth),
+        vec2(halfLength - notchLength, 0.0),
+        vec2(halfLength, -halfWidth),
+        vec2(-halfLength + notchLength, -halfWidth)
     );
 
     return sdPolygon(vertices, p);
 }
 
-float arrowSize(float halfHeight, float rHeadSlope, float headThickness) {
-    float headLength = halfHeight * rHeadSlope;
-    float headThicknessX = headThickness / length(vec2(rHeadSlope, 1.0));
-    return headLength + headThicknessX + vHalfStrokeWidth;
+float headFootprintLength(float halfWidth, float rHeadSlope, float headStrokeWidth) {
+    float headLength = halfWidth * rHeadSlope;
+    float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
+    return headLength + headStrokeLength + vHalfStrokeWidth;
 }
 
-float sdArrowHead(vec2 p, float halfHeight, float rHeadSlope, float rHeadNotchSlope, float headThickness) {
-    float headLength = halfHeight * rHeadSlope;
-    vec2 topOuter = vec2(headLength, halfHeight);
-    vec2 bottomOuter = vec2(headLength, -halfHeight);
-    vec2 normalOffset = headThickness * normalize(vec2(halfHeight, -headLength));
+float sdArrowHead(
+    vec2 p,
+    float halfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    float headLength = halfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headLength, halfWidth);
+    vec2 bottomOuter = vec2(headLength, -halfWidth);
+    vec2 normalOffset = headStrokeWidth * normalize(vec2(halfWidth, -headLength));
     vec2 topInner = topOuter + normalOffset;
     vec2 bottomInner = bottomOuter + vec2(normalOffset.x, -normalOffset.y);
     float notchX = topInner.x - topInner.y * rHeadNotchSlope;
@@ -77,31 +88,55 @@ float unitValue(float value, int unit, float reference) {
     }
 }
 
-float resolveStemHalfHeight(float markHalfHeight) {
-    float markHeight = markHalfHeight * 2.0;
-    float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markHeight);
-    return clamp(stemWidth, 0.0, markHeight) * 0.5;
+float resolveStemHalfWidth(float markHalfWidth) {
+    float markWidth = markHalfWidth * 2.0;
+    float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markWidth);
+    return clamp(stemWidth, 0.0, markWidth) * 0.5;
 }
 
-float sdArrow(vec2 p, vec2 halfSize) {
+// Arrow-space convention: x is length along the arrow body, y is width
+// perpendicular to it. Negative x points toward the arrowhead in the canonical
+// "reverse" direction. Shared varyings keep the rect mark names.
+vec2 toArrowSpace(vec2 v) {
+    return uOrient == ORIENT_HORIZONTAL ? v : v.yx;
+}
+
+float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
     float rHeadSlope = 1.0 / uHeadSlope;
     float rHeadNotchSlope = min(1.0 / uHeadNotchSlope, rHeadSlope);
-    float stemHalfHeight = resolveStemHalfHeight(halfSize.y);
-    float headThickness = uHeadShape == HEAD_SHAPE_ANGLE ? stemHalfHeight * 2.0 : 0.0;
+    float stemHalfWidth = resolveStemHalfWidth(arrowHalfSize.y);
+    float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
+        ? stemHalfWidth * 2.0
+        : 0.0;
 
     float spacing = uHeadRepeat
-        ? max(uHeadSpacing, arrowSize(halfSize.y, rHeadSlope, headThickness))
+        ? max(
+            uHeadSpacing,
+            headFootprintLength(arrowHalfSize.y, rHeadSlope, headStrokeWidth)
+        )
         : 1.0 / 0.0;
-    float arrowHeadX = repeat(vPosInPixels.x + halfSize.x, spacing);
+    float distanceFromStart = arrowPos.x + arrowHalfSize.x;
+    float arrowHeadX = repeat(distanceFromStart, spacing);
 
     return min(
-        sdStem(p, vec2(halfSize.x, stemHalfHeight), rHeadSlope),
-        sdArrowHead(vec2(arrowHeadX, vPosInPixels.y), halfSize.y, rHeadSlope, rHeadNotchSlope, headThickness)
+        sdStem(arrowPos, arrowHalfSize.x, stemHalfWidth, rHeadSlope),
+        sdArrowHead(
+            vec2(arrowHeadX, arrowPos.y),
+            arrowHalfSize.y,
+            rHeadSlope,
+            rHeadNotchSlope,
+            headStrokeWidth
+        )
     );
 }
 
 void main(void) {
-    float d = sdArrow(vPosInPixels, vHalfSizeInPixels);
+    vec2 arrowPos = toArrowSpace(vPosInPixels);
+    vec2 arrowHalfSize = toArrowSpace(vHalfSizeInPixels);
+    if (uDirection == DIRECTION_FORWARD) {
+        arrowPos.x = -arrowPos.x;
+    }
+    float d = sdArrow(arrowPos, arrowHalfSize);
 
     fragColor = distanceToColor(
         d,
