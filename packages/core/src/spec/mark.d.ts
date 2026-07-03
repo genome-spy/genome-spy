@@ -348,7 +348,9 @@ export interface ArrowProps
     orient?: "horizontal" | "vertical" | ExprRef;
 
     /**
-     * Direction of the arrow after sorting the interval endpoints.
+     * Direction of the arrow after sorting the interval endpoints. `"forward"`
+     * points toward increasing values on the arrow axis. `"reverse"` points
+     * toward decreasing values.
      *
      * __Default value:__ `"forward"`
      */
@@ -366,7 +368,9 @@ export interface ArrowProps
     /**
      * Angle in degrees between the arrow axis and the arrowhead notch edge.
      * `90` places the notch point at the tip, producing a triangular head when
-     * `headAngle` is less than `90`. Values are clamped to `[5, 90]`.
+     * `headAngle` is less than `90`. Applies to `"triangle"` heads. `"open"`
+     * heads use `headAngle` for the notch edge as well. Values are clamped to
+     * `[5, 90]`.
      *
      * __Default value:__ `90`
      */
@@ -374,7 +378,8 @@ export interface ArrowProps
 
     /**
      * Shape of the arrowhead. `"triangle"` draws a filled head. `"open"`
-     * draws an open head whose thickness matches the stem width.
+     * draws an open head whose thickness matches the magnitude of the stem
+     * width.
      *
      * __Default value:__ `"triangle"`
      */
@@ -382,7 +387,8 @@ export interface ArrowProps
 
     /**
      * Width of the arrowhead in pixels or as a proportion of the mark thickness.
-     * The unit is controlled by `headWidthUnit`.
+     * The unit is controlled by `headWidthUnit`. The resolved width is clamped
+     * to the mark thickness.
      *
      * __Default value:__ `1`
      */
@@ -404,23 +410,30 @@ export interface ArrowProps
     startNotch?: boolean | ExprRef;
 
     /**
-     * Minimum length of the arrow stem in pixels. When the arrow is too short
-     * for the configured head angle and minimum stem length, the arrowhead is
-     * made blunter toward a 90 degree angle.
+     * Minimum visible length of the arrow stem in pixels. When a non-repeated
+     * arrow is too short for the configured shape and minimum stem length, the
+     * affected notch or head angle is made blunter toward 90 degrees. For
+     * `"inside"` placement, this applies to `"triangle"` heads and is measured
+     * from the start of the stem to where the stem meets the head notch edge.
+     * For `"outside"` placement, this applies when `startNotch` is `true` and
+     * is measured from the start notch to the head start. If `stemWidth` is
+     * negative, there is no visible stem to preserve.
      *
      * __Default value:__ `0`
      */
     minStemLength?: number | ExprRef;
 
     /**
-     * Whether arrowheads are repeated along the arrow.
+     * Whether arrowheads are repeated along the arrow. Repeated arrowheads do
+     * not use `minStemLength`.
      *
      * __Default value:__ `false`
      */
     headRepeat?: boolean | ExprRef;
 
     /**
-     * Spacing between repeated arrowheads in pixels.
+     * Spacing between repeated arrowheads in pixels. The effective spacing is
+     * at least the rendered arrowhead footprint, including stroke.
      *
      * __Default value:__ `24`
      */
@@ -428,7 +441,9 @@ export interface ArrowProps
 
     /**
      * Width of the arrow stem in pixels or as a proportion of the mark thickness.
-     * The unit is controlled by `stemWidthUnit`. Negative values hide the stem.
+     * The unit is controlled by `stemWidthUnit`. The resolved width is clamped
+     * to the mark thickness. Negative values hide the stem, but their magnitude
+     * still controls the thickness of `"open"` arrowheads.
      *
      * __Default value:__ `0.45`
      */
@@ -443,9 +458,9 @@ export interface ArrowProps
 
     /**
      * Placement of the arrowhead relative to the encoded interval.
-     * `"inside"` keeps the arrowhead within the encoded interval and squeezes it
-     * when the interval is shorter than the configured arrowheads.
-     * `"outside"` places the arrowhead beyond the encoded stem endpoint.
+     * `"inside"` keeps the whole arrowhead within the encoded interval.
+     * `"outside"` places the arrowhead beyond the encoded interval so that the
+     * head starts at the interval endpoint.
      *
      * __Default value:__ `"inside"`
      */

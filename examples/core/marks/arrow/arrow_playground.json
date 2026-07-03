@@ -185,9 +185,9 @@
   "encoding": {
     "x": {
       "field": "start",
-      "type": "index",
+      "type": "quantitative",
       "scale": { "domain": [0, 100], "zoom": true },
-      "axis": { "title": "Position" }
+      "axis": { "title": "Position", "grid": true }
     },
     "x2": { "field": "end" },
     "y": {
