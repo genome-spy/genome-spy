@@ -371,7 +371,7 @@ export interface ArrowProps
 
     /**
      * Shape of the arrowhead. `"triangle"` draws a filled head. `"angle"`
-     * draws an open head using the stroke width.
+     * draws an open head whose thickness matches the stem width.
      *
      * __Default value:__ `"triangle"`
      */

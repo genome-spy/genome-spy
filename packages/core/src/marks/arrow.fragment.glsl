@@ -69,10 +69,24 @@ float repeat(float x, float spacing) {
     return x >= spacing ? x - floor(x / spacing) * spacing : x;
 }
 
+float unitValue(float value, int unit, float reference) {
+    if (unit == UNIT_PROPORTION) {
+        return value * reference;
+    } else {
+        return value;
+    }
+}
+
+float resolveStemHalfHeight(float markHalfHeight) {
+    float markHeight = markHalfHeight * 2.0;
+    float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markHeight);
+    return clamp(stemWidth, 0.0, markHeight) * 0.5;
+}
+
 float sdArrow(vec2 p, vec2 halfSize) {
     float rHeadSlope = 1.0 / uHeadSlope;
     float rHeadNotchSlope = min(1.0 / uHeadNotchSlope, rHeadSlope);
-    float stemHalfHeight = halfSize.y * 0.2;
+    float stemHalfHeight = resolveStemHalfHeight(halfSize.y);
     float headThickness = uHeadShape == HEAD_SHAPE_ANGLE ? stemHalfHeight * 2.0 : 0.0;
 
     float spacing = uHeadRepeat
