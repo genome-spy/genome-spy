@@ -118,7 +118,12 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
         ? max(uHeadSpacing, vHeadRepeatFootprintLength)
         : 1.0 / 0.0;
     float distanceFromStart = arrowPos.x + arrowHalfSize.x;
-    float arrowHeadX = repeat(distanceFromStart, spacing);
+
+    // Keep the stroked tip inside the repeated head's local window.
+    float arrowHeadX = repeat(
+        distanceFromStart + vHalfStrokeWidth,
+        spacing
+    ) - vHalfStrokeWidth;
 
     return min(
         sdStem(

@@ -65,7 +65,7 @@ float headRepeatFootprintLength(
 ) {
     float headAxisLength = halfWidth * rHeadSlope;
     float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
-    return headAxisLength + headStrokeLength + halfStrokeWidth;
+    return headAxisLength + headStrokeLength + halfStrokeWidth * 2.0;
 }
 
 // Distance from the head tip to its centerline notch/join point.
