@@ -233,7 +233,7 @@ function headAngleToSlope(value) {
  * @param {import("../spec/channel.js").Encoding} encoding
  * @returns {"horizontal" | "vertical"}
  */
-function inferArrowOrient(encoding) {
+export function inferArrowOrient(encoding) {
     if (encoding.x2 && !encoding.y2) {
         return "horizontal";
     } else if (encoding.y2 && !encoding.x2) {
