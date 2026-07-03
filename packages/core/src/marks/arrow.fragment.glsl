@@ -70,69 +70,65 @@ float headNotchX(
     return topInner.x - topInner.y * rHeadNotchSlope;
 }
 
-// Distance from the arrow tip to where the stem outer edge meets the head
-// notch edge.
-float headStemJoinLength(
+// Distance from the arrow tip to where the stem outer edge meets a filled
+// triangle head's notch edge.
+float triangleHeadStemJoinLength(
     float stemHalfWidth,
     float headHalfWidth,
     float rHeadSlope,
-    float rHeadNotchSlope,
-    float headStrokeWidth
+    float rHeadNotchSlope
 ) {
-    return headNotchX(
-        headHalfWidth,
-        rHeadSlope,
-        rHeadNotchSlope,
-        headStrokeWidth
-    ) + stemHalfWidth * rHeadNotchSlope;
+    float clampedRHeadNotchSlope = min(rHeadNotchSlope, rHeadSlope);
+    return headHalfWidth * rHeadSlope
+        - (headHalfWidth - stemHalfWidth) * clampedRHeadNotchSlope;
 }
 
-// Blunt the head toward 90 degrees when needed to preserve minimum stem length.
+// Blunt filled, non-repeated heads toward 90 degrees to preserve stem length.
 float effectiveHeadSlope(
     float halfLength,
     float headHalfWidth,
     float stemHalfWidth,
     float configuredRHeadSlope,
-    float configuredRHeadNotchSlope,
-    float headStrokeWidth
+    float configuredRHeadNotchSlope
 ) {
-    float maxJoinLength = max(halfLength * 2.0 - max(uMinStemLength, 0.0), 0.0);
-    float clampedConfiguredRHeadNotchSlope = min(
-        configuredRHeadNotchSlope,
-        configuredRHeadSlope
+    if (
+        uHeadRepeat ||
+        uHeadShape != HEAD_SHAPE_TRIANGLE ||
+        uMinStemLength <= 0.0
+    ) {
+        return configuredRHeadSlope;
+    }
+
+    float maxJoinLength = max(
+        halfLength * 2.0 - uMinStemLength,
+        0.0
     );
-    float configuredJoinLength = headStemJoinLength(
+    float configuredJoinLength = triangleHeadStemJoinLength(
         stemHalfWidth,
         headHalfWidth,
         configuredRHeadSlope,
-        clampedConfiguredRHeadNotchSlope,
-        headStrokeWidth
+        configuredRHeadNotchSlope
     );
 
     if (configuredJoinLength <= maxJoinLength) {
         return configuredRHeadSlope;
     }
 
-    float lo = 0.0;
-    float hi = configuredRHeadSlope;
-    for (int i = 0; i < 12; i++) {
-        float mid = (lo + hi) * 0.5;
-        float midRHeadNotchSlope = min(clampedConfiguredRHeadNotchSlope, mid);
-        float joinLength = headStemJoinLength(
-            stemHalfWidth,
-            headHalfWidth,
-            mid,
-            midRHeadNotchSlope,
-            headStrokeWidth
+    float boundaryJoinLength = stemHalfWidth * configuredRHeadNotchSlope;
+    if (maxJoinLength < boundaryJoinLength) {
+        return stemHalfWidth > 0.0
+            ? clamp(maxJoinLength / stemHalfWidth, 0.0, configuredRHeadSlope)
+            : 0.0;
+    } else {
+        return clamp(
+            (
+                maxJoinLength +
+                (headHalfWidth - stemHalfWidth) * configuredRHeadNotchSlope
+            ) / headHalfWidth,
+            0.0,
+            configuredRHeadSlope
         );
-        if (joinLength > maxJoinLength) {
-            hi = mid;
-        } else {
-            lo = mid;
-        }
     }
-
-    return lo;
 }
 
 float sdArrowHead(
@@ -204,8 +200,7 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
         arrowHalfSize.y,
         stemHalfWidth,
         configuredRHeadSlope,
-        configuredRHeadNotchSlope,
-        headStrokeWidth
+        configuredRHeadNotchSlope
     );
     float rHeadNotchSlope = min(configuredRHeadNotchSlope, rHeadSlope);
     float rStartNotchSlope = uStartNotch ? rHeadSlope : 0.0;
