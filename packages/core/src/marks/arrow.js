@@ -6,6 +6,7 @@ import { RectVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
+import { isChannelDefWithScale } from "../encoder/encoder.js";
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const MIN_HEAD_SLOPE = 1e-6;
@@ -24,6 +25,9 @@ export const ARROW_UNIFORM_ENUMS = {
  * @extends {Mark<import("../spec/mark.js").ArrowProps>}
  */
 export default class ArrowMark extends Mark {
+    /** @type {"horizontal" | "vertical" | import("../spec/parameter.js").ExprRef | undefined} */
+    #orient;
+
     /**
      * @returns {import("../spec/channel.js").Channel[]}
      */
@@ -64,6 +68,8 @@ export default class ArrowMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
+        this.#orient = this.properties.orient ?? inferArrowOrient(encoding);
+
         fixCoveragePositional(encoding, "x");
         fixCoveragePositional(encoding, "y");
 
@@ -91,7 +97,7 @@ export default class ArrowMark extends Mark {
 
         const props = this.properties;
 
-        this.registerMarkUniformValue("uOrient", props.orient, (value) =>
+        this.registerMarkUniformValue("uOrient", this.#getOrient(), (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.orientations, value)
         );
         this.registerMarkUniformValue("uDirection", props.direction, (value) =>
@@ -192,6 +198,15 @@ export default class ArrowMark extends Mark {
             );
         }, options);
     }
+
+    #getOrient() {
+        if (!this.#orient) {
+            this.#orient =
+                this.properties.orient ?? inferArrowOrient(this.encoding);
+        }
+
+        return this.#orient;
+    }
 }
 
 /**
@@ -212,4 +227,41 @@ export function enumIndex(values, value) {
 function headAngleToSlope(value) {
     const angle = Math.min(Math.max(value, MIN_HEAD_ANGLE), MAX_HEAD_ANGLE);
     return Math.max(Math.tan(angle * DEGREES_TO_RADIANS), MIN_HEAD_SLOPE);
+}
+
+/**
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @returns {"horizontal" | "vertical"}
+ */
+function inferArrowOrient(encoding) {
+    if (encoding.x2 && !encoding.y2) {
+        return "horizontal";
+    } else if (encoding.y2 && !encoding.x2) {
+        return "vertical";
+    }
+
+    const xDirectional = isDirectionalChannel(encoding.x);
+    const yDirectional = isDirectionalChannel(encoding.y);
+
+    if (xDirectional && !yDirectional) {
+        return "horizontal";
+    } else if (yDirectional && !xDirectional) {
+        return "vertical";
+    } else if (encoding.x && !encoding.y) {
+        return "horizontal";
+    } else if (encoding.y && !encoding.x) {
+        return "vertical";
+    } else {
+        return "horizontal";
+    }
+}
+
+/**
+ * @param {import("../spec/channel.js").ChannelDef} channelDef
+ */
+function isDirectionalChannel(channelDef) {
+    return (
+        isChannelDefWithScale(channelDef) &&
+        ["quantitative", "index", "locus"].includes(channelDef.type)
+    );
 }

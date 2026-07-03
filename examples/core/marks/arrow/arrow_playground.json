@@ -5,6 +5,15 @@
 
   "params": [
     {
+      "name": "orient",
+      "value": "horizontal",
+      "bind": {
+        "input": "radio",
+        "options": ["horizontal", "vertical"],
+        "name": "Orient"
+      }
+    },
+    {
       "name": "direction",
       "value": "forward",
       "bind": {
@@ -154,7 +163,7 @@
 
   "mark": {
     "type": "arrow",
-    "orient": "horizontal",
+    "orient": { "expr": "orient" },
     "direction": { "expr": "direction" },
     "headShape": { "expr": "headShape" },
     "headAngle": { "expr": "headAngle" },

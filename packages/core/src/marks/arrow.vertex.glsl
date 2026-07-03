@@ -41,7 +41,7 @@ float resolveStemHalfWidth(float markHalfWidth) {
     float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markWidth);
     if (stemWidth < 0.0) {
         // The negative sign hides stem geometry; the magnitude remains
-        // available for angle-head thickness.
+        // available for open-head thickness.
         return clamp(stemWidth, -markWidth, 0.0) * 0.5;
     } else {
         return clamp(stemWidth, 0.0, markWidth) * 0.5;

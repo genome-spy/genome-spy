@@ -338,9 +338,12 @@ export interface ArrowProps
     type: "arrow";
 
     /**
-     * Orientation of the arrow body.
+     * Orientation of the arrow body. If undefined, the orientation is inferred
+     * from the encoded fields. Quantitative, index, and locus fields are
+     * preferred as the arrow direction, so an arrow with quantitative `x` and
+     * discrete `y` is horizontal.
      *
-     * __Default value:__ `"horizontal"`
+     * __Default value:__ inferred from the encoding
      */
     orient?: "horizontal" | "vertical" | ExprRef;
 
