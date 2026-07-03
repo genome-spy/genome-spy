@@ -101,7 +101,7 @@ float triangleHeadStemJoinLength(
         - (headHalfWidth - stemHalfWidth) * clampedRHeadNotchSlope;
 }
 
-// Blunt filled, non-repeated heads toward 90 degrees to preserve stem length.
+// Blunt non-repeated heads toward 90 degrees to preserve visible stem length.
 float effectiveHeadSlope(
     float halfLength,
     float headHalfWidth,
@@ -110,11 +110,30 @@ float effectiveHeadSlope(
     float configuredRHeadNotchSlope
 ) {
     if (
-        uHeadPlacement == HEAD_PLACEMENT_OUTSIDE ||
         uHeadRepeat ||
-        uHeadShape != HEAD_SHAPE_TRIANGLE ||
         stemHalfWidth < 0.0
     ) {
+        return configuredRHeadSlope;
+    }
+
+    if (uHeadPlacement == HEAD_PLACEMENT_OUTSIDE) {
+        if (!uStartNotch || stemHalfWidth <= 0.0) {
+            return configuredRHeadSlope;
+        }
+
+        // Outside heads start at the encoded endpoint. The preserved length is
+        // therefore the encoded arrow length minus the start notch depth.
+        float maxStartNotchLength = max(
+            halfLength * 2.0 - uMinStemLength,
+            0.0
+        );
+        return min(
+            configuredRHeadSlope,
+            maxStartNotchLength / stemHalfWidth
+        );
+    }
+
+    if (uHeadShape != HEAD_SHAPE_TRIANGLE) {
         return configuredRHeadSlope;
     }
 
@@ -221,15 +240,22 @@ void main(void) {
         : 0.0;
     float configuredRHeadSlope = 1.0 / uHeadSlope;
     float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
-    float outsideRHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
-        ? configuredRHeadSlope
-        : min(configuredRHeadNotchSlope, configuredRHeadSlope);
+    float rHeadSlope = effectiveHeadSlope(
+        arrowHalfSizeBeforeExpansion.x,
+        headHalfWidth,
+        stemHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope
+    );
+    float rHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
+        ? rHeadSlope
+        : min(configuredRHeadNotchSlope, rHeadSlope);
 
     // Grow only the head side of the vertex quad for outside placement.
     float outsideHeadOffset = getOutsideHeadOffset(
         headHalfWidth,
-        configuredRHeadSlope,
-        outsideRHeadNotchSlope,
+        rHeadSlope,
+        rHeadNotchSlope,
         headStrokeWidth
     );
     vec2 outsideHeadExpansion = getOutsideHeadExpansion(outsideHeadOffset);
@@ -259,16 +285,8 @@ void main(void) {
     vHeadHalfWidth = headHalfWidth;
     vStemHalfWidth = stemHalfWidth;
     vHeadStrokeWidth = headStrokeWidth;
-    vRHeadSlope = effectiveHeadSlope(
-        vArrowHalfSizeInPixels.x,
-        vHeadHalfWidth,
-        vStemHalfWidth,
-        configuredRHeadSlope,
-        configuredRHeadNotchSlope
-    );
-    vRHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
-        ? vRHeadSlope
-        : min(configuredRHeadNotchSlope, vRHeadSlope);
+    vRHeadSlope = rHeadSlope;
+    vRHeadNotchSlope = rHeadNotchSlope;
     vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
     vHeadRepeatFootprintLength = headRepeatFootprintLength(
         vHeadHalfWidth,
