@@ -100,7 +100,7 @@
       "bind": {
         "input": "range",
         "min": 4,
-        "max": 80,
+        "max": 200,
         "step": 1,
         "name": "Head spacing"
       }
@@ -219,7 +219,11 @@
     "y": {
       "field": "band",
       "type": "nominal",
-      "scale": { "type": "band", "domain": ["pair", "single"], "padding": 0.25 },
+      "scale": {
+        "type": "band",
+        "domain": ["pair", "single"],
+        "padding": 0.25
+      },
       "axis": { "title": null }
     }
   }

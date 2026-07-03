@@ -94,6 +94,7 @@ export default class ArrowMark extends Mark {
         this.registerMarkUniformValue("uDirection", props.direction, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.directions, value)
         );
+        this.registerMarkUniformValue("uHeadSlope", props.headSlope);
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
         );

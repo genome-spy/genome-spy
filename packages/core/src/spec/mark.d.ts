@@ -351,6 +351,8 @@ export interface ArrowProps
      */
     direction?: "forward" | "reverse" | ExprRef;
 
+    headSlope?: number | ExprRef;
+
     /**
      * Shape of the arrowhead. `"triangle"` draws a filled head. `"angle"`
      * draws an open head using the stroke width.

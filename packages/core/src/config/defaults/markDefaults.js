@@ -44,6 +44,7 @@ export const ARROW_MARK_DEFAULTS = {
     strokeWidth: 1,
     orient: "horizontal",
     direction: "forward",
+    headSlope: 1.0,
     headShape: "triangle",
     headLength: 18,
     headLengthUnit: "px",

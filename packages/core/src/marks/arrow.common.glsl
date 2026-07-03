@@ -3,6 +3,8 @@ layout(std140) uniform Mark {
     uniform int uDirection;
     uniform int uHeadShape;
 
+    uniform float uHeadSlope;
+
     uniform float uHeadLength;
     uniform int uHeadLengthUnit;
     uniform float uHeadWidth;
