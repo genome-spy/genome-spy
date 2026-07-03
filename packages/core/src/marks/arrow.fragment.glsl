@@ -10,7 +10,7 @@ flat in float vHeadStrokeWidth;
 flat in float vRHeadSlope;
 flat in float vRHeadNotchSlope;
 flat in float vRStartNotchSlope;
-flat in float vHeadFootprintLength;
+flat in float vHeadRepeatFootprintLength;
 
 out lowp vec4 fragColor;
 
@@ -110,7 +110,7 @@ float repeat(float x, float spacing) {
 
 float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
     float spacing = uHeadRepeat
-        ? max(uHeadSpacing, vHeadFootprintLength)
+        ? max(uHeadSpacing, vHeadRepeatFootprintLength)
         : 1.0 / 0.0;
     float distanceFromStart = arrowPos.x + arrowHalfSize.x;
     float arrowHeadX = repeat(distanceFromStart, spacing);

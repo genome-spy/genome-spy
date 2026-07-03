@@ -8,7 +8,7 @@ flat out float vHeadStrokeWidth;
 flat out float vRHeadSlope;
 flat out float vRHeadNotchSlope;
 flat out float vRStartNotchSlope;
-flat out float vHeadFootprintLength;
+flat out float vHeadRepeatFootprintLength;
 
 out vec2 vPosInPixels;
 
@@ -42,13 +42,16 @@ float resolveStemHalfWidth(float markHalfWidth) {
     return clamp(stemWidth, 0.0, markWidth) * 0.5;
 }
 
+// Resolve head width against the mark thickness. The render quad currently
+// only covers the mark thickness, so clamp the head to that extent.
 float resolveHeadHalfWidth(float markHalfWidth) {
     float markWidth = markHalfWidth * 2.0;
     float headWidth = unitValue(uHeadWidth, uHeadWidthUnit, markWidth);
     return clamp(headWidth, 0.0, markWidth) * 0.5;
 }
 
-float headFootprintLength(
+// Width along the arrow axis needed by one repeated head, including stroke.
+float headRepeatFootprintLength(
     float halfWidth,
     float rHeadSlope,
     float headStrokeWidth,
@@ -79,7 +82,8 @@ float headNotchOffset(
 }
 
 // Distance from the arrow tip to where the stem outer edge meets a filled
-// triangle head's notch edge.
+// triangle head's notch edge. This is the effective occupied head length for
+// deciding when a short inside arrow needs to blunt its head angle.
 float triangleHeadStemJoinLength(
     float stemHalfWidth,
     float headHalfWidth,
@@ -140,27 +144,17 @@ float effectiveHeadSlope(
     }
 }
 
-float getOutsideHeadOffset(vec2 sizeInPixels) {
+// Outside placement extends the vertex quad so the head can protrude past the
+// encoded interval while its notch/join point stays on the endpoint.
+float getOutsideHeadOffset(
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
     if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
         return 0.0;
     }
-
-    vec2 arrowHalfSize = toArrowSpace(sizeInPixels * 0.5);
-    float stemHalfWidth = resolveStemHalfWidth(arrowHalfSize.y);
-    float headHalfWidth = resolveHeadHalfWidth(arrowHalfSize.y);
-    float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
-        ? stemHalfWidth * 2.0
-        : 0.0;
-    float rHeadSlope = effectiveHeadSlope(
-        arrowHalfSize.x,
-        headHalfWidth,
-        stemHalfWidth,
-        1.0 / uHeadSlope,
-        1.0 / uHeadNotchSlope
-    );
-    float rHeadNotchSlope = uHeadShape == HEAD_SHAPE_ANGLE
-        ? rHeadSlope
-        : min(1.0 / uHeadNotchSlope, rHeadSlope);
 
     return headNotchOffset(
         headHalfWidth,
@@ -171,17 +165,11 @@ float getOutsideHeadOffset(vec2 sizeInPixels) {
 }
 
 vec2 getOutsideHeadExpansion(float outsideHeadOffset) {
-    if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
-        return vec2(0.0);
-    }
-
-    bool endHeadPositive = uDirection == DIRECTION_FORWARD;
-    bool endHeadNegative = uDirection == DIRECTION_REVERSE;
-
-    float negative = endHeadNegative ? outsideHeadOffset : 0.0;
-    float positive = endHeadPositive ? outsideHeadOffset : 0.0;
-
-    return vec2(negative, positive);
+    // Expansion is stored as negative/positive arrow-axis growth. In the
+    // canonical reverse direction, the head is on the negative side.
+    return uDirection == DIRECTION_REVERSE
+        ? vec2(outsideHeadOffset, 0.0)
+        : vec2(0.0, outsideHeadOffset);
 }
 
 void main(void) {
@@ -216,7 +204,27 @@ void main(void) {
 
     vec2 sizeInPixels = size * uViewportSize;
 
-    float outsideHeadOffset = getOutsideHeadOffset(sizeInPixels);
+    // Width-like quantities are based on mark thickness, which is unaffected
+    // by outside head expansion. Compute them before length expansion and reuse.
+    vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
+    float headHalfWidth = resolveHeadHalfWidth(arrowHalfSizeBeforeExpansion.y);
+    float stemHalfWidth = resolveStemHalfWidth(arrowHalfSizeBeforeExpansion.y);
+    float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
+        ? stemHalfWidth * 2.0
+        : 0.0;
+    float configuredRHeadSlope = 1.0 / uHeadSlope;
+    float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
+    float outsideRHeadNotchSlope = uHeadShape == HEAD_SHAPE_ANGLE
+        ? configuredRHeadSlope
+        : min(configuredRHeadNotchSlope, configuredRHeadSlope);
+
+    // Grow only the head side of the vertex quad for outside placement.
+    float outsideHeadOffset = getOutsideHeadOffset(
+        headHalfWidth,
+        configuredRHeadSlope,
+        outsideRHeadNotchSlope,
+        headStrokeWidth
+    );
     vec2 outsideHeadExpansion = getOutsideHeadExpansion(outsideHeadOffset);
     if (uOrient == ORIENT_HORIZONTAL) {
         vec2 expansion = outsideHeadExpansion / uViewportSize.x;
@@ -238,13 +246,12 @@ void main(void) {
     vec2 halfSizeInPixels = sizeInPixels / 2.0;
 
     vArrowHalfSizeInPixels = toArrowSpace(halfSizeInPixels);
-    vHeadHalfWidth = resolveHeadHalfWidth(vArrowHalfSizeInPixels.y);
-    vStemHalfWidth = resolveStemHalfWidth(vArrowHalfSizeInPixels.y);
-    vHeadStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
-        ? vStemHalfWidth * 2.0
-        : 0.0;
-    float configuredRHeadSlope = 1.0 / uHeadSlope;
-    float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
+
+    // These flat varyings are per-arrow geometry constants used by the fragment
+    // SDF. Keeping them here avoids repeating this math per fragment.
+    vHeadHalfWidth = headHalfWidth;
+    vStemHalfWidth = stemHalfWidth;
+    vHeadStrokeWidth = headStrokeWidth;
     vRHeadSlope = effectiveHeadSlope(
         vArrowHalfSizeInPixels.x,
         vHeadHalfWidth,
@@ -256,7 +263,7 @@ void main(void) {
         ? vRHeadSlope
         : min(configuredRHeadNotchSlope, vRHeadSlope);
     vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
-    vHeadFootprintLength = headFootprintLength(
+    vHeadRepeatFootprintLength = headRepeatFootprintLength(
         vHeadHalfWidth,
         vRHeadSlope,
         vHeadStrokeWidth,
