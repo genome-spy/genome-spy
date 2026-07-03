@@ -114,6 +114,14 @@ float repeat(float x, float spacing) {
 }
 
 float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
+    float stemDistance = sdStem(
+        arrowPos,
+        arrowHalfSize.x,
+        vStemHalfWidth,
+        vRHeadSlope,
+        vRStartNotchSlope
+    );
+
     float spacing = uHeadRepeat
         ? max(uHeadSpacing, vHeadRepeatFootprintLength)
         : 1.0 / 0.0;
@@ -125,22 +133,27 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
         spacing
     ) - vHalfStrokeWidth;
 
-    return min(
-        sdStem(
-            arrowPos,
-            arrowHalfSize.x,
-            vStemHalfWidth,
-            vRHeadSlope,
-            vRStartNotchSlope
-        ),
-        sdArrowHead(
-            vec2(arrowHeadX, arrowPos.y),
-            vHeadHalfWidth,
-            vRHeadSlope,
-            vRHeadNotchSlope,
-            vHeadStrokeWidth
-        )
+    float headDistance = sdArrowHead(
+        vec2(arrowHeadX, arrowPos.y),
+        vHeadHalfWidth,
+        vRHeadSlope,
+        vRHeadNotchSlope,
+        vHeadStrokeWidth
     );
+
+    if (uHeadRepeat) {
+        // Cull heads that would be partially clipped.
+        float headTipDistance = distanceFromStart - arrowHeadX;
+        float headEndDistance = headTipDistance
+            + vHeadRepeatFootprintLength
+            - vHalfStrokeWidth;
+
+        if (headTipDistance > 0.0 && headEndDistance > arrowHalfSize.x * 2.0) {
+            headDistance = FAR_OUTSIDE;
+        }
+    }
+
+    return min(stemDistance, headDistance);
 }
 
 void main(void) {
