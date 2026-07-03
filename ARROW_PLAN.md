@@ -3,379 +3,192 @@
 ## Rationale
 
 GenomeSpy needs a first-class `arrow` mark for interval-like genomic and
-protein visualizations where direction is part of the visual semantics. Current
-marks can approximate some cases, but they do not provide a compact way to draw
-directional intervals, repeated strand chevrons, centromere-like shapes, or
-protein-domain arrows with consistent GPU-rendered geometry.
+protein visualizations where direction is part of the visual semantics. The mark
+should support directional genes, transcripts, alignments, protein domains, and
+other ranged features without requiring authors to assemble arrows from multiple
+primitive marks.
 
-The mark should behave like an interval mark: data controls position, length,
-color, opacity, and stroke through existing visual encodings, while arrow shape
-configuration is controlled by mark props. In practice, those props become mark
-uniforms. This keeps the geometry configuration stable per layer, avoids
-expanding the encoding surface, and lets authors create separate layers for
-different arrow styles or strand directions.
+The arrow is an interval mark. Position, interval length, color, opacity,
+stroke, and now direction can be data-driven through visual encodings. Shape
+configuration remains mark-level state: head shape, head angles, head placement,
+head width, stem width, start notch, minimum stem length, and repeated heads are
+mark props backed by uniforms.
 
-## Use Cases
+## Current Design
 
-- Read alignments and structural annotations that need a single directional
-  head at one endpoint.
-- Gene and transcript tracks that need repeated chevrons along the body to show
-  strand direction.
-- Protein features where domains may be shown as full-height directional
-  blocks.
-- Centromere or cytoband tracks that need symmetric or opposing arrow-like
-  shapes.
-- Overview tracks where very short intervals must remain legible without
-  producing distorted arrowheads.
+The implementation follows the `rect` mark pipeline. `x`, `x2`, `y`, and `y2`
+define a rectangle-like local coordinate system. The vertex shader computes
+arrow-space dimensions and per-arrow geometry constants. The fragment shader
+uses signed distance fields to render the visible arrow as a union of stem and
+head shapes, with standard GenomeSpy fill, stroke, opacity, antialiasing, and
+picking behavior.
 
-## Proposed Parameters
+Arrow space uses `x` for arrow length and `y` for width perpendicular to the
+arrow direction. In the canonical reverse direction, negative `x` points toward
+the arrowhead. Orientation maps screen-space x/y into this arrow space.
 
-These parameters are mark props, not visual encoding channels. They are intended
-to be uniform-backed and constant for a mark layer.
+## Public Surface
 
-### Orientation and Direction
+### Positional and Style Encodings
 
-- `orient`: `"horizontal"` or `"vertical"`.
-- `direction`: `"forward"` or `"reverse"`.
+- `x`, `x2`, `y`, and `y2` define the interval.
+- `fill`, `stroke`, `fillOpacity`, `strokeOpacity`, and `strokeWidth` follow
+  existing mark conventions.
+- `direction` should become an arrow-only visual encoding channel.
 
-`orient` controls whether the arrow runs along x or y. `direction` controls
-which side is considered forward after the interval has been sorted. The arrow
-head is always drawn at the forward end.
+### Direction Encoding
 
-### Head Shape
+`direction` should be promoted from a simple mark prop to a discrete scaled
+visual encoding channel. The scale lets arbitrary source values map to the two
+visual directions. For example, strand values can map `+` and `-`, numeric
+values can map `1` and `-1`, and text values can map `forward` and `backward`.
 
+Example:
+
+```json
+"encoding": {
+  "direction": {
+    "field": "strand",
+    "type": "nominal",
+    "scale": {
+      "domain": ["+", "-"],
+      "range": ["forward", "reverse"]
+    }
+  }
+}
+```
+
+No legend should be created for `direction`. It is a visual control channel for
+arrow geometry, not a guide-producing style channel.
+
+`mark.direction` can remain as a constant shorthand and default. If
+`encoding.direction` is present, the encoding should take precedence.
+
+### Shape Props
+
+- `orient`: `"horizontal"` or `"vertical"`, inferred from the encoding when not
+  specified.
 - `headShape`: `"triangle"` or `"open"`.
-- `headWidth`: numeric width.
+- `headAngle`: outer head angle in degrees, clamped to `[1, 90]`.
+- `headNotchAngle`: triangle head notch angle in degrees, clamped to `[1, 90]`.
+  Open heads use `headAngle` for the notch edge.
+- `headWidth`: head width in pixels or as a proportion of mark thickness.
 - `headWidthUnit`: `"px"` or `"proportion"`.
-- `startNotch`: boolean flag for a notch at the start of an arrow.
-
-`triangle` is the filled block arrowhead and should be the default.
-`startNotch` cuts a V-shaped notch into the tail. `open` covers chevrons and
-strand arrows.
-
-### Stem Shape
-
-- `stemWidth`: numeric width.
+- `startNotch`: whether the arrow tail has a notch. The notch slope follows the
+  head slope.
+- `stemWidth`: stem width in pixels or as a proportion of mark thickness.
+  Negative values hide the stem; their magnitude still controls open-head
+  thickness.
 - `stemWidthUnit`: `"px"` or `"proportion"`.
+- `minStemLength`: minimum visible stem length in pixels. It adjusts effective
+  slopes for short non-repeated arrows.
+- `headPlacement`: `"inside"` or `"outside"`. Inside keeps the whole head in
+  the encoded interval. Outside places the head beyond the encoded interval so
+  that the head starts at the interval endpoint.
+- `headRepeat`: whether heads are repeated along the arrow.
+- `headSpacing`: requested repeated-head spacing. The effective spacing is at
+  least the rendered head footprint, including stroke.
 
-The stem width controls the rectangular body of the arrow. Proportional sizing
-uses the mark thickness in the orthogonal direction. Pixel sizing keeps the body
-stable across varying row heights.
+## Remaining Implementation Plan
 
-### Repeated Heads
-
-- `headRepeat`: boolean.
-- `headSpacing`: pixel spacing between repeated heads.
-- `repeatPhase`: `"mark"` or `"view"`.
-
-Repeated heads support UCSC-style gene tracks and other strand-direction cues.
-The terminal head is the anchor for the repeated pattern. `mark` anchors the
-pattern to each interval; `view` anchors it to screen space so adjacent marks
-align visually.
-
-### Short and Clipped Intervals
-
-- `headPlacement`: `"inside"` or `"outside"`.
-- `clippedHead`: `"hide"` or `"showAtViewportEdge"`.
-
-`headPlacement` defines whether the arrowhead is included in the encoded
-interval or placed outside the encoded stem endpoint. The `"inside"` mode keeps
-the whole arrow within the encoded interval and squeezes the head when the
-interval becomes short. The `"outside"` mode extends the head beyond the
-encoded endpoint. `clippedHead` controls whether a head is shown when the true
-endpoint is outside the visible viewport.
-
-## High-Level Design
-
-The implementation should follow the existing `rect` mark more closely than the
-`point` mark. The arrow is an interval mark with the same basic positional model
-as `rect`: `x`, `x2`, `y`, and `y2` define a rectangle-like local coordinate
-system, and the fragment shader computes the actual visible shape with signed
-distance functions.
-
-The vertex shader should produce local pixel coordinates and half-size values
-similar to the rect mark. The fragment shader should normalize orientation and
-direction so the core SDF can assume a left-to-right horizontal arrow. It should
-then compute a union of the stem SDF and one or more head SDFs. Fill, stroke,
-opacity, picking, and antialiasing should reuse the same conventions as existing
-mark shaders.
-
-Rougier's antialiased arrow shader snippets are useful references for the
-triangle, angle, notched filled-head, line-distance, and segment-distance SDF
-math. They should be adapted to GenomeSpy's current GLSL style and rendering
-conventions rather than copied wholesale.
-
-The first implementation should prioritize a compact, stable API:
-
-- Interval geometry based on `x`, `x2`, `y`, and `y2`.
-- `orient` and `direction`.
-- `triangle` and `angle` head shapes.
-- Pixel and proportional `headWidth` and `stemWidth`.
-- Configurable `startNotch`.
-- Repeated heads anchored at the terminal arrowhead.
-- Fill, stroke, opacity, and picking behavior aligned with `rect`.
-
-Viewport-edge clipped heads can be added after the base mark is stable, because
-they add clipping semantics that should be tested separately.
-
-## Documentation and Testing Notes
-
-The public mark props should be documented in `packages/core/src/spec/mark.d.ts`
-using user-facing wording. The JSON schema and docs artifacts may need to be
-regenerated after adding the new type.
-
-Focused tests should cover schema acceptance, shader snapshot stability, mark
-factory registration, and rendering or layout behavior for representative arrow
-configurations. Visual smoke examples should include a simple interval arrow, a
-reverse strand arrow, a protein-domain-style arrow, and a repeated-chevron gene
-track once repetition is implemented.
-
-## Incremental Implementation Plan
-
-The implementation should proceed in small, testable slices. Keep the mark
-usable after each completed slice, even if the first slices render a simplified
-shape.
-
-### Step 1: Define the Public Spec Surface
+### Step 1: Promote `direction` to an Encoding Channel
 
 Files:
 
+- Modify `packages/core/src/spec/channel.d.ts`.
 - Modify `packages/core/src/spec/mark.d.ts`.
-- Modify `packages/core/src/config/defaults/markDefaults.js`.
-- Modify `packages/core/src/config/markConfig.js` if mark-specific config
-  typing or defaults require it.
-- Test with `packages/core/src/spec/schema.test.js` or a focused new schema
-  assertion.
-
-Work:
-
-- Add `"arrow"` to `MarkType`.
-- Add an `ArrowProps` interface extending `MarkPropsBase`,
-  `SecondaryPositionProps`, and `FillAndStrokeProps`.
-- Add the first-pass props:
-  - `orient`
-  - `direction`
-  - `headShape`
-  - `headWidth`
-  - `headWidthUnit`
-  - `startNotch`
-  - `stemWidth`
-  - `stemWidthUnit`
-  - `headPlacement`
-  - `headRepeat`
-  - `headSpacing`
-- Write user-facing JSDoc for every public prop, including default values.
-
-Verification:
-
-- Run `npx vitest run packages/core/src/spec/schema.test.js`.
-- Confirm a minimal arrow spec validates against the generated core schema.
-
-Tentative commit: `feat(core): add arrow mark spec surface`
-
-### Step 2: Register a Minimal Arrow Mark
-
-Files:
-
-- Create `packages/core/src/marks/arrow.js`.
-- Create `packages/core/src/marks/arrow.common.glsl`.
-- Create `packages/core/src/marks/arrow.vertex.glsl`.
-- Create `packages/core/src/marks/arrow.fragment.glsl`.
-- Modify `packages/core/src/view/unitView.js`.
-- Modify or add focused tests near `packages/core/src/marks/mark.test.js` if
-  needed for mark factory behavior.
-
-Work:
-
-- Add an `ArrowMark` class following the structure of `RectMark`.
-- Register `"arrow": ArrowMark` in `markTypes`.
-- Support interval-position channels `x`, `x2`, `y`, and `y2`.
-- Initially render a rectangle-shaped SDF through the arrow shaders. This keeps
-  the pipeline testable before arrow-specific geometry is added.
-- Register uniform-backed mark props in `finalizeGraphicsInitialization()`.
-- Map enum props to small integer uniforms in JavaScript instead of branching on
-  strings in GLSL.
-
-Verification:
-
-- Run a focused mark factory or initialization test.
-- Run `npx vitest run packages/core/src/marks/shaderSnapshot.test.js` and update
-  snapshots only after inspecting the generated shaders.
-
-Tentative commit: `feat(core): register arrow mark`
-
-### Step 3: Port the Rect-Like Interval Pipeline
-
-Files:
-
 - Modify `packages/core/src/marks/arrow.js`.
+- Modify `packages/core/src/marks/arrow.common.glsl`.
 - Modify `packages/core/src/marks/arrow.vertex.glsl`.
 - Modify `packages/core/src/marks/arrow.fragment.glsl`.
-- Reuse `RectVertexBuilder` from `packages/core/src/gl/dataToVertices.js`
-  unless arrow-specific vertex expansion becomes necessary.
 
 Work:
 
-- Use the rect mark's six-vertex interval geometry.
-- Produce local pixel coordinates equivalent to `vPosInPixels`.
-- Produce half-size values equivalent to `vHalfSizeInPixels`.
-- Preserve minimum width and height behavior if the arrow mark supports
-  `minWidth` and `minHeight`; otherwise keep the first pass simpler and require
-  explicit interval sizes.
-- Reuse GenomeSpy's existing `distanceToColor(...)` conventions for fill,
-  stroke, transparency, and picking.
+- Add `direction` to `ChannelWithScale` so it can use a discrete scale.
+- Add a direction channel definition type that accepts nominal/ordinal fields,
+  datum definitions, expression definitions, value definitions, and conditions.
+- Do not include `LegendMixins` in the direction channel type.
+- Make `direction` a discrete channel whose range values are `"forward"` and
+  `"reverse"`.
+- Ensure `direction` remains supported only by `ArrowMark` at first by listing
+  it in `ArrowMark.getSupportedChannels()` and `ArrowMark.getAttributes()`.
+- Remove `uDirection` as a mark uniform.
+- Read `getScaled_direction()` in the vertex shader and pass the value to the
+  fragment shader as a flat varying.
+- Keep `mark.direction` as a constant shorthand through the existing
+  mark-prop-to-encoding path.
 
 Verification:
 
-- Add or update a focused rendering/layout test that confirms an arrow mark
-  creates the expected view hierarchy and initializes without runtime errors.
-- Run `npx vitest run packages/core/examples.schema.test.js` after the schema
-  includes `arrow`.
+- Add focused tests for:
+  - mark prop fallback to constant direction
+  - explicit `encoding.direction` overriding the mark prop
+  - arbitrary domain values mapping through a scale to forward/reverse
+  - no legend being produced for `direction`
+- Run `npx vitest run packages/core/src/marks/arrow.test.js`.
+- Run the narrow schema test that covers generated channel types.
 
-Tentative commit: `feat(core): render arrow intervals with rect geometry`
+Tentative commit: `feat(core): encode arrow direction`
 
-### Step 4: Implement Core Arrow SDFs
+### Step 2: Update Examples
 
 Files:
 
-- Modify `packages/core/src/marks/arrow.fragment.glsl`.
-- Use `tmp/Rougier2014Antialiased2D-code/arrows.glsl` as a math reference, not
-  as a direct copy.
+- Keep `examples/core/marks/arrow/arrow_playground.json` focused on
+  mark-prop controls.
+- Add a simple direction-encoding example under `examples/core/marks/arrow/` or
+  `examples/docs/grammar/mark/arrow/`.
 
 Work:
 
-- Add local helpers for:
-  - axis-aligned box SDF
-  - line distance
-  - segment distance
-  - triangle head SDF
-  - open head SDF
-- Normalize orientation and direction at the start of the fragment shader so
-  the core SDF can assume a left-to-right horizontal arrow.
-- Build the arrow as a union of stem and head distances.
-- Always draw a head at the forward end.
-- Implement `headShape: "triangle"` and `"open"`.
-- Implement `startNotch` for arrow tails.
+- Do not use `encoding.direction` in the arrow playground. The playground should
+  remain a shape-parameter playground.
+- Add another small example with two arrows.
+- Use a `direction` field to drive both the y band scale and
+  `encoding.direction`.
+- Use a discrete direction scale with arbitrary domain values such as `+` and
+  `-`, mapping to `"forward"` and `"reverse"`.
+- Keep shape parameters bound through mark props.
+- Keep the example small and self-contained.
 
 Verification:
 
-- Add shader snapshots for representative combinations:
-  - horizontal forward triangle
-  - horizontal reverse triangle
-  - start-notched triangle
-  - open head
-- Run `npx vitest run packages/core/src/marks/shaderSnapshot.test.js`.
+- Parse the changed JSON examples.
+- Run `npx vitest run packages/core/examples.schema.test.js` when schema output
+  is current.
 
-Tentative commit: `feat(core): add arrow signed-distance shapes`
+Tentative commit: `test(core): exercise encoded arrow direction`
 
-### Step 5: Add Shape Sizing Semantics
+### Step 3: Update User-Facing Docs
 
 Files:
 
-- Modify `packages/core/src/marks/arrow.js`.
-- Modify `packages/core/src/marks/arrow.common.glsl`.
-- Modify `packages/core/src/marks/arrow.fragment.glsl`.
-- Add focused tests near the arrow mark or shader snapshots.
-
-Work:
-
-- Implement pixel and proportional units for `headWidth` and `stemWidth`.
-- Interpret proportional width relative to the mark thickness in the orthogonal
-  direction.
-- Implement `headPlacement: "inside"` and `"outside"`.
-- Fail fast in JavaScript for unknown enum values.
-
-Verification:
-
-- Add tests or snapshots that cover short intervals and both unit modes.
-- Run `npx vitest run packages/core/src/marks/shaderSnapshot.test.js`.
-
-Tentative commit: `feat(core): support arrow shape sizing props`
-
-### Step 6: Wire the Arrow Playground
-
-Files:
-
-- Create or update `examples/core/marks/arrow/arrow_playground.json`.
-- Update example snapshots if the shared example suite includes the new file.
-
-Work:
-
-- Keep the playground self-contained with inline data.
-- Bind params to mark props through `{ "expr": "paramName" }`.
-- Include controls for direction, head shape, head width, start notch, stem
-  width, and head placement.
-- Keep positional and color values in normal encodings.
-
-Verification:
-
-- Run `npx vitest run packages/core/examples.schema.test.js`.
-- Run `npx vitest run packages/core/examples.test.js -u` only after inspecting
-  the new snapshot and confirming the view hierarchy is expected.
-- Start the dev server with `npm start` and open
-  `http://localhost:8080/?spec=examples/core/marks/arrow/arrow_playground.json`
-  for a visual smoke test.
-
-Tentative commit: `test(core): add arrow mark playground example`
-
-### Step 7: Add User-Facing Docs
-
-Files:
-
-- Modify the relevant docs page under `docs/grammar/mark/` or create a new
-  arrow mark page if the mark documentation is organized by mark type.
-- Add a small docs example under `examples/docs/` only after the core example is
-  stable.
-- Regenerate schema/docs artifacts if the docs build requires them.
-
-Work:
-
-- Document the mark's interval semantics.
-- Explain which properties are mark props and which visual properties remain
-  encodings.
-- Explain how to use separate layers for per-strand or per-style variation.
-- Include one concise example for a directional interval.
-
-Verification:
-
-- Run `npm run build:docs` after the schema is regenerated.
-
-Tentative commit: `docs(core): document arrow mark`
-
-### Step 8: Add Repeated Heads
-
-Files:
-
+- Modify `packages/core/src/spec/channel.d.ts`.
 - Modify `packages/core/src/spec/mark.d.ts`.
-- Modify `packages/core/src/marks/arrow.js`.
-- Modify `packages/core/src/marks/arrow.common.glsl`.
-- Modify `packages/core/src/marks/arrow.fragment.glsl`.
-- Extend `examples/core/marks/arrow/arrow_playground.json` with repetition
-  controls.
+- Modify `docs/grammar/mark/arrow.md` if more prose is needed beyond schema
+  docs.
+- Regenerate schema/docs artifacts when ready.
 
 Work:
 
-- Add `headRepeat`, `headSpacing`, and `repeatPhase`.
-- Anchor repeated heads at the terminal arrowhead and place additional heads
-  backward from it.
-- Keep the repetition loop bounded or formula-based so fragment cost stays
-  predictable.
-- Decide whether repeated heads participate in picking as visible geometry; the
-  expected behavior is yes.
+- Document `encoding.direction` as the preferred data-driven way to set arrow
+  direction.
+- Document `mark.direction` as constant shorthand/default behavior.
+- State that `direction` uses a discrete scale but does not create a legend.
+- Explain that scale range values are `"forward"` and `"reverse"`.
 
 Verification:
 
-- Add shader snapshots for repeated heads in `body` and `whole` modes.
-- Run the arrow playground and verify that repeated chevrons are stable during
-  zooming.
+- Run schema/docs generation once the code and docs are stable.
+- Inspect generated schema descriptions for stale props or removed names.
 
-Tentative commit: `feat(core): support repeated arrow heads`
+Tentative commit: `docs(core): document arrow direction encoding`
 
-### Step 9: Final Verification
+### Step 4: Final Focused Verification
 
-Run the focused checks first:
+Run focused checks before broader workspace checks:
 
-- `npx vitest run packages/core/src/spec/schema.test.js`
+- `npx vitest run packages/core/src/marks/arrow.test.js`
 - `npx vitest run packages/core/src/marks/shaderSnapshot.test.js`
 - `npx vitest run packages/core/examples.schema.test.js`
 - `npx vitest run packages/core/examples.test.js`
@@ -386,16 +199,9 @@ Then run broader checks before opening a PR:
 - `npm run lint`
 - `npm test`
 
-If docs or generated schema artifacts changed, also run:
+If generated schema or docs artifacts changed, also run:
 
 - `npm run build`
 - `npm run build:docs`
 
-Tentative commit: `test(core): update arrow mark snapshots`
-
-## Current Planning Artifact
-
-The target playground spec is
-`examples/core/marks/arrow/arrow_playground.json`. It intentionally uses the
-future `arrow` mark and will fail current schema validation until the arrow mark
-spec surface is implemented.
+Tentative commit: `test(core): update arrow direction snapshots`
