@@ -1,9 +1,15 @@
 in vec2 vPosInPixels;
 
-flat in vec2 vHalfSizeInPixels;
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
+flat in vec2 vArrowHalfSizeInPixels;
+flat in float vStemHalfWidth;
+flat in float vHeadStrokeWidth;
+flat in float vRHeadSlope;
+flat in float vRHeadNotchSlope;
+flat in float vRStartNotchSlope;
+flat in float vHeadFootprintLength;
 
 out lowp vec4 fragColor;
 
@@ -45,12 +51,6 @@ float sdStem(
     return sdPolygon(vertices, p);
 }
 
-float headFootprintLength(float halfWidth, float rHeadSlope, float headStrokeWidth) {
-    float headLength = halfWidth * rHeadSlope;
-    float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
-    return headLength + headStrokeLength + vHalfStrokeWidth;
-}
-
 // Inner corner of an open angle head, offset perpendicular to the outer edge.
 vec2 headInnerCorner(float halfWidth, float rHeadSlope, float headStrokeWidth) {
     float headLength = halfWidth * rHeadSlope;
@@ -68,67 +68,6 @@ float headNotchX(
 ) {
     vec2 topInner = headInnerCorner(halfWidth, rHeadSlope, headStrokeWidth);
     return topInner.x - topInner.y * rHeadNotchSlope;
-}
-
-// Distance from the arrow tip to where the stem outer edge meets a filled
-// triangle head's notch edge.
-float triangleHeadStemJoinLength(
-    float stemHalfWidth,
-    float headHalfWidth,
-    float rHeadSlope,
-    float rHeadNotchSlope
-) {
-    float clampedRHeadNotchSlope = min(rHeadNotchSlope, rHeadSlope);
-    return headHalfWidth * rHeadSlope
-        - (headHalfWidth - stemHalfWidth) * clampedRHeadNotchSlope;
-}
-
-// Blunt filled, non-repeated heads toward 90 degrees to preserve stem length.
-float effectiveHeadSlope(
-    float halfLength,
-    float headHalfWidth,
-    float stemHalfWidth,
-    float configuredRHeadSlope,
-    float configuredRHeadNotchSlope
-) {
-    if (
-        uHeadRepeat ||
-        uHeadShape != HEAD_SHAPE_TRIANGLE ||
-        uMinStemLength <= 0.0
-    ) {
-        return configuredRHeadSlope;
-    }
-
-    float maxJoinLength = max(
-        halfLength * 2.0 - uMinStemLength,
-        0.0
-    );
-    float configuredJoinLength = triangleHeadStemJoinLength(
-        stemHalfWidth,
-        headHalfWidth,
-        configuredRHeadSlope,
-        configuredRHeadNotchSlope
-    );
-
-    if (configuredJoinLength <= maxJoinLength) {
-        return configuredRHeadSlope;
-    }
-
-    float boundaryJoinLength = stemHalfWidth * configuredRHeadNotchSlope;
-    if (maxJoinLength < boundaryJoinLength) {
-        return stemHalfWidth > 0.0
-            ? clamp(maxJoinLength / stemHalfWidth, 0.0, configuredRHeadSlope)
-            : 0.0;
-    } else {
-        return clamp(
-            (
-                maxJoinLength +
-                (headHalfWidth - stemHalfWidth) * configuredRHeadNotchSlope
-            ) / headHalfWidth,
-            0.0,
-            configuredRHeadSlope
-        );
-    }
 }
 
 float sdArrowHead(
@@ -167,49 +106,9 @@ float repeat(float x, float spacing) {
     return x >= spacing ? x - floor(x / spacing) * spacing : x;
 }
 
-float unitValue(float value, int unit, float reference) {
-    if (unit == UNIT_PROPORTION) {
-        return value * reference;
-    } else {
-        return value;
-    }
-}
-
-float resolveStemHalfWidth(float markHalfWidth) {
-    float markWidth = markHalfWidth * 2.0;
-    float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markWidth);
-    return clamp(stemWidth, 0.0, markWidth) * 0.5;
-}
-
-// Arrow-space convention: x is length along the arrow body, y is width
-// perpendicular to it. Negative x points toward the arrowhead in the canonical
-// "reverse" direction. Shared varyings keep the rect mark names.
-vec2 toArrowSpace(vec2 v) {
-    return uOrient == ORIENT_HORIZONTAL ? v : v.yx;
-}
-
 float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
-    float configuredRHeadSlope = 1.0 / uHeadSlope;
-    float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
-    float stemHalfWidth = resolveStemHalfWidth(arrowHalfSize.y);
-    float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
-        ? stemHalfWidth * 2.0
-        : 0.0;
-    float rHeadSlope = effectiveHeadSlope(
-        arrowHalfSize.x,
-        arrowHalfSize.y,
-        stemHalfWidth,
-        configuredRHeadSlope,
-        configuredRHeadNotchSlope
-    );
-    float rHeadNotchSlope = min(configuredRHeadNotchSlope, rHeadSlope);
-    float rStartNotchSlope = uStartNotch ? rHeadSlope : 0.0;
-
     float spacing = uHeadRepeat
-        ? max(
-            uHeadSpacing,
-            headFootprintLength(arrowHalfSize.y, rHeadSlope, headStrokeWidth)
-        )
+        ? max(uHeadSpacing, vHeadFootprintLength)
         : 1.0 / 0.0;
     float distanceFromStart = arrowPos.x + arrowHalfSize.x;
     float arrowHeadX = repeat(distanceFromStart, spacing);
@@ -218,27 +117,26 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
         sdStem(
             arrowPos,
             arrowHalfSize.x,
-            stemHalfWidth,
-            rHeadSlope,
-            rStartNotchSlope
+            vStemHalfWidth,
+            vRHeadSlope,
+            vRStartNotchSlope
         ),
         sdArrowHead(
             vec2(arrowHeadX, arrowPos.y),
             arrowHalfSize.y,
-            rHeadSlope,
-            rHeadNotchSlope,
-            headStrokeWidth
+            vRHeadSlope,
+            vRHeadNotchSlope,
+            vHeadStrokeWidth
         )
     );
 }
 
 void main(void) {
     vec2 arrowPos = toArrowSpace(vPosInPixels);
-    vec2 arrowHalfSize = toArrowSpace(vHalfSizeInPixels);
     if (uDirection == DIRECTION_FORWARD) {
         arrowPos.x = -arrowPos.x;
     }
-    float d = sdArrow(arrowPos, arrowHalfSize);
+    float d = sdArrow(arrowPos, vArrowHalfSizeInPixels);
 
     fragColor = distanceToColor(
         d,

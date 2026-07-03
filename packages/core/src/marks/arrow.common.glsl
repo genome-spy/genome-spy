@@ -47,3 +47,9 @@ const int SHORT_ARROW_HIDE = 2;
 
 const int HEAD_PLACEMENT_INSIDE = 0;
 const int HEAD_PLACEMENT_OUTSIDE = 1;
+
+// Arrow space uses x for arrow length and y for width perpendicular to it.
+// Negative x points toward the arrowhead in the canonical "reverse" direction.
+vec2 toArrowSpace(vec2 v) {
+    return uOrient == ORIENT_HORIZONTAL ? v : v.yx;
+}

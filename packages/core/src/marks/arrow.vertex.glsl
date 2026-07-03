@@ -1,10 +1,15 @@
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
+flat out vec2 vArrowHalfSizeInPixels;
+flat out float vStemHalfWidth;
+flat out float vHeadStrokeWidth;
+flat out float vRHeadSlope;
+flat out float vRHeadNotchSlope;
+flat out float vRStartNotchSlope;
+flat out float vHeadFootprintLength;
 
 out vec2 vPosInPixels;
-
-flat out vec2 vHalfSizeInPixels;
 
 void sort(inout float a, inout float b) {
     if (a > b) {
@@ -27,6 +32,84 @@ float unitValue(float value, int unit, float reference) {
         return value * reference;
     } else {
         return value;
+    }
+}
+
+float resolveStemHalfWidth(float markHalfWidth) {
+    float markWidth = markHalfWidth * 2.0;
+    float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markWidth);
+    return clamp(stemWidth, 0.0, markWidth) * 0.5;
+}
+
+float headFootprintLength(
+    float halfWidth,
+    float rHeadSlope,
+    float headStrokeWidth,
+    float halfStrokeWidth
+) {
+    float headLength = halfWidth * rHeadSlope;
+    float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
+    return headLength + headStrokeLength + halfStrokeWidth;
+}
+
+// Distance from the arrow tip to where the stem outer edge meets a filled
+// triangle head's notch edge.
+float triangleHeadStemJoinLength(
+    float stemHalfWidth,
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope
+) {
+    float clampedRHeadNotchSlope = min(rHeadNotchSlope, rHeadSlope);
+    return headHalfWidth * rHeadSlope
+        - (headHalfWidth - stemHalfWidth) * clampedRHeadNotchSlope;
+}
+
+// Blunt filled, non-repeated heads toward 90 degrees to preserve stem length.
+float effectiveHeadSlope(
+    float halfLength,
+    float headHalfWidth,
+    float stemHalfWidth,
+    float configuredRHeadSlope,
+    float configuredRHeadNotchSlope
+) {
+    if (
+        uHeadRepeat ||
+        uHeadShape != HEAD_SHAPE_TRIANGLE ||
+        uMinStemLength <= 0.0
+    ) {
+        return configuredRHeadSlope;
+    }
+
+    float maxJoinLength = max(
+        halfLength * 2.0 - uMinStemLength,
+        0.0
+    );
+    float configuredJoinLength = triangleHeadStemJoinLength(
+        stemHalfWidth,
+        headHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope
+    );
+
+    if (configuredJoinLength <= maxJoinLength) {
+        return configuredRHeadSlope;
+    }
+
+    float boundaryJoinLength = stemHalfWidth * configuredRHeadNotchSlope;
+    if (maxJoinLength < boundaryJoinLength) {
+        return stemHalfWidth > 0.0
+            ? clamp(maxJoinLength / stemHalfWidth, 0.0, configuredRHeadSlope)
+            : 0.0;
+    } else {
+        return clamp(
+            (
+                maxJoinLength +
+                (headHalfWidth - stemHalfWidth) * configuredRHeadNotchSlope
+            ) / headHalfWidth,
+            0.0,
+            configuredRHeadSlope
+        );
     }
 }
 
@@ -101,9 +184,31 @@ void main(void) {
 
     sizeInPixels = size * uViewportSize;
     vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
-    vHalfSizeInPixels = sizeInPixels / 2.0;
+    vec2 halfSizeInPixels = sizeInPixels / 2.0;
 
     vHalfStrokeWidth = strokeWidth / 2.0;
+    vArrowHalfSizeInPixels = toArrowSpace(halfSizeInPixels);
+    vStemHalfWidth = resolveStemHalfWidth(vArrowHalfSizeInPixels.y);
+    vHeadStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
+        ? vStemHalfWidth * 2.0
+        : 0.0;
+    float configuredRHeadSlope = 1.0 / uHeadSlope;
+    float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
+    vRHeadSlope = effectiveHeadSlope(
+        vArrowHalfSizeInPixels.x,
+        vArrowHalfSizeInPixels.y,
+        vStemHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope
+    );
+    vRHeadNotchSlope = min(configuredRHeadNotchSlope, vRHeadSlope);
+    vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
+    vHeadFootprintLength = headFootprintLength(
+        vArrowHalfSizeInPixels.y,
+        vRHeadSlope,
+        vHeadStrokeWidth,
+        vHalfStrokeWidth
+    );
     vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
 
     gl_Position = unitToNdc(pos);
