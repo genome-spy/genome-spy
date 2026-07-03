@@ -4,6 +4,7 @@ flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
 flat in vec2 vArrowHalfSizeInPixels;
+flat in float vHeadHalfWidth;
 flat in float vStemHalfWidth;
 flat in float vHeadStrokeWidth;
 flat in float vRHeadSlope;
@@ -53,9 +54,10 @@ float sdStem(
 
 // Inner corner of an open angle head, offset perpendicular to the outer edge.
 vec2 headInnerCorner(float halfWidth, float rHeadSlope, float headStrokeWidth) {
-    float headLength = halfWidth * rHeadSlope;
-    vec2 topOuter = vec2(headLength, halfWidth);
-    vec2 normalOffset = headStrokeWidth * normalize(vec2(halfWidth, -headLength));
+    float headAxisLength = halfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, halfWidth);
+    vec2 normalOffset = headStrokeWidth
+        * normalize(vec2(halfWidth, -headAxisLength));
     return topOuter + normalOffset;
 }
 
@@ -77,9 +79,9 @@ float sdArrowHead(
     float rHeadNotchSlope,
     float headStrokeWidth
 ) {
-    float headLength = halfWidth * rHeadSlope;
-    vec2 topOuter = vec2(headLength, halfWidth);
-    vec2 bottomOuter = vec2(headLength, -halfWidth);
+    float headAxisLength = halfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, halfWidth);
+    vec2 bottomOuter = vec2(headAxisLength, -halfWidth);
     vec2 topInner = headInnerCorner(halfWidth, rHeadSlope, headStrokeWidth);
     vec2 normalOffset = topInner - topOuter;
     vec2 bottomInner = bottomOuter + vec2(normalOffset.x, -normalOffset.y);
@@ -123,7 +125,7 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
         ),
         sdArrowHead(
             vec2(arrowHeadX, arrowPos.y),
-            arrowHalfSize.y,
+            vHeadHalfWidth,
             vRHeadSlope,
             vRHeadNotchSlope,
             vHeadStrokeWidth

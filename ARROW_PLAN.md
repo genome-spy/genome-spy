@@ -45,19 +45,13 @@ head is always drawn at the forward end.
 ### Head Shape
 
 - `headShape`: `"triangle"` or `"angle"`.
-- `headLength`: numeric length.
-- `headLengthUnit`: `"px"` or `"proportion"`.
 - `headWidth`: numeric width.
 - `headWidthUnit`: `"px"` or `"proportion"`.
-- `headNotch`: concavity for filled heads. `0` produces a triangle; larger
-  values move the stem/head join toward the tip.
-- `startNotch`: length of the notch at the start of an arrow, as a proportion
-  of mark thickness.
+- `startNotch`: boolean flag for a notch at the start of an arrow.
 
-`triangle` is the filled block arrowhead and should be the default. `headNotch`
-turns the filled head into a more compact, stealth-like shape for dense
-annotation tracks. `startNotch` cuts a configurable V-shaped notch into the
-tail. `angle` covers chevrons and strand arrows.
+`triangle` is the filled block arrowhead and should be the default.
+`startNotch` cuts a V-shaped notch into the tail. `angle` covers chevrons and
+strand arrows.
 
 ### Stem Shape
 
@@ -72,27 +66,17 @@ stable across varying row heights.
 
 - `headRepeat`: boolean.
 - `headSpacing`: pixel spacing between repeated heads.
-- `headOffset`: pixel offset before the first repeated head.
-- `repeatMode`: `"body"` or `"whole"`.
 - `repeatPhase`: `"mark"` or `"view"`.
 
 Repeated heads support UCSC-style gene tracks and other strand-direction cues.
-The terminal head is the anchor for the repeated pattern. `body` repeats
-additional heads only where there is stem space behind the terminal head.
-`whole` allows repeated heads across the full arrow extent. `mark` anchors the
+The terminal head is the anchor for the repeated pattern. `mark` anchors the
 pattern to each interval; `view` anchors it to screen space so adjacent marks
 align visually.
 
 ### Short and Clipped Intervals
 
-- `shortArrow`: `"shrinkHead"`, `"triangle"`, or `"hide"`.
 - `headPlacement`: `"inside"` or `"outside"`.
 - `clippedHead`: `"hide"` or `"showAtViewportEdge"`.
-
-`shortArrow` defines behavior when the arrow is too short for the configured
-head and stem. `shrinkHead` preserves the arrow shape by reducing head length.
-`triangle` collapses the mark to a triangular glyph. `hide` suppresses geometry
-that cannot be drawn legibly.
 
 `headPlacement` defines whether the arrowhead is included in the encoded
 interval or placed outside the encoded stem endpoint. The `"inside"` mode keeps
@@ -126,8 +110,8 @@ The first implementation should prioritize a compact, stable API:
 - Interval geometry based on `x`, `x2`, `y`, and `y2`.
 - `orient` and `direction`.
 - `triangle` and `angle` head shapes.
-- Pixel and proportional `headLength`, `headWidth`, and `stemWidth`.
-- Configurable `headNotch` and `startNotch`.
+- Pixel and proportional `headWidth` and `stemWidth`.
+- Configurable `startNotch`.
 - Repeated heads anchored at the terminal arrowhead.
 - Fill, stroke, opacity, and picking behavior aligned with `rect`.
 
@@ -172,20 +156,14 @@ Work:
   - `orient`
   - `direction`
   - `headShape`
-  - `headLength`
-  - `headLengthUnit`
   - `headWidth`
   - `headWidthUnit`
-  - `headNotch`
   - `startNotch`
   - `stemWidth`
   - `stemWidthUnit`
-  - `shortArrow`
   - `headPlacement`
   - `headRepeat`
   - `headSpacing`
-  - `headOffset`
-  - `headRepeatMode`
 - Write user-facing JSDoc for every public prop, including default values.
 
 Verification:
@@ -277,7 +255,6 @@ Work:
 - Build the arrow as a union of stem and head distances.
 - Always draw a head at the forward end.
 - Implement `headShape: "triangle"` and `"angle"`.
-- Implement `headNotch` for filled arrowheads.
 - Implement `startNotch` for arrow tails.
 
 Verification:
@@ -302,12 +279,10 @@ Files:
 
 Work:
 
-- Implement pixel and proportional units for `headLength`, `headWidth`, and
-  `stemWidth`.
+- Implement pixel and proportional units for `headWidth` and `stemWidth`.
 - Interpret proportional width relative to the mark thickness in the orthogonal
   direction.
 - Implement `headPlacement: "inside"` and `"outside"`.
-- Implement `shortArrow: "shrinkHead"`, `"triangle"`, and `"hide"`.
 - Fail fast in JavaScript for unknown enum values.
 
 Verification:
@@ -328,8 +303,8 @@ Work:
 
 - Keep the playground self-contained with inline data.
 - Bind params to mark props through `{ "expr": "paramName" }`.
-- Include controls for direction, head shape, head length, head width, head
-  notch, start notch, stem width, head placement, and short-arrow behavior.
+- Include controls for direction, head shape, head width, start notch, stem
+  width, and head placement.
 - Keep positional and color values in normal encodings.
 
 Verification:
@@ -380,8 +355,7 @@ Files:
 
 Work:
 
-- Add `headRepeat`, `headSpacing`, `headOffset`, `repeatMode`, and
-  `repeatPhase`.
+- Add `headRepeat`, `headSpacing`, and `repeatPhase`.
 - Anchor repeated heads at the terminal arrowhead and place additional heads
   backward from it.
 - Keep the repetition loop bounded or formula-based so fragment cost stays

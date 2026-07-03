@@ -12,7 +12,6 @@
 
   "mark": {
     "type": "arrow",
-    "headLength": 18,
     "headWidth": 1,
     "stemWidth": 0.45,
     "fill": "#5B8DEF",

@@ -16,9 +16,7 @@ export const ARROW_UNIFORM_ENUMS = {
     orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
     headShapes: ["triangle", "angle"],
-    headRepeatModes: ["body", "whole"],
     units: ["px", "proportion"],
-    shortArrows: ["shrinkHead", "triangle", "hide"],
     headPlacements: ["inside", "outside"],
 };
 
@@ -112,39 +110,21 @@ export default class ArrowMark extends Mark {
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
         );
-        this.registerMarkUniformValue("uHeadLength", props.headLength);
-        this.registerMarkUniformValue(
-            "uHeadLengthUnit",
-            props.headLengthUnit,
-            (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
-        );
         this.registerMarkUniformValue("uHeadWidth", props.headWidth);
         this.registerMarkUniformValue(
             "uHeadWidthUnit",
             props.headWidthUnit,
             (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
         );
-        this.registerMarkUniformValue("uHeadNotch", props.headNotch);
         this.registerMarkUniformValue("uStartNotch", props.startNotch);
         this.registerMarkUniformValue("uMinStemLength", props.minStemLength);
         this.registerMarkUniformValue("uHeadRepeat", props.headRepeat);
         this.registerMarkUniformValue("uHeadSpacing", props.headSpacing);
-        this.registerMarkUniformValue("uHeadOffset", props.headOffset);
-        this.registerMarkUniformValue(
-            "uHeadRepeatMode",
-            props.headRepeatMode,
-            (value) => enumIndex(ARROW_UNIFORM_ENUMS.headRepeatModes, value)
-        );
         this.registerMarkUniformValue("uStemWidth", props.stemWidth);
         this.registerMarkUniformValue(
             "uStemWidthUnit",
             props.stemWidthUnit,
             (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
-        );
-        this.registerMarkUniformValue(
-            "uShortArrow",
-            props.shortArrow,
-            (value) => enumIndex(ARROW_UNIFORM_ENUMS.shortArrows, value)
         );
         this.registerMarkUniformValue(
             "uHeadPlacement",

@@ -378,21 +378,6 @@ export interface ArrowProps
     headShape?: "triangle" | "angle" | ExprRef;
 
     /**
-     * Length of the arrowhead in pixels or as a proportion of the mark thickness.
-     * The unit is controlled by `headLengthUnit`.
-     *
-     * __Default value:__ `18`
-     */
-    headLength?: number | ExprRef;
-
-    /**
-     * Unit used for `headLength`.
-     *
-     * __Default value:__ `"px"`
-     */
-    headLengthUnit?: "px" | "proportion" | ExprRef;
-
-    /**
      * Width of the arrowhead in pixels or as a proportion of the mark thickness.
      * The unit is controlled by `headWidthUnit`.
      *
@@ -406,15 +391,6 @@ export interface ArrowProps
      * __Default value:__ `"proportion"`
      */
     headWidthUnit?: "px" | "proportion" | ExprRef;
-
-    /**
-     * Concavity of the filled arrowhead. `0` produces a triangular head.
-     * Larger values move the stem/head join toward the tip. Values are clamped
-     * to `[0, 0.95]`. Applies when `headShape` is `"triangle"`.
-     *
-     * __Default value:__ `0`
-     */
-    headNotch?: number | ExprRef;
 
     /**
      * Whether to draw a notch at the start of the arrow. The start notch uses
@@ -448,22 +424,6 @@ export interface ArrowProps
     headSpacing?: number | ExprRef;
 
     /**
-     * Pixel offset applied to repeated arrowhead placement.
-     *
-     * __Default value:__ `0`
-     */
-    headOffset?: number | ExprRef;
-
-    /**
-     * Region used for repeated arrowheads behind the terminal head. `"body"`
-     * repeats heads only where stem space remains outside the terminal head.
-     * `"whole"` repeats heads across the full arrow extent.
-     *
-     * __Default value:__ `"body"`
-     */
-    headRepeatMode?: "body" | "whole" | ExprRef;
-
-    /**
      * Width of the arrow stem in pixels or as a proportion of the mark thickness.
      * The unit is controlled by `stemWidthUnit`.
      *
@@ -477,13 +437,6 @@ export interface ArrowProps
      * __Default value:__ `"proportion"`
      */
     stemWidthUnit?: "px" | "proportion" | ExprRef;
-
-    /**
-     * Behavior when the interval is too short for the configured arrowhead.
-     *
-     * __Default value:__ `"shrinkHead"`
-     */
-    shortArrow?: "shrinkHead" | "triangle" | "hide" | ExprRef;
 
     /**
      * Placement of the arrowhead relative to the encoded interval.

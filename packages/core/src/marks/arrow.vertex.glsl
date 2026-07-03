@@ -2,6 +2,7 @@ flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
 flat out vec2 vArrowHalfSizeInPixels;
+flat out float vHeadHalfWidth;
 flat out float vStemHalfWidth;
 flat out float vHeadStrokeWidth;
 flat out float vRHeadSlope;
@@ -41,15 +42,21 @@ float resolveStemHalfWidth(float markHalfWidth) {
     return clamp(stemWidth, 0.0, markWidth) * 0.5;
 }
 
+float resolveHeadHalfWidth(float markHalfWidth) {
+    float markWidth = markHalfWidth * 2.0;
+    float headWidth = unitValue(uHeadWidth, uHeadWidthUnit, markWidth);
+    return clamp(headWidth, 0.0, markWidth) * 0.5;
+}
+
 float headFootprintLength(
     float halfWidth,
     float rHeadSlope,
     float headStrokeWidth,
     float halfStrokeWidth
 ) {
-    float headLength = halfWidth * rHeadSlope;
+    float headAxisLength = halfWidth * rHeadSlope;
     float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
-    return headLength + headStrokeLength + halfStrokeWidth;
+    return headAxisLength + headStrokeLength + halfStrokeWidth;
 }
 
 // Distance from the arrow tip to where the stem outer edge meets a filled
@@ -113,24 +120,36 @@ float effectiveHeadSlope(
     }
 }
 
-vec2 getOutsideHeadExpansion(vec2 sizeInPixels) {
+vec2 getOutsideHeadExpansion(vec2 sizeInPixels, float halfStrokeWidth) {
     if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
         return vec2(0.0);
     }
 
-    float headLengthReference = uOrient == ORIENT_HORIZONTAL
-        ? sizeInPixels.y
-        : sizeInPixels.x;
-    float headLength = max(
-        unitValue(uHeadLength, uHeadLengthUnit, headLengthReference),
-        0.0
+    vec2 arrowHalfSize = toArrowSpace(sizeInPixels * 0.5);
+    float stemHalfWidth = resolveStemHalfWidth(arrowHalfSize.y);
+    float headHalfWidth = resolveHeadHalfWidth(arrowHalfSize.y);
+    float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
+        ? stemHalfWidth * 2.0
+        : 0.0;
+    float rHeadSlope = effectiveHeadSlope(
+        arrowHalfSize.x,
+        headHalfWidth,
+        stemHalfWidth,
+        1.0 / uHeadSlope,
+        1.0 / uHeadNotchSlope
+    );
+    float expansionLength = headFootprintLength(
+        headHalfWidth,
+        rHeadSlope,
+        headStrokeWidth,
+        halfStrokeWidth
     );
 
     bool endHeadPositive = uDirection == DIRECTION_FORWARD;
     bool endHeadNegative = uDirection == DIRECTION_REVERSE;
 
-    float negative = endHeadNegative ? headLength : 0.0;
-    float positive = endHeadPositive ? headLength : 0.0;
+    float negative = endHeadNegative ? expansionLength : 0.0;
+    float positive = endHeadPositive ? expansionLength : 0.0;
 
     return vec2(negative, positive);
 }
@@ -161,9 +180,16 @@ void main(void) {
     size.y *= getSampleFacetHeight(pos);
     pos = applySampleFacet(pos);
 
+    float strokeWidth = getScaled_strokeWidth();
+    float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
+    vHalfStrokeWidth = strokeWidth / 2.0;
+
     vec2 sizeInPixels = size * uViewportSize;
 
-    vec2 outsideHeadExpansion = getOutsideHeadExpansion(sizeInPixels);
+    vec2 outsideHeadExpansion = getOutsideHeadExpansion(
+        sizeInPixels,
+        vHalfStrokeWidth
+    );
     if (uOrient == ORIENT_HORIZONTAL) {
         vec2 expansion = outsideHeadExpansion / uViewportSize.x;
         pos.x += mix(-expansion.x, expansion.y, frac.x);
@@ -174,9 +200,6 @@ void main(void) {
         size.y += expansion.x + expansion.y;
     }
 
-    float strokeWidth = getScaled_strokeWidth();
-    float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
-
     float aaPadding = 1.0 / uDevicePixelRatio;
     vec2 centeredFrac = frac - 0.5;
     vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
@@ -186,8 +209,8 @@ void main(void) {
     vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
     vec2 halfSizeInPixels = sizeInPixels / 2.0;
 
-    vHalfStrokeWidth = strokeWidth / 2.0;
     vArrowHalfSizeInPixels = toArrowSpace(halfSizeInPixels);
+    vHeadHalfWidth = resolveHeadHalfWidth(vArrowHalfSizeInPixels.y);
     vStemHalfWidth = resolveStemHalfWidth(vArrowHalfSizeInPixels.y);
     vHeadStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
         ? vStemHalfWidth * 2.0
@@ -196,7 +219,7 @@ void main(void) {
     float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
     vRHeadSlope = effectiveHeadSlope(
         vArrowHalfSizeInPixels.x,
-        vArrowHalfSizeInPixels.y,
+        vHeadHalfWidth,
         vStemHalfWidth,
         configuredRHeadSlope,
         configuredRHeadNotchSlope
@@ -204,7 +227,7 @@ void main(void) {
     vRHeadNotchSlope = min(configuredRHeadNotchSlope, vRHeadSlope);
     vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
     vHeadFootprintLength = headFootprintLength(
-        vArrowHalfSizeInPixels.y,
+        vHeadHalfWidth,
         vRHeadSlope,
         vHeadStrokeWidth,
         vHalfStrokeWidth
