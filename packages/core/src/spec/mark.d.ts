@@ -425,6 +425,15 @@ export interface ArrowProps
     startNotch?: boolean | ExprRef;
 
     /**
+     * Minimum length of the arrow stem in pixels. When the arrow is too short
+     * for the configured head angle and minimum stem length, the arrowhead is
+     * made blunter toward a 90 degree angle.
+     *
+     * __Default value:__ `0`
+     */
+    minStemLength?: number | ExprRef;
+
+    /**
      * Whether arrowheads are repeated along the arrow.
      *
      * __Default value:__ `false`

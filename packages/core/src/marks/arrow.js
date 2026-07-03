@@ -126,6 +126,7 @@ export default class ArrowMark extends Mark {
         );
         this.registerMarkUniformValue("uHeadNotch", props.headNotch);
         this.registerMarkUniformValue("uStartNotch", props.startNotch);
+        this.registerMarkUniformValue("uMinStemLength", props.minStemLength);
         this.registerMarkUniformValue("uHeadRepeat", props.headRepeat);
         this.registerMarkUniformValue("uHeadSpacing", props.headSpacing);
         this.registerMarkUniformValue("uHeadOffset", props.headOffset);

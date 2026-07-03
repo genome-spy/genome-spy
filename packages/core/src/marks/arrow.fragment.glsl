@@ -51,6 +51,90 @@ float headFootprintLength(float halfWidth, float rHeadSlope, float headStrokeWid
     return headLength + headStrokeLength + vHalfStrokeWidth;
 }
 
+// Inner corner of an open angle head, offset perpendicular to the outer edge.
+vec2 headInnerCorner(float halfWidth, float rHeadSlope, float headStrokeWidth) {
+    float headLength = halfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headLength, halfWidth);
+    vec2 normalOffset = headStrokeWidth * normalize(vec2(halfWidth, -headLength));
+    return topOuter + normalOffset;
+}
+
+// X coordinate where the arrowhead notch edge crosses the centerline.
+float headNotchX(
+    float halfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    vec2 topInner = headInnerCorner(halfWidth, rHeadSlope, headStrokeWidth);
+    return topInner.x - topInner.y * rHeadNotchSlope;
+}
+
+// Distance from the arrow tip to where the stem outer edge meets the head
+// notch edge.
+float headStemJoinLength(
+    float stemHalfWidth,
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    return headNotchX(
+        headHalfWidth,
+        rHeadSlope,
+        rHeadNotchSlope,
+        headStrokeWidth
+    ) + stemHalfWidth * rHeadNotchSlope;
+}
+
+// Blunt the head toward 90 degrees when needed to preserve minimum stem length.
+float effectiveHeadSlope(
+    float halfLength,
+    float headHalfWidth,
+    float stemHalfWidth,
+    float configuredRHeadSlope,
+    float configuredRHeadNotchSlope,
+    float headStrokeWidth
+) {
+    float maxJoinLength = max(halfLength * 2.0 - max(uMinStemLength, 0.0), 0.0);
+    float clampedConfiguredRHeadNotchSlope = min(
+        configuredRHeadNotchSlope,
+        configuredRHeadSlope
+    );
+    float configuredJoinLength = headStemJoinLength(
+        stemHalfWidth,
+        headHalfWidth,
+        configuredRHeadSlope,
+        clampedConfiguredRHeadNotchSlope,
+        headStrokeWidth
+    );
+
+    if (configuredJoinLength <= maxJoinLength) {
+        return configuredRHeadSlope;
+    }
+
+    float lo = 0.0;
+    float hi = configuredRHeadSlope;
+    for (int i = 0; i < 12; i++) {
+        float mid = (lo + hi) * 0.5;
+        float midRHeadNotchSlope = min(clampedConfiguredRHeadNotchSlope, mid);
+        float joinLength = headStemJoinLength(
+            stemHalfWidth,
+            headHalfWidth,
+            mid,
+            midRHeadNotchSlope,
+            headStrokeWidth
+        );
+        if (joinLength > maxJoinLength) {
+            hi = mid;
+        } else {
+            lo = mid;
+        }
+    }
+
+    return lo;
+}
+
 float sdArrowHead(
     vec2 p,
     float halfWidth,
@@ -61,10 +145,15 @@ float sdArrowHead(
     float headLength = halfWidth * rHeadSlope;
     vec2 topOuter = vec2(headLength, halfWidth);
     vec2 bottomOuter = vec2(headLength, -halfWidth);
-    vec2 normalOffset = headStrokeWidth * normalize(vec2(halfWidth, -headLength));
-    vec2 topInner = topOuter + normalOffset;
+    vec2 topInner = headInnerCorner(halfWidth, rHeadSlope, headStrokeWidth);
+    vec2 normalOffset = topInner - topOuter;
     vec2 bottomInner = bottomOuter + vec2(normalOffset.x, -normalOffset.y);
-    float notchX = topInner.x - topInner.y * rHeadNotchSlope;
+    float notchX = headNotchX(
+        halfWidth,
+        rHeadSlope,
+        rHeadNotchSlope,
+        headStrokeWidth
+    );
 
     vec2 vertices[6] = vec2[6](
         vec2(0.0, 0.0),
@@ -104,13 +193,22 @@ vec2 toArrowSpace(vec2 v) {
 }
 
 float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
-    float rHeadSlope = 1.0 / uHeadSlope;
-    float rHeadNotchSlope = min(1.0 / uHeadNotchSlope, rHeadSlope);
-    float rStartNotchSlope = uStartNotch ? rHeadSlope : 0.0;
+    float configuredRHeadSlope = 1.0 / uHeadSlope;
+    float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
     float stemHalfWidth = resolveStemHalfWidth(arrowHalfSize.y);
     float headStrokeWidth = uHeadShape == HEAD_SHAPE_ANGLE
         ? stemHalfWidth * 2.0
         : 0.0;
+    float rHeadSlope = effectiveHeadSlope(
+        arrowHalfSize.x,
+        arrowHalfSize.y,
+        stemHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope,
+        headStrokeWidth
+    );
+    float rHeadNotchSlope = min(configuredRHeadNotchSlope, rHeadSlope);
+    float rStartNotchSlope = uStartNotch ? rHeadSlope : 0.0;
 
     float spacing = uHeadRepeat
         ? max(

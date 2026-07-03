@@ -165,6 +165,17 @@
       }
     },
     {
+      "name": "minStemLength",
+      "value": 0,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "name": "Min stem length"
+      }
+    },
+    {
       "name": "strokeWidth",
       "value": 1,
       "bind": {
@@ -222,6 +233,7 @@
     "headRepeatMode": { "expr": "headRepeatMode" },
     "stemWidth": { "expr": "stemWidth" },
     "stemWidthUnit": { "expr": "stemWidthUnit" },
+    "minStemLength": { "expr": "minStemLength" },
     "headPlacement": { "expr": "headPlacement" },
     "shortArrow": { "expr": "shortArrow" },
     "fill": "#5B8DEF",

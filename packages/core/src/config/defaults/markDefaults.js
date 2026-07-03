@@ -53,6 +53,7 @@ export const ARROW_MARK_DEFAULTS = {
     headWidthUnit: "proportion",
     headNotch: 0,
     startNotch: false,
+    minStemLength: 0,
     headRepeat: false,
     headSpacing: 24,
     headOffset: 0,
