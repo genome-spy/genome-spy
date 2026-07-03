@@ -350,7 +350,8 @@ export interface ArrowProps
     /**
      * Direction of the arrow after sorting the interval endpoints. `"forward"`
      * points toward increasing values on the arrow axis. `"reverse"` points
-     * toward decreasing values.
+     * toward decreasing values. For data-driven direction, use the
+     * `direction` encoding channel.
      *
      * __Default value:__ `"forward"`
      */

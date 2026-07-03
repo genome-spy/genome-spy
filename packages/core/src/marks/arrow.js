@@ -44,6 +44,7 @@ export default class ArrowMark extends Mark {
             "fillOpacity",
             "strokeOpacity",
             "strokeWidth",
+            "direction",
         ];
     }
 
@@ -60,6 +61,7 @@ export default class ArrowMark extends Mark {
             "fillOpacity",
             "strokeOpacity",
             "strokeWidth",
+            "direction",
         ];
     }
 
@@ -99,9 +101,6 @@ export default class ArrowMark extends Mark {
 
         this.registerMarkUniformValue("uOrient", this.#getOrient(), (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.orientations, value)
-        );
-        this.registerMarkUniformValue("uDirection", props.direction, (value) =>
-            enumIndex(ARROW_UNIFORM_ENUMS.directions, value)
         );
         this.registerMarkUniformValue(
             "uHeadSlope",

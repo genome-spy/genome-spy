@@ -9,6 +9,7 @@ flat out float vRHeadSlope;
 flat out float vRHeadNotchSlope;
 flat out float vRStartNotchSlope;
 flat out float vHeadRepeatFootprintLength;
+flat out float vDirection;
 
 out vec2 vPosInPixels;
 
@@ -189,10 +190,10 @@ float getOutsideHeadOffset(
     );
 }
 
-vec2 getOutsideHeadExpansion(float outsideHeadOffset) {
+vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
     // Expansion is stored as negative/positive arrow-axis growth. In the
     // canonical reverse direction, the head is on the negative side.
-    return uDirection == DIRECTION_REVERSE
+    return direction == DIRECTION_REVERSE
         ? vec2(outsideHeadOffset, 0.0)
         : vec2(0.0, outsideHeadOffset);
 }
@@ -204,6 +205,7 @@ void main(void) {
     float x2 = getScaled_x2();
     float y = getScaled_y();
     float y2 = getScaled_y2();
+    float direction = getScaled_direction();
 
     sort(x, x2);
     sort(y, y2);
@@ -258,7 +260,10 @@ void main(void) {
         rHeadNotchSlope,
         headStrokeWidth
     );
-    vec2 outsideHeadExpansion = getOutsideHeadExpansion(outsideHeadOffset);
+    vec2 outsideHeadExpansion = getOutsideHeadExpansion(
+        outsideHeadOffset,
+        direction
+    );
     if (uOrient == ORIENT_HORIZONTAL) {
         vec2 expansion = outsideHeadExpansion / uViewportSize.x;
         pos.x += mix(-expansion.x, expansion.y, frac.x);
@@ -288,6 +293,7 @@ void main(void) {
     vRHeadSlope = rHeadSlope;
     vRHeadNotchSlope = rHeadNotchSlope;
     vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
+    vDirection = direction;
     vHeadRepeatFootprintLength = headRepeatFootprintLength(
         vHeadHalfWidth,
         vRHeadSlope,

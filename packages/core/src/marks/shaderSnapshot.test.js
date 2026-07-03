@@ -301,6 +301,20 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("uMinStemLength");
     });
 
+    test("arrow direction encoding spec", async () => {
+        const sources = await captureShaderSources(
+            loadSpec(
+                "../../../../examples/core/marks/arrow/arrow_direction.json"
+            )
+        );
+
+        expect(sources).toMatchSnapshot();
+        expect(sources.vertex).toContain("getScaled_direction()");
+        expect(sources.vertex).toContain("uRangeTexture_direction");
+        expect(sources.fragment).toContain("vDirection");
+        expect(sources.fragment).not.toContain("uDirection");
+    });
+
     test("text shader supports visible-range culling", async () => {
         const sources = await captureShaderSources({
             data: {

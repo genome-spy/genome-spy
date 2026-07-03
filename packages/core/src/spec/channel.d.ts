@@ -39,13 +39,14 @@ export type ChannelWithScale =
     | "strokeWidth"
     | "size"
     | "shape"
+    | "direction"
     | "angle"
     | "dx"
     | "dy";
 
 export type NonPositionalChannelWithScale = Exclude<
     ChannelWithScale,
-    PositionalChannel
+    PositionalChannel | "direction"
 >;
 
 export type ChannelWithoutScale =
@@ -428,6 +429,13 @@ export type NumericMarkPropDef = MarkPropDef<number>;
 
 export type ShapeDef = MarkPropDef<string | null, TypeForShape>;
 
+export type ArrowDirection = "forward" | "reverse";
+
+export type DirectionDef =
+    | (ScaleFieldDef<TypeForShape> & FormatMixins)
+    | (ScaleDatumDef & TypeMixins<TypeForShape>)
+    | ValueDef<ArrowDirection>;
+
 export type StringFieldDef = FieldDef<Type> & FormatMixins;
 
 export type TextDef =
@@ -559,6 +567,15 @@ export interface Encoding {
      * - centered directional shape `"triangle"`
      */
     shape?: ShapeDef;
+
+    /**
+     * Direction of arrow marks. Encoded values are mapped with a discrete scale
+     * whose range values must be `"forward"` or `"reverse"`.
+     *
+     * This channel is supported by arrow marks only and does not create a
+     * legend.
+     */
+    direction?: DirectionDef;
 
     /**
      * Text of the `text` mark.

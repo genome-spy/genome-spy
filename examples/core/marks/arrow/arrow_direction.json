@@ -1,0 +1,43 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Arrow direction encoded through a discrete scale.",
+
+  "data": {
+    "values": [
+      { "direction": "+", "start": 20, "end": 80 },
+      { "direction": "-", "start": 20, "end": 80 }
+    ]
+  },
+
+  "mark": {
+    "type": "arrow",
+    "fill": "#5B8DEF",
+    "stroke": "black",
+    "strokeWidth": 1
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100] },
+      "axis": { "title": "Position" }
+    },
+    "x2": { "field": "end" },
+    "y": {
+      "field": "direction",
+      "type": "nominal",
+      "scale": { "type": "band", "padding": 0.35 },
+      "axis": { "title": null }
+    },
+    "direction": {
+      "field": "direction",
+      "type": "nominal",
+      "scale": {
+        "domain": ["+", "-"],
+        "range": ["forward", "reverse"]
+      }
+    }
+  }
+}

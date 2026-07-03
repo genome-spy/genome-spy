@@ -1,6 +1,5 @@
 layout(std140) uniform Mark {
     uniform int uOrient;
-    uniform int uDirection;
     uniform int uHeadShape;
 
     uniform float uHeadSlope;
@@ -23,8 +22,8 @@ layout(std140) uniform Mark {
 const int ORIENT_HORIZONTAL = 0;
 const int ORIENT_VERTICAL = 1;
 
-const int DIRECTION_FORWARD = 0;
-const int DIRECTION_REVERSE = 1;
+const float DIRECTION_FORWARD = 0.0;
+const float DIRECTION_REVERSE = 1.0;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_OPEN = 1;

@@ -11,6 +11,7 @@ flat in float vRHeadSlope;
 flat in float vRHeadNotchSlope;
 flat in float vRStartNotchSlope;
 flat in float vHeadRepeatFootprintLength;
+flat in float vDirection;
 
 out lowp vec4 fragColor;
 
@@ -158,7 +159,7 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
 
 void main(void) {
     vec2 arrowPos = toArrowSpace(vPosInPixels);
-    if (uDirection == DIRECTION_FORWARD) {
+    if (vDirection == DIRECTION_FORWARD) {
         arrowPos.x = -arrowPos.x;
     }
     float d = sdArrow(arrowPos, vArrowHalfSizeInPixels);

@@ -14,15 +14,6 @@
       }
     },
     {
-      "name": "direction",
-      "value": "forward",
-      "bind": {
-        "input": "radio",
-        "options": ["forward", "reverse"],
-        "name": "Direction"
-      }
-    },
-    {
       "name": "headShape",
       "value": "triangle",
       "bind": {
@@ -164,7 +155,6 @@
   "mark": {
     "type": "arrow",
     "orient": { "expr": "orient" },
-    "direction": { "expr": "direction" },
     "headShape": { "expr": "headShape" },
     "headAngle": { "expr": "headAngle" },
     "headNotchAngle": { "expr": "headNotchAngle" },

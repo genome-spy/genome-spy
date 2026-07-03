@@ -543,7 +543,7 @@ export function isColorChannel(channel) {
  * @param {import("../spec/channel.js").Channel} channel
  */
 export function isDiscreteChannel(channel) {
-    return ["shape"].includes(channel);
+    return ["shape", "direction"].includes(channel);
 }
 
 /**
@@ -565,6 +565,7 @@ export function isChannelWithScale(channel) {
         "strokeWidth",
         "size",
         "shape",
+        "direction",
         "angle",
         "dx",
         "dy",
@@ -596,6 +597,8 @@ export function getDiscreteRange(channel) {
                 "tick-down",
                 "tick-left",
             ];
+        case "direction":
+            return ["forward", "reverse"];
         default:
     }
 }

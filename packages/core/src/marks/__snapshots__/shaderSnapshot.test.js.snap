@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`generated shader snapshots > arrow mark playground spec 1`] = `
+exports[`generated shader snapshots > arrow direction encoding spec 1`] = `
 {
   "fragment": "precision highp float;
 precision highp int;
@@ -9,7 +9,6 @@ precision highp int;
 
 layout(std140) uniform Mark {
     uniform int uOrient;
-    uniform int uDirection;
     uniform int uHeadShape;
 
     uniform float uHeadSlope;
@@ -26,8 +25,8 @@ layout(std140) uniform Mark {
 
     uniform int uHeadPlacement;
 
-    // Dynamic value
-    uniform float uStrokeWidth_0;
+
+
     mediump float uDomain_x[2];
 
 
@@ -41,8 +40,8 @@ layout(std140) uniform Mark {
 const int ORIENT_HORIZONTAL = 0;
 const int ORIENT_VERTICAL = 1;
 
-const int DIRECTION_FORWARD = 0;
-const int DIRECTION_REVERSE = 1;
+const float DIRECTION_FORWARD = 0.0;
+const float DIRECTION_REVERSE = 1.0;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_OPEN = 1;
@@ -203,6 +202,7 @@ flat in float vRHeadSlope;
 flat in float vRHeadNotchSlope;
 flat in float vRStartNotchSlope;
 flat in float vHeadRepeatFootprintLength;
+flat in float vDirection;
 
 out lowp vec4 fragColor;
 
@@ -350,7 +350,7 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
 
 void main(void) {
     vec2 arrowPos = toArrowSpace(vPosInPixels);
-    if (uDirection == DIRECTION_FORWARD) {
+    if (vDirection == DIRECTION_FORWARD) {
         arrowPos.x = -arrowPos.x;
     }
     float d = sdArrow(arrowPos, vArrowHalfSizeInPixels);
@@ -379,7 +379,1019 @@ precision highp int;
 
 layout(std140) uniform Mark {
     uniform int uOrient;
-    uniform int uDirection;
+    uniform int uHeadShape;
+
+    uniform float uHeadSlope;
+    uniform float uHeadNotchSlope;
+
+    uniform float uHeadWidth;
+    uniform int uHeadWidthUnit;
+    uniform bool uStartNotch;
+    uniform float uMinStemLength;
+    uniform bool uHeadRepeat;
+    uniform float uHeadSpacing;
+    uniform float uStemWidth;
+    uniform int uStemWidthUnit;
+
+    uniform int uHeadPlacement;
+
+
+
+    mediump float uDomain_x[2];
+
+
+
+    mediump float uDomain_y[2];
+
+
+
+};
+
+const int ORIENT_HORIZONTAL = 0;
+const int ORIENT_VERTICAL = 1;
+
+const float DIRECTION_FORWARD = 0.0;
+const float DIRECTION_REVERSE = 1.0;
+
+const int HEAD_SHAPE_TRIANGLE = 0;
+const int HEAD_SHAPE_OPEN = 1;
+
+const int UNIT_PX = 0;
+const int UNIT_PROPORTION = 1;
+
+const int HEAD_PLACEMENT_INSIDE = 0;
+const int HEAD_PLACEMENT_OUTSIDE = 1;
+
+// Arrow space uses x for arrow length and y for width perpendicular to it.
+// Negative x points toward the arrowhead in the canonical "reverse" direction.
+vec2 toArrowSpace(vec2 v) {
+    return uOrient == ORIENT_HORIZONTAL ? v : v.yx;
+}
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    mediump vec4 uLogicalVisibleRect;
+    lowp vec2 uCullByVisibleRange;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+uniform highp float uZero;
+
+// Utils ------------
+
+vec3 getDiscreteColor(sampler2D s, int index) {
+    return texelFetch(s, ivec2(index % textureSize(s, 0).x, 0), 0).rgb;
+}
+
+vec3 getInterpolatedColor(sampler2D s, float unitValue) {
+    return texture(s, vec2(unitValue, 0.0)).rgb;
+}
+
+float clampToRange(float value, vec2 range) {
+    return clamp(value, min(range[0], range[1]), max(range[0], range[1]));
+}
+
+// Scales ------------
+// Based on d3 scales: https://github.com/d3/d3-scale
+
+float scaleIdentity(float value) {
+    return value;
+}
+
+float scaleIdentity(uint value) {
+    return float(value);
+}
+
+float scaleLinear(float value, vec2 domain, vec2 range) {
+    float domainSpan = domain[1] - domain[0];
+    float rangeSpan = range[1] - range[0];
+    return (value - domain[0]) / domainSpan * rangeSpan + range[0];
+}
+
+float scaleLog(float value, vec2 domain, vec2 range, float base) {
+    // y = m log(x) + b 
+    // TODO: Perf optimization: precalculate log domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(log(value) / log(base), log(domain) / log(base), range);
+}
+
+float symlog(float value, float constant) {
+    // WARNING: emulating log1p with log(x + 1). Small numbers are likely to
+    // have significant precision problems.
+    return sign(value) * log(abs(value / constant) + 1.0);
+}
+
+float scaleSymlog(float value, vec2 domain, vec2 range, float constant) {
+    return scaleLinear(
+        symlog(value, constant),
+        vec2(symlog(domain[0], constant), symlog(domain[1], constant)),
+        range
+    );
+}
+
+float scalePow(float value, vec2 domain, vec2 range, float exponent) {
+    // y = mx^k + b
+    // TODO: Perf optimization: precalculate pow domain in js.
+    // TODO: Reversed domain, etc
+    return scaleLinear(
+        pow(abs(value), exponent) * sign(value),
+        pow(abs(domain), vec2(exponent)) * sign(domain),
+        range
+    );
+}
+
+// TODO: scaleThreshold
+// TODO: scaleQuantile (special case of threshold scale)
+
+// TODO: domainExtent should be uint
+float scaleBand(uint value, vec2 domainExtent, vec2 range,
+                float paddingInner, float paddingOuter,
+                float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    float n = domainExtent[1] - domainExtent[0];
+
+    // This fix departs from Vega and d3: https://github.com/vega/vega/issues/3357#issuecomment-1063253596
+    paddingInner = int(n) > 1 ? paddingInner : 0.0;
+
+    // Adapted from: https://github.com/d3/d3-scale/blob/master/src/band.js
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    return start + (float(value) - domainExtent[0]) * step + bandwidth * band;
+}
+
+const int lowBits = 12;
+const float lowDivisor = pow(2.0, float(lowBits));
+const uint lowMask = uint(lowDivisor - 1.0);
+
+vec2 splitUint(uint value) {
+    uint valueLo = value & lowMask;
+    uint valueHi = value - valueLo;
+    return vec2(float(valueHi), float(valueLo));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales
+ */
+float scaleBandHp(uint value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = splitUint(value);
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+/**
+ * High precision variant of scaleBand for index/locus scales for large
+ * domains where 32bit uints are not sufficient to represent the domain.
+ */
+float scaleBandHp(uvec2 value, vec3 domainExtent, vec2 range,
+                 float paddingInner, float paddingOuter,
+                 float align, float band) {
+
+    // TODO: reverse
+    float start = range[0];
+    float stop = range[1];
+    float rangeSpan = stop - start;
+
+    vec2 domainStart = domainExtent.xy;
+    float n = domainExtent[2];
+
+    // The following computation is identical for every vertex. Could be done on the JS side.
+    float step = rangeSpan / max(1.0, n - paddingInner + paddingOuter * 2.0);
+    start += (rangeSpan - step * (n - paddingInner)) * align;
+    float bandwidth = step * (1.0 - paddingInner);
+
+    // Split into to values with each having a reduced number of significant digits
+    // to mitigate the lack of precision in float32 calculations.
+    vec2 splitValue = vec2(float(value[0]) * lowDivisor, float(value[1]));
+
+    // Using max to prevent the shader compiler from wrecking the precision.
+    // Othwewise the compiler could optimize the sum of the four terms into
+    // some equivalent form that does premature rounding.
+    float inf = 1.0 / uZero;
+    float hi = max(splitValue[0] - domainStart[0], -inf);
+    float lo = max(splitValue[1] - domainStart[1], -inf);
+
+    return dot(vec4(start, hi, lo, bandwidth), vec4(1.0, step, step, band));
+}
+
+
+in highp uint attr_uniqueId;
+in highp uint attr_direction;
+in highp float attr_x;
+in highp float attr_x2;
+in highp uint attr_y;
+in highp uint attr_y2;
+
+
+uint accessor_uniqueId_0() {
+    return attr_uniqueId;
+}
+
+uint getScaled_uniqueId() {
+return accessor_uniqueId_0();
+}
+
+#define uniqueId_DEFINED
+
+
+vec3 accessor_fill_0() {
+    // Constant value
+    return vec3(0.3568627450980392, 0.5529411764705883, 0.9372549019607843);
+}
+
+vec3 getScaled_fill() {
+return accessor_fill_0();
+}
+
+#define fill_DEFINED
+
+
+vec3 accessor_stroke_0() {
+    // Constant value
+    return vec3(0.0, 0.0, 0.0);
+}
+
+vec3 getScaled_stroke() {
+return accessor_stroke_0();
+}
+
+#define stroke_DEFINED
+
+
+float accessor_strokeWidth_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_strokeWidth() {
+return accessor_strokeWidth_0();
+}
+
+#define strokeWidth_DEFINED
+
+
+uint accessor_direction_0() {
+    return attr_direction;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: direction
+
+uniform sampler2D uRangeTexture_direction;
+
+float scale_direction(uint value) {
+    int slot = 0;
+    float transformed = scaleIdentity(value);
+    return getDiscreteColor(uRangeTexture_direction, int(transformed)).r;
+
+}
+
+float getScaled_direction() {
+return scale_direction(accessor_direction_0());
+}
+
+#define direction_DEFINED
+
+
+float accessor_x_0() {
+    return attr_x;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x
+
+const vec2 range_x = vec2(0.0, 1.0);
+
+float scale_x(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
+    return transformed;
+
+}
+
+float getScaled_x() {
+return scale_x(accessor_x_0());
+}
+
+#define x_DEFINED
+
+
+float accessor_x2_0() {
+    return attr_x2;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: x2
+
+
+float scale_x2(float value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_x[slot], uDomain_x[slot + 1]);
+    float transformed = scaleLinear(value, domain, range_x);
+    return transformed;
+
+}
+
+float getScaled_x2() {
+return scale_x2(accessor_x2_0());
+}
+
+#define x2_DEFINED
+
+
+uint accessor_y_0() {
+    return attr_y;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y
+
+const vec2 range_y = vec2(1.0, 0.0);
+
+float scale_y(uint value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleBand(value, domain, range_y, 0.35, 0.35, 0.5, 0.0);
+    return transformed;
+
+}
+
+float getScaled_y() {
+return scale_y(accessor_y_0());
+}
+
+#define y_DEFINED
+
+
+uint accessor_y2_0() {
+    return attr_y2;
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Channel: y2
+
+
+float scale_y2(uint value) {
+    int slot = 0;
+    vec2 domain = vec2(uDomain_y[slot], uDomain_y[slot + 1]);
+    float transformed = scaleBand(value, domain, range_y, 0.35, 0.35, 0.5, 1.0);
+    return transformed;
+
+}
+
+float getScaled_y2() {
+return scale_y2(accessor_y2_0());
+}
+
+#define y2_DEFINED
+
+
+float accessor_strokeOpacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_strokeOpacity() {
+return accessor_strokeOpacity_0();
+}
+
+#define strokeOpacity_DEFINED
+
+
+float accessor_fillOpacity_0() {
+    // Constant value
+    return float(1.0);
+}
+
+float getScaled_fillOpacity() {
+return accessor_fillOpacity_0();
+}
+
+#define fillOpacity_DEFINED
+
+bool isPointSelected() {
+    return false;
+}
+
+
+/**
+ * Describes where a sample facet should be shown. Interpolating between the
+ * current and target positions/heights allows for transitioning between facet
+ * configurations.
+ */
+struct SampleFacetPosition {
+    float pos;
+    float height;
+    float targetPos;
+    float targetHeight;
+};
+
+/**
+ * Trasition fraction [0, 1] between the current and target configurations.
+ */
+uniform float uTransitionOffset;
+
+
+// ----------------------------------------------------------------------------
+
+#if !defined(SAMPLE_FACET_UNIFORM) && !defined(SAMPLE_FACET_TEXTURE)
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+#elif defined(SAMPLE_FACET_UNIFORM)
+
+/**
+ * Location and height of the band on the Y axis on a normalized [0, 1] scale.
+ * Elements: curr pos, curr height, target pos, target height
+ */
+uniform vec4 uSampleFacet;
+
+SampleFacetPosition getSampleFacetPos() {
+    return SampleFacetPosition(
+        1.0 - uSampleFacet.x - uSampleFacet.y,
+        uSampleFacet.y,
+        1.0 - uSampleFacet.z - uSampleFacet.w,
+        uSampleFacet.w
+    );
+}
+
+#elif defined(SAMPLE_FACET_TEXTURE)
+
+uniform sampler2D uSampleFacetTexture;
+
+SampleFacetPosition getSampleFacetPos() {
+    vec4 texel = texelFetch(uSampleFacetTexture, ivec2(int(attr_facetIndex), 0), 0);
+    return SampleFacetPosition(
+        1.0 - texel.r - texel.g,
+        texel.g,
+        1.0 - texel.r - texel.g,
+        texel.g);
+}
+
+#endif
+
+// ----------------------------------------------------------------------------
+
+bool isFacetedSamples(SampleFacetPosition facetPos) {
+    return facetPos != SampleFacetPosition(0.0, 1.0, 0.0, 1.0);
+}
+
+bool isFacetedSamples() {
+    return isFacetedSamples(getSampleFacetPos());
+}
+
+bool isInTransit() {
+    return uTransitionOffset > 0.0;
+}
+
+float getTransitionFraction(float xPos) {
+    return smoothstep(0.0, 0.7 + uTransitionOffset, (xPos - uTransitionOffset) * 2.0);
+}
+
+vec2 applySampleFacet(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return pos;
+    } else if (isInTransit()) {
+        vec2 interpolated = mix(
+            vec2(facetPos.pos, facetPos.height),
+            vec2(facetPos.targetPos, facetPos.targetHeight),
+            getTransitionFraction(pos.x));
+        return vec2(pos.x, interpolated[0] + pos.y * interpolated[1]);
+    } else {
+        return vec2(pos.x, facetPos.pos + pos.y * facetPos.height);
+    }
+}
+
+float getSampleFacetHeight(vec2 pos) {
+    SampleFacetPosition facetPos = getSampleFacetPos();
+
+    if (!isFacetedSamples(facetPos)) {
+        return 1.0;
+    } else if (isInTransit()) {
+        return mix(
+            facetPos.height,
+            facetPos.targetHeight,
+            getTransitionFraction(pos.x));
+    } else {
+        return facetPos.height;
+    }
+}
+
+
+/*
+ * Based on concepts presented at:
+ * https://webglfundamentals.org/webgl/lessons/webgl-picking.html
+ * https://deck.gl/docs/developer-guide/custom-layers/picking
+ */
+
+out highp vec4 vPickingColor;
+
+/**
+ * Passes the unique id to the fragment shader as a color if picking is enabled.
+ * Returns true if picking is enabled.
+ */
+bool setupPicking() {
+    if (uPickingEnabled) {
+#ifdef uniqueId_DEFINED
+        uint id = attr_uniqueId;
+        vPickingColor = vec4(
+            ivec4(id >> 0, id >> 8, id >> 16, id >> 24) & 0xFF
+        ) / float(0xFF);
+#else
+        vPickingColor = vec4(1.0);
+#endif
+        return true;
+    }
+    return false;
+}
+
+
+flat out lowp vec4 vFillColor;
+flat out lowp vec4 vStrokeColor;
+flat out float vHalfStrokeWidth;
+flat out vec2 vArrowHalfSizeInPixels;
+flat out float vHeadHalfWidth;
+flat out float vStemHalfWidth;
+flat out float vHeadStrokeWidth;
+flat out float vRHeadSlope;
+flat out float vRHeadNotchSlope;
+flat out float vRStartNotchSlope;
+flat out float vHeadRepeatFootprintLength;
+flat out float vDirection;
+
+out vec2 vPosInPixels;
+
+void sort(inout float a, inout float b) {
+    if (a > b) {
+        float tmp = b;
+        b = a;
+        a = tmp;
+    }
+}
+
+vec2 getVertexPos() {
+    int index = gl_VertexID % 6;
+    return vec2(
+        index == 0 || index == 1 || index == 3 ? 0.0 : 1.0,
+        index == 0 || index == 1 || index == 2 ? 0.0 : 1.0
+    );
+}
+
+float unitValue(float value, int unit, float reference) {
+    if (unit == UNIT_PROPORTION) {
+        return value * reference;
+    } else {
+        return value;
+    }
+}
+
+float resolveStemHalfWidth(float markHalfWidth) {
+    float markWidth = markHalfWidth * 2.0;
+    float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markWidth);
+    if (stemWidth < 0.0) {
+        // The negative sign hides stem geometry; the magnitude remains
+        // available for open-head thickness.
+        return clamp(stemWidth, -markWidth, 0.0) * 0.5;
+    } else {
+        return clamp(stemWidth, 0.0, markWidth) * 0.5;
+    }
+}
+
+// Resolve head width against the mark thickness. The render quad currently
+// only covers the mark thickness, so clamp the head to that extent.
+float resolveHeadHalfWidth(float markHalfWidth) {
+    float markWidth = markHalfWidth * 2.0;
+    float headWidth = unitValue(uHeadWidth, uHeadWidthUnit, markWidth);
+    return clamp(headWidth, 0.0, markWidth) * 0.5;
+}
+
+// Width along the arrow axis needed by one repeated head, including stroke.
+float headRepeatFootprintLength(
+    float halfWidth,
+    float rHeadSlope,
+    float headStrokeWidth,
+    float halfStrokeWidth
+) {
+    float headAxisLength = halfWidth * rHeadSlope;
+    float headStrokeLength = headStrokeWidth / length(vec2(rHeadSlope, 1.0));
+    return headAxisLength + headStrokeLength + halfStrokeWidth * 2.0;
+}
+
+// Distance from the head tip to its centerline notch/join point.
+float headNotchOffset(
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    if (headHalfWidth <= 0.0) {
+        return 0.0;
+    }
+
+    float headAxisLength = headHalfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, headHalfWidth);
+    vec2 normalOffset = headStrokeWidth
+        * normalize(vec2(headHalfWidth, -headAxisLength));
+    vec2 topInner = topOuter + normalOffset;
+    return topInner.x - topInner.y * rHeadNotchSlope;
+}
+
+// Distance from the arrow tip to where the stem outer edge meets a filled
+// triangle head's notch edge. This is the effective occupied head length for
+// deciding when a short inside arrow needs to blunt its head angle.
+float triangleHeadStemJoinLength(
+    float stemHalfWidth,
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope
+) {
+    float clampedRHeadNotchSlope = min(rHeadNotchSlope, rHeadSlope);
+    return headHalfWidth * rHeadSlope
+        - (headHalfWidth - stemHalfWidth) * clampedRHeadNotchSlope;
+}
+
+// Blunt non-repeated heads toward 90 degrees to preserve visible stem length.
+float effectiveHeadSlope(
+    float halfLength,
+    float headHalfWidth,
+    float stemHalfWidth,
+    float configuredRHeadSlope,
+    float configuredRHeadNotchSlope
+) {
+    if (
+        uHeadRepeat ||
+        stemHalfWidth < 0.0
+    ) {
+        return configuredRHeadSlope;
+    }
+
+    if (uHeadPlacement == HEAD_PLACEMENT_OUTSIDE) {
+        if (!uStartNotch || stemHalfWidth <= 0.0) {
+            return configuredRHeadSlope;
+        }
+
+        // Outside heads start at the encoded endpoint. The preserved length is
+        // therefore the encoded arrow length minus the start notch depth.
+        float maxStartNotchLength = max(
+            halfLength * 2.0 - uMinStemLength,
+            0.0
+        );
+        return min(
+            configuredRHeadSlope,
+            maxStartNotchLength / stemHalfWidth
+        );
+    }
+
+    if (uHeadShape != HEAD_SHAPE_TRIANGLE) {
+        return configuredRHeadSlope;
+    }
+
+    float maxJoinLength = max(
+        halfLength * 2.0 - uMinStemLength,
+        0.0
+    );
+    float configuredJoinLength = triangleHeadStemJoinLength(
+        stemHalfWidth,
+        headHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope
+    );
+
+    if (configuredJoinLength <= maxJoinLength) {
+        return configuredRHeadSlope;
+    }
+
+    float boundaryJoinLength = stemHalfWidth * configuredRHeadNotchSlope;
+    if (maxJoinLength < boundaryJoinLength) {
+        return stemHalfWidth > 0.0
+            ? clamp(maxJoinLength / stemHalfWidth, 0.0, configuredRHeadSlope)
+            : 0.0;
+    } else {
+        return clamp(
+            (
+                maxJoinLength +
+                (headHalfWidth - stemHalfWidth) * configuredRHeadNotchSlope
+            ) / headHalfWidth,
+            0.0,
+            configuredRHeadSlope
+        );
+    }
+}
+
+// Outside placement extends the vertex quad so the head can protrude past the
+// encoded interval while its notch/join point stays on the endpoint.
+float getOutsideHeadOffset(
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
+        return 0.0;
+    }
+
+    return headNotchOffset(
+        headHalfWidth,
+        rHeadSlope,
+        rHeadNotchSlope,
+        headStrokeWidth
+    );
+}
+
+vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
+    // Expansion is stored as negative/positive arrow-axis growth. In the
+    // canonical reverse direction, the head is on the negative side.
+    return direction == DIRECTION_REVERSE
+        ? vec2(outsideHeadOffset, 0.0)
+        : vec2(0.0, outsideHeadOffset);
+}
+
+void main(void) {
+    vec2 frac = getVertexPos();
+
+    float x = getScaled_x();
+    float x2 = getScaled_x2();
+    float y = getScaled_y();
+    float y2 = getScaled_y2();
+    float direction = getScaled_direction();
+
+    sort(x, x2);
+    sort(y, y2);
+
+    float clampMargin = 1.0;
+    vec2 pos1 = vec2(clamp(x, 0.0 - clampMargin, 1.0 + clampMargin), y);
+    vec2 pos2 = vec2(clamp(x2, 0.0 - clampMargin, 1.0 + clampMargin), y2);
+
+    vec2 size = pos2 - pos1;
+
+    if (size.x < 0.0 || size.y < 0.0) {
+        gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    vec2 pos = pos1 + frac * size;
+    size.y *= getSampleFacetHeight(pos);
+    pos = applySampleFacet(pos);
+
+    float strokeWidth = getScaled_strokeWidth();
+    float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
+    vHalfStrokeWidth = strokeWidth / 2.0;
+
+    vec2 sizeInPixels = size * uViewportSize;
+
+    // Width-like quantities are based on mark thickness, which is unaffected
+    // by outside head expansion. Compute them before length expansion and reuse.
+    vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
+    float headHalfWidth = resolveHeadHalfWidth(arrowHalfSizeBeforeExpansion.y);
+    float stemHalfWidth = resolveStemHalfWidth(arrowHalfSizeBeforeExpansion.y);
+    float physicalStemHalfWidth = abs(stemHalfWidth);
+    float headStrokeWidth = uHeadShape == HEAD_SHAPE_OPEN
+        ? physicalStemHalfWidth * 2.0
+        : 0.0;
+    float configuredRHeadSlope = 1.0 / uHeadSlope;
+    float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
+    float rHeadSlope = effectiveHeadSlope(
+        arrowHalfSizeBeforeExpansion.x,
+        headHalfWidth,
+        stemHalfWidth,
+        configuredRHeadSlope,
+        configuredRHeadNotchSlope
+    );
+    float rHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
+        ? rHeadSlope
+        : min(configuredRHeadNotchSlope, rHeadSlope);
+
+    // Grow only the head side of the vertex quad for outside placement.
+    float outsideHeadOffset = getOutsideHeadOffset(
+        headHalfWidth,
+        rHeadSlope,
+        rHeadNotchSlope,
+        headStrokeWidth
+    );
+    vec2 outsideHeadExpansion = getOutsideHeadExpansion(
+        outsideHeadOffset,
+        direction
+    );
+    if (uOrient == ORIENT_HORIZONTAL) {
+        vec2 expansion = outsideHeadExpansion / uViewportSize.x;
+        pos.x += mix(-expansion.x, expansion.y, frac.x);
+        size.x += expansion.x + expansion.y;
+    } else {
+        vec2 expansion = outsideHeadExpansion / uViewportSize.y;
+        pos.y += mix(-expansion.x, expansion.y, frac.y);
+        size.y += expansion.x + expansion.y;
+    }
+
+    float aaPadding = 1.0 / uDevicePixelRatio;
+    vec2 centeredFrac = frac - 0.5;
+    vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
+    pos += expand;
+
+    sizeInPixels = size * uViewportSize;
+    vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
+    vec2 halfSizeInPixels = sizeInPixels / 2.0;
+
+    vArrowHalfSizeInPixels = toArrowSpace(halfSizeInPixels);
+
+    // These flat varyings are per-arrow geometry constants used by the fragment
+    // SDF. Keeping them here avoids repeating this math per fragment.
+    vHeadHalfWidth = headHalfWidth;
+    vStemHalfWidth = stemHalfWidth;
+    vHeadStrokeWidth = headStrokeWidth;
+    vRHeadSlope = rHeadSlope;
+    vRHeadNotchSlope = rHeadNotchSlope;
+    vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
+    vDirection = direction;
+    vHeadRepeatFootprintLength = headRepeatFootprintLength(
+        vHeadHalfWidth,
+        vRHeadSlope,
+        vHeadStrokeWidth,
+        vHalfStrokeWidth
+    );
+    vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
+
+    gl_Position = unitToNdc(pos);
+
+    float fillOpacity = getScaled_fillOpacity() * uViewOpacity;
+    vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
+
+    setupPicking();
+}
+",
+}
+`;
+
+exports[`generated shader snapshots > arrow mark playground spec 1`] = `
+{
+  "fragment": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    uniform int uOrient;
     uniform int uHeadShape;
 
     uniform float uHeadSlope;
@@ -411,8 +1423,378 @@ layout(std140) uniform Mark {
 const int ORIENT_HORIZONTAL = 0;
 const int ORIENT_VERTICAL = 1;
 
-const int DIRECTION_FORWARD = 0;
-const int DIRECTION_REVERSE = 1;
+const float DIRECTION_FORWARD = 0.0;
+const float DIRECTION_REVERSE = 1.0;
+
+const int HEAD_SHAPE_TRIANGLE = 0;
+const int HEAD_SHAPE_OPEN = 1;
+
+const int UNIT_PX = 0;
+const int UNIT_PROPORTION = 1;
+
+const int HEAD_PLACEMENT_INSIDE = 0;
+const int HEAD_PLACEMENT_OUTSIDE = 1;
+
+// Arrow space uses x for arrow length and y for width perpendicular to it.
+// Negative x points toward the arrowhead in the canonical "reverse" direction.
+vec2 toArrowSpace(vec2 v) {
+    return uOrient == ORIENT_HORIZONTAL ? v : v.yx;
+}
+
+
+#define PI 3.141593
+
+uniform View {
+    /** Offset in "unit" units */
+    mediump vec2 uViewOffset;
+    mediump vec2 uViewScale;
+    /** Size of the logical viewport in pixels, i.e., the view */
+    mediump vec2 uViewportSize;
+    mediump vec4 uLogicalVisibleRect;
+    lowp vec2 uCullByVisibleRange;
+    lowp float uDevicePixelRatio;
+    // TODO: Views with opacity less than 1.0 should be rendered into a texture
+    // that is rendered with the specified opacity.
+    lowp float uViewOpacity;
+    bool uPickingEnabled;
+};
+
+
+/**
+ * Maps a coordinate on the unit scale to a normalized device coordinate.
+ * (0, 0) is at the bottom left corner.
+ */
+vec4 unitToNdc(vec2 coord) {
+    return vec4((coord * uViewScale + uViewOffset) * 2.0 - 1.0, 0.0, 1.0);
+}
+
+vec4 unitToNdc(float x, float y) {
+    return unitToNdc(vec2(x, y));
+}
+
+vec4 pixelsToNdc(vec2 coord) {
+    return unitToNdc(coord / uViewportSize);
+}
+
+vec4 pixelsToNdc(float x, float y) {
+    return pixelsToNdc(vec2(x, y));
+}
+
+bool isOutsideVisibleRange(vec2 pos) {
+    return (uCullByVisibleRange.x > 0.5 &&
+                (pos.x < uLogicalVisibleRect.x ||
+                 pos.x > uLogicalVisibleRect.z)) ||
+           (uCullByVisibleRange.y > 0.5 &&
+                (pos.y < uLogicalVisibleRect.y ||
+                 pos.y > uLogicalVisibleRect.w));
+}
+
+float linearstep(float edge0, float edge1, float x) {
+    return clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+}
+
+const highp uint HASH_EMPTY_KEY = 0xffffffffu;
+
+highp uint hash32(highp uint key) {
+    highp uint v = key;
+    v ^= v >> 16u;
+    v *= 0x7feb352du;
+    v ^= v >> 15u;
+    v *= 0x846ca68bu;
+    v ^= v >> 16u;
+    return v;
+}
+
+bool isEmptyHashTexture(highp usampler2D s) {
+    // Empty selections are encoded as a single empty hash slot.
+    ivec2 texSize = textureSize(s, 0);
+    return texSize.x == 1 && texSize.y == 1 && texelFetch(s, ivec2(0, 0), 0).r == HASH_EMPTY_KEY;
+}
+
+bool hashContainsTexture(highp usampler2D s, highp uint value) {
+    ivec2 texSize = textureSize(s, 0);
+    highp uint width = uint(texSize.x);
+    highp uint size = width * uint(texSize.y);
+    highp uint mask = size - 1u;
+    highp uint index = hash32(value) & mask;
+
+    for (highp uint probe = 0u; probe < size; probe += 1u) {
+        ivec2 coord = ivec2(int(index % width), int(index / width));
+        highp uint entry = texelFetch(s, coord, 0).r;
+        if (entry == value) {
+            return true;
+        }
+        if (entry == HASH_EMPTY_KEY) {
+            return false;
+        }
+        index = (index + 1u) & mask;
+    }
+
+    return false;
+}
+
+/**
+ * Calculates a gamma for antialiasing opacity based on the color.
+ */
+float getGammaForColor(vec3 rgb) {
+    return mix(
+        1.25,
+        0.75,
+        // RGB should be linearized but this is good enough for now
+        smoothstep(0.0, 1.0, dot(rgb, vec3(0.299, 0.587, 0.114))));
+}
+
+// Fragment shader stuff ////////////////////////////////////////////////////////
+
+// TODO: include the following only in fragment shaders
+
+/**
+ * Specialized linearstep for doing antialiasing
+ */
+float distanceToRatio(float d) {
+	return clamp(d * uDevicePixelRatio + 0.5, 0.0, 1.0);
+}
+
+vec4 distanceToColor(float d, vec4 fill, vec4 stroke, vec4 background, float halfStrokeWidth) {
+    if (halfStrokeWidth > 0.0) {
+        // Distance to stroke's edge. Negative inside the stroke.
+        float sd = abs(d) - halfStrokeWidth;
+        return mix(
+            stroke,
+            d <= 0.0 ? fill : background,
+            distanceToRatio(sd));
+    } else {
+        return mix(background, fill, distanceToRatio(-d));
+    }
+}
+
+
+in highp vec4 vPickingColor;
+
+
+in vec2 vPosInPixels;
+
+flat in lowp vec4 vFillColor;
+flat in lowp vec4 vStrokeColor;
+flat in float vHalfStrokeWidth;
+flat in vec2 vArrowHalfSizeInPixels;
+flat in float vHeadHalfWidth;
+flat in float vStemHalfWidth;
+flat in float vHeadStrokeWidth;
+flat in float vRHeadSlope;
+flat in float vRHeadNotchSlope;
+flat in float vRStartNotchSlope;
+flat in float vHeadRepeatFootprintLength;
+flat in float vDirection;
+
+out lowp vec4 fragColor;
+
+const int N = 6;
+const float FAR_OUTSIDE = 1e20;
+
+// Adapted from: https://iquilezles.org/articles/distfunctions2d/
+float sdPolygon(vec2[N] v, vec2 p) {
+    float d = dot(p-v[0],p-v[0]);
+    float s = 1.0;
+    for( int i=0, j=N-1; i<N; j=i, i++ ) {
+        vec2 e = v[j] - v[i];
+        vec2 w =    p - v[i];
+        vec2 b = w - e*clamp( dot(w,e)/dot(e,e), 0.0, 1.0 );
+        d = min( d, dot(b,b) );
+        bvec3 c = bvec3(p.y>=v[i].y,p.y<v[j].y,e.x*w.y>e.y*w.x);
+        if( all(c) || all(not(c)) ) s*=-1.0;  
+    }
+    return s*sqrt(d);
+}
+
+float sdStem(
+    vec2 p,
+    float halfLength,
+    float halfWidth,
+    float rHeadSlope,
+    float rStartNotchSlope
+) {
+    if (halfWidth < 0.0) {
+        return FAR_OUTSIDE;
+    }
+
+    float headSideLength = halfWidth * rHeadSlope;
+    float startNotchLength = halfWidth * rStartNotchSlope;
+    vec2 vertices[6] = vec2[6](
+        vec2(-halfLength, 0.0),
+        vec2(-halfLength + headSideLength, halfWidth),
+        vec2(halfLength, halfWidth),
+        vec2(halfLength - startNotchLength, 0.0),
+        vec2(halfLength, -halfWidth),
+        vec2(-halfLength + headSideLength, -halfWidth)
+    );
+
+    return sdPolygon(vertices, p);
+}
+
+// Inner corner of an open head, offset perpendicular to the outer edge.
+vec2 headInnerCorner(float halfWidth, float rHeadSlope, float headStrokeWidth) {
+    float headAxisLength = halfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, halfWidth);
+    vec2 normalOffset = headStrokeWidth
+        * normalize(vec2(halfWidth, -headAxisLength));
+    return topOuter + normalOffset;
+}
+
+// X coordinate where the arrowhead notch edge crosses the centerline.
+float headNotchX(
+    float halfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    vec2 topInner = headInnerCorner(halfWidth, rHeadSlope, headStrokeWidth);
+    return topInner.x - topInner.y * rHeadNotchSlope;
+}
+
+float sdArrowHead(
+    vec2 p,
+    float halfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    float headAxisLength = halfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, halfWidth);
+    vec2 bottomOuter = vec2(headAxisLength, -halfWidth);
+    vec2 topInner = headInnerCorner(halfWidth, rHeadSlope, headStrokeWidth);
+    vec2 normalOffset = topInner - topOuter;
+    vec2 bottomInner = bottomOuter + vec2(normalOffset.x, -normalOffset.y);
+    float notchX = headNotchX(
+        halfWidth,
+        rHeadSlope,
+        rHeadNotchSlope,
+        headStrokeWidth
+    );
+
+    vec2 vertices[6] = vec2[6](
+        vec2(0.0, 0.0),
+        topOuter,
+        topInner,
+        vec2(notchX, 0.0),
+        bottomInner,
+        bottomOuter
+    );
+
+    return sdPolygon(vertices, p);
+}
+
+float repeat(float x, float spacing) {
+    return x >= spacing ? x - floor(x / spacing) * spacing : x;
+}
+
+float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
+    float stemDistance = sdStem(
+        arrowPos,
+        arrowHalfSize.x,
+        vStemHalfWidth,
+        vRHeadSlope,
+        vRStartNotchSlope
+    );
+
+    float spacing = uHeadRepeat
+        ? max(uHeadSpacing, vHeadRepeatFootprintLength)
+        : 1.0 / 0.0;
+    float distanceFromStart = arrowPos.x + arrowHalfSize.x;
+
+    // Keep the stroked tip inside the repeated head's local window.
+    float arrowHeadX = repeat(
+        distanceFromStart + vHalfStrokeWidth,
+        spacing
+    ) - vHalfStrokeWidth;
+
+    float headDistance = sdArrowHead(
+        vec2(arrowHeadX, arrowPos.y),
+        vHeadHalfWidth,
+        vRHeadSlope,
+        vRHeadNotchSlope,
+        vHeadStrokeWidth
+    );
+
+    if (uHeadRepeat) {
+        // Cull heads that would be partially clipped.
+        float headTipDistance = distanceFromStart - arrowHeadX;
+        float headEndDistance = headTipDistance
+            + vHeadRepeatFootprintLength
+            - vHalfStrokeWidth;
+
+        if (headTipDistance > 0.0 && headEndDistance > arrowHalfSize.x * 2.0) {
+            headDistance = FAR_OUTSIDE;
+        }
+    }
+
+    return min(stemDistance, headDistance);
+}
+
+void main(void) {
+    vec2 arrowPos = toArrowSpace(vPosInPixels);
+    if (vDirection == DIRECTION_FORWARD) {
+        arrowPos.x = -arrowPos.x;
+    }
+    float d = sdArrow(arrowPos, vArrowHalfSizeInPixels);
+
+    fragColor = distanceToColor(
+        d,
+        vFillColor,
+        vStrokeColor,
+        vec4(0.0),
+        vHalfStrokeWidth
+    );
+
+    if (uPickingEnabled) {
+        if (d < vHalfStrokeWidth) {
+            fragColor = vPickingColor;
+        }
+    } else if (fragColor.a == 0.0) {
+        discard;
+    }
+}
+",
+  "vertex": "precision highp float;
+precision highp int;
+
+// view: viewRoot
+
+layout(std140) uniform Mark {
+    uniform int uOrient;
+    uniform int uHeadShape;
+
+    uniform float uHeadSlope;
+    uniform float uHeadNotchSlope;
+
+    uniform float uHeadWidth;
+    uniform int uHeadWidthUnit;
+    uniform bool uStartNotch;
+    uniform float uMinStemLength;
+    uniform bool uHeadRepeat;
+    uniform float uHeadSpacing;
+    uniform float uStemWidth;
+    uniform int uStemWidthUnit;
+
+    uniform int uHeadPlacement;
+
+    // Dynamic value
+    uniform float uStrokeWidth_0;
+    mediump float uDomain_x[2];
+
+
+
+    mediump float uDomain_y[2];
+
+
+
+};
+
+const int ORIENT_HORIZONTAL = 0;
+const int ORIENT_VERTICAL = 1;
+
+const float DIRECTION_FORWARD = 0.0;
+const float DIRECTION_REVERSE = 1.0;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_OPEN = 1;
@@ -782,6 +2164,18 @@ return accessor_strokeWidth_0();
 #define strokeWidth_DEFINED
 
 
+float accessor_direction_0() {
+    // Constant value
+    return float(0.0);
+}
+
+float getScaled_direction() {
+return accessor_direction_0();
+}
+
+#define direction_DEFINED
+
+
 float accessor_x_0() {
     return attr_x;
 }
@@ -1055,6 +2449,7 @@ flat out float vRHeadSlope;
 flat out float vRHeadNotchSlope;
 flat out float vRStartNotchSlope;
 flat out float vHeadRepeatFootprintLength;
+flat out float vDirection;
 
 out vec2 vPosInPixels;
 
@@ -1235,10 +2630,10 @@ float getOutsideHeadOffset(
     );
 }
 
-vec2 getOutsideHeadExpansion(float outsideHeadOffset) {
+vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
     // Expansion is stored as negative/positive arrow-axis growth. In the
     // canonical reverse direction, the head is on the negative side.
-    return uDirection == DIRECTION_REVERSE
+    return direction == DIRECTION_REVERSE
         ? vec2(outsideHeadOffset, 0.0)
         : vec2(0.0, outsideHeadOffset);
 }
@@ -1250,6 +2645,7 @@ void main(void) {
     float x2 = getScaled_x2();
     float y = getScaled_y();
     float y2 = getScaled_y2();
+    float direction = getScaled_direction();
 
     sort(x, x2);
     sort(y, y2);
@@ -1304,7 +2700,10 @@ void main(void) {
         rHeadNotchSlope,
         headStrokeWidth
     );
-    vec2 outsideHeadExpansion = getOutsideHeadExpansion(outsideHeadOffset);
+    vec2 outsideHeadExpansion = getOutsideHeadExpansion(
+        outsideHeadOffset,
+        direction
+    );
     if (uOrient == ORIENT_HORIZONTAL) {
         vec2 expansion = outsideHeadExpansion / uViewportSize.x;
         pos.x += mix(-expansion.x, expansion.y, frac.x);
@@ -1334,6 +2733,7 @@ void main(void) {
     vRHeadSlope = rHeadSlope;
     vRHeadNotchSlope = rHeadNotchSlope;
     vRStartNotchSlope = uStartNotch ? vRHeadSlope : 0.0;
+    vDirection = direction;
     vHeadRepeatFootprintLength = headRepeatFootprintLength(
         vHeadHalfWidth,
         vRHeadSlope,

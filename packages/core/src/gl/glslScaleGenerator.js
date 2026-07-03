@@ -175,6 +175,8 @@ export function generateDynamicValueGlslAndUniform(channel, conditionNumber) {
     if (isColorChannel(channel)) {
         dataType = "vec3";
         adjuster = (x) => cssColorToArray(x);
+    } else if (isDiscreteChannel(channel)) {
+        adjuster = getDiscreteRangeMapper(channel);
     }
 
     const uniformName = `u${capitalize(channel)}_${conditionNumber}`;
