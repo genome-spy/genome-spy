@@ -113,8 +113,7 @@ float effectiveHeadSlope(
         uHeadPlacement == HEAD_PLACEMENT_OUTSIDE ||
         uHeadRepeat ||
         uHeadShape != HEAD_SHAPE_TRIANGLE ||
-        stemHalfWidth < 0.0 ||
-        uMinStemLength <= 0.0
+        stemHalfWidth < 0.0
     ) {
         return configuredRHeadSlope;
     }
