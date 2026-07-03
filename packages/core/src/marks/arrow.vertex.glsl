@@ -59,6 +59,25 @@ float headFootprintLength(
     return headAxisLength + headStrokeLength + halfStrokeWidth;
 }
 
+// Distance from the head tip to its centerline notch/join point.
+float headNotchOffset(
+    float headHalfWidth,
+    float rHeadSlope,
+    float rHeadNotchSlope,
+    float headStrokeWidth
+) {
+    if (headHalfWidth <= 0.0) {
+        return 0.0;
+    }
+
+    float headAxisLength = headHalfWidth * rHeadSlope;
+    vec2 topOuter = vec2(headAxisLength, headHalfWidth);
+    vec2 normalOffset = headStrokeWidth
+        * normalize(vec2(headHalfWidth, -headAxisLength));
+    vec2 topInner = topOuter + normalOffset;
+    return topInner.x - topInner.y * rHeadNotchSlope;
+}
+
 // Distance from the arrow tip to where the stem outer edge meets a filled
 // triangle head's notch edge.
 float triangleHeadStemJoinLength(
@@ -81,6 +100,7 @@ float effectiveHeadSlope(
     float configuredRHeadNotchSlope
 ) {
     if (
+        uHeadPlacement == HEAD_PLACEMENT_OUTSIDE ||
         uHeadRepeat ||
         uHeadShape != HEAD_SHAPE_TRIANGLE ||
         uMinStemLength <= 0.0
@@ -120,9 +140,9 @@ float effectiveHeadSlope(
     }
 }
 
-vec2 getOutsideHeadExpansion(vec2 sizeInPixels, float halfStrokeWidth) {
+float getOutsideHeadOffset(vec2 sizeInPixels) {
     if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
-        return vec2(0.0);
+        return 0.0;
     }
 
     vec2 arrowHalfSize = toArrowSpace(sizeInPixels * 0.5);
@@ -138,18 +158,28 @@ vec2 getOutsideHeadExpansion(vec2 sizeInPixels, float halfStrokeWidth) {
         1.0 / uHeadSlope,
         1.0 / uHeadNotchSlope
     );
-    float expansionLength = headFootprintLength(
+    float rHeadNotchSlope = uHeadShape == HEAD_SHAPE_ANGLE
+        ? rHeadSlope
+        : min(1.0 / uHeadNotchSlope, rHeadSlope);
+
+    return headNotchOffset(
         headHalfWidth,
         rHeadSlope,
-        headStrokeWidth,
-        halfStrokeWidth
+        rHeadNotchSlope,
+        headStrokeWidth
     );
+}
+
+vec2 getOutsideHeadExpansion(float outsideHeadOffset) {
+    if (uHeadPlacement != HEAD_PLACEMENT_OUTSIDE) {
+        return vec2(0.0);
+    }
 
     bool endHeadPositive = uDirection == DIRECTION_FORWARD;
     bool endHeadNegative = uDirection == DIRECTION_REVERSE;
 
-    float negative = endHeadNegative ? expansionLength : 0.0;
-    float positive = endHeadPositive ? expansionLength : 0.0;
+    float negative = endHeadNegative ? outsideHeadOffset : 0.0;
+    float positive = endHeadPositive ? outsideHeadOffset : 0.0;
 
     return vec2(negative, positive);
 }
@@ -186,10 +216,8 @@ void main(void) {
 
     vec2 sizeInPixels = size * uViewportSize;
 
-    vec2 outsideHeadExpansion = getOutsideHeadExpansion(
-        sizeInPixels,
-        vHalfStrokeWidth
-    );
+    float outsideHeadOffset = getOutsideHeadOffset(sizeInPixels);
+    vec2 outsideHeadExpansion = getOutsideHeadExpansion(outsideHeadOffset);
     if (uOrient == ORIENT_HORIZONTAL) {
         vec2 expansion = outsideHeadExpansion / uViewportSize.x;
         pos.x += mix(-expansion.x, expansion.y, frac.x);
