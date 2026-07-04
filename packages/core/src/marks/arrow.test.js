@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { ARROW_UNIFORM_ENUMS, enumIndex } from "./arrow.js";
+import {
+    ARROW_UNIFORM_ENUMS,
+    enumIndex,
+    getRelativeSizeUniformProps,
+} from "./arrow.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
 
@@ -115,6 +119,38 @@ describe("arrow mark size encoding", () => {
         );
 
         expect(/** @type {UnitView} */ (view).mark.encoding.size).toEqual(size);
+    });
+
+    test("resolves band-relative style size despite the internal size placeholder", async () => {
+        const view = await create(
+            {
+                data: { values: [{ start: 8, end: 32, band: "A" }] },
+                mark: { type: "arrow", style: "arrow-block" },
+                encoding: {
+                    x: { field: "start", type: "index" },
+                    x2: { field: "end" },
+                    y: { field: "band", type: "nominal" },
+                },
+            },
+            UnitView
+        );
+        const mark = /** @type {import("./arrow.js").default} */ (
+            /** @type {UnitView} */ (view).mark
+        );
+
+        expect(mark.encoding.size).toEqual({ value: 0 });
+        expect(
+            getRelativeSizeUniformProps(
+                mark.properties.size,
+                view.spec.encoding?.size != null,
+                mark.encoding,
+                view
+            )
+        ).toMatchObject({
+            band: 1,
+            reference: "scale",
+            channel: "y",
+        });
     });
 
     test("rejects band-relative size for diagonal-capable arrows", async () => {

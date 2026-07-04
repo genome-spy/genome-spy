@@ -140,7 +140,7 @@ export default class ArrowMark extends Mark {
         );
         const relativeSize = getRelativeSizeUniformProps(
             props.size,
-            this.unitView.getEncoding().size != null,
+            this.unitView.spec.encoding?.size != null,
             this.encoding,
             this.unitView
         );
@@ -284,7 +284,7 @@ function isRelativeSize(value) {
  * @param {import("../spec/channel.js").Encoding} encoding
  * @param {import("../view/unitView.js").default} unitView
  */
-function getRelativeSizeUniformProps(
+export function getRelativeSizeUniformProps(
     size,
     hasSizeEncoding,
     encoding,
