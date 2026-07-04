@@ -1,9 +1,9 @@
 # Arrow
 
-The `"arrow"` mark displays each data item as a directional interval. It is
+The `"arrow"` mark displays each data item as a directional segment. It is
 useful for genomic and protein annotations where the span and direction both
 carry meaning, such as genes, transcripts, alignments, and directional protein
-domains.
+domains, and for general directed relationships.
 
 EXAMPLE examples/docs/grammar/mark/arrow/arrow-mark.json height=240
 
@@ -13,16 +13,17 @@ Arrow mark supports the primary and secondary [position](./index.md#channels)
 channels, the `direction` channel, and the `color`, `stroke`, `fill`,
 `opacity`, `strokeOpacity`, `fillOpacity`, and `strokeWidth` channels.
 
-Use the position channels to encode the interval. Use mark properties to control
-the arrow shape. Use the `direction` channel to map strand-like values such as
-`+` and `-` to `"forward"` and `"reverse"`.
+Use the position channels to encode the segment endpoints. Use mark properties
+to control the arrow shape. Use the `direction` channel to map strand-like
+values such as `+` and `-` to `"forward"` and `"reverse"`.
 
 Use the `size` mark property to control the stem thickness. Numeric `size`
 values are pixels. The arrow mark also accepts `size: { "band": 0.8 }`, which
-uses a fraction of the perpendicular band width. If the perpendicular channel
-has no band-like scale, the fraction is resolved against the perpendicular view
-span. The `size.channel` property can explicitly select `"x"` or `"y"` as the
-reference channel.
+uses a fraction of the perpendicular band width for axis-aligned arrows. If the
+perpendicular channel has no band-like scale, the fraction is resolved against
+the perpendicular view span. The `size.channel` property can explicitly select
+`"x"` or `"y"` as the reference channel. Band-relative size is not supported for
+diagonal arrows.
 
 The `size` encoding channel is also supported for data-driven thickness. Encoded
 sizes are pixel values and override mark-level `size`; the `{ "band": ... }`

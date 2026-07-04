@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { ARROW_UNIFORM_ENUMS, enumIndex, inferArrowOrient } from "./arrow.js";
+import { ARROW_UNIFORM_ENUMS, enumIndex } from "./arrow.js";
 import UnitView from "../view/unitView.js";
 import { create } from "../view/testUtils.js";
 
@@ -133,45 +133,68 @@ describe("arrow mark size encoding", () => {
     });
 });
 
-describe("arrow mark orient inference", () => {
-    test("uses the directional quantitative/index/locus axis", () => {
-        expect(
-            inferArrowOrient({
-                x: { field: "start", type: "index" },
-                y: { field: "sample", type: "nominal" },
-            })
-        ).toBe("horizontal");
+describe("arrow mark endpoint completion", () => {
+    test("uses rule-style full-span completion for a single x channel", async () => {
+        const view = await create(
+            {
+                data: { values: [{ position: 8 }] },
+                mark: "arrow",
+                encoding: {
+                    x: { field: "position", type: "index" },
+                },
+            },
+            UnitView
+        );
 
-        expect(
-            inferArrowOrient({
-                x: { field: "sample", type: "nominal" },
-                y: { field: "position", type: "locus" },
-            })
-        ).toBe("vertical");
+        expect(/** @type {UnitView} */ (view).mark.encoding).toMatchObject({
+            y: { value: 0 },
+            y2: { value: 1 },
+        });
+        expect(/** @type {UnitView} */ (view).mark.encoding.x2).toBe(
+            /** @type {UnitView} */ (view).mark.encoding.x
+        );
     });
 
-    test("uses the ranged channel axis when only one secondary channel exists", () => {
-        expect(
-            inferArrowOrient({
-                x: { field: "start", type: "quantitative" },
-                x2: { field: "end" },
-            })
-        ).toBe("horizontal");
+    test("uses rule-style full-span completion for a single y channel", async () => {
+        const view = await create(
+            {
+                data: { values: [{ band: "A" }] },
+                mark: "arrow",
+                encoding: {
+                    y: { field: "band", type: "nominal" },
+                },
+            },
+            UnitView
+        );
 
-        expect(
-            inferArrowOrient({
-                y: { field: "start", type: "quantitative" },
-                y2: { field: "end" },
-            })
-        ).toBe("vertical");
+        expect(/** @type {UnitView} */ (view).mark.encoding).toMatchObject({
+            x: { value: 0 },
+            x2: { value: 1 },
+        });
+        expect(/** @type {UnitView} */ (view).mark.encoding.y2).toBe(
+            /** @type {UnitView} */ (view).mark.encoding.y
+        );
     });
 
-    test("falls back to horizontal for ambiguous two-axis encodings", () => {
-        expect(
-            inferArrowOrient({
-                x: { field: "start", type: "quantitative" },
-                y: { field: "end", type: "quantitative" },
-            })
-        ).toBe("horizontal");
+    test("keeps diagonal endpoints when all positional channels are defined", async () => {
+        const x = /** @type {const} */ ({ field: "x1", type: "quantitative" });
+        const y = /** @type {const} */ ({ field: "y1", type: "quantitative" });
+        const x2 = /** @type {const} */ ({ field: "x2" });
+        const y2 = /** @type {const} */ ({ field: "y2" });
+        const view = await create(
+            {
+                data: { values: [{ x1: 0, y1: 0, x2: 1, y2: 1 }] },
+                mark: "arrow",
+                encoding: { x, y, x2, y2 },
+            },
+            UnitView
+        );
+
+        expect(/** @type {UnitView} */ (view).mark.encoding).toMatchObject({
+            x,
+            y,
+            x2,
+            y2,
+        });
     });
 });

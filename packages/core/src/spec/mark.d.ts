@@ -126,8 +126,9 @@ export interface ArrowRelativeSize {
     band: number;
 
     /**
-     * Channel whose band or view span is used. If omitted or `"auto"`, the
-     * channel is inferred from `orient`.
+     * Channel whose band or view span is used. If omitted or `"auto"`,
+     * GenomeSpy infers the perpendicular channel from the axis-aligned arrow
+     * endpoints. Band-relative size is not supported for diagonal arrows.
      */
     channel?: "x" | "y" | "auto";
 }
@@ -353,20 +354,10 @@ export interface ArrowProps
     type: "arrow";
 
     /**
-     * Orientation of the arrow body. If undefined, the orientation is inferred
-     * from the encoded fields. Quantitative, index, and locus fields are
-     * preferred as the arrow direction, so an arrow with quantitative `x` and
-     * discrete `y` is horizontal.
-     *
-     * __Default value:__ inferred from the encoding
-     */
-    orient?: "horizontal" | "vertical" | ExprRef;
-
-    /**
-     * Direction of the arrow after sorting the interval endpoints. `"forward"`
-     * points toward increasing values on the arrow axis. `"reverse"` points
-     * toward decreasing values. For data-driven direction, use the
-     * `direction` encoding channel.
+     * Direction of the arrowhead. `"forward"` places the arrowhead at the
+     * secondary endpoint (`x2`, `y2`). `"reverse"` places it at the primary
+     * endpoint (`x`, `y`). For data-driven direction, use the `direction`
+     * encoding channel.
      *
      * __Default value:__ `"forward"`
      */

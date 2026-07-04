@@ -42,7 +42,6 @@ export const ARROW_MARK_DEFAULTS = {
     y2: undefined,
     filled: true,
     strokeWidth: 1,
-    orient: undefined,
     direction: "forward",
     headAngle: 45,
     headNotchAngle: 90,
