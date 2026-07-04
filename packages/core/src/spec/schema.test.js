@@ -196,7 +196,6 @@ describe("generated core schema", () => {
             },
             mark: {
                 type: "arrow",
-                orient: "horizontal",
                 direction: "forward",
                 headShape: "triangle",
                 headAngle: { expr: "45" },
