@@ -70,7 +70,8 @@ is present, the encoding takes precedence.
 
 - `orient`: `"horizontal"` or `"vertical"`, inferred from the encoding when not
   specified.
-- `headShape`: `"triangle"` or `"open"`.
+- `headShape`: `"triangle"` or `"open"`. Open-head thickness is based on
+  resolved `size`, even when `stem` is `false`.
 - `headAngle`: outer head angle in degrees, clamped to `[1, 90]`.
 - `headNotchAngle`: triangle head notch angle in degrees, clamped to `[1, 90]`.
   Open heads use `headAngle` for the notch edge.
@@ -83,16 +84,31 @@ is present, the encoding takes precedence.
   the resolved `size` for open-head thickness. The default should be `true`.
 - `headWidth`: multiplier of resolved `size`. For example, `2` makes the head
   twice as wide as the stem. This replaces the old pixel/proportion unit model.
+  The resolved head width should be clamped to the available perpendicular lane
+  unless a later use case proves that protruding outside the lane is needed.
 - `startNotch`: whether the arrow tail has a notch. The notch slope follows the
   head slope.
 - `minStemLength`: minimum visible stem length in pixels. It adjusts effective
-  slopes for short non-repeated arrows.
+  slopes for short non-repeated arrows. It is ignored when `stem` is `false`.
 - `headPlacement`: `"inside"` or `"outside"`. Inside keeps the whole head in
   the encoded interval. Outside places the head beyond the encoded interval so
   that the head starts at the interval endpoint.
-- `headRepeat`: whether heads are repeated along the arrow.
-- `headSpacing`: multiplier of resolved `size`. The effective spacing is at
-  least the rendered head footprint, including stroke.
+- `headSpacing`: `null` disables repeated heads and is the default. A numeric
+  value enables repeated heads and gives the requested spacing as a multiplier
+  of resolved `size`. The effective spacing is at least the rendered head
+  footprint, including stroke.
+
+### Removed or Redefined Props
+
+- Remove `stemWidth`; use `size`.
+- Remove `stemWidthUnit`; numeric `size` is pixels and relative size uses
+  `{ "band": number }`.
+- Remove `headWidthUnit`; `headWidth` is a multiplier of resolved `size`.
+- Remove `headRepeat`; `headSpacing: null` disables repeated heads and numeric
+  `headSpacing` enables them.
+- Remove negative-width stem hiding; use `stem: false`.
+- Remove arrow `units` enum plumbing in JS and the `UNIT_PX` /
+  `UNIT_PROPORTION` constants in GLSL once unit props are gone.
 
 ### Band-Relative Size Resolution
 
@@ -159,17 +175,21 @@ Work:
   `size`.
 - Add `minSize`, default `1`.
 - Add `stem`, default `true`.
-- Make `headSpacing` a multiplier of resolved `size`.
+- Remove public `headRepeat`.
+- Make `headSpacing` nullable. `null` disables repeated heads; numeric values
+  enable repeated heads and give spacing as a multiplier of resolved `size`.
 - Set arrow default `size` to `{ "band": 0.45 }`.
+- Set arrow default `headSpacing` to `null`.
 - Update built-in styles to use `size`, `minSize`, and `stem` instead of
-  `stemWidth`, `stemWidthUnit`, `headWidthUnit`, or negative widths.
+  `stemWidth`, `stemWidthUnit`, `headWidthUnit`, `headRepeat`, or negative
+  widths.
 - Add/update config tests that assert the new defaults and styles.
 
 Verification:
 
 - Run `npx vitest run packages/core/src/config/markConfig.test.js`.
 - Search the edited defaults and specs for stale public `stemWidth`,
-  `stemWidthUnit`, and `headWidthUnit` references.
+  `stemWidthUnit`, `headWidthUnit`, and `headRepeat` references.
 
 Tentative commit: `feat(core): define arrow size parameters`
 
@@ -195,14 +215,21 @@ Work:
 - Clamp encoded and numeric mark-level sizes by `minSize`.
 - Replace shader `uStemWidth`, `uStemWidthUnit`, `uHeadWidthUnit`, and related
   naming with resolved-size uniforms/varyings.
-- Make `headWidth` and `headSpacing` multiply resolved size.
+- Remove arrow unit enum handling and GLSL `UNIT_PX` / `UNIT_PROPORTION`
+  constants.
+- Remove `uHeadRepeat`; derive repeat behavior from nullable `headSpacing`.
+- Make `headWidth` and non-null `headSpacing` multiply resolved size.
+- Clamp resolved head width to the available perpendicular lane.
 - Implement `stem: false` by hiding the stem while still using resolved size for
   open-head thickness and head geometry.
+- Ignore `minStemLength` when `stem` is `false`.
 
 Verification:
 
 - Add focused tests for numeric `size`, encoded `size`, `encoding.size`
-  overriding mark-level `size`, `minSize` clamping, and `stem: false`.
+  overriding mark-level `size`, `minSize` clamping, `stem: false`,
+  `minStemLength` being ignored when `stem` is false, and nullable
+  `headSpacing` controlling repeated heads.
 - Run `npx vitest run packages/core/src/marks/arrow.test.js`.
 - Run `npx vitest run packages/core/src/marks/shaderSnapshot.test.js`.
 
@@ -257,7 +284,7 @@ Work:
 
 - Keep the arrow playground focused on shape parameters.
 - Add controls for numeric `size`, encoded `size`, `stem`, `minSize`,
-  `headWidth`, and `headSpacing`.
+  `headWidth`, and nullable `headSpacing`.
 - Add a simple example/view that demonstrates `size: { "band": 0.8 }`
   resolving against the view span when no perpendicular band scale exists.
 - Keep `encoding.direction` examples separate from the playground.
@@ -287,7 +314,11 @@ Work:
 - Document that `encoding.size` is supported for data-driven pixel thickness and
   overrides mark-level `size`, but does not accept `{ "band": ... }`.
 - Document `minSize` and `stem`.
-- Document `headWidth` and `headSpacing` as multipliers of resolved `size`.
+- Document that `minStemLength` is ignored when `stem` is `false`.
+- Document `headWidth` as a multiplier of resolved `size`, clamped to the
+  available perpendicular lane.
+- Document nullable `headSpacing`: `null` disables repeated heads and numeric
+  values enable repeated heads with spacing as a multiplier of resolved `size`.
 - Regenerate schema/docs artifacts if the repository requires generated output
   for spec changes.
 
@@ -296,7 +327,7 @@ Verification:
 - Run the schema/docs generation commands that are normally required for changed
   spec types.
 - Inspect generated schema descriptions for stale public `stemWidth`,
-  `stemWidthUnit`, and `headWidthUnit` references.
+  `stemWidthUnit`, `headWidthUnit`, and `headRepeat` references.
 
 Tentative commit: `docs(core): document arrow size parameters`
 
