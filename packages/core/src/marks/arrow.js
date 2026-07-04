@@ -21,7 +21,7 @@ const MAX_HEAD_ANGLE = 90;
 export const ARROW_UNIFORM_ENUMS = {
     directions: ["forward", "reverse"],
     headShapes: ["triangle", "open"],
-    sizeReferences: ["none", "scale", "view-x", "view-y"],
+    sizeReferences: ["none", "scale-x", "scale-y", "view-x", "view-y"],
     headPlacements: ["inside", "outside"],
 };
 
@@ -29,7 +29,7 @@ export const ARROW_UNIFORM_ENUMS = {
  * @extends {Mark<import("../spec/mark.js").ArrowProps>}
  */
 export default class ArrowMark extends Mark {
-    /** @type {{ reference: "none" | "scale" | "view-x" | "view-y", channel?: "x" | "y" }} */
+    /** @type {{ reference: "none" | "scale-x" | "scale-y" | "view-x" | "view-y", channel?: "x" | "y" }} */
     #sizeReference = { reference: "none" };
 
     /**
@@ -205,7 +205,7 @@ export default class ArrowMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        if (this.#sizeReference.reference == "scale") {
+        if (this.#sizeReference.reference.startsWith("scale-")) {
             ops.push(() => {
                 setBlockUniforms(this.markUniformInfo, {
                     uSizeBandReferenceSpan: this.#getSizeBandReferenceSpan(),
@@ -245,7 +245,7 @@ export default class ArrowMark extends Mark {
     }
 
     #getSizeBandReferenceSpan() {
-        if (this.#sizeReference.reference != "scale") {
+        if (!this.#sizeReference.reference.startsWith("scale-")) {
             return 0;
         }
 
@@ -334,7 +334,9 @@ function getSizeReference(channel, unitView) {
     );
     if (scale && typeof scale.bandwidth == "function") {
         return /** @type {const} */ ({
-            reference: "scale",
+            reference: /** @type {"scale-x" | "scale-y"} */ (
+                `scale-${channel}`
+            ),
             channel,
         });
     } else {

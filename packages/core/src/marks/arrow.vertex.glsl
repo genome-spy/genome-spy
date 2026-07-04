@@ -21,8 +21,10 @@ in float pos;
 in float side;
 
 float resolveSizeReferenceSpan(vec2 segmentInPixels) {
-    if (uSizeReference == SIZE_REFERENCE_SCALE) {
-        return uSizeBandReferenceSpan;
+    if (uSizeReference == SIZE_REFERENCE_SCALE_X) {
+        return uSizeBandReferenceSpan * uViewportSize.x;
+    } else if (uSizeReference == SIZE_REFERENCE_SCALE_Y) {
+        return uSizeBandReferenceSpan * uViewportSize.y;
     } else if (uSizeReference == SIZE_REFERENCE_VIEW_X) {
         return uViewportSize.x;
     } else if (uSizeReference == SIZE_REFERENCE_VIEW_Y) {

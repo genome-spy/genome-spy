@@ -6,6 +6,7 @@ import {
     getRelativeSizeUniformProps,
 } from "./arrow.js";
 import UnitView from "../view/unitView.js";
+import View from "../view/view.js";
 import { create } from "../view/testUtils.js";
 
 describe("arrow mark uniform enums", () => {
@@ -15,9 +16,14 @@ describe("arrow mark uniform enums", () => {
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "open")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "none")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "scale")).toBe(1);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "view-x")).toBe(2);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "view-y")).toBe(3);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "scale-x")).toBe(
+            1
+        );
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "scale-y")).toBe(
+            2
+        );
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "view-x")).toBe(3);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "view-y")).toBe(4);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "inside")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "outside")).toBe(
             1
@@ -148,7 +154,60 @@ describe("arrow mark size encoding", () => {
             )
         ).toMatchObject({
             band: 1,
-            reference: "scale",
+            reference: "scale-y",
+            channel: "y",
+        });
+    });
+
+    test("resolves band-relative style size with inherited encoding", async () => {
+        const view = await create(
+            {
+                data: { values: [{ band: "arrow", start: 10, end: 90 }] },
+                encoding: {
+                    x: {
+                        field: "start",
+                        type: "quantitative",
+                        scale: { domain: [0, 100] },
+                    },
+                    x2: { field: "end" },
+                    y: {
+                        field: "band",
+                        type: "nominal",
+                        scale: { type: "band", padding: 0.45 },
+                    },
+                },
+                vconcat: [
+                    {
+                        mark: {
+                            type: "arrow",
+                            style: "arrow-block",
+                        },
+                    },
+                ],
+            },
+            View
+        );
+        /** @type {UnitView | undefined} */
+        let child;
+        view.visit((visited) => {
+            if (visited instanceof UnitView) {
+                child = visited;
+            }
+        });
+        const mark = /** @type {import("./arrow.js").default} */ (child.mark);
+
+        expect(child.spec.encoding?.size).toBeUndefined();
+        expect(mark.encoding.size).toEqual({ value: 0 });
+        expect(
+            getRelativeSizeUniformProps(
+                mark.properties.size,
+                child.spec.encoding?.size != null,
+                mark.encoding,
+                child
+            )
+        ).toMatchObject({
+            band: 1,
+            reference: "scale-y",
             channel: "y",
         });
     });

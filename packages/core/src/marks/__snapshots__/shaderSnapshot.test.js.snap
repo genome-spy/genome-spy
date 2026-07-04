@@ -38,9 +38,10 @@ layout(std140) uniform Mark {
 };
 
 const int SIZE_REFERENCE_NONE = 0;
-const int SIZE_REFERENCE_SCALE = 1;
-const int SIZE_REFERENCE_VIEW_X = 2;
-const int SIZE_REFERENCE_VIEW_Y = 3;
+const int SIZE_REFERENCE_SCALE_X = 1;
+const int SIZE_REFERENCE_SCALE_Y = 2;
+const int SIZE_REFERENCE_VIEW_X = 3;
+const int SIZE_REFERENCE_VIEW_Y = 4;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -406,9 +407,10 @@ layout(std140) uniform Mark {
 };
 
 const int SIZE_REFERENCE_NONE = 0;
-const int SIZE_REFERENCE_SCALE = 1;
-const int SIZE_REFERENCE_VIEW_X = 2;
-const int SIZE_REFERENCE_VIEW_Y = 3;
+const int SIZE_REFERENCE_SCALE_X = 1;
+const int SIZE_REFERENCE_SCALE_Y = 2;
+const int SIZE_REFERENCE_VIEW_X = 3;
+const int SIZE_REFERENCE_VIEW_Y = 4;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -1097,8 +1099,10 @@ in float pos;
 in float side;
 
 float resolveSizeReferenceSpan(vec2 segmentInPixels) {
-    if (uSizeReference == SIZE_REFERENCE_SCALE) {
-        return uSizeBandReferenceSpan;
+    if (uSizeReference == SIZE_REFERENCE_SCALE_X) {
+        return uSizeBandReferenceSpan * uViewportSize.x;
+    } else if (uSizeReference == SIZE_REFERENCE_SCALE_Y) {
+        return uSizeBandReferenceSpan * uViewportSize.y;
     } else if (uSizeReference == SIZE_REFERENCE_VIEW_X) {
         return uViewportSize.x;
     } else if (uSizeReference == SIZE_REFERENCE_VIEW_Y) {
@@ -1427,9 +1431,10 @@ layout(std140) uniform Mark {
 };
 
 const int SIZE_REFERENCE_NONE = 0;
-const int SIZE_REFERENCE_SCALE = 1;
-const int SIZE_REFERENCE_VIEW_X = 2;
-const int SIZE_REFERENCE_VIEW_Y = 3;
+const int SIZE_REFERENCE_SCALE_X = 1;
+const int SIZE_REFERENCE_SCALE_Y = 2;
+const int SIZE_REFERENCE_VIEW_X = 3;
+const int SIZE_REFERENCE_VIEW_Y = 4;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -1797,9 +1802,10 @@ layout(std140) uniform Mark {
 };
 
 const int SIZE_REFERENCE_NONE = 0;
-const int SIZE_REFERENCE_SCALE = 1;
-const int SIZE_REFERENCE_VIEW_X = 2;
-const int SIZE_REFERENCE_VIEW_Y = 3;
+const int SIZE_REFERENCE_SCALE_X = 1;
+const int SIZE_REFERENCE_SCALE_Y = 2;
+const int SIZE_REFERENCE_VIEW_X = 3;
+const int SIZE_REFERENCE_VIEW_Y = 4;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -2475,8 +2481,10 @@ in float pos;
 in float side;
 
 float resolveSizeReferenceSpan(vec2 segmentInPixels) {
-    if (uSizeReference == SIZE_REFERENCE_SCALE) {
-        return uSizeBandReferenceSpan;
+    if (uSizeReference == SIZE_REFERENCE_SCALE_X) {
+        return uSizeBandReferenceSpan * uViewportSize.x;
+    } else if (uSizeReference == SIZE_REFERENCE_SCALE_Y) {
+        return uSizeBandReferenceSpan * uViewportSize.y;
     } else if (uSizeReference == SIZE_REFERENCE_VIEW_X) {
         return uViewportSize.x;
     } else if (uSizeReference == SIZE_REFERENCE_VIEW_Y) {
