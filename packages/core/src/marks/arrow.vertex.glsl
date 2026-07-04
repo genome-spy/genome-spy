@@ -20,33 +20,6 @@ in float pos;
 /** Which side of the extruded strip: -0.5 or 0.5. */
 in float side;
 
-float resolveSizeReferenceSpan(vec2 segmentInPixels) {
-    if (uSizeReference == SIZE_REFERENCE_SCALE_X) {
-        return uSizeBandReferenceSpan * uViewportSize.x;
-    } else if (uSizeReference == SIZE_REFERENCE_SCALE_Y) {
-        return uSizeBandReferenceSpan * uViewportSize.y;
-    } else if (uSizeReference == SIZE_REFERENCE_VIEW_X) {
-        return uViewportSize.x;
-    } else if (uSizeReference == SIZE_REFERENCE_VIEW_Y) {
-        return uViewportSize.y;
-    } else {
-        return abs(segmentInPixels.x) >= abs(segmentInPixels.y)
-            ? uViewportSize.y
-            : uViewportSize.x;
-    }
-}
-
-float resolveArrowSize(
-    float configuredSize,
-    float referenceSpan
-) {
-    float size = uSizeBand >= 0.0
-        ? uSizeBand * referenceSpan
-        : configuredSize;
-
-    return max(size, uMinSize);
-}
-
 float resolveStemHalfWidth(float arrowSize) {
     if (uStem) {
         return arrowSize * 0.5;
@@ -220,11 +193,7 @@ void main(void) {
     float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
     vHalfStrokeWidth = strokeWidth / 2.0;
 
-    float sizeReferenceSpan = resolveSizeReferenceSpan(segmentInPixels);
-    float arrowSize = resolveArrowSize(
-        getScaled_size(),
-        sizeReferenceSpan
-    );
+    float arrowSize = max(getScaled_size(), uMinSize);
     float headHalfWidth = resolveHeadHalfWidth(arrowSize);
     float stemHalfWidth = resolveStemHalfWidth(arrowSize);
     float physicalStemHalfWidth = abs(stemHalfWidth);

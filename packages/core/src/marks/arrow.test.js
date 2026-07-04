@@ -1,10 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import {
-    ARROW_UNIFORM_ENUMS,
-    enumIndex,
-    getRelativeSizeUniformProps,
-} from "./arrow.js";
+import { ARROW_UNIFORM_ENUMS, enumIndex } from "./arrow.js";
 import UnitView from "../view/unitView.js";
 import View from "../view/view.js";
 import { create } from "../view/testUtils.js";
@@ -15,15 +11,6 @@ describe("arrow mark uniform enums", () => {
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "reverse")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "open")).toBe(1);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "none")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "scale-x")).toBe(
-            1
-        );
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "scale-y")).toBe(
-            2
-        );
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "view-x")).toBe(3);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "view-y")).toBe(4);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "inside")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "outside")).toBe(
             1
@@ -41,7 +28,7 @@ describe("arrow mark uniform enums", () => {
 });
 
 describe("arrow mark size encoding", () => {
-    test("uses a zero pixel size channel placeholder for band-relative mark size", async () => {
+    test("lowers band-relative mark size to a bandwidth expression", async () => {
         const view = await create(
             {
                 data: { values: [{ start: 8, end: 32, band: "A" }] },
@@ -56,7 +43,25 @@ describe("arrow mark size encoding", () => {
         );
 
         expect(/** @type {UnitView} */ (view).mark.encoding.size).toEqual({
-            value: 0,
+            value: { expr: 'bandwidth("y") * height * 0.5' },
+        });
+    });
+
+    test("lowers band-relative mark size to a view-size expression without a scale", async () => {
+        const view = await create(
+            {
+                data: { values: [{ start: 8, end: 32 }] },
+                mark: { type: "arrow", size: { band: 0.5 } },
+                encoding: {
+                    x: { field: "start", type: "index" },
+                    x2: { field: "end" },
+                },
+            },
+            UnitView
+        );
+
+        expect(/** @type {UnitView} */ (view).mark.encoding.size).toEqual({
+            value: { expr: "height * 0.5" },
         });
     });
 
@@ -127,7 +132,7 @@ describe("arrow mark size encoding", () => {
         expect(/** @type {UnitView} */ (view).mark.encoding.size).toEqual(size);
     });
 
-    test("resolves band-relative style size despite the internal size placeholder", async () => {
+    test("lowers band-relative style size despite inherited style defaults", async () => {
         const view = await create(
             {
                 data: { values: [{ start: 8, end: 32, band: "A" }] },
@@ -140,22 +145,9 @@ describe("arrow mark size encoding", () => {
             },
             UnitView
         );
-        const mark = /** @type {import("./arrow.js").default} */ (
-            /** @type {UnitView} */ (view).mark
-        );
 
-        expect(mark.encoding.size).toEqual({ value: 0 });
-        expect(
-            getRelativeSizeUniformProps(
-                mark.properties.size,
-                view.spec.encoding?.size != null,
-                mark.encoding,
-                view
-            )
-        ).toMatchObject({
-            band: 1,
-            reference: "scale-y",
-            channel: "y",
+        expect(/** @type {UnitView} */ (view).mark.encoding.size).toEqual({
+            value: { expr: 'bandwidth("y") * height * 1' },
         });
     });
 
@@ -194,21 +186,9 @@ describe("arrow mark size encoding", () => {
                 child = visited;
             }
         });
-        const mark = /** @type {import("./arrow.js").default} */ (child.mark);
-
         expect(child.spec.encoding?.size).toBeUndefined();
-        expect(mark.encoding.size).toEqual({ value: 0 });
-        expect(
-            getRelativeSizeUniformProps(
-                mark.properties.size,
-                child.spec.encoding?.size != null,
-                mark.encoding,
-                child
-            )
-        ).toMatchObject({
-            band: 1,
-            reference: "scale-y",
-            channel: "y",
+        expect(child.mark.encoding.size).toEqual({
+            value: { expr: 'bandwidth("y") * height * 1' },
         });
     });
 

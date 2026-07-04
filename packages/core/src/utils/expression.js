@@ -133,6 +133,7 @@ function buildFunctions(codegen, context) {
         "invert",
         "domain",
         "range",
+        "bandwidth",
         "linearize",
     ])) {
         fn[kind] = (
@@ -156,7 +157,7 @@ function buildFunctions(codegen, context) {
  * @typedef {object} ExpressionCompileContext
  * @prop {(channel: string) => import("../scales/scaleResolution.js").default | undefined} [resolveScaleResolution]
  *
- * @typedef {"scale" | "invert" | "domain" | "range" | "linearize"} ScaleHelperKind
+ * @typedef {"scale" | "invert" | "domain" | "range" | "bandwidth" | "linearize"} ScaleHelperKind
  *
  * @typedef {ExpressionCompileContext & {
  *   globalvar: string,
@@ -239,6 +240,20 @@ function createScaleHelperFunction(kind, resolution) {
         // Same allocation caveat as `domain()`: the underlying scale getter
         // returns a copied array, so repeated per-row calls will allocate.
         return () => run(() => resolution.getScale().range());
+    }
+    if (kind === "bandwidth") {
+        return () =>
+            run(() => {
+                const scale = /** @type {{ bandwidth?: () => number }} */ (
+                    resolution.getScale()
+                );
+                if (typeof scale.bandwidth != "function") {
+                    throw new Error(
+                        `Scale channel "${resolution.channel}" does not support bandwidth().`
+                    );
+                }
+                return scale.bandwidth();
+            });
     }
     if (kind === "scale") {
         return (value) => run(() => resolution.getScale()(value));
@@ -364,7 +379,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         // Each scale helper call is rewritten once at compile time into a
         // cached closure that targets a specific scale resolution.
         /** @type {Map<string, import("../paramRuntime/types.js").ParamRef<any>>} */
-        const scaleDependenciesByChannel = new Map();
+        const scaleDependenciesByHelper = new Map();
         // A helper may appear multiple times in one expression. Cache both the
         // generated closure and the synthetic dependency ref so repeated calls
         // share the same reactive identity.
@@ -393,7 +408,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
                     return cached;
                 }
 
-                let dependency = scaleDependenciesByChannel.get(channel);
+                let dependency = scaleDependenciesByHelper.get(key);
                 if (!dependency) {
                     dependency = createScaleDependency(
                         kind,
@@ -401,7 +416,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
                         resolution,
                         "__scale_dependency_" + nextScaleHelperId++
                     );
-                    scaleDependenciesByChannel.set(channel, dependency);
+                    scaleDependenciesByHelper.set(key, dependency);
                 }
 
                 const codeName = "__scale_helper_" + nextScaleHelperId++;
@@ -451,7 +466,7 @@ export default function createFunction(expr, globalObject = {}, context = {}) {
         // The expression runtime subscribes to these refs and invalidates the
         // compiled expression when the referenced scale changes.
         exprFunction.scaleDependencies = Array.from(
-            scaleDependenciesByChannel.values()
+            scaleDependenciesByHelper.values()
         );
 
         return exprFunction;

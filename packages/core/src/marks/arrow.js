@@ -1,8 +1,4 @@
-import {
-    drawBufferInfo,
-    setBlockUniforms,
-    setBuffersAndAttributes,
-} from "twgl.js";
+import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "./arrow.vertex.glsl";
 import FRAGMENT_SHADER from "./arrow.fragment.glsl";
 import COMMON_SHADER from "./arrow.common.glsl";
@@ -11,7 +7,6 @@ import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { fixFill, fixStroke } from "./markUtils.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
-import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const MIN_HEAD_SLOPE = 1e-6;
@@ -21,7 +16,6 @@ const MAX_HEAD_ANGLE = 90;
 export const ARROW_UNIFORM_ENUMS = {
     directions: ["forward", "reverse"],
     headShapes: ["triangle", "open"],
-    sizeReferences: ["none", "scale-x", "scale-y", "view-x", "view-y"],
     headPlacements: ["inside", "outside"],
 };
 
@@ -29,9 +23,6 @@ export const ARROW_UNIFORM_ENUMS = {
  * @extends {Mark<import("../spec/mark.js").ArrowProps>}
  */
 export default class ArrowMark extends Mark {
-    /** @type {{ reference: "none" | "scale-x" | "scale-y" | "view-x" | "view-y", channel?: "x" | "y" }} */
-    #sizeReference = { reference: "none" };
-
     /**
      * @returns {import("../spec/channel.js").Channel[]}
      */
@@ -72,30 +63,15 @@ export default class ArrowMark extends Mark {
     }
 
     /**
-     * @returns {import("../spec/channel.js").Encoding}
-     */
-    getDefaultEncoding() {
-        const encoding = super.getDefaultEncoding();
-
-        if (!isChannelCompatibleSize(this.properties.size)) {
-            encoding.size = { value: 0 };
-        }
-
-        return encoding;
-    }
-
-    /**
      * @param {import("../spec/channel.js").Encoding} encoding
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
         fixRuleLikeEncoding(encoding);
 
-        if (
-            !this.unitView.spec.encoding?.size &&
-            isRelativeSize(this.properties.size)
-        ) {
-            getSizeReferenceChannel(
+        if (!encoding.size && isRelativeSize(this.properties.size)) {
+            encoding.size = createRelativeSizeDef(
+                this.properties.size,
                 this.properties.size.channel ?? "auto",
                 encoding
             );
@@ -137,26 +113,6 @@ export default class ArrowMark extends Mark {
         );
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
-        );
-        const relativeSize = getRelativeSizeUniformProps(
-            props.size,
-            this.unitView.spec.encoding?.size != null,
-            this.encoding,
-            this.unitView
-        );
-        this.#sizeReference = {
-            reference: relativeSize.reference,
-            channel: relativeSize.channel,
-        };
-        this.registerMarkUniformValue("uSizeBand", relativeSize.band);
-        this.registerMarkUniformValue(
-            "uSizeReference",
-            relativeSize.reference,
-            (value) => enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, value)
-        );
-        this.registerMarkUniformValue(
-            "uSizeBandReferenceSpan",
-            this.#getSizeBandReferenceSpan()
         );
         this.registerMarkUniformValue("uMinSize", props.minSize);
         this.registerMarkUniformValue("uHeadWidth", props.headWidth);
@@ -205,15 +161,6 @@ export default class ArrowMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
-        if (this.#sizeReference.reference.startsWith("scale-")) {
-            ops.push(() => {
-                setBlockUniforms(this.markUniformInfo, {
-                    uSizeBandReferenceSpan: this.#getSizeBandReferenceSpan(),
-                });
-                this.markUniformsAltered = true;
-            });
-        }
-
         ops.push(() => this.bindOrSetMarkUniformBlock());
 
         ops.push(() =>
@@ -243,26 +190,6 @@ export default class ArrowMark extends Mark {
             );
         }, options);
     }
-
-    #getSizeBandReferenceSpan() {
-        if (!this.#sizeReference.reference.startsWith("scale-")) {
-            return 0;
-        }
-
-        const scale = /** @type {{ bandwidth: () => number }} */ (
-            this.unitView
-                .getScaleResolution(this.#sizeReference.channel)
-                ?.getScale()
-        );
-        return scale.bandwidth();
-    }
-}
-
-/**
- * @param {unknown} value
- */
-function isChannelCompatibleSize(value) {
-    return typeof value == "number" || isExprRef(value);
 }
 
 /**
@@ -279,33 +206,22 @@ function isRelativeSize(value) {
 }
 
 /**
- * @param {unknown} size
- * @param {boolean} hasSizeEncoding
+ * @param {{ band: number, channel?: "x" | "y" | "auto" }} size
+ * @param {"x" | "y" | "auto"} referenceChannel
  * @param {import("../spec/channel.js").Encoding} encoding
- * @param {import("../view/unitView.js").default} unitView
  */
-export function getRelativeSizeUniformProps(
-    size,
-    hasSizeEncoding,
-    encoding,
-    unitView
-) {
-    if (hasSizeEncoding || !isRelativeSize(size)) {
-        return /** @type {const} */ ({
-            band: -1,
-            reference: "none",
-            channel: /** @type {"x" | "y" | undefined} */ (undefined),
-        });
-    } else {
-        const channel = getSizeReferenceChannel(
-            size.channel ?? "auto",
-            encoding
-        );
-        return {
-            band: size.band,
-            ...getSizeReference(channel, unitView),
-        };
-    }
+function createRelativeSizeDef(size, referenceChannel, encoding) {
+    const channel = getSizeReferenceChannel(referenceChannel, encoding);
+    const dimension = channel == "x" ? "width" : "height";
+    const channelDef = encoding[channel];
+    const referenceExpr =
+        isChannelDefWithScale(channelDef) && channelDef.scale !== null
+            ? `bandwidth("${channel}") * ${dimension}`
+            : dimension;
+
+    return /** @type {const} */ ({
+        value: { expr: `${referenceExpr} * ${size.band}` },
+    });
 }
 
 /**
@@ -321,29 +237,6 @@ function getSizeReferenceChannel(channel, encoding) {
         );
     } else {
         return channel;
-    }
-}
-
-/**
- * @param {"x" | "y"} channel
- * @param {import("../view/unitView.js").default} unitView
- */
-function getSizeReference(channel, unitView) {
-    const scale = /** @type {{ bandwidth?: () => number } | undefined} */ (
-        unitView.getScaleResolution(channel)?.getScale()
-    );
-    if (scale && typeof scale.bandwidth == "function") {
-        return /** @type {const} */ ({
-            reference: /** @type {"scale-x" | "scale-y"} */ (
-                `scale-${channel}`
-            ),
-            channel,
-        });
-    } else {
-        return /** @type {const} */ ({
-            reference: /** @type {"view-x" | "view-y"} */ (`view-${channel}`),
-            channel,
-        });
     }
 }
 

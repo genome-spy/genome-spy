@@ -91,6 +91,34 @@ describe("expression helpers", () => {
         expect(expr()).toEqual([6, 2, [0, 10]]);
     });
 
+    test("supports bandwidth helper with reactive scale dependencies", () => {
+        const resolution = createFakeScaleResolution(
+            ["a", "b"],
+            (value) => value
+        );
+        const expr = bindExpression("bandwidth('y')", () => undefined, {
+            resolveScaleResolution: (channel) =>
+                channel == "y" ? resolution : undefined,
+        }).expression;
+
+        let calls = 0;
+        const unsubscribe = expr.subscribe(() => {
+            calls += 1;
+        });
+
+        expect(expr()).toBe(5);
+
+        resolution.setRange([0, 20]);
+        expect(calls).toBe(1);
+        expect(expr()).toBe(10);
+
+        resolution.setDomain(["a", "b", "c", "d"]);
+        expect(calls).toBe(2);
+        expect(expr()).toBe(5);
+
+        unsubscribe();
+    });
+
     test("supports linearize helper", () => {
         const resolution = createFakeScaleResolution(
             [0, 10],
@@ -114,14 +142,14 @@ describe("expression helpers", () => {
 });
 
 /**
- * @param {number[]} initialDomain
+ * @param {any[]} initialDomain
  * @param {(value: number) => number} scaleFn
  * @param {(value: any) => number} [fromComplex]
  * @returns {any}
  */
 function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
     let domain = initialDomain;
-    const range = [0, 10];
+    let range = [0, 10];
     /** @type {Record<"domain" | "range", Set<() => void>>} */
     const listeners = {
         domain: new Set(),
@@ -148,6 +176,7 @@ function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
             return Object.assign(scaleFn, {
                 range: () => range,
                 invert: (/** @type {number} */ value) => value / 3,
+                bandwidth: () => (range[1] - range[0]) / domain.length,
             });
         },
         fromComplex(/** @type {any} */ value) {
@@ -156,6 +185,12 @@ function createFakeScaleResolution(initialDomain, scaleFn, fromComplex) {
         setDomain(/** @type {number[]} */ nextDomain) {
             domain = nextDomain;
             for (const listener of listeners.domain) {
+                listener();
+            }
+        },
+        setRange(/** @type {number[]} */ nextRange) {
+            range = nextRange;
+            for (const listener of listeners.range) {
                 listener();
             }
         },

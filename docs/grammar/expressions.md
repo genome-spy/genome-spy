@@ -178,6 +178,12 @@ resolved against the current view's scale resolution.
 Returns the current range of the scale for the given channel. The channel is
 resolved against the current view's scale resolution.
 
+<a name="bandwidth" href="#bandwidth">#</a>
+<b>bandwidth</b>(<i>channel</i>)<br/>
+Returns the current bandwidth of a band-like scale for the given channel. The
+value uses the same units as the scale range. For positional scales, multiply
+the result by `width` or `height` to convert it to pixels.
+
 These helpers are available in `formula` and `filter` transforms, in dynamic
 expression properties, and in scale `ExprRef` properties. They are reactive:
 when the referenced scale changes, dependent expressions update.
