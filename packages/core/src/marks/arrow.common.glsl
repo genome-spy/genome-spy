@@ -5,14 +5,12 @@ layout(std140) uniform Mark {
     uniform float uHeadSlope;
     uniform float uHeadNotchSlope;
 
+    uniform float uMinSize;
     uniform float uHeadWidth;
-    uniform int uHeadWidthUnit;
     uniform bool uStartNotch;
     uniform float uMinStemLength;
-    uniform bool uHeadRepeat;
     uniform float uHeadSpacing;
-    uniform float uStemWidth;
-    uniform int uStemWidthUnit;
+    uniform bool uStem;
 
     uniform int uHeadPlacement;
 
@@ -27,9 +25,6 @@ const float DIRECTION_REVERSE = 1.0;
 
 const int HEAD_SHAPE_TRIANGLE = 0;
 const int HEAD_SHAPE_OPEN = 1;
-
-const int UNIT_PX = 0;
-const int UNIT_PROPORTION = 1;
 
 const int HEAD_PLACEMENT_INSIDE = 0;
 const int HEAD_PLACEMENT_OUTSIDE = 1;

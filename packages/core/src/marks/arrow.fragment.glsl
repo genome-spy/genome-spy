@@ -11,6 +11,7 @@ flat in float vRHeadSlope;
 flat in float vRHeadNotchSlope;
 flat in float vRStartNotchSlope;
 flat in float vHeadRepeatFootprintLength;
+flat in float vHeadSpacing;
 flat in float vDirection;
 
 out lowp vec4 fragColor;
@@ -123,8 +124,9 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
         vRStartNotchSlope
     );
 
-    float spacing = uHeadRepeat
-        ? max(uHeadSpacing, vHeadRepeatFootprintLength)
+    bool headRepeat = vHeadSpacing >= 0.0;
+    float spacing = headRepeat
+        ? max(vHeadSpacing, vHeadRepeatFootprintLength)
         : 1.0 / 0.0;
     float distanceFromStart = arrowPos.x + arrowHalfSize.x;
 
@@ -142,7 +144,7 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
         vHeadStrokeWidth
     );
 
-    if (uHeadRepeat) {
+    if (headRepeat) {
         // Cull heads that would be partially clipped.
         float headTipDistance = distanceFromStart - arrowHeadX;
         float headEndDistance = headTipDistance

@@ -12,8 +12,8 @@
 
   "mark": {
     "type": "arrow",
-    "headWidth": 1,
-    "stemWidth": 0.45,
+    "size": { "band": 0.45 },
+    "headWidth": 2,
     "fill": "#5B8DEF",
     "stroke": "black",
     "strokeWidth": 1

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 
 import { ARROW_UNIFORM_ENUMS, enumIndex, inferArrowOrient } from "./arrow.js";
+import UnitView from "../view/unitView.js";
+import { create } from "../view/testUtils.js";
 
 describe("arrow mark uniform enums", () => {
     test("match shader constant order", () => {
@@ -12,8 +14,6 @@ describe("arrow mark uniform enums", () => {
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "reverse")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "open")).toBe(1);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.units, "px")).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.units, "proportion")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "inside")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "outside")).toBe(
             1
@@ -27,6 +27,51 @@ describe("arrow mark uniform enums", () => {
         expect(() =>
             enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "start")
         ).toThrow("Unsupported arrow mark value: start");
+    });
+});
+
+describe("arrow mark size encoding", () => {
+    test("uses numeric mark size as a pixel value channel", async () => {
+        const view = await create(
+            {
+                data: { values: [{ start: 8, end: 32, band: "A" }] },
+                mark: { type: "arrow", size: 12 },
+                encoding: {
+                    x: { field: "start", type: "index" },
+                    x2: { field: "end" },
+                    y: { field: "band", type: "nominal" },
+                },
+            },
+            UnitView
+        );
+
+        expect(/** @type {UnitView} */ (view).mark.encoding.size).toEqual({
+            value: 12,
+        });
+    });
+
+    test("keeps encoded size when mark size is also defined", async () => {
+        const size = /** @type {const} */ ({
+            field: "thickness",
+            type: "quantitative",
+        });
+        const view = await create(
+            {
+                data: {
+                    values: [{ start: 8, end: 32, band: "A", thickness: 14 }],
+                },
+                mark: { type: "arrow", size: 6 },
+                encoding: {
+                    x: { field: "start", type: "index" },
+                    x2: { field: "end" },
+                    y: { field: "band", type: "nominal" },
+                    size,
+                },
+            },
+            UnitView
+        );
+
+        expect(/** @type {UnitView} */ (view).mark.encoding.size).toEqual(size);
     });
 });
 

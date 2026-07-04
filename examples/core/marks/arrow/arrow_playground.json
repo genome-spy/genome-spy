@@ -46,22 +46,35 @@
     },
     {
       "name": "headWidth",
-      "value": 1,
+      "value": 2,
       "bind": {
         "input": "range",
         "min": 0,
-        "max": 1,
+        "max": 4,
         "step": 0.05,
         "name": "Head width"
       }
     },
     {
-      "name": "headWidthUnit",
-      "value": "proportion",
+      "name": "size",
+      "value": 28,
       "bind": {
-        "input": "radio",
-        "options": ["px", "proportion"],
-        "name": "Head width unit"
+        "input": "range",
+        "min": 0,
+        "max": 80,
+        "step": 1,
+        "name": "Size"
+      }
+    },
+    {
+      "name": "minSize",
+      "value": 1,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 20,
+        "step": 1,
+        "name": "Min size"
       }
     },
     {
@@ -73,7 +86,15 @@
       }
     },
     {
-      "name": "headRepeat",
+      "name": "stem",
+      "value": true,
+      "bind": {
+        "input": "checkbox",
+        "name": "Stem"
+      }
+    },
+    {
+      "name": "repeatHeads",
       "value": false,
       "bind": {
         "input": "checkbox",
@@ -82,33 +103,13 @@
     },
     {
       "name": "headSpacing",
-      "value": 24,
+      "value": 6,
       "bind": {
         "input": "range",
-        "min": 4,
-        "max": 200,
-        "step": 1,
+        "min": 1,
+        "max": 30,
+        "step": 0.5,
         "name": "Head spacing"
-      }
-    },
-    {
-      "name": "stemWidth",
-      "value": 0.45,
-      "bind": {
-        "input": "range",
-        "min": -1,
-        "max": 1,
-        "step": 0.05,
-        "name": "Stem width"
-      }
-    },
-    {
-      "name": "stemWidthUnit",
-      "value": "proportion",
-      "bind": {
-        "input": "radio",
-        "options": ["px", "proportion"],
-        "name": "Stem width unit"
       }
     },
     {
@@ -158,13 +159,12 @@
     "headShape": { "expr": "headShape" },
     "headAngle": { "expr": "headAngle" },
     "headNotchAngle": { "expr": "headNotchAngle" },
+    "size": { "expr": "size" },
+    "minSize": { "expr": "minSize" },
+    "stem": { "expr": "stem" },
     "headWidth": { "expr": "headWidth" },
-    "headWidthUnit": { "expr": "headWidthUnit" },
     "startNotch": { "expr": "startNotch" },
-    "headRepeat": { "expr": "headRepeat" },
-    "headSpacing": { "expr": "headSpacing" },
-    "stemWidth": { "expr": "stemWidth" },
-    "stemWidthUnit": { "expr": "stemWidthUnit" },
+    "headSpacing": { "expr": "repeatHeads ? headSpacing : null" },
     "minStemLength": { "expr": "minStemLength" },
     "headPlacement": { "expr": "headPlacement" },
     "fill": "#5B8DEF",

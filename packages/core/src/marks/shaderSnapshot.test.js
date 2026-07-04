@@ -280,13 +280,13 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("float sdArrowHead");
         expect(sources.fragment).toContain("float repeat");
         expect(sources.fragment).toContain("vHeadRepeatFootprintLength");
+        expect(sources.fragment).toContain("vHeadSpacing");
         expect(sources.fragment).toContain("uStartNotch");
-        expect(sources.fragment).toContain("uHeadRepeat");
         expect(sources.fragment).toContain("uHeadSpacing");
         expect(sources.fragment).toContain("uHeadPlacement");
         expect(sources.fragment).toContain("uHeadShape");
-        expect(sources.fragment).toContain("uHeadWidthUnit");
-        expect(sources.fragment).toContain("uStemWidthUnit");
+        expect(sources.fragment).toContain("uStem");
+        expect(sources.fragment).toContain("uMinSize");
         expect(sources.fragment).toContain("HEAD_SHAPE_OPEN");
         expect(sources.fragment).not.toContain("HEAD_SHAPE_ANGLE");
         expect(sources.fragment).not.toContain("uHeadLength");
@@ -294,7 +294,7 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).not.toContain("uHeadRepeatMode");
         expect(sources.vertex).toContain("float effectiveHeadSlope");
         expect(sources.vertex).toContain("float headRepeatFootprintLength");
-        expect(sources.vertex).toContain("float unitValue");
+        expect(sources.vertex).toContain("float resolveArrowSize");
         expect(sources.vertex).toContain("vec2 getOutsideHeadExpansion");
         expect(sources.vertex).toContain("uHeadSlope");
         expect(sources.vertex).toContain("uHeadNotchSlope");

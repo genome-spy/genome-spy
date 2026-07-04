@@ -15,10 +15,8 @@ describe("mark factory", () => {
                     type: "arrow",
                     headAngle: 45,
                     headNotchAngle: 90,
-                    headWidth: 1,
-                    headWidthUnit: "proportion",
-                    stemWidth: 0.45,
-                    stemWidthUnit: "proportion",
+                    size: 12,
+                    headWidth: 2,
                 },
                 encoding: {
                     x: { field: "start", type: "index" },

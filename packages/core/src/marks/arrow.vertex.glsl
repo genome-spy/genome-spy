@@ -9,6 +9,7 @@ flat out float vRHeadSlope;
 flat out float vRHeadNotchSlope;
 flat out float vRStartNotchSlope;
 flat out float vHeadRepeatFootprintLength;
+flat out float vHeadSpacing;
 flat out float vDirection;
 
 out vec2 vPosInPixels;
@@ -29,31 +30,26 @@ vec2 getVertexPos() {
     );
 }
 
-float unitValue(float value, int unit, float reference) {
-    if (unit == UNIT_PROPORTION) {
-        return value * reference;
-    } else {
-        return value;
-    }
+float resolveArrowSize(float markHalfWidth) {
+    float markWidth = markHalfWidth * 2.0;
+    return clamp(max(getScaled_size(), uMinSize), 0.0, markWidth);
 }
 
-float resolveStemHalfWidth(float markHalfWidth) {
-    float markWidth = markHalfWidth * 2.0;
-    float stemWidth = unitValue(uStemWidth, uStemWidthUnit, markWidth);
-    if (stemWidth < 0.0) {
+float resolveStemHalfWidth(float arrowSize) {
+    if (uStem) {
+        return arrowSize * 0.5;
+    } else {
         // The negative sign hides stem geometry; the magnitude remains
         // available for open-head thickness.
-        return clamp(stemWidth, -markWidth, 0.0) * 0.5;
-    } else {
-        return clamp(stemWidth, 0.0, markWidth) * 0.5;
+        return -arrowSize * 0.5;
     }
 }
 
-// Resolve head width against the mark thickness. The render quad currently
-// only covers the mark thickness, so clamp the head to that extent.
-float resolveHeadHalfWidth(float markHalfWidth) {
+// Resolve head width against the mark thickness. The render quad only covers
+// the mark thickness, so clamp the head to that extent.
+float resolveHeadHalfWidth(float arrowSize, float markHalfWidth) {
     float markWidth = markHalfWidth * 2.0;
-    float headWidth = unitValue(uHeadWidth, uHeadWidthUnit, markWidth);
+    float headWidth = uHeadWidth * arrowSize;
     return clamp(headWidth, 0.0, markWidth) * 0.5;
 }
 
@@ -108,10 +104,11 @@ float effectiveHeadSlope(
     float headHalfWidth,
     float stemHalfWidth,
     float configuredRHeadSlope,
-    float configuredRHeadNotchSlope
+    float configuredRHeadNotchSlope,
+    bool headRepeat
 ) {
     if (
-        uHeadRepeat ||
+        headRepeat ||
         stemHalfWidth < 0.0
     ) {
         return configuredRHeadSlope;
@@ -234,8 +231,12 @@ void main(void) {
     // Width-like quantities are based on mark thickness, which is unaffected
     // by outside head expansion. Compute them before length expansion and reuse.
     vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
-    float headHalfWidth = resolveHeadHalfWidth(arrowHalfSizeBeforeExpansion.y);
-    float stemHalfWidth = resolveStemHalfWidth(arrowHalfSizeBeforeExpansion.y);
+    float arrowSize = resolveArrowSize(arrowHalfSizeBeforeExpansion.y);
+    float headHalfWidth = resolveHeadHalfWidth(
+        arrowSize,
+        arrowHalfSizeBeforeExpansion.y
+    );
+    float stemHalfWidth = resolveStemHalfWidth(arrowSize);
     float physicalStemHalfWidth = abs(stemHalfWidth);
     float headStrokeWidth = uHeadShape == HEAD_SHAPE_OPEN
         ? physicalStemHalfWidth * 2.0
@@ -247,7 +248,8 @@ void main(void) {
         headHalfWidth,
         stemHalfWidth,
         configuredRHeadSlope,
-        configuredRHeadNotchSlope
+        configuredRHeadNotchSlope,
+        uHeadSpacing >= 0.0
     );
     float rHeadNotchSlope = uHeadShape == HEAD_SHAPE_OPEN
         ? rHeadSlope
@@ -300,6 +302,7 @@ void main(void) {
         vHeadStrokeWidth,
         vHalfStrokeWidth
     );
+    vHeadSpacing = uHeadSpacing >= 0.0 ? uHeadSpacing * arrowSize : -1.0;
     vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
 
     gl_Position = unitToNdc(pos);

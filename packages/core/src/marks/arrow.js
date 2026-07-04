@@ -7,6 +7,7 @@ import { RectVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { fixCoveragePositional, fixFill, fixStroke } from "./markUtils.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
+import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const MIN_HEAD_SLOPE = 1e-6;
@@ -17,7 +18,6 @@ export const ARROW_UNIFORM_ENUMS = {
     orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
     headShapes: ["triangle", "open"],
-    units: ["px", "proportion"],
     headPlacements: ["inside", "outside"],
 };
 
@@ -44,6 +44,7 @@ export default class ArrowMark extends Mark {
             "fillOpacity",
             "strokeOpacity",
             "strokeWidth",
+            "size",
             "direction",
         ];
     }
@@ -61,8 +62,22 @@ export default class ArrowMark extends Mark {
             "fillOpacity",
             "strokeOpacity",
             "strokeWidth",
+            "size",
             "direction",
         ];
+    }
+
+    /**
+     * @returns {import("../spec/channel.js").Encoding}
+     */
+    getDefaultEncoding() {
+        const encoding = super.getDefaultEncoding();
+
+        if (!isChannelCompatibleSize(this.properties.size)) {
+            encoding.size = { value: this.properties.minSize };
+        }
+
+        return encoding;
     }
 
     /**
@@ -115,22 +130,16 @@ export default class ArrowMark extends Mark {
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
         );
+        this.registerMarkUniformValue("uMinSize", props.minSize);
         this.registerMarkUniformValue("uHeadWidth", props.headWidth);
-        this.registerMarkUniformValue(
-            "uHeadWidthUnit",
-            props.headWidthUnit,
-            (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
-        );
         this.registerMarkUniformValue("uStartNotch", props.startNotch);
         this.registerMarkUniformValue("uMinStemLength", props.minStemLength);
-        this.registerMarkUniformValue("uHeadRepeat", props.headRepeat);
-        this.registerMarkUniformValue("uHeadSpacing", props.headSpacing);
-        this.registerMarkUniformValue("uStemWidth", props.stemWidth);
         this.registerMarkUniformValue(
-            "uStemWidthUnit",
-            props.stemWidthUnit,
-            (value) => enumIndex(ARROW_UNIFORM_ENUMS.units, value)
+            "uHeadSpacing",
+            props.headSpacing ?? -1,
+            nullableSpacingToUniform
         );
+        this.registerMarkUniformValue("uStem", props.stem);
         this.registerMarkUniformValue(
             "uHeadPlacement",
             props.headPlacement,
@@ -209,6 +218,13 @@ export default class ArrowMark extends Mark {
 }
 
 /**
+ * @param {unknown} value
+ */
+function isChannelCompatibleSize(value) {
+    return typeof value == "number" || isExprRef(value);
+}
+
+/**
  * @param {string[]} values
  * @param {string} value
  */
@@ -226,6 +242,13 @@ export function enumIndex(values, value) {
 function headAngleToSlope(value) {
     const angle = Math.min(Math.max(value, MIN_HEAD_ANGLE), MAX_HEAD_ANGLE);
     return Math.max(Math.tan(angle * DEGREES_TO_RADIANS), MIN_HEAD_SLOPE);
+}
+
+/**
+ * @param {number | null} value
+ */
+function nullableSpacingToUniform(value) {
+    return value == null ? -1 : value;
 }
 
 /**
