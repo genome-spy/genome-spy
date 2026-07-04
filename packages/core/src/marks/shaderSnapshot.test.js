@@ -286,7 +286,8 @@ describe("generated shader snapshots", () => {
         expect(sources.fragment).toContain("uHeadPlacement");
         expect(sources.fragment).toContain("uHeadShape");
         expect(sources.fragment).toContain("uSizeBand");
-        expect(sources.fragment).toContain("uSizeReferenceChannel");
+        expect(sources.fragment).toContain("uSizeReference");
+        expect(sources.fragment).toContain("uSizeBandReferenceSpan");
         expect(sources.fragment).toContain("uStem");
         expect(sources.fragment).toContain("uMinSize");
         expect(sources.fragment).toContain("HEAD_SHAPE_OPEN");

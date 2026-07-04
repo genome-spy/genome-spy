@@ -10,21 +10,10 @@ describe("arrow mark uniform enums", () => {
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "reverse")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "open")).toBe(1);
-        expect(
-            enumIndex(ARROW_UNIFORM_ENUMS.sizeReferenceChannels, "auto")
-        ).toBe(0);
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferenceChannels, "x")).toBe(
-            1
-        );
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferenceChannels, "y")).toBe(
-            2
-        );
-        expect(
-            enumIndex(ARROW_UNIFORM_ENUMS.sizeReferenceChannels, "view-x")
-        ).toBe(3);
-        expect(
-            enumIndex(ARROW_UNIFORM_ENUMS.sizeReferenceChannels, "view-y")
-        ).toBe(4);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "none")).toBe(0);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "scale")).toBe(1);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "view-x")).toBe(2);
+        expect(enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, "view-y")).toBe(3);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "inside")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headPlacements, "outside")).toBe(
             1
@@ -126,6 +115,26 @@ describe("arrow mark size encoding", () => {
         );
 
         expect(/** @type {UnitView} */ (view).mark.encoding.size).toEqual(size);
+    });
+
+    test("rejects band-relative size for diagonal-capable arrows", async () => {
+        await expect(
+            create(
+                {
+                    data: { values: [{ x: 0, y: 0, x2: 1, y2: 1 }] },
+                    mark: { type: "arrow", size: { band: 0.5 } },
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        x2: { field: "x2" },
+                        y2: { field: "y2" },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            "Band-relative arrow size is not supported for diagonal arrows."
+        );
     });
 });
 

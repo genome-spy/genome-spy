@@ -394,14 +394,15 @@ export interface ArrowProps
 
     /**
      * Arrow stem thickness in pixels, or as a fraction of the perpendicular
-     * band or view span.
+     * band or view span for axis-aligned arrows.
      *
      * Numeric values are pixels. `{ "band": 0.8 }` resolves to 80% of the
      * perpendicular band width, or 80% of the perpendicular view span when no
      * band scale is available. Use `channel` to explicitly select the
-     * reference channel.
+     * reference channel. Band-relative size is not supported for diagonal
+     * arrows.
      *
-     * __Default value:__ `{ "band": 0.45 }`
+     * __Default value:__ `12`
      */
     size?: ArrowSize;
 

@@ -137,7 +137,7 @@ describe("markConfig", () => {
             "arrow",
             undefined
         );
-        expect(arrow.size).toEqual({ band: 0.45 });
+        expect(arrow.size).toBe(12);
         expect(arrow.minSize).toBe(1);
         expect(arrow.stem).toBe(true);
         expect(arrow.headWidth).toBe(2);

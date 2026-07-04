@@ -1,4 +1,8 @@
-import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
+import {
+    drawBufferInfo,
+    setBlockUniforms,
+    setBuffersAndAttributes,
+} from "twgl.js";
 import VERTEX_SHADER from "./arrow.vertex.glsl";
 import FRAGMENT_SHADER from "./arrow.fragment.glsl";
 import COMMON_SHADER from "./arrow.common.glsl";
@@ -17,7 +21,7 @@ const MAX_HEAD_ANGLE = 90;
 export const ARROW_UNIFORM_ENUMS = {
     directions: ["forward", "reverse"],
     headShapes: ["triangle", "open"],
-    sizeReferenceChannels: ["auto", "x", "y", "view-x", "view-y"],
+    sizeReferences: ["none", "scale", "view-x", "view-y"],
     headPlacements: ["inside", "outside"],
 };
 
@@ -25,6 +29,9 @@ export const ARROW_UNIFORM_ENUMS = {
  * @extends {Mark<import("../spec/mark.js").ArrowProps>}
  */
 export default class ArrowMark extends Mark {
+    /** @type {{ reference: "none" | "scale" | "view-x" | "view-y", channel?: "x" | "y" }} */
+    #sizeReference = { reference: "none" };
+
     /**
      * @returns {import("../spec/channel.js").Channel[]}
      */
@@ -84,6 +91,16 @@ export default class ArrowMark extends Mark {
     fixEncoding(encoding) {
         fixRuleLikeEncoding(encoding);
 
+        if (
+            !this.unitView.spec.encoding?.size &&
+            isRelativeSize(this.properties.size)
+        ) {
+            getSizeReferenceChannel(
+                this.properties.size.channel ?? "auto",
+                encoding
+            );
+        }
+
         fixStroke(encoding, this.properties.filled);
         fixFill(encoding, this.properties.filled);
 
@@ -124,14 +141,22 @@ export default class ArrowMark extends Mark {
         const relativeSize = getRelativeSizeUniformProps(
             props.size,
             this.unitView.getEncoding().size != null,
+            this.encoding,
             this.unitView
         );
+        this.#sizeReference = {
+            reference: relativeSize.reference,
+            channel: relativeSize.channel,
+        };
         this.registerMarkUniformValue("uSizeBand", relativeSize.band);
         this.registerMarkUniformValue(
-            "uSizeReferenceChannel",
-            relativeSize.channel,
-            (value) =>
-                enumIndex(ARROW_UNIFORM_ENUMS.sizeReferenceChannels, value)
+            "uSizeReference",
+            relativeSize.reference,
+            (value) => enumIndex(ARROW_UNIFORM_ENUMS.sizeReferences, value)
+        );
+        this.registerMarkUniformValue(
+            "uSizeBandReferenceSpan",
+            this.#getSizeBandReferenceSpan()
         );
         this.registerMarkUniformValue("uMinSize", props.minSize);
         this.registerMarkUniformValue("uHeadWidth", props.headWidth);
@@ -180,6 +205,15 @@ export default class ArrowMark extends Mark {
     prepareRender(options) {
         const ops = super.prepareRender(options);
 
+        if (this.#sizeReference.reference == "scale") {
+            ops.push(() => {
+                setBlockUniforms(this.markUniformInfo, {
+                    uSizeBandReferenceSpan: this.#getSizeBandReferenceSpan(),
+                });
+                this.markUniformsAltered = true;
+            });
+        }
+
         ops.push(() => this.bindOrSetMarkUniformBlock());
 
         ops.push(() =>
@@ -209,6 +243,19 @@ export default class ArrowMark extends Mark {
             );
         }, options);
     }
+
+    #getSizeBandReferenceSpan() {
+        if (this.#sizeReference.reference != "scale") {
+            return 0;
+        }
+
+        const scale = /** @type {{ bandwidth: () => number }} */ (
+            this.unitView
+                .getScaleResolution(this.#sizeReference.channel)
+                ?.getScale()
+        );
+        return scale.bandwidth();
+    }
 }
 
 /**
@@ -234,35 +281,63 @@ function isRelativeSize(value) {
 /**
  * @param {unknown} size
  * @param {boolean} hasSizeEncoding
+ * @param {import("../spec/channel.js").Encoding} encoding
  * @param {import("../view/unitView.js").default} unitView
  */
-function getRelativeSizeUniformProps(size, hasSizeEncoding, unitView) {
+function getRelativeSizeUniformProps(
+    size,
+    hasSizeEncoding,
+    encoding,
+    unitView
+) {
     if (hasSizeEncoding || !isRelativeSize(size)) {
-        return { band: -1, channel: "auto" };
+        return /** @type {const} */ ({ band: -1, reference: "none" });
     } else {
+        const channel = getSizeReferenceChannel(
+            size.channel ?? "auto",
+            encoding
+        );
         return {
             band: size.band,
-            channel: getSizeReferenceChannel(size.channel ?? "auto", unitView),
+            ...getSizeReference(channel, unitView),
         };
     }
 }
 
 /**
  * @param {"x" | "y" | "auto"} channel
+ * @param {import("../spec/channel.js").Encoding} encoding
+ */
+function getSizeReferenceChannel(channel, encoding) {
+    if (channel == "auto") {
+        return inferPerpendicularChannel(encoding);
+    } else if (isDiagonalCapable(encoding)) {
+        throw new Error(
+            "Band-relative arrow size is not supported for diagonal arrows."
+        );
+    } else {
+        return channel;
+    }
+}
+
+/**
+ * @param {"x" | "y"} channel
  * @param {import("../view/unitView.js").default} unitView
  */
-function getSizeReferenceChannel(channel, unitView) {
-    if (channel == "auto") {
-        return "auto";
-    }
-
+function getSizeReference(channel, unitView) {
     const scale = /** @type {{ bandwidth?: () => number } | undefined} */ (
         unitView.getScaleResolution(channel)?.getScale()
     );
     if (scale && typeof scale.bandwidth == "function") {
-        return channel;
+        return /** @type {const} */ ({
+            reference: "scale",
+            channel,
+        });
     } else {
-        return /** @type {"view-x" | "view-y"} */ (`view-${channel}`);
+        return /** @type {const} */ ({
+            reference: /** @type {"view-x" | "view-y"} */ (`view-${channel}`),
+            channel,
+        });
     }
 }
 
@@ -343,4 +418,41 @@ function fixRuleLikeEncoding(encoding) {
                 JSON.stringify(encoding)
         );
     }
+}
+
+/**
+ * @param {import("../spec/channel.js").Encoding} encoding
+ * @returns {"x" | "y"}
+ */
+function inferPerpendicularChannel(encoding) {
+    if (isDiagonalCapable(encoding)) {
+        throw new Error(
+            "Band-relative arrow size is not supported for diagonal arrows."
+        );
+    } else if (isXAligned(encoding)) {
+        return "y";
+    } else {
+        return "x";
+    }
+}
+
+/**
+ * @param {import("../spec/channel.js").Encoding} encoding
+ */
+function isDiagonalCapable(encoding) {
+    return isXAligned(encoding) && isYAligned(encoding);
+}
+
+/**
+ * @param {import("../spec/channel.js").Encoding} encoding
+ */
+function isXAligned(encoding) {
+    return encoding.x2 != null && encoding.x2 !== encoding.x;
+}
+
+/**
+ * @param {import("../spec/channel.js").Encoding} encoding
+ */
+function isYAligned(encoding) {
+    return encoding.y2 != null && encoding.y2 !== encoding.y;
 }

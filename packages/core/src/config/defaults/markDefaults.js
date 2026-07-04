@@ -46,7 +46,7 @@ export const ARROW_MARK_DEFAULTS = {
     headAngle: 45,
     headNotchAngle: 90,
     headShape: "triangle",
-    size: { band: 0.45 },
+    size: 12,
     minSize: 1,
     stem: true,
     headWidth: 2,

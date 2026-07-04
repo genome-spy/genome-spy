@@ -14,7 +14,8 @@ layout(std140) uniform Mark {
     uniform float uHeadNotchSlope;
 
     uniform float uSizeBand;
-    uniform int uSizeReferenceChannel;
+    uniform int uSizeReference;
+    uniform float uSizeBandReferenceSpan;
     uniform float uMinSize;
     uniform float uHeadWidth;
     uniform bool uStartNotch;
@@ -36,11 +37,10 @@ layout(std140) uniform Mark {
 
 };
 
-const int SIZE_REFERENCE_AUTO = 0;
-const int SIZE_REFERENCE_X = 1;
-const int SIZE_REFERENCE_Y = 2;
-const int SIZE_REFERENCE_VIEW_X = 3;
-const int SIZE_REFERENCE_VIEW_Y = 4;
+const int SIZE_REFERENCE_NONE = 0;
+const int SIZE_REFERENCE_SCALE = 1;
+const int SIZE_REFERENCE_VIEW_X = 2;
+const int SIZE_REFERENCE_VIEW_Y = 3;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -382,7 +382,8 @@ layout(std140) uniform Mark {
     uniform float uHeadNotchSlope;
 
     uniform float uSizeBand;
-    uniform int uSizeReferenceChannel;
+    uniform int uSizeReference;
+    uniform float uSizeBandReferenceSpan;
     uniform float uMinSize;
     uniform float uHeadWidth;
     uniform bool uStartNotch;
@@ -404,11 +405,10 @@ layout(std140) uniform Mark {
 
 };
 
-const int SIZE_REFERENCE_AUTO = 0;
-const int SIZE_REFERENCE_X = 1;
-const int SIZE_REFERENCE_Y = 2;
-const int SIZE_REFERENCE_VIEW_X = 3;
-const int SIZE_REFERENCE_VIEW_Y = 4;
+const int SIZE_REFERENCE_NONE = 0;
+const int SIZE_REFERENCE_SCALE = 1;
+const int SIZE_REFERENCE_VIEW_X = 2;
+const int SIZE_REFERENCE_VIEW_Y = 3;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -740,18 +740,6 @@ return accessor_uniqueId_0();
 #define uniqueId_DEFINED
 
 
-float accessor_size_0() {
-    // Constant value
-    return float(0.0);
-}
-
-float getScaled_size() {
-return accessor_size_0();
-}
-
-#define size_DEFINED
-
-
 vec3 accessor_fill_0() {
     // Constant value
     return vec3(0.3568627450980392, 0.5529411764705883, 0.9372549019607843);
@@ -786,6 +774,18 @@ return accessor_strokeWidth_0();
 }
 
 #define strokeWidth_DEFINED
+
+
+float accessor_size_0() {
+    // Constant value
+    return float(12.0);
+}
+
+float getScaled_size() {
+return accessor_size_0();
+}
+
+#define size_DEFINED
 
 
 uint accessor_direction_0() {
@@ -1097,13 +1097,11 @@ in float pos;
 in float side;
 
 float resolveSizeReferenceSpan(vec2 segmentInPixels) {
-    if (uSizeReferenceChannel == SIZE_REFERENCE_X) {
-        return abs(segmentInPixels.x);
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_Y) {
-        return abs(segmentInPixels.y);
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_X) {
+    if (uSizeReference == SIZE_REFERENCE_SCALE) {
+        return uSizeBandReferenceSpan;
+    } else if (uSizeReference == SIZE_REFERENCE_VIEW_X) {
         return uViewportSize.x;
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_Y) {
+    } else if (uSizeReference == SIZE_REFERENCE_VIEW_Y) {
         return uViewportSize.y;
     } else {
         return abs(segmentInPixels.x) >= abs(segmentInPixels.y)
@@ -1403,7 +1401,8 @@ layout(std140) uniform Mark {
     uniform float uHeadNotchSlope;
 
     uniform float uSizeBand;
-    uniform int uSizeReferenceChannel;
+    uniform int uSizeReference;
+    uniform float uSizeBandReferenceSpan;
     uniform float uMinSize;
     uniform float uHeadWidth;
     uniform bool uStartNotch;
@@ -1427,11 +1426,10 @@ layout(std140) uniform Mark {
 
 };
 
-const int SIZE_REFERENCE_AUTO = 0;
-const int SIZE_REFERENCE_X = 1;
-const int SIZE_REFERENCE_Y = 2;
-const int SIZE_REFERENCE_VIEW_X = 3;
-const int SIZE_REFERENCE_VIEW_Y = 4;
+const int SIZE_REFERENCE_NONE = 0;
+const int SIZE_REFERENCE_SCALE = 1;
+const int SIZE_REFERENCE_VIEW_X = 2;
+const int SIZE_REFERENCE_VIEW_Y = 3;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -1773,7 +1771,8 @@ layout(std140) uniform Mark {
     uniform float uHeadNotchSlope;
 
     uniform float uSizeBand;
-    uniform int uSizeReferenceChannel;
+    uniform int uSizeReference;
+    uniform float uSizeBandReferenceSpan;
     uniform float uMinSize;
     uniform float uHeadWidth;
     uniform bool uStartNotch;
@@ -1797,11 +1796,10 @@ layout(std140) uniform Mark {
 
 };
 
-const int SIZE_REFERENCE_AUTO = 0;
-const int SIZE_REFERENCE_X = 1;
-const int SIZE_REFERENCE_Y = 2;
-const int SIZE_REFERENCE_VIEW_X = 3;
-const int SIZE_REFERENCE_VIEW_Y = 4;
+const int SIZE_REFERENCE_NONE = 0;
+const int SIZE_REFERENCE_SCALE = 1;
+const int SIZE_REFERENCE_VIEW_X = 2;
+const int SIZE_REFERENCE_VIEW_Y = 3;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -2477,13 +2475,11 @@ in float pos;
 in float side;
 
 float resolveSizeReferenceSpan(vec2 segmentInPixels) {
-    if (uSizeReferenceChannel == SIZE_REFERENCE_X) {
-        return abs(segmentInPixels.x);
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_Y) {
-        return abs(segmentInPixels.y);
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_X) {
+    if (uSizeReference == SIZE_REFERENCE_SCALE) {
+        return uSizeBandReferenceSpan;
+    } else if (uSizeReference == SIZE_REFERENCE_VIEW_X) {
         return uViewportSize.x;
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_Y) {
+    } else if (uSizeReference == SIZE_REFERENCE_VIEW_Y) {
         return uViewportSize.y;
     } else {
         return abs(segmentInPixels.x) >= abs(segmentInPixels.y)

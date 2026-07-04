@@ -21,13 +21,11 @@ in float pos;
 in float side;
 
 float resolveSizeReferenceSpan(vec2 segmentInPixels) {
-    if (uSizeReferenceChannel == SIZE_REFERENCE_X) {
-        return abs(segmentInPixels.x);
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_Y) {
-        return abs(segmentInPixels.y);
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_X) {
+    if (uSizeReference == SIZE_REFERENCE_SCALE) {
+        return uSizeBandReferenceSpan;
+    } else if (uSizeReference == SIZE_REFERENCE_VIEW_X) {
         return uViewportSize.x;
-    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_Y) {
+    } else if (uSizeReference == SIZE_REFERENCE_VIEW_Y) {
         return uViewportSize.y;
     } else {
         return abs(segmentInPixels.x) >= abs(segmentInPixels.y)
