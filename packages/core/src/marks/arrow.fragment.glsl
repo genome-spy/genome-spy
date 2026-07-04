@@ -160,7 +160,7 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
 }
 
 void main(void) {
-    vec2 arrowPos = toArrowSpace(vPosInPixels);
+    vec2 arrowPos = vPosInPixels;
     if (vDirection == DIRECTION_FORWARD) {
         arrowPos.x = -arrowPos.x;
     }

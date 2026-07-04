@@ -2,7 +2,7 @@ import { drawBufferInfo, setBuffersAndAttributes } from "twgl.js";
 import VERTEX_SHADER from "./arrow.vertex.glsl";
 import FRAGMENT_SHADER from "./arrow.fragment.glsl";
 import COMMON_SHADER from "./arrow.common.glsl";
-import { RectVertexBuilder } from "../gl/dataToVertices.js";
+import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 
 import Mark from "./mark.js";
 import { fixFill, fixStroke } from "./markUtils.js";
@@ -15,7 +15,6 @@ const MIN_HEAD_ANGLE = 1;
 const MAX_HEAD_ANGLE = 90;
 
 export const ARROW_UNIFORM_ENUMS = {
-    orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
     headShapes: ["triangle", "open"],
     sizeReferenceChannels: ["auto", "x", "y", "view-x", "view-y"],
@@ -26,9 +25,6 @@ export const ARROW_UNIFORM_ENUMS = {
  * @extends {Mark<import("../spec/mark.js").ArrowProps>}
  */
 export default class ArrowMark extends Mark {
-    /** @type {"horizontal" | "vertical" | import("../spec/parameter.js").ExprRef | undefined} */
-    #orient;
-
     /**
      * @returns {import("../spec/channel.js").Channel[]}
      */
@@ -86,8 +82,6 @@ export default class ArrowMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
-        this.#orient = inferArrowOrient(encoding);
-
         fixRuleLikeEncoding(encoding);
 
         fixStroke(encoding, this.properties.filled);
@@ -114,9 +108,6 @@ export default class ArrowMark extends Mark {
 
         const props = this.properties;
 
-        this.registerMarkUniformValue("uOrient", this.#getOrient(), (value) =>
-            enumIndex(ARROW_UNIFORM_ENUMS.orientations, value)
-        );
         this.registerMarkUniformValue(
             "uHeadSlope",
             props.headAngle,
@@ -170,7 +161,7 @@ export default class ArrowMark extends Mark {
             this.properties.minBufferSize || 0
         );
 
-        const builder = new RectVertexBuilder({
+        const builder = new RuleVertexBuilder({
             encoders: this.encoders,
             attributes: this.getAttributes(),
             numItems,
@@ -217,14 +208,6 @@ export default class ArrowMark extends Mark {
                 offset
             );
         }, options);
-    }
-
-    #getOrient() {
-        if (!this.#orient) {
-            this.#orient = inferArrowOrient(this.encoding);
-        }
-
-        return this.#orient;
     }
 }
 
@@ -360,41 +343,4 @@ function fixRuleLikeEncoding(encoding) {
                 JSON.stringify(encoding)
         );
     }
-}
-
-/**
- * @param {import("../spec/channel.js").Encoding} encoding
- * @returns {"horizontal" | "vertical"}
- */
-export function inferArrowOrient(encoding) {
-    if (encoding.x2 && !encoding.y2) {
-        return "horizontal";
-    } else if (encoding.y2 && !encoding.x2) {
-        return "vertical";
-    }
-
-    const xDirectional = isDirectionalChannel(encoding.x);
-    const yDirectional = isDirectionalChannel(encoding.y);
-
-    if (xDirectional && !yDirectional) {
-        return "horizontal";
-    } else if (yDirectional && !xDirectional) {
-        return "vertical";
-    } else if (encoding.x && !encoding.y) {
-        return "horizontal";
-    } else if (encoding.y && !encoding.x) {
-        return "vertical";
-    } else {
-        return "horizontal";
-    }
-}
-
-/**
- * @param {import("../spec/channel.js").ChannelDef} channelDef
- */
-function isDirectionalChannel(channelDef) {
-    return (
-        isChannelDefWithScale(channelDef) &&
-        ["quantitative", "index", "locus"].includes(channelDef.type)
-    );
 }

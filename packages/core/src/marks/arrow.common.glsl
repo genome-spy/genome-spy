@@ -1,5 +1,4 @@
 layout(std140) uniform Mark {
-    uniform int uOrient;
     uniform int uHeadShape;
 
     uniform float uHeadSlope;
@@ -19,9 +18,6 @@ layout(std140) uniform Mark {
 #pragma markUniforms
 };
 
-const int ORIENT_HORIZONTAL = 0;
-const int ORIENT_VERTICAL = 1;
-
 const int SIZE_REFERENCE_AUTO = 0;
 const int SIZE_REFERENCE_X = 1;
 const int SIZE_REFERENCE_Y = 2;
@@ -39,6 +35,3 @@ const int HEAD_PLACEMENT_OUTSIDE = 1;
 
 // Arrow space uses x for arrow length and y for width perpendicular to it.
 // Negative x points toward the arrowhead in the canonical "reverse" direction.
-vec2 toArrowSpace(vec2 v) {
-    return uOrient == ORIENT_HORIZONTAL ? v : v.yx;
-}

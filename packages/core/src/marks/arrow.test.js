@@ -6,10 +6,6 @@ import { create } from "../view/testUtils.js";
 
 describe("arrow mark uniform enums", () => {
     test("match shader constant order", () => {
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.orientations, "horizontal")).toBe(
-            0
-        );
-        expect(enumIndex(ARROW_UNIFORM_ENUMS.orientations, "vertical")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "forward")).toBe(0);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.directions, "reverse")).toBe(1);
         expect(enumIndex(ARROW_UNIFORM_ENUMS.headShapes, "triangle")).toBe(0);

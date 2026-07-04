@@ -14,46 +14,37 @@ flat out float vDirection;
 
 out vec2 vPosInPixels;
 
-void sort(inout float a, inout float b) {
-    if (a > b) {
-        float tmp = b;
-        b = a;
-        a = tmp;
-    }
-}
+/** Position along the arrow centerline. */
+in float pos;
 
-vec2 getVertexPos() {
-    int index = gl_VertexID % 6;
-    return vec2(
-        index == 0 || index == 1 || index == 3 ? 0.0 : 1.0,
-        index == 0 || index == 1 || index == 2 ? 0.0 : 1.0
-    );
-}
+/** Which side of the extruded strip: -0.5 or 0.5. */
+in float side;
 
-float resolveSizeReferenceSpan(vec2 sizeInPixels, float markWidth) {
+float resolveSizeReferenceSpan(vec2 segmentInPixels) {
     if (uSizeReferenceChannel == SIZE_REFERENCE_X) {
-        return sizeInPixels.x;
+        return abs(segmentInPixels.x);
     } else if (uSizeReferenceChannel == SIZE_REFERENCE_Y) {
-        return sizeInPixels.y;
+        return abs(segmentInPixels.y);
     } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_X) {
         return uViewportSize.x;
     } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_Y) {
         return uViewportSize.y;
     } else {
-        return markWidth;
+        return abs(segmentInPixels.x) >= abs(segmentInPixels.y)
+            ? uViewportSize.y
+            : uViewportSize.x;
     }
 }
 
 float resolveArrowSize(
     float configuredSize,
-    float referenceSpan,
-    float markWidth
+    float referenceSpan
 ) {
     float size = uSizeBand >= 0.0
         ? uSizeBand * referenceSpan
         : configuredSize;
 
-    return clamp(max(size, uMinSize), 0.0, markWidth);
+    return max(size, uMinSize);
 }
 
 float resolveStemHalfWidth(float arrowSize) {
@@ -66,12 +57,9 @@ float resolveStemHalfWidth(float arrowSize) {
     }
 }
 
-// Resolve head width against the mark thickness. The render quad only covers
-// the mark thickness, so clamp the head to that extent.
-float resolveHeadHalfWidth(float arrowSize, float markHalfWidth) {
-    float markWidth = markHalfWidth * 2.0;
+float resolveHeadHalfWidth(float arrowSize) {
     float headWidth = uHeadWidth * arrowSize;
-    return clamp(headWidth, 0.0, markWidth) * 0.5;
+    return max(headWidth, 0.0) * 0.5;
 }
 
 // Width along the arrow axis needed by one repeated head, including stroke.
@@ -217,52 +205,27 @@ vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
 }
 
 void main(void) {
-    vec2 frac = getVertexPos();
-
-    float x = getScaled_x();
-    float x2 = getScaled_x2();
-    float y = getScaled_y();
-    float y2 = getScaled_y2();
+    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
+    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
     float direction = getScaled_direction();
 
-    sort(x, x2);
-    sort(y, y2);
-
-    float clampMargin = 1.0;
-    vec2 pos1 = vec2(clamp(x, 0.0 - clampMargin, 1.0 + clampMargin), y);
-    vec2 pos2 = vec2(clamp(x2, 0.0 - clampMargin, 1.0 + clampMargin), y2);
-
-    vec2 size = pos2 - pos1;
-
-    if (size.x < 0.0 || size.y < 0.0) {
+    vec2 segmentInPixels = (b - a) * uViewportSize;
+    float segmentLength = length(segmentInPixels);
+    if (segmentLength <= 0.0) {
         gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
-
-    vec2 pos = pos1 + frac * size;
-    size.y *= getSampleFacetHeight(pos);
-    pos = applySampleFacet(pos);
 
     float strokeWidth = getScaled_strokeWidth();
     float strokeOpacity = getScaled_strokeOpacity() * uViewOpacity;
     vHalfStrokeWidth = strokeWidth / 2.0;
 
-    vec2 sizeInPixels = size * uViewportSize;
-
-    // Width-like quantities are based on mark thickness, which is unaffected
-    // by outside head expansion. Compute them before length expansion and reuse.
-    vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
-    float markWidth = arrowHalfSizeBeforeExpansion.y * 2.0;
-    float sizeReferenceSpan = resolveSizeReferenceSpan(sizeInPixels, markWidth);
+    float sizeReferenceSpan = resolveSizeReferenceSpan(segmentInPixels);
     float arrowSize = resolveArrowSize(
         getScaled_size(),
-        sizeReferenceSpan,
-        markWidth
+        sizeReferenceSpan
     );
-    float headHalfWidth = resolveHeadHalfWidth(
-        arrowSize,
-        arrowHalfSizeBeforeExpansion.y
-    );
+    float headHalfWidth = resolveHeadHalfWidth(arrowSize);
     float stemHalfWidth = resolveStemHalfWidth(arrowSize);
     float physicalStemHalfWidth = abs(stemHalfWidth);
     float headStrokeWidth = uHeadShape == HEAD_SHAPE_OPEN
@@ -271,7 +234,7 @@ void main(void) {
     float configuredRHeadSlope = 1.0 / uHeadSlope;
     float configuredRHeadNotchSlope = 1.0 / uHeadNotchSlope;
     float rHeadSlope = effectiveHeadSlope(
-        arrowHalfSizeBeforeExpansion.x,
+        segmentLength * 0.5,
         headHalfWidth,
         stemHalfWidth,
         configuredRHeadSlope,
@@ -293,26 +256,33 @@ void main(void) {
         outsideHeadOffset,
         direction
     );
-    if (uOrient == ORIENT_HORIZONTAL) {
-        vec2 expansion = outsideHeadExpansion / uViewportSize.x;
-        pos.x += mix(-expansion.x, expansion.y, frac.x);
-        size.x += expansion.x + expansion.y;
-    } else {
-        vec2 expansion = outsideHeadExpansion / uViewportSize.y;
-        pos.y += mix(-expansion.x, expansion.y, frac.y);
-        size.y += expansion.x + expansion.y;
-    }
 
     float aaPadding = 1.0 / uDevicePixelRatio;
-    vec2 centeredFrac = frac - 0.5;
-    vec2 expand = centeredFrac * (strokeWidth + aaPadding) / uViewportSize;
-    pos += expand;
+    float stripHalfWidth = max(headHalfWidth, physicalStemHalfWidth)
+        + vHalfStrokeWidth
+        + aaPadding;
 
-    sizeInPixels = size * uViewportSize;
-    vPosInPixels = (centeredFrac + expand / size) * sizeInPixels;
-    vec2 halfSizeInPixels = sizeInPixels / 2.0;
+    float reverseExpansion = outsideHeadExpansion.x;
+    float forwardExpansion = outsideHeadExpansion.y;
+    float localStart = -segmentLength * 0.5 - reverseExpansion;
+    float localEnd = segmentLength * 0.5 + forwardExpansion;
+    float localCenter = (localStart + localEnd) * 0.5;
+    float localAxisPosition = mix(localStart, localEnd, pos);
+    float localX = localAxisPosition - localCenter;
+    float localY = side * stripHalfWidth * 2.0;
 
-    vArrowHalfSizeInPixels = toArrowSpace(halfSizeInPixels);
+    vec2 tangentInPixels = segmentInPixels / segmentLength;
+    vec2 normalInPixels = vec2(-tangentInPixels.y, tangentInPixels.x);
+    vec2 segmentCenter = (a + b) * 0.5;
+    vec2 p = segmentCenter
+        + (tangentInPixels * localAxisPosition + normalInPixels * localY)
+            / uViewportSize;
+
+    vPosInPixels = vec2(localX, localY);
+    vArrowHalfSizeInPixels = vec2(
+        (localEnd - localStart) * 0.5,
+        stripHalfWidth
+    );
 
     // These flat varyings are per-arrow geometry constants used by the fragment
     // SDF. Keeping them here avoids repeating this math per fragment.
@@ -332,7 +302,7 @@ void main(void) {
     vHeadSpacing = uHeadSpacing >= 0.0 ? uHeadSpacing * arrowSize : -1.0;
     vStrokeColor = vec4(getScaled_stroke() * strokeOpacity, strokeOpacity);
 
-    gl_Position = unitToNdc(pos);
+    gl_Position = unitToNdc(p);
 
     float fillOpacity = getScaled_fillOpacity() * uViewOpacity;
     vFillColor = vec4(getScaled_fill() * fillOpacity, fillOpacity);
