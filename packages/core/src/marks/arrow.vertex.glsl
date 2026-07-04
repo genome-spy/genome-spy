@@ -30,9 +30,30 @@ vec2 getVertexPos() {
     );
 }
 
-float resolveArrowSize(float markHalfWidth) {
-    float markWidth = markHalfWidth * 2.0;
-    return clamp(max(getScaled_size(), uMinSize), 0.0, markWidth);
+float resolveSizeReferenceSpan(vec2 sizeInPixels, float markWidth) {
+    if (uSizeReferenceChannel == SIZE_REFERENCE_X) {
+        return sizeInPixels.x;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_Y) {
+        return sizeInPixels.y;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_X) {
+        return uViewportSize.x;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_Y) {
+        return uViewportSize.y;
+    } else {
+        return markWidth;
+    }
+}
+
+float resolveArrowSize(
+    float configuredSize,
+    float referenceSpan,
+    float markWidth
+) {
+    float size = uSizeBand >= 0.0
+        ? uSizeBand * referenceSpan
+        : configuredSize;
+
+    return clamp(max(size, uMinSize), 0.0, markWidth);
 }
 
 float resolveStemHalfWidth(float arrowSize) {
@@ -231,7 +252,13 @@ void main(void) {
     // Width-like quantities are based on mark thickness, which is unaffected
     // by outside head expansion. Compute them before length expansion and reuse.
     vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
-    float arrowSize = resolveArrowSize(arrowHalfSizeBeforeExpansion.y);
+    float markWidth = arrowHalfSizeBeforeExpansion.y * 2.0;
+    float sizeReferenceSpan = resolveSizeReferenceSpan(sizeInPixels, markWidth);
+    float arrowSize = resolveArrowSize(
+        getScaled_size(),
+        sizeReferenceSpan,
+        markWidth
+    );
     float headHalfWidth = resolveHeadHalfWidth(
         arrowSize,
         arrowHalfSizeBeforeExpansion.y

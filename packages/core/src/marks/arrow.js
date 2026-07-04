@@ -18,6 +18,7 @@ export const ARROW_UNIFORM_ENUMS = {
     orientations: ["horizontal", "vertical"],
     directions: ["forward", "reverse"],
     headShapes: ["triangle", "open"],
+    sizeReferenceChannels: ["auto", "x", "y", "view-x", "view-y"],
     headPlacements: ["inside", "outside"],
 };
 
@@ -74,7 +75,7 @@ export default class ArrowMark extends Mark {
         const encoding = super.getDefaultEncoding();
 
         if (!isChannelCompatibleSize(this.properties.size)) {
-            encoding.size = { value: this.properties.minSize };
+            encoding.size = { value: 0 };
         }
 
         return encoding;
@@ -129,6 +130,18 @@ export default class ArrowMark extends Mark {
         );
         this.registerMarkUniformValue("uHeadShape", props.headShape, (value) =>
             enumIndex(ARROW_UNIFORM_ENUMS.headShapes, value)
+        );
+        const relativeSize = getRelativeSizeUniformProps(
+            props.size,
+            this.unitView.getEncoding().size != null,
+            this.unitView
+        );
+        this.registerMarkUniformValue("uSizeBand", relativeSize.band);
+        this.registerMarkUniformValue(
+            "uSizeReferenceChannel",
+            relativeSize.channel,
+            (value) =>
+                enumIndex(ARROW_UNIFORM_ENUMS.sizeReferenceChannels, value)
         );
         this.registerMarkUniformValue("uMinSize", props.minSize);
         this.registerMarkUniformValue("uHeadWidth", props.headWidth);
@@ -222,6 +235,54 @@ export default class ArrowMark extends Mark {
  */
 function isChannelCompatibleSize(value) {
     return typeof value == "number" || isExprRef(value);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is { band: number, channel?: "x" | "y" | "auto" }}
+ */
+function isRelativeSize(value) {
+    return (
+        typeof value == "object" &&
+        value !== null &&
+        "band" in value &&
+        typeof value.band == "number"
+    );
+}
+
+/**
+ * @param {unknown} size
+ * @param {boolean} hasSizeEncoding
+ * @param {import("../view/unitView.js").default} unitView
+ */
+function getRelativeSizeUniformProps(size, hasSizeEncoding, unitView) {
+    if (hasSizeEncoding || !isRelativeSize(size)) {
+        return { band: -1, channel: "auto" };
+    } else {
+        return {
+            band: size.band,
+            channel: getSizeReferenceChannel(size.channel ?? "auto", unitView),
+        };
+    }
+}
+
+/**
+ * @param {"x" | "y" | "auto"} channel
+ * @param {import("../view/unitView.js").default} unitView
+ */
+function getSizeReferenceChannel(channel, unitView) {
+    if (channel == "auto") {
+        return "auto";
+    }
+
+    const scale = /** @type {{ bandwidth?: () => number } | undefined} */ (
+        unitView.getScaleResolution(channel)?.getScale()
+    );
+    if (scale && typeof scale.bandwidth == "function") {
+        return channel;
+    } else {
+        return /** @type {"view-x" | "view-y"} */ (`view-${channel}`);
+    }
 }
 
 /**

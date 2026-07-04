@@ -14,6 +14,8 @@ layout(std140) uniform Mark {
     uniform float uHeadSlope;
     uniform float uHeadNotchSlope;
 
+    uniform float uSizeBand;
+    uniform int uSizeReferenceChannel;
     uniform float uMinSize;
     uniform float uHeadWidth;
     uniform bool uStartNotch;
@@ -37,6 +39,12 @@ layout(std140) uniform Mark {
 
 const int ORIENT_HORIZONTAL = 0;
 const int ORIENT_VERTICAL = 1;
+
+const int SIZE_REFERENCE_AUTO = 0;
+const int SIZE_REFERENCE_X = 1;
+const int SIZE_REFERENCE_Y = 2;
+const int SIZE_REFERENCE_VIEW_X = 3;
+const int SIZE_REFERENCE_VIEW_Y = 4;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -381,6 +389,8 @@ layout(std140) uniform Mark {
     uniform float uHeadSlope;
     uniform float uHeadNotchSlope;
 
+    uniform float uSizeBand;
+    uniform int uSizeReferenceChannel;
     uniform float uMinSize;
     uniform float uHeadWidth;
     uniform bool uStartNotch;
@@ -404,6 +414,12 @@ layout(std140) uniform Mark {
 
 const int ORIENT_HORIZONTAL = 0;
 const int ORIENT_VERTICAL = 1;
+
+const int SIZE_REFERENCE_AUTO = 0;
+const int SIZE_REFERENCE_X = 1;
+const int SIZE_REFERENCE_Y = 2;
+const int SIZE_REFERENCE_VIEW_X = 3;
+const int SIZE_REFERENCE_VIEW_Y = 4;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -740,7 +756,7 @@ return accessor_uniqueId_0();
 
 float accessor_size_0() {
     // Constant value
-    return float(1.0);
+    return float(0.0);
 }
 
 float getScaled_size() {
@@ -1104,9 +1120,30 @@ vec2 getVertexPos() {
     );
 }
 
-float resolveArrowSize(float markHalfWidth) {
-    float markWidth = markHalfWidth * 2.0;
-    return clamp(max(getScaled_size(), uMinSize), 0.0, markWidth);
+float resolveSizeReferenceSpan(vec2 sizeInPixels, float markWidth) {
+    if (uSizeReferenceChannel == SIZE_REFERENCE_X) {
+        return sizeInPixels.x;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_Y) {
+        return sizeInPixels.y;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_X) {
+        return uViewportSize.x;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_Y) {
+        return uViewportSize.y;
+    } else {
+        return markWidth;
+    }
+}
+
+float resolveArrowSize(
+    float configuredSize,
+    float referenceSpan,
+    float markWidth
+) {
+    float size = uSizeBand >= 0.0
+        ? uSizeBand * referenceSpan
+        : configuredSize;
+
+    return clamp(max(size, uMinSize), 0.0, markWidth);
 }
 
 float resolveStemHalfWidth(float arrowSize) {
@@ -1305,7 +1342,13 @@ void main(void) {
     // Width-like quantities are based on mark thickness, which is unaffected
     // by outside head expansion. Compute them before length expansion and reuse.
     vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
-    float arrowSize = resolveArrowSize(arrowHalfSizeBeforeExpansion.y);
+    float markWidth = arrowHalfSizeBeforeExpansion.y * 2.0;
+    float sizeReferenceSpan = resolveSizeReferenceSpan(sizeInPixels, markWidth);
+    float arrowSize = resolveArrowSize(
+        getScaled_size(),
+        sizeReferenceSpan,
+        markWidth
+    );
     float headHalfWidth = resolveHeadHalfWidth(
         arrowSize,
         arrowHalfSizeBeforeExpansion.y
@@ -1404,6 +1447,8 @@ layout(std140) uniform Mark {
     uniform float uHeadSlope;
     uniform float uHeadNotchSlope;
 
+    uniform float uSizeBand;
+    uniform int uSizeReferenceChannel;
     uniform float uMinSize;
     uniform float uHeadWidth;
     uniform bool uStartNotch;
@@ -1429,6 +1474,12 @@ layout(std140) uniform Mark {
 
 const int ORIENT_HORIZONTAL = 0;
 const int ORIENT_VERTICAL = 1;
+
+const int SIZE_REFERENCE_AUTO = 0;
+const int SIZE_REFERENCE_X = 1;
+const int SIZE_REFERENCE_Y = 2;
+const int SIZE_REFERENCE_VIEW_X = 3;
+const int SIZE_REFERENCE_VIEW_Y = 4;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -1773,6 +1824,8 @@ layout(std140) uniform Mark {
     uniform float uHeadSlope;
     uniform float uHeadNotchSlope;
 
+    uniform float uSizeBand;
+    uniform int uSizeReferenceChannel;
     uniform float uMinSize;
     uniform float uHeadWidth;
     uniform bool uStartNotch;
@@ -1798,6 +1851,12 @@ layout(std140) uniform Mark {
 
 const int ORIENT_HORIZONTAL = 0;
 const int ORIENT_VERTICAL = 1;
+
+const int SIZE_REFERENCE_AUTO = 0;
+const int SIZE_REFERENCE_X = 1;
+const int SIZE_REFERENCE_Y = 2;
+const int SIZE_REFERENCE_VIEW_X = 3;
+const int SIZE_REFERENCE_VIEW_Y = 4;
 
 const float DIRECTION_FORWARD = 0.0;
 const float DIRECTION_REVERSE = 1.0;
@@ -2485,9 +2544,30 @@ vec2 getVertexPos() {
     );
 }
 
-float resolveArrowSize(float markHalfWidth) {
-    float markWidth = markHalfWidth * 2.0;
-    return clamp(max(getScaled_size(), uMinSize), 0.0, markWidth);
+float resolveSizeReferenceSpan(vec2 sizeInPixels, float markWidth) {
+    if (uSizeReferenceChannel == SIZE_REFERENCE_X) {
+        return sizeInPixels.x;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_Y) {
+        return sizeInPixels.y;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_X) {
+        return uViewportSize.x;
+    } else if (uSizeReferenceChannel == SIZE_REFERENCE_VIEW_Y) {
+        return uViewportSize.y;
+    } else {
+        return markWidth;
+    }
+}
+
+float resolveArrowSize(
+    float configuredSize,
+    float referenceSpan,
+    float markWidth
+) {
+    float size = uSizeBand >= 0.0
+        ? uSizeBand * referenceSpan
+        : configuredSize;
+
+    return clamp(max(size, uMinSize), 0.0, markWidth);
 }
 
 float resolveStemHalfWidth(float arrowSize) {
@@ -2686,7 +2766,13 @@ void main(void) {
     // Width-like quantities are based on mark thickness, which is unaffected
     // by outside head expansion. Compute them before length expansion and reuse.
     vec2 arrowHalfSizeBeforeExpansion = toArrowSpace(sizeInPixels * 0.5);
-    float arrowSize = resolveArrowSize(arrowHalfSizeBeforeExpansion.y);
+    float markWidth = arrowHalfSizeBeforeExpansion.y * 2.0;
+    float sizeReferenceSpan = resolveSizeReferenceSpan(sizeInPixels, markWidth);
+    float arrowSize = resolveArrowSize(
+        getScaled_size(),
+        sizeReferenceSpan,
+        markWidth
+    );
     float headHalfWidth = resolveHeadHalfWidth(
         arrowSize,
         arrowHalfSizeBeforeExpansion.y
