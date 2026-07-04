@@ -10,14 +10,20 @@ EXAMPLE examples/docs/grammar/mark/arrow/arrow-mark.json height=240
 ## Channels
 
 Arrow mark supports the primary and secondary [position](./index.md#channels)
-channels and the `color`, `stroke`, `fill`, `opacity`, `strokeOpacity`,
-`fillOpacity`, and `strokeWidth` channels.
+channels, the `direction` channel, and the `color`, `stroke`, `fill`,
+`opacity`, `strokeOpacity`, `fillOpacity`, and `strokeWidth` channels.
 
 Use the position channels to encode the interval. Use mark properties to control
-the arrow shape. For data-driven differences in arrow style, create separate
-layers for each style or direction.
+the arrow shape. Use the `direction` channel to map strand-like values such as
+`+` and `-` to `"forward"` and `"reverse"`.
+
+Built-in styles provide common arrow shapes:
+
+- `"arrow-transcript"` draws a thin transcript-like line with repeated heads.
+- `"arrow-block"` draws a thick filled interval with an arrowhead.
+- `"arrow-block-notch"` draws a thick filled interval with an arrowhead and a
+  start notch.
 
 ## Properties
 
 SCHEMA ArrowProps
-

@@ -130,4 +130,25 @@ describe("markConfig", () => {
         expect(defaults.color).toBe("seagreen");
         expect(defaults.thickness).toBe(4);
     });
+
+    test("provides built-in arrow styles", () => {
+        const transcript = getConfiguredMarkDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            "arrow",
+            "arrow-transcript"
+        );
+        expect(transcript.headShape).toBe("open");
+        expect(transcript.headRepeat).toBe(true);
+        expect(transcript.stemWidth).toBe(1);
+        expect(transcript.strokeWidth).toBe(0);
+
+        const blockNotch = getConfiguredMarkDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            "arrow",
+            "arrow-block-notch"
+        );
+        expect(blockNotch.headShape).toBe("triangle");
+        expect(blockNotch.stemWidth).toBe(1);
+        expect(blockNotch.startNotch).toBe(true);
+    });
 });

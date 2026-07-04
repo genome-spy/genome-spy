@@ -1,5 +1,6 @@
 import {
     ARROW_MARK_DEFAULTS,
+    ARROW_STYLE_DEFAULTS,
     LINK_MARK_DEFAULTS,
     MARK_DEFAULTS,
     POINT_MARK_DEFAULTS,
@@ -50,5 +51,9 @@ export const INTERNAL_DEFAULT_CONFIG = {
     range: RANGE_DEFAULTS,
 
     title: TITLE_DEFAULTS,
-    style: { ...TITLE_STYLE_DEFAULTS, ...LEGEND_STYLE_DEFAULTS },
+    style: {
+        ...TITLE_STYLE_DEFAULTS,
+        ...LEGEND_STYLE_DEFAULTS,
+        ...ARROW_STYLE_DEFAULTS,
+    },
 };
