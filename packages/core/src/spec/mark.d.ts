@@ -119,6 +119,21 @@ export interface SizeProps {
     size?: number | ExprRef;
 }
 
+export interface ArrowRelativeSize {
+    /**
+     * Fraction of the perpendicular band or view span.
+     */
+    band: number;
+
+    /**
+     * Channel whose band or view span is used. If omitted or `"auto"`, the
+     * channel is inferred from `orient`.
+     */
+    channel?: "x" | "y" | "auto";
+}
+
+export type ArrowSize = number | ArrowRelativeSize | ExprRef;
+
 export interface FillAndStrokeProps {
     /**
      * The stroke width in pixels.
@@ -379,28 +394,50 @@ export interface ArrowProps
 
     /**
      * Shape of the arrowhead. `"triangle"` draws a filled head. `"open"`
-     * draws an open head whose thickness matches the magnitude of the stem
-     * width.
+     * draws an open head whose thickness matches the resolved `size`, even
+     * when `stem` is `false`.
      *
      * __Default value:__ `"triangle"`
      */
     headShape?: "triangle" | "open" | ExprRef;
 
     /**
-     * Width of the arrowhead in pixels or as a proportion of the mark thickness.
-     * The unit is controlled by `headWidthUnit`. The resolved width is clamped
-     * to the mark thickness.
+     * Arrow stem thickness in pixels, or as a fraction of the perpendicular
+     * band or view span.
+     *
+     * Numeric values are pixels. `{ "band": 0.8 }` resolves to 80% of the
+     * perpendicular band width, or 80% of the perpendicular view span when no
+     * band scale is available. Use `channel` to explicitly select the
+     * reference channel.
+     *
+     * __Default value:__ `{ "band": 0.45 }`
+     */
+    size?: ArrowSize;
+
+    /**
+     * Minimum resolved arrow stem thickness in pixels. Applies to numeric,
+     * band-relative, and encoded `size` values.
      *
      * __Default value:__ `1`
      */
-    headWidth?: number | ExprRef;
+    minSize?: number | ExprRef;
 
     /**
-     * Unit used for `headWidth`.
+     * Whether to draw the arrow stem. When `false`, the resolved `size` still
+     * controls open-head thickness. `minStemLength` has no effect when the stem
+     * is hidden.
      *
-     * __Default value:__ `"proportion"`
+     * __Default value:__ `true`
      */
-    headWidthUnit?: "px" | "proportion" | ExprRef;
+    stem?: boolean | ExprRef;
+
+    /**
+     * Width of the arrowhead as a multiplier of resolved `size`. The resolved
+     * head width is clamped to the available perpendicular lane.
+     *
+     * __Default value:__ `2`
+     */
+    headWidth?: number | ExprRef;
 
     /**
      * Whether to draw a notch at the start of the arrow. The start notch uses
@@ -417,45 +454,21 @@ export interface ArrowProps
      * `"inside"` placement, this applies to `"triangle"` heads and is measured
      * from the start of the stem to where the stem meets the head notch edge.
      * For `"outside"` placement, this applies when `startNotch` is `true` and
-     * is measured from the start notch to the head start. If `stemWidth` is
-     * negative, there is no visible stem to preserve.
+     * is measured from the start notch to the head start. Has no effect when
+     * `stem` is `false`.
      *
      * __Default value:__ `0`
      */
     minStemLength?: number | ExprRef;
 
     /**
-     * Whether arrowheads are repeated along the arrow. Repeated arrowheads do
-     * not use `minStemLength`.
+     * Spacing between repeated arrowheads as a multiplier of resolved `size`.
+     * The effective spacing is at least the rendered arrowhead footprint,
+     * including stroke. If `null`, arrowheads are not repeated.
      *
-     * __Default value:__ `false`
+     * __Default value:__ `null`
      */
-    headRepeat?: boolean | ExprRef;
-
-    /**
-     * Spacing between repeated arrowheads in pixels. The effective spacing is
-     * at least the rendered arrowhead footprint, including stroke.
-     *
-     * __Default value:__ `24`
-     */
-    headSpacing?: number | ExprRef;
-
-    /**
-     * Width of the arrow stem in pixels or as a proportion of the mark thickness.
-     * The unit is controlled by `stemWidthUnit`. The resolved width is clamped
-     * to the mark thickness. Negative values hide the stem, but their magnitude
-     * still controls the thickness of `"open"` arrowheads.
-     *
-     * __Default value:__ `0.45`
-     */
-    stemWidth?: number | ExprRef;
-
-    /**
-     * Unit used for `stemWidth`.
-     *
-     * __Default value:__ `"proportion"`
-     */
-    stemWidthUnit?: "px" | "proportion" | ExprRef;
+    headSpacing?: number | null | ExprRef;
 
     /**
      * Placement of the arrowhead relative to the encoded interval.

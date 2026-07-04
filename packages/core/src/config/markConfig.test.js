@@ -132,14 +132,30 @@ describe("markConfig", () => {
     });
 
     test("provides built-in arrow styles", () => {
+        const arrow = getConfiguredMarkDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            "arrow",
+            undefined
+        );
+        expect(arrow.size).toEqual({ band: 0.45 });
+        expect(arrow.minSize).toBe(1);
+        expect(arrow.stem).toBe(true);
+        expect(arrow.headWidth).toBe(2);
+        expect(arrow.headSpacing).toBeNull();
+        expect(arrow).not.toHaveProperty("headRepeat");
+        expect(arrow).not.toHaveProperty("headWidthUnit");
+        expect(arrow).not.toHaveProperty("stemWidth");
+        expect(arrow).not.toHaveProperty("stemWidthUnit");
+
         const transcript = getConfiguredMarkDefaults(
             [INTERNAL_DEFAULT_CONFIG],
             "arrow",
             "arrow-transcript"
         );
         expect(transcript.headShape).toBe("open");
-        expect(transcript.headRepeat).toBe(true);
-        expect(transcript.stemWidth).toBe(1);
+        expect(transcript.size).toBe(1);
+        expect(transcript.stem).toBe(true);
+        expect(transcript.headSpacing).toBe(10);
         expect(transcript.strokeWidth).toBe(0);
 
         const blockNotch = getConfiguredMarkDefaults(
@@ -148,7 +164,8 @@ describe("markConfig", () => {
             "arrow-block-notch"
         );
         expect(blockNotch.headShape).toBe("triangle");
-        expect(blockNotch.stemWidth).toBe(1);
+        expect(blockNotch.size).toEqual({ band: 1 });
+        expect(blockNotch.headSpacing).toBeNull();
         expect(blockNotch.startNotch).toBe(true);
     });
 });
