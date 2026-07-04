@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "description": "Directional intervals rendered with the arrow mark.",
+  "description": "Directional segments rendered with the arrow mark.",
 
   "data": {
     "values": [
@@ -12,7 +12,7 @@
 
   "mark": {
     "type": "arrow",
-    "size": { "band": 0.45 },
+    "size": 18,
     "headWidth": 2,
     "fill": "#5B8DEF",
     "stroke": "black",

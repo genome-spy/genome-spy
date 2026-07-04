@@ -5,15 +5,6 @@
 
   "params": [
     {
-      "name": "orient",
-      "value": "horizontal",
-      "bind": {
-        "input": "radio",
-        "options": ["horizontal", "vertical"],
-        "name": "Orient"
-      }
-    },
-    {
       "name": "headShape",
       "value": "triangle",
       "bind": {
@@ -155,7 +146,6 @@
 
   "mark": {
     "type": "arrow",
-    "orient": { "expr": "orient" },
     "headShape": { "expr": "headShape" },
     "headAngle": { "expr": "headAngle" },
     "headNotchAngle": { "expr": "headNotchAngle" },

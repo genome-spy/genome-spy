@@ -463,10 +463,10 @@ export interface ArrowProps
     headSpacing?: number | null | ExprRef;
 
     /**
-     * Placement of the arrowhead relative to the encoded interval.
-     * `"inside"` keeps the whole arrowhead within the encoded interval.
-     * `"outside"` places the arrowhead beyond the encoded interval so that the
-     * head starts at the interval endpoint.
+     * Placement of the arrowhead relative to the encoded segment.
+     * `"inside"` keeps the whole arrowhead within the encoded segment.
+     * `"outside"` places the arrowhead beyond the encoded segment so that the
+     * head starts at the segment endpoint.
      *
      * __Default value:__ `"inside"`
      */

@@ -291,7 +291,11 @@ function getRelativeSizeUniformProps(
     unitView
 ) {
     if (hasSizeEncoding || !isRelativeSize(size)) {
-        return /** @type {const} */ ({ band: -1, reference: "none" });
+        return /** @type {const} */ ({
+            band: -1,
+            reference: "none",
+            channel: /** @type {"x" | "y" | undefined} */ (undefined),
+        });
     } else {
         const channel = getSizeReferenceChannel(
             size.channel ?? "auto",

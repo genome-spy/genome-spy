@@ -18,12 +18,12 @@ to control the arrow shape. Use the `direction` channel to map strand-like
 values such as `+` and `-` to `"forward"` and `"reverse"`.
 
 Use the `size` mark property to control the stem thickness. Numeric `size`
-values are pixels. The arrow mark also accepts `size: { "band": 0.8 }`, which
-uses a fraction of the perpendicular band width for axis-aligned arrows. If the
-perpendicular channel has no band-like scale, the fraction is resolved against
-the perpendicular view span. The `size.channel` property can explicitly select
-`"x"` or `"y"` as the reference channel. Band-relative size is not supported for
-diagonal arrows.
+values are pixels. The default is `12`. The arrow mark also accepts
+`size: { "band": 0.8 }`, which uses a fraction of the perpendicular band width
+for axis-aligned arrows. If the perpendicular channel has no band-like scale,
+the fraction is resolved against the perpendicular view span. The
+`size.channel` property can explicitly select `"x"` or `"y"` as the reference
+channel. Band-relative size is not supported for diagonal arrows.
 
 The `size` encoding channel is also supported for data-driven thickness. Encoded
 sizes are pixel values and override mark-level `size`; the `{ "band": ... }`
@@ -38,8 +38,8 @@ spacing relative to the resolved `size`.
 Built-in styles provide common arrow shapes:
 
 - `"arrow-transcript"` draws a thin transcript-like line with repeated heads.
-- `"arrow-block"` draws a thick filled interval with an arrowhead.
-- `"arrow-block-notch"` draws a thick filled interval with an arrowhead and a
+- `"arrow-block"` draws a thick filled segment with an arrowhead.
+- `"arrow-block-notch"` draws a thick filled segment with an arrowhead and a
   start notch.
 
 ## Properties
