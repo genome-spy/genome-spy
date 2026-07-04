@@ -17,6 +17,23 @@ Use the position channels to encode the interval. Use mark properties to control
 the arrow shape. Use the `direction` channel to map strand-like values such as
 `+` and `-` to `"forward"` and `"reverse"`.
 
+Use the `size` mark property to control the stem thickness. Numeric `size`
+values are pixels. The arrow mark also accepts `size: { "band": 0.8 }`, which
+uses a fraction of the perpendicular band width. If the perpendicular channel
+has no band-like scale, the fraction is resolved against the perpendicular view
+span. The `size.channel` property can explicitly select `"x"` or `"y"` as the
+reference channel.
+
+The `size` encoding channel is also supported for data-driven thickness. Encoded
+sizes are pixel values and override mark-level `size`; the `{ "band": ... }`
+form is only available as an arrow mark property.
+
+`headWidth` is a multiplier of the resolved `size` and is clamped to the
+available perpendicular lane. Set `stem` to `false` to hide the stem while still
+using the resolved `size` for open-head thickness. Set `headSpacing` to `null`
+to draw only the primary arrowhead, or to a number to repeat arrowheads using
+spacing relative to the resolved `size`.
+
 Built-in styles provide common arrow shapes:
 
 - `"arrow-transcript"` draws a thin transcript-like line with repeated heads.
