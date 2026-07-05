@@ -7,6 +7,7 @@ import { RuleVertexBuilder } from "../gl/dataToVertices.js";
 import Mark from "./mark.js";
 import { fixFill, fixStroke } from "./markUtils.js";
 import { isChannelDefWithScale } from "../encoder/encoder.js";
+import { fixRuleLikeEncoding } from "./ruleLikeEncoding.js";
 
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const MIN_HEAD_SLOPE = 1e-6;
@@ -67,7 +68,7 @@ export default class ArrowMark extends Mark {
      * @returns {import("../spec/channel.js").Encoding}
      */
     fixEncoding(encoding) {
-        fixRuleLikeEncoding(encoding);
+        fixRuleLikeEncoding(encoding, "arrow");
 
         if (!encoding.size && isRelativeSize(this.properties.size)) {
             encoding.size = createRelativeSizeDef(
@@ -265,58 +266,6 @@ function headAngleToSlope(value) {
  */
 function nullableSpacingToUniform(value) {
     return value == null ? -1 : value;
-}
-
-/**
- * Completes positional arrow endpoints using the same cases as the rule mark.
- *
- * @param {import("../spec/channel.js").Encoding} encoding
- */
-function fixRuleLikeEncoding(encoding) {
-    if (encoding.x && encoding.y && encoding.x2 && encoding.y2) {
-        // Everything is defined.
-    } else if (encoding.x && encoding.x2 && !encoding.y) {
-        encoding.y = { value: 0.5 };
-        encoding.y2 = encoding.y;
-    } else if (encoding.y && encoding.y2 && !encoding.x) {
-        encoding.x = { value: 0.5 };
-        encoding.x2 = encoding.x;
-    } else if (encoding.x && !encoding.y) {
-        encoding.y = { value: 0 };
-        encoding.y2 = { value: 1 };
-        encoding.x2 = encoding.x;
-    } else if (encoding.y && !encoding.x) {
-        encoding.x = { value: 0 };
-        encoding.x2 = { value: 1 };
-        encoding.y2 = encoding.y;
-    } else if (encoding.x && encoding.y && encoding.y2) {
-        encoding.x2 = encoding.x;
-    } else if (encoding.y && encoding.x && encoding.x2) {
-        encoding.y2 = encoding.y;
-    } else if (encoding.y && encoding.x) {
-        if (
-            !encoding.x2 &&
-            isChannelDefWithScale(encoding.y) &&
-            encoding.y.type == "quantitative"
-        ) {
-            encoding.x2 = encoding.x;
-            encoding.y2 = { datum: 0 };
-        } else if (
-            !encoding.y2 &&
-            isChannelDefWithScale(encoding.x) &&
-            encoding.x.type == "quantitative"
-        ) {
-            encoding.y2 = encoding.y;
-            encoding.x2 = { datum: 0 };
-        } else {
-            throw new Error("A bug!");
-        }
-    } else {
-        throw new Error(
-            "At a minimum, either the x or y channel must be defined in the arrow mark's encoding: " +
-                JSON.stringify(encoding)
-        );
-    }
 }
 
 /**
