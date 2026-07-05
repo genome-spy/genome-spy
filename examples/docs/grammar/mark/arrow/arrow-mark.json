@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Directional segments rendered with the arrow mark.",
+
+  "data": {
+    "values": [
+      { "feature": "gene A", "start": 10, "end": 50, "strand": "+" },
+      { "feature": "gene B", "start": 30, "end": 90, "strand": "-" }
+    ]
+  },
+
+  "mark": { "type": "arrow", "size": 20 },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "index",
+      "scale": { "domain": [0, 100] }
+    },
+    "x2": { "field": "end" },
+    "y": {
+      "field": "feature",
+      "type": "nominal",
+      "scale": { "type": "band", "padding": 0.25 }
+    },
+    "direction": {
+      "field": "strand",
+      "type": "nominal",
+      "scale": { "domain": ["+", "-"], "range": ["forward", "reverse"] }
+    }
+  }
+}

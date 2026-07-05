@@ -1,5 +1,6 @@
 import { Axis, GenomeAxis } from "./axis.js";
 import {
+    ArrowProps,
     LinkProps,
     MarkPropsBase,
     PointProps,
@@ -66,6 +67,8 @@ export type MarkConfig = Partial<Omit<MarkPropsBase, "type">>;
 export type PointConfig = Partial<Omit<PointProps, "type">>;
 
 export type RectConfig = Partial<Omit<RectProps, "type">>;
+
+export type ArrowConfig = Partial<Omit<ArrowProps, "type">>;
 
 export type RuleConfig = Partial<Omit<RuleProps, "type">>;
 
@@ -166,7 +169,10 @@ type CombinedStyleConfig = MergeProps<
     MergeProps<
         MergeProps<
             MergeProps<
-                MergeProps<MergeProps<MarkConfig, PointConfig>, RectConfig>,
+                MergeProps<
+                    MergeProps<MergeProps<MarkConfig, PointConfig>, RectConfig>,
+                    ArrowConfig
+                >,
                 RuleConfig
             >,
             TickConfig
@@ -201,6 +207,11 @@ export interface GenomeSpyConfig {
      * Defaults for rect marks.
      */
     rect?: RectConfig;
+
+    /**
+     * Defaults for arrow marks.
+     */
+    arrow?: ArrowConfig;
 
     /**
      * Defaults for rule marks.

@@ -1626,6 +1626,38 @@ describe("GridView legends", () => {
     });
 
     describe("symbol legends", () => {
+        test("does not create a legend for arrow direction encoding", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { start: 20, end: 80, direction: "+" },
+                                { start: 20, end: 80, direction: "-" },
+                            ],
+                        },
+                        mark: "arrow",
+                        encoding: {
+                            x: { field: "start", type: "quantitative" },
+                            x2: { field: "end" },
+                            y: { field: "direction", type: "nominal" },
+                            direction: {
+                                field: "direction",
+                                type: "nominal",
+                                scale: {
+                                    domain: ["+", "-"],
+                                    range: ["forward", "reverse"],
+                                },
+                            },
+                        },
+                    },
+                ],
+            });
+
+            expect(getLegends(view)).toHaveLength(0);
+        });
+
         test("merges redundant color and shape channels into one symbol legend", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

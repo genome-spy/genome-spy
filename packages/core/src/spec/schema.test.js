@@ -181,4 +181,82 @@ describe("generated core schema", () => {
             true
         );
     });
+
+    test("accepts arrow mark shape parameters", () => {
+        const schema = createCoreSchema();
+        const validate = new Ajv.default({
+            allErrors: true,
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+
+        const spec = {
+            data: {
+                values: [{ start: 8, end: 32, band: "A" }],
+            },
+            mark: {
+                type: "arrow",
+                direction: "forward",
+                headShape: "triangle",
+                headAngle: { expr: "45" },
+                headNotchAngle: 90,
+                size: { band: 0.45 },
+                minSize: 1,
+                stem: true,
+                headWidth: 1,
+                startNotch: true,
+                minStemLength: { expr: "12" },
+                headSpacing: 24,
+                headPlacement: "inside",
+                fill: "#5B8DEF",
+                stroke: "black",
+                strokeWidth: 1,
+            },
+            encoding: {
+                x: { field: "start", type: "index" },
+                x2: { field: "end" },
+                y: { field: "band", type: "nominal" },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
+    test("accepts arrow direction encoding", () => {
+        const schema = createCoreSchema();
+        const validate = new Ajv.default({
+            allErrors: true,
+            strict: false,
+            allowUnionTypes: true,
+        }).compile(schema);
+
+        const spec = {
+            data: {
+                values: [
+                    { start: 20, end: 80, direction: "+" },
+                    { start: 20, end: 80, direction: "-" },
+                ],
+            },
+            mark: "arrow",
+            encoding: {
+                x: { field: "start", type: "quantitative" },
+                x2: { field: "end" },
+                y: { field: "direction", type: "nominal" },
+                direction: {
+                    field: "direction",
+                    type: "nominal",
+                    scale: {
+                        domain: ["+", "-"],
+                        range: ["forward", "reverse"],
+                    },
+                },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
 });

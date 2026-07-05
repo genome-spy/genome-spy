@@ -3,8 +3,9 @@
 ![Marks](../../img/block-mark.svg){align="right" style="width: 30%"}
 
 In GenomeSpy, visualizations are built from marks, which are geometric shapes,
-such as points, ticks, rectangles, and lines, that represent data objects (or rows in
-tabular data). These marks are mapped to the data using the `encoding` property,
+such as points, ticks, arrows, rectangles, and lines, that represent data
+objects (or rows in tabular data). These marks are mapped to the data using the
+`encoding` property,
 which specifies which visual channels, such as `x`, `color`, and `size`, should
 be used to encode the data fields. By adjusting the encodings, you can present
 the same data in a wide range of visual forms, such as scatterplots, bar charts,
@@ -86,8 +87,9 @@ mark instance is placed at the center of the respective axis.
 
 ##### Secondary channels
 
-Some marks, such as `"rect"` and `"rule"`, also support secondary positional channels,
-which allow specifying an interval that the mark should cover in the visualization.
+Some marks, such as `"arrow"`, `"rect"`, and `"rule"`, also support secondary
+positional channels, which allow specifying an interval that the mark should
+cover in the visualization.
 
 `x2`
 : The secondary position on the _x_ axis

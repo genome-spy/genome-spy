@@ -209,7 +209,13 @@ export function getConfiguredScaleDefaults(
             }
         }
     } else if (isDiscreteChannel(channel) && props.range === undefined) {
-        props.range = channel == "shape" ? (rangeConfig.shape ?? []) : [];
+        if (channel == "shape") {
+            props.range = rangeConfig.shape ?? [];
+        } else if (channel == "direction") {
+            props.range = ["forward", "reverse"];
+        } else {
+            props.range = [];
+        }
     } else if (channel == "size" && props.range === undefined) {
         props.range = rangeConfig.size;
     } else if (channel == "angle" && props.range === undefined) {

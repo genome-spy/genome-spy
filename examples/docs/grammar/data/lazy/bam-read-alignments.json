@@ -16,10 +16,6 @@
     }
   },
 
-  "resolve": {
-    "scale": { "x": "shared" }
-  },
-
   "scales": {
     "x": {
       "domain": [
@@ -71,7 +67,7 @@
           "field": "_lane",
           "type": "index",
           "scale": {
-            "domain": [0, 60],
+            "domain": [0, 50],
             "padding": 0.3,
             "reverse": true,
             "zoom": false
@@ -81,9 +77,18 @@
           "field": "strand",
           "type": "nominal",
           "scale": { "domain": ["+", "-"], "range": ["crimson", "orange"] }
+        },
+        "direction": {
+          "field": "strand",
+          "type": "nominal",
+          "scale": { "domain": ["+", "-"], "range": ["forward", "reverse"] }
         }
       },
-      "mark": "rect"
+      "mark": {
+        "type": "arrow",
+        "style": "arrow-block",
+        "clip": true
+      }
     }
   ],
 

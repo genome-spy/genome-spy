@@ -1,0 +1,35 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Block arrows on categorical bands with quantitative x positions.",
+
+  "data": {
+    "values": [
+      { "feature": "gene A", "start": 8, "end": 34 },
+      { "feature": "gene B", "start": 18, "end": 72 },
+      { "feature": "gene C", "start": 45, "end": 88 },
+      { "feature": "gene D", "start": 12, "end": 95 }
+    ]
+  },
+
+  "mark": {
+    "type": "arrow",
+    "style": "arrow-block"
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100] },
+      "axis": { "title": "Position" }
+    },
+    "x2": { "field": "end" },
+    "y": {
+      "field": "feature",
+      "type": "nominal",
+      "scale": { "type": "band", "padding": 0.2 },
+      "axis": { "title": null }
+    }
+  }
+}

@@ -3,7 +3,14 @@ import { ExprRef } from "./parameter.js";
 import { Align, Baseline, FontStyle, FontWeight } from "./font.js";
 import { Tooltip } from "./tooltip.js";
 
-export type MarkType = "rect" | "point" | "rule" | "tick" | "text" | "link";
+export type MarkType =
+    | "rect"
+    | "point"
+    | "rule"
+    | "tick"
+    | "text"
+    | "link"
+    | "arrow";
 
 export interface MarkPropsBase {
     type: MarkType;
@@ -111,6 +118,22 @@ export interface SizeProps {
      */
     size?: number | ExprRef;
 }
+
+export interface ArrowRelativeSize {
+    /**
+     * Fraction of the perpendicular band or view span.
+     */
+    band: number;
+
+    /**
+     * Channel whose band or view span is used. If omitted or `"auto"`,
+     * GenomeSpy infers the perpendicular channel from the axis-aligned arrow
+     * endpoints. Band-relative size is not supported for diagonal arrows.
+     */
+    channel?: "x" | "y" | "auto";
+}
+
+export type ArrowSize = number | ArrowRelativeSize | ExprRef;
 
 export interface FillAndStrokeProps {
     /**
@@ -324,6 +347,130 @@ export interface RectProps
         | "rings"
         | "ringsLarge"
         | ExprRef;
+}
+
+export interface ArrowProps
+    extends MarkPropsBase, SecondaryPositionProps, FillAndStrokeProps {
+    type: "arrow";
+
+    /**
+     * Direction of the arrowhead. `"forward"` places the arrowhead at the
+     * secondary endpoint (`x2`, `y2`). `"reverse"` places it at the primary
+     * endpoint (`x`, `y`). For data-driven direction, use the `direction`
+     * encoding channel.
+     *
+     * __Default value:__ `"forward"`
+     */
+    direction?: "forward" | "reverse" | ExprRef;
+
+    /**
+     * Angle in degrees between the arrow axis and an outer edge of the
+     * arrowhead. Smaller values produce longer, narrower heads. Larger values
+     * produce shorter, blunter heads. Values are clamped to `[1, 90]`.
+     *
+     * __Default value:__ `45`
+     */
+    headAngle?: number | ExprRef;
+
+    /**
+     * Angle in degrees between the arrow axis and the arrowhead notch edge.
+     * `90` places the notch point at the tip, producing a triangular head when
+     * `headAngle` is less than `90`. Applies to `"triangle"` heads. `"open"`
+     * heads use `headAngle` for the notch edge as well. Values are clamped to
+     * `[1, 90]`.
+     *
+     * __Default value:__ `90`
+     */
+    headNotchAngle?: number | ExprRef;
+
+    /**
+     * Shape of the arrowhead. `"triangle"` draws a filled head. `"open"`
+     * draws an open head whose thickness matches the resolved `size`, even
+     * when `stem` is `false`.
+     *
+     * __Default value:__ `"triangle"`
+     */
+    headShape?: "triangle" | "open" | ExprRef;
+
+    /**
+     * Arrow stem thickness in pixels, or as a fraction of the perpendicular
+     * band or view span for axis-aligned arrows.
+     *
+     * Numeric values are pixels. `{ "band": 0.8 }` resolves to 80% of the
+     * perpendicular band width, or 80% of the perpendicular view span when no
+     * band scale is available. Use `channel` to explicitly select the
+     * reference channel. Band-relative size is not supported for diagonal
+     * arrows.
+     *
+     * __Default value:__ `8`
+     */
+    size?: ArrowSize;
+
+    /**
+     * Minimum resolved arrow stem thickness in pixels. Applies to numeric,
+     * band-relative, and encoded `size` values.
+     *
+     * __Default value:__ `1`
+     */
+    minSize?: number | ExprRef;
+
+    /**
+     * Whether to draw the arrow stem. When `false`, the resolved `size` still
+     * controls open-head thickness. `minStemLength` has no effect when the stem
+     * is hidden.
+     *
+     * __Default value:__ `true`
+     */
+    stem?: boolean | ExprRef;
+
+    /**
+     * Width of the arrowhead as a multiplier of resolved `size`. Values above
+     * `1` make the arrowhead wider than the stem.
+     *
+     * __Default value:__ `3`
+     */
+    headWidth?: number | ExprRef;
+
+    /**
+     * Whether to draw a notch at the start of the arrow. The start notch uses
+     * the same slope as the arrowhead edge.
+     *
+     * __Default value:__ `false`
+     */
+    startNotch?: boolean | ExprRef;
+
+    /**
+     * Minimum visible length of the arrow stem in pixels. When a non-repeated
+     * arrow is too short for the configured shape and minimum stem length, the
+     * affected notch or head angle is made blunter toward 90 degrees. For
+     * `"inside"` placement, this applies to `"triangle"` heads and is measured
+     * from the start of the stem to where the stem meets the head notch edge.
+     * For `"outside"` placement, this applies when `startNotch` is `true` and
+     * is measured from the start notch to the head start. Has no effect when
+     * `stem` is `false`.
+     *
+     * __Default value:__ `0`
+     */
+    minStemLength?: number | ExprRef;
+
+    /**
+     * Spacing between repeated arrowheads as a multiplier of resolved `size`.
+     * The effective spacing is at least the rendered arrowhead footprint,
+     * including stroke. If `null`, arrowheads are not repeated.
+     *
+     * __Default value:__ `null`
+     */
+    headSpacing?: number | null | ExprRef;
+
+    /**
+     * Placement of the arrowhead relative to the encoded segment.
+     * `"inside"` keeps the whole arrowhead within the encoded segment.
+     * `"outside"` places the arrowhead beyond the encoded segment so that the
+     * head starts at the segment endpoint.
+     *
+     * __Default value:__ `"inside"`
+     */
+    headPlacement?: "inside" | "outside" | ExprRef;
 }
 
 export interface StrokeStyleProps {
@@ -696,6 +843,7 @@ export interface LinkProps
 
 export type MarkProps =
     | RectProps
+    | ArrowProps
     | TextProps
     | RuleProps
     | TickProps

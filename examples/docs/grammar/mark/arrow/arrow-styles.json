@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Built-in arrow mark styles.",
+
+  "data": { "values": [{ "band": "arrow", "start": 10, "end": 90 }] },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100] },
+      "axis": null
+    },
+    "x2": { "field": "end" }
+  },
+
+  "vconcat": [
+    { "title": "Default style", "mark": { "type": "arrow" } },
+    {
+      "title": "arrow-transcript",
+      "mark": { "type": "arrow", "style": "arrow-transcript" }
+    },
+    {
+      "title": "arrow-block",
+      "mark": { "type": "arrow", "style": "arrow-block" }
+    },
+    {
+      "title": "arrow-block-notch",
+      "mark": { "type": "arrow", "style": "arrow-block-notch" }
+    }
+  ]
+}

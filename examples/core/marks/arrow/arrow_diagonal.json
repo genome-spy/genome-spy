@@ -1,0 +1,37 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Diagonal arrows rendered from rule-style endpoints.",
+
+  "data": {
+    "values": [
+      { "x": 40, "y": 60, "x2": 15, "y2": 20 },
+      { "x": 35, "y": 15, "x2": 80, "y2": 45 },
+      { "x": 25, "y": 85, "x2": 70, "y2": 55 }
+    ]
+  },
+
+  "mark": {
+    "type": "arrow",
+    "fill": "#5B8DEF",
+    "stroke": "black",
+    "strokeWidth": 1
+  },
+
+  "encoding": {
+    "x": {
+      "field": "x",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100] },
+      "axis": { "title": "x" }
+    },
+    "x2": { "field": "x2" },
+    "y": {
+      "field": "y",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100] },
+      "axis": { "title": "y" }
+    },
+    "y2": { "field": "y2" }
+  }
+}

@@ -267,6 +267,54 @@ describe("generated shader snapshots", () => {
         expect(sources).toMatchSnapshot();
     });
 
+    test("arrow mark playground spec", async () => {
+        const sources = await captureShaderSources(
+            loadSpec(
+                "../../../../examples/docs/grammar/mark/arrow/arrow-playground.json"
+            )
+        );
+
+        expect(sources).toMatchSnapshot();
+        expect(sources.fragment).toContain("float sdArrow");
+        expect(sources.fragment).toContain("float sdStem");
+        expect(sources.fragment).toContain("float sdArrowHead");
+        expect(sources.fragment).toContain("float repeat");
+        expect(sources.fragment).toContain("vHeadRepeatFootprintLength");
+        expect(sources.fragment).toContain("vHeadSpacing");
+        expect(sources.fragment).toContain("uStartNotch");
+        expect(sources.fragment).toContain("uHeadSpacing");
+        expect(sources.fragment).toContain("uHeadPlacement");
+        expect(sources.fragment).toContain("uHeadShape");
+        expect(sources.fragment).toContain("uStem");
+        expect(sources.fragment).toContain("uMinSize");
+        expect(sources.fragment).toContain("HEAD_SHAPE_OPEN");
+        expect(sources.fragment).not.toContain("HEAD_SHAPE_ANGLE");
+        expect(sources.fragment).not.toContain("uHeadLength");
+        expect(sources.fragment).not.toContain("uShortArrow");
+        expect(sources.fragment).not.toContain("uHeadRepeatMode");
+        expect(sources.vertex).toContain("float effectiveHeadSlope");
+        expect(sources.vertex).toContain("float headRepeatFootprintLength");
+        expect(sources.vertex).toContain("max(getScaled_size(), uMinSize)");
+        expect(sources.vertex).toContain("vec2 getOutsideHeadExpansion");
+        expect(sources.vertex).toContain("uHeadSlope");
+        expect(sources.vertex).toContain("uHeadNotchSlope");
+        expect(sources.vertex).toContain("uMinStemLength");
+    });
+
+    test("arrow direction encoding spec", async () => {
+        const sources = await captureShaderSources(
+            loadSpec(
+                "../../../../examples/core/marks/arrow/arrow_direction.json"
+            )
+        );
+
+        expect(sources).toMatchSnapshot();
+        expect(sources.vertex).toContain("getScaled_direction()");
+        expect(sources.vertex).toContain("uRangeTexture_direction");
+        expect(sources.fragment).toContain("vDirection");
+        expect(sources.fragment).not.toContain("uDirection");
+    });
+
     test("text shader supports visible-range culling", async () => {
         const sources = await captureShaderSources({
             data: {

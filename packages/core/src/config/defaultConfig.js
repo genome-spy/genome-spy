@@ -1,4 +1,6 @@
 import {
+    ARROW_MARK_DEFAULTS,
+    ARROW_STYLE_DEFAULTS,
     LINK_MARK_DEFAULTS,
     MARK_DEFAULTS,
     POINT_MARK_DEFAULTS,
@@ -32,6 +34,7 @@ export const INTERNAL_DEFAULT_CONFIG = {
     mark: MARK_DEFAULTS,
     point: POINT_MARK_DEFAULTS,
     rect: RECT_MARK_DEFAULTS,
+    arrow: ARROW_MARK_DEFAULTS,
     rule: RULE_MARK_DEFAULTS,
     tick: TICK_MARK_DEFAULTS,
     text: TEXT_MARK_DEFAULTS,
@@ -48,5 +51,9 @@ export const INTERNAL_DEFAULT_CONFIG = {
     range: RANGE_DEFAULTS,
 
     title: TITLE_DEFAULTS,
-    style: { ...TITLE_STYLE_DEFAULTS, ...LEGEND_STYLE_DEFAULTS },
+    style: {
+        ...TITLE_STYLE_DEFAULTS,
+        ...LEGEND_STYLE_DEFAULTS,
+        ...ARROW_STYLE_DEFAULTS,
+    },
 };

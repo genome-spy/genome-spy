@@ -36,6 +36,55 @@ export const RECT_MARK_DEFAULTS = {
     minOpacity: 1.0,
 };
 
+/** @type {import("../../spec/config.js").ArrowConfig} */
+export const ARROW_MARK_DEFAULTS = {
+    x2: undefined,
+    y2: undefined,
+    filled: true,
+    strokeWidth: 1,
+    direction: "forward",
+    headAngle: 45,
+    headNotchAngle: 90,
+    headShape: "triangle",
+    size: 8,
+    minSize: 1,
+    stem: true,
+    headWidth: 3,
+    startNotch: false,
+    minStemLength: 0,
+    headSpacing: null,
+    headPlacement: "inside",
+};
+
+/** @type {Record<string, import("../../spec/config.js").StyleConfig>} */
+export const ARROW_STYLE_DEFAULTS = {
+    "arrow-transcript": {
+        headShape: "open",
+        headAngle: 45,
+        headWidth: 7,
+        size: 1,
+        headSpacing: 10,
+        color: "black",
+    },
+    "arrow-block": {
+        headShape: "triangle",
+        headAngle: 45,
+        headNotchAngle: 90,
+        headWidth: 1,
+        size: { band: 1 },
+    },
+    "arrow-block-notch": {
+        headShape: "triangle",
+        headAngle: 45,
+        headNotchAngle: 90,
+        headWidth: 1,
+        size: { band: 1 },
+        startNotch: true,
+        headPlacement: "outside",
+        minStemLength: 15,
+    },
+};
+
 /** @type {import("../../spec/config.js").RuleConfig} */
 export const RULE_MARK_DEFAULTS = {
     x2: undefined,

@@ -130,4 +130,40 @@ describe("markConfig", () => {
         expect(defaults.color).toBe("seagreen");
         expect(defaults.thickness).toBe(4);
     });
+
+    test("resolves built-in arrow style buckets", () => {
+        const arrow = getConfiguredMarkDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            "arrow",
+            undefined
+        );
+        expect(arrow).not.toHaveProperty("headRepeat");
+        expect(arrow).not.toHaveProperty("headWidthUnit");
+        expect(arrow).not.toHaveProperty("stemWidth");
+        expect(arrow).not.toHaveProperty("stemWidthUnit");
+
+        const transcript = getConfiguredMarkDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            "arrow",
+            "arrow-transcript"
+        );
+        expect(transcript.headShape).toBe("open");
+        expect(transcript.headSpacing).not.toBeNull();
+
+        const block = getConfiguredMarkDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            "arrow",
+            "arrow-block"
+        );
+        expect(block.size).toHaveProperty("band");
+        expect(block.startNotch).toBe(false);
+
+        const blockNotch = getConfiguredMarkDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            "arrow",
+            "arrow-block-notch"
+        );
+        expect(blockNotch.size).toHaveProperty("band");
+        expect(blockNotch.startNotch).toBe(true);
+    });
 });

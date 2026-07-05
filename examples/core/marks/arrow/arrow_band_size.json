@@ -1,0 +1,53 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Arrow size relative to a band or the perpendicular view span.",
+
+  "data": {
+    "values": [{ "band": "band scale", "start": 10, "end": 90 }]
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100] },
+      "axis": null
+    },
+    "x2": { "field": "end" }
+  },
+
+  "vconcat": [
+    {
+      "height": 80,
+      "mark": {
+        "type": "arrow",
+        "size": { "band": 0.8 },
+        "headWidth": 1,
+        "strokeWidth": 0
+      },
+      "encoding": {
+        "y": {
+          "field": "band",
+          "type": "nominal",
+          "scale": { "type": "band", "padding": 0.2 },
+          "axis": null
+        }
+      }
+    },
+
+    {
+      "height": 40,
+      "mark": {
+        "type": "arrow",
+        "size": { "band": 0.8 },
+        "headWidth": 1,
+        "strokeWidth": 0
+      }
+    }
+  ],
+
+  "config": {
+    "view": { "stroke": "lightgray" }
+  }
+}

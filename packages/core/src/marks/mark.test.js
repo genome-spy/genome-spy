@@ -2,7 +2,34 @@ import { describe, expect, test } from "vitest";
 
 import Rectangle from "../view/layout/rectangle.js";
 import { createSelfClipOptions } from "../view/renderingContext/clipOptions.js";
+import UnitView from "../view/unitView.js";
+import { create } from "../view/testUtils.js";
 import { createLogicalVisibleRect, createViewportScope } from "./mark.js";
+
+describe("mark factory", () => {
+    test("creates arrow marks", async () => {
+        const view = await create(
+            {
+                data: { values: [{ start: 8, end: 32, band: "A" }] },
+                mark: {
+                    type: "arrow",
+                    headAngle: 45,
+                    headNotchAngle: 90,
+                    size: 12,
+                    headWidth: 2,
+                },
+                encoding: {
+                    x: { field: "start", type: "index" },
+                    x2: { field: "end" },
+                    y: { field: "band", type: "nominal" },
+                },
+            },
+            UnitView
+        );
+
+        expect(view.mark.constructor.name).toBe("ArrowMark");
+    });
+});
 
 describe("mark viewport scope", () => {
     test("clips only x when clipX is enabled", () => {

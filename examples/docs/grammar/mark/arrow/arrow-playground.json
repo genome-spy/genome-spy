@@ -1,0 +1,177 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Interactive playground for the arrow mark shape parameters.",
+
+  "params": [
+    {
+      "name": "headShape",
+      "value": "triangle",
+      "bind": {
+        "input": "select",
+        "options": ["triangle", "open"],
+        "name": "Head shape"
+      }
+    },
+    {
+      "name": "headAngle",
+      "value": 45,
+      "bind": {
+        "input": "range",
+        "min": 1,
+        "max": 90,
+        "step": 1,
+        "name": "Head angle"
+      }
+    },
+    {
+      "name": "headNotchAngle",
+      "value": 90,
+      "bind": {
+        "input": "range",
+        "min": 1,
+        "max": 90,
+        "step": 1,
+        "name": "Head notch angle"
+      }
+    },
+    {
+      "name": "headWidth",
+      "value": 3,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 10,
+        "step": 0.05,
+        "name": "Head width"
+      }
+    },
+    {
+      "name": "size",
+      "value": 28,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 80,
+        "step": 0.5,
+        "name": "Size"
+      }
+    },
+    {
+      "name": "minSize",
+      "value": 1,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 20,
+        "step": 0.5,
+        "name": "Min size"
+      }
+    },
+    {
+      "name": "startNotch",
+      "value": false,
+      "bind": { "input": "checkbox", "name": "Start notch" }
+    },
+    {
+      "name": "stem",
+      "value": true,
+      "bind": { "input": "checkbox", "name": "Stem" }
+    },
+    {
+      "name": "repeatHeads",
+      "value": false,
+      "bind": { "input": "checkbox", "name": "Repeat heads" }
+    },
+    {
+      "name": "headSpacing",
+      "value": 3,
+      "bind": {
+        "input": "range",
+        "min": 1,
+        "max": 30,
+        "step": 0.1,
+        "name": "Head spacing"
+      }
+    },
+    {
+      "name": "minStemLength",
+      "value": 0,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "name": "Min stem length"
+      }
+    },
+    {
+      "name": "strokeWidth",
+      "value": 1,
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 8,
+        "step": 0.5,
+        "name": "Stroke width"
+      }
+    },
+    {
+      "name": "headPlacement",
+      "value": "inside",
+      "bind": {
+        "input": "radio",
+        "options": ["inside", "outside"],
+        "name": "Head placement"
+      }
+    }
+  ],
+
+  "data": {
+    "values": [
+      { "band": "pair", "start": 10, "end": 20 },
+      { "band": "pair", "start": 40, "end": 80 },
+      { "band": "single", "start": 20, "end": 90 }
+    ]
+  },
+
+  "mark": {
+    "type": "arrow",
+    "headShape": { "expr": "headShape" },
+    "headAngle": { "expr": "headAngle" },
+    "headNotchAngle": { "expr": "headNotchAngle" },
+    "size": { "expr": "size" },
+    "minSize": { "expr": "minSize" },
+    "stem": { "expr": "stem" },
+    "headWidth": { "expr": "headWidth" },
+    "startNotch": { "expr": "startNotch" },
+    "headSpacing": { "expr": "repeatHeads ? headSpacing : null" },
+    "minStemLength": { "expr": "minStemLength" },
+    "headPlacement": { "expr": "headPlacement" },
+    "fill": "#5B8DEF",
+    "stroke": "black",
+    "strokeWidth": { "expr": "strokeWidth" }
+  },
+
+  "encoding": {
+    "x": {
+      "field": "start",
+      "type": "quantitative",
+      "scale": { "domain": [0, 100], "zoom": true },
+      "axis": { "title": "Position", "grid": true }
+    },
+    "x2": { "field": "end" },
+    "y": {
+      "field": "band",
+      "type": "nominal",
+      "scale": {
+        "type": "band",
+        "domain": ["pair", "single"],
+        "padding": 0.25
+      },
+      "axis": { "title": null }
+    }
+  },
+
+  "view": { "stroke": "lightgray" }
+}
