@@ -28,8 +28,8 @@ perpendicular channel has no band-like scale, the fraction is resolved against
 the perpendicular view span. Band-relative size is not supported for diagonal
 arrows.
 
-`headWidth` is a multiplier of the resolved `size` and is clamped to the
-available perpendicular lane.
+`headWidth` is a multiplier of the resolved `size`. Values above `1` make the
+arrowhead wider than the stem.
 
 ## Properties
 

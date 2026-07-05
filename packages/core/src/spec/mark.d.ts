@@ -424,8 +424,8 @@ export interface ArrowProps
     stem?: boolean | ExprRef;
 
     /**
-     * Width of the arrowhead as a multiplier of resolved `size`. The resolved
-     * head width is clamped to the available perpendicular lane.
+     * Width of the arrowhead as a multiplier of resolved `size`. Values above
+     * `1` make the arrowhead wider than the stem.
      *
      * __Default value:__ `3`
      */
