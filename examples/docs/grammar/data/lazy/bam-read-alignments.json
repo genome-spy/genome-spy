@@ -25,6 +25,8 @@
     }
   },
 
+  "resolve": { "axis": { "x": "shared" } },
+
   "spacing": 5,
 
   "params": [
@@ -49,14 +51,13 @@
       ],
       "mark": "rect",
       "encoding": {
-        "x": {
-          "chrom": "chrom",
-          "pos": "start",
-          "type": "locus",
-          "axis": null
-        },
+        "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
         "x2": { "chrom": "chrom", "pos": "end" },
-        "y": { "field": "coverage", "type": "quantitative" }
+        "y": {
+          "field": "coverage",
+          "type": "quantitative",
+          "axis": { "tickCount": 2 }
+        }
       }
     },
     {
