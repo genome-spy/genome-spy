@@ -3990,6 +3990,51 @@ exports[`shared examples > initializes examples/core/marks/arrow/arrow_band_size
 }
 `;
 
+exports[`shared examples > initializes examples/core/marks/arrow/arrow_block_bands.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/core/marks/arrow/arrow_diagonal.json 1`] = `
 {
   "assemblies": [],
@@ -4079,130 +4124,6 @@ exports[`shared examples > initializes examples/core/marks/arrow/arrow_direction
       },
     ],
     "name": "implicitRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
-exports[`shared examples > initializes examples/core/marks/arrow/arrow_playground.json 1`] = `
-{
-  "assemblies": [],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": null,
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid0",
-        "type": "UnitView",
-      },
-    ],
-    "name": "implicitRoot",
-    "type": "ConcatView",
-  },
-}
-`;
-
-exports[`shared examples > initializes examples/core/marks/arrow/arrow_styles.json 1`] = `
-{
-  "assemblies": [],
-  "dataSources": [
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-  ],
-  "hierarchy": {
-    "baseUrl": "examples/",
-    "children": [
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid0",
-        "type": "UnitView",
-      },
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid1",
-        "type": "UnitView",
-      },
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid2",
-        "type": "UnitView",
-      },
-      {
-        "baseUrl": "examples/",
-        "children": [],
-        "name": "grid3",
-        "type": "UnitView",
-      },
-    ],
-    "name": "viewRoot",
     "type": "ConcatView",
   },
 }
@@ -9403,6 +9324,10 @@ exports[`shared examples > initializes examples/docs/grammar/mark/arrow/arrow-ma
       "identifier": null,
       "type": "InlineSource",
     },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
   ],
   "hierarchy": {
     "baseUrl": null,
@@ -9415,6 +9340,118 @@ exports[`shared examples > initializes examples/docs/grammar/mark/arrow/arrow-ma
       },
     ],
     "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/mark/arrow/arrow-playground.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
+exports[`shared examples > initializes examples/docs/grammar/mark/arrow/arrow-styles.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": "examples/",
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid0",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid1",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid2",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "grid3",
+        "type": "UnitView",
+      },
+    ],
+    "name": "viewRoot",
     "type": "ConcatView",
   },
 }

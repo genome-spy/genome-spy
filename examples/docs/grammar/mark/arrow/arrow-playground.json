@@ -41,7 +41,7 @@
       "bind": {
         "input": "range",
         "min": 0,
-        "max": 4,
+        "max": 6,
         "step": 0.05,
         "name": "Head width"
       }
@@ -53,7 +53,7 @@
         "input": "range",
         "min": 0,
         "max": 80,
-        "step": 1,
+        "step": 0.5,
         "name": "Size"
       }
     },
@@ -64,33 +64,24 @@
         "input": "range",
         "min": 0,
         "max": 20,
-        "step": 1,
+        "step": 0.5,
         "name": "Min size"
       }
     },
     {
       "name": "startNotch",
       "value": false,
-      "bind": {
-        "input": "checkbox",
-        "name": "Start notch"
-      }
+      "bind": { "input": "checkbox", "name": "Start notch" }
     },
     {
       "name": "stem",
       "value": true,
-      "bind": {
-        "input": "checkbox",
-        "name": "Stem"
-      }
+      "bind": { "input": "checkbox", "name": "Stem" }
     },
     {
       "name": "repeatHeads",
       "value": false,
-      "bind": {
-        "input": "checkbox",
-        "name": "Repeat heads"
-      }
+      "bind": { "input": "checkbox", "name": "Repeat heads" }
     },
     {
       "name": "headSpacing",
@@ -99,7 +90,7 @@
         "input": "range",
         "min": 1,
         "max": 30,
-        "step": 0.5,
+        "step": 0.1,
         "name": "Head spacing"
       }
     },
@@ -180,5 +171,7 @@
       },
       "axis": { "title": null }
     }
-  }
+  },
+
+  "view": { "stroke": "lightgray" }
 }

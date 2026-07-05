@@ -5,33 +5,29 @@
 
   "data": {
     "values": [
-      { "feature": "gene A", "start": 8, "end": 38 },
-      { "feature": "gene B", "start": 44, "end": 92 }
+      { "feature": "gene A", "start": 10, "end": 50, "strand": "+" },
+      { "feature": "gene B", "start": 30, "end": 90, "strand": "-" }
     ]
   },
 
-  "mark": {
-    "type": "arrow",
-    "size": 18,
-    "headWidth": 2,
-    "fill": "#5B8DEF",
-    "stroke": "black",
-    "strokeWidth": 1
-  },
+  "mark": { "type": "arrow", "size": 20 },
 
   "encoding": {
     "x": {
       "field": "start",
       "type": "index",
-      "scale": { "domain": [0, 100] },
-      "axis": { "title": "Position" }
+      "scale": { "domain": [0, 100] }
     },
     "x2": { "field": "end" },
     "y": {
       "field": "feature",
       "type": "nominal",
-      "scale": { "type": "band", "padding": 0.25 },
-      "axis": { "title": null }
+      "scale": { "type": "band", "padding": 0.25 }
+    },
+    "direction": {
+      "field": "strand",
+      "type": "nominal",
+      "scale": { "domain": ["+", "-"], "range": ["forward", "reverse"] }
     }
   }
 }

@@ -270,7 +270,7 @@ describe("generated shader snapshots", () => {
     test("arrow mark playground spec", async () => {
         const sources = await captureShaderSources(
             loadSpec(
-                "../../../../examples/core/marks/arrow/arrow_playground.json"
+                "../../../../examples/docs/grammar/mark/arrow/arrow-playground.json"
             )
         );
 
