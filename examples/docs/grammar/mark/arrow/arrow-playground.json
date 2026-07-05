@@ -37,11 +37,11 @@
     },
     {
       "name": "headWidth",
-      "value": 2,
+      "value": 3,
       "bind": {
         "input": "range",
         "min": 0,
-        "max": 6,
+        "max": 10,
         "step": 0.05,
         "name": "Head width"
       }
@@ -85,7 +85,7 @@
     },
     {
       "name": "headSpacing",
-      "value": 6,
+      "value": 3,
       "bind": {
         "input": "range",
         "min": 1,
