@@ -291,7 +291,7 @@ export class ViewFactory {
             await view.initializeChildren();
         }
 
-        view.registerStepSizeInvalidation();
+        view.registerSizeInvalidation();
 
         return view;
     }

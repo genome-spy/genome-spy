@@ -296,7 +296,7 @@ export default class SampleGroupView extends LayerView {
      */
     async initializeChildren() {
         await super.initializeChildren();
-        this.registerStepSizeInvalidation();
+        this.registerSizeInvalidation();
     }
 
     /**

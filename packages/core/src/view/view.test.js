@@ -1065,6 +1065,226 @@ describe("Step sizing and domain updates", () => {
         expect(view.getSize().height).toEqual({ px: 12, grow: 0 });
     });
 
+    test("Direct ExprRef view size updates when the parameter changes", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            params: [{ name: "trackHeight", value: 40 }],
+            width: 100,
+            height: { expr: "trackHeight" },
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { value: 0 },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { requestLayoutReflow },
+        });
+        requestLayoutReflow.mockClear();
+
+        expect(view.getSize().height).toEqual({ px: 40, grow: 0 });
+
+        view.paramRuntime.setValue("trackHeight", 80);
+
+        expect(view.getSize().height).toEqual({ px: 80, grow: 0 });
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+    });
+
+    test("Direct ExprRef view size may resolve to container", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            params: [{ name: "sizing", value: "container" }],
+            width: { expr: "sizing" },
+            height: 100,
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { value: 0 },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { requestLayoutReflow },
+        });
+        requestLayoutReflow.mockClear();
+
+        expect(view.getSize().width).toEqual({ px: 0, grow: 1 });
+
+        view.paramRuntime.setValue("sizing", 120);
+
+        expect(view.getSize().width).toEqual({ px: 120, grow: 0 });
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+    });
+
+    test("ExprRef viewport size updates when the parameter changes", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            params: [{ name: "clipHeight", value: 50 }],
+            width: 100,
+            height: 200,
+            viewportHeight: { expr: "clipHeight" },
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { value: 0 },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { requestLayoutReflow },
+        });
+        requestLayoutReflow.mockClear();
+
+        expect(view.getViewportSize().height).toEqual({ px: 50, grow: 0 });
+
+        view.paramRuntime.setValue("clipHeight", 75);
+
+        expect(view.getViewportSize().height).toEqual({ px: 75, grow: 0 });
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+    });
+
+    test("Direct ExprRef size updates on composed views", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").VConcatSpec} */
+        const spec = {
+            params: [{ name: "panelHeight", value: 60 }],
+            width: 100,
+            height: { expr: "panelHeight" },
+            vconcat: [
+                {
+                    data: { values: [{ x: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { value: 0 },
+                    },
+                },
+            ],
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { requestLayoutReflow },
+        });
+        requestLayoutReflow.mockClear();
+
+        const initialHeight = view.getSize().height.px;
+
+        view.paramRuntime.setValue("panelHeight", 90);
+
+        expect(view.getSize().height.px).toBeCloseTo(initialHeight + 30);
+        expect(view.getSize().height.grow).toBe(0);
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+    });
+
+    test("Composed view size queries reuse registered ExprRef readers", async () => {
+        /** @type {import("../spec/view.js").VConcatSpec} */
+        const spec = {
+            params: [{ name: "panelHeight", value: 60 }],
+            width: 100,
+            height: { expr: "panelHeight" },
+            vconcat: [
+                {
+                    data: { values: [{ x: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { value: 0 },
+                    },
+                },
+            ],
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+        const createExpression = vi.spyOn(
+            view.paramRuntime,
+            "createExpression"
+        );
+
+        view.invalidateSizeCache();
+        view.getSize();
+        view.invalidateSizeCache();
+        view.getSize();
+
+        expect(createExpression).not.toHaveBeenCalled();
+    });
+
+    test("ExprRef step size updates when the parameter changes", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            params: [{ name: "laneHeight", value: 10 }],
+            width: 100,
+            height: { step: { expr: "laneHeight" } },
+            data: {
+                values: [{ y: "a" }, { y: "b" }, { y: "c" }],
+            },
+            mark: "point",
+            encoding: {
+                x: { value: 0 },
+                y: { field: "y", type: "nominal" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { requestLayoutReflow },
+        });
+        requestLayoutReflow.mockClear();
+
+        expect(view.getSize().height.px).toBeCloseTo(30);
+
+        view.paramRuntime.setValue("laneHeight", 20);
+
+        expect(view.getSize().height.px).toBeCloseTo(60);
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+    });
+
+    test("Direct ExprRef view size must resolve to a finite number or container", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 100,
+            height: { expr: "1 / 0" },
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { value: 0 },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(() => view.getSize()).toThrow(
+            '"height" ExprRef must resolve to a finite number or "container"!'
+        );
+    });
+
+    test("ExprRef step size must resolve to a finite number", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 100,
+            height: { step: { expr: "1 / 0" } },
+            data: { values: [{ y: "a" }] },
+            mark: "point",
+            encoding: {
+                x: { value: 0 },
+                y: { field: "y", type: "nominal" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+
+        expect(() => view.getSize()).toThrow(
+            '"height.step" ExprRef must resolve to a finite number!'
+        );
+    });
+
     test("Layer view width updates when discrete domain grows", async () => {
         // Non-obvious: step sizing depends on the x-scale domain, which is owned
         // by a child unit view. Ensure the parent layer size updates on data changes.

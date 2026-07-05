@@ -13,6 +13,7 @@ import { Scale, SchemeParams } from "./scale.js";
 import { Title } from "./title.js";
 import { ViewBackgroundProps } from "./decoration.js";
 import { LegendConfig } from "./legend.js";
+import { ExprRef } from "./parameter.js";
 import { Step } from "./view.js";
 
 export type BuiltInThemeName =
@@ -59,7 +60,7 @@ export interface ViewConfig extends ViewBackgroundProps {
      *
      * __Default value:__ none
      */
-    step?: number;
+    step?: number | ExprRef;
 }
 
 export type MarkConfig = Partial<Omit<MarkPropsBase, "type">>;

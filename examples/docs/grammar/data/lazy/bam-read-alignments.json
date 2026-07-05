@@ -27,6 +27,14 @@
 
   "spacing": 5,
 
+  "params": [
+    {
+      "name": "laneHeight",
+      "value": 12,
+      "bind": { "input": "range", "min": 2, "max": 30, "step": 1 }
+    }
+  ],
+
   "vconcat": [
     {
       "height": 40,
@@ -52,6 +60,9 @@
       }
     },
     {
+      "height": { "step": { "expr": "laneHeight" } },
+      "viewportHeight": "container",
+
       "transform": [
         { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
       ],
@@ -67,8 +78,8 @@
           "field": "_lane",
           "type": "index",
           "scale": {
-            "domain": [0, 50],
-            "padding": 0.3,
+            "domain": [0, 80],
+            "padding": 0.2,
             "reverse": true,
             "zoom": false
           }
@@ -87,7 +98,7 @@
       "mark": {
         "type": "arrow",
         "style": "arrow-block",
-        "clip": true
+        "minStemLength": 10
       }
     }
   ],

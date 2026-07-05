@@ -770,7 +770,12 @@ export default class GridView extends ContainerView {
             direction == "row" ? this.spec.height : this.spec.width;
         const preferredSize =
             explicitSize || explicitSize === 0
-                ? parseSizeDef(explicitSize)
+                ? parseSizeDef(
+                      this.resolveSizeValue(
+                          direction == "row" ? "height" : "width",
+                          explicitSize
+                      )
+                  )
                 : undefined;
         const usePreferredAsViewSlot =
             preferredSize &&

@@ -85,7 +85,10 @@ export type NumericStopDef = number | ExprRef;
 export type ViewOpacityDef = number | DynamicOpacity | ExprRef;
 
 export interface Step {
-    step: number;
+    /**
+     * Step size in pixels.
+     */
+    step: number | ExprRef;
 }
 
 export type Side = "top" | "right" | "bottom" | "left";
@@ -166,40 +169,46 @@ export interface ViewSpecBase extends ResolveSpec {
     cursor?: string | ExprRef;
 
     /**
-     * Height of the view. If a number, it is interpreted as pixels.
+     * Height of the view. If a number, it is interpreted as pixels. If an
+     * expression reference is provided, it must resolve to a number or
+     * `"container"`.
      * Check [child sizing](https://genomespy.app/docs/grammar/composition/concat/#child-sizing)
      * for details.
      *
      * **Default value:** `"container"`
      */
-    height?: SizeDef | number | Step | "container";
+    height?: SizeDef | number | Step | ExprRef | "container";
 
     /**
-     * Width of the view. If a number, it is interpreted as pixels.
+     * Width of the view. If a number, it is interpreted as pixels. If an
+     * expression reference is provided, it must resolve to a number or
+     * `"container"`.
      * Check [child sizing](https://genomespy.app/docs/grammar/composition/concat/#child-sizing)
      * for details.
      *
      * **Default:** `"container"`
      */
-    width?: SizeDef | number | Step | "container";
+    width?: SizeDef | number | Step | ExprRef | "container";
 
     /**
      * Optional viewport height of the view. If the view size exceeds the viewport height,
      * it will be shown with [scrollbars](https://genomespy.app/docs/grammar/composition/concat/#scrollable-viewports).
-     * This property implicitly enables clipping.
+     * This property implicitly enables clipping. If an expression reference is
+     * provided, it must resolve to a number or `"container"`.
      *
      * **Default:** `null` (same as `height`)
      */
-    viewportHeight?: SizeDef | number | "container";
+    viewportHeight?: SizeDef | number | ExprRef | "container";
 
     /**
      * Optional viewport width of the view. If the view size exceeds the viewport width,
      * it will be shown with [scrollbars](https://genomespy.app/docs/grammar/composition/concat/#scrollable-viewports).
-     * This property implicitly enables clipping.
+     * This property implicitly enables clipping. If an expression reference is
+     * provided, it must resolve to a number or `"container"`.
      *
      * **Default:** `null` (same as `width`)
      */
-    viewportWidth?: SizeDef | number | "container";
+    viewportWidth?: SizeDef | number | ExprRef | "container";
 
     /**
      * Padding applied to the view. Accepts either a number representing pixels or an

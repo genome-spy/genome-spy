@@ -136,6 +136,11 @@ export default class View {
     #dataInitializationState = "none";
 
     /**
+     * @type {Map<string, import("../paramRuntime/types.js").ExprRefFunction>}
+     */
+    #sizeExprRefReaders = new Map();
+
+    /**
      * Coords of the view for each facet, recorded during the last layout rendering pass.
      * Most views have only one facet, so the map is usually of size 1.
      *
@@ -394,7 +399,9 @@ export default class View {
      * @return {import("./layout/flexLayout.js").SizeDef}
      */
     #getDimensionSize(dimension) {
-        const { value, implicit } = this.#getDimensionValue(dimension);
+        const { value: dimensionValue, implicit } =
+            this.#getDimensionValue(dimension);
+        const value = this.resolveSizeValue(dimension, dimensionValue);
         const needsStepInvalidation = isStepSize(value);
 
         const viewport =
@@ -408,7 +415,7 @@ export default class View {
                 );
             }
 
-            const stepSize = value.step;
+            const stepSize = this.#resolveStepSizeExprRef(dimension, value);
 
             const scale = this.getScaleResolution(
                 dimension == "width" ? "x" : "y"
@@ -462,7 +469,7 @@ export default class View {
 
     /**
      * @param {"width" | "height" | "viewportWidth" | "viewportHeight"} dimension
-     * @returns {{ value: "container" | number | import("../spec/view.js").SizeDef | import("../spec/view.js").Step | undefined, implicit: boolean }}
+     * @returns {{ value: "container" | number | import("../spec/view.js").SizeDef | import("../spec/view.js").Step | import("../spec/parameter.js").ExprRef | undefined, implicit: boolean }}
      */
     #getDimensionValue(dimension) {
         const value = this.spec[dimension];
@@ -517,9 +524,39 @@ export default class View {
         }
     }
 
-    registerStepSizeInvalidation() {
+    /**
+     * Resolves scalar ExprRefs used in view sizing. Size ExprRefs are
+     * registered before layout so repeated size queries do not compile new
+     * expression functions.
+     *
+     * @param {"width" | "height" | "viewportWidth" | "viewportHeight"} dimension
+     * @param {"container" | number | import("../spec/view.js").SizeDef | import("../spec/view.js").Step | import("../spec/parameter.js").ExprRef | undefined} value
+     * @returns {"container" | number | import("../spec/view.js").SizeDef | import("../spec/view.js").Step | undefined}
+     */
+    resolveSizeValue(dimension, value) {
+        if (!isExprRef(value)) {
+            return value;
+        }
+
+        const resolvedValue = this.#readSizeExprRef(dimension)();
+
+        if (isFiniteNumber(resolvedValue) || resolvedValue === "container") {
+            return resolvedValue;
+        }
+
+        throw new ViewError(
+            `"${dimension}" ExprRef must resolve to a finite number or "container"!`,
+            this
+        );
+    }
+
+    registerSizeInvalidation() {
         this.#registerStepSizeInvalidationFor("width", "x");
         this.#registerStepSizeInvalidationFor("height", "y");
+        this.#registerSizeExprRefInvalidationFor("width");
+        this.#registerSizeExprRefInvalidationFor("height");
+        this.#registerSizeExprRefInvalidationFor("viewportWidth");
+        this.#registerSizeExprRefInvalidationFor("viewportHeight");
     }
 
     /**
@@ -549,6 +586,71 @@ export default class View {
         this.registerDisposer(() =>
             resolution.removeEventListener("domain", listener)
         );
+    }
+
+    /**
+     * @param {"width" | "height" | "viewportWidth" | "viewportHeight"} dimension
+     */
+    #registerSizeExprRefInvalidationFor(dimension) {
+        const { value } = this.#getDimensionValue(dimension);
+        if (isExprRef(value)) {
+            this.#registerSizeExprRefReader(dimension, value.expr);
+        } else if (isStepSize(value) && isExprRef(value.step)) {
+            this.#registerSizeExprRefReader(
+                dimension + ".step",
+                value.step.expr
+            );
+        }
+    }
+
+    /**
+     * @param {"width" | "height" | "viewportWidth" | "viewportHeight"} dimension
+     * @param {import("../spec/view.js").Step} value
+     * @returns {number}
+     */
+    #resolveStepSizeExprRef(dimension, value) {
+        const stepSize = isExprRef(value.step)
+            ? this.#readSizeExprRef(dimension + ".step")()
+            : value.step;
+
+        if (isFiniteNumber(stepSize)) {
+            return stepSize;
+        }
+
+        throw new ViewError(
+            `"${dimension}.step" ExprRef must resolve to a finite number!`,
+            this
+        );
+    }
+
+    /**
+     * @param {string} key
+     * @param {string} expr
+     */
+    #registerSizeExprRefReader(key, expr) {
+        if (!this.#sizeExprRefReaders.has(key)) {
+            const reader = this.paramRuntime.watchExpression(expr, () => {
+                this.invalidateSizeCache();
+                this.context.requestLayoutReflow();
+            });
+            this.#sizeExprRefReaders.set(key, reader);
+        }
+    }
+
+    /**
+     * @param {string} key
+     * @returns {import("../paramRuntime/types.js").ExprRefFunction}
+     */
+    #readSizeExprRef(key) {
+        const reader = this.#sizeExprRefReaders.get(key);
+        if (!reader) {
+            throw new ViewError(
+                `"${key}" ExprRef was not registered before layout!`,
+                this
+            );
+        }
+
+        return reader;
     }
 
     isConfiguredVisible() {
@@ -1397,4 +1499,13 @@ function asFiniteNumberArray(value, label, view) {
  * @param {any} size
  * @return {size is import("../spec/view.js").Step}
  */
-export const isStepSize = (size) => !!size?.step;
+export const isStepSize = (size) =>
+    !!size && typeof size == "object" && "step" in size;
+
+/**
+ * @param {any} value
+ * @returns {value is number}
+ */
+function isFiniteNumber(value) {
+    return typeof value == "number" && Number.isFinite(value);
+}

@@ -69,6 +69,8 @@ properties, and may constrain the final size with `minPx` and `maxPx`.
 Numbers are interpreted as absolute sizes, and `"container"` is the same as
 `{ grow: 1 }`. A SizeDef with only `minPx` or `maxPx` also uses `{ grow: 1 }`.
 Undefined sizes generally default to `"container"`.
+Expression references may be used where the resolved value is a number or
+`"container"`. Step sizes may also be expression references.
 
 Concatenation operators can nested flexibly to build complex layouts as in the
 following example.
