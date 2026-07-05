@@ -233,11 +233,18 @@ void main(void) {
 
     float reverseExpansion = outsideHeadExpansion.x;
     float forwardExpansion = outsideHeadExpansion.y;
-    float localStart = -segmentLength * 0.5 - reverseExpansion;
-    float localEnd = segmentLength * 0.5 + forwardExpansion;
-    float localCenter = (localStart + localEnd) * 0.5;
-    float localAxisPosition = mix(localStart, localEnd, pos);
-    float localX = localAxisPosition - localCenter;
+    float geometryStart = -segmentLength * 0.5 - reverseExpansion;
+    float geometryEnd = segmentLength * 0.5 + forwardExpansion;
+    float geometryCenter = (geometryStart + geometryEnd) * 0.5;
+    float geometryHalfLength = (geometryEnd - geometryStart) * 0.5;
+
+    // The SDF geometry still uses the encoded arrow length, but the vertex
+    // strip needs room for stroke and antialiasing beyond both endpoints.
+    float axisPadding = vHalfStrokeWidth + aaPadding;
+    float drawStart = geometryStart - axisPadding;
+    float drawEnd = geometryEnd + axisPadding;
+    float localAxisPosition = mix(drawStart, drawEnd, pos);
+    float localX = localAxisPosition - geometryCenter;
     float localY = side * stripHalfWidth * 2.0;
 
     vec2 tangentInPixels = segmentInPixels / segmentLength;
@@ -249,7 +256,7 @@ void main(void) {
 
     vPosInPixels = vec2(localX, localY);
     vArrowHalfSizeInPixels = vec2(
-        (localEnd - localStart) * 0.5,
+        geometryHalfLength,
         stripHalfWidth
     );
 
