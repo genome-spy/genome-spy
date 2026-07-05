@@ -3,7 +3,7 @@ in vec2 vPosInPixels;
 flat in lowp vec4 vFillColor;
 flat in lowp vec4 vStrokeColor;
 flat in float vHalfStrokeWidth;
-flat in vec2 vArrowHalfSizeInPixels;
+flat in float vArrowHalfLengthInPixels;
 flat in float vHeadHalfWidth;
 flat in float vStemHalfWidth;
 flat in float vHeadStrokeWidth;
@@ -115,10 +115,10 @@ float repeat(float x, float spacing) {
     return x >= spacing ? x - floor(x / spacing) * spacing : x;
 }
 
-float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
+float sdArrow(vec2 arrowPos, float arrowHalfLength) {
     float stemDistance = sdStem(
         arrowPos,
-        arrowHalfSize.x,
+        arrowHalfLength,
         vStemHalfWidth,
         vRHeadSlope,
         vRStartNotchSlope
@@ -128,7 +128,7 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
     float spacing = headRepeat
         ? max(vHeadSpacing, vHeadRepeatFootprintLength)
         : 1.0 / 0.0;
-    float distanceFromStart = arrowPos.x + arrowHalfSize.x;
+    float distanceFromStart = arrowPos.x + arrowHalfLength;
 
     // Keep the stroked tip inside the repeated head's local window.
     float arrowHeadX = repeat(
@@ -151,7 +151,7 @@ float sdArrow(vec2 arrowPos, vec2 arrowHalfSize) {
             + vHeadRepeatFootprintLength
             - vHalfStrokeWidth;
 
-        if (headTipDistance > 0.0 && headEndDistance > arrowHalfSize.x * 2.0) {
+        if (headTipDistance > 0.0 && headEndDistance > arrowHalfLength * 2.0) {
             headDistance = FAR_OUTSIDE;
         }
     }
@@ -164,7 +164,7 @@ void main(void) {
     if (vDirection == DIRECTION_FORWARD) {
         arrowPos.x = -arrowPos.x;
     }
-    float d = sdArrow(arrowPos, vArrowHalfSizeInPixels);
+    float d = sdArrow(arrowPos, vArrowHalfLengthInPixels);
 
     fragColor = distanceToColor(
         d,

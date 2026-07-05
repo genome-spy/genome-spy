@@ -1,7 +1,7 @@
 flat out lowp vec4 vFillColor;
 flat out lowp vec4 vStrokeColor;
 flat out float vHalfStrokeWidth;
-flat out vec2 vArrowHalfSizeInPixels;
+flat out float vArrowHalfLengthInPixels;
 flat out float vHeadHalfWidth;
 flat out float vStemHalfWidth;
 flat out float vHeadStrokeWidth;
@@ -255,10 +255,7 @@ void main(void) {
             / uViewportSize;
 
     vPosInPixels = vec2(localX, localY);
-    vArrowHalfSizeInPixels = vec2(
-        geometryHalfLength,
-        stripHalfWidth
-    );
+    vArrowHalfLengthInPixels = geometryHalfLength;
 
     // These flat varyings are per-arrow geometry constants used by the fragment
     // SDF. Keeping them here avoids repeating this math per fragment.
