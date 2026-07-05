@@ -44,7 +44,8 @@ Built-in styles provide common arrow shapes:
 - `"arrow-transcript"` draws a thin transcript-like line with repeated heads.
 - `"arrow-block"` draws a thick filled segment with an arrowhead.
 - `"arrow-block-notch"` draws a thick filled segment with an arrowhead and a
-  start notch.
+  start notch. Its arrowhead is placed outside the encoded segment, leaving the
+  block span available for the notched stem.
 
 EXAMPLE examples/docs/grammar/mark/arrow/arrow-styles.json height=240 spechidden
 

@@ -137,10 +137,10 @@ describe("markConfig", () => {
             "arrow",
             undefined
         );
-        expect(arrow.size).toBe(12);
+        expect(arrow.size).toBe(8);
         expect(arrow.minSize).toBe(1);
         expect(arrow.stem).toBe(true);
-        expect(arrow.headWidth).toBe(2);
+        expect(arrow.headWidth).toBe(3);
         expect(arrow.headSpacing).toBeNull();
         expect(arrow).not.toHaveProperty("headRepeat");
         expect(arrow).not.toHaveProperty("headWidthUnit");
@@ -156,7 +156,7 @@ describe("markConfig", () => {
         expect(transcript.size).toBe(1);
         expect(transcript.stem).toBe(true);
         expect(transcript.headSpacing).toBe(10);
-        expect(transcript.strokeWidth).toBe(0);
+        expect(transcript.strokeWidth).toBe(1);
 
         const blockNotch = getConfiguredMarkDefaults(
             [INTERNAL_DEFAULT_CONFIG],
@@ -166,6 +166,8 @@ describe("markConfig", () => {
         expect(blockNotch.headShape).toBe("triangle");
         expect(blockNotch.size).toEqual({ band: 1 });
         expect(blockNotch.headSpacing).toBeNull();
+        expect(blockNotch.headPlacement).toBe("outside");
+        expect(blockNotch.minStemLength).toBe(15);
         expect(blockNotch.startNotch).toBe(true);
     });
 });

@@ -5,7 +5,7 @@
 
   "data": {
     "values": [
-      { "x": 10, "y": 20, "x2": 45, "y2": 70 },
+      { "x": 40, "y": 60, "x2": 15, "y2": 20 },
       { "x": 35, "y": 15, "x2": 80, "y2": 45 },
       { "x": 25, "y": 85, "x2": 70, "y2": 55 }
     ]
@@ -13,8 +13,6 @@
 
   "mark": {
     "type": "arrow",
-    "size": 14,
-    "headWidth": 2,
     "fill": "#5B8DEF",
     "stroke": "black",
     "strokeWidth": 1

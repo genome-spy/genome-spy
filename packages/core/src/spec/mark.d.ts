@@ -402,7 +402,7 @@ export interface ArrowProps
      * reference channel. Band-relative size is not supported for diagonal
      * arrows.
      *
-     * __Default value:__ `12`
+     * __Default value:__ `8`
      */
     size?: ArrowSize;
 
@@ -427,7 +427,7 @@ export interface ArrowProps
      * Width of the arrowhead as a multiplier of resolved `size`. The resolved
      * head width is clamped to the available perpendicular lane.
      *
-     * __Default value:__ `2`
+     * __Default value:__ `3`
      */
     headWidth?: number | ExprRef;
 
