@@ -54,6 +54,12 @@ test("domain() clamps the minimum domain span to one", () => {
     expect(scale.domain()).toEqual([1.5, 2.5]);
 });
 
+test("bandwidth() is positive and respects inner padding", () => {
+    const scale = scaleIndex().domain([0, 50]).range([1, 0]).paddingInner(0.3);
+
+    expect(scale.bandwidth()).toBeCloseTo(0.014);
+});
+
 test("ticks() produces integer values", () => {
     const scale = scaleIndex().domain([0, 5]).numberingOffset(0);
 

@@ -119,7 +119,7 @@ export default function scaleIndex() {
 
     scale.step = () => rangeSpan / domainSpan;
 
-    scale.bandwidth = () => scale.step();
+    scale.bandwidth = () => Math.abs(scale.step()) * (1 - paddingInner);
 
     scale.ticks = (count) => {
         const align = /** @type {number} */ (scale.align());
