@@ -78,7 +78,6 @@
           "field": "_lane",
           "type": "index",
           "scale": {
-            "domain": [0, 80],
             "padding": 0.2,
             "reverse": true,
             "zoom": false

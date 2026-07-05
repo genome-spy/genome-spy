@@ -16,6 +16,7 @@ import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { createCancelToken } from "../utils/transition.js";
 import { zoomDomainByScaleType } from "./zoomDomainUtils.js";
 import { toInternalIndexLikeInterval } from "./indexLikeDomainUtils.js";
+import { INDEX } from "./scaleResolutionConstants.js";
 import {
     hasExplicitLocusUpperBound,
     isChromosomalLocusInterval,
@@ -116,6 +117,11 @@ export default class ScaleInteractionController {
         }
         if (this.isZoomable()) {
             return "restore";
+        }
+        if (this.#getScale().type === INDEX) {
+            // Index domains describe structural lane counts. Interpolating them
+            // produces transient partial lanes and delays the final state.
+            return "notify";
         }
         if (this.isZoomingSupported()) {
             return "animate";

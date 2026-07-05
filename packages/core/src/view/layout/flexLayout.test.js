@@ -5,6 +5,7 @@ import {
     getLargestSize,
     isStretching,
     parseSizeDef,
+    concreteSizeDefEquals,
     sumSizeDefs,
 } from "./flexLayout.js";
 
@@ -25,6 +26,17 @@ test("parseSize", () => {
     expect(() => parseSizeDef({ grow: 1, minPx: 20, maxPx: 10 })).toThrow(
         "SizeDef minPx cannot be greater than maxPx."
     );
+});
+
+test("concreteSizeDefEquals", () => {
+    expect(
+        concreteSizeDefEquals({ px: 10, grow: 0 }, { px: 10, grow: 0 })
+    ).toBe(true);
+    expect(
+        concreteSizeDefEquals({ px: 10, grow: 0 }, { px: 20, grow: 0 })
+    ).toBe(false);
+    expect(concreteSizeDefEquals(undefined, undefined)).toBe(false);
+    expect(concreteSizeDefEquals(null, undefined)).toBe(false);
 });
 
 describe("Basic flex functionality", () => {

@@ -807,6 +807,40 @@ describe("Scale resolution domain handling", () => {
         spy.mockRestore();
     });
 
+    test("reconfigureDomain skips zoom animation for non-zoomable index scales", async () => {
+        const view = await initView(
+            {
+                data: { values: [{ lane: 0 }, { lane: 1 }] },
+                mark: "point",
+                encoding: {
+                    y: {
+                        field: "lane",
+                        type: "index",
+                        scale: { zoom: false },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "y");
+        const spy = vi.spyOn(resolution, "zoomTo");
+        const notify = vi.fn();
+        resolution.addEventListener("domain", notify);
+
+        // Non-obvious: simulate a rendered lazy track whose data-derived index
+        // domain changes after the first paint.
+        view.onBeforeRender();
+        resolution.getScale().domain([0, 1]);
+        notify.mockClear();
+        resolution.reconfigureDomain();
+
+        expect(spy).not.toHaveBeenCalled();
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(resolution.scale.domain()).toEqual([0, 2]);
+        spy.mockRestore();
+    });
+
     test("categorical indexers preserve stable ordering across domain refreshes", async () => {
         const view = await initView(
             {

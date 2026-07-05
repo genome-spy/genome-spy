@@ -288,6 +288,26 @@ export function isZeroSizeDef(sizeDef) {
 }
 
 /**
+ * Compare concrete SizeDef values. Missing sizes do not represent an
+ * established layout contract, so nullish operands never compare equal.
+ *
+ * @param {SizeDef | null | undefined} a
+ * @param {SizeDef | null | undefined} b
+ */
+export function concreteSizeDefEquals(a, b) {
+    if (!a || !b) {
+        return false;
+    }
+
+    return (
+        a.px === b.px &&
+        a.grow === b.grow &&
+        a.minPx === b.minPx &&
+        a.maxPx === b.maxPx
+    );
+}
+
+/**
  * Converts undefined/null to zero
  *
  * @param {number} value

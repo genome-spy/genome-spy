@@ -1,6 +1,7 @@
 import {
     parseSizeDef,
     FlexDimensions,
+    concreteSizeDefEquals,
     ZERO_FLEXDIMENSIONS,
 } from "./layout/flexLayout.js";
 import Padding from "./layout/padding.js";
@@ -581,7 +582,16 @@ export default class View {
             );
         }
 
-        const listener = () => this.invalidateSizeCache();
+        const listener = () => {
+            // Lazy data can grow a step-sized view after the first layout pass.
+            // Reflow only when the resolved size actually changes.
+            const previousSize = this.getSize()[dimension];
+            this.invalidateSizeCache();
+            const newSize = this.getSize()[dimension];
+            if (!concreteSizeDefEquals(previousSize, newSize)) {
+                this.context.requestLayoutReflow();
+            }
+        };
         resolution.addEventListener("domain", listener);
         this.registerDisposer(() =>
             resolution.removeEventListener("domain", listener)

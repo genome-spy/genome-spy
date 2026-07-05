@@ -24,6 +24,23 @@ class DomainSensitiveNode extends FlowNode {
     }
 }
 
+/**
+ * @param {...string} lanes
+ * @returns {{ lane: string }[]}
+ */
+function laneRows(...lanes) {
+    return lanes.map((lane) => ({ lane }));
+}
+
+/**
+ * @param {import("../types/viewContext.js").default} context
+ * @param {...string} lanes
+ */
+function updateLaneData(context, ...lanes) {
+    const named = context.dataFlow.findNamedDataSource("lanes");
+    named.dataSource.updateDynamicData(laneRows(...lanes));
+}
+
 describe("Trivial creations and initializations", () => {
     test("Fails on empty spec", async () => {
         // @ts-expect-error
@@ -1245,6 +1262,96 @@ describe("Step sizing and domain updates", () => {
         expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
     });
 
+    test("Step-sized view requests layout reflow when domain grows", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 100,
+            height: { step: 10 },
+            data: { name: "lanes" },
+            mark: "point",
+            encoding: {
+                x: { value: 0 },
+                y: { field: "lane", type: "nominal" },
+            },
+        };
+
+        const { view, context } = await createHeadlessEngine(spec, {
+            contextOptions: {
+                getNamedDataFromProvider: () => laneRows("a", "b"),
+                requestLayoutReflow,
+            },
+        });
+
+        expect(view.getSize().height.px).toBeCloseTo(20);
+        requestLayoutReflow.mockClear();
+
+        updateLaneData(context, "a", "b", "c");
+
+        expect(view.getSize().height.px).toBeCloseTo(30);
+        expect(requestLayoutReflow).toHaveBeenCalledTimes(1);
+    });
+
+    test("Step-sized domain updates propagate size resolution errors", async () => {
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            params: [{ name: "panelWidth", value: 100 }],
+            width: { expr: "panelWidth" },
+            height: { step: 10 },
+            data: { name: "lanes" },
+            mark: "point",
+            encoding: {
+                x: { value: 0 },
+                y: { field: "lane", type: "nominal" },
+            },
+        };
+
+        const { view, context } = await createHeadlessEngine(spec, {
+            contextOptions: {
+                getNamedDataFromProvider: () => laneRows("a", "b"),
+            },
+        });
+
+        expect(view.getSize().height.px).toBeCloseTo(20);
+        // Non-obvious: keep a valid size cached first, then make another
+        // dimension invalid so the domain listener must surface the error.
+        view.paramRuntime.setValue("panelWidth", Infinity);
+
+        expect(() => updateLaneData(context, "a", "b", "c")).toThrow(
+            '"width" ExprRef must resolve'
+        );
+    });
+
+    test("Step-sized view does not request layout reflow when domain size is unchanged", async () => {
+        const requestLayoutReflow = vi.fn();
+        /** @type {import("../spec/view.js").UnitSpec} */
+        const spec = {
+            width: 100,
+            height: { step: 10 },
+            data: {
+                values: laneRows("a", "b"),
+            },
+            mark: "point",
+            encoding: {
+                x: { value: 0 },
+                y: { field: "lane", type: "nominal" },
+            },
+        };
+
+        const { view } = await createHeadlessEngine(spec, {
+            contextOptions: { requestLayoutReflow },
+        });
+
+        expect(view.getSize().height.px).toBeCloseTo(20);
+        requestLayoutReflow.mockClear();
+
+        const scale = view.getScaleResolution("y").getScale();
+        scale.domain(scale.domain());
+
+        expect(view.getSize().height.px).toBeCloseTo(20);
+        expect(requestLayoutReflow).not.toHaveBeenCalled();
+    });
+
     test("Direct ExprRef view size must resolve to a finite number or container", async () => {
         /** @type {import("../spec/view.js").UnitSpec} */
         const spec = {
@@ -1278,9 +1385,7 @@ describe("Step sizing and domain updates", () => {
             },
         };
 
-        const { view } = await createHeadlessEngine(spec);
-
-        expect(() => view.getSize()).toThrow(
+        await expect(createHeadlessEngine(spec)).rejects.toThrow(
             '"height.step" ExprRef must resolve to a finite number!'
         );
     });
