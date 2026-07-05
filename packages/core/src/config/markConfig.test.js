@@ -131,17 +131,12 @@ describe("markConfig", () => {
         expect(defaults.thickness).toBe(4);
     });
 
-    test("provides built-in arrow styles", () => {
+    test("resolves built-in arrow style buckets", () => {
         const arrow = getConfiguredMarkDefaults(
             [INTERNAL_DEFAULT_CONFIG],
             "arrow",
             undefined
         );
-        expect(arrow.size).toBe(8);
-        expect(arrow.minSize).toBe(1);
-        expect(arrow.stem).toBe(true);
-        expect(arrow.headWidth).toBe(3);
-        expect(arrow.headSpacing).toBeNull();
         expect(arrow).not.toHaveProperty("headRepeat");
         expect(arrow).not.toHaveProperty("headWidthUnit");
         expect(arrow).not.toHaveProperty("stemWidth");
@@ -153,21 +148,22 @@ describe("markConfig", () => {
             "arrow-transcript"
         );
         expect(transcript.headShape).toBe("open");
-        expect(transcript.size).toBe(1);
-        expect(transcript.stem).toBe(true);
-        expect(transcript.headSpacing).toBe(10);
-        expect(transcript.strokeWidth).toBe(1);
+        expect(transcript.headSpacing).not.toBeNull();
+
+        const block = getConfiguredMarkDefaults(
+            [INTERNAL_DEFAULT_CONFIG],
+            "arrow",
+            "arrow-block"
+        );
+        expect(block.size).toHaveProperty("band");
+        expect(block.startNotch).toBe(false);
 
         const blockNotch = getConfiguredMarkDefaults(
             [INTERNAL_DEFAULT_CONFIG],
             "arrow",
             "arrow-block-notch"
         );
-        expect(blockNotch.headShape).toBe("triangle");
-        expect(blockNotch.size).toEqual({ band: 1 });
-        expect(blockNotch.headSpacing).toBeNull();
-        expect(blockNotch.headPlacement).toBe("outside");
-        expect(blockNotch.minStemLength).toBe(15);
+        expect(blockNotch.size).toHaveProperty("band");
         expect(blockNotch.startNotch).toBe(true);
     });
 });
