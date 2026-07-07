@@ -311,6 +311,31 @@ export interface FlattenSequenceParams extends TransformParamsBase {
     as?: [string, string];
 }
 
+/**
+ * Expands a read alignment into one row per CIGAR operation.
+ *
+ * The output rows preserve the input datum fields and add fixed CIGAR fields:
+ * `cigarOp`, `cigarLength`, `cigarStart`, `cigarEnd`, `readStart`, `readEnd`,
+ * and `cigarType`. Reference coordinates are 0-based, half-open.
+ */
+export interface FlattenCigarParams extends TransformParamsBase {
+    type: "flattenCigar";
+
+    /**
+     * The read's reference start coordinate.
+     *
+     * __Default value:__ `"start"`
+     */
+    start?: Field;
+
+    /**
+     * The CIGAR string.
+     *
+     * __Default value:__ `"cigar"`
+     */
+    cigar?: Field;
+}
+
 export interface PileupParams extends TransformParamsBase {
     type: "pileup";
 
@@ -749,6 +774,7 @@ export type TransformParams =
     | FilterScoredLabelsParams
     | FlattenParams
     | FlattenCompressedExonsParams
+    | FlattenCigarParams
     | FlattenSequenceParams
     | IdentifierParams
     | LinearizeGenomicCoordinateParams
