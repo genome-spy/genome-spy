@@ -132,7 +132,7 @@ export function createBamReadDatum(chrom, record) {
         start: record.start,
         end: record.end,
         name: record.name,
-        cigar: record.CIGAR,
+        cigar: record.CIGAR || "*",
         mapq: record.mq,
         strand: record.strand === 1 ? "+" : "-",
         seq: record.seq,

@@ -193,6 +193,15 @@ describe("FlattenCigar transform", () => {
         ]);
     });
 
+    test("emits no rows for unavailable CIGARs", () => {
+        /** @type {FlattenCigarParams} */
+        const params = { type: "flattenCigar" };
+
+        expect(
+            transform(params, [{ chrom: "chr1", start: 100, cigar: "*" }])
+        ).toEqual([]);
+    });
+
     test("fails loudly for malformed CIGARs and invalid starts", () => {
         /** @type {FlattenCigarParams} */
         const params = { type: "flattenCigar" };

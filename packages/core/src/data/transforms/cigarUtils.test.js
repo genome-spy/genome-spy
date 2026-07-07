@@ -32,6 +32,11 @@ describe("CIGAR utilities", () => {
         ]);
     });
 
+    test("parses unavailable CIGAR as no operations", () => {
+        expect(parseCigar("*")).toEqual([]);
+        expect(Array.from(walkCigar("*", 100))).toEqual([]);
+    });
+
     test.each(["", "M10", "10Q", "10M2"])(
         "rejects malformed CIGAR string %j",
         (cigar) => {

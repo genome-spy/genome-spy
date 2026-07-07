@@ -17,7 +17,8 @@ The transform preserves the input fields and adds:
 | `cigarType`   | One of `aligned`, `insertion`, `deletion`, `skip`, `softClip`, `hardClip`, or `padding` |
 
 Reference coordinates are 0-based and half-open. Insertions and clipped bases
-are emitted as zero-width reference-anchored rows.
+are emitted as zero-width reference-anchored rows. Unavailable CIGAR values
+(`*`) produce no rows.
 
 ## Parameters
 

@@ -72,6 +72,9 @@ export function parseCigar(cigar) {
     if (typeof cigar !== "string" || cigar.length == 0) {
         throw new Error(`Malformed CIGAR string: ${JSON.stringify(cigar)}`);
     }
+    if (cigar === "*") {
+        return [];
+    }
 
     /** @type {CigarOperation[]} */
     const operations = [];

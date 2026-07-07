@@ -73,4 +73,29 @@ describe("BamSource", () => {
             isPaired: false,
         });
     });
+
+    test("normalizes empty BAM CIGAR to SAM unavailable CIGAR", () => {
+        const record = {
+            start: 50,
+            end: 50,
+            name: "read-without-cigar",
+            CIGAR: "",
+            mq: undefined,
+            strand: 1,
+            seq: "",
+            qual: undefined,
+            flags: 4,
+            getTag: () => undefined,
+            isPaired: () => false,
+            isProperlyPaired: () => false,
+            isDuplicate: () => false,
+            isFailedQc: () => false,
+            isSecondary: () => false,
+            isSupplementary: () => false,
+        };
+
+        expect(createBamReadDatum("chr1", record)).toMatchObject({
+            cigar: "*",
+        });
+    });
 });
