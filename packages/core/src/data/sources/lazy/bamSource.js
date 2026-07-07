@@ -100,16 +100,9 @@ export default class BamSource extends SingleAxisWindowedSource {
                         { signal }
                     )
                     .then((records) =>
-                        records.map((record) => ({
-                            chrom: d.chrom,
-                            start: record.start,
-                            end: record.end,
-                            name: record.name,
-                            //MD: record.get("MD"),
-                            cigar: record.CIGAR,
-                            mapq: record.mq,
-                            strand: record.strand === 1 ? "+" : "-",
-                        }))
+                        records.map((record) =>
+                            createBamReadDatum(d.chrom, record)
+                        )
                     )
         );
 
@@ -128,3 +121,29 @@ function isBamSource(params) {
 }
 
 registerBuiltInLazyDataSource(isBamSource, BamSource);
+
+/**
+ * @param {string} chrom
+ * @param {import("@gmod/bam").BamRecord} record
+ */
+export function createBamReadDatum(chrom, record) {
+    return {
+        chrom,
+        start: record.start,
+        end: record.end,
+        name: record.name,
+        cigar: record.CIGAR,
+        mapq: record.mq,
+        strand: record.strand === 1 ? "+" : "-",
+        seq: record.seq,
+        qual: record.qual ? Array.from(record.qual) : undefined,
+        md: record.getTag("MD"),
+        flags: record.flags,
+        isPaired: record.isPaired(),
+        isProperPair: record.isProperlyPaired(),
+        isDuplicate: record.isDuplicate(),
+        isQcFail: record.isFailedQc(),
+        isSecondary: record.isSecondary(),
+        isSupplementary: record.isSupplementary(),
+    };
+}
