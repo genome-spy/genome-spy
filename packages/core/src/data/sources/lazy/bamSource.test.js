@@ -1,8 +1,42 @@
 import { describe, expect, test } from "vitest";
 import { createBamReadDatum } from "./bamSource.js";
 
+/**
+ * @typedef {object} FakeBamRecord
+ * @prop {number} start
+ * @prop {number} end
+ * @prop {string} name
+ * @prop {string} CIGAR
+ * @prop {number | undefined} mq
+ * @prop {number} strand
+ * @prop {string} seq
+ * @prop {Uint8Array | undefined} qual
+ * @prop {number} flags
+ * @prop {(tag: string) => string | undefined} getTag
+ * @prop {() => boolean} isPaired
+ * @prop {() => boolean} isProperlyPaired
+ * @prop {() => boolean} isDuplicate
+ * @prop {() => boolean} isFailedQc
+ * @prop {() => boolean} isSecondary
+ * @prop {() => boolean} isSupplementary
+ */
+
+/**
+ * @param {string} chrom
+ * @param {FakeBamRecord} record
+ */
+function createDatum(chrom, record) {
+    return createBamReadDatum(
+        chrom,
+        /** @type {import("@gmod/bam").BamRecord} */ (
+            /** @type {unknown} */ (record)
+        )
+    );
+}
+
 describe("BamSource", () => {
     test("maps a BAM record to a read-level datum", () => {
+        /** @type {FakeBamRecord} */
         const record = {
             start: 100,
             end: 125,
@@ -22,7 +56,7 @@ describe("BamSource", () => {
             isSupplementary: () => false,
         };
 
-        expect(createBamReadDatum("chr1", record)).toEqual({
+        expect(createDatum("chr1", record)).toEqual({
             chrom: "chr1",
             start: 100,
             end: 125,
@@ -44,6 +78,7 @@ describe("BamSource", () => {
     });
 
     test("maps reverse strand and missing mapping quality", () => {
+        /** @type {FakeBamRecord} */
         const record = {
             start: 50,
             end: 60,
@@ -63,7 +98,7 @@ describe("BamSource", () => {
             isSupplementary: () => false,
         };
 
-        expect(createBamReadDatum("chr2", record)).toMatchObject({
+        expect(createDatum("chr2", record)).toMatchObject({
             chrom: "chr2",
             mapq: undefined,
             strand: "-",
@@ -75,6 +110,7 @@ describe("BamSource", () => {
     });
 
     test("normalizes empty BAM CIGAR to SAM unavailable CIGAR", () => {
+        /** @type {FakeBamRecord} */
         const record = {
             start: 50,
             end: 50,
@@ -94,7 +130,7 @@ describe("BamSource", () => {
             isSupplementary: () => false,
         };
 
-        expect(createBamReadDatum("chr1", record)).toMatchObject({
+        expect(createDatum("chr1", record)).toMatchObject({
             cigar: "*",
         });
     });

@@ -221,11 +221,13 @@ read-level fields such as alignment coordinates, CIGAR, MAPQ, sequence,
 qualities, selected tags, and selected SAM flag booleans. The
 [`flattenCigar`](../transform/flatten-cigar.md) transform can expand read rows
 into CIGAR operation rows for custom alignment pileups with aligned blocks,
-insertions, deletions, skipped regions, and clipped ends.
+insertions, deletions, skipped regions, and clipped ends. The
+[`alignmentMismatches`](../transform/alignment-mismatches.md) transform can
+derive sparse mismatch rows from CIGAR, sequence, base qualities, and MD tags.
 
-Mismatch extraction and allele-aware coverage are planned for later milestones.
-The current support is intended for custom alignment visualizations rather than
-full IGV-like BAM behavior.
+Allele-aware coverage is planned for later milestones. The current support is
+intended for custom alignment visualizations rather than full IGV-like BAM
+behavior.
 
 ### Parameters
 

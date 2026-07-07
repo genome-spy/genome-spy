@@ -39,6 +39,11 @@
       "name": "minMapq",
       "value": 0,
       "bind": { "input": "range", "min": 0, "max": 60, "step": 1 }
+    },
+    {
+      "name": "minBaseQuality",
+      "value": 0,
+      "bind": { "input": "range", "min": 0, "max": 40, "step": 1 }
     }
   ],
 
@@ -73,6 +78,8 @@
     {
       "height": { "step": { "expr": "laneHeight" } },
       "viewportHeight": "container",
+
+      "resolve": { "scale": { "color": "independent", "opacity": "independent" } },
 
       "transform": [
         {
@@ -191,6 +198,45 @@
               }
             }
           ]
+        },
+        {
+          "name": "mismatches",
+          "title": "Mismatch",
+          "transform": [
+            { "type": "filter", "expr": "datum.md != null" },
+            { "type": "alignmentMismatches" },
+            {
+              "type": "filter",
+              "expr": "datum.baseQuality == null || datum.baseQuality >= minBaseQuality"
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "fontWeight": "bold",
+            "size": { "expr": "laneHeight * 0.75" }
+          },
+          "encoding": {
+            "x": {
+              "chrom": "chrom",
+              "pos": "mismatchStart",
+              "type": "locus",
+              "band": 0.5
+            },
+            "text": { "field": "base", "type": "nominal" },
+            "color": {
+              "field": "base",
+              "type": "nominal",
+              "scale": {
+                "domain": ["A", "C", "G", "T", "N"],
+                "range": ["#4daf4a", "#377eb8", "#ff7f00", "#e41a1c", "#777777"]
+              }
+            },
+            "opacity": {
+              "field": "baseQuality",
+              "type": "quantitative",
+              "scale": { "domain": [0, 40], "range": [0.35, 1] }
+            }
+          }
         }
       ]
     }

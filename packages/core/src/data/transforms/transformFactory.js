@@ -1,4 +1,5 @@
 import Collector from "../collector.js";
+import AlignmentMismatchesTransform from "./alignmentMismatches.js";
 import CoverageTransform from "./coverage.js";
 import FilterScoredLabelsTransform from "./filterScoredLabels.js";
 import FilterTransform from "./filter.js";
@@ -28,6 +29,7 @@ import TruncateTextTransform from "./truncateText.js";
  */
 export const transforms = {
     aggregate: AggregateTransform,
+    alignmentMismatches: AlignmentMismatchesTransform,
     collect: Collector,
     coverage: CoverageTransform,
     filterScoredLabels: FilterScoredLabelsTransform,

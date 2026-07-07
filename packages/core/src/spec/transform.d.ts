@@ -336,6 +336,55 @@ export interface FlattenCigarParams extends TransformParamsBase {
     cigar?: Field;
 }
 
+/**
+ * Emits one row per mismatching aligned base in a read alignment.
+ *
+ * The transform uses the read sequence, CIGAR string, and MD tag. The MD tag is
+ * required because ordinary `M` CIGAR operations do not distinguish matches
+ * from mismatches. The output rows preserve the input datum fields and add
+ * fixed mismatch fields: `mismatchStart`, `mismatchEnd`, `readOffset`, `base`,
+ * `refBase`, and optionally `baseQuality`. Reference coordinates are 0-based,
+ * half-open.
+ */
+export interface AlignmentMismatchesParams extends TransformParamsBase {
+    type: "alignmentMismatches";
+
+    /**
+     * The read's reference start coordinate.
+     *
+     * __Default value:__ `"start"`
+     */
+    start?: Field;
+
+    /**
+     * The CIGAR string.
+     *
+     * __Default value:__ `"cigar"`
+     */
+    cigar?: Field;
+
+    /**
+     * Read sequence field.
+     *
+     * __Default value:__ `"seq"`
+     */
+    sequence?: Field;
+
+    /**
+     * Base quality field.
+     *
+     * __Default value:__ `"qual"`
+     */
+    quality?: Field;
+
+    /**
+     * MD tag field.
+     *
+     * __Default value:__ `"md"`
+     */
+    md?: Field;
+}
+
 export interface PileupParams extends TransformParamsBase {
     type: "pileup";
 
@@ -765,6 +814,7 @@ export interface FlattenCompressedExonsParams extends TransformParamsBase {
 }
 
 export type TransformParams =
+    | AlignmentMismatchesParams
     | AggregateParams
     | CollectParams
     | CoverageParams
