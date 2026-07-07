@@ -6,15 +6,15 @@ insertions, deletions, skipped regions, and clipped ends need separate marks.
 
 The transform preserves the input fields and adds:
 
-| field | description |
-| ----- | ----------- |
-| `cigarOp` | CIGAR operation, such as `M`, `I`, `D`, `N`, `S`, `H`, `P`, `=`, or `X` |
-| `cigarLength` | Operation length from the CIGAR string |
-| `cigarStart` | Reference start coordinate for the operation |
-| `cigarEnd` | Reference end coordinate for the operation |
-| `readStart` | Query/read start offset for the operation |
-| `readEnd` | Query/read end offset for the operation |
-| `cigarType` | One of `aligned`, `insertion`, `deletion`, `skip`, `softClip`, `hardClip`, or `padding` |
+| field         | description                                                                             |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `cigarOp`     | CIGAR operation, such as `M`, `I`, `D`, `N`, `S`, `H`, `P`, `=`, or `X`                 |
+| `cigarLength` | Operation length from the CIGAR string                                                  |
+| `cigarStart`  | Reference start coordinate for the operation                                            |
+| `cigarEnd`    | Reference end coordinate for the operation                                              |
+| `readStart`   | Query/read start offset for the operation                                               |
+| `readEnd`     | Query/read end offset for the operation                                                 |
+| `cigarType`   | One of `aligned`, `insertion`, `deletion`, `skip`, `softClip`, `hardClip`, or `padding` |
 
 Reference coordinates are 0-based and half-open. Insertions and clipped bases
 are emitted as zero-width reference-anchored rows.

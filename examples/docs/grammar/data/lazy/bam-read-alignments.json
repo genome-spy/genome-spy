@@ -75,7 +75,10 @@
       "viewportHeight": "container",
 
       "transform": [
-        { "type": "filter", "expr": "datum.mapq == null || datum.mapq >= minMapq" },
+        {
+          "type": "filter",
+          "expr": "datum.mapq == null || datum.mapq >= minMapq"
+        },
         { "type": "pileup", "start": "start", "end": "end", "as": "_lane" },
         { "type": "flattenCigar" },
         {
@@ -98,7 +101,9 @@
       "layer": [
         {
           "name": "aligned-blocks",
-          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'aligned'" }],
+          "transform": [
+            { "type": "filter", "expr": "datum.cigarType == 'aligned'" }
+          ],
           "mark": { "type": "rect", "minWidth": 0.5, "minOpacity": 0.2 },
           "encoding": {
             "x": {
@@ -116,12 +121,18 @@
                 "range": ["#386cb0", "#f28e2b"]
               }
             },
-            "opacity": { "field": "mapqOpacity", "type": "quantitative", "scale": null }
+            "opacity": {
+              "field": "mapqOpacity",
+              "type": "quantitative",
+              "scale": null
+            }
           }
         },
         {
           "name": "deletions",
-          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'deletion'" }],
+          "transform": [
+            { "type": "filter", "expr": "datum.cigarType == 'deletion'" }
+          ],
           "mark": { "type": "rect", "color": "black", "minWidth": 1 },
           "encoding": {
             "x": { "chrom": "chrom", "pos": "cigarStart", "type": "locus" },
@@ -130,7 +141,9 @@
         },
         {
           "name": "skips",
-          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'skip'" }],
+          "transform": [
+            { "type": "filter", "expr": "datum.cigarType == 'skip'" }
+          ],
           "mark": {
             "type": "rule",
             "color": "#6b6b6b",
@@ -144,7 +157,9 @@
         },
         {
           "name": "insertions",
-          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'insertion'" }],
+          "transform": [
+            { "type": "filter", "expr": "datum.cigarType == 'insertion'" }
+          ],
           "mark": {
             "type": "text",
             "text": "I",
@@ -158,7 +173,9 @@
         },
         {
           "name": "soft-clips",
-          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'softClip'" }],
+          "transform": [
+            { "type": "filter", "expr": "datum.cigarType == 'softClip'" }
+          ],
           "mark": {
             "type": "text",
             "text": "S",
