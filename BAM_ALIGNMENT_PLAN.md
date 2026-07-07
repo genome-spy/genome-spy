@@ -688,3 +688,446 @@ The first version is successful if:
 - the new transforms are independently tested and documented
 - limitations are clear enough that users do not mistake the feature for full
   IGV parity
+
+## Initial Planning Commit Messages
+
+Use these commit messages for the planning-only changes before implementation
+starts:
+
+1. `docs: add BAM alignment support plan`
+2. `docs: detail BAM alignment milestone 1 plan`
+
+## Detailed Milestone 1 Plan: Raw BAM Fields and CIGAR Rows
+
+Milestone 1 should produce a working, testable foundation for CIGAR-aware read
+rendering. It should not attempt per-base mismatch rendering or base-aware
+coverage yet. Those belong to later milestones.
+
+### Milestone 1 Goal
+
+After Milestone 1, a GenomeSpy spec should be able to:
+
+- load BAM reads with richer read-level fields
+- assign one pileup lane per read
+- expand reads into CIGAR operation rows
+- render aligned read blocks using CIGAR-aware intervals
+- render deletion, insertion, skip, and clipping markers from the same data
+- keep ordinary `filter`, `formula`, `project`, `coverage`, and `pileup`
+  transforms usable in the chain
+
+### Milestone 1 Scope Decisions
+
+- Use CIGAR strings as the transform input for the first implementation.
+  `@gmod/bam` exposes `record.CIGAR`, and the existing source already publishes
+  it as `cigar`. Numeric CIGAR support can be added later if profiling shows
+  parsing strings is a problem.
+- Emit fixed semantic output fields from `flattenCigar`.
+- Keep insertion and clipping operations as zero-width reference-anchored rows
+  in Milestone 1. Marker layers can render them using `x` or a very small
+  constant-size mark.
+- Leave `alignmentMismatches` and `alignmentCoverage` out of Milestone 1.
+- Keep the current depth coverage track, but compute it from aligned CIGAR
+  blocks rather than raw read start/end where practical.
+
+### Milestone 1 Files
+
+Create:
+
+- `packages/core/src/data/transforms/cigarUtils.js`
+  - Shared CIGAR parsing and walking helpers.
+- `packages/core/src/data/transforms/cigarUtils.test.js`
+  - Unit tests for CIGAR parsing and cursor movement.
+- `packages/core/src/data/transforms/flattenCigar.js`
+  - Row-expanding transform that emits one row per CIGAR operation.
+- `packages/core/src/data/transforms/flattenCigar.test.js`
+  - Transform contract tests for representative CIGAR strings.
+
+Modify:
+
+- `packages/core/src/data/sources/lazy/bamSource.js`
+  - Expose richer BAM read fields.
+- `packages/core/src/data/transforms/transformFactory.js`
+  - Register `flattenCigar`.
+- `packages/core/src/spec/transform.d.ts`
+  - Add user-facing `FlattenCigarParams` docs and include it in
+    `TransformParams`.
+- `examples/docs/grammar/data/lazy/bam-read-alignments.json`
+  - Revise the example to use CIGAR-aware read blocks and markers.
+- `docs/grammar/data/lazy.md`
+  - Keep the existing work-in-progress warning, but mention that CIGAR rows are
+    now available once the feature lands.
+
+Optional if needed:
+
+- `packages/core/src/data/sources/lazy/bamSource.test.js`
+  - Test record-to-datum mapping if the mapping is extracted into a pure helper.
+
+### Milestone 1 Output Contracts
+
+#### BAM Read Rows
+
+The BAM source should continue to emit the existing fields and add fields needed
+by Milestone 1 and Milestone 2:
+
+```ts
+interface BamReadDatum {
+    chrom: string;
+    start: number;
+    end: number;
+    name: string;
+    cigar: string;
+    mapq?: number;
+    strand: "+" | "-";
+
+    seq: string;
+    qual?: number[];
+    md?: string;
+    flags: number;
+
+    isPaired: boolean;
+    isProperPair: boolean;
+    isDuplicate: boolean;
+    isQcFail: boolean;
+    isSecondary: boolean;
+    isSupplementary: boolean;
+}
+```
+
+Milestone 1 does not need to expose mate coordinates yet. Pair visualization is
+out of scope.
+
+#### CIGAR Operation Rows
+
+`flattenCigar` should clone each input read row and add:
+
+```ts
+interface CigarOperationDatum extends BamReadDatum {
+    cigarOp: "M" | "I" | "D" | "N" | "S" | "H" | "P" | "=" | "X";
+    cigarLength: number;
+    cigarStart: number;
+    cigarEnd: number;
+    readStart: number;
+    readEnd: number;
+    cigarType:
+        | "aligned"
+        | "insertion"
+        | "deletion"
+        | "skip"
+        | "softClip"
+        | "hardClip"
+        | "padding";
+}
+```
+
+Coordinate rules must be implemented from the SAMv1 specification, section
+1.4 and the CIGAR operation table. The bullets below restate the intended
+behavior for this feature, but implementers must verify them against the
+specification rather than relying on this plan alone:
+
+- `M`, `=`, `X`: `cigarStart = refPos`, `cigarEnd = refPos + length`,
+  `readStart = readPos`, `readEnd = readPos + length`
+- `I`: `cigarStart = refPos`, `cigarEnd = refPos`, `readStart = readPos`,
+  `readEnd = readPos + length`
+- `D`, `N`: `cigarStart = refPos`, `cigarEnd = refPos + length`,
+  `readStart = readPos`, `readEnd = readPos`
+- `S`: `cigarStart = refPos`, `cigarEnd = refPos`, `readStart = readPos`,
+  `readEnd = readPos + length`
+- `H`, `P`: `cigarStart = refPos`, `cigarEnd = refPos`,
+  `readStart = readPos`, `readEnd = readPos`
+
+Cursor advancement must follow the SAMv1 CIGAR operation table:
+
+```text
+M, =, X advance refPos and readPos
+I, S    advance readPos only
+D, N    advance refPos only
+H, P    advance neither cursor
+```
+
+### Milestone 1 Task Breakdown
+
+#### Task 1: Add CIGAR Parsing Helpers
+
+Create `packages/core/src/data/transforms/cigarUtils.js`.
+
+Responsibilities:
+
+- base parsing and cursor semantics on SAMv1, section 1.4 and the CIGAR
+  operation table
+- parse CIGAR strings into `{ op, length }` operations
+- reject malformed CIGAR strings with clear errors
+- walk operations from a reference start position
+- produce operation descriptors using the fixed coordinate rules above
+
+Suggested exported API:
+
+```js
+// CIGAR operation parsing follows SAMv1, section 1.4 and the CIGAR operation
+// table: https://samtools.github.io/hts-specs/SAMv1.pdf
+// Keep this implementation aligned with the spec's query/reference
+// consumption rules for M, I, D, N, S, H, P, =, and X.
+
+/**
+ * @typedef {"M" | "I" | "D" | "N" | "S" | "H" | "P" | "=" | "X"} CigarOp
+ *
+ * @typedef {object} CigarOperation
+ * @prop {CigarOp} op
+ * @prop {number} length
+ *
+ * @typedef {object} CigarOperationLayout
+ * @prop {CigarOp} cigarOp
+ * @prop {number} cigarLength
+ * @prop {number} cigarStart
+ * @prop {number} cigarEnd
+ * @prop {number} readStart
+ * @prop {number} readEnd
+ * @prop {string} cigarType
+ */
+
+export function parseCigar(cigar) {
+    // Returns CigarOperation[].
+}
+
+export function* walkCigar(cigar, start) {
+    // Yields CigarOperationLayout objects.
+}
+```
+
+The generated `cigarUtils.js` file should include a concise comment like the
+one above near the parser or operation table. The comment should cite SAMv1 and
+explain that the implementation follows the spec's query/reference consumption
+rules. Avoid comments that merely repeat what the code does.
+
+Tests in `packages/core/src/data/transforms/cigarUtils.test.js` should cover:
+
+- `10M`
+- `5S10M2I4M3D6M1S`
+- `8M100N12M`
+- `3H5S10M2P4M`
+- `4=1X5=`
+- malformed strings such as `""`, `"M10"`, `"10Q"`, and `"10M2"`
+
+Run:
+
+```sh
+npx vitest run packages/core/src/data/transforms/cigarUtils.test.js
+```
+
+#### Task 2: Add the `flattenCigar` Transform
+
+Create `packages/core/src/data/transforms/flattenCigar.js`.
+
+Behavior:
+
+- Use `BEHAVIOR_CLONES`.
+- Read `start` from `params.start ?? "start"`.
+- Read `cigar` from `params.cigar ?? "cigar"`.
+- For each walked CIGAR operation, clone the input datum, add fixed CIGAR
+  output fields, and propagate the clone.
+- Fail fast if `start` is not a finite number.
+- Fail fast if `cigar` is not a non-empty string.
+
+Tentative params:
+
+```ts
+export interface FlattenCigarParams extends TransformParamsBase {
+    type: "flattenCigar";
+
+    /**
+     * The read's reference start coordinate.
+     *
+     * __Default value:__ `"start"`
+     */
+    start?: Field;
+
+    /**
+     * The CIGAR string.
+     *
+     * __Default value:__ `"cigar"`
+     */
+    cigar?: Field;
+}
+```
+
+Tests in `packages/core/src/data/transforms/flattenCigar.test.js` should verify:
+
+- one input row produces one row per CIGAR operation
+- input fields such as `name`, `chrom`, and `_lane` are preserved
+- aligned operations have expected reference and read intervals
+- insertions and soft clips are zero-width reference-anchored rows
+- malformed CIGARs fail loudly
+
+Run:
+
+```sh
+npx vitest run packages/core/src/data/transforms/flattenCigar.test.js
+```
+
+#### Task 3: Register and Document the Transform
+
+Modify `packages/core/src/data/transforms/transformFactory.js`:
+
+- import `FlattenCigarTransform`
+- add `flattenCigar: FlattenCigarTransform` to the `transforms` registry
+
+Modify `packages/core/src/spec/transform.d.ts`:
+
+- add `FlattenCigarParams`
+- document fixed output fields in the JSDoc
+- add `FlattenCigarParams` to the `TransformParams` union
+
+Documentation should use user-facing wording and avoid internal implementation
+details except where needed to explain coordinate semantics.
+
+Run:
+
+```sh
+npx vitest run packages/core/src/spec/schema.test.js packages/core/src/data/transforms/flattenCigar.test.js
+```
+
+If schema artifacts are affected, run the repo's schema/docs build commands
+before committing that implementation.
+
+#### Task 4: Expose Richer Read Fields from `bamSource`
+
+Modify `packages/core/src/data/sources/lazy/bamSource.js`.
+
+Read-level mapping should include:
+
+```js
+{
+    chrom: d.chrom,
+    start: record.start,
+    end: record.end,
+    name: record.name,
+    cigar: record.CIGAR,
+    mapq: record.mq,
+    strand: record.strand === 1 ? "+" : "-",
+    seq: record.seq,
+    qual: record.qual ? Array.from(record.qual) : undefined,
+    md: record.getTag("MD"),
+    flags: record.flags,
+    isPaired: record.isPaired(),
+    isProperPair: record.isProperlyPaired(),
+    isDuplicate: record.isDuplicate(),
+    isQcFail: record.isFailedQc(),
+    isSecondary: record.isSecondary(),
+    isSupplementary: record.isSupplementary()
+}
+```
+
+If the mapping becomes awkward to test inside `BamSource`, extract it into a
+small exported helper in the same file or a nearby file and test that helper
+with a lightweight fake record object.
+
+Run at minimum:
+
+```sh
+npx vitest run packages/core/src/data/transforms/flattenCigar.test.js
+```
+
+If a source mapping test is added, also run:
+
+```sh
+npx vitest run packages/core/src/data/sources/lazy/bamSource.test.js
+```
+
+#### Task 5: Update the BAM Example
+
+Modify `examples/docs/grammar/data/lazy/bam-read-alignments.json`.
+
+The example should show CIGAR-aware read layout without waiting for mismatch
+support:
+
+- Keep the lazy BAM source.
+- Add a `minMapq` parameter.
+- Keep `laneHeight`.
+- Compute coverage from aligned CIGAR blocks:
+
+```json
+[
+  { "type": "flattenCigar" },
+  { "type": "filter", "expr": "datum.cigarType == 'aligned'" },
+  {
+    "type": "coverage",
+    "chrom": "chrom",
+    "start": "cigarStart",
+    "end": "cigarEnd",
+    "as": "coverage"
+  }
+]
+```
+
+- In the read track, run `pileup` before `flattenCigar`:
+
+```json
+[
+  { "type": "filter", "expr": "datum.mapq == null || datum.mapq >= minMapq" },
+  { "type": "pileup", "start": "start", "end": "end", "as": "_lane" },
+  { "type": "flattenCigar" }
+]
+```
+
+- Render aligned blocks with `rect`.
+- Render deletions with a thin black `rect` or `rule`.
+- Render insertions with a text marker such as `"I"` or a narrow rule.
+- Render soft clips with a distinct marker at the read end.
+- Use `mapq` opacity for read blocks.
+- Keep strand direction if the current `arrow` mark remains useful, but prefer
+  CIGAR-aware block rendering over a single whole-read arrow.
+
+The example does not need to show mismatches in Milestone 1. It should make the
+absence clear by not claiming variant evidence support yet.
+
+Run a focused schema/spec check if available. If there is no focused command,
+run:
+
+```sh
+npm test
+```
+
+For a lighter check while developing, run the focused transform tests and inspect
+the example manually in the docs/dev server.
+
+#### Task 6: Update Docs for the Milestone 1 Feature Set
+
+Modify `docs/grammar/data/lazy.md`.
+
+The BAM section should say:
+
+- BAM support is still incremental.
+- The source exposes read-level fields.
+- `flattenCigar` can derive CIGAR operation rows for custom alignment views.
+- Mismatch and base-aware coverage support are planned for later milestones.
+
+Avoid claiming that GenomeSpy has full IGV-like BAM support after Milestone 1.
+
+Run docs/schema build only if type docs or schema generation requires it.
+
+### Milestone 1 Verification Checklist
+
+Before considering Milestone 1 complete:
+
+- `npx vitest run packages/core/src/data/transforms/cigarUtils.test.js` passes.
+- `npx vitest run packages/core/src/data/transforms/flattenCigar.test.js`
+  passes.
+- Any added BAM source mapping tests pass.
+- The updated example validates against the schema.
+- The updated example can render a coverage track and CIGAR-aware read track.
+- The read track preserves one lane per read after `flattenCigar`.
+- Insertions, deletions, skips, and clips are visible or explicitly represented
+  in separate layers.
+- The docs do not overstate the feature as full BAM/IGV support.
+
+### Milestone 1 Commit Sequence
+
+Use small commits so review can separate parsing, transform plumbing, source
+fields, and example work:
+
+1. `feat(core): add CIGAR parsing helpers`
+2. `feat(core): add flattenCigar transform`
+3. `feat(core): expose BAM read fields`
+4. `docs(core): document CIGAR-derived BAM rows`
+5. `docs: update BAM alignment example`
+
+The exact commit messages can be adjusted to match the final file scope.
