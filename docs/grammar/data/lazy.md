@@ -216,11 +216,16 @@ The data source is based on [GMOD](http://gmod.org/)'s
 
 ## BAM
 
-The `"bam"` source is very much work in progress but has a low priority. It
-currently exposes the reads but provides no handling for variants alleles,
-CIGARs, etc. Please send a message to [GitHub
-Discussions](https://github.com/genome-spy/genome-spy/discussions) if you are
-interested in this feature.
+The `"bam"` source is incremental support for read-alignment views. It exposes
+read-level fields such as alignment coordinates, CIGAR, MAPQ, sequence,
+qualities, selected tags, and selected SAM flag booleans. The
+[`flattenCigar`](../transform/flatten-cigar.md) transform can expand read rows
+into CIGAR operation rows for custom alignment pileups with aligned blocks,
+insertions, deletions, skipped regions, and clipped ends.
+
+Mismatch extraction and allele-aware coverage are planned for later milestones.
+The current support is intended for custom alignment visualizations rather than
+full IGV-like BAM behavior.
 
 ### Parameters
 
