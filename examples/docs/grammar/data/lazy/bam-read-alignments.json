@@ -34,6 +34,11 @@
       "name": "laneHeight",
       "value": 12,
       "bind": { "input": "range", "min": 2, "max": 30, "step": 1 }
+    },
+    {
+      "name": "minMapq",
+      "value": 0,
+      "bind": { "input": "range", "min": 0, "max": 60, "step": 1 }
     }
   ],
 
@@ -41,12 +46,17 @@
     {
       "height": 40,
       "transform": [
+        { "type": "flattenCigar" },
+        { "type": "filter", "expr": "datum.cigarType == 'aligned'" },
+        { "type": "collect", "sort": { "field": ["chrom", "cigarStart"] } },
         {
           "type": "coverage",
-          "start": "start",
-          "end": "end",
+          "chrom": "chrom",
+          "start": "cigarStart",
+          "end": "cigarEnd",
           "as": "coverage",
-          "chrom": "chrom"
+          "asStart": "start",
+          "asEnd": "end"
         }
       ],
       "mark": "rect",
@@ -65,16 +75,16 @@
       "viewportHeight": "container",
 
       "transform": [
-        { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
+        { "type": "filter", "expr": "datum.mapq == null || datum.mapq >= minMapq" },
+        { "type": "pileup", "start": "start", "end": "end", "as": "_lane" },
+        { "type": "flattenCigar" },
+        {
+          "type": "formula",
+          "expr": "datum.mapq == null ? 0.25 : 0.25 + min(datum.mapq, 60) / 80",
+          "as": "mapqOpacity"
+        }
       ],
       "encoding": {
-        "x": {
-          "chrom": "chrom",
-          "pos": "start",
-          "type": "locus",
-          "axis": {}
-        },
-        "x2": { "chrom": "chrom", "pos": "end" },
         "y": {
           "field": "_lane",
           "type": "index",
@@ -83,23 +93,83 @@
             "reverse": true,
             "zoom": false
           }
-        },
-        "color": {
-          "field": "strand",
-          "type": "nominal",
-          "scale": { "domain": ["+", "-"], "range": ["crimson", "orange"] }
-        },
-        "direction": {
-          "field": "strand",
-          "type": "nominal",
-          "scale": { "domain": ["+", "-"], "range": ["forward", "reverse"] }
         }
       },
-      "mark": {
-        "type": "arrow",
-        "style": "arrow-block",
-        "minStemLength": 10
-      }
+      "layer": [
+        {
+          "name": "aligned-blocks",
+          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'aligned'" }],
+          "mark": { "type": "rect", "minWidth": 0.5, "minOpacity": 0.2 },
+          "encoding": {
+            "x": {
+              "chrom": "chrom",
+              "pos": "cigarStart",
+              "type": "locus",
+              "axis": {}
+            },
+            "x2": { "chrom": "chrom", "pos": "cigarEnd" },
+            "color": {
+              "field": "strand",
+              "type": "nominal",
+              "scale": {
+                "domain": ["+", "-"],
+                "range": ["#386cb0", "#f28e2b"]
+              }
+            },
+            "opacity": { "field": "mapqOpacity", "type": "quantitative", "scale": null }
+          }
+        },
+        {
+          "name": "deletions",
+          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'deletion'" }],
+          "mark": { "type": "rect", "color": "black", "minWidth": 1 },
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "cigarStart", "type": "locus" },
+            "x2": { "chrom": "chrom", "pos": "cigarEnd" }
+          }
+        },
+        {
+          "name": "skips",
+          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'skip'" }],
+          "mark": {
+            "type": "rule",
+            "color": "#6b6b6b",
+            "strokeDash": [2, 2],
+            "minLength": 1
+          },
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "cigarStart", "type": "locus" },
+            "x2": { "chrom": "chrom", "pos": "cigarEnd" }
+          }
+        },
+        {
+          "name": "insertions",
+          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'insertion'" }],
+          "mark": {
+            "type": "text",
+            "text": "I",
+            "color": "black",
+            "size": 9,
+            "fontWeight": "bold"
+          },
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "cigarStart", "type": "locus" }
+          }
+        },
+        {
+          "name": "soft-clips",
+          "transform": [{ "type": "filter", "expr": "datum.cigarType == 'softClip'" }],
+          "mark": {
+            "type": "text",
+            "text": "S",
+            "color": "#555",
+            "size": 8
+          },
+          "encoding": {
+            "x": { "chrom": "chrom", "pos": "cigarStart", "type": "locus" }
+          }
+        }
+      ]
     }
   ],
 
