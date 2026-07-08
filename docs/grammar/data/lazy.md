@@ -224,10 +224,11 @@ into CIGAR operation rows for custom alignment pileups with aligned blocks,
 insertions, deletions, skipped regions, and clipped ends. The
 [`alignmentMismatches`](../transform/alignment-mismatches.md) transform can
 derive sparse mismatch rows from CIGAR, sequence, base qualities, and MD tags.
+Those rows can be summarized with `aggregate` and `stack` to add
+mismatch-support bars to a coverage track.
 
-Allele-aware coverage is planned for later milestones. The current support is
-intended for custom alignment visualizations rather than full IGV-like BAM
-behavior.
+The current support is intended for custom alignment visualizations rather than
+full IGV-like BAM behavior.
 
 ### Parameters
 

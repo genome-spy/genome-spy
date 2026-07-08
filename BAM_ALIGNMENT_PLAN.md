@@ -143,13 +143,16 @@ minimal and published only read-level fields such as:
 - `mapq`
 - `strand`
 
-Milestone 1 added richer read fields, shared CIGAR parsing helpers, and the
-`flattenCigar` transform. Milestone 2 added sparse mismatch extraction through
-`alignmentMismatches`. The BAM example now renders two tracks:
+Milestones 1-3 added richer read fields, shared CIGAR parsing helpers,
+`flattenCigar`, sparse mismatch extraction through `alignmentMismatches`, and
+an example that combines ordinary GenomeSpy transforms for an IGV-like view.
+The BAM example now renders:
 
-- coverage computed from aligned CIGAR blocks
-- read pileup rendered as strand-colored arrow marks with CIGAR overlays
-- mismatch overlays derived from `CIGAR + MD + SEQ + QUAL`
+- total coverage computed from aligned CIGAR blocks
+- stacked mismatch support in the coverage track using
+  `alignmentMismatches`, `aggregate`, and `stack`
+- read pileup rendered as directional read bodies with CIGAR overlays
+- per-read mismatch overlays derived from `CIGAR + MD + SEQ + QUAL`
 
 Existing transform patterns that are relevant:
 
@@ -166,21 +169,20 @@ alignment transforms rather than generic table reshaping utilities. Their output
 field names should be fixed and semantic. Users can use `project` or `formula`
 afterward if they need renamed or derived fields.
 
-## Proposed Initial Scope
+## Initial Scope Status
 
-The first useful milestone should support short-read local inspection around
-SNVs and small indels:
+The initial useful scope for short-read local inspection around SNVs and small
+indels is now in place:
 
 1. Expose richer read-level BAM fields from the lazy BAM source.
 2. Add CIGAR-derived row expansion.
 3. Add sparse mismatch extraction.
-4. Add an allele-colored coverage summary using existing transforms if
-   feasible.
+4. Add an allele-colored mismatch summary in the coverage track using existing
+   transforms.
 5. Update the BAM example to demonstrate an IGV-like but customizable alignment
    evidence view.
 
-The example should prove utility, not just visual polish. A useful first view
-would include:
+The example demonstrates:
 
 - CIGAR-aware read bodies
 - deletions
@@ -189,7 +191,7 @@ would include:
 - mismatch overlays
 - MAPQ opacity
 - coverage depth with allele-colored evidence
-- at least one customization hook such as a MAPQ filter or a color-by mode
+- customization hooks for MAPQ and base-quality thresholds
 
 ## BAM Source Changes
 
@@ -462,8 +464,8 @@ can turn those counts into ranged y-values for stacked colored bars:
 
 This is feasible and matches GenomeSpy's composability goals. It does not
 produce a full per-base consensus pileup because matching reference bases are
-not materialized as rows. The first allele-colored coverage view should
-therefore show:
+not materialized as rows. The current allele-colored coverage view therefore
+shows:
 
 - total aligned-base depth from `coverage`
 - stacked colored bars for non-reference mismatch support
@@ -481,8 +483,8 @@ reference-base summaries clearly.
 
 ## Example Spec Direction
 
-The updated BAM example should be structured as an ordinary layered and
-concatenated GenomeSpy spec.
+The BAM example is structured as an ordinary layered and concatenated GenomeSpy
+spec.
 
 High-level layout:
 
@@ -547,9 +549,9 @@ Example MAPQ opacity:
 }
 ```
 
-The example should make the composability explicit. It should not only show a
-fixed IGV-like rendering. It should include at least one visible customization,
-such as filtering by MAPQ or switching read coloring between strand and MAPQ.
+The example makes the composability explicit. It includes visible
+customization, such as filtering by MAPQ and base quality, rather than only
+showing a fixed IGV-like rendering.
 
 ## Implementation Notes
 
@@ -601,9 +603,6 @@ Documentation should be updated with:
   alignment evidence building blocks
 - explicit limitations of the initial release
 
-The current `docs/grammar/data/lazy.md` says the BAM source is work in progress.
-That section should be revised once the first useful feature set lands.
-
 ## Testing Strategy
 
 Tests should focus on behavior and contracts rather than reproducing internal
@@ -622,9 +621,9 @@ implementation details:
 The first implementation should not add broad snapshot tests until the output
 shape has stabilized.
 
-## Suggested Milestones
+## Milestone Status
 
-### Milestone 1: Raw BAM Fields and CIGAR Rows
+### Completed: Raw BAM Fields and CIGAR Rows
 
 - Expose `seq`, `qual`, `md`, `flags`, and selected flag booleans from
   `bamSource`.
@@ -633,27 +632,27 @@ shape has stabilized.
 - Update the example to show CIGAR-aware read bodies, deletions, insertions, and
   clipping.
 
-### Milestone 2: Mismatch Evidence
+### Completed: Mismatch Evidence
 
 - Add `alignmentMismatches`.
 - Add mismatch overlays colored by base.
 - Add base-quality opacity or filtering.
 - Ensure the example supports local SNV inspection.
 
-### Milestone 3: Composable Coverage Summary
+### Completed: Composable Coverage Summary
 
 - Use `coverage` for aligned-base depth.
 - Use `alignmentMismatches`, `aggregate`, and `stack` for allele-colored
   mismatch bars.
 - Keep quality thresholds in the ordinary transform chain.
 
-### Milestone 4: Customization and Documentation
+### Remaining: Customization and Documentation
 
 - Add one or two visible customization controls to the example.
 - Update user-facing docs.
 - Document limitations and future directions.
 
-### Later Milestones
+### Later Possibilities
 
 - Paired-read derived fields and pair anomaly coloring.
 - Supplementary and chimeric-read support from `SA` tags.
@@ -687,308 +686,16 @@ The first version is successful if:
 - limitations are clear enough that users do not mistake the feature for full
   IGV parity
 
-## Detailed Milestone 3 Plan: Composable Coverage Summary
+## Remaining Gaps
 
-Milestone 3 should make the coverage track more useful without adding a new
-BAM-specific summary transform. The implementation should first try ordinary
-GenomeSpy composition: `coverage` for total aligned-base depth, and
-`alignmentMismatches + aggregate + stack` for allele-colored mismatch support.
+The initial version is useful for SNV and small-indel inspection but still has
+clear limits:
 
-### Investigation Summary
-
-The existing transforms support this design:
-
-- `coverage` is a sorted interval-depth transform. It is suitable for the
-  ordinary coverage histogram when it receives `flattenCigar` rows filtered to
-  aligned operations.
-- `alignmentMismatches` emits one row per observed non-reference aligned base.
-- `aggregate` can count mismatch rows by chromosome, reference position, and
-  observed read base.
-- `stack` can turn per-base mismatch counts into ranged y-values for stacked
-  bars.
-- Lazy sources publish a single file batch for the loaded window, so
-  batch-oriented `aggregate` and `stack` summarize the current window rather
-  than individual records.
-
-A dataflow smoke test with three reads at the same locus confirmed this row
-shape. With the milestone output field names, the stacked mismatch rows would
-look like:
-
-```json
-[
-  {
-    "chrom": "chr1",
-    "mismatchStart": 104,
-    "mismatchEnd": 105,
-    "base": "G",
-    "count": 2,
-    "mismatchCount0": 0,
-    "mismatchCount1": 2
-  },
-  {
-    "chrom": "chr1",
-    "mismatchStart": 104,
-    "mismatchEnd": 105,
-    "base": "T",
-    "count": 1,
-    "mismatchCount0": 2,
-    "mismatchCount1": 3
-  }
-]
-```
-
-The limitation is semantic, not mechanical: this chain summarizes only
-non-reference mismatch evidence. It does not materialize matching reference
-bases, so it cannot produce full A/C/G/T/reference-base consensus counts without
-another source of reference bases or a heavier per-base alignment expansion.
-
-### Milestone 3 Goal
-
-After Milestone 3, the BAM example should show:
-
-- total aligned-base depth in the coverage track
-- stacked colored mismatch bars at loci with non-reference support
-- base-quality filtering before mismatch aggregation
-- the same base color palette used by the indexed FASTA sequence example
-- shared read filtering, MAPQ normalization, and pileup assignment before the
-  coverage/read views split
-- a read pileup that still shows read bodies, CIGAR overlays, and per-read
-  mismatch marks
-
-No new core transform should be added in this milestone unless the ordinary
-transform chain proves inadequate during implementation.
-
-### Milestone 3 Scope Decisions
-
-- Use `coverage` for depth. The initial depth semantics are aligned read bases:
-  `M`, `=`, and `X` via `cigarType == 'aligned'`.
-- Do not count `D` deletion operations in the total depth histogram yet.
-  Deletion-aware depth is a separate design choice because deleted reference
-  bases have read support but no read base.
-- Use `alignmentMismatches` for mismatch evidence. Reads without `MD` tags can
-  still contribute to total depth, but they should be filtered out before
-  mismatch aggregation.
-- Apply `minBaseQuality` before `aggregate`, so low-quality bases do not
-  contribute to the stacked mismatch counts.
-- Hoist shared read-level filtering, `mapqOrZero`, and `pileup` to the root
-  transform so coverage and read layers derive from the same filtered read
-  stream.
-- Do not join to FASTA or infer reference bases from another source.
-- Treat insertion and deletion summary bars as later work. The read pileup
-  already shows insertions and deletions through `flattenCigar`.
-
-### Milestone 3 Files
-
-Modify:
-
-- `examples/docs/grammar/data/lazy/bam-read-alignments.json`
-  - Move the read-level MAPQ filter, `mapqOrZero` formula, and `pileup`
-    assignment to the root transform.
-  - Convert the coverage track to a layered view.
-  - Keep the current depth layer based on `flattenCigar + coverage`.
-  - Add a mismatch-summary layer based on
-    `alignmentMismatches + aggregate + stack`.
-  - Use the same A/C/T/G/N palette as
-    `examples/docs/genomic-data/examples/indexed-fasta-sequence-track.json`.
-- `docs/grammar/data/lazy.md`
-  - Replace "allele-aware coverage is planned" wording with a statement that
-    mismatch support can be summarized in coverage tracks using ordinary
-    transforms.
-- `BAM_ALIGNMENT_PLAN.md`
-  - Keep this milestone plan in sync with the implemented example.
-
-Optional local-only update:
-
-- `private/bam/bam-read-alignments.json`
-  - Apply the same coverage-track structure for manual testing with the
-    private NA12878 BAM. This file remains ignored by git.
-
-No `packages/core/src` changes are expected for this milestone.
-
-### Shared Read Dataflow
-
-The example should follow the private BAM spec's simpler dataflow shape: perform
-read-level filtering and lane assignment once before the views split. Coverage,
-CIGAR overlays, read bodies, per-read mismatch marks, and mismatch-summary bars
-then derive from the same filtered read stream.
-
-```json
-{
-  "transform": [
-    {
-      "type": "filter",
-      "expr": "datum.mapq == null || datum.mapq >= minMapq"
-    },
-    {
-      "type": "formula",
-      "expr": "datum.mapq == null ? 0 : datum.mapq",
-      "as": "mapqOrZero"
-    },
-    { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
-  ],
-  "vconcat": ["coverage view", "read pileup view"]
-}
-```
-
-This avoids duplicating the MAPQ filter and keeps all read-derived layers
-consistent. It also means the coverage histogram reflects the same read-level
-filters as the pileup. If later examples need unfiltered coverage plus filtered
-reads, they can move the filter back into only the read view.
-
-### Coverage Track Structure
-
-The coverage view should become a `LayerView` with one layer for total depth and
-one layer for stacked mismatch support:
-
-```json
-{
-  "name": "coverage",
-  "title": "Coverage",
-  "height": 40,
-  "resolve": { "scale": { "color": "independent" } },
-  "layer": [
-    {
-      "name": "depth",
-      "title": "Depth",
-      "transform": [
-        { "type": "flattenCigar" },
-        { "type": "filter", "expr": "datum.cigarType == 'aligned'" },
-        { "type": "collect", "sort": { "field": ["chrom", "cigarStart"] } },
-        {
-          "type": "coverage",
-          "chrom": "chrom",
-          "start": "cigarStart",
-          "end": "cigarEnd",
-          "as": "coverage",
-          "asStart": "start",
-          "asEnd": "end"
-        }
-      ],
-      "mark": "rect",
-      "encoding": {
-        "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
-        "x2": { "chrom": "chrom", "pos": "end" },
-        "y": {
-          "field": "coverage",
-          "type": "quantitative",
-          "axis": { "tickCount": 2 }
-        },
-        "color": { "value": "#d0d0d0" }
-      }
-    },
-    {
-      "name": "mismatch-summary",
-      "title": "Mismatch support",
-      "transform": [
-        { "type": "filter", "expr": "datum.md != null" },
-        { "type": "alignmentMismatches" },
-        {
-          "type": "filter",
-          "expr": "datum.baseQuality == null || datum.baseQuality >= minBaseQuality"
-        },
-        {
-          "type": "aggregate",
-          "groupby": ["chrom", "mismatchStart", "base"]
-        },
-        {
-          "type": "stack",
-          "field": "count",
-          "groupby": ["chrom", "mismatchStart"],
-          "sort": { "field": "base", "order": "ascending" },
-          "as": ["mismatchCount0", "mismatchCount1"]
-        },
-        {
-          "type": "formula",
-          "expr": "datum.mismatchStart + 1",
-          "as": "mismatchEnd"
-        }
-      ],
-      "mark": "rect",
-      "encoding": {
-        "x": {
-          "chrom": "chrom",
-          "pos": "mismatchStart",
-          "type": "locus",
-          "band": 0
-        },
-        "x2": { "chrom": "chrom", "pos": "mismatchEnd", "band": 0 },
-        "y": { "field": "mismatchCount0", "type": "quantitative" },
-        "y2": { "field": "mismatchCount1" },
-        "color": {
-          "field": "base",
-          "type": "nominal",
-          "scale": {
-            "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
-            "range": [
-              "#7BD56C",
-              "#FF9B9B",
-              "#86BBF1",
-              "#FFC56C",
-              "#7BD56C",
-              "#FF9B9B",
-              "#86BBF1",
-              "#FFC56C",
-              "#E0E0E0"
-            ]
-          },
-          "legend": null
-        }
-      }
-    }
-  ]
-}
-```
-
-The mismatch-summary layer should share the coverage track's y-scale so stacked
-mismatch height is directly comparable to total depth. It should not replace the
-read-level mismatch marks; the coverage summary and read pileup answer different
-questions.
-
-### Implementation Steps
-
-1. Move the public BAM example's MAPQ filter, `mapqOrZero` formula, and
-   `pileup` transform from the read view to the root transform.
-2. Refactor the public BAM example's coverage view from a single mark view into
-   a `layer` view.
-3. Move the current `flattenCigar + coverage` chain into a child layer named
-   `depth`.
-4. Add a second child layer named `mismatch-summary` with the transform chain
-   shown above.
-5. Use the indexed FASTA sequence palette for mismatch-summary colors.
-6. Keep `minBaseQuality` as the only base-quality control for both per-read
-   mismatch marks and coverage-summary mismatch bars.
-7. Update the lazy BAM documentation to explain that mismatch support can be
-   summarized using `aggregate` and `stack`.
-8. Optionally mirror the public example changes in the ignored private BAM spec
-   for manual inspection.
-
-### Verification
-
-Run the focused transform tests to ensure the inputs to the composed summary are
-still correct:
-
-```sh
-npx vitest run packages/core/src/data/transforms/mdUtils.test.js packages/core/src/data/transforms/alignmentMismatches.test.js
-```
-
-Validate the public example against the generated schema after editing it. Also
-run the docs build because the example is embedded in user-facing
-documentation:
-
-```sh
-npm run build:docs
-```
-
-If the private BAM spec is updated, validate it with the same generated-schema
-check used for the public example. No new permanent unit test is required unless
-implementation exposes a bug or requires a change to core transform behavior.
-
-### Milestone 3 Commit Sequence
-
-Suggested commits:
-
-1. `docs: plan composable BAM coverage summary`
-2. `docs: show BAM mismatch coverage summary`
-
-If implementation requires core fixes, split them into separate `fix(core): ...`
-or `feat(core): ...` commits before the example commit.
+- mismatch summary bars show non-reference support only; matching reference
+  bases are represented by total depth, not per-base consensus counts
+- deletion and insertion support are visible in the read pileup but not yet
+  summarized in the coverage track
+- paired-end, supplementary, chimeric, RNA-seq junction, and downsampling
+  conventions remain future work
+- docs should be kept explicit that this is composable BAM evidence support,
+  not full IGV track parity
