@@ -1,5 +1,39 @@
-import { describe, expect, test } from "vitest";
-import { createBamReadDatum } from "./bamSource.js";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
+import BamSource, { createBamReadDatum } from "./bamSource.js";
+
+/** @type {{ chrom: string, start: number, end: number }[]} */
+const requestedIntervals = [];
+
+vi.mock("generic-filehandle2", () => ({
+    RemoteFile: class RemoteFile {
+        /** @param {string} url */
+        constructor(url) {
+            this.url = url;
+        }
+    },
+}));
+
+vi.mock("@gmod/bam", () => ({
+    BamFile: class BamFile {
+        indexToChr = [{ refName: "chr1" }];
+
+        async getHeader() {
+            return {};
+        }
+
+        /**
+         * @param {string} chrom
+         * @param {number} start
+         * @param {number} end
+         * @returns {Promise<import("@gmod/bam").BamRecord[]>}
+         */
+        async getRecordsForRange(chrom, start, end) {
+            requestedIntervals.push({ chrom, start, end });
+            return [];
+        }
+    },
+}));
 
 /**
  * @typedef {object} FakeBamRecord
@@ -34,7 +68,112 @@ function createDatum(chrom, record) {
     );
 }
 
+/**
+ * @param {number} initialWindowSize
+ */
+function createViewStub(initialWindowSize = 300) {
+    /** @type {any} */
+    let scaleResolution;
+    const paramRuntime = new ViewParamRuntime(
+        () => undefined,
+        () => scaleResolution
+    );
+    const setWindowSize = paramRuntime.allocateSetter(
+        "windowSize",
+        initialWindowSize
+    );
+
+    const scale = /** @type {any} */ (
+        /** @returns {undefined} */ () => undefined
+    );
+    scale.type = "locus";
+    scale.genome = () => ({
+        totalSize: 1000,
+        hasChrPrefix: () => true,
+        continuousToDiscreteChromosomeIntervals: (
+            /** @type {number[]} */ interval
+        ) => [
+            {
+                chrom: "chr1",
+                startPos: interval[0],
+                endPos: interval[1],
+            },
+        ],
+    });
+
+    scaleResolution = {
+        addEventListener: /** @returns {undefined} */ () => undefined,
+        removeEventListener: /** @returns {undefined} */ () => undefined,
+        getDomain: () => [0, 200],
+        getScale: () => scale,
+    };
+
+    return {
+        paramRuntime,
+        setWindowSize,
+        getBaseUrl: () => "https://example.org/spec/",
+        getScaleResolution: () => scaleResolution,
+        isVisible: () => true,
+        context: {
+            addBroadcastListener: /** @returns {undefined} */ () => undefined,
+            removeBroadcastListener: /** @returns {undefined} */ () =>
+                undefined,
+            dataFlow: {
+                loadingStatusRegistry: {
+                    set: /** @returns {undefined} */ () => undefined,
+                },
+            },
+        },
+    };
+}
+
 describe("BamSource", () => {
+    beforeEach(() => {
+        requestedIntervals.length = 0;
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    test("reloads when expression-driven window size changes", async () => {
+        vi.useFakeTimers();
+        vi.stubGlobal("window", {
+            setTimeout,
+            clearTimeout,
+        });
+
+        const view = createViewStub(100);
+        const source = new BamSource(
+            {
+                type: "bam",
+                url: "reads.bam",
+                debounce: 0,
+                windowSize: { expr: "windowSize" },
+            },
+            /** @type {any} */ (view)
+        );
+
+        await /** @type {any} */ (source).initializedPromise;
+        const domainChange = source.onDomainChanged([0, 200]);
+        await vi.runAllTimersAsync();
+        await domainChange;
+        await Promise.resolve();
+
+        expect(requestedIntervals).toEqual([]);
+
+        view.setWindowSize(300);
+        await Promise.resolve();
+        await Promise.resolve();
+        await vi.runAllTimersAsync();
+        await Promise.resolve();
+
+        expect(requestedIntervals).toEqual([
+            { chrom: "chr1", start: 0, end: 300 },
+        ]);
+    });
+
     test("maps a BAM record to a read-level datum", () => {
         /** @type {FakeBamRecord} */
         const record = {

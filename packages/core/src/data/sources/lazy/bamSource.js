@@ -1,3 +1,7 @@
+import {
+    activateExprRefProps,
+    withoutExprRef,
+} from "../../../paramRuntime/paramUtils.js";
 import { normalizeSingleUrlDescriptor } from "../urlDescriptor.js";
 import { registerBuiltInLazyDataSource } from "./lazyDataSourceRegistry.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
@@ -31,9 +35,20 @@ export default class BamSource extends SingleAxisWindowedSource {
             ...params,
         };
 
-        super(view, paramsWithDefaults.channel);
+        const channel = withoutExprRef(paramsWithDefaults.channel);
+        super(view, channel);
 
-        this.params = paramsWithDefaults;
+        this.params = activateExprRefProps(
+            view.paramRuntime,
+            paramsWithDefaults,
+            (props) => {
+                if (props.has("windowSize")) {
+                    this.reloadLastDomain();
+                }
+            },
+            (disposer) => this.registerDisposer(disposer),
+            { batchMode: "whenPropagated" }
+        );
 
         if (!this.params.url) {
             throw new Error("No URL provided for BamSource");

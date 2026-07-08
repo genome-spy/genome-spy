@@ -577,12 +577,12 @@ export interface BamData extends DebouncedData {
     indexUrl?: IndexUrlSourceRef;
 
     /**
-     * Size of each chunk when fetching the BigBed file. Data is only fetched
+     * Size of each chunk when fetching the BAM file. Data is only fetched
      * when the length of the visible domain smaller than the window size.
      *
      * __Default value:__ `10000`
      */
-    windowSize?: number;
+    windowSize?: number | ExprRef;
 }
 
 export interface TabixData extends DebouncedData {
