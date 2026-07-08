@@ -216,19 +216,39 @@ The data source is based on [GMOD](http://gmod.org/)'s
 
 ## BAM
 
-The `"bam"` source is incremental support for read-alignment views. It exposes
-read-level fields such as alignment coordinates, CIGAR, MAPQ, sequence,
-qualities, selected tags, and selected SAM flag booleans. The
-[`flattenCigar`](../transform/flatten-cigar.md) transform can expand read rows
-into CIGAR operation rows for custom alignment pileups with aligned blocks,
-insertions, deletions, skipped regions, and clipped ends. The
-[`alignmentMismatches`](../transform/alignment-mismatches.md) transform can
-derive sparse mismatch rows from CIGAR, sequence, base qualities, and MD tags.
-Those rows can be summarized with `aggregate` and `stack` to add
-mismatch-support bars to a coverage track.
+The `"bam"` source loads read alignments from indexed BAM files for the visible
+genomic region. It returns one row per read with alignment coordinates, CIGAR,
+MAPQ, sequence, base qualities, selected SAM tags, and selected SAM flag
+booleans.
 
-The current support is intended for custom alignment visualizations rather than
-full IGV-like BAM behavior.
+Returned fields:
+
+| Field             | Type     | Description                                                                      |
+| ----------------- | -------- | -------------------------------------------------------------------------------- |
+| `chrom`           | string   | Chromosome name, normalized to the active genome's chromosome naming convention. |
+| `start`           | number   | Alignment start position.                                                        |
+| `end`             | number   | Alignment end position.                                                          |
+| `name`            | string   | Read name.                                                                       |
+| `cigar`           | string   | CIGAR string, or `"*"` when unavailable.                                         |
+| `mapq`            | number   | Mapping quality.                                                                 |
+| `strand`          | string   | Read strand: `"+"` or `"-"`.                                                     |
+| `seq`             | string   | Read sequence.                                                                   |
+| `qual`            | number[] | Base quality values, when available.                                             |
+| `md`              | string   | `MD` tag value, when available.                                                  |
+| `flags`           | number   | Raw SAM flag value.                                                              |
+| `isPaired`        | boolean  | Whether the read is paired.                                                      |
+| `isProperPair`    | boolean  | Whether the read is mapped as a proper pair.                                     |
+| `isDuplicate`     | boolean  | Whether the read is marked as duplicate.                                         |
+| `isQcFail`        | boolean  | Whether the read failed vendor quality checks.                                   |
+| `isSecondary`     | boolean  | Whether the alignment is secondary.                                              |
+| `isSupplementary` | boolean  | Whether the alignment is supplementary.                                          |
+
+Use [`flattenCigar`](../transform/flatten-cigar.md) and
+[`alignmentMismatches`](../transform/alignment-mismatches.md) when reshaping BAM
+rows for custom alignment views. See [BAM Read
+Alignments](../../genomic-data/examples/bam-read-alignments.md) example for a
+fuller alignment visualization with coverage, CIGAR annotations, insertions, and
+mismatch evidence.
 
 ### Parameters
 
