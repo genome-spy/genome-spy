@@ -71,6 +71,10 @@ export function parseMdTag(md) {
             } else {
                 throw new Error(`Malformed MD tag: ${md}`);
             }
+
+            if (index == md.length) {
+                throw new Error(`Malformed MD tag: ${md}`);
+            }
         }
     }
 

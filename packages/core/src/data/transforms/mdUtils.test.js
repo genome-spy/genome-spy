@@ -17,7 +17,7 @@ describe("MD tag utilities", () => {
         ]);
     });
 
-    test.each(["", "10^5", "10A^", "10a5"])(
+    test.each(["", "10^5", "10A^", "10a5", "10A", "10^AC"])(
         "rejects malformed MD tag %j",
         (md) => {
             expect(() => parseMdTag(md)).toThrow(/Malformed MD tag/);
