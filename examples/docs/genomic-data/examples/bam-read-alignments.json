@@ -12,12 +12,24 @@
     {
       "name": "minMapq",
       "value": 0,
-      "bind": { "input": "range", "min": 0, "max": 60, "step": 1 }
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 60,
+        "step": 1,
+        "debounce": 100
+      }
     },
     {
       "name": "minBaseQuality",
       "value": 0,
-      "bind": { "input": "range", "min": 0, "max": 40, "step": 1 }
+      "bind": {
+        "input": "range",
+        "min": 0,
+        "max": 40,
+        "step": 1,
+        "debounce": 100
+      }
     },
     {
       "name": "windowSize",

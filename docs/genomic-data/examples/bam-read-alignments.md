@@ -1,9 +1,9 @@
 # BAM Read Alignments
 
 This example shows an IGV-like BAM alignment view built from GenomeSpy grammar
-building blocks. It combines depth coverage, mismatch support, insertion
-support, read pileup, read direction, CIGAR operation overlays, and per-read
-mismatch bases.
+building blocks. It combines depth coverage, mismatch and insertion support,
+read pileup, read direction, CIGAR operation overlays, per-read mismatch bases,
+and zoom-dependent lazy loading.
 
 EXAMPLE examples/docs/genomic-data/examples/bam-read-alignments.json height=600 spechidden
 
@@ -30,17 +30,26 @@ vertical rules because they are anchored between reference bases and have zero
 reference width.
 
 The read pileup uses arrow marks for strand direction and opacity for mapping
-quality. CIGAR-derived overlays mark deletions, skipped regions, insertions,
-and soft-clipped ends. Mismatching bases are rendered as colored ranged
-rectangles with base letters on top, and the base-quality slider can hide
-low-quality mismatch evidence.
+quality. The mapping-quality slider filters low-confidence alignments.
+CIGAR-derived overlays mark deletions, skipped regions, insertions, and
+soft-clipped ends.
+
+Mismatching bases are extracted from MD tags and rendered as colored ranged
+rectangles with base letters on top. Their opacity follows base quality, and the
+base-quality slider can hide low-quality mismatch evidence. When the visible
+region is wider than the configured BAM loading window, the read track fades in
+a zoom-in message.
 
 ## GenomeSpy Features
 
 This example combines several GenomeSpy capabilities in one alignment view:
 
 - [Lazy data sources](../../grammar/data/lazy.md) load BAM alignments only for
-  the visible region.
+  the visible region. The BAM loading window is controlled by an
+  [`ExprRef`](../../grammar/types.md#exprref) so the same parameter can drive
+  the zoom message.
+- [Parameters](../../grammar/parameters.md) bind mapping-quality and
+  base-quality thresholds to sliders.
 - [`pileup`](../../grammar/transform/pileup.md) assigns reads to non-overlapping
   lanes.
 - [`flattenCigar`](../../grammar/transform/flatten-cigar.md) expands CIGAR
@@ -52,6 +61,8 @@ This example combines several GenomeSpy capabilities in one alignment view:
   [`aggregate`](../../grammar/transform/aggregate.md), and
   [`stack`](../../grammar/transform/stack.md) summarize depth and mismatch
   support.
+- [`formula`](../../grammar/transform/formula.md) derives helper fields for
+  mapping-quality and base-quality opacity.
 - [`layer`](../../grammar/composition/layer.md) composes coverage, insertion
   summaries, read bodies, CIGAR annotations, and mismatch labels while keeping
   color and opacity scales independent where needed.
