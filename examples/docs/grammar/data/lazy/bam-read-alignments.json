@@ -34,144 +34,47 @@
       "name": "laneHeight",
       "value": 12,
       "bind": { "input": "range", "min": 2, "max": 30, "step": 1 }
-    },
-    {
-      "name": "minMapq",
-      "value": 0,
-      "bind": { "input": "range", "min": 0, "max": 60, "step": 1 }
-    },
-    {
-      "name": "minBaseQuality",
-      "value": 0,
-      "bind": { "input": "range", "min": 0, "max": 40, "step": 1 }
     }
-  ],
-
-  "transform": [
-    {
-      "type": "filter",
-      "expr": "datum.mapq == null || datum.mapq >= minMapq"
-    },
-    {
-      "type": "formula",
-      "expr": "datum.mapq == null ? 0 : datum.mapq",
-      "as": "mapqOrZero"
-    },
-    { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
   ],
 
   "vconcat": [
     {
-      "name": "coverage",
-      "title": "Coverage",
       "height": 40,
-      "resolve": { "scale": { "color": "independent" } },
-      "layer": [
+      "transform": [
         {
-          "name": "depth",
-          "title": "Depth",
-          "transform": [
-            { "type": "flattenCigar" },
-            { "type": "filter", "expr": "datum.cigarType == 'aligned'" },
-            {
-              "type": "collect",
-              "sort": { "field": ["chrom", "cigarStart"] }
-            },
-            {
-              "type": "coverage",
-              "chrom": "chrom",
-              "start": "cigarStart",
-              "end": "cigarEnd",
-              "as": "coverage",
-              "asStart": "start",
-              "asEnd": "end"
-            }
-          ],
-          "mark": "rect",
-          "encoding": {
-            "x": {
-              "chrom": "chrom",
-              "pos": "start",
-              "type": "locus",
-              "band": 0
-            },
-            "x2": { "chrom": "chrom", "pos": "end", "band": 0 },
-            "y": {
-              "field": "coverage",
-              "type": "quantitative",
-              "axis": { "tickCount": 2 }
-            },
-            "color": { "value": "#d0d0d0" }
-          }
-        },
-        {
-          "name": "mismatch-summary",
-          "title": "Mismatch support",
-          "transform": [
-            { "type": "filter", "expr": "datum.md != null" },
-            { "type": "alignmentMismatches" },
-            {
-              "type": "filter",
-              "expr": "datum.baseQuality == null || datum.baseQuality >= minBaseQuality"
-            },
-            {
-              "type": "aggregate",
-              "groupby": ["chrom", "mismatchStart", "base"]
-            },
-            {
-              "type": "stack",
-              "field": "count",
-              "groupby": ["chrom", "mismatchStart"],
-              "sort": { "field": "base", "order": "ascending" },
-              "as": ["mismatchCount0", "mismatchCount1"]
-            },
-            {
-              "type": "formula",
-              "expr": "datum.mismatchStart + 1",
-              "as": "mismatchEnd"
-            }
-          ],
-          "mark": "rect",
-          "encoding": {
-            "x": {
-              "chrom": "chrom",
-              "pos": "mismatchStart",
-              "type": "locus",
-              "band": 0
-            },
-            "x2": { "chrom": "chrom", "pos": "mismatchEnd", "band": 0 },
-            "y": { "field": "mismatchCount0", "type": "quantitative" },
-            "y2": { "field": "mismatchCount1" },
-            "color": {
-              "field": "base",
-              "type": "nominal",
-              "scale": {
-                "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
-                "range": [
-                  "#7BD56C",
-                  "#FF9B9B",
-                  "#86BBF1",
-                  "#FFC56C",
-                  "#7BD56C",
-                  "#FF9B9B",
-                  "#86BBF1",
-                  "#FFC56C",
-                  "#E0E0E0"
-                ]
-              },
-              "legend": null
-            }
-          }
+          "type": "coverage",
+          "start": "start",
+          "end": "end",
+          "as": "coverage",
+          "chrom": "chrom"
         }
-      ]
+      ],
+      "mark": "rect",
+      "encoding": {
+        "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+        "x2": { "chrom": "chrom", "pos": "end" },
+        "y": {
+          "field": "coverage",
+          "type": "quantitative",
+          "axis": { "tickCount": 2 }
+        }
+      }
     },
     {
       "height": { "step": { "expr": "laneHeight" } },
       "viewportHeight": "container",
 
-      "resolve": { "scale": { "color": "independent", "opacity": "independent" } },
-
+      "transform": [
+        { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
+      ],
       "encoding": {
+        "x": {
+          "chrom": "chrom",
+          "pos": "start",
+          "type": "locus",
+          "axis": {}
+        },
+        "x2": { "chrom": "chrom", "pos": "end" },
         "y": {
           "field": "_lane",
           "type": "index",
@@ -180,153 +83,23 @@
             "reverse": true,
             "zoom": false
           }
+        },
+        "color": {
+          "field": "strand",
+          "type": "nominal",
+          "scale": { "domain": ["+", "-"], "range": ["crimson", "orange"] }
+        },
+        "direction": {
+          "field": "strand",
+          "type": "nominal",
+          "scale": { "domain": ["+", "-"], "range": ["forward", "reverse"] }
         }
       },
-      "layer": [
-        {
-          "name": "read-backbone",
-          "title": "Read alignment",
-          "mark": {
-            "type": "arrow",
-            "style": "arrow-block",
-            "minStemLength": 10
-          },
-          "encoding": {
-            "x": {
-              "chrom": "chrom",
-              "pos": "start",
-              "type": "locus",
-              "axis": {}
-            },
-            "x2": { "chrom": "chrom", "pos": "end" },
-            "color": {
-              "field": "strand",
-              "type": "nominal",
-              "scale": {
-                "domain": ["+", "-"],
-                "range": ["#386cb0", "#f28e2b"]
-              }
-            },
-            "direction": {
-              "field": "strand",
-              "type": "nominal",
-              "scale": { "domain": ["+", "-"], "range": ["forward", "reverse"] }
-            },
-            "opacity": {
-              "field": "mapqOrZero",
-              "type": "quantitative",
-              "scale": { "domain": [0, 60], "range": [0.25, 1] }
-            }
-          }
-        },
-        {
-          "name": "cigar-overlays",
-          "transform": [{ "type": "flattenCigar" }],
-          "encoding": {
-            "x": { "chrom": "chrom", "pos": "cigarStart", "type": "locus" },
-            "x2": { "chrom": "chrom", "pos": "cigarEnd" }
-          },
-          "layer": [
-            {
-              "name": "deletions",
-              "title": "Deletion",
-              "transform": [
-                { "type": "filter", "expr": "datum.cigarType == 'deletion'" }
-              ],
-              "mark": { "type": "rect", "color": "black", "minWidth": 1 }
-            },
-            {
-              "name": "skips",
-              "title": "Skipped region",
-              "transform": [
-                { "type": "filter", "expr": "datum.cigarType == 'skip'" }
-              ],
-              "mark": {
-                "type": "rule",
-                "color": "#6b6b6b",
-                "strokeDash": [2, 2],
-                "minLength": 1
-              }
-            },
-            {
-              "name": "insertions",
-              "title": "Insertion",
-              "transform": [
-                { "type": "filter", "expr": "datum.cigarType == 'insertion'" }
-              ],
-              "mark": {
-                "type": "text",
-                "text": "I",
-                "color": "black",
-                "size": 9,
-                "fontWeight": "bold"
-              }
-            },
-            {
-              "name": "soft-clips",
-              "title": "Soft-clipped bases",
-              "transform": [
-                { "type": "filter", "expr": "datum.cigarType == 'softClip'" }
-              ],
-              "mark": {
-                "type": "text",
-                "text": "S",
-                "color": "#555",
-                "size": 8
-              }
-            }
-          ]
-        },
-        {
-          "name": "mismatches",
-          "title": "Mismatch",
-          "transform": [
-            { "type": "filter", "expr": "datum.md != null" },
-            { "type": "alignmentMismatches" },
-            {
-              "type": "filter",
-              "expr": "datum.baseQuality == null || datum.baseQuality >= minBaseQuality"
-            }
-          ],
-          "mark": {
-            "type": "text",
-            "fontWeight": "bold",
-            "size": { "expr": "laneHeight * 0.75" }
-          },
-          "encoding": {
-            "x": {
-              "chrom": "chrom",
-              "pos": "mismatchStart",
-              "type": "locus",
-              "band": 0.5
-            },
-            "text": { "field": "base", "type": "nominal" },
-            "color": {
-              "field": "base",
-              "type": "nominal",
-              "scale": {
-                "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
-                "range": [
-                  "#7BD56C",
-                  "#FF9B9B",
-                  "#86BBF1",
-                  "#FFC56C",
-                  "#7BD56C",
-                  "#FF9B9B",
-                  "#86BBF1",
-                  "#FFC56C",
-                  "#E0E0E0"
-                ]
-              }
-            },
-            "opacity": {
-              "field": "baseQuality",
-              "type": "quantitative",
-              "scale": { "domain": [0, 40], "range": [0.35, 1] }
-            }
-          }
-        }
-      ]
+      "mark": {
+        "type": "arrow",
+        "style": "arrow-block",
+        "minStemLength": 10
+      }
     }
   ],
 

@@ -106,6 +106,7 @@ nav:
                 - ASCAT Algorithm in GenomeSpy: "genomic-data/examples/ascat-algorithm.md"
                 - Sashimi plot from splice junctions: "genomic-data/examples/sashimi-plot.md"
                 - ClinVar Small-Variant Classifications: "genomic-data/examples/clinvar-variants.md"
+                - BAM Read Alignments: "genomic-data/examples/bam-read-alignments.md"
     - Working with Sample Collections:
           - "sample-collections/index.md"
           - Visualizing: "sample-collections/visualizing.md"
