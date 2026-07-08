@@ -47,33 +47,123 @@
     }
   ],
 
+  "transform": [
+    {
+      "type": "filter",
+      "expr": "datum.mapq == null || datum.mapq >= minMapq"
+    },
+    {
+      "type": "formula",
+      "expr": "datum.mapq == null ? 0 : datum.mapq",
+      "as": "mapqOrZero"
+    },
+    { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
+  ],
+
   "vconcat": [
     {
+      "name": "coverage",
+      "title": "Coverage",
       "height": 40,
-      "transform": [
-        { "type": "flattenCigar" },
-        { "type": "filter", "expr": "datum.cigarType == 'aligned'" },
-        { "type": "collect", "sort": { "field": ["chrom", "cigarStart"] } },
+      "resolve": { "scale": { "color": "independent" } },
+      "layer": [
         {
-          "type": "coverage",
-          "chrom": "chrom",
-          "start": "cigarStart",
-          "end": "cigarEnd",
-          "as": "coverage",
-          "asStart": "start",
-          "asEnd": "end"
+          "name": "depth",
+          "title": "Depth",
+          "transform": [
+            { "type": "flattenCigar" },
+            { "type": "filter", "expr": "datum.cigarType == 'aligned'" },
+            {
+              "type": "collect",
+              "sort": { "field": ["chrom", "cigarStart"] }
+            },
+            {
+              "type": "coverage",
+              "chrom": "chrom",
+              "start": "cigarStart",
+              "end": "cigarEnd",
+              "as": "coverage",
+              "asStart": "start",
+              "asEnd": "end"
+            }
+          ],
+          "mark": "rect",
+          "encoding": {
+            "x": {
+              "chrom": "chrom",
+              "pos": "start",
+              "type": "locus",
+              "band": 0
+            },
+            "x2": { "chrom": "chrom", "pos": "end", "band": 0 },
+            "y": {
+              "field": "coverage",
+              "type": "quantitative",
+              "axis": { "tickCount": 2 }
+            },
+            "color": { "value": "#d0d0d0" }
+          }
+        },
+        {
+          "name": "mismatch-summary",
+          "title": "Mismatch support",
+          "transform": [
+            { "type": "filter", "expr": "datum.md != null" },
+            { "type": "alignmentMismatches" },
+            {
+              "type": "filter",
+              "expr": "datum.baseQuality == null || datum.baseQuality >= minBaseQuality"
+            },
+            {
+              "type": "aggregate",
+              "groupby": ["chrom", "mismatchStart", "base"]
+            },
+            {
+              "type": "stack",
+              "field": "count",
+              "groupby": ["chrom", "mismatchStart"],
+              "sort": { "field": "base", "order": "ascending" },
+              "as": ["mismatchCount0", "mismatchCount1"]
+            },
+            {
+              "type": "formula",
+              "expr": "datum.mismatchStart + 1",
+              "as": "mismatchEnd"
+            }
+          ],
+          "mark": "rect",
+          "encoding": {
+            "x": {
+              "chrom": "chrom",
+              "pos": "mismatchStart",
+              "type": "locus",
+              "band": 0
+            },
+            "x2": { "chrom": "chrom", "pos": "mismatchEnd", "band": 0 },
+            "y": { "field": "mismatchCount0", "type": "quantitative" },
+            "y2": { "field": "mismatchCount1" },
+            "color": {
+              "field": "base",
+              "type": "nominal",
+              "scale": {
+                "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
+                "range": [
+                  "#7BD56C",
+                  "#FF9B9B",
+                  "#86BBF1",
+                  "#FFC56C",
+                  "#7BD56C",
+                  "#FF9B9B",
+                  "#86BBF1",
+                  "#FFC56C",
+                  "#E0E0E0"
+                ]
+              },
+              "legend": null
+            }
+          }
         }
-      ],
-      "mark": "rect",
-      "encoding": {
-        "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
-        "x2": { "chrom": "chrom", "pos": "end" },
-        "y": {
-          "field": "coverage",
-          "type": "quantitative",
-          "axis": { "tickCount": 2 }
-        }
-      }
+      ]
     },
     {
       "height": { "step": { "expr": "laneHeight" } },
@@ -81,18 +171,6 @@
 
       "resolve": { "scale": { "color": "independent", "opacity": "independent" } },
 
-      "transform": [
-        {
-          "type": "filter",
-          "expr": "datum.mapq == null || datum.mapq >= minMapq"
-        },
-        {
-          "type": "formula",
-          "expr": "datum.mapq == null ? 0 : datum.mapq",
-          "as": "mapqOrZero"
-        },
-        { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
-      ],
       "encoding": {
         "y": {
           "field": "_lane",
@@ -227,8 +305,18 @@
               "field": "base",
               "type": "nominal",
               "scale": {
-                "domain": ["A", "C", "G", "T", "N"],
-                "range": ["#4daf4a", "#377eb8", "#ff7f00", "#e41a1c", "#777777"]
+                "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
+                "range": [
+                  "#7BD56C",
+                  "#FF9B9B",
+                  "#86BBF1",
+                  "#FFC56C",
+                  "#7BD56C",
+                  "#FF9B9B",
+                  "#86BBF1",
+                  "#FFC56C",
+                  "#E0E0E0"
+                ]
               }
             },
             "opacity": {
