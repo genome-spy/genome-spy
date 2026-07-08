@@ -1,5 +1,3 @@
-import { shallowArrayEquals } from "./arrayUtils.js";
-
 /**
  * Creates a shallow-cloner function that ensures (hopefully) that the properties
  * end up into the in-object storage. Offers better performance than Object.assign
@@ -25,34 +23,36 @@ export default function createCloner(template, options = {}) {
 }
 
 /**
- * Creates a cloner that recreates itself when the datum property names change.
+ * Creates a cloner from the first datum and reuses it until reset. Dataflow
+ * batches are expected to keep a stable input object shape.
  *
  * @param {{ copyFields?: Iterable<string> }} [options]
- * @returns {(datum: import("../data/flowNode.js").Datum) => import("../data/flowNode.js").Datum}
+ * @returns {((datum: import("../data/flowNode.js").Datum) => import("../data/flowNode.js").Datum) & { reset: () => void }}
  */
 export function createCachedCloner(options = {}) {
     const copyFields = options.copyFields
         ? new Set(options.copyFields)
         : undefined;
 
-    /** @type {string[]} */
-    let lastProperties;
+    /** @type {((datum: import("../data/flowNode.js").Datum) => import("../data/flowNode.js").Datum) | undefined} */
+    let clone;
 
-    /** @type {(datum: import("../data/flowNode.js").Datum) => import("../data/flowNode.js").Datum} */
-    let clone = (datum) => datum;
+    const cachedCloner = /** @type {ReturnType<typeof createCachedCloner>} */ (
+        (datum) => {
+            if (!clone) {
+                const properties = getCloneProperties(datum, copyFields);
+                clone = createClonerForProperties(properties);
+            }
 
-    return (datum) => {
-        const properties = getCloneProperties(datum, copyFields);
-        if (
-            !lastProperties ||
-            !shallowArrayEquals(properties, lastProperties)
-        ) {
-            lastProperties = properties;
-            clone = createClonerForProperties(properties);
+            return clone(datum);
         }
+    );
 
-        return clone(datum);
+    cachedCloner.reset = () => {
+        clone = undefined;
     };
+
+    return cachedCloner;
 }
 
 /**

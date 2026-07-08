@@ -1,5 +1,5 @@
 import { createCachedCloner } from "../../utils/cloner.js";
-import { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
+import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
 /**
@@ -17,15 +17,7 @@ export default class CloneTransform extends Transform {
         super({ type: "clone" });
 
         /** @param {import("../flowNode.js").Datum} datum */
-        const setupCloner = (datum) => {
-            const clone = this.#clone;
-            /** @param {any} datum */
-            this.handle = (datum) => this._propagate(clone(datum));
-
-            this.handle(datum);
-        };
-
-        this.handle = setupCloner;
+        this.handle = (datum) => this._propagate(this.#clone(datum));
 
         /**
          * Signals that a new batch of data will be propagated.
@@ -33,10 +25,7 @@ export default class CloneTransform extends Transform {
          * @param {import("../../types/flowBatch.js").FlowBatch} [flowBatch]
          */
         this.beginBatch = (flowBatch) => {
-            if (isFileBatch(flowBatch)) {
-                this.#clone = createCachedCloner();
-                this.handle = setupCloner;
-            }
+            this.#clone.reset();
             super.beginBatch(flowBatch);
         };
     }

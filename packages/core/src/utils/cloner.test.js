@@ -1,5 +1,8 @@
 import { expect, test } from "vitest";
-import createCloner, { getAllProperties } from "./cloner.js";
+import createCloner, {
+    createCachedCloner,
+    getAllProperties,
+} from "./cloner.js";
 
 const template = {
     1: "iddqd",
@@ -33,6 +36,17 @@ test("Cloner copies only configured properties", () => {
         c: "xyzzy",
     });
     expect(makeClone.properties).toEqual(["1", "c"]);
+});
+
+test("Cached cloner keeps one object shape until reset", () => {
+    const clone = createCachedCloner();
+
+    expect(clone({ a: 1 })).toEqual({ a: 1 });
+    expect(clone({ a: 2, b: 3 })).toEqual({ a: 2 });
+
+    clone.reset();
+
+    expect(clone({ a: 2, b: 3 })).toEqual({ a: 2, b: 3 });
 });
 
 test("getAllProperties", () => {

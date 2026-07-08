@@ -37,5 +37,10 @@ export default class FlattenCigarTransform extends Transform {
                 this._propagate(Object.assign(clone(datum), operation));
             }
         };
+
+        this.beginBatch = (flowBatch) => {
+            clone.reset();
+            super.beginBatch(flowBatch);
+        };
     }
 }

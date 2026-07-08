@@ -52,6 +52,7 @@ export default class AlignmentMismatchesTransform extends Transform {
             const sequence = accessOptional(sequenceAccessor, datum);
             const quality = accessOptional(qualityAccessor, datum);
 
+            // TODO: Avoid scanning all MD mismatch events for every M operation.
             for (const operation of walkCigar(cigar, start)) {
                 if (operation.cigarOp == "M") {
                     for (const [refOffset, refBase] of mismatchEvents) {
@@ -97,6 +98,11 @@ export default class AlignmentMismatchesTransform extends Transform {
                     }
                 }
             }
+        };
+
+        this.beginBatch = (flowBatch) => {
+            clone.reset();
+            super.beginBatch(flowBatch);
         };
     }
 

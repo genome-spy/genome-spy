@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import Collector from "../collector.js";
 import { processData } from "../flowTestUtils.js";
 import FlattenCigarTransform from "./flattenCigar.js";
 
@@ -220,6 +221,44 @@ describe("FlattenCigar transform", () => {
                 cigarEnd: 15,
                 readStart: 0,
                 readEnd: 5,
+                cigarType: "aligned",
+            },
+        ]);
+    });
+
+    test("refreshes cloned source fields between batches", () => {
+        const transform = new FlattenCigarTransform({ type: "flattenCigar" });
+        const collector = new Collector();
+        transform.addChild(collector);
+
+        transform.beginBatch({ type: "file" });
+        transform.handle({ start: 0, cigar: "1M" });
+        transform.beginBatch({ type: "file" });
+        transform.handle({ start: 10, end: 11, cigar: "1M" });
+        transform.complete();
+
+        expect([...collector.getData()]).toEqual([
+            {
+                start: 0,
+                cigar: "1M",
+                cigarOp: "M",
+                cigarLength: 1,
+                cigarStart: 0,
+                cigarEnd: 1,
+                readStart: 0,
+                readEnd: 1,
+                cigarType: "aligned",
+            },
+            {
+                start: 10,
+                end: 11,
+                cigar: "1M",
+                cigarOp: "M",
+                cigarLength: 1,
+                cigarStart: 10,
+                cigarEnd: 11,
+                readStart: 0,
+                readEnd: 1,
                 cigarType: "aligned",
             },
         ]);
