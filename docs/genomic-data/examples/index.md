@@ -19,9 +19,6 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 - [ClinVar Small-Variant Classifications](clinvar-variants.md) clinvar-variants.json
 - [GENCODE Gene Annotations from GFF3](gencode-gff3-gene-annotations.md) gff3-gene-annotations.json
 - [Indexed FASTA Sequence Track](indexed-fasta-sequence-track.md) indexed-fasta-sequence-track.json
-
-## Additional Examples
-
 - [BAM Read Alignments](bam-read-alignments.md) bam-read-alignments.json
 
 ## More examples
