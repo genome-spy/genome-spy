@@ -1,3 +1,5 @@
+import { shallowArrayEquals } from "./arrayUtils.js";
+
 /**
  * Creates a shallow-cloner function that ensures (hopefully) that the properties
  * end up into the in-object storage. Offers better performance than Object.assign
@@ -7,15 +9,58 @@
  * https://mrale.ph/blog/2014/07/30/constructor-vs-objectcreate.html
  *
  * @param {T} template The template object that
+ * @param {{ copyFields?: Iterable<string> }} [options]
  * @returns {(function(T):T) & { properties: string[] }}
  * @template {object} [T=object]
  */
-export default function createCloner(template) {
-    // TODO: Check that only properties, not methods get cloned
-    const properties = /** @type {string[]} */ (
-        getAllProperties(template).filter((k) => typeof k == "string")
-    );
+export default function createCloner(template, options = {}) {
+    const copyFields = options.copyFields
+        ? new Set(options.copyFields)
+        : undefined;
 
+    // TODO: Check that only properties, not methods get cloned
+    const properties = getCloneProperties(template, copyFields);
+
+    return createClonerForProperties(properties);
+}
+
+/**
+ * Creates a cloner that recreates itself when the datum property names change.
+ *
+ * @param {{ copyFields?: Iterable<string> }} [options]
+ * @returns {(datum: import("../data/flowNode.js").Datum) => import("../data/flowNode.js").Datum}
+ */
+export function createCachedCloner(options = {}) {
+    const copyFields = options.copyFields
+        ? new Set(options.copyFields)
+        : undefined;
+
+    /** @type {string[]} */
+    let lastProperties;
+
+    /** @type {(datum: import("../data/flowNode.js").Datum) => import("../data/flowNode.js").Datum} */
+    let clone = (datum) => datum;
+
+    return (datum) => {
+        const properties = getCloneProperties(datum, copyFields);
+        if (
+            !lastProperties ||
+            !shallowArrayEquals(properties, lastProperties)
+        ) {
+            lastProperties = properties;
+            clone = createClonerForProperties(properties);
+        }
+
+        return clone(datum);
+    };
+}
+
+/**
+ * @param {string[]} properties
+ * @returns {(function(T):T) & { properties: string[] }}
+ * @template {object} [T=object]
+ */
+function createClonerForProperties(properties) {
     const cloner = /** @type {(function(T):T) & { properties: string[] }} */ (
         new Function(
             "source",
@@ -31,6 +76,18 @@ export default function createCloner(template) {
     cloner.properties = properties;
 
     return cloner;
+}
+
+/**
+ * @param {object} template
+ * @param {Set<string> | undefined} copyFields
+ */
+function getCloneProperties(template, copyFields) {
+    return /** @type {string[]} */ (
+        getAllProperties(template).filter(
+            (k) => typeof k == "string" && (!copyFields || copyFields.has(k))
+        )
+    );
 }
 
 /**

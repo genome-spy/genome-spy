@@ -10,7 +10,8 @@ mismatches. Insertions, deletions, skipped regions, and clipped bases are not
 emitted as mismatch rows; use [`flattenCigar`](./flatten-cigar.md) to render
 those operations.
 
-The transform preserves the input fields and adds:
+The transform preserves the input fields, or only the fields listed in
+`copyFields` when it is defined, and adds:
 
 | field           | description                                             |
 | --------------- | ------------------------------------------------------- |
@@ -23,6 +24,11 @@ The transform preserves the input fields and adds:
 
 Reference coordinates are 0-based and half-open. Unavailable CIGAR values
 (`*`) produce no rows.
+
+The `copyFields` parameter limits which top-level input fields are copied to
+the emitted mismatch rows after they have been used by the transform. For
+example, `seq`, `qual`, and `md` can be read as inputs without being copied to
+every mismatch row.
 
 ## Parameters
 

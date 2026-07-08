@@ -1,5 +1,4 @@
-import { shallowArrayEquals } from "../../utils/arrayUtils.js";
-import createCloner, { getAllProperties } from "../../utils/cloner.js";
+import { createCachedCloner } from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES, isFileBatch } from "../flowNode.js";
 import Transform from "./transform.js";
 
@@ -11,27 +10,14 @@ export default class CloneTransform extends Transform {
         return BEHAVIOR_CLONES;
     }
 
-    /** @type {string[]} */
-    #lastBatchFields;
-
     /** @type {(datum: import("../flowNode.js").Datum) => import("../flowNode.js").Datum} */
-    #clone = (datum) => datum;
+    #clone = createCachedCloner();
 
     constructor() {
         super({ type: "clone" });
 
         /** @param {import("../flowNode.js").Datum} datum */
         const setupCloner = (datum) => {
-            // Create a new cloner if the fields have changed
-            const fields = getAllProperties(datum);
-            if (
-                !this.#lastBatchFields ||
-                !shallowArrayEquals(fields, this.#lastBatchFields)
-            ) {
-                this.#lastBatchFields = fields;
-                this.#clone = createCloner(datum);
-            }
-
             const clone = this.#clone;
             /** @param {any} datum */
             this.handle = (datum) => this._propagate(clone(datum));
@@ -48,6 +34,7 @@ export default class CloneTransform extends Transform {
          */
         this.beginBatch = (flowBatch) => {
             if (isFileBatch(flowBatch)) {
+                this.#clone = createCachedCloner();
                 this.handle = setupCloner;
             }
             super.beginBatch(flowBatch);

@@ -1,4 +1,5 @@
 import { field } from "../../utils/field.js";
+import { createCachedCloner } from "../../utils/cloner.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import { walkCigar } from "./cigarUtils.js";
 import { parseMdTag } from "./mdUtils.js";
@@ -20,6 +21,7 @@ export default class AlignmentMismatchesTransform extends Transform {
         const sequenceAccessor = field(params.sequence ?? "seq");
         const qualityAccessor = field(params.quality ?? "qual");
         const mdAccessor = field(params.md ?? "md");
+        const clone = createCachedCloner({ copyFields: params.copyFields });
 
         /** @param {Record<string, any>} datum */
         this.handle = (datum) => {
@@ -67,7 +69,8 @@ export default class AlignmentMismatchesTransform extends Transform {
                                 quality,
                                 mismatchStart,
                                 readOffset,
-                                refBase
+                                refBase,
+                                clone
                             );
                         }
                     }
@@ -88,7 +91,8 @@ export default class AlignmentMismatchesTransform extends Transform {
                             quality,
                             mismatchStart,
                             operation.readStart + i,
-                            refBase
+                            refBase,
+                            clone
                         );
                     }
                 }
@@ -103,6 +107,7 @@ export default class AlignmentMismatchesTransform extends Transform {
      * @param {number} mismatchStart
      * @param {number} readOffset
      * @param {string} refBase
+     * @param {(datum: Record<string, any>) => Record<string, any>} clone
      */
     #emitMismatch(
         datum,
@@ -110,7 +115,8 @@ export default class AlignmentMismatchesTransform extends Transform {
         quality,
         mismatchStart,
         readOffset,
-        refBase
+        refBase,
+        clone
     ) {
         if (typeof sequence !== "string") {
             throw new Error("alignmentMismatches requires read sequence");
@@ -123,7 +129,7 @@ export default class AlignmentMismatchesTransform extends Transform {
             );
         }
 
-        const mismatch = Object.assign({}, datum, {
+        const mismatch = Object.assign(clone(datum), {
             mismatchStart,
             mismatchEnd: mismatchStart + 1,
             readOffset,

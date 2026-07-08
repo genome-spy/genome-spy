@@ -6,7 +6,8 @@ insertions, deletions, skipped regions, and clipped ends need separate marks.
 For background on the CIGAR notation, see the
 [SAM/BAM format specification](https://samtools.github.io/hts-specs/SAMv1.pdf).
 
-The transform preserves the input fields and adds:
+The transform preserves the input fields, or only the fields listed in
+`copyFields` when it is defined, and adds:
 
 | field         | description                                                                             |
 | ------------- | --------------------------------------------------------------------------------------- |
@@ -21,6 +22,10 @@ The transform preserves the input fields and adds:
 Reference coordinates are 0-based and half-open. Insertions and clipped bases
 are emitted as zero-width reference-anchored rows. Unavailable CIGAR values
 (`*`) produce no rows.
+
+The `copyFields` parameter limits which top-level input fields are copied to
+the emitted operation rows. For example, BAM reads often contain long sequence
+and base-quality fields that are needed upstream but not in CIGAR overlay rows.
 
 ## Parameters
 

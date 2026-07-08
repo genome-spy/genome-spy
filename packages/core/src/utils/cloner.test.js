@@ -25,6 +25,16 @@ test("Cloner clones object properly", () => {
     expect(makeClone(another)).not.toBe(another);
 });
 
+test("Cloner copies only configured properties", () => {
+    const makeClone = createCloner(template, { copyFields: ["1", "c"] });
+
+    expect(makeClone(template)).toEqual({
+        1: "iddqd",
+        c: "xyzzy",
+    });
+    expect(makeClone.properties).toEqual(["1", "c"]);
+});
+
 test("getAllProperties", () => {
     expect(getAllProperties(template)).toEqual(["1", "a", "c", "b"]);
 

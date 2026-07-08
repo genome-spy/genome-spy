@@ -159,6 +159,36 @@ describe("AlignmentMismatches transform", () => {
         ]);
     });
 
+    test("uses uncopied source fields while emitting only configured source fields", () => {
+        /** @type {AlignmentMismatchesParams} */
+        const params = {
+            type: "alignmentMismatches",
+            copyFields: ["start", "cigar"],
+        };
+        const data = [
+            {
+                start: 200,
+                cigar: "4M",
+                seq: "AAAT",
+                qual: [30, 30, 30, 17],
+                md: "3A0",
+            },
+        ];
+
+        expect(transform(params, data)).toEqual([
+            {
+                start: 200,
+                cigar: "4M",
+                mismatchStart: 203,
+                mismatchEnd: 204,
+                readOffset: 3,
+                base: "T",
+                refBase: "A",
+                baseQuality: 17,
+            },
+        ]);
+    });
+
     test("does not emit rows for MD deletions", () => {
         /** @type {AlignmentMismatchesParams} */
         const params = { type: "alignmentMismatches" };

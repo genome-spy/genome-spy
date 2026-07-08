@@ -193,6 +193,38 @@ describe("FlattenCigar transform", () => {
         ]);
     });
 
+    test("copies only configured source fields to emitted rows", () => {
+        /** @type {FlattenCigarParams} */
+        const params = {
+            type: "flattenCigar",
+            copyFields: ["start", "end", "cigar"],
+        };
+        const data = [
+            {
+                start: 10,
+                end: 15,
+                cigar: "5M",
+                seq: "AAAAA",
+                qual: [30, 30, 30, 30, 30],
+            },
+        ];
+
+        expect(transform(params, data)).toEqual([
+            {
+                start: 10,
+                end: 15,
+                cigar: "5M",
+                cigarOp: "M",
+                cigarLength: 5,
+                cigarStart: 10,
+                cigarEnd: 15,
+                readStart: 0,
+                readEnd: 5,
+                cigarType: "aligned",
+            },
+        ]);
+    });
+
     test("emits no rows for unavailable CIGARs", () => {
         /** @type {FlattenCigarParams} */
         const params = { type: "flattenCigar" };

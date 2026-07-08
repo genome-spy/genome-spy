@@ -314,9 +314,10 @@ export interface FlattenSequenceParams extends TransformParamsBase {
 /**
  * Expands a read alignment into one row per CIGAR operation.
  *
- * The output rows preserve the input datum fields and add fixed CIGAR fields:
- * `cigarOp`, `cigarLength`, `cigarStart`, `cigarEnd`, `readStart`, `readEnd`,
- * and `cigarType`. Reference coordinates are 0-based, half-open.
+ * The output rows preserve the input datum fields, or only the fields listed
+ * in `copyFields` when it is defined, and add fixed CIGAR fields: `cigarOp`,
+ * `cigarLength`, `cigarStart`, `cigarEnd`, `readStart`, `readEnd`, and
+ * `cigarType`. Reference coordinates are 0-based, half-open.
  */
 export interface FlattenCigarParams extends TransformParamsBase {
     type: "flattenCigar";
@@ -334,6 +335,15 @@ export interface FlattenCigarParams extends TransformParamsBase {
      * __Default value:__ `"cigar"`
      */
     cigar?: Field;
+
+    /**
+     * Top-level input fields copied to the emitted CIGAR operation rows.
+     *
+     * If omitted, all input fields are copied. This can be used to avoid
+     * copying bulky fields such as read sequence or base quality arrays while
+     * still allowing the transform to read its input fields.
+     */
+    copyFields?: string[];
 }
 
 /**
@@ -341,10 +351,10 @@ export interface FlattenCigarParams extends TransformParamsBase {
  *
  * The transform uses the read sequence, CIGAR string, and MD tag. The MD tag is
  * required because ordinary `M` CIGAR operations do not distinguish matches
- * from mismatches. The output rows preserve the input datum fields and add
- * fixed mismatch fields: `mismatchStart`, `mismatchEnd`, `readOffset`, `base`,
- * `refBase`, and optionally `baseQuality`. Reference coordinates are 0-based,
- * half-open.
+ * from mismatches. The output rows preserve the input datum fields, or only
+ * the fields listed in `copyFields` when it is defined, and add fixed mismatch
+ * fields: `mismatchStart`, `mismatchEnd`, `readOffset`, `base`, `refBase`, and
+ * optionally `baseQuality`. Reference coordinates are 0-based, half-open.
  */
 export interface AlignmentMismatchesParams extends TransformParamsBase {
     type: "alignmentMismatches";
@@ -383,6 +393,15 @@ export interface AlignmentMismatchesParams extends TransformParamsBase {
      * __Default value:__ `"md"`
      */
     md?: Field;
+
+    /**
+     * Top-level input fields copied to the emitted mismatch rows.
+     *
+     * If omitted, all input fields are copied. This can be used to avoid
+     * copying bulky fields such as read sequence or base quality arrays while
+     * still allowing the transform to read its input fields.
+     */
+    copyFields?: string[];
 }
 
 export interface PileupParams extends TransformParamsBase {

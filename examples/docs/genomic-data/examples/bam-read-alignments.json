@@ -37,7 +37,7 @@
     {
       "type": "formula",
       "expr": "datum.mapq == null ? 0 : datum.mapq",
-      "as": "mapqOrZero"
+      "as": "_mapqOrZero"
     },
     { "type": "pileup", "start": "start", "end": "end", "as": "_lane" }
   ],
@@ -70,7 +70,7 @@
           "name": "depth",
           "title": "Depth",
           "transform": [
-            { "type": "flattenCigar" },
+            { "type": "flattenCigar", "copyFields": ["chrom"] },
             { "type": "filter", "expr": "datum.cigarType == 'aligned'" },
             {
               "type": "collect",
@@ -108,7 +108,7 @@
           "title": "Mismatch support",
           "transform": [
             { "type": "filter", "expr": "datum.md != null" },
-            { "type": "alignmentMismatches" },
+            { "type": "alignmentMismatches", "copyFields": ["chrom"] },
             {
               "type": "filter",
               "expr": "datum.baseQuality == null || datum.baseQuality >= minBaseQuality"
@@ -146,7 +146,7 @@
               "type": "nominal",
               "scale": {
                 "domain": ["A", "C", "T", "G", "N"],
-                "range": ["#7BD56C", "#FF9B9B", "#86BBF1", "#FFC56C", "#E0E0E0"]
+                "range": ["#4FBF45", "#4D96E8", "#E85F78", "#E8B322", "#BDBDBD"]
               },
               "legend": null
             }
@@ -156,7 +156,7 @@
           "name": "insertion-summary",
           "title": "Insertion support",
           "transform": [
-            { "type": "flattenCigar" },
+            { "type": "flattenCigar", "copyFields": ["chrom"] },
             { "type": "filter", "expr": "datum.cigarType == 'insertion'" },
             {
               "type": "aggregate",
@@ -182,6 +182,9 @@
       ]
     },
     {
+      "name": "read-alignments",
+      "title": { "text": "Read alignments", "orient": "none" },
+
       "height": { "step": { "expr": "laneHeight" } },
       "viewportHeight": "container",
 
@@ -216,7 +219,7 @@
             "type": "arrow",
             "style": "arrow-block",
             "minStemLength": 10,
-            "color": "#c0c0c0"
+            "color": "#c8c8c8"
           },
           "encoding": {
             "x": {
@@ -233,15 +236,24 @@
               "scale": { "domain": ["+", "-"], "range": ["forward", "reverse"] }
             },
             "opacity": {
-              "field": "mapqOrZero",
+              "field": "_mapqOrZero",
               "type": "quantitative",
-              "scale": { "domain": [0, 60], "range": [0.25, 1] }
+              "scale": { "domain": [0, 60], "range": [0.25, 1] },
+              "legend": {
+                "title": "Mapping quality",
+                "values": [0, 20, 40, 60]
+              }
             }
           }
         },
         {
           "name": "cigar-overlays",
-          "transform": [{ "type": "flattenCigar" }],
+          "transform": [
+            {
+              "type": "flattenCigar",
+              "copyFields": ["chrom", "_lane", "name", "cigar"]
+            }
+          ],
           "encoding": {
             "x": {
               "chrom": "chrom",
@@ -321,7 +333,22 @@
           "title": "Mismatch",
           "transform": [
             { "type": "filter", "expr": "datum.md != null" },
-            { "type": "alignmentMismatches" },
+            {
+              "type": "alignmentMismatches",
+              "copyFields": [
+                "chrom",
+                "_lane",
+                "name",
+                "cigar",
+                "mapq",
+                "strand"
+              ]
+            },
+            {
+              "type": "formula",
+              "expr": "datum.baseQuality == null ? 20 : datum.baseQuality",
+              "as": "_baseQualityForOpacity"
+            },
             {
               "type": "filter",
               "expr": "datum.baseQuality == null || datum.baseQuality >= minBaseQuality"
@@ -349,12 +376,27 @@
                   "scale": {
                     "domain": ["A", "C", "T", "G", "N"],
                     "range": [
-                      "#7BD56C",
-                      "#FF9B9B",
-                      "#86BBF1",
-                      "#FFC56C",
-                      "#E0E0E0"
+                      "#4FBF45",
+                      "#4D96E8",
+                      "#E85F78",
+                      "#E8B322",
+                      "#BDBDBD"
                     ]
+                  },
+                  "legend": { "title": "Base" }
+                },
+                "opacity": {
+                  "field": "_baseQualityForOpacity",
+                  "type": "quantitative",
+                  "scale": {
+                    "domain": [5, 20],
+                    "range": [0.1, 1],
+                    "clamp": true,
+                    "nice": false
+                  },
+                  "legend": {
+                    "title": "Base quality",
+                    "values": [6, 10, 15, 20]
                   }
                 }
               }
@@ -376,6 +418,7 @@
   ],
 
   "config": {
-    "view": { "stroke": "lightgray" }
+    "view": { "stroke": "lightgray" },
+    "legend": {}
   }
 }
