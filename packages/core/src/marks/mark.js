@@ -60,6 +60,7 @@ import {
     isSinglePointSelection,
 } from "../selection/selection.js";
 import { getConfiguredMarkDefaults } from "../config/markConfig.js";
+import { validatePositionalEndpointCoordinateSpaces } from "./markUtils.js";
 
 export const SAMPLE_FACET_UNIFORM = "SAMPLE_FACET_UNIFORM";
 export const SAMPLE_FACET_TEXTURE = "SAMPLE_FACET_TEXTURE";
@@ -437,6 +438,8 @@ export default class Mark {
                     delete encoding[channel];
                 }
             }
+
+            validatePositionalEndpointCoordinateSpaces(encoding);
 
             if (encoding.x) {
                 // Building the x index is rarely necessary, but it's safer to build

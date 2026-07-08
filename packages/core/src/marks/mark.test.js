@@ -31,6 +31,63 @@ describe("mark factory", () => {
     });
 });
 
+describe("mark positional endpoints", () => {
+    test("rejects a visual y value with a scale-backed y2 endpoint", async () => {
+        await expect(
+            create(
+                {
+                    data: { values: [{ pos: 1, count: 3 }] },
+                    mark: "rule",
+                    encoding: {
+                        x: { field: "pos", type: "quantitative" },
+                        y: { value: 0 },
+                        y2: { field: "count", type: "quantitative" },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            /Cannot combine encoding\.y\.value with scale-backed encoding\.y2.*encoding\.y\.datum/
+        );
+    });
+
+    test("rejects a visual x value with a scale-backed x2 endpoint", async () => {
+        await expect(
+            create(
+                {
+                    data: { values: [{ pos: 1, count: 3 }] },
+                    mark: "rule",
+                    encoding: {
+                        x: { value: 0 },
+                        x2: { field: "pos", type: "quantitative" },
+                        y: { field: "count", type: "quantitative" },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            /Cannot combine encoding\.x\.value with scale-backed encoding\.x2.*encoding\.x\.datum/
+        );
+    });
+
+    test("allows a scaled primary endpoint with a visual secondary endpoint", async () => {
+        const view = await create(
+            {
+                data: { values: [{ pos: 1, count: 3 }] },
+                mark: "rule",
+                encoding: {
+                    x: { field: "pos", type: "quantitative" },
+                    y: { field: "count", type: "quantitative" },
+                    y2: { value: 0 },
+                },
+            },
+            UnitView
+        );
+
+        expect(() => view.mark.encoding).not.toThrow();
+    });
+});
+
 describe("mark viewport scope", () => {
     test("clips only x when clipX is enabled", () => {
         const canvasSize = { width: 20, height: 10 };

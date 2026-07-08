@@ -12,6 +12,34 @@ import {
  */
 
 /**
+ * Validates that ranged positional channels do not mix a visual-domain primary
+ * endpoint with a scaled secondary endpoint.
+ *
+ * @param {Encoding} encoding
+ */
+export function validatePositionalEndpointCoordinateSpaces(encoding) {
+    for (const channel of /** @type {const} */ (["x", "y"])) {
+        const secondaryChannel = getSecondaryChannel(channel);
+        const primary = encoding[channel];
+        const secondary = encoding[secondaryChannel];
+
+        if (
+            primary &&
+            secondary &&
+            isValueDef(primary) &&
+            !findChannelDefWithScale(primary) &&
+            findChannelDefWithScale(secondary)
+        ) {
+            throw new Error(
+                `Cannot combine encoding.${channel}.value with scale-backed encoding.${secondaryChannel}. ` +
+                    `Use encoding.${channel}.datum for a constant data-domain endpoint, ` +
+                    `or use encoding.${secondaryChannel}.value for a visual-domain endpoint.`
+            );
+        }
+    }
+}
+
+/**
  * Expands a primary positional channel into a coverage range.
  *
  * Rect-like marks use this to turn a discrete position into band coverage and
