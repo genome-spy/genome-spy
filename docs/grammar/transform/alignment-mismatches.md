@@ -30,14 +30,27 @@ SCHEMA AlignmentMismatchesParams
 
 ## Example
 
+Given the following data:
+
+| chrom | start | name  | cigar | seq        | qual                                    | md   |
+| ----- | ----- | ----- | ----- | ---------- | --------------------------------------- | ---- |
+| chr1  | 100   | read1 | 10M   | AAAATAAAAA | [30, 30, 30, 30, 17, 30, 30, 30, 30, 30] | 4A5  |
+
+... and configuration:
+
 ```json
 {
-  "transform": [
-    { "type": "pileup", "start": "start", "end": "end", "as": "_lane" },
-    { "type": "alignmentMismatches" }
-  ]
+  "type": "alignmentMismatches"
 }
 ```
 
-After `alignmentMismatches`, layers can color `base` with a nominal scale and
-filter or fade marks using `baseQuality`.
+The MD tag says that the first four aligned reference bases match, the next
+reference base is `A`, and the following five bases match. The read has `T` at
+that offset, so one mismatch row is emitted:
+
+| chrom | start | name  | cigar | seq        | md   | mismatchStart | mismatchEnd | readOffset | base | refBase | baseQuality |
+| ----- | ----- | ----- | ----- | ---------- | ---- | ------------- | ----------- | ---------- | ---- | ------- | ----------- |
+| chr1  | 100   | read1 | 10M   | AAAATAAAAA | 4A5  | 104           | 105         | 4          | T    | A       | 17          |
+
+Layers can color `base` with a nominal scale and filter or fade marks using
+`baseQuality`.
