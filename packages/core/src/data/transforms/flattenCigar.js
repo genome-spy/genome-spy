@@ -38,6 +38,7 @@ export default class FlattenCigarTransform extends Transform {
             }
         };
 
+        /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
         this.beginBatch = (flowBatch) => {
             clone.reset();
             super.beginBatch(flowBatch);

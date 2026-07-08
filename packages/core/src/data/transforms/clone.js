@@ -10,7 +10,7 @@ export default class CloneTransform extends Transform {
         return BEHAVIOR_CLONES;
     }
 
-    /** @type {(datum: import("../flowNode.js").Datum) => import("../flowNode.js").Datum} */
+    /** @type {ReturnType<typeof createCachedCloner>} */
     #clone = createCachedCloner();
 
     constructor() {
@@ -22,7 +22,7 @@ export default class CloneTransform extends Transform {
         /**
          * Signals that a new batch of data will be propagated.
          *
-         * @param {import("../../types/flowBatch.js").FlowBatch} [flowBatch]
+         * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
          */
         this.beginBatch = (flowBatch) => {
             this.#clone.reset();
