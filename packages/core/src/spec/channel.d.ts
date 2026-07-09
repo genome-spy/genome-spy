@@ -587,7 +587,7 @@ export interface Encoding {
     text?: TextDef;
 
     /**
-     * Fields or values shown by the default tooltip handler.
+     * Fields, expressions, or values shown by the default tooltip handler.
      *
      * If omitted, the default tooltip handler shows the hovered datum's
      * properties. If `null`, the default tooltip handler shows no raw datum

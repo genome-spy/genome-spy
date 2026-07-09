@@ -35,7 +35,7 @@ readability.
 Specs can choose which rows the `default` handler shows with
 `encoding.tooltip`. If the channel is omitted, the handler shows the hovered
 datum's properties. If the channel is `null`, raw datum rows are hidden for that
-mark.
+mark. Each row can be a field, expression, datum, or value definition.
 
 ```json
 {
@@ -45,7 +45,8 @@ mark.
     "y": { "field": "score", "type": "quantitative" },
     "tooltip": [
       { "field": "sample", "title": "Sample" },
-      { "field": "score", "title": "Score", "format": ".2f" }
+      { "field": "score", "title": "Score", "format": ".2f" },
+      { "expr": "datum.score > 10 ? 'high' : 'low'", "title": "Class" }
     ]
   }
 }

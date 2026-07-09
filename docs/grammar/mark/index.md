@@ -134,17 +134,19 @@ cover in the visualization.
 
 `tooltip`
 : Rows shown by the default tooltip handler. A single definition shows one row.
-  An array shows multiple rows in the specified order. If omitted, the default
-  handler shows the hovered datum's properties. If `null`, raw datum rows are
-  hidden for the mark. The `mark.tooltip` property is separate and selects or
-  disables the tooltip handler.
+  An array shows multiple rows in the specified order. Rows can use field,
+  expression, datum, or value definitions. If omitted, the default handler shows
+  the hovered datum's properties. If `null`, raw datum rows are hidden for the
+  mark. The `mark.tooltip` property is separate and selects or disables the
+  tooltip handler.
 
 ```json
 {
   "encoding": {
     "tooltip": [
       { "field": "name", "title": "Read" },
-      { "field": "mapq", "title": "Mapping quality" }
+      { "field": "mapq", "title": "Mapping quality" },
+      { "expr": "datum.mapq >= 20 ? 'pass' : 'low'", "title": "Status" }
     ]
   }
 }
