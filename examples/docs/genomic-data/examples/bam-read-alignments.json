@@ -3,7 +3,7 @@
 
   "description": [
     "BAM read alignment example using a downsampled GIAB HG002 chr20 slice.",
-    "The initial locus contains insertions, deletions, soft clips, and MD/NM tags."
+    "Shows an IGV-like BAM alignment view with depth coverage, insertion and mismatch summaries, directional read pileups, CIGAR overlays, and base-quality filtering."
   ],
 
   "assembly": "hg38",
