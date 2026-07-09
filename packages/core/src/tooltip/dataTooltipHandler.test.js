@@ -30,6 +30,7 @@ test("Renders genomic rows first and hides configured raw rows", async () => {
 
     const mark = /** @type {any} */ ({
         encoders: {},
+        encoding: {},
         unitView: {
             getTitleText: () => "",
         },
@@ -63,6 +64,7 @@ test("Falls back to datum flattening when no context is provided", async () => {
 
     const mark = /** @type {any} */ ({
         encoders: {},
+        encoding: {},
         unitView: {
             getTitleText: () => "",
         },
@@ -75,6 +77,90 @@ test("Falls back to datum flattening when no context is provided", async () => {
         el.textContent?.trim()
     );
     expect(keys).toEqual(["sample", "nested.value"]);
+});
+
+test("Renders only configured tooltip rows when provided", async () => {
+    const datum = {
+        sample: "S1",
+        score: 5,
+        seq: "ACTG",
+        qual: "IIII",
+    };
+
+    const mark = /** @type {any} */ ({
+        encoders: {},
+        unitView: {
+            getTitleText: () => "",
+        },
+    });
+
+    const context = {
+        tooltipRows: [
+            { key: "Sample", value: "S1", sourceField: "sample" },
+            { key: "Score", value: 5, sourceField: "score" },
+        ],
+    };
+
+    const content = await dataTooltipHandler(
+        datum,
+        mark,
+        undefined,
+        /** @type {any} */ (context)
+    );
+    const container = toContainer(content);
+
+    const keys = Array.from(container.querySelectorAll("th")).map((el) =>
+        el.textContent?.trim()
+    );
+    expect(keys).toEqual(["Sample", "Score"]);
+});
+
+test("Uses source fields for color legends when tooltip titles differ", async () => {
+    const datum = {
+        category: "A",
+    };
+
+    const fieldAccessor = /** @type {any} */ (
+        Object.assign(() => datum.category, {
+            constant: false,
+            fields: ["category"],
+        })
+    );
+
+    const fillEncoder = /** @type {any} */ (
+        Object.assign(() => "#ff0000", {
+            branches: [{ accessor: fieldAccessor }],
+        })
+    );
+
+    const mark = /** @type {any} */ ({
+        encoders: {
+            fill: fillEncoder,
+        },
+        unitView: {
+            getTitleText: () => "",
+        },
+    });
+
+    const context = {
+        tooltipRows: [
+            { key: "Category label", value: "A", sourceField: "category" },
+        ],
+    };
+
+    const content = await dataTooltipHandler(
+        datum,
+        mark,
+        undefined,
+        /** @type {any} */ (context)
+    );
+    const container = toContainer(content);
+
+    const keys = Array.from(container.querySelectorAll("th")).map((el) =>
+        el.textContent?.trim()
+    );
+    expect(keys).toEqual(["Category label"]);
+    expect(container.querySelector(".color-legend")).not.toBeNull();
 });
 
 test("Matches color legend fields that use bracket notation", async () => {
@@ -99,6 +185,7 @@ test("Matches color legend fields that use bracket notation", async () => {
         encoders: {
             fill: fillEncoder,
         },
+        encoding: {},
         unitView: {
             getTitleText: () => "",
         },
@@ -135,6 +222,7 @@ test("Shows an empty swatch when color scale returns null for a present value", 
         encoders: {
             fill: fillEncoder,
         },
+        encoding: {},
         unitView: {
             getTitleText: () => "",
         },
@@ -172,6 +260,7 @@ test("Does not show swatch for null value when color scale returns null", async 
         encoders: {
             fill: fillEncoder,
         },
+        encoding: {},
         unitView: {
             getTitleText: () => "",
         },

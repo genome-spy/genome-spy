@@ -95,6 +95,7 @@ describe("isNonMarkPropertyChannel", () => {
     test("identifies non-mark-property metadata channels", () => {
         expect(isNonMarkPropertyChannel("key")).toBe(true);
         expect(isNonMarkPropertyChannel("search")).toBe(true);
+        expect(isNonMarkPropertyChannel("tooltip")).toBe(true);
         expect(isNonMarkPropertyChannel("x")).toBe(false);
     });
 });

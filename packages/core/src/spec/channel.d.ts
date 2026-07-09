@@ -53,6 +53,7 @@ export type ChannelWithoutScale =
     | "uniqueId"
     | "search"
     | "text"
+    | "tooltip"
     | "key"
     | "facetIndex"
     | "semanticScore"
@@ -444,9 +445,11 @@ export type TextDef =
     | ExprDef
     | ValueDef<string>; // TODO: Conditions
 
+export type TooltipDef = TextDef | TextDef[] | null;
+
 export type ChannelDef = Exclude<
     Encoding[keyof Encoding],
-    FieldDefWithoutScale[]
+    FieldDefWithoutScale[] | TextDef[]
 >;
 
 // TODO: Does this make sense?
@@ -582,6 +585,16 @@ export interface Encoding {
      * Text of the `text` mark.
      */
     text?: TextDef;
+
+    /**
+     * Fields, expressions, or values shown by the default tooltip handler.
+     *
+     * If omitted, the default tooltip handler shows the hovered datum's
+     * properties. If `null`, the default tooltip handler shows no raw datum
+     * rows for this mark. Use an array to show multiple rows in a specific
+     * order.
+     */
+    tooltip?: TooltipDef;
 
     /**
      * Facet identifier for interactive filtering, sorting, and grouping in the App.

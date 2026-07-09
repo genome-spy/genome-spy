@@ -32,6 +32,29 @@ handler displays the underlying datum's properties in a table. Property names
 starting with an underscore are omitted. The values are formatted for
 readability.
 
+Specs can choose which rows the `default` handler shows with
+`encoding.tooltip`. If the channel is omitted, the handler shows the hovered
+datum's properties. If the channel is `null`, raw datum rows are hidden for that
+mark. Each row can be a field, expression, datum, or value definition.
+
+```json
+{
+  "mark": "point",
+  "encoding": {
+    "x": { "field": "position", "type": "quantitative" },
+    "y": { "field": "score", "type": "quantitative" },
+    "tooltip": [
+      { "field": "sample", "title": "Sample" },
+      { "field": "score", "title": "Score", "format": ".2f" },
+      { "expr": "datum.score > 10 ? 'high' : 'low'", "title": "Class" }
+    ]
+  }
+}
+```
+
+`mark.tooltip` selects or disables the tooltip handler. `encoding.tooltip`
+selects the rows passed to the default handler.
+
 When positional channels use a `"locus"` scale, the default handler also shows
 derived genomic rows before raw rows:
 
@@ -70,6 +93,7 @@ export type TooltipHandler = (
 
 `TooltipContext` may include:
 
+- `tooltipRows`: rows selected by `encoding.tooltip`
 - `genomicRows`: derived genomic rows
 - `hiddenRowKeys`: raw row keys hidden by the default handler
 - `flattenDatumRows()`: utility for flattening datum fields

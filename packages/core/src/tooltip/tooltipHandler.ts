@@ -22,9 +22,17 @@ export interface TooltipHandlerParams {
 export interface TooltipRow {
     key: string;
     value: any;
+    sourceField?: string;
+    formatted?: boolean;
 }
 
 export interface TooltipContext {
+    /**
+     * Rows selected by `encoding.tooltip`. If undefined, the default tooltip
+     * handler uses flattened datum rows.
+     */
+    tooltipRows?: TooltipRow[];
+
     /**
      * A list of row keys that should be hidden from the default tooltip table.
      */
