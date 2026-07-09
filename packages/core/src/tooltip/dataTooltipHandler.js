@@ -85,15 +85,18 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
     };
 
     const tooltipContext = context ?? createTooltipContext(datum, mark, params);
-    const rawRows = tooltipContext.flattenDatumRows
-        ? tooltipContext.flattenDatumRows()
-        : flattenDatumRows(datum);
+    const rawRows = tooltipContext.tooltipRows
+        ? tooltipContext.tooltipRows
+        : tooltipContext.flattenDatumRows
+          ? tooltipContext.flattenDatumRows()
+          : flattenDatumRows(datum);
     const genomicRows = tooltipContext.genomicRows ?? [];
     const hiddenRowKeys = new Set(tooltipContext.hiddenRowKeys ?? []);
 
     const visibleRawRows = rawRows.filter(
         (row) =>
-            !hiddenRowKeys.has(row.key) || legend(row.key, row.value, datum)
+            !hiddenRowKeys.has(row.key) ||
+            legend(row.sourceField ?? row.key, row.value, datum)
     );
     const orderedRows = [...genomicRows, ...visibleRawRows];
     if (!orderedRows.length) {
@@ -101,8 +104,12 @@ export default async function dataTooltipHandler(datum, mark, params, context) {
     }
 
     const tableContents = orderedRows.map((row) => {
-        const value = formatObject(row.value);
-        const valueLegend = legend(row.key, row.value, datum);
+        const value = row.formatted ? row.value : formatObject(row.value);
+        const valueLegend = legend(
+            row.sourceField ?? row.key,
+            row.value,
+            datum
+        );
         return html`
             <tr>
                 <th>${row.key}</th>
