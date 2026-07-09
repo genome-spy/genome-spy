@@ -219,6 +219,7 @@
       "layer": [
         {
           "name": "read-layers",
+          "title": "Read alignments",
           "resolve": {
             "scale": { "opacity": "independent" }
           },
@@ -273,6 +274,7 @@
             },
             {
               "name": "cigar-overlays",
+              "title": "CIGAR operation",
               "transform": [
                 {
                   "type": "flattenCigar",
@@ -300,6 +302,7 @@
                   ],
                   "layer": [
                     {
+                      "title": "Deletion",
                       "mark": {
                         "type": "rect",
                         "color": "white",
@@ -307,6 +310,7 @@
                       }
                     },
                     {
+                      "title": "Deletion",
                       "mark": {
                         "type": "rule",
                         "color": "#222",
@@ -403,6 +407,7 @@
               },
               "layer": [
                 {
+                  "title": "Mismatch",
                   "mark": {
                     "type": "rect",
                     "minWidth": 1
@@ -440,6 +445,7 @@
                   }
                 },
                 {
+                  "title": "Mismatch base",
                   "mark": {
                     "type": "text",
                     "color": "black",
