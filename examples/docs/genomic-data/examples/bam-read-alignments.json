@@ -216,17 +216,6 @@
         "scale": { "color": "independent", "opacity": "independent" }
       },
 
-      "encoding": {
-        "y": {
-          "field": "_lane",
-          "type": "index",
-          "scale": {
-            "padding": 0.2,
-            "reverse": true,
-            "zoom": false
-          }
-        }
-      },
       "layer": [
         {
           "name": "read-backbone",
@@ -246,6 +235,15 @@
               "axis": {}
             },
             "x2": { "chrom": "chrom", "pos": "end", "band": 0 },
+            "y": {
+              "field": "_lane",
+              "type": "index",
+              "scale": {
+                "padding": 0.2,
+                "reverse": true,
+                "zoom": false
+              }
+            },
             "direction": {
               "field": "strand",
               "type": "nominal",
@@ -277,7 +275,16 @@
               "type": "locus",
               "band": 0
             },
-            "x2": { "chrom": "chrom", "pos": "cigarEnd", "band": 0 }
+            "x2": { "chrom": "chrom", "pos": "cigarEnd", "band": 0 },
+            "y": {
+              "field": "_lane",
+              "type": "index",
+              "scale": {
+                "padding": 0.2,
+                "reverse": true,
+                "zoom": false
+              }
+            }
           },
           "layer": [
             {
@@ -377,7 +384,16 @@
               "type": "locus",
               "band": 0
             },
-            "x2": { "chrom": "chrom", "pos": "mismatchEnd", "band": 0 }
+            "x2": { "chrom": "chrom", "pos": "mismatchEnd", "band": 0 },
+            "y": {
+              "field": "_lane",
+              "type": "index",
+              "scale": {
+                "padding": 0.2,
+                "reverse": true,
+                "zoom": false
+              }
+            }
           },
           "layer": [
             {
@@ -435,33 +451,17 @@
           "opacity": {
             "expr": "smoothstep(windowSize * 0.7, windowSize, abs(domain('x')[1] - domain('x')[0]))"
           },
-          "layer": [
-            {
-              "mark": {
-                "type": "rect",
-                "fill": "white",
-                "opacity": 0.7
-              },
-              "encoding": {
-                "x": null,
-                "x2": null,
-                "y": null
-              }
-            },
-            {
-              "mark": {
-                "type": "text",
-                "text": "Zoom in closer to load data.",
-                "color": "#333",
-                "size": 13,
-                "yOffset": 20
-              },
-              "encoding": {
-                "x": null,
-                "y": { "value": 1 }
-              }
-            }
-          ]
+          "mark": {
+            "type": "text",
+            "text": "Zoom in closer to load data.",
+            "color": "#333",
+            "size": 13,
+            "yOffset": 20
+          },
+          "encoding": {
+            "x": { "value": 0.5 },
+            "y": { "value": 1 }
+          }
         }
       ]
     }
