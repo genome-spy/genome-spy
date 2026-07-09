@@ -80,6 +80,14 @@ test("evaluates ExprRefs in datum and value definitions", () => {
     ]);
 });
 
+test("does not apply numeric format to null values", () => {
+    const mark = makeMark({ field: "score", title: "Score", format: ".2f" });
+
+    expect(getConfiguredTooltipRows({ score: null }, mark)).toEqual([
+        { key: "Score", value: null, sourceField: "score" },
+    ]);
+});
+
 test("rejects an empty tooltip array", () => {
     expect(() => getConfiguredTooltipRows({}, makeMark([]))).toThrow(
         "The tooltip channel array must not be empty."

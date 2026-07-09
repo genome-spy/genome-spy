@@ -41,7 +41,10 @@ function resolveTooltipRow(datum, mark, definition) {
     const accessor = getTooltipAccessor(mark, definition);
     const rawValue = accessor(datum);
     const formattedValue =
-        "format" in definition && definition.format
+        "format" in definition &&
+        definition.format &&
+        typeof rawValue === "number" &&
+        Number.isFinite(rawValue)
             ? d3format(definition.format)(rawValue)
             : rawValue;
 
