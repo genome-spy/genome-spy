@@ -12,6 +12,9 @@ function makeMark(tooltip) {
         },
         unitView: {
             paramRuntime: {
+                /**
+                 * @param {string} expr
+                 */
                 createExpression: (expr) =>
                     new Function("datum", `return ${expr};`),
             },
