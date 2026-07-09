@@ -132,6 +132,24 @@ cover in the visualization.
 `text`
 : Text that the `"text"` mark should render for a mark instance.
 
+`tooltip`
+: Rows shown by the default tooltip handler. A single definition shows one row.
+  An array shows multiple rows in the specified order. If omitted, the default
+  handler shows the hovered datum's properties. If `null`, raw datum rows are
+  hidden for the mark. The `mark.tooltip` property is separate and selects or
+  disables the tooltip handler.
+
+```json
+{
+  "encoding": {
+    "tooltip": [
+      { "field": "name", "title": "Read" },
+      { "field": "mapq", "title": "Mapping quality" }
+    ]
+  }
+}
+```
+
 #### Non-visual channels
 
 Some channels carry metadata for interaction features and are not encoded into
