@@ -50,11 +50,13 @@ nav:
           - Transform:
                 - "grammar/transform/index.md"
                 - Aggregate: "grammar/transform/aggregate.md"
+                - AlignmentMismatches: "grammar/transform/alignment-mismatches.md"
                 - Collect: "grammar/transform/collect.md"
                 - Coverage: "grammar/transform/coverage.md"
                 - Filter: "grammar/transform/filter.md"
                 - FilterScoredLabels: "grammar/transform/filter-scored-labels.md"
                 - Flatten: "grammar/transform/flatten.md"
+                - FlattenCigar: "grammar/transform/flatten-cigar.md"
                 - FlattenCompressedExons: "grammar/transform/flatten-compressed-exons.md"
                 - FlattenDelimited: "grammar/transform/flatten-delimited.md"
                 - FlattenSequence: "grammar/transform/flatten-sequence.md"
@@ -104,6 +106,7 @@ nav:
                 - ASCAT Algorithm in GenomeSpy: "genomic-data/examples/ascat-algorithm.md"
                 - Sashimi plot from splice junctions: "genomic-data/examples/sashimi-plot.md"
                 - ClinVar Small-Variant Classifications: "genomic-data/examples/clinvar-variants.md"
+                - BAM Read Alignments: "genomic-data/examples/bam-read-alignments.md"
     - Working with Sample Collections:
           - "sample-collections/index.md"
           - Visualizing: "sample-collections/visualizing.md"

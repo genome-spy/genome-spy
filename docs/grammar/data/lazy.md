@@ -216,11 +216,39 @@ The data source is based on [GMOD](http://gmod.org/)'s
 
 ## BAM
 
-The `"bam"` source is very much work in progress but has a low priority. It
-currently exposes the reads but provides no handling for variants alleles,
-CIGARs, etc. Please send a message to [GitHub
-Discussions](https://github.com/genome-spy/genome-spy/discussions) if you are
-interested in this feature.
+The `"bam"` source loads read alignments from indexed BAM files for the visible
+genomic region. It returns one row per read with alignment coordinates, CIGAR,
+MAPQ, sequence, base qualities, selected SAM tags, and selected SAM flag
+booleans.
+
+Returned fields:
+
+| Field             | Type     | Description                                                                      |
+| ----------------- | -------- | -------------------------------------------------------------------------------- |
+| `chrom`           | string   | Chromosome name, normalized to the active genome's chromosome naming convention. |
+| `start`           | number   | Alignment start position.                                                        |
+| `end`             | number   | Alignment end position.                                                          |
+| `name`            | string   | Read name.                                                                       |
+| `cigar`           | string   | CIGAR string, or `"*"` when unavailable.                                         |
+| `mapq`            | number   | Mapping quality.                                                                 |
+| `strand`          | string   | Read strand: `"+"` or `"-"`.                                                     |
+| `seq`             | string   | Read sequence.                                                                   |
+| `qual`            | number[] | Base quality values, when available.                                             |
+| `md`              | string   | `MD` tag value, when available.                                                  |
+| `flags`           | number   | Raw SAM flag value.                                                              |
+| `isPaired`        | boolean  | Whether the read is paired.                                                      |
+| `isProperPair`    | boolean  | Whether the read is mapped as a proper pair.                                     |
+| `isDuplicate`     | boolean  | Whether the read is marked as duplicate.                                         |
+| `isQcFail`        | boolean  | Whether the read failed vendor quality checks.                                   |
+| `isSecondary`     | boolean  | Whether the alignment is secondary.                                              |
+| `isSupplementary` | boolean  | Whether the alignment is supplementary.                                          |
+
+Use [`flattenCigar`](../transform/flatten-cigar.md) and
+[`alignmentMismatches`](../transform/alignment-mismatches.md) when reshaping BAM
+rows for custom alignment views. See [BAM Read
+Alignments](../../genomic-data/examples/bam-read-alignments.md) example for a
+fuller alignment visualization with coverage, CIGAR annotations, insertions, and
+mismatch evidence.
 
 ### Parameters
 

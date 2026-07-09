@@ -1,12 +1,11 @@
 # Genomic Data Examples
 
-This page collects a few non-trivial genomic examples that are useful as
-reference material.
+This page collects non-trivial genomic examples that are useful as reference
+material.
 
 ## Linked examples
 
-The example specs below are self-contained and focus on a single track or
-layout.
+The example specs below mostly focus on a single track or layout.
 
 EXAMPLE_GALLERY examples/docs/genomic-data/examples
 
@@ -18,11 +17,12 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 - [ClinVar Small-Variant Classifications](clinvar-variants.md) clinvar-variants.json
 - [GENCODE Gene Annotations from GFF3](gencode-gff3-gene-annotations.md) gff3-gene-annotations.json
 - [Indexed FASTA Sequence Track](indexed-fasta-sequence-track.md) indexed-fasta-sequence-track.json
+- [BAM Read Alignments](bam-read-alignments.md) bam-read-alignments.json
 
 ## More examples
 
-For many more examples of visualizing genomic data, see
-[Lazy data sources](../../grammar/data/lazy.md).
+For more examples of visualizing genomic data, see [Lazy data
+sources](../../grammar/data/lazy.md).
 
 ## Observable notebooks
 

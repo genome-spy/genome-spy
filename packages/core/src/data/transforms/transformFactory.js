@@ -1,9 +1,11 @@
 import Collector from "../collector.js";
+import AlignmentMismatchesTransform from "./alignmentMismatches.js";
 import CoverageTransform from "./coverage.js";
 import FilterScoredLabelsTransform from "./filterScoredLabels.js";
 import FilterTransform from "./filter.js";
 import FlattenTransform from "./flatten.js";
 import FlattenCompressedExonsTransform from "./flattenCompressedExons.js";
+import FlattenCigarTransform from "./flattenCigar.js";
 import FlattenDelimitedTransform from "./flattenDelimited.js";
 import FormulaTransform from "./formula.js";
 import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate.js";
@@ -27,11 +29,13 @@ import TruncateTextTransform from "./truncateText.js";
  */
 export const transforms = {
     aggregate: AggregateTransform,
+    alignmentMismatches: AlignmentMismatchesTransform,
     collect: Collector,
     coverage: CoverageTransform,
     filterScoredLabels: FilterScoredLabelsTransform,
     filter: FilterTransform,
     flatten: FlattenTransform,
+    flattenCigar: FlattenCigarTransform,
     flattenCompressedExons: FlattenCompressedExonsTransform,
     flattenDelimited: FlattenDelimitedTransform,
     flattenSequence: FlattenSequenceTransform,
