@@ -6,6 +6,8 @@ import SingleAxisLazySource from "./singleAxisLazySource.js";
  * Can be used to generate a genome axis or fancy background grid.
  */
 export default class AxisGenomeSource extends SingleAxisLazySource {
+    #loaded = false;
+
     /**
      * @param {import("../../../spec/data.js").AxisGenomeData} params
      * @param {import("../../../view/view.js").default} view
@@ -19,7 +21,22 @@ export default class AxisGenomeSource extends SingleAxisLazySource {
     }
 
     async load() {
+        this.#loaded = true;
         this.publishData([this.genome.chromosomes]);
+    }
+
+    /**
+     * @param {number[]} _domain
+     */
+    requestDataForDomain(_domain) {
+        void this.load();
+    }
+
+    /**
+     * @param {import("./singleAxisLazySource.js").DataReadinessRequest} _request
+     */
+    isDataReadyForDomain(_request) {
+        return this.#loaded;
     }
 }
 

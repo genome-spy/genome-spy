@@ -8,7 +8,7 @@ class TestLazySource extends SingleAxisLazySource {
     calls = [];
 
     /**
-     * @param {ReturnType<typeof createViewStub>} view
+     * @param {ReturnType<typeof createViewStub>["view"]} view
      */
     constructor(view) {
         super(/** @type {any} */ (view), "x");
@@ -75,7 +75,12 @@ describe("SingleAxisLazySource", () => {
         expect(source.calls).toEqual([]);
 
         await loadViewSubtreeData(
-            /** @type {any} */ ({ visit: () => undefined }),
+            /** @type {any} */ ({
+                /**
+                 * @returns {void}
+                 */
+                visit: () => undefined,
+            }),
             new Set([source])
         );
         expect(source.calls).toEqual([]);

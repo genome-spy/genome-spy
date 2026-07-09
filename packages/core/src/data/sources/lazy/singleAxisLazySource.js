@@ -77,14 +77,8 @@ export default class SingleAxisLazySource extends DataSource {
                 // Axis-only sources may use resolutions that expose only a
                 // numeric domain. Genomic sources receive the complex
                 // chromosome/position domain when it is available.
-                const complexDomain =
-                    "getComplexDomain" in this.scaleResolution
-                        ? this.scaleResolution.getComplexDomain()
-                        : undefined;
-                this.onDomainChanged(
-                    this.scaleResolution.getDomain(),
-                    /** @type {import("../../../spec/genome.js").ChromosomalLocus[]} */
-                    (complexDomain)
+                this.#requestCurrentDomainData(
+                    this.scaleResolution.getDomain()
                 );
             }
         };
@@ -188,6 +182,49 @@ export default class SingleAxisLazySource extends DataSource {
         }
 
         this.complete();
+    }
+
+    /**
+     * Reloads the current domain when downstream transforms repropagate and no
+     * collector is available upstream to replay stored data.
+     */
+    repropagate() {
+        this.requestDataForDomain(this.scaleResolution.getDomain());
+    }
+
+    /**
+     * Requests data for the specified domain when the source does not have it.
+     *
+     * @param {number[]} domain
+     */
+    ensureDataForDomain(domain) {
+        if (!this.isDataReadyForDomain({ [this.channel]: domain })) {
+            this.requestDataForDomain(domain);
+        }
+    }
+
+    /**
+     * Requests data for the specified domain.
+     *
+     * @param {number[]} domain
+     */
+    requestDataForDomain(domain) {
+        this.#requestCurrentDomainData(domain);
+    }
+
+    /**
+     * @param {number[]} domain
+     */
+    #requestCurrentDomainData(domain) {
+        const complexDomain =
+            "getComplexDomain" in this.scaleResolution
+                ? this.scaleResolution.getComplexDomain()
+                : undefined;
+        this.onDomainChanged(
+            domain,
+            /** @type {import("../../../spec/genome.js").ChromosomalLocus[]} */
+            (complexDomain)
+        );
     }
 
     /**

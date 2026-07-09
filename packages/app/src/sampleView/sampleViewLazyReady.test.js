@@ -80,6 +80,9 @@ describe("SampleView lazy readiness", () => {
             ensurePromise.then(() => {
                 resolved = true;
             });
+            // Let the zero-duration zoom await continue to lazy readiness setup
+            // before advancing the mock lazy source timer.
+            await Promise.resolve();
 
             const readinessRequest = buildReadinessRequest(trackView, ["x"]);
             expect(readinessRequest).toBeDefined();

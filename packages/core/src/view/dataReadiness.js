@@ -197,9 +197,6 @@ export function awaitSubtreeLazyReady(
             reject(new Error("Lazy subtree readiness was aborted."));
         };
 
-        attachCollectors();
-        checkReady();
-
         context.addBroadcastListener("subtreeDataReady", broadcastListener);
 
         if (signal) {
@@ -209,6 +206,14 @@ export function awaitSubtreeLazyReady(
             }
             signal.addEventListener("abort", abortHandler, { once: true });
         }
+
+        attachCollectors();
+        requestUnavailableLazyData(
+            subtreeRoot,
+            readinessRequest,
+            shouldConsiderView
+        );
+        checkReady();
     });
 }
 
@@ -258,15 +263,47 @@ function collectLazyDataSources(subtreeRoot, viewFilter) {
 }
 
 /**
+ * @param {View} subtreeRoot
+ * @param {DataReadinessRequest | undefined} readinessRequest
+ * @param {(view: View) => boolean} viewFilter
+ */
+function requestUnavailableLazyData(subtreeRoot, readinessRequest, viewFilter) {
+    for (const dataSource of collectLazyDataSources(subtreeRoot, viewFilter)) {
+        const domain = getLazySourceReadinessDomain(
+            dataSource,
+            readinessRequest
+        );
+        if (domain) {
+            dataSource.ensureDataForDomain(domain);
+        }
+    }
+}
+
+/**
  * @param {SingleAxisLazySource} dataSource
  * @param {DataReadinessRequest | undefined} readinessRequest
  */
 function isLazySourceReady(dataSource, readinessRequest) {
-    const request =
-        readinessRequest ??
-        ({
-            [dataSource.channel]: Array.from(dataSource.scaleResolution.getDomain()),
-        });
+    const domain = getLazySourceReadinessDomain(dataSource, readinessRequest);
 
-    return dataSource.isDataReadyForDomain(request);
+    return (
+        !!domain &&
+        dataSource.isDataReadyForDomain({
+            [dataSource.channel]: domain,
+        })
+    );
+}
+
+/**
+ * @param {SingleAxisLazySource} dataSource
+ * @param {DataReadinessRequest | undefined} readinessRequest
+ * @returns {number[] | undefined}
+ */
+function getLazySourceReadinessDomain(dataSource, readinessRequest) {
+    return (
+        readinessRequest?.[dataSource.channel] ??
+        (!readinessRequest
+            ? Array.from(dataSource.scaleResolution.getDomain())
+            : undefined)
+    );
 }

@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import Genome from "../../../genome/genome.js";
+import Collector from "../../collector.js";
 import SingleAxisWindowedSource from "./singleAxisWindowedSource.js";
 
 const genome = new Genome({
@@ -10,6 +11,12 @@ const genome = new Genome({
         { name: "chr3", size: 30 },
     ],
 });
+
+/**
+ * @typedef {import("../../../view/view.js").default & {
+ *     setDomain: (newDomain: number[]) => void
+ * }} WindowedViewStub
+ */
 
 class TestWindowedSource extends SingleAxisWindowedSource {
     constructor() {
@@ -25,19 +32,49 @@ class TestWindowedSource extends SingleAxisWindowedSource {
     }
 }
 
+class RepropagatingWindowedSource extends SingleAxisWindowedSource {
+    /** @type {number[][]} */
+    loadedIntervals = [];
+
+    /**
+     * @param {ReturnType<typeof createViewStub>} view
+     */
+    constructor(view) {
+        super(view, "x");
+        this.params = { windowSize: 20 };
+    }
+
+    /**
+     * @param {number[]} interval
+     */
+    async loadInterval(interval) {
+        this.loadedIntervals.push(interval);
+        this.publishData([[{ interval: interval.join("-") }]]);
+    }
+
+    markUnavailable() {
+        this._lastLoadedDomain = undefined;
+    }
+}
+
+/** @returns {WindowedViewStub} */
 function createViewStub() {
+    /** @type {number[]} */
+    let domain = [0, genome.totalSize];
     const scaleResolution = {
         addEventListener: vi.fn(),
-        getDomain: () => [0, genome.totalSize],
+        removeEventListener: vi.fn(),
+        getDomain: () => domain,
         getScale: () => ({
             genome: () => genome,
         }),
     };
 
-    return /** @type {import("../../../view/view.js").default} */ (
+    return /** @type {WindowedViewStub} */ (
         /** @type {any} */ ({
             context: {
                 addBroadcastListener: vi.fn(),
+                removeBroadcastListener: vi.fn(),
                 dataFlow: {
                     loadingStatusRegistry: {
                         set: vi.fn(),
@@ -46,8 +83,19 @@ function createViewStub() {
             },
             getScaleResolution: () => scaleResolution,
             isVisible: () => true,
+            /**
+             * @param {number[]} newDomain
+             */
+            setDomain: (newDomain) => {
+                domain = newDomain;
+            },
         })
     );
+}
+
+async function flushPromises() {
+    await Promise.resolve();
+    await Promise.resolve();
 }
 
 describe("SingleAxisWindowedSource", () => {
@@ -110,5 +158,61 @@ describe("SingleAxisWindowedSource", () => {
             { chrom: "chr3", startPos: 0, endPos: 5 },
         ]);
         expect(chunks).toEqual([["chr1"], ["chr2"], ["chr3"]]);
+    });
+
+    test("reloads the current window when asked to repropagate", async () => {
+        const view = createViewStub();
+        const source = new RepropagatingWindowedSource(view);
+        const collector = new Collector();
+        source.addChild(collector);
+
+        view.setDomain([2, 8]);
+        source.onDomainChanged([2, 8]);
+        await flushPromises();
+
+        expect(source.loadedIntervals).toEqual([[0, 20]]);
+        expect([...collector.getData()]).toEqual([{ interval: "0-20" }]);
+
+        // Param-dependent downstream transforms may repropagate from a lazy
+        // source when no upstream collector can replay stored data.
+        source.repropagate();
+        await flushPromises();
+
+        expect(source.loadedIntervals).toEqual([
+            [0, 20],
+            [0, 20],
+        ]);
+        expect([...collector.getData()]).toEqual([{ interval: "0-20" }]);
+
+        view.setDomain([22, 28]);
+        source.repropagate();
+        await flushPromises();
+
+        expect(source.loadedIntervals).toEqual([
+            [0, 20],
+            [0, 20],
+            [20, 40],
+        ]);
+        expect([...collector.getData()]).toEqual([{ interval: "20-40" }]);
+    });
+
+    test("reloads unavailable current-domain data", async () => {
+        const view = createViewStub();
+        const source = new RepropagatingWindowedSource(view);
+
+        view.setDomain([2, 8]);
+        source.onDomainChanged([2, 8]);
+        await flushPromises();
+
+        expect(source.loadedIntervals).toEqual([[0, 20]]);
+
+        source.markUnavailable();
+        source.ensureDataForDomain([2, 8]);
+        await flushPromises();
+
+        expect(source.loadedIntervals).toEqual([
+            [0, 20],
+            [0, 20],
+        ]);
     });
 });

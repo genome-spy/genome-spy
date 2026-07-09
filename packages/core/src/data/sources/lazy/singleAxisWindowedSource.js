@@ -92,7 +92,20 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      */
     reloadLastDomain() {
         const domain = this.#lastDomain ?? this.scaleResolution.getDomain();
+        this.#reloadDomain(domain);
+    }
 
+    /**
+     * @param {number[]} domain
+     */
+    requestDataForDomain(domain) {
+        this.#reloadDomain(domain);
+    }
+
+    /**
+     * @param {number[]} domain
+     */
+    #reloadDomain(domain) {
         this.#lastQuantizedInterval = [0, 0];
         this._lastLoadedDomain = undefined;
 

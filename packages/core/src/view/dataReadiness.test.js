@@ -49,6 +49,8 @@ function createLazySubtree(options = {}) {
     const ready = options.ready ?? true;
     const visible = options.visible ?? true;
     const readyState = { value: ready };
+    /** @type {number[][]} */
+    const requests = [];
 
     // Non-obvious: use UnitView's prototype so instanceof checks pass without full init.
     const unitView = Object.create(UnitView.prototype);
@@ -61,6 +63,9 @@ function createLazySubtree(options = {}) {
     };
     dataSource.isDataReadyForDomain = function () {
         return readyState.value;
+    };
+    dataSource.ensureDataForDomain = function (/** @type {number[]} */ domain) {
+        requests.push(domain);
     };
 
     const collector = new Collector();
@@ -78,6 +83,7 @@ function createLazySubtree(options = {}) {
         ),
         collector,
         readyState,
+        requests,
     };
 }
 
@@ -202,6 +208,53 @@ describe("dataReadiness", () => {
 
         await expect(promise).resolves.toBeUndefined();
         expect(context.getListenerCount()).toBe(0);
+    });
+
+    it("requests unavailable lazy data when awaiting readiness", async () => {
+        const { subtreeRoot, requests, readyState, collector } =
+            createLazySubtree({
+                ready: false,
+            });
+        const context = createContextStub();
+
+        const promise = awaitSubtreeLazyReady(
+            /** @type {import("../types/viewContext.js").default} */ (
+                /** @type {any} */ (context)
+            ),
+            subtreeRoot,
+            { x: [0, 10] }
+        );
+
+        expect(requests).toEqual([[0, 10]]);
+
+        readyState.value = true;
+        collector.complete();
+
+        await expect(promise).resolves.toBeUndefined();
+    });
+
+    it("requests the checked lazy data domain", async () => {
+        const { subtreeRoot, requests } = createLazySubtree({
+            ready: false,
+        });
+        const context = createContextStub();
+        const controller = new AbortController();
+
+        const promise = awaitSubtreeLazyReady(
+            /** @type {import("../types/viewContext.js").default} */ (
+                /** @type {any} */ (context)
+            ),
+            subtreeRoot,
+            { x: [2, 8] },
+            controller.signal
+        );
+
+        expect(requests).toEqual([[2, 8]]);
+
+        controller.abort();
+        await expect(promise).rejects.toThrow(
+            "Lazy subtree readiness was aborted."
+        );
     });
 
     it("rejects lazy readiness on abort", async () => {
