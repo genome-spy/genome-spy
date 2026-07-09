@@ -317,6 +317,7 @@ export default class Mark {
             "color",
             "opacity",
             "search",
+            "tooltip",
             "uniqueId",
         ];
     }
