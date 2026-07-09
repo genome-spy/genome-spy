@@ -272,10 +272,13 @@
                 },
                 "tooltip": [
                   { "field": "name", "title": "Read" },
-                  { "field": "chrom", "title": "Chromosome" },
-                  { "field": "start", "title": "Start" },
-                  { "field": "end", "title": "End" },
                   { "field": "strand", "title": "Strand" },
+                  { "field": "isPaired", "title": "Paired" },
+                  { "field": "isProperPair", "title": "Proper pair" },
+                  { "field": "isDuplicate", "title": "Duplicate" },
+                  { "field": "isQcFail", "title": "QC fail" },
+                  { "field": "isSecondary", "title": "Secondary" },
+                  { "field": "isSupplementary", "title": "Supplementary" },
                   { "field": "mapq", "title": "Mapping quality" },
                   { "field": "cigar", "title": "CIGAR" }
                 ]
@@ -353,14 +356,17 @@
                     {
                       "type": "filter",
                       "expr": "datum.cigarType == 'insertion'"
-                    },
-                    {
-                      "type": "formula",
-                      "expr": "slice(datum._seq, datum.readStart, datum.readEnd)",
-                      "as": "insertedSeq"
                     }
                   ],
-                  "encoding": { "x2": null },
+                  "encoding": {
+                    "x2": null,
+                    "tooltip": [
+                      {
+                        "expr": "slice(datum._seq, datum.readStart, datum.readEnd)",
+                        "title": "Inserted sequence"
+                      }
+                    ]
+                  },
                   "mark": {
                     "type": "text",
                     "text": "I",
@@ -468,7 +474,8 @@
                   "mark": {
                     "type": "text",
                     "color": "black",
-                    "size": { "expr": "laneHeight * 0.75" }
+                    "size": { "expr": "laneHeight * 0.75" },
+                    "tooltip": null
                   },
                   "encoding": {
                     "text": { "field": "base", "type": "nominal" }
