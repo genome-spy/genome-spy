@@ -1,13 +1,11 @@
 # Genomic Data Examples
 
-This page collects a few non-trivial genomic examples that are useful as
-reference material.
+This page collects non-trivial genomic examples that are useful as reference
+material.
 
 ## Linked examples
 
-The example specs below focus on a single track or layout. Most are
-self-contained; examples that need source attribution or usage notes include
-those details on their own pages.
+The example specs below mostly focus on a single track or layout.
 
 EXAMPLE_GALLERY examples/docs/genomic-data/examples
 
@@ -23,8 +21,8 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 
 ## More examples
 
-For many more examples of visualizing genomic data, see
-[Lazy data sources](../../grammar/data/lazy.md).
+For more examples of visualizing genomic data, see [Lazy data
+sources](../../grammar/data/lazy.md).
 
 ## Observable notebooks
 
