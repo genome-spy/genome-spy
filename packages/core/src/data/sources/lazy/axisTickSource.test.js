@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import Collector from "../../collector.js";
 import ViewParamRuntime from "../../../paramRuntime/viewParamRuntime.js";
@@ -136,6 +136,28 @@ describe("AxisTickSource", () => {
         ]);
     });
 
+    test("responds to domain events after activation and load", async () => {
+        const { getDomainListener, view } = createViewStub({
+            axisLength: 160,
+        });
+        const source = new AxisTickSource(
+            {
+                type: "axisTicks",
+                channel: "x",
+                axis: {},
+            },
+            /** @type {any} */ (view)
+        );
+        const onDomainChangedSpy = vi.spyOn(source, "onDomainChanged");
+
+        source.activate();
+        await source.load();
+        onDomainChangedSpy.mockClear();
+        getDomainListener()?.();
+
+        expect(onDomainChangedSpy).toHaveBeenCalledOnce();
+    });
+
     test("removes domain listeners on dispose", () => {
         const { getDomainListener, view } = createViewStub({
             axisLength: 160,
@@ -148,6 +170,7 @@ describe("AxisTickSource", () => {
             },
             /** @type {any} */ (view)
         );
+        source.activate();
         const domainListener = getDomainListener();
 
         source.dispose();

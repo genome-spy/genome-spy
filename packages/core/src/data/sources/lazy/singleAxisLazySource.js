@@ -16,6 +16,17 @@ import DataSource from "../dataSource.js";
  */
 export default class SingleAxisLazySource extends DataSource {
     /**
+     * Domain/layout listeners are registered lazily in activate(), not in the
+     * constructor. The view hierarchy can compute layout while initialization
+     * is still waiting for fonts, and eager lazy loading would let data reach
+     * text marks before their font metrics are available.
+     */
+    #listening = false;
+
+    /** @type {() => void} */
+    #fireDomainChanged;
+
+    /**
      * Has to be resolved before any data can be requested upon domain changes.
      * @protected
      */
@@ -61,31 +72,53 @@ export default class SingleAxisLazySource extends DataSource {
             throw new Error(sentences.join(" "));
         }
 
-        const fireDomainChanged = () => {
+        this.#fireDomainChanged = () => {
             if (!this.disposed && this.view.isVisible()) {
+                // Axis-only sources may use resolutions that expose only a
+                // numeric domain. Genomic sources receive the complex
+                // chromosome/position domain when it is available.
+                const complexDomain =
+                    "getComplexDomain" in this.scaleResolution
+                        ? this.scaleResolution.getComplexDomain()
+                        : undefined;
                 this.onDomainChanged(
                     this.scaleResolution.getDomain(),
                     /** @type {import("../../../spec/genome.js").ChromosomalLocus[]} */
-                    (this.scaleResolution.getComplexDomain())
+                    (complexDomain)
                 );
             }
         };
+    }
 
-        this.scaleResolution.addEventListener("domain", fireDomainChanged);
+    /**
+     * Starts reacting to domain and layout changes. This is called by the
+     * shared data-source loading lifecycle after fonts and graphics
+     * initialization are ready for incoming data.
+     */
+    activate() {
+        if (this.#listening) {
+            return;
+        }
+
+        this.#listening = true;
+        this.scaleResolution.addEventListener(
+            "domain",
+            this.#fireDomainChanged
+        );
         this.registerDisposer(() =>
             this.scaleResolution.removeEventListener(
                 "domain",
-                fireDomainChanged
+                this.#fireDomainChanged
             )
         );
         this.view.context.addBroadcastListener(
             "layoutComputed",
-            fireDomainChanged
+            this.#fireDomainChanged
         );
         this.registerDisposer(() =>
             this.view.context.removeBroadcastListener(
                 "layoutComputed",
-                fireDomainChanged
+                this.#fireDomainChanged
             )
         );
     }

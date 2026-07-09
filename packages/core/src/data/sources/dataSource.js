@@ -56,7 +56,15 @@ export default class DataSource extends FlowNode {
         // override
     }
 
+    /**
+     * Starts live reactions that should not run before the initial load phase.
+     */
+    activate() {
+        // override
+    }
+
     repropagate() {
+        this.activate();
         this.load();
     }
 }

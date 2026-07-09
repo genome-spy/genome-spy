@@ -45,7 +45,10 @@ function loadDataSourceOnce(dataSource, options) {
     }
 
     const loadPromise = Promise.resolve()
-        .then(() => dataSource.load())
+        .then(() => {
+            dataSource.activate();
+            return dataSource.load();
+        })
         .finally(() => {
             inFlightLoads.delete(dataSource);
         });
