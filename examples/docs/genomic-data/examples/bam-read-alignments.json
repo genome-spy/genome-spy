@@ -269,7 +269,16 @@
                     "title": "Mapping quality",
                     "values": [0, 20, 40, 60]
                   }
-                }
+                },
+                "tooltip": [
+                  { "field": "name", "title": "Read" },
+                  { "field": "chrom", "title": "Chromosome" },
+                  { "field": "start", "title": "Start" },
+                  { "field": "end", "title": "End" },
+                  { "field": "strand", "title": "Strand" },
+                  { "field": "mapq", "title": "Mapping quality" },
+                  { "field": "cigar", "title": "CIGAR" }
+                ]
               }
             },
             {
