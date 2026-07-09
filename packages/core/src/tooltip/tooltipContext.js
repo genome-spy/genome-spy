@@ -6,6 +6,7 @@
 
 import { asArray } from "../utils/arrayUtils.js";
 import { getEncoderDataAccessor } from "../encoder/encoder.js";
+import { getConfiguredTooltipRows } from "./configuredTooltipRows.js";
 import { flattenDatumRows } from "./flattenDatumRows.js";
 
 /** @type {Record<"x" | "y", "x2" | "y2">} */
@@ -88,6 +89,7 @@ export default function createTooltipContext(datum, mark, params) {
     }
 
     return {
+        tooltipRows: getConfiguredTooltipRows(datum, mark),
         hiddenRowKeys: [...hiddenRowKeys],
         genomicRows,
         flattenDatumRows: () => flattenDatumRows(datum),

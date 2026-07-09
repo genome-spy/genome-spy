@@ -42,11 +42,13 @@ function makeLocusEncoder(field) {
 /**
  * @param {object} options
  * @param {Record<string, any>} options.encoders
+ * @param {import("../spec/channel.js").Encoding} [options.encoding]
  * @param {any} [options.parent]
  */
-function makeMark({ encoders, parent }) {
+function makeMark({ encoders, encoding = {}, parent }) {
     return /** @type {any} */ ({
         encoders,
+        encoding,
         unitView: {
             getCollector: () => ({
                 parent,
@@ -73,6 +75,29 @@ describe("Tooltip context rows", () => {
 
         expect(context.genomicRows).toEqual([]);
         expect(context.hiddenRowKeys).toEqual([]);
+    });
+
+    test("Exposes configured tooltip rows", () => {
+        const datum = {
+            sample: "S1",
+            score: 7,
+        };
+        const mark = makeMark({
+            encoders: {},
+            encoding: {
+                tooltip: [
+                    { field: "sample", title: "Sample" },
+                    { field: "score", title: "Score" },
+                ],
+            },
+        });
+
+        const context = createTooltipContext(datum, mark);
+
+        expect(context.tooltipRows).toEqual([
+            { key: "Sample", value: "S1", sourceField: "sample" },
+            { key: "Score", value: 7, sourceField: "score" },
+        ]);
     });
 
     test("Auto mode renders a locus row for a single coordinate", () => {
@@ -376,6 +401,7 @@ describe("Tooltip context rows", () => {
 
         const mark = /** @type {any} */ ({
             encoders: {},
+            encoding: {},
             unitView: {
                 getCollector: () => {
                     getCollectorCalls += 1;
