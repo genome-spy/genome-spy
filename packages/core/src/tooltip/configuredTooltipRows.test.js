@@ -68,6 +68,18 @@ test("supports nested fields and expressions", () => {
     ]);
 });
 
+test("evaluates ExprRefs in datum and value definitions", () => {
+    const mark = makeMark([
+        { datum: { expr: "'S1'" }, title: "Sample" },
+        { value: { expr: "'primary'" }, title: "Label" },
+    ]);
+
+    expect(getConfiguredTooltipRows({}, mark)).toEqual([
+        { key: "Sample", value: "S1" },
+        { key: "Label", value: "primary" },
+    ]);
+});
+
 test("rejects an empty tooltip array", () => {
     expect(() => getConfiguredTooltipRows({}, makeMark([]))).toThrow(
         "The tooltip channel array must not be empty."

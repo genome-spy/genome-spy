@@ -1,5 +1,5 @@
 import { format as d3format } from "d3-format";
-import { field } from "../utils/field.js";
+import { createAccessor } from "../encoder/accessor.js";
 
 /**
  * @typedef {import("./tooltipHandler.js").TooltipRow} TooltipRow
@@ -56,7 +56,7 @@ function resolveTooltipRow(datum, mark, definition) {
 /**
  * @param {import("../marks/mark.js").default} mark
  * @param {import("../spec/channel.js").TextDef} definition
- * @returns {((datum: Record<string, any>) => any) & { sourceField?: string }}
+ * @returns {import("../types/encoder.js").Accessor & { sourceField?: string }}
  */
 function getTooltipAccessor(mark, definition) {
     let cache = accessorCache.get(mark);
@@ -70,21 +70,12 @@ function getTooltipAccessor(mark, definition) {
         return cached;
     }
 
-    /** @type {((datum: Record<string, any>) => any) & { sourceField?: string }} */
-    let accessor;
-    if ("field" in definition) {
-        accessor = field(definition.field);
-        accessor.sourceField = definition.field;
-    } else if ("expr" in definition) {
-        accessor = mark.unitView.paramRuntime.createExpression(definition.expr);
-    } else if ("datum" in definition) {
-        accessor = () => definition.datum;
-    } else if ("value" in definition) {
-        accessor = () => definition.value;
-    } else {
-        throw new Error(
-            "Invalid tooltip channel definition: " + JSON.stringify(definition)
+    const accessor =
+        /** @type {import("../types/encoder.js").Accessor & { sourceField?: string }} */ (
+            createAccessor("tooltip", definition, mark.unitView.paramRuntime)
         );
+    if ("field" in definition) {
+        accessor.sourceField = definition.field;
     }
 
     cache.set(definition, accessor);
