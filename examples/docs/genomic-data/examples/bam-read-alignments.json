@@ -277,8 +277,13 @@
               "title": "CIGAR operation",
               "transform": [
                 {
+                  "type": "formula",
+                  "expr": "datum.seq",
+                  "as": "_seq"
+                },
+                {
                   "type": "flattenCigar",
-                  "copyFields": ["chrom", "_lane", "name", "cigar"]
+                  "copyFields": ["chrom", "_lane", "name", "cigar", "_seq"]
                 }
               ],
               "encoding": {
@@ -339,6 +344,11 @@
                     {
                       "type": "filter",
                       "expr": "datum.cigarType == 'insertion'"
+                    },
+                    {
+                      "type": "formula",
+                      "expr": "slice(datum._seq, datum.readStart, datum.readEnd)",
+                      "as": "insertedSeq"
                     }
                   ],
                   "encoding": { "x2": null },
