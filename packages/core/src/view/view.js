@@ -226,7 +226,8 @@ export default class View {
         /** @type {ViewParamRuntime} */
         this.paramRuntime = new ViewParamRuntime(
             () => this.dataParent?.paramRuntime,
-            (channel) => this.getScaleResolution(channel)
+            (channel) => this.getScaleResolution(channel),
+            context.animator
         );
 
         if (spec.params) {

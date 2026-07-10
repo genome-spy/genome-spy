@@ -166,7 +166,7 @@ export function makeLerpSmoother(
         target = value;
         if (settled) {
             settled = false;
-            lastTimeStamp = +document.timeline.currentTime;
+            lastTimeStamp = getCurrentTimelineTime();
             smoothUpdate(lastTimeStamp);
         }
     }
@@ -176,4 +176,9 @@ export function makeLerpSmoother(
     };
 
     return setTarget;
+}
+
+function getCurrentTimelineTime() {
+    const time = globalThis.document?.timeline?.currentTime;
+    return typeof time === "number" ? time : performance.now();
 }
