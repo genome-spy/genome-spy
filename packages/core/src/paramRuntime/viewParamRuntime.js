@@ -7,8 +7,6 @@ import {
     validateParameterName,
 } from "./paramUtils.js";
 
-const PARAM_TRANSITION_MAX_FRAME_DELTA = 1000 / 60;
-
 export {
     activateExprRefProps,
     getDefaultParamValue,
@@ -610,8 +608,7 @@ export default class ViewParamRuntime {
             },
             transition.halfLife ?? 80,
             transition.epsilon ?? 0.001,
-            { value: ref.get() },
-            { maxFrameDelta: PARAM_TRANSITION_MAX_FRAME_DELTA }
+            { value: ref.get() }
         );
         const state = {
             target: ref.get(),

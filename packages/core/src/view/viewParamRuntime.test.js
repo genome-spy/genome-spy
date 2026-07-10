@@ -393,34 +393,11 @@ describe("Single-level ViewParamRuntime", () => {
         expect(pm.getValue("foo")).toBe(0);
         expect(pm.getTargetValue("foo")).toBe(10);
 
-        for (let i = 0; i < 6; i++) {
-            animator.step(100 / 6);
-        }
+        animator.step(100);
 
         expect(pm.getValue("foo")).toBeGreaterThan(4);
         expect(pm.getValue("foo")).toBeLessThan(6);
         expect(pm.getTargetValue("foo")).toBe(10);
-    });
-
-    test("transitioned writable params do not jump to target after a delayed first frame", () => {
-        const animator = createTestAnimator();
-        const pm = new ViewParamRuntime(
-            undefined,
-            undefined,
-            /** @type {any} */ (animator)
-        );
-        const setter = pm.registerParam({
-            name: "foo",
-            value: 12,
-            transition: { type: "lerp", halfLife: 60, epsilon: 0.001 },
-        });
-
-        setter(13);
-        animator.step(1000);
-
-        expect(pm.getValue("foo")).toBeGreaterThan(12);
-        expect(pm.getValue("foo")).toBeLessThan(12.2);
-        expect(pm.getTargetValue("foo")).toBe(13);
     });
 
     test("setValue can snap transitioned writable params to target", () => {
@@ -462,9 +439,7 @@ describe("Single-level ViewParamRuntime", () => {
         expect(pm.getValue("bar")).toBe(0);
         expect(pm.getTargetValue("bar")).toBe(1);
 
-        for (let i = 0; i < 6; i++) {
-            animator.step(100 / 6);
-        }
+        animator.step(100);
 
         expect(pm.getValue("bar")).toBeGreaterThan(0.4);
         expect(pm.getValue("bar")).toBeLessThan(0.6);

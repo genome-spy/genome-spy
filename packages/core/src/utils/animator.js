@@ -94,7 +94,6 @@ export default class Animator {
  * @param {number} halfLife Time until half of the value is reached, in milliseconds
  * @param {number} stopAt Stop animation when the value is within this distance from the target
  * @param {T} initialValue Initial value
- * @param {{ maxFrameDelta?: number }} [options]
  * @returns {((target: T) => void) & { stop: () => void}} Function that activates the transition with a new target value
  * @template {Record<string, number>} T
  */
@@ -103,8 +102,7 @@ export function makeLerpSmoother(
     callback,
     halfLife,
     stopAt,
-    initialValue,
-    options = {}
+    initialValue
 ) {
     let lastTimeStamp = 0;
     let settled = true;
@@ -135,11 +133,7 @@ export function makeLerpSmoother(
             return;
         }
 
-        const elapsed = timestamp - lastTimeStamp;
-        const tD =
-            options.maxFrameDelta === undefined
-                ? elapsed
-                : Math.min(elapsed, options.maxFrameDelta);
+        const tD = timestamp - lastTimeStamp;
         lastTimeStamp = timestamp;
 
         for (const key of /** @type {(keyof T)[]} */ (Object.keys(target))) {

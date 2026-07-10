@@ -80,24 +80,4 @@ describe("makeLerpSmoother", () => {
 
         expect(animator.pendingTransitionCount()).toBe(0);
     });
-
-    test("can cap large frame deltas", () => {
-        const animator = createTestAnimator();
-        /** @type {number[]} */
-        const values = [];
-        const smooth = makeLerpSmoother(
-            /** @type {any} */ (animator),
-            ({ value }) => values.push(value),
-            100,
-            0.001,
-            { value: 0 },
-            { maxFrameDelta: 16 }
-        );
-
-        smooth({ value: 10 });
-        animator.step(performance.now() + 1000);
-
-        expect(values.at(-1)).toBeGreaterThan(1);
-        expect(values.at(-1)).toBeLessThan(1.1);
-    });
 });
