@@ -13,6 +13,13 @@ function createTestAnimator() {
         requestTransition(callback) {
             callbacks.push(callback);
         },
+        /** @param {(timestamp: number) => void} callback */
+        cancelTransition(callback) {
+            const index = callbacks.indexOf(callback);
+            if (index >= 0) {
+                callbacks.splice(index, 1);
+            }
+        },
         requestRender() {
             //
         },

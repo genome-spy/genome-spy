@@ -106,6 +106,7 @@ export function makeLerpSmoother(
 ) {
     let lastTimeStamp = 0;
     let settled = true;
+    let requested = false;
 
     let current = structuredClone(initialValue);
     let target = current;
@@ -127,6 +128,7 @@ export function makeLerpSmoother(
      * @param {number} [timestamp]
      */
     function smoothUpdate(timestamp) {
+        requested = false;
         if (settled) {
             return;
         }
@@ -155,7 +157,14 @@ export function makeLerpSmoother(
                 animator.requestRender();
             }
         } else {
-            animator.requestTransition((t) => smoothUpdate(t));
+            requestSmoothUpdate();
+        }
+    }
+
+    function requestSmoothUpdate() {
+        if (!requested) {
+            requested = true;
+            animator.requestTransition(smoothUpdate);
         }
     }
 
@@ -173,6 +182,8 @@ export function makeLerpSmoother(
 
     setTarget.stop = () => {
         settled = true;
+        requested = false;
+        animator.cancelTransition(smoothUpdate);
     };
 
     return setTarget;
