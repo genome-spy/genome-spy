@@ -209,8 +209,7 @@ export default class ParamProvenanceBridge {
             return;
         }
 
-        const paramName = entry.selector.param;
-        const value = entry.view.paramRuntime.getValue(paramName);
+        const value = this.#getCapturedParamValue(entry);
         if (value === undefined) {
             return;
         }
@@ -605,7 +604,10 @@ export default class ParamProvenanceBridge {
 
                     entry.view.paramRuntime.setValue(
                         entry.selector.param,
-                        value
+                        value,
+                        {
+                            animate: false,
+                        }
                     );
                 }
 
@@ -627,6 +629,19 @@ export default class ParamProvenanceBridge {
         } finally {
             this.#suppressCapture = false;
         }
+    }
+
+    /**
+     * @param {BookmarkableParamEntry} entry
+     * @returns {any}
+     */
+    #getCapturedParamValue(entry) {
+        const paramName = entry.selector.param;
+        if (isVariableParameter(entry.param)) {
+            return entry.view.paramRuntime.getTargetValue(paramName);
+        }
+
+        return entry.view.paramRuntime.getValue(paramName);
     }
 
     /**

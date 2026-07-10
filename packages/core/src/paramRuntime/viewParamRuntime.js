@@ -52,8 +52,12 @@ export default class ViewParamRuntime {
      * @typedef {(value: any) => void} ParameterSetter
      * @typedef {object} TransitionState
      * @prop {number} target
+     * @prop {import("./types.js").WritableParamRef<number>} ref
      * @prop {((target: { value: number }) => void) & { stop: () => void }} smoother
      * @prop {() => void} dispose
+     *
+     * @typedef {object} SetValueOptions
+     * @prop {boolean} [animate=true]
      *
      * @typedef {object} WatchExpressionOptions
      * @prop {boolean} [scopeOwned=true]
@@ -73,7 +77,7 @@ export default class ViewParamRuntime {
     /** @type {string} */
     #scopeId;
 
-    /** @type {Map<string, (value: any) => void>} */
+    /** @type {Map<string, (value: any, options?: SetValueOptions) => void>} */
     #allocatedSetters = new Map();
 
     /** @type {Map<string, import("./types.js").ParamRef<any>>} */
@@ -300,8 +304,9 @@ export default class ViewParamRuntime {
      *
      * @param {string} paramName
      * @param {any} value
+     * @param {SetValueOptions} [options]
      */
-    setValue(paramName, value) {
+    setValue(paramName, value, options) {
         validateParameterName(paramName);
         const setter = this.#allocatedSetters.get(paramName);
         if (!setter) {
@@ -309,7 +314,7 @@ export default class ViewParamRuntime {
                 "Writable parameter not found in this scope: " + paramName
             );
         }
-        setter(value);
+        setter(value, options);
     }
 
     /**
@@ -534,7 +539,7 @@ export default class ViewParamRuntime {
      * @param {string} name
      * @param {any} defaultValue
      * @param {import("../spec/parameter.js").ParamTransition} transition
-     * @returns {(value: any) => void}
+     * @returns {(value: any, options?: SetValueOptions) => void}
      */
     #registerTransitionedBaseSetter(name, defaultValue, transition) {
         const initialValue = validateTransitionValue(name, defaultValue);
@@ -548,9 +553,11 @@ export default class ViewParamRuntime {
         const state = this.#createTransitionState(name, ref, transition);
         const setter = (
             /** @type {any} */
-            value
+            value,
+            /** @type {SetValueOptions | undefined} */
+            options
         ) => {
-            this.#setTransitionTarget(name, state, value);
+            this.#setTransitionTarget(name, state, value, options);
         };
         this.#allocatedSetters.set(name, setter);
 
@@ -605,6 +612,7 @@ export default class ViewParamRuntime {
         );
         const state = {
             target: ref.get(),
+            ref,
             smoother,
             dispose: () => {
                 smoother.stop();
@@ -622,11 +630,18 @@ export default class ViewParamRuntime {
      * @param {string} name
      * @param {TransitionState} state
      * @param {any} value
+     * @param {SetValueOptions} [options]
      */
-    #setTransitionTarget(name, state, value) {
+    #setTransitionTarget(name, state, value, options = {}) {
         const target = validateTransitionValue(name, value);
         state.target = target;
-        state.smoother({ value: target });
+        if (options.animate === false) {
+            state.smoother.stop();
+            state.ref.set(target);
+            this.#runtime.flushNow();
+        } else {
+            state.smoother({ value: target });
+        }
     }
 
     /**

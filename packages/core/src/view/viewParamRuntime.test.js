@@ -393,6 +393,26 @@ describe("Single-level ViewParamRuntime", () => {
         expect(pm.getTargetValue("foo")).toBe(10);
     });
 
+    test("setValue can snap transitioned writable params to target", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator)
+        );
+        pm.registerParam({
+            name: "foo",
+            value: 0,
+            transition: { type: "lerp", halfLife: 100, epsilon: 0.001 },
+        });
+
+        pm.setValue("foo", 10, { animate: false });
+
+        expect(pm.getValue("foo")).toBe(10);
+        expect(pm.getTargetValue("foo")).toBe(10);
+        expect(animator.pendingTransitionCount()).toBe(0);
+    });
+
     test("transitioned expression params smooth expression targets", () => {
         const animator = createTestAnimator();
         const pm = new ViewParamRuntime(
