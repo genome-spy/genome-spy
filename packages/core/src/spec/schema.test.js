@@ -18,6 +18,15 @@ function createCoreSchema() {
     }).createSchema("CoreRootSpec");
 }
 
+function createCoreValidator() {
+    const schema = createCoreSchema();
+    return new Ajv.default({
+        allErrors: true,
+        strict: false,
+        allowUnionTypes: true,
+    }).compile(schema);
+}
+
 describe("generated core schema", () => {
     test("accepts conditional mark-property branches with their own scale", () => {
         const schema = createCoreSchema();
@@ -148,6 +157,81 @@ describe("generated core schema", () => {
         expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
             true
         );
+    });
+
+    test("accepts transitioned variable parameters", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            params: [
+                {
+                    name: "laneHeight",
+                    value: 12,
+                    bind: { input: "range", min: 2, max: 30, step: 1 },
+                    transition: {
+                        type: "lerp",
+                        halfLife: 60,
+                        epsilon: 0.02,
+                    },
+                },
+                {
+                    name: "zoomMessageOpacity",
+                    expr: "laneHeight > 10 ? 1 : 0",
+                    transition: { type: "lerp" },
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
+    test("rejects bound expression parameters", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            params: [
+                {
+                    name: "mixed",
+                    expr: "1",
+                    bind: { input: "range" },
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        expect(validate(spec)).toBe(false);
+    });
+
+    test("rejects transitions on selection parameters", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            params: [
+                {
+                    name: "brush",
+                    select: { type: "interval", encodings: ["x"] },
+                    transition: { type: "lerp" },
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        expect(validate(spec)).toBe(false);
     });
 
     test("accepts interval selection extent configuration", () => {

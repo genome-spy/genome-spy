@@ -128,11 +128,7 @@ export default class ViewParamRuntime {
             );
         }
 
-        if ("value" in param && "expr" in param) {
-            throw new Error(
-                `The parameter "${name}" must not have both value and expr properties!`
-            );
-        }
+        validateParameterShape(param);
 
         /** @type {ParameterSetter} */
         let setter;
@@ -559,5 +555,68 @@ function getParamKind(config) {
         return "derived";
     } else {
         return "base";
+    }
+}
+
+/**
+ * @param {import("../spec/parameter.js").Parameter} param
+ */
+function validateParameterShape(param) {
+    const name = param.name;
+
+    if ("value" in param && "expr" in param) {
+        throw new Error(
+            `The parameter "${name}" must not have both value and expr properties!`
+        );
+    }
+
+    if ("expr" in param && "bind" in param) {
+        throw new Error(
+            `The parameter "${name}" must not have both expr and bind properties!`
+        );
+    }
+
+    if (!("transition" in param)) {
+        return;
+    }
+
+    if ("select" in param || "ruler" in param || param.push === "outer") {
+        throw new Error(
+            `The parameter "${name}" must not use transition with select, ruler, or push.`
+        );
+    }
+
+    const transition =
+        /** @type {import("../spec/parameter.js").ParamTransition} */ (
+            param.transition
+        );
+    if (!transition) {
+        throw new Error(
+            `The parameter "${name}" must have a transition configuration.`
+        );
+    }
+
+    if (transition.type !== "lerp") {
+        throw new Error(
+            `Unsupported transition type for parameter "${name}": ${transition.type}`
+        );
+    }
+
+    if (
+        transition.halfLife != null &&
+        (!Number.isFinite(transition.halfLife) || transition.halfLife <= 0)
+    ) {
+        throw new Error(
+            `The transition halfLife for parameter "${name}" must be a positive finite number.`
+        );
+    }
+
+    if (
+        transition.epsilon != null &&
+        (!Number.isFinite(transition.epsilon) || transition.epsilon < 0)
+    ) {
+        throw new Error(
+            `The transition epsilon for parameter "${name}" must be a non-negative finite number.`
+        );
     }
 }

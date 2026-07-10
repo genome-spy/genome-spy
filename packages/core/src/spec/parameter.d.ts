@@ -43,7 +43,9 @@ export interface PersistedParameter {
 
 // Adapted from: https://github.com/vega/vega-lite/blob/main/src/parameter.ts
 
-export interface VariableParameter extends ParameterBase, PersistedParameter {
+export type VariableParameter = ValueParameter | ExprParameter;
+
+export interface ValueParameter extends ParameterBase, PersistedParameter {
     /**
      * The [initial value](http://vega.github.io/vega-lite/docs/value.html) of the parameter.
      *
@@ -52,15 +54,56 @@ export interface VariableParameter extends ParameterBase, PersistedParameter {
     value?: any;
 
     /**
-     * An expression for the value of the parameter. This expression may include other parameters,
-     * in which case the parameter will automatically update in response to upstream parameter changes.
-     */
-    expr?: string;
-
-    /**
      * Binds the parameter to an external input element such as a slider, selection list or radio button group.
      */
     bind?: Binding;
+
+    /**
+     * Smoothly follows numeric target values.
+     */
+    transition?: ParamTransition;
+
+    expr?: never;
+}
+
+export interface ExprParameter extends ParameterBase, PersistedParameter {
+    /**
+     * An expression for the value of the parameter. This expression may include other parameters,
+     * in which case the parameter will automatically update in response to upstream parameter changes.
+     */
+    expr: string;
+
+    /**
+     * Smoothly follows numeric expression output values.
+     */
+    transition?: ParamTransition;
+
+    value?: never;
+
+    bind?: never;
+}
+
+export type ParamTransition = LerpTransition;
+
+export interface LerpTransition {
+    /**
+     * The transition algorithm.
+     */
+    type: "lerp";
+
+    /**
+     * Time in milliseconds for the remaining distance to the target to halve.
+     *
+     * __Default value:__ `80`
+     */
+    halfLife?: number;
+
+    /**
+     * Distance from the target at which the current value snaps to the target.
+     *
+     * __Default value:__ `0.001`
+     */
+    epsilon?: number;
 }
 
 // ----------------------------------------------------------------------------

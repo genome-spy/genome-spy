@@ -305,6 +305,62 @@ describe("Single-level ViewParamRuntime", () => {
         ).toThrow();
     });
 
+    test("Throws if both expr and bind are provided", () => {
+        const pm = new ViewParamRuntime();
+        expect(() =>
+            pm.registerParam({
+                name: "foo",
+                expr: "1",
+                bind: { input: "range" },
+            })
+        ).toThrow("must not have both expr and bind properties");
+    });
+
+    test("accepts lerp transitions on variable params", () => {
+        const pm = new ViewParamRuntime();
+        pm.registerParam({
+            name: "foo",
+            value: 42,
+            transition: { type: "lerp", halfLife: 80, epsilon: 0.001 },
+        });
+        pm.registerParam({
+            name: "bar",
+            expr: "foo + 1",
+            transition: { type: "lerp" },
+        });
+
+        expect(pm.getValue("foo")).toBe(42);
+        expect(pm.getValue("bar")).toBe(43);
+    });
+
+    test("rejects unsupported transition configs", () => {
+        const pm = new ViewParamRuntime();
+
+        expect(() =>
+            pm.registerParam({
+                name: "foo",
+                value: 42,
+                transition: { type: "spring" },
+            })
+        ).toThrow("Unsupported transition type");
+
+        expect(() =>
+            pm.registerParam({
+                name: "bar",
+                value: 42,
+                transition: { type: "lerp", halfLife: 0 },
+            })
+        ).toThrow("halfLife");
+
+        expect(() =>
+            pm.registerParam({
+                name: "baz",
+                value: 42,
+                transition: { type: "lerp", epsilon: -1 },
+            })
+        ).toThrow("epsilon");
+    });
+
     test("dispose clears local scope and disables allocated setters", () => {
         const pm = new ViewParamRuntime();
         const setter = pm.registerParam({ name: "foo", value: 1 });
