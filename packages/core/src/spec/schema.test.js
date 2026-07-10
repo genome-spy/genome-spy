@@ -213,6 +213,32 @@ describe("generated core schema", () => {
         expect(validate(spec)).toBe(false);
     });
 
+    test("rejects transitioned value parameters without numeric initial values", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            params: [
+                {
+                    name: "laneHeight",
+                    bind: { input: "range", min: 2, max: 30, step: 1 },
+                    transition: { type: "lerp" },
+                },
+                {
+                    name: "textValue",
+                    value: "12",
+                    transition: { type: "lerp" },
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        expect(validate(spec)).toBe(false);
+    });
+
     test("rejects transitions on selection parameters", () => {
         const validate = createCoreValidator();
         const spec = {

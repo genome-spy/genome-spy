@@ -45,7 +45,9 @@ export interface PersistedParameter {
 
 export type VariableParameter = ValueParameter | ExprParameter;
 
-export interface ValueParameter extends ParameterBase, PersistedParameter {
+export type ValueParameter = PlainValueParameter | TransitionedValueParameter;
+
+export interface PlainValueParameter extends ParameterBase, PersistedParameter {
     /**
      * The [initial value](http://vega.github.io/vega-lite/docs/value.html) of the parameter.
      *
@@ -58,10 +60,27 @@ export interface ValueParameter extends ParameterBase, PersistedParameter {
      */
     bind?: Binding;
 
+    expr?: never;
+
+    transition?: never;
+}
+
+export interface TransitionedValueParameter
+    extends ParameterBase, PersistedParameter {
+    /**
+     * The initial value of the transitioned parameter.
+     */
+    value: number;
+
+    /**
+     * Binds the parameter to an external input element such as a slider, selection list or radio button group.
+     */
+    bind?: Binding;
+
     /**
      * Smoothly follows numeric target values.
      */
-    transition?: ParamTransition;
+    transition: ParamTransition;
 
     expr?: never;
 }
