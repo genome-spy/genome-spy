@@ -44,6 +44,7 @@ function createHeadlessAnimator() {
     class HeadlessAnimator extends Animator {
         constructor() {
             super(() => undefined);
+            this.transitionsEnabled = false;
         }
 
         requestRender() {

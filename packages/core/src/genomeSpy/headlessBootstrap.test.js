@@ -31,4 +31,23 @@ describe("headless bootstrap", () => {
         expect(view.flowHandle?.collector).toBeDefined();
         expect(r(view.getScaleResolution("x").getDataDomain())).toEqual([1, 3]);
     });
+
+    test("snaps transitioned parameter updates without animation frames", async () => {
+        const { view } = await createHeadlessEngine({
+            data: { values: [{}] },
+            params: [
+                {
+                    name: "laneHeight",
+                    value: 12,
+                    transition: { type: "lerp" },
+                },
+            ],
+            mark: "point",
+        });
+
+        view.paramRuntime.setValue("laneHeight", 20);
+
+        expect(view.paramRuntime.getValue("laneHeight")).toBe(20);
+        expect(view.paramRuntime.getTargetValue("laneHeight")).toBe(20);
+    });
 });

@@ -12,6 +12,12 @@ export default class Animator {
 
         /** @type {(function(number):void)[]} */
         this.transitions = [];
+
+        /**
+         * Whether transition callbacks should interpolate over animation frames.
+         * Headless renderers disable this and apply transition targets directly.
+         */
+        this.transitionsEnabled = true;
     }
 
     /**
@@ -173,7 +179,13 @@ export function makeLerpSmoother(
      */
     function setTarget(value) {
         target = value;
-        if (settled) {
+        if (animator.transitionsEnabled === false) {
+            current = target;
+            settled = true;
+            requested = false;
+            animator.cancelTransition(smoothUpdate);
+            callback(current);
+        } else if (settled) {
             settled = false;
             lastTimeStamp = getCurrentTimelineTime();
             smoothUpdate(lastTimeStamp);
