@@ -238,15 +238,7 @@ export default class ViewParamRuntime {
             };
         } else {
             defaultValue = getDefaultParamValue(param, this);
-            if ("transition" in param) {
-                setter = this.#registerTransitionedBaseSetter(
-                    name,
-                    defaultValue,
-                    param.transition
-                );
-            } else {
-                setter = this.#registerBaseSetter(name, defaultValue);
-            }
+            setter = this.#registerBaseSetter(name, defaultValue);
         }
 
         if ("select" in param) {
@@ -788,6 +780,12 @@ function validateParameterShape(param) {
     if ("select" in param || "ruler" in param || param.push === "outer") {
         throw new Error(
             `The parameter "${name}" must not use transition with select, ruler, or push.`
+        );
+    }
+
+    if (!("value" in param || "expr" in param)) {
+        throw new Error(
+            `The transitioned parameter "${name}" must have a value or expr property.`
         );
     }
 

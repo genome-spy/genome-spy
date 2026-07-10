@@ -506,6 +506,15 @@ describe("Single-level ViewParamRuntime", () => {
         expect(() =>
             pm.registerParam(
                 /** @type {any} */ ({
+                    name: "missingSource",
+                    transition: { type: "lerp" },
+                })
+            )
+        ).toThrow("must have a value or expr property");
+
+        expect(() =>
+            pm.registerParam(
+                /** @type {any} */ ({
                     name: "foo",
                     value: 42,
                     transition: { type: "spring" },

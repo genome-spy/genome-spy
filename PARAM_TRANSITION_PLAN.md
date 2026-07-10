@@ -142,6 +142,7 @@ value and a derived expression. The fallback branch for a parameter that has a
 transition but neither `value` nor `expr` cannot be produced by the intended
 schema and only duplicates base-parameter setup.
 
-Remove that fallback or reject it in shape validation. Keeping the registration
-logic aligned with the two public forms makes the numeric-value invariant and
-the transition state ownership easier to follow.
+The runtime now rejects that invalid shape during validation and keeps the
+ordinary default-parameter path free of transition handling. Keeping the
+registration logic aligned with the two public forms makes the numeric-value
+invariant and the transition state ownership easier to follow.
