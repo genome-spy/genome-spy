@@ -228,7 +228,7 @@ export default class View {
             () => this.dataParent?.paramRuntime,
             (channel) => this.getScaleResolution(channel),
             context.animator,
-            { initializing: true }
+            { snapTransitionedExpressionUpdates: true }
         );
 
         if (spec.params) {

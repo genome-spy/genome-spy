@@ -99,17 +99,17 @@ export default class ViewParamRuntime {
     #animator;
 
     /**
-     * True while a view-owned runtime is being wired into the unresolved view
-     * hierarchy. During this phase, upstream scale/config finalization may
-     * correct expression values that were first evaluated against placeholder
-     * scale state. Those corrections should snap instead of animate.
+     * True when transitioned expression updates should snap instead of animate.
+     * View-owned runtimes start in this mode because upstream scale/config
+     * finalization may correct expression values that were first evaluated
+     * against placeholder scale state.
      *
      * Standalone runtimes default to false because they do not have a separate
      * view preparation phase.
      *
      * @type {boolean}
      */
-    #initializing;
+    #snapTransitionedExpressionUpdates;
 
     #disposed = false;
 
@@ -120,14 +120,15 @@ export default class ViewParamRuntime {
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.
      * @param {import("../utils/animator.js").default} [animator]
-     * @param {{ initializing?: boolean }} [options]
+     * @param {{ snapTransitionedExpressionUpdates?: boolean }} [options]
      */
     constructor(parentFinder, scaleResolutionResolver, animator, options = {}) {
         this.#parentFinder = parentFinder ?? (() => undefined);
         this.#scaleResolutionResolver =
             scaleResolutionResolver ?? (() => undefined);
         this.#animator = animator;
-        this.#initializing = options.initializing ?? false;
+        this.#snapTransitionedExpressionUpdates =
+            options.snapTransitionedExpressionUpdates ?? false;
 
         const parent = this.#parentFinder();
         if (parent) {
@@ -600,7 +601,7 @@ export default class ViewParamRuntime {
             // not user interaction. Snap those corrections so a transitioned
             // param does not begin rendering from a placeholder value.
             this.#setTransitionTarget(name, state, expression(null), {
-                animate: !this.#initializing,
+                animate: !this.#snapTransitionedExpressionUpdates,
             });
         });
         this.#runtime.addScopeDisposer(this.#scopeId, unsubscribe);
@@ -702,7 +703,7 @@ export default class ViewParamRuntime {
      * Later expression changes animate according to the parameter transition.
      */
     finalizeInitialization() {
-        this.#initializing = false;
+        this.#snapTransitionedExpressionUpdates = false;
     }
 
     dispose() {
