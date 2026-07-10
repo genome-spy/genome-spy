@@ -45,6 +45,55 @@ parameters change.
 
 EXAMPLE examples/docs/grammar/parameters/expressions.json height=150
 
+## Numeric Transitions
+
+Numeric value and expression parameters can use `transition` to smooth how the
+exposed runtime value follows a target value. Use `"lerp"` to continuously
+interpolate toward the latest target.
+
+Transitions apply to finite numeric scalar values only. A transitioned value
+parameter requires a numeric `value`, and a transitioned expression parameter
+must evaluate to a finite number. They can be used with input-bound parameters:
+
+```json
+{
+  "name": "laneHeight",
+  "value": 12,
+  "bind": { "input": "range", "min": 2, "max": 30, "step": 1 },
+  "transition": { "type": "lerp", "halfLife": 60, "epsilon": 0.02 }
+}
+```
+
+The input binding writes discrete target values. Expressions and visual
+encodings read the current transitioned value, which can be fractional while
+the value settles.
+
+Transitions can also be used with expression parameters:
+
+```json
+{
+  "name": "zoomMessageOpacity",
+  "expr": "abs(span(domain('x'))) > windowSize ? 1 : 0",
+  "transition": { "type": "lerp", "halfLife": 80, "epsilon": 0.01 }
+}
+```
+
+This keeps the state decision crisp while smoothing only the visual value.
+For bound value parameters, bookmarks, provenance, and input controls use the
+target value.
+
+Use transitions for visual presentation such as layout, opacity, and visual
+thresholds. They can also drive data loading, filtering, and other data-flow
+operations, but these receive intermediate values while the transition settles.
+Use transitions carefully when those operations are expensive or stateful.
+
+Transitions cannot be used with selection parameters, ruler parameters, or
+`push: "outer"` parameters.
+
+### Transition Properties
+
+SCHEMA ParamTransition
+
 ## Selection Parameters
 
 Parameters allow for defining interactive selections, which can be used in

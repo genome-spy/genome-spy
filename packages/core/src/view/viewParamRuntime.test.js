@@ -3,6 +3,39 @@ import ViewParamRuntime, {
     activateExprRefProps,
 } from "../paramRuntime/viewParamRuntime.js";
 
+function createTestAnimator() {
+    /** @type {((timestamp: number) => void)[]} */
+    const callbacks = [];
+    let timestamp = performance.now();
+
+    return {
+        /** @param {(timestamp: number) => void} callback */
+        requestTransition(callback) {
+            callbacks.push(callback);
+        },
+        /** @param {(timestamp: number) => void} callback */
+        cancelTransition(callback) {
+            const index = callbacks.indexOf(callback);
+            if (index >= 0) {
+                callbacks.splice(index, 1);
+            }
+        },
+        requestRender() {
+            //
+        },
+        step(ms = 16) {
+            timestamp += ms;
+            const pending = callbacks.splice(0);
+            for (const callback of pending) {
+                callback(timestamp);
+            }
+        },
+        pendingTransitionCount() {
+            return callbacks.length;
+        },
+    };
+}
+
 describe("Single-level ViewParamRuntime", () => {
     test("Trivial case", () => {
         const pm = new ViewParamRuntime();
@@ -301,8 +334,229 @@ describe("Single-level ViewParamRuntime", () => {
     test("Throws if both value and expr are provided", () => {
         const pm = new ViewParamRuntime();
         expect(() =>
-            pm.registerParam({ name: "foo", value: 42, expr: "bar" })
+            pm.registerParam(
+                /** @type {any} */ ({ name: "foo", value: 42, expr: "bar" })
+            )
         ).toThrow();
+    });
+
+    test("Throws if both expr and bind are provided", () => {
+        const pm = new ViewParamRuntime();
+        expect(() =>
+            pm.registerParam(
+                /** @type {any} */ ({
+                    name: "foo",
+                    expr: "1",
+                    bind: { input: "range" },
+                })
+            )
+        ).toThrow("must not have both expr and bind properties");
+    });
+
+    test("accepts lerp transitions on variable params", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator)
+        );
+        pm.registerParam({
+            name: "foo",
+            value: 42,
+            transition: { type: "lerp", halfLife: 80, epsilon: 0.001 },
+        });
+        pm.registerParam({
+            name: "bar",
+            expr: "foo + 1",
+            transition: { type: "lerp" },
+        });
+
+        expect(pm.getValue("foo")).toBe(42);
+        expect(pm.getValue("bar")).toBe(43);
+    });
+
+    test("transitioned writable params expose current values and keep targets separately", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator)
+        );
+        const setter = pm.registerParam({
+            name: "foo",
+            value: 0,
+            transition: { type: "lerp", halfLife: 100, epsilon: 0.001 },
+        });
+
+        setter(10);
+
+        expect(pm.getValue("foo")).toBe(0);
+        expect(pm.getTargetValue("foo")).toBe(10);
+
+        animator.step(100);
+
+        expect(pm.getValue("foo")).toBeGreaterThan(4);
+        expect(pm.getValue("foo")).toBeLessThan(6);
+        expect(pm.getTargetValue("foo")).toBe(10);
+    });
+
+    test("transitioned params use a practical default settling threshold", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator)
+        );
+        const setter = pm.registerParam({
+            name: "foo",
+            value: 0,
+            transition: { type: "lerp", halfLife: 100 },
+        });
+
+        setter(1);
+        animator.step(performance.now() + 700);
+
+        expect(pm.getValue("foo")).toBe(1);
+        expect(animator.pendingTransitionCount()).toBe(0);
+    });
+
+    test("setValue can snap transitioned writable params to target", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator)
+        );
+        pm.registerParam({
+            name: "foo",
+            value: 0,
+            transition: { type: "lerp", halfLife: 100, epsilon: 0.001 },
+        });
+
+        pm.setValue("foo", 10, { animate: false });
+
+        expect(pm.getValue("foo")).toBe(10);
+        expect(pm.getTargetValue("foo")).toBe(10);
+        expect(animator.pendingTransitionCount()).toBe(0);
+    });
+
+    test("transitioned expression params smooth expression targets", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator)
+        );
+        const setter = pm.registerParam({ name: "foo", value: 0 });
+        pm.registerParam({
+            name: "bar",
+            expr: "foo > 0 ? 1 : 0",
+            transition: { type: "lerp", halfLife: 100, epsilon: 0.001 },
+        });
+
+        setter(1);
+
+        expect(pm.getValue("bar")).toBe(0);
+        expect(pm.getTargetValue("bar")).toBe(1);
+
+        animator.step(100);
+
+        expect(pm.getValue("bar")).toBeGreaterThan(0.4);
+        expect(pm.getValue("bar")).toBeLessThan(0.6);
+    });
+
+    test("transitioned expression params snap during initialization only", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator),
+            { snapTransitionedExpressionUpdates: true }
+        );
+        const setter = pm.registerParam({ name: "foo", value: 0 });
+        pm.registerParam({
+            name: "bar",
+            expr: "foo > 0 ? 1 : 0",
+            transition: { type: "lerp", halfLife: 100, epsilon: 0.001 },
+        });
+
+        setter(1);
+
+        expect(pm.getValue("bar")).toBe(1);
+        expect(animator.pendingTransitionCount()).toBe(0);
+
+        pm.finalizeInitialization();
+        setter(0);
+
+        expect(pm.getValue("bar")).toBe(1);
+        expect(pm.getTargetValue("bar")).toBe(0);
+        expect(animator.pendingTransitionCount()).toBe(1);
+    });
+
+    test("transitioned params reject non-numeric values", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator)
+        );
+
+        expect(() =>
+            pm.registerParam(
+                /** @type {any} */ ({
+                    name: "foo",
+                    value: "nope",
+                    transition: { type: "lerp" },
+                })
+            )
+        ).toThrow("finite numeric value");
+
+        const setter = pm.registerParam({
+            name: "bar",
+            value: 1,
+            transition: { type: "lerp" },
+        });
+
+        expect(() => setter(Number.NaN)).toThrow("finite numeric value");
+    });
+
+    test("rejects unsupported transition configs", () => {
+        const pm = new ViewParamRuntime();
+
+        expect(() =>
+            pm.registerParam(
+                /** @type {any} */ ({
+                    name: "missingSource",
+                    transition: { type: "lerp" },
+                })
+            )
+        ).toThrow("must have a value or expr property");
+
+        expect(() =>
+            pm.registerParam(
+                /** @type {any} */ ({
+                    name: "foo",
+                    value: 42,
+                    transition: { type: "spring" },
+                })
+            )
+        ).toThrow("Unsupported transition type");
+
+        expect(() =>
+            pm.registerParam({
+                name: "bar",
+                value: 42,
+                transition: { type: "lerp", halfLife: 0 },
+            })
+        ).toThrow("halfLife");
+
+        expect(() =>
+            pm.registerParam({
+                name: "baz",
+                value: 42,
+                transition: { type: "lerp", epsilon: -1 },
+            })
+        ).toThrow("epsilon");
     });
 
     test("dispose clears local scope and disables allocated setters", () => {

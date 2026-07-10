@@ -7,7 +7,8 @@ import { isVariableParameter } from "../paramRuntime/paramUtils.js";
  * @param {{
  *   paramConfigs: ReadonlyMap<string, import("../spec/parameter.js").Parameter>,
  *   setValue: (name: string, value: any) => void,
- *   getValue: (name: string) => any
+ *   getValue: (name: string) => any,
+ *   getTargetValue?: (name: string) => any
  * }} mediator
  */
 export default function createBindingInputs(mediator) {
@@ -32,7 +33,8 @@ export default function createBindingInputs(mediator) {
         ) => {
             mediator.setValue(name, value);
         };
-        const value = mediator.getValue(name);
+        const value =
+            mediator.getTargetValue?.(name) ?? mediator.getValue(name);
         const label = bind.name ?? name;
 
         // TODO: Implement two-way data binding, e.g. when an external agent changes

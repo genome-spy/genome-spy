@@ -12,6 +12,12 @@ export default class Animator {
 
         /** @type {(function(number):void)[]} */
         this.transitions = [];
+
+        /**
+         * Whether transition callbacks should interpolate over animation frames.
+         * Headless renderers disable this and apply transition targets directly.
+         */
+        this.transitionsEnabled = true;
     }
 
     /**
@@ -94,7 +100,7 @@ export default class Animator {
  * @param {number} halfLife Time until half of the value is reached, in milliseconds
  * @param {number} stopAt Stop animation when the value is within this distance from the target
  * @param {T} initialValue Initial value
- * @returns {((target: T) => void) & { stop: () => void}} Function that activates the transition with a new target value
+ * @returns {((target: T) => void) & { stop: () => void, snap: (target: T) => void}} Function that activates the transition with a new target value
  * @template {Record<string, number>} T
  */
 export function makeLerpSmoother(
@@ -106,6 +112,7 @@ export function makeLerpSmoother(
 ) {
     let lastTimeStamp = 0;
     let settled = true;
+    let requested = false;
 
     let current = structuredClone(initialValue);
     let target = current;
@@ -127,6 +134,7 @@ export function makeLerpSmoother(
      * @param {number} [timestamp]
      */
     function smoothUpdate(timestamp) {
+        requested = false;
         if (settled) {
             return;
         }
@@ -155,7 +163,14 @@ export function makeLerpSmoother(
                 animator.requestRender();
             }
         } else {
-            animator.requestTransition((t) => smoothUpdate(t));
+            requestSmoothUpdate();
+        }
+    }
+
+    function requestSmoothUpdate() {
+        if (!requested) {
+            requested = true;
+            animator.requestTransition(smoothUpdate);
         }
     }
 
@@ -164,16 +179,37 @@ export function makeLerpSmoother(
      */
     function setTarget(value) {
         target = value;
-        if (settled) {
+        if (animator.transitionsEnabled === false) {
+            current = target;
+            settled = true;
+            requested = false;
+            animator.cancelTransition(smoothUpdate);
+            callback(current);
+        } else if (settled) {
             settled = false;
-            lastTimeStamp = +document.timeline.currentTime;
+            lastTimeStamp = getCurrentTimelineTime();
             smoothUpdate(lastTimeStamp);
         }
     }
 
     setTarget.stop = () => {
         settled = true;
+        requested = false;
+        animator.cancelTransition(smoothUpdate);
+    };
+
+    // Synchronize the visible value and internal state without interpolation.
+    setTarget.snap = (/** @type {T} */ value) => {
+        target = value;
+        current = value;
+        setTarget.stop();
+        callback(current);
     };
 
     return setTarget;
+}
+
+function getCurrentTimelineTime() {
+    const time = globalThis.document?.timeline?.currentTime;
+    return typeof time === "number" ? time : performance.now();
 }

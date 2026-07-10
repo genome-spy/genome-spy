@@ -226,7 +226,9 @@ export default class View {
         /** @type {ViewParamRuntime} */
         this.paramRuntime = new ViewParamRuntime(
             () => this.dataParent?.paramRuntime,
-            (channel) => this.getScaleResolution(channel)
+            (channel) => this.getScaleResolution(channel),
+            context.animator,
+            { snapTransitionedExpressionUpdates: true }
         );
 
         if (spec.params) {
@@ -978,6 +980,13 @@ export default class View {
         ) {
             this.opacityFunction = createViewOpacityFunction(this);
         }
+    }
+
+    /**
+     * Marks view-owned params as ready for interactive updates.
+     */
+    finalizeParamRuntimeInitialization() {
+        this.paramRuntime.finalizeInitialization();
     }
 
     /**

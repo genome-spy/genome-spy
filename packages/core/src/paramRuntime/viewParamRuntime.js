@@ -1,5 +1,6 @@
 import { isString } from "vega-util";
 import ParamRuntime from "./paramRuntime.js";
+import { makeLerpSmoother } from "../utils/animator.js";
 import {
     getDefaultParamValue,
     isSelectionParameter,
@@ -33,6 +34,7 @@ export {
  * @prop {boolean} writable
  * @prop {boolean} configured
  * @prop {import("../spec/parameter.js").Parameter | undefined} config
+ * @prop {any} [target]
  */
 
 /**
@@ -48,6 +50,14 @@ export default class ViewParamRuntime {
     /**
      * @typedef {import("../spec/parameter.js").Parameter} Parameter
      * @typedef {(value: any) => void} ParameterSetter
+     * @typedef {object} TransitionState
+     * @prop {number} target
+     * @prop {import("./types.js").WritableParamRef<number>} ref
+     * @prop {((target: { value: number }) => void) & { stop: () => void, snap: (target: { value: number }) => void }} smoother
+     * @prop {() => void} dispose
+     *
+     * @typedef {object} SetValueOptions
+     * @prop {boolean} [animate=true]
      *
      * @typedef {object} WatchExpressionOptions
      * @prop {boolean} [scopeOwned=true]
@@ -67,7 +77,7 @@ export default class ViewParamRuntime {
     /** @type {string} */
     #scopeId;
 
-    /** @type {Map<string, (value: any) => void>} */
+    /** @type {Map<string, (value: any, options?: SetValueOptions) => void>} */
     #allocatedSetters = new Map();
 
     /** @type {Map<string, import("./types.js").ParamRef<any>>} */
@@ -76,11 +86,30 @@ export default class ViewParamRuntime {
     /** @type {Map<string, Parameter>} */
     #paramConfigs = new Map();
 
+    /** @type {Map<string, TransitionState>} */
+    #transitionStates = new Map();
+
     /** @type {() => ViewParamRuntime} */
     #parentFinder;
 
     /** @type {(channel: string) => import("../scales/scaleResolution.js").default | undefined} */
     #scaleResolutionResolver;
+
+    /** @type {import("../utils/animator.js").default | undefined} */
+    #animator;
+
+    /**
+     * True when transitioned expression updates should snap instead of animate.
+     * View-owned runtimes start in this mode because upstream scale/config
+     * finalization may correct expression values that were first evaluated
+     * against placeholder scale state.
+     *
+     * Standalone runtimes default to false because they do not have a separate
+     * view preparation phase.
+     *
+     * @type {boolean}
+     */
+    #snapTransitionedExpressionUpdates;
 
     #disposed = false;
 
@@ -90,11 +119,16 @@ export default class ViewParamRuntime {
      *      Optional resolver for scale channels in this runtime's view scope.
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.
+     * @param {import("../utils/animator.js").default} [animator]
+     * @param {{ snapTransitionedExpressionUpdates?: boolean }} [options]
      */
-    constructor(parentFinder, scaleResolutionResolver) {
+    constructor(parentFinder, scaleResolutionResolver, animator, options = {}) {
         this.#parentFinder = parentFinder ?? (() => undefined);
         this.#scaleResolutionResolver =
             scaleResolutionResolver ?? (() => undefined);
+        this.#animator = animator;
+        this.#snapTransitionedExpressionUpdates =
+            options.snapTransitionedExpressionUpdates ?? false;
 
         const parent = this.#parentFinder();
         if (parent) {
@@ -128,11 +162,7 @@ export default class ViewParamRuntime {
             );
         }
 
-        if ("value" in param && "expr" in param) {
-            throw new Error(
-                `The parameter "${name}" must not have both value and expr properties!`
-            );
-        }
+        validateParameterShape(param);
 
         /** @type {ParameterSetter} */
         let setter;
@@ -176,17 +206,33 @@ export default class ViewParamRuntime {
             }
         } else if ("value" in param) {
             defaultValue = getDefaultParamValue(param, this);
-            setter = this.#registerBaseSetter(name, defaultValue);
+            if ("transition" in param) {
+                setter = this.#registerTransitionedBaseSetter(
+                    name,
+                    defaultValue,
+                    param.transition
+                );
+            } else {
+                setter = this.#registerBaseSetter(name, defaultValue);
+            }
         } else if ("expr" in param) {
-            const ref = this.#runtime.registerDerived(
-                this.#scopeId,
-                name,
-                param.expr,
-                {
-                    resolveScaleResolution: this.#scaleResolutionResolver,
-                }
-            );
-            this.#localRefs.set(name, ref);
+            if ("transition" in param) {
+                this.#registerTransitionedExpression(
+                    name,
+                    param.expr,
+                    param.transition
+                );
+            } else {
+                const ref = this.#runtime.registerDerived(
+                    this.#scopeId,
+                    name,
+                    param.expr,
+                    {
+                        resolveScaleResolution: this.#scaleResolutionResolver,
+                    }
+                );
+                this.#localRefs.set(name, ref);
+            }
             setter = () => {
                 throw new Error('Cannot set derived parameter "' + name + '".');
             };
@@ -266,8 +312,9 @@ export default class ViewParamRuntime {
      *
      * @param {string} paramName
      * @param {any} value
+     * @param {SetValueOptions} [options]
      */
-    setValue(paramName, value) {
+    setValue(paramName, value, options) {
         validateParameterName(paramName);
         const setter = this.#allocatedSetters.get(paramName);
         if (!setter) {
@@ -275,7 +322,7 @@ export default class ViewParamRuntime {
                 "Writable parameter not found in this scope: " + paramName
             );
         }
-        setter(value);
+        setter(value, options);
     }
 
     /**
@@ -284,6 +331,20 @@ export default class ViewParamRuntime {
      */
     getValue(paramName) {
         return this.#localRefs.get(paramName)?.get();
+    }
+
+    /**
+     * Gets the target value for a local parameter. Non-transitioned parameters
+     * use their current value as the target.
+     *
+     * @param {string} paramName
+     */
+    getTargetValue(paramName) {
+        validateParameterName(paramName);
+        return (
+            this.#transitionStates.get(paramName)?.target ??
+            this.getValue(paramName)
+        );
     }
 
     /**
@@ -319,6 +380,16 @@ export default class ViewParamRuntime {
     findValue(paramName) {
         const runtime = this.findRuntimeForParam(paramName);
         return runtime?.getValue(paramName);
+    }
+
+    /**
+     * Gets the target value of a parameter from this runtime or its ancestors.
+     *
+     * @param {string} paramName
+     */
+    findTargetValue(paramName) {
+        const runtime = this.findRuntimeForParam(paramName);
+        return runtime?.getTargetValue(paramName);
     }
 
     /**
@@ -394,6 +465,7 @@ export default class ViewParamRuntime {
                 writable: this.#allocatedSetters.has(name),
                 configured: Boolean(config),
                 config: config ? structuredClone(config) : undefined,
+                target: this.#transitionStates.get(name)?.target,
             });
         }
 
@@ -472,6 +544,118 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * @param {string} name
+     * @param {any} defaultValue
+     * @param {import("../spec/parameter.js").ParamTransition} transition
+     * @returns {(value: any, options?: SetValueOptions) => void}
+     */
+    #registerTransitionedBaseSetter(name, defaultValue, transition) {
+        const state = this.#registerTransitionState(
+            name,
+            defaultValue,
+            transition
+        );
+        const setter = (
+            /** @type {any} */
+            value,
+            /** @type {SetValueOptions | undefined} */
+            options
+        ) => {
+            this.#setTransitionTarget(name, state, value, options);
+        };
+        this.#allocatedSetters.set(name, setter);
+
+        return setter;
+    }
+
+    /**
+     * @param {string} name
+     * @param {string} expr
+     * @param {import("../spec/parameter.js").ParamTransition} transition
+     */
+    #registerTransitionedExpression(name, expr, transition) {
+        const expression = this.createExpression(expr);
+        const state = this.#registerTransitionState(
+            name,
+            expression(null),
+            transition
+        );
+        const unsubscribe = expression.subscribe(() => {
+            // Startup invalidations can come from late scale/config attachment,
+            // not user interaction. Snap those corrections so a transitioned
+            // param does not begin rendering from a placeholder value.
+            this.#setTransitionTarget(name, state, expression(null), {
+                animate: !this.#snapTransitionedExpressionUpdates,
+            });
+        });
+        this.#runtime.addScopeDisposer(this.#scopeId, unsubscribe);
+    }
+
+    /**
+     * @param {string} name
+     * @param {any} defaultValue
+     * @param {import("../spec/parameter.js").ParamTransition} transition
+     * @returns {TransitionState}
+     */
+    #registerTransitionState(name, defaultValue, transition) {
+        const initialValue = validateTransitionValue(name, defaultValue);
+        const ref = this.#runtime.registerBase(
+            this.#scopeId,
+            name,
+            initialValue
+        );
+        this.#localRefs.set(name, ref);
+
+        const animator = this.#animator;
+        if (!animator) {
+            throw new Error(
+                `The parameter "${name}" uses transition but no animator is available.`
+            );
+        }
+
+        const smoother = makeLerpSmoother(
+            animator,
+            ({ value }) => {
+                ref.set(value);
+                this.#runtime.flushNow();
+            },
+            transition.halfLife ?? 80,
+            transition.epsilon ?? 0.01,
+            { value: ref.get() }
+        );
+        const state = {
+            target: ref.get(),
+            ref,
+            smoother,
+            dispose: () => {
+                smoother.stop();
+                this.#transitionStates.delete(name);
+            },
+        };
+
+        this.#transitionStates.set(name, state);
+        this.#runtime.addScopeDisposer(this.#scopeId, state.dispose);
+
+        return state;
+    }
+
+    /**
+     * @param {string} name
+     * @param {TransitionState} state
+     * @param {any} value
+     * @param {SetValueOptions} [options]
+     */
+    #setTransitionTarget(name, state, value, options = {}) {
+        const target = validateTransitionValue(name, value);
+        state.target = target;
+        if (options.animate === false) {
+            state.smoother.snap({ value: target });
+        } else {
+            state.smoother({ value: target });
+        }
+    }
+
+    /**
      * A convenience method for evaluating an expression.
      *
      * @param {string} expr
@@ -504,6 +688,14 @@ export default class ViewParamRuntime {
         return this.#runtime.whenPropagated(options);
     }
 
+    /**
+     * Marks this runtime scope as fully prepared for interactive updates.
+     * Later expression changes animate according to the parameter transition.
+     */
+    finalizeInitialization() {
+        this.#snapTransitionedExpressionUpdates = false;
+    }
+
     dispose() {
         if (this.#disposed) {
             return;
@@ -514,6 +706,7 @@ export default class ViewParamRuntime {
         this.#allocatedSetters.clear();
         this.#localRefs.clear();
         this.#paramConfigs.clear();
+        this.#transitionStates.clear();
     }
 
     /**
@@ -560,4 +753,88 @@ function getParamKind(config) {
     } else {
         return "base";
     }
+}
+
+/**
+ * @param {import("../spec/parameter.js").Parameter} param
+ */
+function validateParameterShape(param) {
+    const name = param.name;
+
+    if ("value" in param && "expr" in param) {
+        throw new Error(
+            `The parameter "${name}" must not have both value and expr properties!`
+        );
+    }
+
+    if ("expr" in param && "bind" in param) {
+        throw new Error(
+            `The parameter "${name}" must not have both expr and bind properties!`
+        );
+    }
+
+    if (!("transition" in param)) {
+        return;
+    }
+
+    if ("select" in param || "ruler" in param || param.push === "outer") {
+        throw new Error(
+            `The parameter "${name}" must not use transition with select, ruler, or push.`
+        );
+    }
+
+    if (!("value" in param || "expr" in param)) {
+        throw new Error(
+            `The transitioned parameter "${name}" must have a value or expr property.`
+        );
+    }
+
+    const transition =
+        /** @type {import("../spec/parameter.js").ParamTransition} */ (
+            param.transition
+        );
+    if (!transition) {
+        throw new Error(
+            `The parameter "${name}" must have a transition configuration.`
+        );
+    }
+
+    if (transition.type !== "lerp") {
+        throw new Error(
+            `Unsupported transition type for parameter "${name}": ${transition.type}`
+        );
+    }
+
+    if (
+        transition.halfLife != null &&
+        (!Number.isFinite(transition.halfLife) || transition.halfLife <= 0)
+    ) {
+        throw new Error(
+            `The transition halfLife for parameter "${name}" must be a positive finite number.`
+        );
+    }
+
+    if (
+        transition.epsilon != null &&
+        (!Number.isFinite(transition.epsilon) || transition.epsilon < 0)
+    ) {
+        throw new Error(
+            `The transition epsilon for parameter "${name}" must be a non-negative finite number.`
+        );
+    }
+}
+
+/**
+ * @param {string} name
+ * @param {any} value
+ * @returns {number}
+ */
+function validateTransitionValue(name, value) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        throw new Error(
+            `Transitioned parameter "${name}" must have a finite numeric value.`
+        );
+    }
+
+    return value;
 }

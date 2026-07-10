@@ -15,7 +15,7 @@ import {
     checkForDuplicateScaleNames,
     finalizeSubtreeGraphics,
 } from "@genome-spy/core/view/viewUtils.js";
-import { configureViewOpacity } from "@genome-spy/core/genomeSpy/viewHierarchyConfig.js";
+import { finalizeViewConfiguration } from "@genome-spy/core/genomeSpy/viewHierarchyConfig.js";
 import {
     collectViewSubtreeDataSources,
     initializeViewSubtree,
@@ -346,8 +346,9 @@ export class MetadataView extends ConcatView {
                 finalizeReady();
                 return;
             }
-            // Opacity may depend on resolved scales; configure after the subtree exists.
-            configureViewOpacity(this);
+            // Finalize after the subtree and guides exist: opacity and
+            // transitioned expression params may depend on resolved scales.
+            finalizeViewConfiguration(this);
 
             const viewPredicate = (
                 /** @type {import("@genome-spy/core/view/view.js").default} */ view

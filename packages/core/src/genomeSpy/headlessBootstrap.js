@@ -21,7 +21,7 @@ import {
 } from "../scales/viewLevelGuideConfig.js";
 import {
     configureViewHierarchy,
-    configureViewOpacity,
+    finalizeViewConfiguration,
 } from "./viewHierarchyConfig.js";
 import { initializeViewData } from "./viewDataInit.js";
 
@@ -43,6 +43,7 @@ function createHeadlessAnimator() {
     class HeadlessAnimator extends Animator {
         constructor() {
             super(() => undefined);
+            this.transitionsEnabled = false;
         }
 
         requestRender() {
@@ -169,7 +170,7 @@ export function createHeadlessViewContext(options = {}) {
  */
 export function prepareViewHierarchy(viewRoot) {
     configureViewHierarchy(viewRoot);
-    configureViewOpacity(viewRoot);
+    finalizeViewConfiguration(viewRoot);
 }
 
 /**
