@@ -12,24 +12,25 @@ export function configureViewHierarchy(viewRoot) {
 }
 
 /**
- * Configures view opacity after scale/axis resolution has stabilized.
+ * Completes view setup after scale/axis resolution has stabilized.
  *
- * NOTE: This is a separate pass because dynamic opacity needs resolved scales.
+ * Dynamic opacity and transitioned expression params need resolved scales.
  * If we end up with more post-resolve work, consider a post-resolve thunk queue.
  *
  * @param {import("../view/view.js").default} viewRoot
  */
-export function configureViewOpacity(viewRoot) {
-    viewRoot.getDescendants().forEach((view) => view.configureViewOpacity());
+export function finalizeViewConfiguration(viewRoot) {
+    configureViewsAfterScaleResolution(viewRoot.getDescendants());
 }
 
 /**
- * Marks view-owned param runtimes as fully prepared for interactive updates.
+ * Completes post-scale setup for views after their scales and guides are configured.
  *
- * @param {import("../view/view.js").default} viewRoot
+ * @param {Iterable<import("../view/view.js").default>} views
  */
-export function finalizeParamRuntimeInitialization(viewRoot) {
-    viewRoot
-        .getDescendants()
-        .forEach((view) => view.finalizeParamRuntimeInitialization());
+export function configureViewsAfterScaleResolution(views) {
+    for (const view of views) {
+        view.configureViewOpacity();
+        view.finalizeParamRuntimeInitialization();
+    }
 }

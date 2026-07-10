@@ -9,6 +9,7 @@ import {
     attachViewLevelLegendConfigs,
     clearViewLevelGuideConfigs,
 } from "../scales/viewLevelGuideConfig.js";
+import { configureViewsAfterScaleResolution } from "../genomeSpy/viewHierarchyConfig.js";
 import { isChromeView } from "./viewSelectors.js";
 
 /**
@@ -135,10 +136,7 @@ export default class ContainerMutationHelper {
                 childView,
                 insertionResult
             );
-            for (const view of viewsToInitialize) {
-                view.configureViewOpacity();
-                view.finalizeParamRuntimeInitialization();
-            }
+            configureViewsAfterScaleResolution(viewsToInitialize);
 
             await initializeViewDataForViews(
                 this.container,
@@ -231,10 +229,7 @@ export default class ContainerMutationHelper {
         const viewsToInitialize = collectUninitializedChromeViews(
             this.container
         );
-        for (const view of viewsToInitialize) {
-            view.configureViewOpacity();
-            view.finalizeParamRuntimeInitialization();
-        }
+        configureViewsAfterScaleResolution(viewsToInitialize);
 
         await initializeViewDataForViews(
             this.container,

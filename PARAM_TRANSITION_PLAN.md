@@ -99,18 +99,17 @@ configuration is complete. Their initial value must be corrected without
 animating from a placeholder scale state. After preparation, later expression
 updates should animate normally.
 
-The current approach tracks this with a runtime flag and calls a separate
-finalization method from each hierarchy construction path. This is easy to
-miss when adding a new path that creates or inserts views.
+View setup now centralizes that boundary in post-scale configuration helpers.
+`finalizeViewConfiguration` prepares a subtree root, while
+`configureViewsAfterScaleResolution` handles explicit view sets created by
+dynamic mutations. Both configure opacity and mark param runtimes interactive.
 
-Centralize this lifecycle boundary where possible:
-
-- Treat hierarchy preparation as the single point that changes transitioned
-  expressions from initialization behavior to interactive behavior.
-- Ensure dynamic subtree insertion uses the same preparation helper rather
-  than repeating individual configuration and finalization calls.
-- Add coverage for initial scale-derived expression values and a subsequent
-  interactive scale update, verifying that only the latter animates.
+Coverage verifies the runtime behavior directly: expression updates snap while
+the runtime is initializing, then animate after finalization. Keep scale-derived
+expression coverage alongside scale configuration tests when changing the
+ordering of scale or guide setup. Snapping also updates the smoother's internal
+current value so the first interactive transition starts from the value that is
+already visible.
 
 ### Specification Contract
 

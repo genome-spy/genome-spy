@@ -100,7 +100,7 @@ export default class Animator {
  * @param {number} halfLife Time until half of the value is reached, in milliseconds
  * @param {number} stopAt Stop animation when the value is within this distance from the target
  * @param {T} initialValue Initial value
- * @returns {((target: T) => void) & { stop: () => void}} Function that activates the transition with a new target value
+ * @returns {((target: T) => void) & { stop: () => void, snap: (target: T) => void}} Function that activates the transition with a new target value
  * @template {Record<string, number>} T
  */
 export function makeLerpSmoother(
@@ -196,6 +196,14 @@ export function makeLerpSmoother(
         settled = true;
         requested = false;
         animator.cancelTransition(smoothUpdate);
+    };
+
+    // Synchronize the visible value and internal state without interpolation.
+    setTarget.snap = (/** @type {T} */ value) => {
+        target = value;
+        current = value;
+        setTarget.stop();
+        callback(current);
     };
 
     return setTarget;

@@ -445,6 +445,34 @@ describe("Single-level ViewParamRuntime", () => {
         expect(pm.getValue("bar")).toBeLessThan(0.6);
     });
 
+    test("transitioned expression params snap during initialization only", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator),
+            { snapTransitionedExpressionUpdates: true }
+        );
+        const setter = pm.registerParam({ name: "foo", value: 0 });
+        pm.registerParam({
+            name: "bar",
+            expr: "foo > 0 ? 1 : 0",
+            transition: { type: "lerp", halfLife: 100, epsilon: 0.001 },
+        });
+
+        setter(1);
+
+        expect(pm.getValue("bar")).toBe(1);
+        expect(animator.pendingTransitionCount()).toBe(0);
+
+        pm.finalizeInitialization();
+        setter(0);
+
+        expect(pm.getValue("bar")).toBe(1);
+        expect(pm.getTargetValue("bar")).toBe(0);
+        expect(animator.pendingTransitionCount()).toBe(1);
+    });
+
     test("transitioned params reject non-numeric values", () => {
         const animator = createTestAnimator();
         const pm = new ViewParamRuntime(

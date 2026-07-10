@@ -53,7 +53,7 @@ export default class ViewParamRuntime {
      * @typedef {object} TransitionState
      * @prop {number} target
      * @prop {import("./types.js").WritableParamRef<number>} ref
-     * @prop {((target: { value: number }) => void) & { stop: () => void }} smoother
+     * @prop {((target: { value: number }) => void) & { stop: () => void, snap: (target: { value: number }) => void }} smoother
      * @prop {() => void} dispose
      *
      * @typedef {object} SetValueOptions
@@ -657,9 +657,7 @@ export default class ViewParamRuntime {
         const target = validateTransitionValue(name, value);
         state.target = target;
         if (options.animate === false) {
-            state.smoother.stop();
-            state.ref.set(target);
-            this.#runtime.flushNow();
+            state.smoother.snap({ value: target });
         } else {
             state.smoother({ value: target });
         }
