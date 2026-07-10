@@ -454,11 +454,13 @@ describe("Single-level ViewParamRuntime", () => {
         );
 
         expect(() =>
-            pm.registerParam({
-                name: "foo",
-                value: "nope",
-                transition: { type: "lerp" },
-            })
+            pm.registerParam(
+                /** @type {any} */ ({
+                    name: "foo",
+                    value: "nope",
+                    transition: { type: "lerp" },
+                })
+            )
         ).toThrow("finite numeric value");
 
         const setter = pm.registerParam({
