@@ -980,9 +980,12 @@ export default class View {
         ) {
             this.opacityFunction = createViewOpacityFunction(this);
         }
-        // Opacity expressions are configured after scale resolution has
-        // stabilized, so view-owned params can switch from startup correction
-        // semantics to normal interactive transition semantics now.
+    }
+
+    /**
+     * Marks view-owned params as ready for interactive updates.
+     */
+    finalizeParamRuntimeInitialization() {
         this.paramRuntime.finalizeInitialization();
     }
 

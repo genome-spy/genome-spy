@@ -137,6 +137,7 @@ export default class ContainerMutationHelper {
             );
             for (const view of viewsToInitialize) {
                 view.configureViewOpacity();
+                view.finalizeParamRuntimeInitialization();
             }
 
             await initializeViewDataForViews(
@@ -232,6 +233,7 @@ export default class ContainerMutationHelper {
         );
         for (const view of viewsToInitialize) {
             view.configureViewOpacity();
+            view.finalizeParamRuntimeInitialization();
         }
 
         await initializeViewDataForViews(

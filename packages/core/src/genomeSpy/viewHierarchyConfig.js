@@ -22,3 +22,14 @@ export function configureViewHierarchy(viewRoot) {
 export function configureViewOpacity(viewRoot) {
     viewRoot.getDescendants().forEach((view) => view.configureViewOpacity());
 }
+
+/**
+ * Marks view-owned param runtimes as fully prepared for interactive updates.
+ *
+ * @param {import("../view/view.js").default} viewRoot
+ */
+export function finalizeParamRuntimeInitialization(viewRoot) {
+    viewRoot
+        .getDescendants()
+        .forEach((view) => view.finalizeParamRuntimeInitialization());
+}

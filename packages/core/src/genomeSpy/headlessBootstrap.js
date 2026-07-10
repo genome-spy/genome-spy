@@ -22,6 +22,7 @@ import {
 import {
     configureViewHierarchy,
     configureViewOpacity,
+    finalizeParamRuntimeInitialization,
 } from "./viewHierarchyConfig.js";
 import { initializeViewData } from "./viewDataInit.js";
 
@@ -170,6 +171,7 @@ export function createHeadlessViewContext(options = {}) {
 export function prepareViewHierarchy(viewRoot) {
     configureViewHierarchy(viewRoot);
     configureViewOpacity(viewRoot);
+    finalizeParamRuntimeInitialization(viewRoot);
 }
 
 /**
