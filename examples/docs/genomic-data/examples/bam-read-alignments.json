@@ -208,7 +208,8 @@
         {
           "name": "laneHeight",
           "value": 12,
-          "bind": { "input": "range", "min": 2, "max": 30, "step": 1 }
+          "bind": { "input": "range", "min": 2, "max": 30, "step": 1 },
+          "transition": { "type": "lerp", "halfLife": 60, "epsilon": 0.02 }
         }
       ],
 
@@ -488,9 +489,14 @@
         {
           "name": "zoom-message",
           "data": { "values": [{}] },
-          "opacity": {
-            "expr": "smoothstep(windowSize * 0.7, windowSize, abs(domain('x')[1] - domain('x')[0]))"
-          },
+          "params": [
+            {
+              "name": "zoomMessageOpacity",
+              "expr": "abs(domain('x')[1] - domain('x')[0]) > windowSize ? 1 : 0",
+              "transition": { "type": "lerp", "halfLife": 80, "epsilon": 0.001 }
+            }
+          ],
+          "opacity": { "expr": "zoomMessageOpacity" },
           "layer": [
             {
               "mark": {
