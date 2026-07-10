@@ -602,6 +602,10 @@ export default class ParamProvenanceBridge {
                         ? this.#resolveStoredValue(entry, storedEntry)
                         : this.#getDefaultValue(entry);
 
+                    if (this.#isLiveVariableTarget(entry, value)) {
+                        continue;
+                    }
+
                     entry.view.paramRuntime.setValue(
                         entry.selector.param,
                         value,
@@ -629,6 +633,21 @@ export default class ParamProvenanceBridge {
         } finally {
             this.#suppressCapture = false;
         }
+    }
+
+    /**
+     * @param {BookmarkableParamEntry} entry
+     * @param {any} value
+     * @returns {boolean}
+     */
+    #isLiveVariableTarget(entry, value) {
+        return (
+            isVariableParameter(entry.param) &&
+            Object.is(
+                entry.view.paramRuntime.getTargetValue(entry.selector.param),
+                value
+            )
+        );
     }
 
     /**

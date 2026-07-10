@@ -64,8 +64,13 @@ class FakeCollector {
 }
 
 class FakeView {
-    constructor() {
-        this.paramRuntime = new ViewParamRuntime();
+    /** @param {{ animator?: any }} [options] */
+    constructor(options = {}) {
+        this.paramRuntime = new ViewParamRuntime(
+            undefined,
+            undefined,
+            options.animator
+        );
         this.explicitName = "root";
         this.spec = {};
         this.encoding = {};
@@ -88,6 +93,40 @@ class FakeView {
     getScaleResolution() {
         return this.scaleResolution ?? null;
     }
+}
+
+function createTestAnimator() {
+    /** @type {((timestamp: number) => void)[]} */
+    const callbacks = [];
+    let timestamp = performance.now();
+
+    return {
+        /** @param {(timestamp: number) => void} callback */
+        requestTransition(callback) {
+            const index = callbacks.indexOf(callback);
+            if (index >= 0) {
+                callbacks.splice(index, 1);
+            }
+            callbacks.push(callback);
+        },
+        /** @param {(timestamp: number) => void} callback */
+        cancelTransition(callback) {
+            const index = callbacks.indexOf(callback);
+            if (index >= 0) {
+                callbacks.splice(index, 1);
+            }
+        },
+        requestRender() {
+            //
+        },
+        step(ms = 16) {
+            timestamp += ms;
+            const pending = callbacks.splice(0);
+            for (const callback of pending) {
+                callback(timestamp);
+            }
+        },
+    };
 }
 
 /**
@@ -226,6 +265,29 @@ describe("ParamProvenanceBridge", () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    it("does not replay a transitioned bound parameter when provenance captures its target", async () => {
+        const animator = createTestAnimator();
+        const view = new FakeView({ animator });
+        const setter = view.paramRuntime.registerParam({
+            name: "laneHeight",
+            value: 12,
+            bind: { input: "range" },
+            transition: { type: "lerp", halfLife: 60, epsilon: 0.001 },
+        });
+
+        const store = createStore();
+        const intentExecutor = new IntentExecutor(store);
+        createBridge(view, store, intentExecutor);
+
+        setter(13);
+        animator.step();
+        await flushMicrotasks();
+
+        expect(view.paramRuntime.getTargetValue("laneHeight")).toBe(13);
+        expect(view.paramRuntime.getValue("laneHeight")).toBeGreaterThan(12);
+        expect(view.paramRuntime.getValue("laneHeight")).toBeLessThan(12.2);
     });
 
     it("applies stored param values to the mediator", async () => {
