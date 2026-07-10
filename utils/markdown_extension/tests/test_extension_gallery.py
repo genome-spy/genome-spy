@@ -7,6 +7,27 @@ from extension.extension import MyPreprocessor
 
 
 class ExampleGalleryPreprocessorTest(unittest.TestCase):
+    def test_schema_macro_dereferences_type_aliases(self):
+        schema = {
+            "definitions": {
+                "Transition": {"$ref": "#/definitions/LerpTransition"},
+                "LerpTransition": {
+                    "properties": {
+                        "halfLife": {
+                            "description": "Time until the remaining distance halves.",
+                            "type": "number",
+                        }
+                    },
+                    "type": "object",
+                },
+            }
+        }
+        preprocessor = MyPreprocessor(None, schema, {}, "")
+
+        lines = preprocessor.getType("Transition")
+
+        self.assertIn("`halfLife`", lines)
+
     def test_gallery_accepts_blank_line_after_macro(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir)

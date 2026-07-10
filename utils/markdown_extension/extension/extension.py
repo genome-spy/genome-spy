@@ -329,6 +329,14 @@ class MyPreprocessor(Preprocessor):
         type = schema['definitions'].get(type_name)
         if not type:
             return ['Unknown type: ' + type_name]
+
+        while '$ref' in type:
+            m = refPattern.match(type['$ref'])
+            if not m:
+                return ['Unknown type: ' + type_name]
+            type = schema['definitions'].get(m.group(1))
+            if not type:
+                return ['Unknown type: ' + type_name]
         
         lines = []
 
