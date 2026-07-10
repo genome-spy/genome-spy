@@ -59,7 +59,7 @@ while smoothing only the presentation:
 {
   "name": "zoomMessageOpacity",
   "expr": "abs(domain('x')[1] - domain('x')[0]) > windowSize ? 1 : 0",
-  "transition": { "type": "lerp", "halfLife": 80, "epsilon": 0.001 }
+  "transition": { "type": "lerp", "halfLife": 80, "epsilon": 0.01 }
 }
 ```
 

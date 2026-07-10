@@ -120,7 +120,7 @@ export interface LerpTransition {
     /**
      * Distance from the target at which the current value snaps to the target.
      *
-     * __Default value:__ `0.001`
+     * __Default value:__ `0.01`
      */
     epsilon?: number;
 }

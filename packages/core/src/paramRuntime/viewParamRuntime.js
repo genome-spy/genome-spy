@@ -620,7 +620,7 @@ export default class ViewParamRuntime {
                 this.#runtime.flushNow();
             },
             transition.halfLife ?? 80,
-            transition.epsilon ?? 0.001,
+            transition.epsilon ?? 0.01,
             { value: ref.get() }
         );
         const state = {

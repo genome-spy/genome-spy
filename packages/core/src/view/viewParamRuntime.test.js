@@ -400,6 +400,26 @@ describe("Single-level ViewParamRuntime", () => {
         expect(pm.getTargetValue("foo")).toBe(10);
     });
 
+    test("transitioned params use a practical default settling threshold", () => {
+        const animator = createTestAnimator();
+        const pm = new ViewParamRuntime(
+            undefined,
+            undefined,
+            /** @type {any} */ (animator)
+        );
+        const setter = pm.registerParam({
+            name: "foo",
+            value: 0,
+            transition: { type: "lerp", halfLife: 100 },
+        });
+
+        setter(1);
+        animator.step(performance.now() + 700);
+
+        expect(pm.getValue("foo")).toBe(1);
+        expect(animator.pendingTransitionCount()).toBe(0);
+    });
+
     test("setValue can snap transitioned writable params to target", () => {
         const animator = createTestAnimator();
         const pm = new ViewParamRuntime(
