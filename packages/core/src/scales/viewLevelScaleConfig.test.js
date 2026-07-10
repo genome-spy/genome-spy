@@ -2,7 +2,10 @@
 
 import { describe, expect, test } from "vitest";
 
-import { createHeadlessViewHierarchy } from "../genomeSpy/headlessBootstrap.js";
+import {
+    createHeadlessEngine,
+    createHeadlessViewHierarchy,
+} from "../genomeSpy/headlessBootstrap.js";
 import ConcatView from "../view/concatView.js";
 import LayerView from "../view/layerView.js";
 import { initView } from "./scaleResolutionTestUtils.js";
@@ -34,6 +37,45 @@ describe("view-level scale config mapping", () => {
         expect(view.getScaleResolution("x").getScale().domain()).toEqual([
             0, 10,
         ]);
+    });
+
+    test("updates transitioned scale helper params when attaching initial configs", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ value: 100 }] },
+            scales: {
+                x: { domain: [0, 1] },
+            },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+                {
+                    name: "message",
+                    data: { values: [{}] },
+                    params: [
+                        {
+                            name: "zoomMessageState",
+                            expr: "span(domain('x')) > 5 ? 1 : 0",
+                            transition: { type: "lerp", halfLife: 60 },
+                        },
+                    ],
+                    mark: "text",
+                    encoding: {
+                        text: { value: "Zoom in" },
+                    },
+                },
+            ],
+        };
+
+        const { view } = await createHeadlessEngine(spec);
+        const message = view.findDescendantByName("message");
+
+        expect(message.paramRuntime.getValue("zoomMessageState")).toBe(0);
+        expect(message.paramRuntime.getTargetValue("zoomMessageState")).toBe(0);
     });
 
     test("maps a subtree config to a unique visible scale resolution", async () => {

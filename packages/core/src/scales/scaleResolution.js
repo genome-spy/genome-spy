@@ -618,10 +618,7 @@ export default class ScaleResolution {
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
         this.#refreshConfiguredDomainExprSubscriptions();
-        if (this.#scaleManager.scale) {
-            this.#scaleManager.resetScale();
-            this.initializeScale();
-        }
+        this.#recreateInitializedScaleAndNotifyDomain();
     }
 
     /**
@@ -634,11 +631,20 @@ export default class ScaleResolution {
             this.#invalidateConfiguredDomain();
             this.#refreshSelectionDomainParamSubscriptions();
             this.#refreshConfiguredDomainExprSubscriptions();
-            if (this.#scaleManager.scale) {
-                this.#scaleManager.resetScale();
-                this.initializeScale();
-            }
+            this.#recreateInitializedScaleAndNotifyDomain();
         }
+    }
+
+    #recreateInitializedScaleAndNotifyDomain() {
+        if (!this.#scaleManager.scale) {
+            return;
+        }
+
+        this.#scaleManager.resetScale();
+        this.initializeScale();
+        // Scale recreation applies the new domain before interceptors can
+        // observe a setter call, so notify expression helpers explicitly.
+        this.#notifyListeners("domain");
     }
 
     /**

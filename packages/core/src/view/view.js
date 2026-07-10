@@ -227,7 +227,8 @@ export default class View {
         this.paramRuntime = new ViewParamRuntime(
             () => this.dataParent?.paramRuntime,
             (channel) => this.getScaleResolution(channel),
-            context.animator
+            context.animator,
+            { initializing: true }
         );
 
         if (spec.params) {
@@ -979,6 +980,10 @@ export default class View {
         ) {
             this.opacityFunction = createViewOpacityFunction(this);
         }
+        // Opacity expressions are configured after scale resolution has
+        // stabilized, so view-owned params can switch from startup correction
+        // semantics to normal interactive transition semantics now.
+        this.paramRuntime.finalizeInitialization();
     }
 
     /**

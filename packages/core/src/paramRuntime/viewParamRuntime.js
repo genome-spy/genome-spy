@@ -98,6 +98,19 @@ export default class ViewParamRuntime {
     /** @type {import("../utils/animator.js").default | undefined} */
     #animator;
 
+    /**
+     * True while a view-owned runtime is being wired into the unresolved view
+     * hierarchy. During this phase, upstream scale/config finalization may
+     * correct expression values that were first evaluated against placeholder
+     * scale state. Those corrections should snap instead of animate.
+     *
+     * Standalone runtimes default to false because they do not have a separate
+     * view preparation phase.
+     *
+     * @type {boolean}
+     */
+    #initializing;
+
     #disposed = false;
 
     /**
@@ -107,12 +120,14 @@ export default class ViewParamRuntime {
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.
      * @param {import("../utils/animator.js").default} [animator]
+     * @param {{ initializing?: boolean }} [options]
      */
-    constructor(parentFinder, scaleResolutionResolver, animator) {
+    constructor(parentFinder, scaleResolutionResolver, animator, options = {}) {
         this.#parentFinder = parentFinder ?? (() => undefined);
         this.#scaleResolutionResolver =
             scaleResolutionResolver ?? (() => undefined);
         this.#animator = animator;
+        this.#initializing = options.initializing ?? false;
 
         const parent = this.#parentFinder();
         if (parent) {
@@ -581,7 +596,12 @@ export default class ViewParamRuntime {
 
         const state = this.#createTransitionState(name, ref, transition);
         const unsubscribe = expression.subscribe(() => {
-            this.#setTransitionTarget(name, state, expression(null));
+            // Startup invalidations can come from late scale/config attachment,
+            // not user interaction. Snap those corrections so a transitioned
+            // param does not begin rendering from a placeholder value.
+            this.#setTransitionTarget(name, state, expression(null), {
+                animate: !this.#initializing,
+            });
         });
         this.#runtime.addScopeDisposer(this.#scopeId, unsubscribe);
     }
@@ -675,6 +695,14 @@ export default class ViewParamRuntime {
      */
     whenPropagated(options) {
         return this.#runtime.whenPropagated(options);
+    }
+
+    /**
+     * Marks this runtime scope as fully prepared for interactive updates.
+     * Later expression changes animate according to the parameter transition.
+     */
+    finalizeInitialization() {
+        this.#initializing = false;
     }
 
     dispose() {
