@@ -68,7 +68,7 @@ export interface PlainValueParameter extends ParameterBase, PersistedParameter {
 export interface TransitionedValueParameter
     extends ParameterBase, PersistedParameter {
     /**
-     * The initial value of the transitioned parameter.
+     * The finite numeric initial target value of the transitioned parameter.
      */
     value: number;
 

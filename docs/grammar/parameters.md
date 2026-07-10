@@ -47,12 +47,13 @@ EXAMPLE examples/docs/grammar/parameters/expressions.json height=150
 
 ## Numeric Transitions
 
-Numeric variable parameters can use `transition` to smooth how the exposed
-runtime value follows a target value. The first supported transition is
-`"lerp"`, which continuously interpolates toward the latest target.
+Numeric value and expression parameters can use `transition` to smooth how the
+exposed runtime value follows a target value. Use `"lerp"` to continuously
+interpolate toward the latest target.
 
-Transitions apply to numeric scalar parameters only. They can be used with
-input-bound parameters:
+Transitions apply to finite numeric scalar values only. A transitioned value
+parameter requires a numeric `value`, and a transitioned expression parameter
+must evaluate to a finite number. They can be used with input-bound parameters:
 
 ```json
 {
@@ -63,8 +64,9 @@ input-bound parameters:
 }
 ```
 
-The input binding writes discrete target values. Expressions read the current
-transitioned value, which can be fractional while the value settles.
+The input binding writes discrete target values. Expressions and visual
+encodings read the current transitioned value, which can be fractional while
+the value settles.
 
 Transitions can also be used with expression parameters:
 
@@ -77,7 +79,16 @@ Transitions can also be used with expression parameters:
 ```
 
 This keeps the state decision crisp while smoothing only the visual value.
-Bookmarks, provenance, and input controls use the target value.
+For bound value parameters, bookmarks, provenance, and input controls use the
+target value.
+
+Use transitions for visual presentation such as layout, opacity, and visual
+thresholds. They can also drive data loading, filtering, and other data-flow
+operations, but these receive intermediate values while the transition settles.
+Use transitions carefully when those operations are expensive or stateful.
+
+Transitions cannot be used with selection parameters, ruler parameters, or
+`push: "outer"` parameters.
 
 ### Transition Properties
 
