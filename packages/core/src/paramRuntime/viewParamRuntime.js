@@ -558,15 +558,11 @@ export default class ViewParamRuntime {
      * @returns {(value: any, options?: SetValueOptions) => void}
      */
     #registerTransitionedBaseSetter(name, defaultValue, transition) {
-        const initialValue = validateTransitionValue(name, defaultValue);
-        const ref = this.#runtime.registerBase(
-            this.#scopeId,
+        const state = this.#registerTransitionState(
             name,
-            initialValue
+            defaultValue,
+            transition
         );
-        this.#localRefs.set(name, ref);
-
-        const state = this.#createTransitionState(name, ref, transition);
         const setter = (
             /** @type {any} */
             value,
@@ -587,15 +583,11 @@ export default class ViewParamRuntime {
      */
     #registerTransitionedExpression(name, expr, transition) {
         const expression = this.createExpression(expr);
-        const initialValue = validateTransitionValue(name, expression(null));
-        const ref = this.#runtime.registerBase(
-            this.#scopeId,
+        const state = this.#registerTransitionState(
             name,
-            initialValue
+            expression(null),
+            transition
         );
-        this.#localRefs.set(name, ref);
-
-        const state = this.#createTransitionState(name, ref, transition);
         const unsubscribe = expression.subscribe(() => {
             // Startup invalidations can come from late scale/config attachment,
             // not user interaction. Snap those corrections so a transitioned
@@ -609,11 +601,19 @@ export default class ViewParamRuntime {
 
     /**
      * @param {string} name
-     * @param {import("./types.js").WritableParamRef<number>} ref
+     * @param {any} defaultValue
      * @param {import("../spec/parameter.js").ParamTransition} transition
      * @returns {TransitionState}
      */
-    #createTransitionState(name, ref, transition) {
+    #registerTransitionState(name, defaultValue, transition) {
+        const initialValue = validateTransitionValue(name, defaultValue);
+        const ref = this.#runtime.registerBase(
+            this.#scopeId,
+            name,
+            initialValue
+        );
+        this.#localRefs.set(name, ref);
+
         const animator = this.#animator;
         if (!animator) {
             throw new Error(
