@@ -21,21 +21,21 @@ SCHEMA LookupParams
 
 ## Example
 
-The following input data contains DNA codons:
+The following input data contains codon observations from a sequencing read:
 
-| codon |
-| ----- |
-| ATG   |
-| TGG   |
-| TAA   |
-| NNN   |
+| position | codon | readCount |
+| -------- | ----- | --------- |
+| 1        | ATG   | 42        |
+| 4        | TGG   | 17        |
+| 7        | TAA   | 6         |
+| 10       | NNN   | 1         |
 
-The lookup table maps each codon to an amino acid:
+The separately ordered lookup table maps codons to amino acids:
 
 | codon | aminoAcid |
 | ----- | --------- |
-| ATG   | M         |
 | TGG   | W         |
+| ATG   | M         |
 | TAA   | Stop      |
 
 This transform copies `aminoAcid` from the matching table row. The unmatched
@@ -62,12 +62,12 @@ This transform copies `aminoAcid` from the matching table row. The unmatched
 
 The resulting data is:
 
-| codon | aminoAcid |
-| ----- | --------- |
-| ATG   | M         |
-| TGG   | W         |
-| TAA   | Stop      |
-| NNN   | ?         |
+| position | codon | readCount | aminoAcid |
+| -------- | ----- | --------- | --------- |
+| 1        | ATG   | 42        | M         |
+| 4        | TGG   | 17        | W         |
+| 7        | TAA   | 6         | Stop      |
+| 10       | NNN   | 1         | ?         |
 
 Use matching `fields` and `from.key` arrays for a composite key, for example
 `fields: ["sample", "codon"]` and `from.key: ["sample", "codon"]`.
