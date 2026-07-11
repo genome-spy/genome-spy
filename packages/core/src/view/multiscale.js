@@ -15,7 +15,7 @@ const DEFAULT_FADE = 0.5;
  *     channel: MultiscaleChannel;
  *     fade: number;
  *     transition: import("../spec/parameter.js").ParamTransition | undefined;
- *     state: string | undefined;
+ *     param: string | undefined;
  * }} ParsedStops
  */
 
@@ -40,7 +40,7 @@ export function normalizeMultiscaleSpec(spec) {
     }
 
     const parsedStops = parseStops(spec.stops, spec.multiscale.length);
-    const stageStateName = parsedStops.state ?? "multiscaleState";
+    const stageStateName = parsedStops.param ?? "multiscaleState";
 
     /** @type {import("../spec/view.js").LayerSpec["layer"]} */
     const layer = spec.multiscale.map((child, i) => {
@@ -111,7 +111,7 @@ function parseStops(stops, stageCount) {
     /** @type {import("../spec/parameter.js").ParamTransition | undefined} */
     let transition;
     /** @type {string | undefined} */
-    let state;
+    let param;
 
     if (isArray(stops)) {
         values = parseStopValues(stops, stageCount, "stops");
@@ -120,8 +120,12 @@ function parseStops(stops, stageCount) {
         values = parseStopValues(stops.values, stageCount, "stops.values");
         channel = stops.channel ?? "auto";
         fade = stops.fade ?? DEFAULT_FADE;
-        transition = stops.transition;
-        state = stops.state;
+        if (stops.transition) {
+            const { param: transitionParam, ...paramTransition } =
+                stops.transition;
+            transition = paramTransition;
+            param = transitionParam;
+        }
     } else {
         throw new Error('"stops" must be an array or an object with "values".');
     }
@@ -152,10 +156,6 @@ function parseStops(stops, stageCount) {
         throw new Error(
             'Transitioned multiscale stops cannot also define "stops.fade".'
         );
-    }
-
-    if (state !== undefined && !transition) {
-        throw new Error('"stops.state" requires "stops.transition".');
     }
 
     values.forEach((value, index) => {
@@ -196,7 +196,7 @@ function parseStops(stops, stageCount) {
         channel,
         fade,
         transition,
-        state,
+        param,
     };
 }
 

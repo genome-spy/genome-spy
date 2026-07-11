@@ -124,29 +124,29 @@ describe("multiscale", () => {
             stops: {
                 channel: "x",
                 values: [1000, 100],
-                transition,
+                transition: { ...transition, param: "stageState" },
             },
         });
 
         expect(asLayer(normalized.layer[0])).toMatchObject({
-            opacity: { expr: "multiscaleState" },
-            params: [{ name: "multiscaleState", value: 0, transition }],
+            opacity: { expr: "stageState" },
+            params: [{ name: "stageState", value: 0, transition }],
         });
         expect(getPostScaleParamBindings(normalized.layer[0])).toEqual([
             {
-                name: "multiscaleState",
+                name: "stageState",
                 expr: "abs(span(domain('x'))) / max(width, 1) >= 1000 ? 1 : 0",
             },
         ]);
         expect(getPostScaleParamBindings(normalized.layer[1])).toEqual([
             {
-                name: "multiscaleState",
+                name: "stageState",
                 expr: "abs(span(domain('x'))) / max(width, 1) < 1000 && abs(span(domain('x'))) / max(width, 1) >= 100 ? 1 : 0",
             },
         ]);
         expect(getPostScaleParamBindings(normalized.layer[2])).toEqual([
             {
-                name: "multiscaleState",
+                name: "stageState",
                 expr: "abs(span(domain('x'))) / max(width, 1) < 100 ? 1 : 0",
             },
         ]);
@@ -180,19 +180,6 @@ describe("multiscale", () => {
         );
     });
 
-    test("requires a transition for a named stage state", () => {
-        expect(() =>
-            normalizeMultiscaleSpec({
-                multiscale: [unit("point"), unit("rect")],
-                stops: {
-                    channel: "x",
-                    values: [1000],
-                    state: "stageState",
-                },
-            })
-        ).toThrow('"stops.state" requires "stops.transition"');
-    });
-
     test("initializes transitioned stage opacity from the zoom threshold", async () => {
         const { view: rawView } = await createHeadlessEngine({
             width: 100,
@@ -208,8 +195,7 @@ describe("multiscale", () => {
             stops: {
                 channel: "x",
                 values: [10],
-                transition: { type: "lerp" },
-                state: "stageState",
+                transition: { type: "lerp", param: "stageState" },
             },
             multiscale: [
                 {

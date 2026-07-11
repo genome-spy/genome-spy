@@ -21,8 +21,11 @@
   "stops": {
     "channel": "x",
     "values": [1, 0.1],
-    "transition": { "type": "lerp", "halfLife": 100 },
-    "state": "stageState"
+    "transition": {
+      "type": "lerp",
+      "halfLife": 100,
+      "param": "stageState"
+    }
   },
 
   "multiscale": [
