@@ -21,7 +21,8 @@
   "stops": {
     "channel": "x",
     "values": [1, 0.1],
-    "transition": { "type": "lerp", "halfLife": 60 }
+    "transition": { "type": "lerp", "halfLife": 100 },
+    "state": "stageState"
   },
 
   "multiscale": [
@@ -29,7 +30,11 @@
       "data": {
         "values": [{}]
       },
-      "mark": { "type": "text", "text": "Zoom in to see details", "size": 16 },
+      "mark": {
+        "type": "text",
+        "text": "Zoom in to see details",
+        "size": { "expr": "16 * stageState" }
+      },
       "encoding": {
         "x": { "value": 0.5 },
         "y": { "value": 0.5 },
@@ -60,7 +65,10 @@
           "as": "y"
         }
       ],
-      "mark": "point",
+      "mark": {
+        "type": "point",
+        "size": { "expr": "20 + 80 * stageState" }
+      },
       "encoding": {
         "opacity": { "value": 0.7 }
       }

@@ -15,6 +15,7 @@ const DEFAULT_FADE = 0.5;
  *     channel: MultiscaleChannel;
  *     fade: number;
  *     transition: import("../spec/parameter.js").ParamTransition | undefined;
+ *     state: string | undefined;
  * }} ParsedStops
  */
 
@@ -39,6 +40,7 @@ export function normalizeMultiscaleSpec(spec) {
     }
 
     const parsedStops = parseStops(spec.stops, spec.multiscale.length);
+    const stageStateName = parsedStops.state ?? "multiscaleState";
 
     /** @type {import("../spec/view.js").LayerSpec["layer"]} */
     const layer = spec.multiscale.map((child, i) => {
@@ -47,20 +49,35 @@ export function normalizeMultiscaleSpec(spec) {
         }
 
         const wrapper = {
-            ...createStageWrapper(i, spec.multiscale.length, parsedStops),
+            ...createStageWrapper(
+                i,
+                spec.multiscale.length,
+                parsedStops,
+                stageStateName
+            ),
+            ...(parsedStops.transition
+                ? {
+                      params: [
+                          {
+                              name: stageStateName,
+                              value: 0,
+                              transition: parsedStops.transition,
+                          },
+                      ],
+                  }
+                : {}),
             layer: [child],
         };
 
         if (parsedStops.transition) {
             setPostScaleParams(wrapper, [
                 {
-                    name: "multiscaleOpacity",
+                    name: stageStateName,
                     expr: createStageTargetExpression(
                         i,
                         spec.multiscale.length,
                         parsedStops
                     ),
-                    transition: parsedStops.transition,
                 },
             ]);
         }
@@ -93,6 +110,8 @@ function parseStops(stops, stageCount) {
     let fade = DEFAULT_FADE;
     /** @type {import("../spec/parameter.js").ParamTransition | undefined} */
     let transition;
+    /** @type {string | undefined} */
+    let state;
 
     if (isArray(stops)) {
         values = parseStopValues(stops, stageCount, "stops");
@@ -102,6 +121,7 @@ function parseStops(stops, stageCount) {
         channel = stops.channel ?? "auto";
         fade = stops.fade ?? DEFAULT_FADE;
         transition = stops.transition;
+        state = stops.state;
     } else {
         throw new Error('"stops" must be an array or an object with "values".');
     }
@@ -132,6 +152,10 @@ function parseStops(stops, stageCount) {
         throw new Error(
             'Transitioned multiscale stops cannot also define "stops.fade".'
         );
+    }
+
+    if (state !== undefined && !transition) {
+        throw new Error('"stops.state" requires "stops.transition".');
     }
 
     values.forEach((value, index) => {
@@ -172,6 +196,7 @@ function parseStops(stops, stageCount) {
         channel,
         fade,
         transition,
+        state,
     };
 }
 
@@ -214,12 +239,13 @@ function parseStopValues(rawValues, stageCount, path) {
  * @param {number} stageIndex
  * @param {number} stageCount
  * @param {ParsedStops} stops
+ * @param {string} stageStateName
  * @returns {Pick<import("../spec/view.js").LayerSpec, "opacity">}
  */
-function createStageWrapper(stageIndex, stageCount, stops) {
+function createStageWrapper(stageIndex, stageCount, stops, stageStateName) {
     if (stops.transition) {
         return {
-            opacity: { expr: "multiscaleOpacity" },
+            opacity: { expr: stageStateName },
         };
     } else {
         return {

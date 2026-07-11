@@ -421,6 +421,15 @@ export interface MultiscaleStops {
      * cannot be combined with `fade`.
      */
     transition?: ParamTransition;
+
+    /**
+     * Name of the local 0–1 stage-state parameter created for each child.
+     * Child expressions can use it to animate mark properties alongside the
+     * default opacity cross-fade.
+     *
+     * Requires `transition`.
+     */
+    state?: string;
 }
 
 export type MultiscaleStopsDef = NumericStopDef[] | MultiscaleStops;

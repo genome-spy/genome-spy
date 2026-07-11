@@ -520,6 +520,30 @@ export default class ViewParamRuntime {
     }
 
     /**
+     * Binds a local writable parameter to an expression. The current value is
+     * set immediately; later updates snap until initialization is finalized.
+     *
+     * @param {string} name
+     * @param {string} expr
+     */
+    bindParamToExpression(name, expr) {
+        if (!this.#allocatedSetters.has(name)) {
+            throw new Error(
+                "Writable parameter not found in this scope: " + name
+            );
+        }
+
+        this.#bindExpression(
+            this.createExpression(expr),
+            (value) =>
+                this.setValue(name, value, {
+                    animate: !this.#snapTransitionedExpressionUpdates,
+                }),
+            true
+        );
+    }
+
+    /**
      * @template T
      * @param {string} name
      * @param {T} defaultValue
@@ -580,15 +604,31 @@ export default class ViewParamRuntime {
             expression(null),
             transition
         );
-        const unsubscribe = expression.subscribe(() => {
-            // Startup invalidations can come from late scale/config attachment,
-            // not user interaction. Snap those corrections so a transitioned
-            // param does not begin rendering from a placeholder value.
-            this.#setTransitionTarget(name, state, expression(null), {
-                animate: !this.#snapTransitionedExpressionUpdates,
-            });
-        });
+        this.#bindExpression(
+            expression,
+            (value) =>
+                this.#setTransitionTarget(name, state, value, {
+                    animate: !this.#snapTransitionedExpressionUpdates,
+                }),
+            false
+        );
+    }
+
+    /**
+     * @param {ExprRefFunction} expression
+     * @param {(value: any) => void} setter
+     * @param {boolean} setInitialValue
+     */
+    #bindExpression(expression, setter, setInitialValue) {
+        const update = () => {
+            setter(expression(null));
+        };
+        const unsubscribe = expression.subscribe(update);
         this.#runtime.addScopeDisposer(this.#scopeId, unsubscribe);
+
+        if (setInitialValue) {
+            update();
+        }
     }
 
     /**

@@ -978,19 +978,20 @@ export default class View {
     }
 
     /**
-     * Registers macro-generated params that depend on resolved scales.
+     * Binds macro-generated parameters that depend on resolved scales.
      * For example, multiscale stage wrappers use `domain('x')` to select a
      * detail level, but their child views create the x resolution later.
      */
     configurePostScaleParams() {
         const postScaleParams = getPostScaleParams(this.spec);
         if (postScaleParams && !this.#postScaleParamsConfigured) {
-            for (const param of postScaleParams) {
-                this.paramRuntime.registerParam(param);
-            }
-
             this.#postScaleParamsConfigured = true;
             this.#postScaleParamDataReady = false;
+
+            for (const param of postScaleParams) {
+                this.paramRuntime.bindParamToExpression(param.name, param.expr);
+            }
+
             this.registerDisposer(
                 this._addBroadcastHandler("subtreeDataReady", () => {
                     this.#postScaleParamDataReady = true;
