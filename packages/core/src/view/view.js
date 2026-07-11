@@ -27,6 +27,7 @@ import {
     normalizeClipOptions,
 } from "./renderingContext/clipOptions.js";
 import { isInChromeSubtree } from "./viewChrome.js";
+import { getMultiscaleStageTransitionParam } from "./multiscale.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -120,6 +121,12 @@ export default class View {
 
     /** @type {boolean} */
     #hasRendered = false;
+
+    /** @type {boolean} */
+    #hasLaidOut = false;
+
+    /** @type {boolean | undefined} */
+    #deferredParamRuntimeDataReady = undefined;
 
     /**
      * @type {function(number):number}
@@ -972,6 +979,22 @@ export default class View {
      * Called after all scales in the view hierarchy have been resolved.
      */
     configureViewOpacity() {
+        const transitionParam = getMultiscaleStageTransitionParam(this.spec);
+        // The generated expression needs resolved scales and initial data/layout values.
+        if (
+            transitionParam &&
+            !this.paramRuntime.hasLocalParam(transitionParam.name)
+        ) {
+            this.paramRuntime.registerParam(transitionParam);
+            this.#deferredParamRuntimeDataReady = false;
+            this.registerDisposer(
+                this._addBroadcastHandler("subtreeDataReady", () => {
+                    this.#deferredParamRuntimeDataReady = true;
+                    this.#finalizeDeferredParamRuntimeInitialization();
+                })
+            );
+        }
+
         // Only set the opacity function once. The idea is to allow custom functions
         // and prevent accidental overwrites.
         if (
@@ -986,7 +1009,9 @@ export default class View {
      * Marks view-owned params as ready for interactive updates.
      */
     finalizeParamRuntimeInitialization() {
-        this.paramRuntime.finalizeInitialization();
+        if (this.#deferredParamRuntimeDataReady === undefined) {
+            this.paramRuntime.finalizeInitialization();
+        }
     }
 
     /**
@@ -1023,7 +1048,17 @@ export default class View {
         this.#widthSetter?.(coords.width);
         this.#heightSetter?.(coords.height);
 
+        this.#hasLaidOut = true;
+        this.#finalizeDeferredParamRuntimeInitialization();
+
         // override
+    }
+
+    #finalizeDeferredParamRuntimeInitialization() {
+        if (this.#deferredParamRuntimeDataReady && this.#hasLaidOut) {
+            this.#deferredParamRuntimeDataReady = undefined;
+            this.paramRuntime.finalizeInitialization();
+        }
     }
 
     /**

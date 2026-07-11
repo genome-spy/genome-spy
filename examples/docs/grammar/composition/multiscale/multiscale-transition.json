@@ -1,11 +1,9 @@
 {
-  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
-  "description": "A three-stage semantic zoom using persistent opacity ramps between multiscale levels.",
+  "description": "A three-stage semantic zoom that cross-fades after selecting a discrete multiscale level.",
 
   "view": { "stroke": "lightgray" },
-
-  "height": 120,
 
   "resolve": {
     "scale": { "x": "shared" }
@@ -20,7 +18,11 @@
     "y": { "field": "y", "type": "quantitative" }
   },
 
-  "stops": [1, 0.1],
+  "stops": {
+    "channel": "x",
+    "values": [1, 0.1],
+    "transition": { "type": "lerp", "halfLife": 60 }
+  },
 
   "multiscale": [
     {

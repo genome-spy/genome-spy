@@ -9,9 +9,8 @@ import {
     PrimaryPositionalChannel,
 } from "./channel.js";
 import { MarkProps, MarkType, RuleProps } from "./mark.js";
-import { ExprRef } from "./parameter.js";
+import { ExprRef, Parameter, ParamTransition } from "./parameter.js";
 import { Title } from "./title.js";
-import { Parameter } from "./parameter.js";
 import { GenomeSpyConfig } from "./config.js";
 import { ViewBackgroundProps, ZIndexProps } from "./decoration.js";
 import { Scale } from "./scale.js";
@@ -411,6 +410,17 @@ export interface MultiscaleStops {
      * __Default value:__ `0.5`
      */
     fade?: number;
+
+    /**
+     * Cross-fades stages in time after a stop selects a new detail level.
+     * The selected stage settles fully visible and all other stages settle
+     * hidden. This differs from `fade`, which keeps adjacent stages partly
+     * visible within a zoom range.
+     *
+     * Transitioned stops require `channel` to be either `"x"` or `"y"` and
+     * cannot be combined with `fade`.
+     */
+    transition?: ParamTransition;
 }
 
 export type MultiscaleStopsDef = NumericStopDef[] | MultiscaleStops;

@@ -4,6 +4,14 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
 const DEFAULT_FADE = 0.5;
 
 /**
+ * Transitioned stages must defer parameter registration until their scales
+ * have been resolved. Keep this internal metadata out of generated specs.
+ *
+ * @type {WeakMap<object, import("../spec/parameter.js").ExprParameter>}
+ */
+const stageTransitionParams = new WeakMap();
+
+/**
  * @typedef {"unitsPerPixel"} MultiscaleMetric
  * @typedef {"x" | "y" | "auto"} MultiscaleChannel
  * @typedef {number | import("../spec/parameter.js").ExprRef} StopValue
@@ -13,6 +21,7 @@ const DEFAULT_FADE = 0.5;
  *     values: StopValue[];
  *     channel: MultiscaleChannel;
  *     fade: number;
+ *     transition: import("../spec/parameter.js").ParamTransition | undefined;
  * }} ParsedStops
  */
 
@@ -44,10 +53,24 @@ export function normalizeMultiscaleSpec(spec) {
             return child;
         }
 
-        return {
-            opacity: createStageOpacity(i, spec.multiscale.length, parsedStops),
+        const wrapper = {
+            ...createStageWrapper(i, spec.multiscale.length, parsedStops),
             layer: [child],
         };
+
+        if (parsedStops.transition) {
+            stageTransitionParams.set(wrapper, {
+                name: "multiscaleOpacity",
+                expr: createStageTargetExpression(
+                    i,
+                    spec.multiscale.length,
+                    parsedStops
+                ),
+                transition: parsedStops.transition,
+            });
+        }
+
+        return wrapper;
     });
 
     const passThrough = { ...spec };
@@ -73,6 +96,8 @@ function parseStops(stops, stageCount) {
     /** @type {MultiscaleChannel} */
     let channel = "auto";
     let fade = DEFAULT_FADE;
+    /** @type {import("../spec/parameter.js").ParamTransition | undefined} */
+    let transition;
 
     if (isArray(stops)) {
         values = parseStopValues(stops, stageCount, "stops");
@@ -81,6 +106,7 @@ function parseStops(stops, stageCount) {
         values = parseStopValues(stops.values, stageCount, "stops.values");
         channel = stops.channel ?? "auto";
         fade = stops.fade ?? DEFAULT_FADE;
+        transition = stops.transition;
     } else {
         throw new Error('"stops" must be an array or an object with "values".');
     }
@@ -98,6 +124,18 @@ function parseStops(stops, stageCount) {
     if (!Number.isFinite(fade) || fade < 0 || fade > 0.5) {
         throw new Error(
             '"stops.fade" must be a finite number in range [0, 0.5].'
+        );
+    }
+
+    if (transition && channel === "auto") {
+        throw new Error(
+            'Transitioned multiscale stops require "stops.channel" to be "x" or "y".'
+        );
+    }
+
+    if (transition && isObject(stops) && "fade" in stops) {
+        throw new Error(
+            'Transitioned multiscale stops cannot also define "stops.fade".'
         );
     }
 
@@ -138,6 +176,7 @@ function parseStops(stops, stageCount) {
         values,
         channel,
         fade,
+        transition,
     };
 }
 
@@ -174,6 +213,71 @@ function parseStopValues(rawValues, stageCount, path) {
     }
 
     return /** @type {StopValue[]} */ (rawValues);
+}
+
+/**
+ * @param {number} stageIndex
+ * @param {number} stageCount
+ * @param {ParsedStops} stops
+ * @returns {Pick<import("../spec/view.js").LayerSpec, "opacity">}
+ */
+function createStageWrapper(stageIndex, stageCount, stops) {
+    if (stops.transition) {
+        return {
+            opacity: { expr: "multiscaleOpacity" },
+        };
+    } else {
+        return {
+            opacity: createStageOpacity(stageIndex, stageCount, stops),
+        };
+    }
+}
+
+/**
+ * Returns a generated transitioned opacity parameter after scale resolution.
+ *
+ * @param {object} spec
+ */
+export function getMultiscaleStageTransitionParam(spec) {
+    return stageTransitionParams.get(spec);
+}
+
+/**
+ * @param {number} stageIndex
+ * @param {number} stageCount
+ * @param {ParsedStops} stops
+ * @returns {string}
+ */
+function createStageTargetExpression(stageIndex, stageCount, stops) {
+    const dimension = stops.channel === "x" ? "width" : "height";
+    const metric = `abs(span(domain('${stops.channel}'))) / max(${dimension}, 1)`;
+
+    if (stageIndex === 0) {
+        return metric + " >= " + stopToExpression(stops.values[0]) + " ? 1 : 0";
+    } else if (stageIndex === stageCount - 1) {
+        return (
+            metric + " < " + stopToExpression(stops.values.at(-1)) + " ? 1 : 0"
+        );
+    } else {
+        return (
+            metric +
+            " < " +
+            stopToExpression(stops.values[stageIndex - 1]) +
+            " && " +
+            metric +
+            " >= " +
+            stopToExpression(stops.values[stageIndex]) +
+            " ? 1 : 0"
+        );
+    }
+}
+
+/**
+ * @param {StopValue} stop
+ * @returns {string}
+ */
+function stopToExpression(stop) {
+    return isExprRef(stop) ? "(" + stop.expr + ")" : String(stop);
 }
 
 /**

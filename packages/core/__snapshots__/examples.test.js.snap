@@ -8458,6 +8458,107 @@ exports[`shared examples > initializes examples/docs/grammar/composition/multisc
 }
 `;
 
+exports[`shared examples > initializes examples/docs/grammar/composition/multiscale/multiscale-transition.json 1`] = `
+{
+  "assemblies": [],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": null,
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "layer0",
+                "type": "UnitView",
+              },
+            ],
+            "name": "layer0",
+            "type": "LayerView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "layer0",
+                "type": "UnitView",
+              },
+            ],
+            "name": "layer1",
+            "type": "LayerView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "layer0",
+                "type": "UnitView",
+              },
+            ],
+            "name": "layer2",
+            "type": "LayerView",
+          },
+        ],
+        "name": "grid0",
+        "type": "LayerView",
+      },
+    ],
+    "name": "implicitRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/grammar/config/config-overview.json 1`] = `
 {
   "assemblies": [],

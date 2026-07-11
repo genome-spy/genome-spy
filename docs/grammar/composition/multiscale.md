@@ -1,9 +1,8 @@
 # Multiscale Composition
 
 `multiscale` is a convenience macro for semantic zooming. It expands to a
-[`layer`](./layer.md) composition with generated zoom-driven
-[`opacity`](./layer.md#zoom-driven-layer-opacity) transitions between child
-views.
+[`layer`](./layer.md) composition with generated opacity transitions between
+child views.
 
 ## Example
 
@@ -15,10 +14,14 @@ EXAMPLE examples/docs/grammar/composition/multiscale/multiscale-composition.json
 views, `stops` must contain `N - 1` values.
 
 At compile time, `multiscale` is expanded into a regular
-[`layer`](./layer.md): each child is wrapped with generated `opacity` ramps
-that cross-fade adjacent levels. Normal layer behavior still applies
-(inherited encodings/data, scale resolution, and opacity multiplication with
-manually specified child opacity).
+[`layer`](./layer.md). Normal layer behavior still applies (inherited
+encodings/data, scale resolution, and opacity multiplication with manually
+specified child opacity).
+
+By default, each child is wrapped with a zoom-driven opacity ramp that
+cross-fades adjacent levels. The ramp is tied directly to the zoom metric, so
+two adjacent levels remain partly visible while the zoom level is between their
+stops.
 
 By default, channel selection is automatic:
 
@@ -29,6 +32,34 @@ By default, channel selection is automatic:
 
 For manual opacity control patterns, see
 [`layer` zoom-driven opacity](./layer.md#zoom-driven-layer-opacity).
+
+## Transitioned Stops
+
+Set `stops.transition` to select one detail level at each stop and cross-fade
+only while the selected level changes. See [numeric
+transitions](../parameters.md#numeric-transitions) for the transition options.
+Unlike the default opacity ramp, this is a time-based cross-fade rather than a
+persistent blend across a zoom range. After it settles, the selected level is
+fully visible and all other levels are hidden.
+
+Transitioned stops require an explicit `"x"` or `"y"` channel and cannot use
+`fade`:
+
+```json
+{
+  "stops": {
+    "channel": "x",
+    "values": [40000],
+    "transition": { "type": "lerp", "halfLife": 60 }
+  },
+  "multiscale": [
+    { "name": "Overview", "mark": "rect" },
+    { "name": "Detail", "mark": "point" }
+  ]
+}
+```
+
+EXAMPLE examples/docs/grammar/composition/multiscale/multiscale-transition.json height=180 spechidden
 
 ### Schematic Two-Level Cross-Fade Example
 
