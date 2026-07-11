@@ -18,8 +18,8 @@ composite lookup, for example `fields: ["sample", "codon"]` and
 - Lookup matches exact field values. Range, overlap, and many-to-many joins
   are not supported.
 - Lookup tables cannot use lazy data sources.
-- Changes to the lookup table do not update existing output. Reload the
-  primary data to apply the new table values.
+- When a lookup table reloads, GenomeSpy automatically reloads or replays the
+  primary data.
 
 ## Parameters
 

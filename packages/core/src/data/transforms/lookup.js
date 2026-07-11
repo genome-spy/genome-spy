@@ -1,6 +1,8 @@
 import { asArray } from "../../utils/arrayUtils.js";
 import { field } from "../../utils/field.js";
+import Collector from "../collector.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
+import DataSource from "../sources/dataSource.js";
 import Transform from "./transform.js";
 
 /**
@@ -30,6 +32,8 @@ export default class LookupTransform extends Transform {
 
     /** @type {Map<any, Map<any, any>> | null} */
     #index = null;
+
+    #primaryCompleted = false;
 
     /**
      * @param {import("../../spec/transform.js").LookupParams} params
@@ -71,11 +75,16 @@ export default class LookupTransform extends Transform {
         this.#valueAccessors = values?.map((name) => field(name));
         this.#as = as ?? values ?? [];
         this.#defaultValue = params.default ?? null;
+
+        this.registerDisposer(
+            foreignCollector.observe(() => this.#reloadPrimaryData())
+        );
     }
 
     reset() {
         super.reset();
         this.#index = null;
+        this.#primaryCompleted = false;
     }
 
     /**
@@ -92,6 +101,33 @@ export default class LookupTransform extends Transform {
     handle(datum) {
         this.#ensureIndex();
         this.#propagateLookup(datum);
+    }
+
+    complete() {
+        this.#primaryCompleted = true;
+        super.complete();
+    }
+
+    /**
+     * Replays primary data after the lookup table has completed a reload.
+     * A collector upstream of lookup already materializes the primary rows;
+     * otherwise the primary source must load them again.
+     */
+    #reloadPrimaryData() {
+        if (!this.#primaryCompleted) {
+            return;
+        }
+
+        let node = this.parent;
+        while (node) {
+            if (node instanceof Collector || node instanceof DataSource) {
+                node.repropagate();
+                return;
+            }
+            node = node.parent;
+        }
+
+        // Standalone transforms used outside a data flow have no replay point.
     }
 
     #ensureIndex() {
