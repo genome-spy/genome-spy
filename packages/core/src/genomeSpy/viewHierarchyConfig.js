@@ -30,6 +30,7 @@ export function finalizeViewConfiguration(viewRoot) {
  */
 export function configureViewsAfterScaleResolution(views) {
     for (const view of views) {
+        view.configurePostScaleParams();
         view.configureViewOpacity();
         view.finalizeParamRuntimeInitialization();
     }

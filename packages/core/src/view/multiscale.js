@@ -1,9 +1,8 @@
 import { isArray, isObject } from "vega-util";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
+import { setPostScaleParams } from "./postScaleParams.js";
 
 const DEFAULT_FADE = 0.5;
-
-export const MULTISCALE_STAGE = Symbol("multiscaleStage");
 
 /**
  * @typedef {"unitsPerPixel"} MultiscaleMetric
@@ -53,15 +52,17 @@ export function normalizeMultiscaleSpec(spec) {
         };
 
         if (parsedStops.transition) {
-            wrapper[MULTISCALE_STAGE] = {
-                name: "multiscaleOpacity",
-                expr: createStageTargetExpression(
-                    i,
-                    spec.multiscale.length,
-                    parsedStops
-                ),
-                transition: parsedStops.transition,
-            };
+            setPostScaleParams(wrapper, [
+                {
+                    name: "multiscaleOpacity",
+                    expr: createStageTargetExpression(
+                        i,
+                        spec.multiscale.length,
+                        parsedStops
+                    ),
+                    transition: parsedStops.transition,
+                },
+            ]);
         }
 
         return wrapper;
@@ -225,22 +226,6 @@ function createStageWrapper(stageIndex, stageCount, stops) {
             opacity: createStageOpacity(stageIndex, stageCount, stops),
         };
     }
-}
-
-/**
- * Returns a generated transitioned opacity parameter after scale resolution.
- *
- * @param {object} spec
- */
-export function getMultiscaleStageTransitionParam(spec) {
-    return spec[MULTISCALE_STAGE];
-}
-
-/**
- * @param {object} spec
- */
-export function isMultiscaleStageSpec(spec) {
-    return MULTISCALE_STAGE in spec;
 }
 
 /**

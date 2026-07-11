@@ -11,11 +11,9 @@ import {
 } from "../scales/viewLevelGuideConfig.js";
 import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
 import Animator from "../utils/animator.js";
-import {
-    getMultiscaleStageTransitionParam,
-    isMultiscaleSpec,
-    normalizeMultiscaleSpec,
-} from "./multiscale.js";
+import LayerView from "./layerView.js";
+import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
+import { getPostScaleParams } from "./postScaleParams.js";
 import { renderToLayout } from "./testUtils.js";
 
 /**
@@ -32,6 +30,17 @@ function unit(mark) {
  */
 function asLayer(child) {
     return /** @type {import("../spec/view.js").LayerSpec} */ (child);
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @returns {LayerView}
+ */
+function requireLayerView(view) {
+    if (!(view instanceof LayerView)) {
+        throw new Error("Expected a layer view.");
+    }
+    return view;
 }
 
 describe("multiscale", () => {
@@ -96,6 +105,7 @@ describe("multiscale", () => {
     });
 
     test("generates transitioned stage opacities from discrete stop targets", () => {
+        /** @type {import("../spec/parameter.js").LerpTransition} */
         const transition = { type: "lerp", halfLife: 60 };
         const normalized = normalizeMultiscaleSpec({
             multiscale: [unit("point"), unit("rect"), unit("rule")],
@@ -109,21 +119,27 @@ describe("multiscale", () => {
         expect(asLayer(normalized.layer[0])).toMatchObject({
             opacity: { expr: "multiscaleOpacity" },
         });
-        expect(getMultiscaleStageTransitionParam(normalized.layer[0])).toEqual({
-            name: "multiscaleOpacity",
-            expr: "abs(span(domain('x'))) / max(width, 1) >= 1000 ? 1 : 0",
-            transition,
-        });
-        expect(getMultiscaleStageTransitionParam(normalized.layer[1])).toEqual({
-            name: "multiscaleOpacity",
-            expr: "abs(span(domain('x'))) / max(width, 1) < 1000 && abs(span(domain('x'))) / max(width, 1) >= 100 ? 1 : 0",
-            transition,
-        });
-        expect(getMultiscaleStageTransitionParam(normalized.layer[2])).toEqual({
-            name: "multiscaleOpacity",
-            expr: "abs(span(domain('x'))) / max(width, 1) < 100 ? 1 : 0",
-            transition,
-        });
+        expect(getPostScaleParams(normalized.layer[0])).toEqual([
+            {
+                name: "multiscaleOpacity",
+                expr: "abs(span(domain('x'))) / max(width, 1) >= 1000 ? 1 : 0",
+                transition,
+            },
+        ]);
+        expect(getPostScaleParams(normalized.layer[1])).toEqual([
+            {
+                name: "multiscaleOpacity",
+                expr: "abs(span(domain('x'))) / max(width, 1) < 1000 && abs(span(domain('x'))) / max(width, 1) >= 100 ? 1 : 0",
+                transition,
+            },
+        ]);
+        expect(getPostScaleParams(normalized.layer[2])).toEqual([
+            {
+                name: "multiscaleOpacity",
+                expr: "abs(span(domain('x'))) / max(width, 1) < 100 ? 1 : 0",
+                transition,
+            },
+        ]);
     });
 
     test("requires an explicit channel for transitioned stops", () => {
@@ -155,7 +171,7 @@ describe("multiscale", () => {
     });
 
     test("initializes transitioned stage opacity from the zoom threshold", async () => {
-        const { view } = await createHeadlessEngine({
+        const { view: rawView } = await createHeadlessEngine({
             width: 100,
             data: { values: [{ x: 0, y: 0 }] },
             encoding: {
@@ -173,6 +189,7 @@ describe("multiscale", () => {
             },
             multiscale: [unit("point"), unit("rect")],
         });
+        const view = requireLayerView(rawView);
 
         expect(
             view.children[0].paramRuntime.getValue("multiscaleOpacity")
@@ -196,7 +213,7 @@ describe("multiscale", () => {
         animator.requestRender = () => undefined;
 
         const context = createHeadlessViewContext({ animator });
-        const view = await context.createOrImportView(
+        const rawView = await context.createOrImportView(
             {
                 width: 100,
                 data: { values: [{ x: 0, y: 0 }] },
@@ -219,6 +236,7 @@ describe("multiscale", () => {
             null,
             "root"
         );
+        const view = requireLayerView(rawView);
         attachViewLevelScaleConfigs(view);
         attachViewLevelAxisConfigs(view);
         attachViewLevelLegendConfigs(view);
