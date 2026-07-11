@@ -9,7 +9,7 @@ import {
     PrimaryPositionalChannel,
 } from "./channel.js";
 import { MarkProps, MarkType, RuleProps } from "./mark.js";
-import { ExprRef, LerpTransition, Parameter } from "./parameter.js";
+import { ExprRef, Parameter, ParamTransition } from "./parameter.js";
 import { Title } from "./title.js";
 import { GenomeSpyConfig } from "./config.js";
 import { ViewBackgroundProps, ZIndexProps } from "./decoration.js";
@@ -375,15 +375,6 @@ export interface LayerSpec extends ViewSpecBase, DynamicOpacitySpec {
     layer: (LayerSpec | UnitSpec | MultiscaleSpec | ImportSpec)[];
 }
 
-export interface MultiscaleTransition extends LerpTransition {
-    /**
-     * Name of the local 0–1 stage-state parameter created for each child.
-     * Child expressions can use it to animate mark properties alongside the
-     * default opacity cross-fade.
-     */
-    param?: string;
-}
-
 export interface MultiscaleStops {
     /**
      * The metric used to evaluate zoom stops.
@@ -429,7 +420,7 @@ export interface MultiscaleStops {
      * Transitioned stops require `channel` to be either `"x"` or `"y"` and
      * cannot be combined with `fade`.
      */
-    transition?: MultiscaleTransition;
+    transition?: ParamTransition;
 }
 
 export type MultiscaleStopsDef = NumericStopDef[] | MultiscaleStops;

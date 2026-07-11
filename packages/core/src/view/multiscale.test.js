@@ -13,9 +13,8 @@ import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
 import Animator from "../utils/animator.js";
 import LayerView from "./layerView.js";
 import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
-import { getPostScaleParamBindings } from "./postScaleParamBindings.js";
+import { getPostScaleParams } from "./postScaleParams.js";
 import { renderToLayout } from "./testUtils.js";
-import UnitView from "./unitView.js";
 
 /**
  * @param {import("../spec/mark.js").MarkType} mark
@@ -40,17 +39,6 @@ function asLayer(child) {
 function requireLayerView(view) {
     if (!(view instanceof LayerView)) {
         throw new Error("Expected a layer view.");
-    }
-    return view;
-}
-
-/**
- * @param {import("./view.js").default} view
- * @returns {UnitView}
- */
-function requireUnitView(view) {
-    if (!(view instanceof UnitView)) {
-        throw new Error("Expected a unit view.");
     }
     return view;
 }
@@ -124,30 +112,32 @@ describe("multiscale", () => {
             stops: {
                 channel: "x",
                 values: [1000, 100],
-                transition: { ...transition, param: "stageState" },
+                transition,
             },
         });
 
         expect(asLayer(normalized.layer[0])).toMatchObject({
-            opacity: { expr: "stageState" },
-            params: [{ name: "stageState", value: 0, transition }],
+            opacity: { expr: "multiscaleOpacity" },
         });
-        expect(getPostScaleParamBindings(normalized.layer[0])).toEqual([
+        expect(getPostScaleParams(normalized.layer[0])).toEqual([
             {
-                name: "stageState",
+                name: "multiscaleOpacity",
                 expr: "abs(span(domain('x'))) / max(width, 1) >= 1000 ? 1 : 0",
+                transition,
             },
         ]);
-        expect(getPostScaleParamBindings(normalized.layer[1])).toEqual([
+        expect(getPostScaleParams(normalized.layer[1])).toEqual([
             {
-                name: "stageState",
+                name: "multiscaleOpacity",
                 expr: "abs(span(domain('x'))) / max(width, 1) < 1000 && abs(span(domain('x'))) / max(width, 1) >= 100 ? 1 : 0",
+                transition,
             },
         ]);
-        expect(getPostScaleParamBindings(normalized.layer[2])).toEqual([
+        expect(getPostScaleParams(normalized.layer[2])).toEqual([
             {
-                name: "stageState",
+                name: "multiscaleOpacity",
                 expr: "abs(span(domain('x'))) / max(width, 1) < 100 ? 1 : 0",
+                transition,
             },
         ]);
     });
@@ -195,36 +185,27 @@ describe("multiscale", () => {
             stops: {
                 channel: "x",
                 values: [10],
-                transition: { type: "lerp", param: "stageState" },
+                transition: { type: "lerp" },
             },
-            multiscale: [
-                {
-                    mark: "point",
-                    params: [{ name: "stageEffect", expr: "stageState" }],
-                },
-                {
-                    mark: "rect",
-                    params: [{ name: "stageEffect", expr: "stageState" }],
-                },
-            ],
+            multiscale: [unit("point"), unit("rect")],
         });
         const view = requireLayerView(rawView);
-        const overviewStage = requireLayerView(view.children[0]);
-        const detailStage = requireLayerView(view.children[1]);
-        const overview = requireUnitView(overviewStage.children[0]);
-        const detail = requireUnitView(detailStage.children[0]);
 
-        expect(view.children[0].paramRuntime.getValue("stageState")).toBe(0);
-        expect(view.children[1].paramRuntime.getValue("stageState")).toBe(1);
-        expect(overview.paramRuntime.getValue("stageEffect")).toBe(0);
-        expect(detail.paramRuntime.getValue("stageEffect")).toBe(1);
+        expect(
+            view.children[0].paramRuntime.getValue("multiscaleOpacity")
+        ).toBe(0);
+        expect(
+            view.children[1].paramRuntime.getValue("multiscaleOpacity")
+        ).toBe(1);
 
         await view.getScaleResolution("x").zoomTo([0, 2000], 0);
 
-        expect(view.children[0].paramRuntime.getValue("stageState")).toBe(1);
-        expect(view.children[1].paramRuntime.getValue("stageState")).toBe(0);
-        expect(overview.paramRuntime.getValue("stageEffect")).toBe(1);
-        expect(detail.paramRuntime.getValue("stageEffect")).toBe(0);
+        expect(
+            view.children[0].paramRuntime.getValue("multiscaleOpacity")
+        ).toBe(1);
+        expect(
+            view.children[1].paramRuntime.getValue("multiscaleOpacity")
+        ).toBe(0);
     });
 
     test("snaps transitioned stage opacity after the first layout", async () => {
@@ -264,12 +245,12 @@ describe("multiscale", () => {
         // Simulate the first layout arriving before the subtree finishes loading.
         renderToLayout(view);
 
-        expect(view.children[0].paramRuntime.getValue("multiscaleState")).toBe(
-            0
-        );
-        expect(view.children[1].paramRuntime.getValue("multiscaleState")).toBe(
-            1
-        );
+        expect(
+            view.children[0].paramRuntime.getValue("multiscaleOpacity")
+        ).toBe(0);
+        expect(
+            view.children[1].paramRuntime.getValue("multiscaleOpacity")
+        ).toBe(1);
         expect(animator.transitions).toHaveLength(0);
 
         broadcastSubtreeDataReady(view);

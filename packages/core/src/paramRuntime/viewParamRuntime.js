@@ -519,32 +519,6 @@ export default class ViewParamRuntime {
     }
 
     /**
-     * Binds a local transitioned value parameter to an expression. The current
-     * value is set immediately; later updates snap until initialization is
-     * finalized.
-     *
-     * @param {string} name
-     * @param {string} expr
-     */
-    bindTransitionedParamToExpression(name, expr) {
-        const state = this.#transitionStates.get(name);
-        if (!state || !this.#allocatedSetters.has(name)) {
-            throw new Error(
-                "Transitioned parameter not found in this scope: " + name
-            );
-        }
-
-        this.#bindExpression(
-            this.createExpression(expr),
-            (value) =>
-                this.#setTransitionTarget(name, state, value, {
-                    animate: !this.#snapTransitionedUpdates,
-                }),
-            true
-        );
-    }
-
-    /**
      * @template T
      * @param {string} name
      * @param {T} defaultValue
@@ -605,31 +579,12 @@ export default class ViewParamRuntime {
             expression(null),
             transition
         );
-        this.#bindExpression(
-            expression,
-            (value) =>
-                this.#setTransitionTarget(name, state, value, {
-                    animate: !this.#snapTransitionedUpdates,
-                }),
-            false
-        );
-    }
-
-    /**
-     * @param {ExprRefFunction} expression
-     * @param {(value: any) => void} setter
-     * @param {boolean} setInitialValue
-     */
-    #bindExpression(expression, setter, setInitialValue) {
-        const update = () => {
-            setter(expression(null));
-        };
-        const unsubscribe = expression.subscribe(update);
+        const unsubscribe = expression.subscribe(() => {
+            this.#setTransitionTarget(name, state, expression(null), {
+                animate: !this.#snapTransitionedUpdates,
+            });
+        });
         this.#runtime.addScopeDisposer(this.#scopeId, unsubscribe);
-
-        if (setInitialValue) {
-            update();
-        }
     }
 
     /**

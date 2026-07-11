@@ -42,10 +42,6 @@ Unlike the default opacity ramp, this is a time-based cross-fade rather than a
 persistent blend across a zoom range. After it settles, the selected level is
 fully visible and all other levels are hidden.
 
-Set `stops.transition.param` to give each generated stage a local 0–1 parameter. Child
-expressions can use it to animate mark properties such as point size or stroke
-width alongside the default opacity cross-fade.
-
 Transitioned stops require an explicit `"x"` or `"y"` channel and cannot use
 `fade`:
 
@@ -54,18 +50,11 @@ Transitioned stops require an explicit `"x"` or `"y"` channel and cannot use
   "stops": {
     "channel": "x",
     "values": [40000],
-    "transition": {
-      "type": "lerp",
-      "halfLife": 60,
-      "param": "stageState"
-    }
+    "transition": { "type": "lerp", "halfLife": 60 }
   },
   "multiscale": [
     { "name": "Overview", "mark": "rect" },
-    {
-      "name": "Detail",
-      "mark": { "type": "point", "size": { "expr": "20 + 80 * stageState" } }
-    }
+    { "name": "Detail", "mark": "point" }
   ]
 }
 ```
