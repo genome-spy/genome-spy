@@ -1,6 +1,6 @@
 import { isArray, isObject } from "vega-util";
 import { isExprRef } from "../paramRuntime/paramUtils.js";
-import { setPostScaleParams } from "./postScaleParams.js";
+import { setPostScaleParamBindings } from "./postScaleParamBindings.js";
 
 const DEFAULT_FADE = 0.5;
 
@@ -70,7 +70,7 @@ export function normalizeMultiscaleSpec(spec) {
         };
 
         if (parsedStops.transition) {
-            setPostScaleParams(wrapper, [
+            setPostScaleParamBindings(wrapper, [
                 {
                     name: stageStateName,
                     expr: createStageTargetExpression(

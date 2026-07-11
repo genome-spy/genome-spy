@@ -13,7 +13,7 @@ import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
 import Animator from "../utils/animator.js";
 import LayerView from "./layerView.js";
 import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
-import { getPostScaleParams } from "./postScaleParams.js";
+import { getPostScaleParamBindings } from "./postScaleParamBindings.js";
 import { renderToLayout } from "./testUtils.js";
 import UnitView from "./unitView.js";
 
@@ -132,19 +132,19 @@ describe("multiscale", () => {
             opacity: { expr: "multiscaleState" },
             params: [{ name: "multiscaleState", value: 0, transition }],
         });
-        expect(getPostScaleParams(normalized.layer[0])).toEqual([
+        expect(getPostScaleParamBindings(normalized.layer[0])).toEqual([
             {
                 name: "multiscaleState",
                 expr: "abs(span(domain('x'))) / max(width, 1) >= 1000 ? 1 : 0",
             },
         ]);
-        expect(getPostScaleParams(normalized.layer[1])).toEqual([
+        expect(getPostScaleParamBindings(normalized.layer[1])).toEqual([
             {
                 name: "multiscaleState",
                 expr: "abs(span(domain('x'))) / max(width, 1) < 1000 && abs(span(domain('x'))) / max(width, 1) >= 100 ? 1 : 0",
             },
         ]);
-        expect(getPostScaleParams(normalized.layer[2])).toEqual([
+        expect(getPostScaleParamBindings(normalized.layer[2])).toEqual([
             {
                 name: "multiscaleState",
                 expr: "abs(span(domain('x'))) / max(width, 1) < 100 ? 1 : 0",

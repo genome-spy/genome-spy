@@ -27,7 +27,7 @@ import {
     normalizeClipOptions,
 } from "./renderingContext/clipOptions.js";
 import { isInChromeSubtree } from "./viewChrome.js";
-import { getPostScaleParams } from "./postScaleParams.js";
+import { getPostScaleParamBindings } from "./postScaleParamBindings.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -126,9 +126,9 @@ export default class View {
     #hasLaidOut = false;
 
     /** @type {boolean | undefined} */
-    #postScaleParamDataReady = undefined;
+    #postScaleBindingDataReady = undefined;
 
-    #postScaleParamsConfigured = false;
+    #postScaleBindingsConfigured = false;
 
     /**
      * @type {function(number):number}
@@ -237,7 +237,7 @@ export default class View {
             () => this.dataParent?.paramRuntime,
             (channel) => this.getScaleResolution(channel),
             context.animator,
-            { snapTransitionedExpressionUpdates: true }
+            { snapTransitionedUpdates: true }
         );
 
         if (spec.params) {
@@ -982,20 +982,23 @@ export default class View {
      * For example, multiscale stage wrappers use `domain('x')` to select a
      * detail level, but their child views create the x resolution later.
      */
-    configurePostScaleParams() {
-        const postScaleParams = getPostScaleParams(this.spec);
-        if (postScaleParams && !this.#postScaleParamsConfigured) {
-            this.#postScaleParamsConfigured = true;
-            this.#postScaleParamDataReady = false;
+    configurePostScaleParamBindings() {
+        const postScaleParamBindings = getPostScaleParamBindings(this.spec);
+        if (postScaleParamBindings && !this.#postScaleBindingsConfigured) {
+            this.#postScaleBindingsConfigured = true;
+            this.#postScaleBindingDataReady = false;
 
-            for (const param of postScaleParams) {
-                this.paramRuntime.bindParamToExpression(param.name, param.expr);
+            for (const binding of postScaleParamBindings) {
+                this.paramRuntime.bindTransitionedParamToExpression(
+                    binding.name,
+                    binding.expr
+                );
             }
 
             this.registerDisposer(
                 this._addBroadcastHandler("subtreeDataReady", () => {
-                    this.#postScaleParamDataReady = true;
-                    this.#finalizePostScaleParams();
+                    this.#postScaleBindingDataReady = true;
+                    this.#finalizePostScaleParamBindings();
                 })
             );
         }
@@ -1019,10 +1022,12 @@ export default class View {
      * Marks view-owned params as ready for interactive updates.
      */
     finalizeParamRuntimeInitialization() {
-        if (this.#postScaleParamDataReady === undefined) {
+        if (this.#postScaleBindingDataReady === undefined) {
             this.paramRuntime.finalizeInitialization();
         } else {
-            this.#finalizePostScaleParams();
+            // These bindings additionally depend on initial layout and data;
+            // other transitioned expressions currently finalize after scales.
+            this.#finalizePostScaleParamBindings();
         }
     }
 
@@ -1061,14 +1066,14 @@ export default class View {
         this.#heightSetter?.(coords.height);
 
         this.#hasLaidOut = true;
-        this.#finalizePostScaleParams();
+        this.#finalizePostScaleParamBindings();
 
         // override
     }
 
-    #finalizePostScaleParams() {
-        if (this.#postScaleParamDataReady && this.#hasLaidOut) {
-            this.#postScaleParamDataReady = undefined;
+    #finalizePostScaleParamBindings() {
+        if (this.#postScaleBindingDataReady && this.#hasLaidOut) {
+            this.#postScaleBindingDataReady = undefined;
             this.paramRuntime.finalizeInitialization();
         }
     }

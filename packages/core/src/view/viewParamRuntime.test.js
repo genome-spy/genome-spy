@@ -471,7 +471,7 @@ describe("Single-level ViewParamRuntime", () => {
             undefined,
             undefined,
             /** @type {any} */ (animator),
-            { snapTransitionedExpressionUpdates: true }
+            { snapTransitionedUpdates: true }
         );
         const setter = pm.registerParam({ name: "foo", value: 0 });
         pm.registerParam({
@@ -499,7 +499,7 @@ describe("Single-level ViewParamRuntime", () => {
             undefined,
             undefined,
             /** @type {any} */ (animator),
-            { snapTransitionedExpressionUpdates: true }
+            { snapTransitionedUpdates: true }
         );
         const setter = pm.registerParam({ name: "source", value: 0 });
         pm.registerParam({
@@ -507,7 +507,7 @@ describe("Single-level ViewParamRuntime", () => {
             value: 0,
             transition: { type: "lerp", halfLife: 100, epsilon: 0.001 },
         });
-        pm.bindParamToExpression("target", "source");
+        pm.bindTransitionedParamToExpression("target", "source");
 
         setter(1);
 
