@@ -1,6 +1,7 @@
 import UnitView from "../view/unitView.js";
 import { buildDataFlow } from "../view/flowBuilder.js";
 import { optimizeDataFlow } from "./flowOptimizer.js";
+import DataSource from "./sources/dataSource.js";
 import { VISIT_SKIP } from "../view/view.js";
 
 /** @type {WeakMap<import("./sources/dataSource.js").default, Promise<void>>} */
@@ -242,6 +243,11 @@ export function collectViewSubtreeDataSources(subtreeRoot, viewFilter) {
         }
         if (current?.flowHandle?.dataSource) {
             dataSources.add(current.flowHandle.dataSource);
+        }
+        for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
+            if (collector.parent instanceof DataSource) {
+                dataSources.add(collector.parent);
+            }
         }
     }
     return dataSources;

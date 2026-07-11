@@ -1,0 +1,36 @@
+# Lookup
+
+The `"lookup"` transform adds values from a keyed lookup table to each input
+data object. Input objects without a matching key are retained.
+
+The lookup table uses a regular [`data`](../data/index.md) descriptor. It can
+be inline data, a URL with any supported format such as CSV or Parquet, named
+data, or a lazy data source. The table is materialized before the transform
+emits its output.
+
+`fields` and `from.key` form an aligned key tuple. Use matching arrays for a
+composite lookup, for example `fields: ["sample", "codon"]` and
+`from.key: ["sample", "codon"]`.
+
+## Parameters
+
+SCHEMA LookupParams
+
+## Example
+
+The following transform maps DNA codons to amino acids. The complete example
+is in `examples/core/transforms/lookup-codons.json`.
+
+```json
+{
+  "type": "lookup",
+  "from": {
+    "data": { "url": "data/genetic-code.csv", "format": { "type": "csv" } },
+    "key": ["codon"]
+  },
+  "fields": ["codon"],
+  "values": ["aminoAcid"],
+  "as": ["aminoAcid"],
+  "default": "?"
+}
+```

@@ -30,20 +30,20 @@ GenomeSpy:
       "url": "data/genetic-code.csv",
       "format": { "type": "csv" }
     },
-    "key": "codon"
+    "key": ["codon"]
   },
-  "fields": "codon",
+  "fields": ["codon"],
   "values": ["aminoAcid"],
   "as": ["aminoAcid"],
   "default": "?"
 }
 ```
 
-`from.data` is a normal data descriptor. The initial implementation supports
-one primary field and one foreign key. `values` selects fields copied from the
-matching row, `as` names their output fields, and `default` is written when no
-row matches. If `as` is omitted, use the corresponding `values` names. Reject
-duplicate foreign keys so accidental many-to-one joins fail clearly.
+`from.data` is a normal data descriptor. `fields` and `from.key` are aligned
+field arrays that form an exact key tuple. `values` selects fields copied from
+the matching row, `as` names their output fields, and `default` is written when
+no row matches. If `as` is omitted, use the corresponding `values` names.
+Reject duplicate foreign keys so accidental many-to-one joins fail clearly.
 
 The flow builder creates the foreign source through the existing data-source
 factory and attaches an internal collector. The lookup transform reads that
@@ -109,11 +109,7 @@ only canonical contig names.
      "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
      "description": "Translate codons with an inline lookup table.",
      "data": {
-       "values": [
-         { "codon": "ATG" },
-         { "codon": "TGG" },
-         { "codon": "TAA" }
-       ]
+       "values": [{ "codon": "ATG" }, { "codon": "TGG" }, { "codon": "TAA" }]
      },
      "transform": [
        {
@@ -126,9 +122,9 @@ only canonical contig names.
                { "codon": "TAA", "aminoAcid": "Stop" }
              ]
            },
-           "key": "codon"
+           "key": ["codon"]
          },
-         "fields": "codon",
+         "fields": ["codon"],
          "values": ["aminoAcid"],
          "as": ["aminoAcid"]
        }
@@ -156,7 +152,5 @@ only canonical contig names.
 
 ## Deferred work
 
-- Composite keys and multi-probe Vega compatibility.
-- Whole-record output when `values` is omitted.
 - A genome-aware lookup adapter exposing fields such as `odd`.
 - General inner, outer, many-to-many, and interval-overlap joins.

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+  "description": "Translate codons with an inline lookup table.",
+
+  "data": {
+    "values": [{ "codon": "ATG" }, { "codon": "TGG" }, { "codon": "TAA" }]
+  },
+
+  "transform": [
+    {
+      "type": "lookup",
+      "from": {
+        "data": {
+          "values": [
+            { "codon": "ATG", "aminoAcid": "M" },
+            { "codon": "TGG", "aminoAcid": "W" },
+            { "codon": "TAA", "aminoAcid": "Stop" }
+          ]
+        },
+        "key": ["codon"]
+      },
+      "fields": ["codon"],
+      "values": ["aminoAcid"]
+    }
+  ],
+
+  "mark": "text",
+  "encoding": {
+    "x": { "field": "codon", "type": "nominal" },
+    "y": { "field": "aminoAcid", "type": "nominal" },
+    "text": { "field": "aminoAcid", "type": "nominal" }
+  }
+}

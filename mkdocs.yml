@@ -62,6 +62,7 @@ nav:
                 - FlattenSequence: "grammar/transform/flatten-sequence.md"
                 - Formula: "grammar/transform/formula.md"
                 - LinearizeGenomicCoordinate: "grammar/transform/linearize-genomic-coordinate.md"
+                - Lookup: "grammar/transform/lookup.md"
                 - MeasureText: "grammar/transform/measure-text.md"
                 - Pileup: "grammar/transform/pileup.md"
                 - Project: "grammar/transform/project.md"
