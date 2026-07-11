@@ -149,6 +149,9 @@ export function buildDataFlow(
      */
     function createLookupCollector(params, view) {
         const lookupData = params.from.data;
+        if ("lazy" in lookupData) {
+            throw new Error("Lookup tables cannot use lazy data sources.");
+        }
         const dataSource = isNamedData(lookupData)
             ? new NamedSource(
                   lookupData,

@@ -17,6 +17,7 @@ composite lookup, for example `fields: ["sample", "codon"]` and
 - Lookup tables are fully materialized in memory and must have unique keys.
 - Lookup matches exact field values. Range, overlap, and many-to-many joins
   are not supported.
+- Lookup tables cannot use lazy data sources.
 - Changes to the lookup table do not update existing output. Reload the
   primary data to apply the new table values.
 

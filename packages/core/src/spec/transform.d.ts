@@ -71,7 +71,7 @@ export interface FormulaParams extends TransformParamsBase {
 
 export interface LookupFrom {
     /**
-     * The data source that provides the lookup table.
+     * The non-lazy data source that provides the lookup table.
      */
     data: DataSource;
 

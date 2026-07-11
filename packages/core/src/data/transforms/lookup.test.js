@@ -100,7 +100,7 @@ test("writes matching rows when values are omitted", () => {
     ]);
 });
 
-test("waits for the foreign table without rejoining after it refreshes", () => {
+test("requires the foreign table to complete before primary data", () => {
     const foreign = new Collector({ type: "collect" });
     const lookup = new LookupTransform(
         {
@@ -111,51 +111,34 @@ test("waits for the foreign table without rejoining after it refreshes", () => {
         },
         foreign
     );
-    const output = new Collector({ type: "collect" });
-    lookup.addChild(output);
+    expect(() => processData(lookup, [{ codon: "ATG" }])).toThrow(
+        /must be loaded before primary data/
+    );
+});
 
-    lookup.handle({ codon: "ATG" });
-    lookup.complete();
-    expect(output.completed).toBe(false);
+test("uses refreshed table values after primary data is reloaded", () => {
+    const foreign = collect([{ codon: "ATG", aminoAcid: "M" }]);
+    const lookup = new LookupTransform(
+        {
+            type: "lookup",
+            from: { data: { values: [] }, key: "codon" },
+            fields: ["codon"],
+            values: ["aminoAcid"],
+        },
+        foreign
+    );
 
-    foreign.handle({ codon: "ATG", aminoAcid: "M" });
-    foreign.complete();
-    expect([...output.getData()]).toEqual([{ codon: "ATG", aminoAcid: "M" }]);
+    expect(processData(lookup, [{ codon: "ATG" }])).toEqual([
+        { codon: "ATG", aminoAcid: "M" },
+    ]);
 
     foreign.reset();
     foreign.handle({ codon: "ATG", aminoAcid: "Start" });
     foreign.complete();
-    expect([...output.getData()]).toEqual([{ codon: "ATG", aminoAcid: "M" }]);
-});
+    lookup.reset();
 
-test("preserves facet batches while waiting for a foreign table", () => {
-    const foreign = new Collector({ type: "collect" });
-    const lookup = new LookupTransform(
-        {
-            type: "lookup",
-            from: { data: { values: [] }, key: "codon" },
-            fields: ["codon"],
-            values: ["aminoAcid"],
-        },
-        foreign
-    );
-    const output = new Collector({ type: "collect" });
-    lookup.addChild(output);
-
-    // Lookup buffers data until the foreign table is ready, including facet boundaries.
-    lookup.beginBatch({ type: "facet", facetId: ["A"] });
-    lookup.handle({ sample: "A", codon: "ATG" });
-    lookup.beginBatch({ type: "facet", facetId: ["B"] });
-    lookup.handle({ sample: "B", codon: "ATG" });
-    lookup.complete();
-    foreign.handle({ codon: "ATG", aminoAcid: "M" });
-    foreign.complete();
-
-    expect(output.facetBatches.get(["A"])).toEqual([
-        { sample: "A", codon: "ATG", aminoAcid: "M" },
-    ]);
-    expect(output.facetBatches.get(["B"])).toEqual([
-        { sample: "B", codon: "ATG", aminoAcid: "M" },
+    expect(processData(lookup, [{ codon: "ATG" }])).toEqual([
+        { codon: "ATG", aminoAcid: "Start" },
     ]);
 });
 
@@ -250,4 +233,28 @@ test("loads a CSV lookup table through the regular data source", async () => {
         { codon: "ATG", aminoAcid: "M" },
         { codon: "TGG", aminoAcid: "W" },
     ]);
+});
+
+test("rejects lazy lookup tables", async () => {
+    await expect(
+        createHeadlessEngine({
+            data: { values: [{ codon: "ATG" }] },
+            transform: [
+                {
+                    type: "lookup",
+                    from: {
+                        data: { lazy: { type: "axisGenome", channel: "x" } },
+                        key: "name",
+                    },
+                    fields: ["codon"],
+                    values: ["name"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "codon", type: "nominal" },
+                y: { field: "name", type: "nominal" },
+            },
+        })
+    ).rejects.toThrow(/Lookup tables cannot use lazy data sources/);
 });

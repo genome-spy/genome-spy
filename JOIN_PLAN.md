@@ -92,8 +92,8 @@ only canonical contig names.
 
 3. Extend flow construction and lifecycle handling so `from.data` creates an
    auxiliary source and collector. Reuse the normal source creation path for
-   inline, URL, named, and lazy data. Load the table before primary data and
-   remove the auxiliary source when it has no remaining consumers. Foreign-data
+   inline, URL, and named data. Reject lazy data. Load the table before primary
+   data and remove the auxiliary source when it has no remaining consumers. Foreign-data
    updates do not rejoin existing output. Add integration tests with
    `createHeadlessEngine` for delayed table loading and disposal.
 

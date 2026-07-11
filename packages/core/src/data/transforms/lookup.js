@@ -28,23 +28,6 @@ export default class LookupTransform extends Transform {
 
     #defaultValue;
 
-    /**
-     * Primary rows grouped by their input batches. Rows are retained only
-     * until the foreign table first becomes available.
-     *
-     * @type {{flowBatch: import("../../types/flowBatch.js").FlowBatch | undefined, data: import("../flowNode.js").Datum[]}[]}
-     */
-    #primaryBatches = [];
-
-    /**
-     * @type {{flowBatch: import("../../types/flowBatch.js").FlowBatch | undefined, data: import("../flowNode.js").Datum[]} | undefined}
-     */
-    #currentBatch;
-
-    #primaryCompleted = false;
-
-    #completed = false;
-
     /** @type {Map<any, Map<any, any>> | null} */
     #index = null;
 
@@ -88,18 +71,10 @@ export default class LookupTransform extends Transform {
         this.#valueAccessors = values?.map((name) => field(name));
         this.#as = as ?? values ?? [];
         this.#defaultValue = params.default ?? null;
-
-        this.registerDisposer(
-            foreignCollector.observe(() => this.#flushWhenReady())
-        );
     }
 
     reset() {
         super.reset();
-        this.#primaryBatches = [];
-        this.#currentBatch = undefined;
-        this.#primaryCompleted = false;
-        this.#completed = false;
         this.#index = null;
     }
 
@@ -107,50 +82,24 @@ export default class LookupTransform extends Transform {
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
-        if (this.#ensureIndex()) {
-            super.beginBatch(flowBatch);
-        } else {
-            this.#currentBatch = { flowBatch, data: [] };
-            this.#primaryBatches.push(this.#currentBatch);
-        }
+        this.#ensureIndex();
+        super.beginBatch(flowBatch);
     }
 
     /**
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        if (this.#ensureIndex()) {
-            this.#propagateLookup(datum);
-        } else if (!this.#currentBatch) {
-            this.#currentBatch = { flowBatch: undefined, data: [] };
-            this.#primaryBatches.push(this.#currentBatch);
-            this.#currentBatch.data.push(datum);
-        } else {
-            this.#currentBatch.data.push(datum);
-        }
-    }
-
-    complete() {
-        this.#primaryCompleted = true;
-        this.#flushWhenReady();
-    }
-
-    #flushWhenReady() {
-        if (this.#ensureIndex()) {
-            this.#propagateBufferedLookups();
-            if (this.#primaryCompleted && !this.#completed) {
-                this.#completed = true;
-                super.complete();
-            }
-        }
+        this.#ensureIndex();
+        this.#propagateLookup(datum);
     }
 
     #ensureIndex() {
         if (this.#index) {
-            return true;
+            return;
         }
         if (!this.#foreignCollector.completed) {
-            return false;
+            throw new Error("Lookup table must be loaded before primary data.");
         }
 
         this.#index = new Map();
@@ -160,24 +109,6 @@ export default class LookupTransform extends Transform {
             );
             addToIndex(this.#index, key, foreignDatum, this.params.from.key);
         }
-
-        return true;
-    }
-
-    #propagateBufferedLookups() {
-        for (const { flowBatch, data } of this.#primaryBatches) {
-            if (flowBatch) {
-                for (const child of this.children) {
-                    child.beginBatch(flowBatch);
-                }
-            }
-
-            for (const primaryDatum of data) {
-                this.#propagateLookup(primaryDatum);
-            }
-        }
-        this.#primaryBatches = [];
-        this.#currentBatch = undefined;
     }
 
     /**
