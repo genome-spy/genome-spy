@@ -375,7 +375,7 @@ export interface LayerSpec extends ViewSpecBase, DynamicOpacitySpec {
     layer: (LayerSpec | UnitSpec | MultiscaleSpec | ImportSpec)[];
 }
 
-export interface MultiscaleStops {
+export interface MultiscaleStopsBase {
     /**
      * The metric used to evaluate zoom stops.
      *
@@ -387,7 +387,9 @@ export interface MultiscaleStops {
      * Stop values in descending order.
      */
     values: NumericStopDef[];
+}
 
+export interface FadedMultiscaleStops extends MultiscaleStopsBase {
     /**
      * Which positional channel controls the stop metric.
      *
@@ -411,6 +413,15 @@ export interface MultiscaleStops {
      */
     fade?: number;
 
+    transition?: never;
+}
+
+export interface TransitionedMultiscaleStops extends MultiscaleStopsBase {
+    /**
+     * Positional channel that controls the stop metric.
+     */
+    channel: PrimaryPositionalChannel;
+
     /**
      * Cross-fades stages in time after a stop selects a new detail level.
      * The selected stage settles fully visible and all other stages settle
@@ -420,8 +431,14 @@ export interface MultiscaleStops {
      * Transitioned stops require `channel` to be either `"x"` or `"y"` and
      * cannot be combined with `fade`.
      */
-    transition?: ParamTransition;
+    transition: ParamTransition;
+
+    fade?: never;
 }
+
+export type MultiscaleStops =
+    | FadedMultiscaleStops
+    | TransitionedMultiscaleStops;
 
 export type MultiscaleStopsDef = NumericStopDef[] | MultiscaleStops;
 

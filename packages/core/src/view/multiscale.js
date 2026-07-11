@@ -99,8 +99,8 @@ function parseStops(stops, stageCount) {
         metric = stops.metric ?? "unitsPerPixel";
         values = parseStopValues(stops.values, stageCount, "stops.values");
         channel = stops.channel ?? "auto";
-        fade = stops.fade ?? DEFAULT_FADE;
         transition = stops.transition;
+        fade = transition ? DEFAULT_FADE : (stops.fade ?? DEFAULT_FADE);
     } else {
         throw new Error('"stops" must be an array or an object with "values".');
     }
@@ -115,7 +115,7 @@ function parseStops(stops, stageCount) {
         throw new Error('"stops.channel" must be one of "x", "y", or "auto".');
     }
 
-    if (!Number.isFinite(fade) || fade < 0 || fade > 0.5) {
+    if (!transition && (!Number.isFinite(fade) || fade < 0 || fade > 0.5)) {
         throw new Error(
             '"stops.fade" must be a finite number in range [0, 0.5].'
         );
@@ -124,12 +124,6 @@ function parseStops(stops, stageCount) {
     if (transition && channel === "auto") {
         throw new Error(
             'Transitioned multiscale stops require "stops.channel" to be "x" or "y".'
-        );
-    }
-
-    if (transition && isObject(stops) && "fade" in stops) {
-        throw new Error(
-            'Transitioned multiscale stops cannot also define "stops.fade".'
         );
     }
 
@@ -154,13 +148,15 @@ function parseStops(stops, stageCount) {
             }
         }
 
-        for (let i = 0; i < numericValues.length - 1; i++) {
-            const leftLower = numericValues[i] * (1 - fade);
-            const rightUpper = numericValues[i + 1] * (1 + fade);
-            if (leftLower <= rightUpper) {
-                throw new Error(
-                    "Adjacent transitions overlap. Reduce fade or increase stop spacing."
-                );
+        if (!transition) {
+            for (let i = 0; i < numericValues.length - 1; i++) {
+                const leftLower = numericValues[i] * (1 - fade);
+                const rightUpper = numericValues[i + 1] * (1 + fade);
+                if (leftLower <= rightUpper) {
+                    throw new Error(
+                        "Adjacent transitions overlap. Reduce fade or increase stop spacing."
+                    );
+                }
             }
         }
     }

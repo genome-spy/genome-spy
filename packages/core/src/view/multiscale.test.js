@@ -144,30 +144,34 @@ describe("multiscale", () => {
 
     test("requires an explicit channel for transitioned stops", () => {
         expect(() =>
-            normalizeMultiscaleSpec({
-                multiscale: [unit("point"), unit("rect")],
-                stops: {
-                    values: [1000],
-                    transition: { type: "lerp" },
-                },
-            })
+            normalizeMultiscaleSpec(
+                /** @type {any} */ ({
+                    multiscale: [unit("point"), unit("rect")],
+                    stops: {
+                        values: [1000],
+                        transition: { type: "lerp" },
+                    },
+                })
+            )
         ).toThrow('Transitioned multiscale stops require "stops.channel"');
     });
 
-    test("does not combine transitioned stops with zoom-space fades", () => {
-        expect(() =>
-            normalizeMultiscaleSpec({
+    test("prefers transitioned stops over zoom-space fades", () => {
+        const normalized = normalizeMultiscaleSpec(
+            /** @type {any} */ ({
                 multiscale: [unit("point"), unit("rect")],
                 stops: {
                     channel: "x",
                     values: [1000],
-                    fade: 0.1,
+                    fade: 1,
                     transition: { type: "lerp" },
                 },
             })
-        ).toThrow(
-            'Transitioned multiscale stops cannot also define "stops.fade"'
         );
+
+        expect(asLayer(normalized.layer[0]).opacity).toEqual({
+            expr: "multiscaleOpacity",
+        });
     });
 
     test("initializes transitioned stage opacity from the zoom threshold", async () => {

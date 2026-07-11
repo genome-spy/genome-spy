@@ -88,9 +88,15 @@ All other properties follow [`layer`](./layer.md) view semantics.
 
 SCHEMA MultiscaleSpec stops
 
-### MultiscaleStops
+### Stop Object Forms
 
-SCHEMA MultiscaleStops
+#### FadedMultiscaleStops
+
+SCHEMA FadedMultiscaleStops
+
+#### TransitionedMultiscaleStops
+
+SCHEMA TransitionedMultiscaleStops
 
 Array shorthand:
 
