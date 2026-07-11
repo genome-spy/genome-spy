@@ -1,16 +1,11 @@
 # Lookup
 
-The `"lookup"` transform adds values from a keyed lookup table to each input
-data object. Input objects without a matching key are retained.
+The `"lookup"` transform adds values from a keyed table to each input data
+object. Input objects without a matching key are retained.
 
-The lookup table uses a regular [`data`](../data/index.md) descriptor. It can
-be inline data, a URL with any supported format such as CSV or Parquet, named
-data, or a lazy data source. The table is materialized before the transform
-emits its output.
-
-`fields` and `from.key` form an aligned key tuple. Use matching arrays for a
-composite lookup, for example `fields: ["sample", "codon"]` and
-`from.key: ["sample", "codon"]`.
+The table uses an eager [`data`](../data/index.md) descriptor. It can contain
+inline values, load a URL in any supported format such as CSV or Parquet, or
+refer to named data. The table is loaded before primary data.
 
 ## Limitations
 
@@ -18,8 +13,7 @@ composite lookup, for example `fields: ["sample", "codon"]` and
 - Lookup matches exact field values. Range, overlap, and many-to-many joins
   are not supported.
 - Lookup tables cannot use lazy data sources.
-- When a lookup table reloads, GenomeSpy automatically reloads or replays the
-  primary data.
+- Reloading a lookup table automatically refreshes the primary data.
 
 ## Parameters
 
@@ -27,19 +21,56 @@ SCHEMA LookupParams
 
 ## Example
 
-The following transform maps DNA codons to amino acids. The complete example
-is in `examples/core/transforms/lookup-codons.json`.
+The following input data contains DNA codons:
+
+| codon |
+| ----- |
+| ATG   |
+| TGG   |
+| TAA   |
+| NNN   |
+
+The lookup table maps each codon to an amino acid:
+
+| codon | aminoAcid |
+| ----- | --------- |
+| ATG   | M         |
+| TGG   | W         |
+| TAA   | Stop      |
+
+This transform copies `aminoAcid` from the matching table row. The unmatched
+`NNN` codon receives the default value `"?"`.
 
 ```json
 {
   "type": "lookup",
   "from": {
-    "data": { "url": "data/genetic-code.csv", "format": { "type": "csv" } },
-    "key": ["codon"]
+    "data": {
+      "values": [
+        { "codon": "ATG", "aminoAcid": "M" },
+        { "codon": "TGG", "aminoAcid": "W" },
+        { "codon": "TAA", "aminoAcid": "Stop" }
+      ]
+    },
+    "key": "codon"
   },
   "fields": ["codon"],
   "values": ["aminoAcid"],
-  "as": ["aminoAcid"],
   "default": "?"
 }
 ```
+
+The resulting data is:
+
+| codon | aminoAcid |
+| ----- | --------- |
+| ATG   | M         |
+| TGG   | W         |
+| TAA   | Stop      |
+| NNN   | ?         |
+
+Use matching `fields` and `from.key` arrays for a composite key, for example
+`fields: ["sample", "codon"]` and `from.key: ["sample", "codon"]`.
+
+When `values` is omitted, lookup writes the complete matching table row to the
+single field named by `as`.

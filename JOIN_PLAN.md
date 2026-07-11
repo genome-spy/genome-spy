@@ -100,53 +100,11 @@ only canonical contig names.
 
    Tentative commit: `feat(core): materialize lookup table sources`
 
-4. Add `examples/core/transforms/lookup-codons.json`. Keep it self-contained
-   and use inline primary and codon-table data. A text mark should show the
-   amino-acid value produced by lookup:
-
-   ```json
-   {
-     "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
-     "description": "Translate codons with an inline lookup table.",
-     "data": {
-       "values": [{ "codon": "ATG" }, { "codon": "TGG" }, { "codon": "TAA" }]
-     },
-     "transform": [
-       {
-         "type": "lookup",
-         "from": {
-           "data": {
-             "values": [
-               { "codon": "ATG", "aminoAcid": "M" },
-               { "codon": "TGG", "aminoAcid": "W" },
-               { "codon": "TAA", "aminoAcid": "Stop" }
-             ]
-           },
-           "key": ["codon"]
-         },
-         "fields": ["codon"],
-         "values": ["aminoAcid"],
-         "as": ["aminoAcid"]
-       }
-     ],
-     "mark": "text",
-     "encoding": {
-       "x": { "field": "codon", "type": "nominal" },
-       "y": { "field": "aminoAcid", "type": "nominal" },
-       "text": { "field": "aminoAcid", "type": "nominal" }
-     }
-   }
-   ```
-
-   Render the example in the dev server and add its screenshot only if the
-   curated example suite requires one.
-
-   Tentative commit: `docs(core): add codon lookup example`
-
-5. Add `docs/grammar/transform/lookup.md`, link it from the transform index,
-   and regenerate schema and documentation artifacts. Run the focused lookup
-   and flow tests, the example validation suite, and the relevant schema/docs
-   build checks.
+4. Add `docs/grammar/transform/lookup.md`, link it from the transform index,
+   and regenerate schema and documentation artifacts. Include a compact inline
+   codon-table example with input and output data. Run the focused lookup and
+   flow tests, the example validation suite, and the relevant schema/docs build
+   checks.
 
    Tentative commit: `docs(core): document lookup transform`
 
