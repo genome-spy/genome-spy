@@ -64,9 +64,9 @@ rows.
 
 Table sources are auxiliary dataflow resources. They need normal source
 initialization and loading, but no mark observer. Their collectors and sources
-must be released when their lookup-owning view is disposed. The first version
-should also reapply the lookup when named or lazy foreign data refreshes,
-using the retained primary rows rather than reloading the primary source.
+must be released when their lookup-owning view is disposed. The initial feature
+does not reapply lookups when foreign data refreshes. Reload the primary data
+to apply changed table values.
 
 Genome metadata can later use this mechanism through a small genome-specific
 table adapter. It should resolve chromosome aliases through `Genome` rather
@@ -92,11 +92,10 @@ only canonical contig names.
 
 3. Extend flow construction and lifecycle handling so `from.data` creates an
    auxiliary source and collector. Reuse the normal source creation path for
-   inline, URL, named, and lazy data. Ensure initial loading waits for the
-   table, foreign updates rejoin retained primary rows, and disposal removes
-   the auxiliary source when it has no remaining consumers. Add integration
-   tests with `createHeadlessEngine` for delayed table loading, refreshed named
-   data, and disposal.
+   inline, URL, named, and lazy data. Load the table before primary data and
+   remove the auxiliary source when it has no remaining consumers. Foreign-data
+   updates do not rejoin existing output. Add integration tests with
+   `createHeadlessEngine` for delayed table loading and disposal.
 
    Tentative commit: `feat(core): materialize lookup table sources`
 

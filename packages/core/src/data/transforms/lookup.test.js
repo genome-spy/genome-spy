@@ -100,7 +100,7 @@ test("writes matching rows when values are omitted", () => {
     ]);
 });
 
-test("waits for the foreign table and rejoins when it refreshes", () => {
+test("waits for the foreign table without rejoining after it refreshes", () => {
     const foreign = new Collector({ type: "collect" });
     const lookup = new LookupTransform(
         {
@@ -125,8 +125,37 @@ test("waits for the foreign table and rejoins when it refreshes", () => {
     foreign.reset();
     foreign.handle({ codon: "ATG", aminoAcid: "Start" });
     foreign.complete();
-    expect([...output.getData()]).toEqual([
-        { codon: "ATG", aminoAcid: "Start" },
+    expect([...output.getData()]).toEqual([{ codon: "ATG", aminoAcid: "M" }]);
+});
+
+test("preserves facet batches while waiting for a foreign table", () => {
+    const foreign = new Collector({ type: "collect" });
+    const lookup = new LookupTransform(
+        {
+            type: "lookup",
+            from: { data: { values: [] }, key: "codon" },
+            fields: ["codon"],
+            values: ["aminoAcid"],
+        },
+        foreign
+    );
+    const output = new Collector({ type: "collect" });
+    lookup.addChild(output);
+
+    // Lookup buffers data until the foreign table is ready, including facet boundaries.
+    lookup.beginBatch({ type: "facet", facetId: ["A"] });
+    lookup.handle({ sample: "A", codon: "ATG" });
+    lookup.beginBatch({ type: "facet", facetId: ["B"] });
+    lookup.handle({ sample: "B", codon: "ATG" });
+    lookup.complete();
+    foreign.handle({ codon: "ATG", aminoAcid: "M" });
+    foreign.complete();
+
+    expect(output.facetBatches.get(["A"])).toEqual([
+        { sample: "A", codon: "ATG", aminoAcid: "M" },
+    ]);
+    expect(output.facetBatches.get(["B"])).toEqual([
+        { sample: "B", codon: "ATG", aminoAcid: "M" },
     ]);
 });
 

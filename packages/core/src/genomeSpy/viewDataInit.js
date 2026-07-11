@@ -3,6 +3,7 @@ import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
+import DataSource from "../data/sources/dataSource.js";
 import { finalizeSubtreeGraphics } from "../view/viewUtils.js";
 import { VISIT_SKIP } from "../view/view.js";
 
@@ -127,7 +128,7 @@ export async function initializeViewDataForViews(
     /** @type {import("../view/view.js").default[]} */
     const viewsNeedingLoad = [];
     for (const view of viewsToInitialize) {
-        if (view.spec.data) {
+        if (view.spec.data || view.spec.transform) {
             viewsNeedingLoad.push(view);
             continue;
         }
@@ -222,6 +223,11 @@ function collectDataSourceRoots(views) {
             roots.set(current, dataSources);
         }
         dataSources.add(current.flowHandle.dataSource);
+        for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
+            if (collector.parent instanceof DataSource) {
+                dataSources.add(collector.parent);
+            }
+        }
     }
 
     return roots;

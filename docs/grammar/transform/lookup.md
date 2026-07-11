@@ -12,6 +12,14 @@ emits its output.
 composite lookup, for example `fields: ["sample", "codon"]` and
 `from.key: ["sample", "codon"]`.
 
+## Limitations
+
+- Lookup tables are fully materialized in memory and must have unique keys.
+- Lookup matches exact field values. Range, overlap, and many-to-many joins
+  are not supported.
+- Changes to the lookup table do not update existing output. Reload the
+  primary data to apply the new table values.
+
 ## Parameters
 
 SCHEMA LookupParams

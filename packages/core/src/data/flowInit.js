@@ -244,11 +244,7 @@ export function collectViewSubtreeDataSources(subtreeRoot, viewFilter) {
         if (current?.flowHandle?.dataSource) {
             dataSources.add(current.flowHandle.dataSource);
         }
-        for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
-            if (collector.parent instanceof DataSource) {
-                dataSources.add(collector.parent);
-            }
-        }
+        addAuxiliaryDataSources(view, dataSources);
     }
     return dataSources;
 }
@@ -264,6 +260,7 @@ export function collectViewSubtreeDataSources(subtreeRoot, viewFilter) {
 export function collectNearestViewSubtreeDataSources(subtreeRoot, viewFilter) {
     /** @type {Set<import("./sources/dataSource.js").default>} */
     const dataSources = new Set();
+    addSubtreeAuxiliaryDataSources(subtreeRoot, dataSources, viewFilter);
     subtreeRoot.visit((view) => {
         if (viewFilter && !viewFilter(view)) {
             return VISIT_SKIP;
@@ -274,6 +271,29 @@ export function collectNearestViewSubtreeDataSources(subtreeRoot, viewFilter) {
         }
     });
     return dataSources;
+}
+
+/**
+ * @param {import("../view/view.js").default} subtreeRoot
+ * @param {Set<DataSource>} dataSources
+ * @param {(view: import("../view/view.js").default) => boolean} [viewFilter]
+ */
+function addSubtreeAuxiliaryDataSources(subtreeRoot, dataSources, viewFilter) {
+    for (const view of collectSubtreeViews(subtreeRoot, viewFilter)) {
+        addAuxiliaryDataSources(view, dataSources);
+    }
+}
+
+/**
+ * @param {import("../view/view.js").default} view
+ * @param {Set<DataSource>} dataSources
+ */
+function addAuxiliaryDataSources(view, dataSources) {
+    for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
+        if (collector.parent instanceof DataSource) {
+            dataSources.add(collector.parent);
+        }
+    }
 }
 
 /**
@@ -298,14 +318,35 @@ export function loadViewSubtreeData(
             viewFilter
         );
     }
+    const auxiliaryDataSources = new Set();
+    addSubtreeAuxiliaryDataSources(
+        subtreeRoot,
+        auxiliaryDataSources,
+        viewFilter
+    );
+    const lookupDataSources = Array.from(dataSources).filter((dataSource) =>
+        auxiliaryDataSources.has(dataSource)
+    );
+    const primaryDataSources = Array.from(dataSources).filter(
+        (dataSource) => !auxiliaryDataSources.has(dataSource)
+    );
+
     return Promise.all(
-        Array.from(dataSources).map((dataSource) =>
+        lookupDataSources.map((dataSource) =>
             loadDataSourceOnce(dataSource, loadOptions)
         )
-    ).then((results) => {
-        broadcastSubtreeDataReady(subtreeRoot);
-        return results;
-    });
+    )
+        .then((lookupResults) =>
+            Promise.all(
+                primaryDataSources.map((dataSource) =>
+                    loadDataSourceOnce(dataSource, loadOptions)
+                )
+            ).then((primaryResults) => lookupResults.concat(primaryResults))
+        )
+        .then((results) => {
+            broadcastSubtreeDataReady(subtreeRoot);
+            return results;
+        });
 }
 
 /**

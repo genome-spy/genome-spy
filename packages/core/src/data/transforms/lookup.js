@@ -1,3 +1,4 @@
+import { asArray } from "../../utils/arrayUtils.js";
 import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
@@ -13,10 +14,39 @@ export default class LookupTransform extends Transform {
     /** @type {import("../collector.js").default} */
     #foreignCollector;
 
-    /** @type {import("../flowNode.js").Datum[]} */
-    #primaryData = [];
+    /** @type {((datum: import("../flowNode.js").Datum) => any)[]} */
+    #foreignKeyAccessors;
+
+    /** @type {((datum: import("../flowNode.js").Datum) => any)[]} */
+    #fieldAccessors;
+
+    /** @type {((datum: import("../flowNode.js").Datum) => any)[] | undefined} */
+    #valueAccessors;
+
+    /** @type {string[]} */
+    #as;
+
+    #defaultValue;
+
+    /**
+     * Primary rows grouped by their input batches. Rows are retained only
+     * until the foreign table first becomes available.
+     *
+     * @type {{flowBatch: import("../../types/flowBatch.js").FlowBatch | undefined, data: import("../flowNode.js").Datum[]}[]}
+     */
+    #primaryBatches = [];
+
+    /**
+     * @type {{flowBatch: import("../../types/flowBatch.js").FlowBatch | undefined, data: import("../flowNode.js").Datum[]} | undefined}
+     */
+    #currentBatch;
 
     #primaryCompleted = false;
+
+    #completed = false;
+
+    /** @type {Map<any, Map<any, any>> | null} */
+    #index = null;
 
     /**
      * @param {import("../../spec/transform.js").LookupParams} params
@@ -53,81 +83,125 @@ export default class LookupTransform extends Transform {
             );
         }
 
+        this.#foreignKeyAccessors = foreignKeyFields.map((name) => field(name));
+        this.#fieldAccessors = params.fields.map((name) => field(name));
+        this.#valueAccessors = values?.map((name) => field(name));
+        this.#as = as ?? values ?? [];
+        this.#defaultValue = params.default ?? null;
+
         this.registerDisposer(
-            foreignCollector.observe(() => this.#rejoinForeignData())
+            foreignCollector.observe(() => this.#flushWhenReady())
         );
     }
 
     reset() {
         super.reset();
-        this.#primaryData = [];
+        this.#primaryBatches = [];
+        this.#currentBatch = undefined;
         this.#primaryCompleted = false;
+        this.#completed = false;
+        this.#index = null;
+    }
+
+    /**
+     * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
+     */
+    beginBatch(flowBatch) {
+        if (this.#ensureIndex()) {
+            super.beginBatch(flowBatch);
+        } else {
+            this.#currentBatch = { flowBatch, data: [] };
+            this.#primaryBatches.push(this.#currentBatch);
+        }
     }
 
     /**
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        this.#primaryData.push(datum);
+        if (this.#ensureIndex()) {
+            this.#propagateLookup(datum);
+        } else if (!this.#currentBatch) {
+            this.#currentBatch = { flowBatch: undefined, data: [] };
+            this.#primaryBatches.push(this.#currentBatch);
+            this.#currentBatch.data.push(datum);
+        } else {
+            this.#currentBatch.data.push(datum);
+        }
     }
 
     complete() {
         this.#primaryCompleted = true;
-        if (this.#foreignCollector.completed) {
-            this.#propagateLookups();
-            super.complete();
-        }
+        this.#flushWhenReady();
     }
 
-    #rejoinForeignData() {
-        if (this.#primaryCompleted) {
-            for (const child of this.children) {
-                child.reset();
-            }
-            this.#propagateLookups();
-            for (const child of this.children) {
-                child.complete();
+    #flushWhenReady() {
+        if (this.#ensureIndex()) {
+            this.#propagateBufferedLookups();
+            if (this.#primaryCompleted && !this.#completed) {
+                this.#completed = true;
+                super.complete();
             }
         }
     }
 
-    #propagateLookups() {
-        const params = this.params;
-        const keyAccessors = asArray(params.from.key).map((name) =>
-            field(name)
-        );
-        const fieldAccessors = params.fields.map((name) => field(name));
-        const valueAccessors = params.values?.map((name) => field(name));
-        const as = params.as ?? params.values;
-        if (!as) {
-            throw new Error("Invalid lookup output field configuration.");
+    #ensureIndex() {
+        if (this.#index) {
+            return true;
         }
-        const defaultValue = params.default ?? null;
+        if (!this.#foreignCollector.completed) {
+            return false;
+        }
 
-        /** @type {Map<any, Map<any, any>>} */
-        const index = new Map();
+        this.#index = new Map();
         for (const foreignDatum of this.#foreignCollector.getData()) {
-            const key = keyAccessors.map((accessor) => accessor(foreignDatum));
-            addToIndex(index, key, foreignDatum, params.from.key);
+            const key = this.#foreignKeyAccessors.map((accessor) =>
+                accessor(foreignDatum)
+            );
+            addToIndex(this.#index, key, foreignDatum, this.params.from.key);
         }
 
-        for (const primaryDatum of this.#primaryData) {
-            const output = { ...primaryDatum };
-            const key = fieldAccessors.map((accessor) =>
-                accessor(primaryDatum)
-            );
-            const foreignDatum = findFromIndex(index, key);
-            if (valueAccessors) {
-                for (let i = 0; i < valueAccessors.length; i++) {
-                    output[as[i]] = foreignDatum
-                        ? valueAccessors[i](foreignDatum)
-                        : defaultValue;
+        return true;
+    }
+
+    #propagateBufferedLookups() {
+        for (const { flowBatch, data } of this.#primaryBatches) {
+            if (flowBatch) {
+                for (const child of this.children) {
+                    child.beginBatch(flowBatch);
                 }
-            } else {
-                output[as[0]] = foreignDatum ?? defaultValue;
             }
-            this._propagate(output);
+
+            for (const primaryDatum of data) {
+                this.#propagateLookup(primaryDatum);
+            }
         }
+        this.#primaryBatches = [];
+        this.#currentBatch = undefined;
+    }
+
+    /**
+     * @param {import("../flowNode.js").Datum} primaryDatum
+     */
+    #propagateLookup(primaryDatum) {
+        const output = { ...primaryDatum };
+        const key = this.#fieldAccessors.map((accessor) =>
+            accessor(primaryDatum)
+        );
+        const foreignDatum = findFromIndex(
+            /** @type {Map<any, Map<any, any>>} */ (this.#index),
+            key
+        );
+        if (this.#valueAccessors) {
+            for (let i = 0; i < this.#valueAccessors.length; i++) {
+                output[this.#as[i]] = foreignDatum
+                    ? this.#valueAccessors[i](foreignDatum)
+                    : this.#defaultValue;
+            }
+        } else {
+            output[this.#as[0]] = foreignDatum ?? this.#defaultValue;
+        }
+        this._propagate(output);
     }
 }
 
@@ -175,13 +249,4 @@ function findFromIndex(index, key) {
         level = next;
     }
     return level.get(key[key.length - 1]);
-}
-
-/**
- * @param {T | T[]} value
- * @template T
- * @returns {T[]}
- */
-function asArray(value) {
-    return Array.isArray(value) ? value : [value];
 }
