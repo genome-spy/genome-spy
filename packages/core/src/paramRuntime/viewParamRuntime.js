@@ -52,7 +52,6 @@ export default class ViewParamRuntime {
      * @typedef {(value: any) => void} ParameterSetter
      * @typedef {object} TransitionState
      * @prop {number} target
-     * @prop {import("./types.js").WritableParamRef<number>} ref
      * @prop {((target: { value: number }) => void) & { stop: () => void, snap: (target: { value: number }) => void }} smoother
      * @prop {() => void} dispose
      *
@@ -99,7 +98,7 @@ export default class ViewParamRuntime {
     #animator;
 
     /**
-     * True when transitioned expression updates should snap instead of animate.
+     * True when transitioned updates should snap instead of animate.
      * View-owned runtimes start in this mode because upstream scale/config
      * finalization may correct expression values that were first evaluated
      * against placeholder scale state.
@@ -109,7 +108,7 @@ export default class ViewParamRuntime {
      *
      * @type {boolean}
      */
-    #snapTransitionedExpressionUpdates;
+    #snapTransitionedUpdates;
 
     #disposed = false;
 
@@ -120,15 +119,15 @@ export default class ViewParamRuntime {
      *      N.B. The function must always return the same resolution for the
      *      same channel in the same view hierarchy.
      * @param {import("../utils/animator.js").default} [animator]
-     * @param {{ snapTransitionedExpressionUpdates?: boolean }} [options]
+     * @param {{ snapTransitionedUpdates?: boolean }} [options]
      */
     constructor(parentFinder, scaleResolutionResolver, animator, options = {}) {
         this.#parentFinder = parentFinder ?? (() => undefined);
         this.#scaleResolutionResolver =
             scaleResolutionResolver ?? (() => undefined);
         this.#animator = animator;
-        this.#snapTransitionedExpressionUpdates =
-            options.snapTransitionedExpressionUpdates ?? false;
+        this.#snapTransitionedUpdates =
+            options.snapTransitionedUpdates ?? false;
 
         const parent = this.#parentFinder();
         if (parent) {
@@ -581,11 +580,8 @@ export default class ViewParamRuntime {
             transition
         );
         const unsubscribe = expression.subscribe(() => {
-            // Startup invalidations can come from late scale/config attachment,
-            // not user interaction. Snap those corrections so a transitioned
-            // param does not begin rendering from a placeholder value.
             this.#setTransitionTarget(name, state, expression(null), {
-                animate: !this.#snapTransitionedExpressionUpdates,
+                animate: !this.#snapTransitionedUpdates,
             });
         });
         this.#runtime.addScopeDisposer(this.#scopeId, unsubscribe);
@@ -625,7 +621,6 @@ export default class ViewParamRuntime {
         );
         const state = {
             target: ref.get(),
-            ref,
             smoother,
             dispose: () => {
                 smoother.stop();
@@ -693,7 +688,7 @@ export default class ViewParamRuntime {
      * Later expression changes animate according to the parameter transition.
      */
     finalizeInitialization() {
-        this.#snapTransitionedExpressionUpdates = false;
+        this.#snapTransitionedUpdates = false;
     }
 
     dispose() {

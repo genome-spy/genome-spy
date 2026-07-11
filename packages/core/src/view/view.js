@@ -27,6 +27,7 @@ import {
     normalizeClipOptions,
 } from "./renderingContext/clipOptions.js";
 import { isInChromeSubtree } from "./viewChrome.js";
+import { getPostScaleParams } from "./postScaleParams.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -120,6 +121,14 @@ export default class View {
 
     /** @type {boolean} */
     #hasRendered = false;
+
+    /** @type {boolean} */
+    #hasLaidOut = false;
+
+    /** @type {boolean | undefined} */
+    #postScaleParamDataReady = undefined;
+
+    #postScaleParamsConfigured = false;
 
     /**
      * @type {function(number):number}
@@ -228,7 +237,7 @@ export default class View {
             () => this.dataParent?.paramRuntime,
             (channel) => this.getScaleResolution(channel),
             context.animator,
-            { snapTransitionedExpressionUpdates: true }
+            { snapTransitionedUpdates: true }
         );
 
         if (spec.params) {
@@ -969,6 +978,30 @@ export default class View {
     }
 
     /**
+     * Registers macro-generated params that depend on resolved scales.
+     * For example, multiscale stage wrappers use `domain('x')` to select a
+     * detail level, but their child views create the x resolution later.
+     */
+    configurePostScaleParams() {
+        const postScaleParams = getPostScaleParams(this.spec);
+        if (postScaleParams && !this.#postScaleParamsConfigured) {
+            this.#postScaleParamsConfigured = true;
+            this.#postScaleParamDataReady = false;
+
+            for (const param of postScaleParams) {
+                this.paramRuntime.registerParam(param);
+            }
+
+            this.registerDisposer(
+                this._addBroadcastHandler("subtreeDataReady", () => {
+                    this.#postScaleParamDataReady = true;
+                    this.#finalizePostScaleParams();
+                })
+            );
+        }
+    }
+
+    /**
      * Called after all scales in the view hierarchy have been resolved.
      */
     configureViewOpacity() {
@@ -986,7 +1019,13 @@ export default class View {
      * Marks view-owned params as ready for interactive updates.
      */
     finalizeParamRuntimeInitialization() {
-        this.paramRuntime.finalizeInitialization();
+        if (this.#postScaleParamDataReady === undefined) {
+            this.paramRuntime.finalizeInitialization();
+        } else {
+            // These params additionally depend on initial layout and data;
+            // other transitioned expressions currently finalize after scales.
+            this.#finalizePostScaleParams();
+        }
     }
 
     /**
@@ -1023,7 +1062,17 @@ export default class View {
         this.#widthSetter?.(coords.width);
         this.#heightSetter?.(coords.height);
 
+        this.#hasLaidOut = true;
+        this.#finalizePostScaleParams();
+
         // override
+    }
+
+    #finalizePostScaleParams() {
+        if (this.#postScaleParamDataReady && this.#hasLaidOut) {
+            this.#postScaleParamDataReady = undefined;
+            this.paramRuntime.finalizeInitialization();
+        }
     }
 
     /**

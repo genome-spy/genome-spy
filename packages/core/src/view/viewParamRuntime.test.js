@@ -471,7 +471,7 @@ describe("Single-level ViewParamRuntime", () => {
             undefined,
             undefined,
             /** @type {any} */ (animator),
-            { snapTransitionedExpressionUpdates: true }
+            { snapTransitionedUpdates: true }
         );
         const setter = pm.registerParam({ name: "foo", value: 0 });
         pm.registerParam({
