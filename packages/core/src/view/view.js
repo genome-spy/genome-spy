@@ -979,6 +979,8 @@ export default class View {
 
     /**
      * Registers macro-generated params that depend on resolved scales.
+     * For example, multiscale stage wrappers use `domain('x')` to select a
+     * detail level, but their child views create the x resolution later.
      */
     configurePostScaleParams() {
         const postScaleParams = getPostScaleParams(this.spec);
