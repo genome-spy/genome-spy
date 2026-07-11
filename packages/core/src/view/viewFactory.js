@@ -15,7 +15,12 @@ import {
     markViewAsNonAddressable,
     registerImportInstance,
 } from "./viewSelectors.js";
-import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
+import {
+    isMultiscaleSpec,
+    isMultiscaleStageSpec,
+    normalizeMultiscaleSpec,
+} from "./multiscale.js";
+import MultiscaleStageView from "./multiscaleStageView.js";
 import {
     isConcatSpec,
     isHConcatSpec,
@@ -91,6 +96,10 @@ export class ViewFactory {
                     )
                 );
 
+        this.addViewType(
+            isMultiscaleStageSpec,
+            makeDefaultFactory(MultiscaleStageView)
+        );
         this.addViewType(isLayerSpec, makeDefaultFactory(LayerView));
         this.addViewType(
             isMultiscaleSpec,

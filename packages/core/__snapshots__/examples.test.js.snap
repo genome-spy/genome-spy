@@ -8520,7 +8520,7 @@ exports[`shared examples > initializes examples/docs/grammar/composition/multisc
               },
             ],
             "name": "layer0",
-            "type": "LayerView",
+            "type": "MultiscaleStageView",
           },
           {
             "baseUrl": "examples/",
@@ -8533,7 +8533,7 @@ exports[`shared examples > initializes examples/docs/grammar/composition/multisc
               },
             ],
             "name": "layer1",
-            "type": "LayerView",
+            "type": "MultiscaleStageView",
           },
           {
             "baseUrl": "examples/",
@@ -8546,7 +8546,7 @@ exports[`shared examples > initializes examples/docs/grammar/composition/multisc
               },
             ],
             "name": "layer2",
-            "type": "LayerView",
+            "type": "MultiscaleStageView",
           },
         ],
         "name": "grid0",

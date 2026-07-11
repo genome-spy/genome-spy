@@ -3,13 +3,7 @@ import { isExprRef } from "../paramRuntime/paramUtils.js";
 
 const DEFAULT_FADE = 0.5;
 
-/**
- * Transitioned stages must defer parameter registration until their scales
- * have been resolved. Keep this internal metadata out of generated specs.
- *
- * @type {WeakMap<object, import("../spec/parameter.js").ExprParameter>}
- */
-const stageTransitionParams = new WeakMap();
+export const MULTISCALE_STAGE = Symbol("multiscaleStage");
 
 /**
  * @typedef {"unitsPerPixel"} MultiscaleMetric
@@ -59,7 +53,7 @@ export function normalizeMultiscaleSpec(spec) {
         };
 
         if (parsedStops.transition) {
-            stageTransitionParams.set(wrapper, {
+            wrapper[MULTISCALE_STAGE] = {
                 name: "multiscaleOpacity",
                 expr: createStageTargetExpression(
                     i,
@@ -67,7 +61,7 @@ export function normalizeMultiscaleSpec(spec) {
                     parsedStops
                 ),
                 transition: parsedStops.transition,
-            });
+            };
         }
 
         return wrapper;
@@ -239,7 +233,14 @@ function createStageWrapper(stageIndex, stageCount, stops) {
  * @param {object} spec
  */
 export function getMultiscaleStageTransitionParam(spec) {
-    return stageTransitionParams.get(spec);
+    return spec[MULTISCALE_STAGE];
+}
+
+/**
+ * @param {object} spec
+ */
+export function isMultiscaleStageSpec(spec) {
+    return MULTISCALE_STAGE in spec;
 }
 
 /**
