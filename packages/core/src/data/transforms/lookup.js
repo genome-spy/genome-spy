@@ -1,4 +1,5 @@
 import { asArray } from "../../utils/arrayUtils.js";
+import { createCachedCloner } from "../../utils/cloner.js";
 import { field } from "../../utils/field.js";
 import Collector from "../collector.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
@@ -35,7 +36,19 @@ export default class LookupTransform extends Transform {
 
     #defaultValue;
 
-    /** @type {Map<any, Map<any, any>> | null} */
+    /** @type {(datum: import("../flowNode.js").Datum) => import("../flowNode.js").Datum | undefined} */
+    #findForeignDatum;
+
+    /** @type {ReturnType<typeof createCachedCloner>} */
+    #clone = createCachedCloner();
+
+    /** @type {(output: import("../flowNode.js").Datum, foreignDatum: import("../flowNode.js").Datum, accessors: ((datum: import("../flowNode.js").Datum) => any)[]) => void} */
+    #writeMatchedValues;
+
+    /** @type {(output: import("../flowNode.js").Datum, defaultValue: any) => void} */
+    #writeDefaultValues;
+
+    /** @type {Map<any, any> | null} */
     #index = null;
 
     #primaryCompleted = false;
@@ -84,34 +97,86 @@ export default class LookupTransform extends Transform {
         this.#as = as ?? values ?? [];
         this.#defaultValue = params.default ?? null;
 
+        // Select the common single-key path once instead of branching per row.
+        this.#findForeignDatum =
+            foreignKeyFields.length === 1
+                ? (datum) =>
+                      /** @type {Map<any, import("../flowNode.js").Datum>} */ (
+                          this.#index
+                      ).get(this.#fieldAccessors[0](datum))
+                : (datum) => {
+                      /** @type {Map<any, Map<any, any>>} */
+                      let level = this.#index;
+                      for (
+                          let i = 0;
+                          i < this.#fieldAccessors.length - 1;
+                          i++
+                      ) {
+                          const next = level.get(
+                              this.#fieldAccessors[i](datum)
+                          );
+                          if (!next) {
+                              return;
+                          }
+                          level = next;
+                      }
+                      return level.get(this.#fieldAccessors.at(-1)(datum));
+                  };
+
         this.registerDisposer(
-            foreignCollector.observe(() => this.#reloadPrimaryData())
+            foreignCollector.observe(() => {
+                // Keep the index for primary-only reloads, but rebuild it when
+                // the lookup table itself has changed.
+                this.#invalidateIndex();
+                this.#reloadPrimaryData();
+            })
         );
+
+        this.handle = this.#ensureAndSpecialize;
     }
 
     reset() {
         super.reset();
-        this.#index = null;
         this.#primaryCompleted = false;
-        if (this.#implicitValues) {
-            this.#valueAccessors = [];
-            this.#as = [];
-        }
+        this.#clone.reset();
+        // The cached table index remains valid until the foreign collector updates.
+        this.handle = this.#ensureAndSpecialize;
     }
 
     /**
      * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
      */
     beginBatch(flowBatch) {
+        this.#clone.reset();
         this.#ensureIndex();
+        this.handle = this.#specializeAndPropagate;
         super.beginBatch(flowBatch);
     }
 
     /**
      * @param {import("../flowNode.js").Datum} datum
      */
-    handle(datum) {
+    #ensureAndSpecialize(datum) {
         this.#ensureIndex();
+        this.#specializeAndPropagate(datum);
+    }
+
+    /**
+     * Validates the first datum and installs a fixed output writer. Dataflow
+     * batches have a stable input shape, as required by the cached cloner.
+     *
+     * @param {import("../flowNode.js").Datum} datum
+     */
+    #specializeAndPropagate(datum) {
+        for (const name of this.#as) {
+            if (Object.hasOwn(datum, name)) {
+                throw new Error(
+                    `Lookup output field "${name}" already exists in primary data.`
+                );
+            }
+        }
+        // Subsequent rows use the indexed handler directly.
+        this.handle = this.#propagateLookup;
         this.#propagateLookup(datum);
     }
 
@@ -150,8 +215,10 @@ export default class LookupTransform extends Transform {
             throw new Error("Lookup table must be loaded before primary data.");
         }
 
-        this.#index = new Map();
-        const foreignData = Array.from(this.#foreignCollector.getData());
+        // Discovering implicit values requires two passes over the table.
+        const foreignData = this.#implicitValues
+            ? Array.from(this.#foreignCollector.getData())
+            : this.#foreignCollector.getData();
         if (this.#implicitValues) {
             const fieldNames = new Set();
             for (const foreignDatum of foreignData) {
@@ -173,82 +240,104 @@ export default class LookupTransform extends Transform {
             this.#valueAccessors = this.#as.map((name) => field(name));
         }
 
-        for (const foreignDatum of foreignData) {
-            const key = this.#foreignKeyAccessors.map((accessor) =>
-                accessor(foreignDatum)
-            );
-            addToIndex(this.#index, key, foreignDatum, this.params.key);
+        /** @type {Map<any, any>} */
+        const index = new Map();
+        if (this.#foreignKeyAccessors.length === 1) {
+            // A single key maps directly to its table row.
+            const accessor = this.#foreignKeyAccessors[0];
+            for (const foreignDatum of foreignData) {
+                const key = accessor(foreignDatum);
+                if (index.has(key)) {
+                    throw new Error(
+                        `Duplicate lookup key ${JSON.stringify([key])} in fields ${JSON.stringify(this.params.key)}.`
+                    );
+                }
+                index.set(key, foreignDatum);
+            }
+        } else {
+            // Nested maps preserve each composite-key component's type.
+            for (const foreignDatum of foreignData) {
+                /** @type {Map<any, any>} */
+                let level = index;
+                for (let i = 0; i < this.#foreignKeyAccessors.length - 1; i++) {
+                    const key = this.#foreignKeyAccessors[i](foreignDatum);
+                    let next = level.get(key);
+                    if (!next) {
+                        next = new Map();
+                        level.set(key, next);
+                    }
+                    level = next;
+                }
+
+                const key = this.#foreignKeyAccessors.at(-1)(foreignDatum);
+                if (level.has(key)) {
+                    const duplicateKey = this.#foreignKeyAccessors.map(
+                        (accessor) => accessor(foreignDatum)
+                    );
+                    throw new Error(
+                        `Duplicate lookup key ${JSON.stringify(duplicateKey)} in fields ${JSON.stringify(this.params.key)}.`
+                    );
+                }
+                level.set(key, foreignDatum);
+            }
         }
+        this.#index = index;
+        this.#compileOutputWriters();
+    }
+
+    #compileOutputWriters() {
+        const properties = this.#as.map((name) => JSON.stringify(name));
+        this.#writeMatchedValues =
+            /** @type {(output: import("../flowNode.js").Datum, foreignDatum: import("../flowNode.js").Datum, accessors: ((datum: import("../flowNode.js").Datum) => any)[]) => void} */ (
+                new Function(
+                    "output",
+                    "foreignDatum",
+                    "accessors",
+                    properties
+                        .map(
+                            (name, i) =>
+                                `output[${name}] = accessors[${i}](foreignDatum);`
+                        )
+                        .join("\n")
+                )
+            );
+        this.#writeDefaultValues =
+            /** @type {(output: import("../flowNode.js").Datum, defaultValue: any) => void} */ (
+                new Function(
+                    "output",
+                    "defaultValue",
+                    properties
+                        .map((name) => `output[${name}] = defaultValue;`)
+                        .join("\n")
+                )
+            );
+    }
+
+    #invalidateIndex() {
+        this.#index = null;
+        if (this.#implicitValues) {
+            // The refreshed table may expose a different set of output fields.
+            this.#valueAccessors = [];
+            this.#as = [];
+        }
+        this.handle = this.#ensureAndSpecialize;
     }
 
     /**
      * @param {import("../flowNode.js").Datum} primaryDatum
      */
     #propagateLookup(primaryDatum) {
-        const output = { ...primaryDatum };
-        const key = this.#fieldAccessors.map((accessor) =>
-            accessor(primaryDatum)
-        );
-        const foreignDatum = findFromIndex(
-            /** @type {Map<any, Map<any, any>>} */ (this.#index),
-            key
-        );
-        for (let i = 0; i < this.#valueAccessors.length; i++) {
-            if (Object.hasOwn(output, this.#as[i])) {
-                throw new Error(
-                    `Lookup output field "${this.#as[i]}" already exists in primary data.`
-                );
-            }
-            output[this.#as[i]] = foreignDatum
-                ? this.#valueAccessors[i](foreignDatum)
-                : this.#defaultValue;
+        const output = this.#clone(primaryDatum);
+        const foreignDatum = this.#findForeignDatum(primaryDatum);
+        if (foreignDatum) {
+            this.#writeMatchedValues(
+                output,
+                foreignDatum,
+                this.#valueAccessors
+            );
+        } else {
+            this.#writeDefaultValues(output, this.#defaultValue);
         }
         this._propagate(output);
     }
-}
-
-/**
- * @param {Map<any, Map<any, any>>} index
- * @param {any[]} key
- * @param {import("../flowNode.js").Datum} datum
- * @param {import("../../spec/transform.js").Field | import("../../spec/transform.js").Field[]} keyFields
- */
-function addToIndex(index, key, datum, keyFields) {
-    /** @type {Map<any, any>} */
-    let level = index;
-    for (let i = 0; i < key.length - 1; i++) {
-        const part = key[i];
-        let next = level.get(part);
-        if (!next) {
-            next = new Map();
-            level.set(part, next);
-        }
-        level = next;
-    }
-
-    const lastPart = key[key.length - 1];
-    if (level.has(lastPart)) {
-        throw new Error(
-            `Duplicate lookup key ${JSON.stringify(key)} in fields ${JSON.stringify(keyFields)}.`
-        );
-    }
-    level.set(lastPart, datum);
-}
-
-/**
- * @param {Map<any, Map<any, any>>} index
- * @param {any[]} key
- * @returns {import("../flowNode.js").Datum | undefined}
- */
-function findFromIndex(index, key) {
-    /** @type {Map<any, any>} */
-    let level = index;
-    for (let i = 0; i < key.length - 1; i++) {
-        const next = level.get(key[i]);
-        if (!next) {
-            return;
-        }
-        level = next;
-    }
-    return level.get(key[key.length - 1]);
 }

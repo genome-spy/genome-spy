@@ -23,8 +23,8 @@ export default function createCloner(template, options = {}) {
 }
 
 /**
- * Creates a cloner from the first datum and reuses it until reset. Dataflow
- * batches are expected to keep a stable input object shape.
+ * Creates a cloner from the first datum and reuses it until reset. Data
+ * sources and transforms must keep a stable input object shape within a batch.
  *
  * @param {{ copyFields?: Iterable<string> }} [options]
  * @returns {((datum: import("../data/flowNode.js").Datum) => import("../data/flowNode.js").Datum) & { reset: () => void }}

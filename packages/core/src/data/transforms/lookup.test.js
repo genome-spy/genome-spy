@@ -249,6 +249,26 @@ test("uses refreshed table values after primary data is reloaded", () => {
     ]);
 });
 
+test("keeps the lookup index when only primary data is reset", () => {
+    const foreign = collect([{ codon: "ATG", aminoAcid: "M" }]);
+    const getData = vi.spyOn(foreign, "getData");
+    const lookup = new LookupTransform(
+        {
+            type: "lookup",
+            from: { values: [] },
+            key: "codon",
+            values: ["aminoAcid"],
+        },
+        foreign
+    );
+
+    processData(lookup, [{ codon: "ATG" }]);
+    lookup.reset();
+    processData(lookup, [{ codon: "ATG" }]);
+
+    expect(getData).toHaveBeenCalledTimes(1);
+});
+
 test("repropagates a buffered primary collector when the table reloads", () => {
     const foreign = collect([{ codon: "ATG", aminoAcid: "M" }]);
     const primary = new Collector({ type: "collect" });
