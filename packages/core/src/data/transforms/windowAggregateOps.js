@@ -16,6 +16,97 @@ export const WINDOW_AGGREGATE_OPS = new Set([
 ]);
 
 const ORDERED_OPS = new Set(["min", "max", "q1", "median", "q3"]);
+const MOMENT_OPS = new Set(["mean", "variance"]);
+
+/**
+ * @typedef {{ op: string, resultIndex: number }} AggregateResult
+ */
+
+/**
+ * @typedef {{ starts: number[], stops: number[] }} AggregateBounds
+ */
+
+/**
+ * @typedef {(rows: Datum[], bounds: AggregateBounds, results: any[][]) => void} AggregatePartitionEvaluator
+ */
+
+/** @typedef {(state: WindowAggregateState) => any} AggregateValueReader */
+
+/**
+ * Prepares the sliding-state loop once per aggregate field group. Result
+ * readers are selected during setup, not for every output value.
+ *
+ * @param {(datum: Datum) => any} accessor
+ * @param {AggregateResult[]} results
+ */
+export function createAggregatePartitionEvaluator(accessor, results) {
+    const ops = results.map(({ op }) => op);
+    const resultIndices = results.map(({ resultIndex }) => resultIndex);
+    const readers = results.map(({ op }) => createAggregateValueReader(op));
+
+    return /** @type {AggregatePartitionEvaluator} */ (
+        (rows, bounds, output) => {
+            const state = new WindowAggregateState(accessor, ops);
+            const resultArrays = resultIndices.map((index) => output[index]);
+            const starts = bounds.starts;
+            const stops = bounds.stops;
+            let start = 0;
+            let stop = 0;
+
+            for (let index = 0; index < rows.length; index++) {
+                const nextStart = starts[index];
+                const nextStop = stops[index];
+                while (start < nextStart) {
+                    state.remove(rows[start++]);
+                }
+                while (start > nextStart) {
+                    state.add(rows[--start]);
+                }
+                while (stop < nextStop) {
+                    state.add(rows[stop++]);
+                }
+                while (stop > nextStop) {
+                    state.remove(rows[--stop]);
+                }
+
+                for (let i = 0; i < readers.length; i++) {
+                    resultArrays[i][index] = readers[i](state);
+                }
+            }
+        }
+    );
+}
+
+/**
+ * @param {string} op
+ * @returns {AggregateValueReader}
+ */
+function createAggregateValueReader(op) {
+    switch (op) {
+        case "valid":
+            return (state) => state.valid;
+        case "sum":
+            return (state) => (state.valid ? state.sum : undefined);
+        case "min":
+            return (state) => (state.valid ? state.values[0] : undefined);
+        case "max":
+            return (state) =>
+                state.valid ? state.values[state.values.length - 1] : undefined;
+        case "mean":
+            return (state) => (state.valid ? state.mean : undefined);
+        case "q1":
+            return (state) => (state.valid ? state.q1() : undefined);
+        case "median":
+            return (state) => (state.valid ? state.median() : undefined);
+        case "q3":
+            return (state) => (state.valid ? state.q3() : undefined);
+        case "variance":
+            return (state) =>
+                state.valid > 1 ? state.m2 / (state.valid - 1) : undefined;
+        default:
+            throw new Error(`Unsupported aggregate window operation: ${op}`);
+    }
+}
 
 /**
  * Maintains aggregate state while a window frame moves through one partition.
@@ -23,14 +114,17 @@ const ORDERED_OPS = new Set(["min", "max", "q1", "median", "q3"]);
  * full-frame scan for every output row.
  */
 export class WindowAggregateState {
-    /** @type {((datum: Datum) => any) | undefined} */
+    /** @type {(datum: Datum) => any} */
     accessor;
 
     /** @type {boolean} */
-    needsOrderedValues;
+    needsSum;
 
-    /** @type {number} */
-    count;
+    /** @type {boolean} */
+    needsMoments;
+
+    /** @type {boolean} */
+    needsOrderedValues;
 
     /** @type {number} */
     valid;
@@ -44,89 +138,53 @@ export class WindowAggregateState {
     /** @type {number} */
     m2;
 
-    /** @type {number[] | null} */
+    // TODO: Use an ordered multiset if large moving frames make splice-based
+    // updates a bottleneck.
+    /** @type {number[]} */
     values;
 
     /**
-     * @param {((datum: Datum) => any) | undefined} accessor
+     * @param {(datum: Datum) => any} accessor
      * @param {string[]} ops
      */
     constructor(accessor, ops) {
         this.accessor = accessor;
+        this.needsSum = ops.includes("sum");
+        this.needsMoments = ops.some((op) => MOMENT_OPS.has(op));
         this.needsOrderedValues = ops.some((op) => ORDERED_OPS.has(op));
         this.reset();
     }
 
     reset() {
-        this.count = 0;
         this.valid = 0;
         this.sum = 0;
         this.mean = 0;
         this.m2 = 0;
-        this.values = this.needsOrderedValues ? [] : null;
+        this.values = [];
     }
 
     /** @param {Datum} datum */
     add(datum) {
-        this.count += 1;
-        this.#addValue(this.accessor ? this.accessor(datum) : undefined);
-    }
-
-    /** @param {Datum} datum */
-    remove(datum) {
-        this.count -= 1;
-        this.#removeValue(this.accessor ? this.accessor(datum) : undefined);
-    }
-
-    /** @param {string} op */
-    value(op) {
-        switch (op) {
-            case "count":
-                return this.count;
-            case "valid":
-                return this.valid;
-            case "sum":
-                return this.valid ? this.sum : undefined;
-            case "min":
-                return this.valid ? this.values[0] : undefined;
-            case "max":
-                return this.valid
-                    ? this.values[this.values.length - 1]
-                    : undefined;
-            case "mean":
-                return this.valid ? this.mean : undefined;
-            case "q1":
-                return this.valid
-                    ? quantileSorted(this.values, 0.25)
-                    : undefined;
-            case "median":
-                return this.valid
-                    ? quantileSorted(this.values, 0.5)
-                    : undefined;
-            case "q3":
-                return this.valid
-                    ? quantileSorted(this.values, 0.75)
-                    : undefined;
-            case "variance":
-                return this.valid > 1 ? this.m2 / (this.valid - 1) : undefined;
-        }
-    }
-
-    /** @param {any} value */
-    #addValue(value) {
+        const value = this.accessor(datum);
         if (value == null || value === "" || Number.isNaN(value)) {
             return;
         }
 
-        const numericValue = +value;
         this.valid += 1;
-        this.sum += numericValue;
+        if (!this.needsSum && !this.needsMoments && !this.needsOrderedValues) {
+            return;
+        }
 
-        const delta = numericValue - this.mean;
-        this.mean += delta / this.valid;
-        this.m2 += delta * (numericValue - this.mean);
-
-        if (this.values) {
+        const numericValue = +value;
+        if (this.needsSum) {
+            this.sum += numericValue;
+        }
+        if (this.needsMoments) {
+            const delta = numericValue - this.mean;
+            this.mean += delta / this.valid;
+            this.m2 += delta * (numericValue - this.mean);
+        }
+        if (this.needsOrderedValues) {
             this.values.splice(
                 bisectLeft(this.values, numericValue),
                 0,
@@ -135,32 +193,52 @@ export class WindowAggregateState {
         }
     }
 
-    /** @param {any} value */
-    #removeValue(value) {
+    /** @param {Datum} datum */
+    remove(datum) {
+        const value = this.accessor(datum);
         if (value == null || value === "" || Number.isNaN(value)) {
             return;
         }
 
-        const numericValue = +value;
         const oldCount = this.valid;
         this.valid -= 1;
-        this.sum -= numericValue;
-
-        if (this.valid) {
-            const oldMean = this.mean;
-            this.mean = (oldMean * oldCount - numericValue) / this.valid;
-            this.m2 -= (numericValue - oldMean) * (numericValue - this.mean);
-        } else {
-            this.mean = 0;
-            this.m2 = 0;
+        if (!this.needsSum && !this.needsMoments && !this.needsOrderedValues) {
+            return;
         }
 
-        if (this.values) {
+        const numericValue = +value;
+        if (this.needsSum) {
+            this.sum -= numericValue;
+        }
+        if (this.needsMoments) {
+            if (this.valid) {
+                const oldMean = this.mean;
+                this.mean = (oldMean * oldCount - numericValue) / this.valid;
+                this.m2 -=
+                    (numericValue - oldMean) * (numericValue - this.mean);
+            } else {
+                this.mean = 0;
+                this.m2 = 0;
+            }
+        }
+        if (this.needsOrderedValues) {
             const index = bisectLeft(this.values, numericValue);
             if (this.values[index] !== numericValue) {
                 throw new Error("Window aggregate state is inconsistent.");
             }
             this.values.splice(index, 1);
         }
+    }
+
+    q1() {
+        return quantileSorted(this.values, 0.25);
+    }
+
+    median() {
+        return quantileSorted(this.values, 0.5);
+    }
+
+    q3() {
+        return quantileSorted(this.values, 0.75);
     }
 }

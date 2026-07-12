@@ -3,7 +3,7 @@ import { field } from "../../utils/field.js";
 import { BEHAVIOR_MODIFIES } from "../flowNode.js";
 import Transform from "./transform.js";
 import {
-    WindowAggregateState,
+    createAggregatePartitionEvaluator,
     WINDOW_AGGREGATE_OPS,
 } from "./windowAggregateOps.js";
 import {
@@ -38,7 +38,8 @@ export default class WindowTransform extends Transform {
         this.ignorePeers = normalized.ignorePeers;
         this.comparator = normalized.comparator;
         this.groupAccessors = normalized.groupAccessors;
-        this.operations = normalized.operations;
+        this.partitionEvaluators = normalized.partitionEvaluators;
+        this.outputFields = normalized.outputFields;
     }
 
     reset() {
@@ -84,120 +85,38 @@ export default class WindowTransform extends Transform {
     /** @param {Datum[]} partition */
     #processPartition(partition) {
         const rows = sortedRows(partition, this.comparator);
-        const contexts = createContexts(
+        const bounds = createPartitionBounds(
             rows,
             this.comparator,
             this.frame,
             this.ignorePeers
         );
-        const results = this.operations.map(() => new Array(rows.length));
+        const results = this.outputFields.map(() => new Array(rows.length));
 
-        this.#evaluateAggregateOperations(contexts, results);
-        this.#evaluateWindowOperations(contexts, results);
-
-        for (const context of contexts) {
-            for (let i = 0; i < this.operations.length; i++) {
-                context.rows[context.index][this.operations[i].as] =
-                    results[i][context.index];
-            }
-        }
-    }
-
-    /**
-     * @param {WindowContext[]} contexts
-     * @param {any[][]} results
-     */
-    #evaluateAggregateOperations(contexts, results) {
-        /** @type {Map<string | null, { accessor: ((datum: Datum) => any) | undefined, indices: number[] }>} */
-        const groups = new Map();
-
-        for (let i = 0; i < this.operations.length; i++) {
-            const operation = this.operations[i];
-            if (operation.kind == "aggregate") {
-                const key = operation.field;
-                let group = groups.get(key);
-                if (!group) {
-                    group = {
-                        accessor: operation.accessor,
-                        indices: [],
-                    };
-                    groups.set(key, group);
-                }
-                group.indices.push(i);
-            }
+        for (const evaluate of this.partitionEvaluators) {
+            evaluate(rows, bounds, results);
         }
 
-        for (const group of groups.values()) {
-            const ops = group.indices.map((index) => this.operations[index].op);
-            const state = new WindowAggregateState(group.accessor, ops);
-            let start = 0;
-            let stop = 0;
-
-            for (const context of contexts) {
-                while (start < context.start) {
-                    state.remove(context.rows[start++]);
-                }
-                while (start > context.start) {
-                    state.add(context.rows[--start]);
-                }
-                while (stop < context.stop) {
-                    state.add(context.rows[stop++]);
-                }
-                while (stop > context.stop) {
-                    state.remove(context.rows[--stop]);
-                }
-
-                for (const index of group.indices) {
-                    results[index][context.index] = state.value(
-                        this.operations[index].op
-                    );
-                }
-            }
-        }
-    }
-
-    /**
-     * @param {WindowContext[]} contexts
-     * @param {any[][]} results
-     */
-    #evaluateWindowOperations(contexts, results) {
-        for (let i = 0; i < this.operations.length; i++) {
-            const operation = this.operations[i];
-            if (operation.kind == "window") {
-                const evaluator = createWindowOperation(
-                    /** @type {import("../../spec/transform.js").WindowOnlyOp} */ (
-                        operation.op
-                    ),
-                    operation.accessor,
-                    operation.parameter
-                );
-                evaluator.initialize();
-                for (const context of contexts) {
-                    results[i][context.index] = evaluator.evaluate(context);
-                }
-            }
-        }
+        writeResults(rows, results, this.outputFields);
     }
 }
 
 /**
- * @typedef {object} CompiledOperation
- * @prop {import("../../spec/transform.js").WindowOp} op
- * @prop {"aggregate" | "window"} kind
- * @prop {string | null} field
- * @prop {(datum: Datum) => any} [accessor]
- * @prop {number | null | undefined} parameter
- * @prop {string} as
+ * @typedef {(rows: Datum[], bounds: PartitionBounds, results: any[][]) => void} PartitionEvaluator
  */
 
 /**
- * @typedef {object} WindowContext
- * @prop {Datum[]} rows
- * @prop {number} index
- * @prop {number} start
- * @prop {number} stop
- * @prop {number} peerStart
- * @prop {number} peerStop
+ * @typedef {object} PartitionBounds
+ * @prop {number[]} starts
+ * @prop {number[]} stops
+ * @prop {number[]} peerStarts
+ * @prop {number[]} peerStops
+ */
+
+/**
+ * @typedef {object} AggregateGroup
+ * @prop {(datum: Datum) => any} accessor
+ * @prop {{ op: string, resultIndex: number }[]} results
  */
 
 /**
@@ -234,64 +153,164 @@ function normalizeParams(params) {
         ? compare(params.sort.field, params.sort.order)
         : undefined;
 
-    /** @type {CompiledOperation[]} */
-    const operations = params.ops.map((op, index) => {
-        const fieldName = params.fields?.[index] ?? null;
-        const parameter = params.params?.[index];
-        const kind = WINDOW_ONLY_OPS.has(op)
-            ? "window"
-            : WINDOW_AGGREGATE_OPS.has(op)
-              ? "aggregate"
-              : null;
+    /** @type {PartitionEvaluator[]} */
+    const partitionEvaluators = [];
+    /** @type {AggregateGroup[]} */
+    const aggregateGroups = [];
+    /** @type {Map<string, AggregateGroup>} */
+    const aggregateGroupsByField = new Map();
+    /** @type {{ resultIndex: number }[]} */
+    const countResults = [];
+    const outputFields = [];
 
-        if (!kind) {
-            throw new Error(`Unsupported window operation: ${op}`);
-        }
+    for (let resultIndex = 0; resultIndex < params.ops.length; resultIndex++) {
+        const operation = compileOperation(params, resultIndex);
+        outputFields.push(operation.as);
 
-        const requiresField =
-            kind == "window" ? !FIELDLESS_WINDOW_OPS.has(op) : op != "count";
-        if (requiresField && fieldName == null) {
-            throw new Error(`Window operation "${op}" requires a field.`);
-        }
-        if (op == "ntile" || op == "nth_value") {
-            if (!Number.isInteger(parameter) || parameter <= 0) {
-                throw new Error(
-                    `Window operation "${op}" requires a positive integer parameter.`
-                );
+        if (operation.kind == "window") {
+            const evaluate = createWindowOperation(
+                /** @type {import("../../spec/transform.js").WindowOnlyOp} */ (
+                    operation.op
+                ),
+                operation.accessor,
+                operation.parameter
+            );
+            partitionEvaluators.push((rows, bounds, results) =>
+                evaluate(rows, bounds, results[resultIndex])
+            );
+        } else if (operation.op == "count") {
+            countResults.push({ resultIndex });
+        } else {
+            /** @type {string} */
+            const fieldName = operation.field;
+            let group = aggregateGroupsByField.get(fieldName);
+            if (!group) {
+                group = {
+                    accessor: /** @type {(datum: Datum) => any} */ (
+                        operation.accessor
+                    ),
+                    results: [],
+                };
+                aggregateGroupsByField.set(fieldName, group);
+                aggregateGroups.push(group);
             }
-        } else if (parameter != null && !Number.isFinite(parameter)) {
-            throw new Error(
-                `Window operation "${op}" requires a numeric parameter.`
-            );
+            group.results.push({ op: operation.op, resultIndex });
         }
+    }
 
-        const output = params.as?.[index];
-        if (
-            output != null &&
-            (typeof output != "string" || output.length == 0)
-        ) {
-            throw new Error(
-                "Window output field names must be non-empty strings."
-            );
-        }
-
-        return {
-            op,
-            kind,
-            field: fieldName,
-            accessor: fieldName == null ? undefined : field(fieldName),
-            parameter,
-            as: output ?? defaultOutputName(op, fieldName),
-        };
-    });
+    if (countResults.length) {
+        partitionEvaluators.push(createCountEvaluator(countResults));
+    }
+    for (const group of aggregateGroups) {
+        partitionEvaluators.push(
+            createAggregatePartitionEvaluator(group.accessor, group.results)
+        );
+    }
 
     return {
         frame,
         ignorePeers: params.ignorePeers ?? false,
         comparator,
         groupAccessors,
-        operations,
+        partitionEvaluators,
+        outputFields,
     };
+}
+
+/**
+ * @typedef {object} CompiledOperation
+ * @prop {import("../../spec/transform.js").WindowOp} op
+ * @prop {"aggregate" | "window"} kind
+ * @prop {string | null} field
+ * @prop {(datum: Datum) => any} [accessor]
+ * @prop {number | null | undefined} parameter
+ * @prop {string} as
+ */
+
+/**
+ * @param {import("../../spec/transform.js").WindowParams} params
+ * @param {number} index
+ * @returns {CompiledOperation}
+ */
+function compileOperation(params, index) {
+    const op = params.ops[index];
+    const fieldName = params.fields?.[index] ?? null;
+    const parameter = params.params?.[index];
+    const kind = WINDOW_ONLY_OPS.has(op)
+        ? "window"
+        : WINDOW_AGGREGATE_OPS.has(op)
+          ? "aggregate"
+          : null;
+
+    if (!kind) {
+        throw new Error(`Unsupported window operation: ${op}`);
+    }
+
+    const requiresField =
+        kind == "window" ? !FIELDLESS_WINDOW_OPS.has(op) : op != "count";
+    if (requiresField && fieldName == null) {
+        throw new Error(`Window operation "${op}" requires a field.`);
+    }
+    if (op == "ntile" || op == "nth_value") {
+        if (!Number.isInteger(parameter) || parameter <= 0) {
+            throw new Error(
+                `Window operation "${op}" requires a positive integer parameter.`
+            );
+        }
+    } else if (parameter != null && !Number.isFinite(parameter)) {
+        throw new Error(
+            `Window operation "${op}" requires a numeric parameter.`
+        );
+    }
+
+    const output = params.as?.[index];
+    if (output != null && (typeof output != "string" || output.length == 0)) {
+        throw new Error("Window output field names must be non-empty strings.");
+    }
+
+    return {
+        op,
+        kind,
+        field: fieldName,
+        accessor: fieldName == null ? undefined : field(fieldName),
+        parameter,
+        as: output ?? defaultOutputName(op, fieldName),
+    };
+}
+
+/**
+ * @param {{ resultIndex: number }[]} countResults
+ * @returns {PartitionEvaluator}
+ */
+function createCountEvaluator(countResults) {
+    const resultIndices = countResults.map(({ resultIndex }) => resultIndex);
+
+    return (rows, bounds, results) => {
+        const resultArrays = resultIndices.map((index) => results[index]);
+        const starts = bounds.starts;
+        const stops = bounds.stops;
+
+        for (let index = 0; index < rows.length; index++) {
+            const count = stops[index] - starts[index];
+            for (const result of resultArrays) {
+                result[index] = count;
+            }
+        }
+    };
+}
+
+/**
+ * @param {Datum[]} rows
+ * @param {any[][]} results
+ * @param {string[]} outputFields
+ */
+function writeResults(rows, results, outputFields) {
+    for (let index = 0; index < rows.length; index++) {
+        const datum = rows[index];
+        for (let i = 0; i < outputFields.length; i++) {
+            datum[outputFields[i]] = results[i][index];
+        }
+    }
 }
 
 /**
@@ -324,10 +343,7 @@ function sortedRows(rows, comparator) {
         return rows;
     }
 
-    return rows
-        .map((datum, index) => ({ datum, index }))
-        .sort((a, b) => comparator(a.datum, b.datum) || a.index - b.index)
-        .map(({ datum }) => datum);
+    return rows.slice().sort(comparator);
 }
 
 /**
@@ -335,61 +351,62 @@ function sortedRows(rows, comparator) {
  * @param {((a: Datum, b: Datum) => number) | undefined} comparator
  * @param {[number | null, number | null]} frame
  * @param {boolean} ignorePeers
- * @returns {WindowContext[]}
+ * @returns {PartitionBounds}
  */
-function createContexts(rows, comparator, frame, ignorePeers) {
-    const peerStarts = new Array(rows.length);
-    const peerStops = new Array(rows.length);
+function createPartitionBounds(rows, comparator, frame, ignorePeers) {
+    const length = rows.length;
+    const peerStarts = new Array(length);
+    const peerStops = new Array(length);
+    const starts = new Array(length);
+    const stops = new Array(length);
 
-    let start = 0;
-    for (let i = 0; i <= rows.length; i++) {
-        if (
-            i == rows.length ||
-            !comparator ||
-            comparator(rows[start], rows[i])
-        ) {
-            for (let j = start; j < i; j++) {
-                peerStarts[j] = start;
-                peerStops[j] = i;
+    if (comparator) {
+        let peerStart = 0;
+        for (let index = 1; index <= length; index++) {
+            if (
+                index == length ||
+                comparator(rows[peerStart], rows[index]) != 0
+            ) {
+                for (
+                    let peerIndex = peerStart;
+                    peerIndex < index;
+                    peerIndex++
+                ) {
+                    peerStarts[peerIndex] = peerStart;
+                    peerStops[peerIndex] = index;
+                }
+                peerStart = index;
             }
-            start = i;
+        }
+    } else {
+        for (let index = 0; index < length; index++) {
+            peerStarts[index] = index;
+            peerStops[index] = index + 1;
         }
     }
 
-    return rows.map((_, index) => {
-        let frameStart =
-            frame[0] == null ? 0 : clamp(index + frame[0], 0, rows.length);
-        let frameStop =
-            frame[1] == null
-                ? rows.length
-                : clamp(index + frame[1] + 1, 0, rows.length);
+    for (let index = 0; index < length; index++) {
+        let start = frame[0] == null ? 0 : clamp(index + frame[0], 0, length);
+        let stop =
+            frame[1] == null ? length : clamp(index + frame[1] + 1, 0, length);
 
         if (comparator && !ignorePeers) {
-            if (
-                frameStart > 0 &&
-                frameStart < rows.length &&
-                peerStarts[frameStart] != frameStart
-            ) {
-                frameStart = peerStarts[frameStart];
+            if (start > 0 && start < length && peerStarts[start] != start) {
+                start = peerStarts[start];
             }
-            if (frameStop > 0 && frameStop < rows.length) {
-                frameStop = peerStops[frameStop - 1];
+            if (stop > 0 && stop < length) {
+                stop = peerStops[stop - 1];
             }
         }
-
-        if (frameStart > frameStop) {
-            frameStop = frameStart;
+        if (start > stop) {
+            stop = start;
         }
 
-        return {
-            rows,
-            index,
-            start: frameStart,
-            stop: frameStop,
-            peerStart: peerStarts[index],
-            peerStop: peerStops[index],
-        };
-    });
+        starts[index] = start;
+        stops[index] = stop;
+    }
+
+    return { starts, stops, peerStarts, peerStops };
 }
 
 /**
