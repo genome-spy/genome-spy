@@ -1,0 +1,368 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Indexed FASTA Six-Frame Translation",
+    "Translates a visible hg38 FASTA interval in three forward and three reverse reading frames using generic flattenSequence, lookup, window, and formula transforms.",
+    "Data source: UCSC hg38 / GRCh38 reference FASTA (`goldenPath/hg38/bigZips/latest/hg38.fa.gz`). Terms: UCSC downloadable data files are freely reusable."
+  ],
+
+  "assembly": "hg38",
+
+  "name": "indexed-fasta-six-frame-translation",
+
+  "datasets": {
+    "nucleotideComplements": [
+      { "base": "A", "complement": "T" },
+      { "base": "C", "complement": "G" },
+      { "base": "G", "complement": "C" },
+      { "base": "T", "complement": "A" },
+      { "base": "N", "complement": "N" }
+    ],
+    "geneticCode": [
+      { "codon": "TTT", "aminoAcid": "F", "kind": "other" },
+      { "codon": "TTC", "aminoAcid": "F", "kind": "other" },
+      { "codon": "TTA", "aminoAcid": "L", "kind": "other" },
+      { "codon": "TTG", "aminoAcid": "L", "kind": "other" },
+      { "codon": "TCT", "aminoAcid": "S", "kind": "other" },
+      { "codon": "TCC", "aminoAcid": "S", "kind": "other" },
+      { "codon": "TCA", "aminoAcid": "S", "kind": "other" },
+      { "codon": "TCG", "aminoAcid": "S", "kind": "other" },
+      { "codon": "TAT", "aminoAcid": "Y", "kind": "other" },
+      { "codon": "TAC", "aminoAcid": "Y", "kind": "other" },
+      { "codon": "TAA", "aminoAcid": "STOP", "kind": "stop" },
+      { "codon": "TAG", "aminoAcid": "STOP", "kind": "stop" },
+      { "codon": "TGT", "aminoAcid": "C", "kind": "other" },
+      { "codon": "TGC", "aminoAcid": "C", "kind": "other" },
+      { "codon": "TGA", "aminoAcid": "STOP", "kind": "stop" },
+      { "codon": "TGG", "aminoAcid": "W", "kind": "other" },
+      { "codon": "CTT", "aminoAcid": "L", "kind": "other" },
+      { "codon": "CTC", "aminoAcid": "L", "kind": "other" },
+      { "codon": "CTA", "aminoAcid": "L", "kind": "other" },
+      { "codon": "CTG", "aminoAcid": "L", "kind": "other" },
+      { "codon": "CCT", "aminoAcid": "P", "kind": "other" },
+      { "codon": "CCC", "aminoAcid": "P", "kind": "other" },
+      { "codon": "CCA", "aminoAcid": "P", "kind": "other" },
+      { "codon": "CCG", "aminoAcid": "P", "kind": "other" },
+      { "codon": "CAT", "aminoAcid": "H", "kind": "other" },
+      { "codon": "CAC", "aminoAcid": "H", "kind": "other" },
+      { "codon": "CAA", "aminoAcid": "Q", "kind": "other" },
+      { "codon": "CAG", "aminoAcid": "Q", "kind": "other" },
+      { "codon": "CGT", "aminoAcid": "R", "kind": "other" },
+      { "codon": "CGC", "aminoAcid": "R", "kind": "other" },
+      { "codon": "CGA", "aminoAcid": "R", "kind": "other" },
+      { "codon": "CGG", "aminoAcid": "R", "kind": "other" },
+      { "codon": "ATT", "aminoAcid": "I", "kind": "other" },
+      { "codon": "ATC", "aminoAcid": "I", "kind": "other" },
+      { "codon": "ATA", "aminoAcid": "I", "kind": "other" },
+      { "codon": "ATG", "aminoAcid": "M", "kind": "start" },
+      { "codon": "ACT", "aminoAcid": "T", "kind": "other" },
+      { "codon": "ACC", "aminoAcid": "T", "kind": "other" },
+      { "codon": "ACA", "aminoAcid": "T", "kind": "other" },
+      { "codon": "ACG", "aminoAcid": "T", "kind": "other" },
+      { "codon": "AAT", "aminoAcid": "N", "kind": "other" },
+      { "codon": "AAC", "aminoAcid": "N", "kind": "other" },
+      { "codon": "AAA", "aminoAcid": "K", "kind": "other" },
+      { "codon": "AAG", "aminoAcid": "K", "kind": "other" },
+      { "codon": "AGT", "aminoAcid": "S", "kind": "other" },
+      { "codon": "AGC", "aminoAcid": "S", "kind": "other" },
+      { "codon": "AGA", "aminoAcid": "R", "kind": "other" },
+      { "codon": "AGG", "aminoAcid": "R", "kind": "other" },
+      { "codon": "GTT", "aminoAcid": "V", "kind": "other" },
+      { "codon": "GTC", "aminoAcid": "V", "kind": "other" },
+      { "codon": "GTA", "aminoAcid": "V", "kind": "other" },
+      { "codon": "GTG", "aminoAcid": "V", "kind": "other" },
+      { "codon": "GCT", "aminoAcid": "A", "kind": "other" },
+      { "codon": "GCC", "aminoAcid": "A", "kind": "other" },
+      { "codon": "GCA", "aminoAcid": "A", "kind": "other" },
+      { "codon": "GCG", "aminoAcid": "A", "kind": "other" },
+      { "codon": "GAT", "aminoAcid": "D", "kind": "other" },
+      { "codon": "GAC", "aminoAcid": "D", "kind": "other" },
+      { "codon": "GAA", "aminoAcid": "E", "kind": "other" },
+      { "codon": "GAG", "aminoAcid": "E", "kind": "other" },
+      { "codon": "GGT", "aminoAcid": "G", "kind": "other" },
+      { "codon": "GGC", "aminoAcid": "G", "kind": "other" },
+      { "codon": "GGA", "aminoAcid": "G", "kind": "other" },
+      { "codon": "GGG", "aminoAcid": "G", "kind": "other" }
+    ]
+  },
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr7", "pos": 20003500 },
+        { "chrom": "chr7", "pos": 20003540 }
+      ]
+    }
+  },
+
+  "resolve": { "axis": { "x": "shared" } },
+
+  "spacing": 5,
+
+  "data": {
+    "lazy": {
+      "type": "indexedFasta",
+      "url": "https://data.genomespy.app/genomes/hg38/hg38.fa"
+    }
+  },
+
+  "transform": [
+    {
+      "type": "flattenSequence",
+      "field": "sequence",
+      "as": ["rawPos", "base"]
+    },
+    {
+      "type": "formula",
+      "expr": "datum.start + datum.rawPos",
+      "as": "pos"
+    }
+  ],
+
+  "vconcat": [
+    {
+      "name": "reference-bases",
+
+      "height": 20,
+
+      "encoding": {
+        "x": { "chrom": "chrom", "pos": "pos", "type": "locus" },
+        "color": {
+          "field": "base",
+          "type": "nominal",
+          "scale": {
+            "domain": ["A", "C", "T", "G", "a", "c", "t", "g", "N"],
+            "range": [
+              "#7BD56C",
+              "#FF9B9B",
+              "#86BBF1",
+              "#FFC56C",
+              "#7BD56C",
+              "#FF9B9B",
+              "#86BBF1",
+              "#FFC56C",
+              "#E0E0E0"
+            ]
+          },
+          "legend": null
+        }
+      },
+      "layer": [
+        {
+          "name": "reference-base-background",
+          "mark": { "type": "rect", "tooltip": null }
+        },
+        {
+          "name": "reference-base-labels",
+          "mark": {
+            "type": "text",
+            "size": 13,
+            "fitToBand": true,
+            "paddingX": 1.5,
+            "paddingY": 1,
+            "opacity": 0.7,
+            "flushX": false,
+            "tooltip": null
+          },
+          "encoding": {
+            "color": { "value": "black" },
+            "text": { "field": "base" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "translation",
+
+      "height": { "step": 19 },
+
+      "encoding": {
+        "y": {
+          "field": "lane",
+          "type": "ordinal",
+          "scale": {
+            "domain": [
+              "forward 2",
+              "forward 1",
+              "forward 0",
+              "reverse 0",
+              "reverse 1",
+              "reverse 2"
+            ],
+            "paddingInner": 0.0
+          },
+          "axis": { "title": null }
+        }
+      },
+
+      "transform": [
+        { "type": "formula", "expr": "upper(datum.base)", "as": "base" },
+        {
+          "type": "lookup",
+          "from": { "name": "nucleotideComplements" },
+          "key": "base",
+          "values": ["complement"],
+          "default": "N"
+        },
+        {
+          "type": "window",
+          "sort": { "field": "pos" },
+          "ops": ["lead", "lead", "lead", "lead"],
+          "fields": ["base", "base", "complement", "complement"],
+          "params": [1, 2, 1, 2],
+          "as": ["base1", "base2", "complement1", "complement2"]
+        },
+        {
+          "type": "filter",
+          "expr": "isValid(datum.base2) && isValid(datum.complement2)"
+        },
+        { "type": "formula", "expr": "datum.pos + 3", "as": "end" }
+      ],
+      "layer": [
+        {
+          "name": "forward-translation",
+
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "datum.base + datum.base1 + datum.base2",
+              "as": "codon"
+            },
+            {
+              "type": "lookup",
+              "from": { "name": "geneticCode" },
+              "key": "codon",
+              "values": ["aminoAcid", "kind"],
+              "as": ["aminoAcid", "kind"],
+              "default": "?"
+            },
+            {
+              "type": "formula",
+              "expr": "'forward ' + (datum.pos % 3)",
+              "as": "lane"
+            }
+          ],
+          "encoding": {
+            "x": {
+              "chrom": "chrom",
+              "pos": "pos",
+              "type": "locus",
+              "band": 0
+            },
+            "x2": { "chrom": "chrom", "pos": "end", "band": 0 }
+          },
+          "layer": [
+            {
+              "name": "forward-amino-acids",
+              "mark": {
+                "type": "arrow",
+                "style": "arrow-block-notch",
+                "stroke": "white",
+                "headAngle": 65,
+                "strokeWidth": 1,
+                "tooltip": null
+              },
+              "encoding": {
+                "direction": { "value": "forward" },
+                "color": {
+                  "field": "kind",
+                  "type": "nominal",
+                  "scale": {
+                    "domain": ["start", "stop", "other", "?"],
+                    "range": ["#00A000", "#F00000", "#D0D0D0", "#E0E0E0"]
+                  },
+                  "legend": null
+                }
+              }
+            },
+            {
+              "name": "forward-amino-acid-labels",
+              "mark": {
+                "type": "text",
+                "size": 12,
+                "paddingX": 1.5,
+                "tooltip": null
+              },
+              "encoding": {
+                "color": { "value": "black" },
+                "text": { "field": "aminoAcid" }
+              }
+            }
+          ]
+        },
+        {
+          "name": "reverse-translation",
+
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "datum.complement2 + datum.complement1 + datum.complement",
+              "as": "codon"
+            },
+            {
+              "type": "lookup",
+              "from": { "name": "geneticCode" },
+              "key": "codon",
+              "values": ["aminoAcid", "kind"],
+              "as": ["aminoAcid", "kind"],
+              "default": "?"
+            },
+            {
+              "type": "formula",
+              "expr": "'reverse ' + (datum.pos % 3)",
+              "as": "lane"
+            }
+          ],
+          "encoding": {
+            "x": {
+              "chrom": "chrom",
+              "pos": "pos",
+              "type": "locus",
+              "band": 0
+            },
+            "x2": { "chrom": "chrom", "pos": "end", "band": 0 }
+          },
+          "layer": [
+            {
+              "name": "reverse-amino-acids",
+              "mark": {
+                "type": "arrow",
+                "style": "arrow-block-notch",
+                "stroke": "white",
+                "headAngle": 65,
+                "strokeWidth": 1,
+                "tooltip": null
+              },
+              "encoding": {
+                "direction": { "value": "reverse" },
+                "color": {
+                  "field": "kind",
+                  "type": "nominal",
+                  "scale": {
+                    "domain": ["start", "stop", "other", "?"],
+                    "range": ["#00A000", "#F00000", "#D0D0D0", "#E0E0E0"]
+                  },
+                  "legend": null
+                }
+              }
+            },
+            {
+              "name": "reverse-amino-acid-labels",
+              "mark": {
+                "type": "text",
+                "size": 12,
+                "paddingX": 1.5,
+                "tooltip": null
+              },
+              "encoding": {
+                "color": { "value": "black" },
+                "text": { "field": "aminoAcid" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
