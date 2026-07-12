@@ -128,7 +128,7 @@ export async function initializeViewDataForViews(
     /** @type {import("../view/view.js").default[]} */
     const viewsNeedingLoad = [];
     for (const view of viewsToInitialize) {
-        if (view.spec.data || view.spec.transform) {
+        if (view.spec.data || hasLookupTransform(view)) {
             viewsNeedingLoad.push(view);
             continue;
         }
@@ -173,6 +173,13 @@ export async function initializeViewDataForViews(
     broadcastSubtreeDataReady(viewRoot);
 
     return builtDataFlow;
+}
+
+/**
+ * @param {import("../view/view.js").default} view
+ */
+function hasLookupTransform(view) {
+    return view.spec.transform?.some((transform) => transform.type == "lookup");
 }
 
 /**
