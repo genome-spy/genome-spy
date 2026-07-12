@@ -1,4 +1,5 @@
 import { PositionalChannel } from "./channel.js";
+import { DataSource } from "./data.js";
 import { FontStyle, FontWeight } from "./font.js";
 import { ExprRef } from "./parameter.js";
 
@@ -66,6 +67,47 @@ export interface FormulaParams extends TransformParamsBase {
 
     /** The (new) field where the computed value is written to */
     as: string;
+}
+
+export interface LookupParams extends TransformParamsBase {
+    type: "lookup";
+
+    /**
+     * The non-lazy data source that provides the lookup table.
+     */
+    from: DataSource;
+
+    /**
+     * The key field or fields in the lookup table. When multiple fields are
+     * provided, they form a composite key.
+     */
+    key: Field | Field[];
+
+    /**
+     * The fields in the input data to match against the lookup-table key.
+     * This array must have the same length and order as `key`. Defaults to
+     * `key`.
+     */
+    fields?: Field | Field[] | null;
+
+    /**
+     * Fields to copy from a matching lookup-table row. Defaults to all fields
+     * except `key`.
+     */
+    values?: Field[] | null;
+
+    /**
+     * Output field names. Defaults to `values`. Requires an explicit `values`
+     * array.
+     */
+    as?: string[];
+
+    /**
+     * Value written when no lookup-table row matches.
+     *
+     * __Default value:__ `null`
+     */
+    default?: any;
 }
 
 export interface ProjectParams extends TransformParamsBase {
@@ -839,6 +881,7 @@ export type TransformParams =
     | CoverageParams
     | FlattenDelimitedParams
     | FormulaParams
+    | LookupParams
     | FilterParams
     | FilterScoredLabelsParams
     | FlattenParams

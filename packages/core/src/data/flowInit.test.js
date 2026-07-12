@@ -326,6 +326,40 @@ describe("flowInit", () => {
         );
     });
 
+    test("collectNearestViewSubtreeDataSources includes nested lookup tables", async () => {
+        const context = createTestViewContext();
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ codon: "ATG" }] },
+            layer: [
+                {
+                    transform: [
+                        {
+                            type: "lookup",
+                            from: {
+                                values: [{ codon: "ATG", aminoAcid: "M" }],
+                            },
+                            key: "codon",
+                            fields: ["codon"],
+                            values: ["aminoAcid"],
+                        },
+                    ],
+                    mark: "point",
+                    encoding: {
+                        x: { field: "codon", type: "nominal" },
+                        y: { field: "aminoAcid", type: "nominal" },
+                    },
+                },
+            ],
+        };
+
+        const root = await context.createOrImportView(spec, null, null, "root");
+        initializeViewSubtree(root, context.dataFlow);
+
+        const sources = collectNearestViewSubtreeDataSources(root);
+        expect(sources).toHaveLength(2);
+    });
+
     test("loadViewSubtreeData emits subtree data ready broadcast", async () => {
         const context = createTestViewContext();
 

@@ -101,9 +101,22 @@ export function buildDataFlow(
         for (const params of transforms) {
             /** @type {FlowNode} */
             let transform;
+            /** @type {Collector | undefined} */
+            let foreignCollector;
             try {
-                transform = createTransform(params, view);
+                if (params.type == "lookup") {
+                    foreignCollector = createLookupCollector(
+                        /** @type {import("../spec/transform.js").LookupParams} */ (
+                            params
+                        ),
+                        view
+                    );
+                }
+                transform = createTransform(params, view, foreignCollector);
             } catch (e) {
+                if (foreignCollector) {
+                    releaseLookupCollector(view, foreignCollector);
+                }
                 console.warn(e);
                 throw new Error(
                     `Cannot initialize "${params.type}" transform: ${e}`,
@@ -119,7 +132,53 @@ export function buildDataFlow(
                 appendTransform(new CloneTransform());
             }
             appendTransform(transform);
+
+            if (foreignCollector) {
+                transform.registerDisposer(() =>
+                    releaseLookupCollector(view, foreignCollector)
+                );
+            }
         }
+    }
+
+    /**
+     * Creates a source branch that materializes a lookup table without a view.
+     *
+     * @param {import("../spec/transform.js").LookupParams} params
+     * @param {View} view
+     */
+    function createLookupCollector(params, view) {
+        const lookupData = params.from;
+        if ("lazy" in lookupData) {
+            throw new Error("Lookup tables cannot use lazy data sources.");
+        }
+        const dataSource = isNamedData(lookupData)
+            ? new NamedSource(
+                  lookupData,
+                  view,
+                  view.context.getNamedDataFromProvider
+              )
+            : createDataSource(lookupData, view);
+        const collector = new Collector({ type: "collect" });
+        dataSource.addChild(collector);
+        dataFlow.addDataSource(dataSource);
+        dataFlow.addCollector(collector);
+
+        view.flowHandle ??= {};
+        view.flowHandle.auxiliaryCollectors ??= new Set();
+        view.flowHandle.auxiliaryCollectors.add(collector);
+
+        return collector;
+    }
+
+    /**
+     * @param {View} view
+     * @param {Collector} collector
+     */
+    function releaseLookupCollector(view, collector) {
+        view.flowHandle?.auxiliaryCollectors?.delete(collector);
+        dataFlow.pruneCollectorBranch(collector);
+        dataFlow.removeCollector(collector);
     }
 
     function isInBranchWithIdentifier() {
