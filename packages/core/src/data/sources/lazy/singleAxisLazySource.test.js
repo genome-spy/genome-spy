@@ -80,6 +80,7 @@ describe("SingleAxisLazySource", () => {
                  * @returns {void}
                  */
                 visit: () => undefined,
+                /** @returns {any[]} */
                 getDescendants: () => [],
             }),
             new Set([source])
