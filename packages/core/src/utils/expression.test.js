@@ -11,6 +11,9 @@ describe("expression helpers", () => {
         expect(createFunction("lastindexof('banana', 'an')")()).toBe(3);
         expect(createFunction("join([1, 2, 3], '-')")()).toBe("1-2-3");
         expect(createFunction("reverse([1, 2, 3])")()).toEqual([3, 2, 1]);
+        expect(createFunction("reverse('ACGT')")()).toBe("TGCA");
+        // Array.from prevents splitting a Unicode code point into surrogates.
+        expect(createFunction("reverse('A😀C')")()).toBe("C😀A");
         expect(createFunction("slice([1, 2, 3, 4], 1, 3)")()).toEqual([2, 3]);
         expect(createFunction("sort([3, 1, 2])")()).toEqual([1, 2, 3]);
         expect(createFunction("center([2, 7])")()).toBe(4.5);

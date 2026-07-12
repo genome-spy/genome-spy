@@ -1,0 +1,36 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Window transform with a lead value and a two-row moving mean.",
+
+  "data": {
+    "values": [
+      { "sample": "A", "position": 1, "value": 2 },
+      { "sample": "A", "position": 2, "value": 5 },
+      { "sample": "A", "position": 3, "value": 8 },
+      { "sample": "B", "position": 1, "value": 3 },
+      { "sample": "B", "position": 2, "value": 7 }
+    ]
+  },
+
+  "transform": [
+    {
+      "type": "window",
+      "groupby": ["sample"],
+      "sort": { "field": "position" },
+      "ops": ["lead", "mean"],
+      "fields": ["value", "value"],
+      "as": ["nextValue", "movingMean"],
+      "frame": [-1, 0]
+    }
+  ],
+
+  "mark": { "type": "text", "size": 14 },
+
+  "encoding": {
+    "x": { "field": "position", "type": "quantitative" },
+    "y": { "field": "sample", "type": "nominal" },
+    "text": { "field": "movingMean", "type": "quantitative", "format": ".1f" },
+    "color": { "field": "nextValue", "type": "quantitative" }
+  }
+}
