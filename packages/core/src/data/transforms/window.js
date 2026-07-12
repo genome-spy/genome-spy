@@ -12,6 +12,19 @@ import {
     WINDOW_ONLY_OPS,
 } from "./windowOps.js";
 
+/**
+ * Compatibility note: this transform follows Vega's declarative Window
+ * contract for partitioning, sorting, frames, peers, and operation names.
+ * The frame and peer-boundary logic is adapted from Vega's Window transform:
+ * https://github.com/vega/vega/blob/main/packages/vega-transforms/src/Window.js
+ *
+ * GenomeSpy buffers and recomputes one FlowNode batch at a time. It does not
+ * implement Vega's incremental pulse and tuple-list execution model.
+ *
+ * TODO: Add Vega's `aggregate_params` when operations that require it are
+ * supported by windowAggregateOps.js.
+ */
+
 /** @typedef {import("../flowNode.js").Datum} Datum */
 
 /**

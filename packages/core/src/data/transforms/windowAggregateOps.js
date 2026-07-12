@@ -1,5 +1,20 @@
 import { bisectLeft, quantileSorted } from "d3-array";
 
+/**
+ * Compatibility note: this module follows the aggregate portion of Vega's
+ * Window contract. Its sliding-state structure and aggregate semantics are
+ * adapted from Vega's WindowState and AggregateOps sources:
+ * https://github.com/vega/vega/blob/main/packages/vega-transforms/src/util/WindowState.js
+ * https://github.com/vega/vega/blob/main/packages/vega-transforms/src/util/AggregateOps.js
+ *
+ * The state is purpose-built for GenomeSpy's buffered partitions and supported
+ * aggregate-operation subset; it is not Vega's incremental tuple-store code.
+ *
+ * TODO: Add Vega aggregate operations not yet supported by GenomeSpy:
+ * values, missing, product, average, variancep, stdev, stdevp, stderr,
+ * distinct, ci0, ci1, argmin, argmax, exponential, and exponentialb.
+ */
+
 /** @typedef {import("../flowNode.js").Datum} Datum */
 
 export const WINDOW_AGGREGATE_OPS = new Set([

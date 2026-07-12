@@ -1,7 +1,12 @@
 /**
- * Window-only operations adapted from Vega's window transform. The operation
- * is selected once while the transform is constructed; every evaluator then
- * runs a specialized loop for one complete partition.
+ * Compatibility note: these operations follow Vega's WindowOps contract.
+ * Their algorithms are adapted from Vega's source:
+ * https://github.com/vega/vega/blob/main/packages/vega-transforms/src/util/WindowOps.js
+ *
+ * GenomeSpy selects an evaluator during transform construction, then evaluates
+ * a complete buffered partition instead of Vega's incremental tuple updates.
+ * No Vega WindowOps are currently missing; unsupported Vega aggregate
+ * operations are listed in windowAggregateOps.js.
  */
 
 export const WINDOW_ONLY_OPS = new Set([
