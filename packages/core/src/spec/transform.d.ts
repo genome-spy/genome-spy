@@ -288,6 +288,83 @@ export interface AggregateParams extends TransformParamsBase {
     as?: string[];
 }
 
+/** Operations that calculate a value from rows in the current window. */
+export type WindowOnlyOp =
+    | "row_number"
+    | "rank"
+    | "dense_rank"
+    | "percent_rank"
+    | "cume_dist"
+    | "ntile"
+    | "lag"
+    | "lead"
+    | "first_value"
+    | "last_value"
+    | "nth_value"
+    | "prev_value"
+    | "next_value";
+
+export type WindowOp = WindowOnlyOp | AggregateOp;
+
+/**
+ * Computes window functions over partitions of the input data. Results are
+ * written to each input row while preserving the input row order.
+ */
+export interface WindowParams extends TransformParamsBase {
+    type: "window";
+
+    /**
+     * Fields used to sort rows before window functions are calculated. Without
+     * sorting, rows retain their input order and no rows are peers.
+     */
+    sort?: CompareParams;
+
+    /**
+     * Fields that divide the input into independent window partitions.
+     */
+    groupby?: Field[];
+
+    /**
+     * Window and aggregate operations to calculate. Entries align with
+     * `fields`, `params`, and `as`.
+     */
+    ops: WindowOp[];
+
+    /**
+     * Input fields for operations that use a field. Use `null` for operations
+     * such as `rank` and `count` that do not use one.
+     */
+    fields?: (Field | null)[];
+
+    /**
+     * Optional operation parameters. `lag` and `lead` use an offset, while
+     * `ntile` and `nth_value` use a positive integer.
+     */
+    params?: (number | null)[];
+
+    /**
+     * Output field names. A missing or `null` entry uses Vega-compatible
+     * operation and field naming.
+     */
+    as?: (string | null)[];
+
+    /**
+     * Inclusive offsets from the current sorted row that define the window.
+     * `null` leaves the corresponding side unbounded.
+     *
+     * __Default value:__ `[null, 0]`
+     */
+    frame?: [number | null, number | null];
+
+    /**
+     * Use row offsets without expanding frame boundaries to include sorted
+     * rows with equal values.
+     *
+     * __Default value:__ `false`
+     */
+    ignorePeers?: boolean;
+}
+
 export interface FlattenParams extends TransformParamsBase {
     type: "flatten";
 
@@ -899,4 +976,5 @@ export type TransformParams =
     | RegexExtractParams
     | RegexFoldParams
     | SampleParams
-    | StackParams;
+    | StackParams
+    | WindowParams;
