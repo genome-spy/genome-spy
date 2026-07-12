@@ -22,11 +22,16 @@ export default class LookupTransform extends Transform {
     /** @type {((datum: import("../flowNode.js").Datum) => any)[]} */
     #fieldAccessors;
 
-    /** @type {((datum: import("../flowNode.js").Datum) => any)[] | undefined} */
+    /** @type {((datum: import("../flowNode.js").Datum) => any)[]} */
     #valueAccessors;
 
     /** @type {string[]} */
     #as;
+
+    /** @type {string[]} */
+    #foreignKeyFields;
+
+    #implicitValues;
 
     #defaultValue;
 
@@ -45,34 +50,37 @@ export default class LookupTransform extends Transform {
         this.params = params;
         this.#foreignCollector = foreignCollector;
 
-        if (params.fields.length === 0) {
+        const foreignKeyFields = asArray(params.key);
+        const primaryFields = asArray(params.fields ?? foreignKeyFields);
+        if (primaryFields.length === 0) {
             throw new Error('The "fields" property must not be empty.');
         }
 
-        const foreignKeyFields = asArray(params.from.key);
-        if (foreignKeyFields.length !== params.fields.length) {
+        if (foreignKeyFields.length !== primaryFields.length) {
             throw new Error(
-                'The "fields" and "from.key" properties must have the same number of fields.'
+                'The "fields" and "key" properties must have the same number of fields.'
             );
         }
 
         const values = params.values;
         const as = params.as;
-        if (values) {
-            if (as && as.length !== values.length) {
-                throw new Error(
-                    'The "as" property must contain one output field for every lookup value.'
-                );
-            }
-        } else if (!as || as.length !== 1) {
+        if (!values && as) {
+            throw new Error('The "as" property requires explicit "values".');
+        }
+        if (values && as && as.length !== values.length) {
             throw new Error(
-                'Lookup without "values" requires one output field in "as".'
+                'The "as" property must contain one output field for every lookup value.'
             );
+        }
+        if (values?.length === 0) {
+            throw new Error('The "values" property must not be empty.');
         }
 
         this.#foreignKeyAccessors = foreignKeyFields.map((name) => field(name));
-        this.#fieldAccessors = params.fields.map((name) => field(name));
-        this.#valueAccessors = values?.map((name) => field(name));
+        this.#fieldAccessors = primaryFields.map((name) => field(name));
+        this.#foreignKeyFields = foreignKeyFields;
+        this.#implicitValues = !values;
+        this.#valueAccessors = values?.map((name) => field(name)) ?? [];
         this.#as = as ?? values ?? [];
         this.#defaultValue = params.default ?? null;
 
@@ -85,6 +93,10 @@ export default class LookupTransform extends Transform {
         super.reset();
         this.#index = null;
         this.#primaryCompleted = false;
+        if (this.#implicitValues) {
+            this.#valueAccessors = [];
+            this.#as = [];
+        }
     }
 
     /**
@@ -139,11 +151,33 @@ export default class LookupTransform extends Transform {
         }
 
         this.#index = new Map();
-        for (const foreignDatum of this.#foreignCollector.getData()) {
+        const foreignData = Array.from(this.#foreignCollector.getData());
+        if (this.#implicitValues) {
+            const fieldNames = new Set();
+            for (const foreignDatum of foreignData) {
+                for (const name of Object.keys(foreignDatum)) {
+                    fieldNames.add(name);
+                }
+            }
+            const nestedKeyFields = this.#foreignKeyFields.filter(
+                (name) => !fieldNames.has(name)
+            );
+            if (fieldNames.size && nestedKeyFields.length) {
+                throw new Error(
+                    'Omitting "values" requires top-level lookup key fields.'
+                );
+            }
+            this.#as = Array.from(fieldNames).filter(
+                (name) => !this.#foreignKeyFields.includes(name)
+            );
+            this.#valueAccessors = this.#as.map((name) => field(name));
+        }
+
+        for (const foreignDatum of foreignData) {
             const key = this.#foreignKeyAccessors.map((accessor) =>
                 accessor(foreignDatum)
             );
-            addToIndex(this.#index, key, foreignDatum, this.params.from.key);
+            addToIndex(this.#index, key, foreignDatum, this.params.key);
         }
     }
 
@@ -159,14 +193,15 @@ export default class LookupTransform extends Transform {
             /** @type {Map<any, Map<any, any>>} */ (this.#index),
             key
         );
-        if (this.#valueAccessors) {
-            for (let i = 0; i < this.#valueAccessors.length; i++) {
-                output[this.#as[i]] = foreignDatum
-                    ? this.#valueAccessors[i](foreignDatum)
-                    : this.#defaultValue;
+        for (let i = 0; i < this.#valueAccessors.length; i++) {
+            if (Object.hasOwn(output, this.#as[i])) {
+                throw new Error(
+                    `Lookup output field "${this.#as[i]}" already exists in primary data.`
+                );
             }
-        } else {
-            output[this.#as[0]] = foreignDatum ?? this.#defaultValue;
+            output[this.#as[i]] = foreignDatum
+                ? this.#valueAccessors[i](foreignDatum)
+                : this.#defaultValue;
         }
         this._propagate(output);
     }

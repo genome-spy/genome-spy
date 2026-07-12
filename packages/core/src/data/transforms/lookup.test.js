@@ -25,7 +25,8 @@ test("copies matching lookup values and applies defaults", () => {
     const lookup = new LookupTransform(
         {
             type: "lookup",
-            from: { data: { values: [] }, key: "codon" },
+            from: { values: [] },
+            key: "codon",
             fields: ["codon"],
             values: ["aminoAcid"],
             as: ["aminoAcid"],
@@ -47,7 +48,8 @@ test("matches composite keys without conflating key value types", () => {
     const lookup = new LookupTransform(
         {
             type: "lookup",
-            from: { data: { values: [] }, key: ["sample", "codon"] },
+            from: { values: [] },
+            key: ["sample", "codon"],
             fields: ["sample", "codon"],
             values: ["label"],
             as: ["label"],
@@ -69,14 +71,49 @@ test("matches composite keys without conflating key value types", () => {
     ]);
 });
 
+test("defaults fields to the foreign key and copies non-key table fields", () => {
+    const lookup = new LookupTransform(
+        {
+            type: "lookup",
+            from: { values: [] },
+            key: "codon",
+            fields: null,
+            values: null,
+        },
+        collect([{ codon: "ATG", aminoAcid: "M", category: "start" }])
+    );
+
+    expect(processData(lookup, [{ codon: "ATG" }])).toEqual([
+        { codon: "ATG", aminoAcid: "M", category: "start" },
+    ]);
+});
+
+test("matches differently named single key fields", () => {
+    const lookup = new LookupTransform(
+        {
+            type: "lookup",
+            from: { values: [] },
+            key: "id",
+            fields: "codon",
+            values: ["aminoAcid"],
+        },
+        collect([{ id: "ATG", aminoAcid: "M" }])
+    );
+
+    expect(processData(lookup, [{ codon: "ATG" }])).toEqual([
+        { codon: "ATG", aminoAcid: "M" },
+    ]);
+});
+
 test("requires aligned primary and foreign key fields", () => {
     expect(
         () =>
             new LookupTransform(
                 {
                     type: "lookup",
-                    from: { data: { values: [] }, key: ["sample", "codon"] },
-                    fields: ["sample"],
+                    from: { values: [] },
+                    key: ["sample", "codon"],
+                    fields: "sample",
                     values: ["aminoAcid"],
                 },
                 collect([])
@@ -84,20 +121,87 @@ test("requires aligned primary and foreign key fields", () => {
     ).toThrow(/same number of fields/);
 });
 
-test("writes matching rows when values are omitted", () => {
-    const foreignDatum = { codon: "ATG", aminoAcid: "M" };
+test("requires explicit values when using as", () => {
+    expect(
+        () =>
+            new LookupTransform(
+                {
+                    type: "lookup",
+                    from: { values: [] },
+                    key: "codon",
+                    as: ["aminoAcid"],
+                },
+                collect([])
+            )
+    ).toThrow(/requires explicit "values"/);
+});
+
+test("rejects empty explicit lookup values", () => {
+    expect(
+        () =>
+            new LookupTransform(
+                {
+                    type: "lookup",
+                    from: { values: [] },
+                    key: "codon",
+                    values: [],
+                },
+                collect([])
+            )
+    ).toThrow(/values.*must not be empty/);
+});
+
+test("requires top-level lookup keys when values are implicit", () => {
     const lookup = new LookupTransform(
         {
             type: "lookup",
-            from: { data: { values: [] }, key: "codon" },
-            fields: ["codon"],
-            as: ["translation"],
+            from: { values: [] },
+            key: "sample.id",
+            fields: "sampleId",
         },
-        collect([foreignDatum])
+        collect([{ sample: { id: "A" }, label: "Sample A" }])
     );
 
-    expect(processData(lookup, [{ codon: "ATG" }])).toEqual([
-        { codon: "ATG", translation: foreignDatum },
+    expect(() => processData(lookup, [{ sampleId: "A" }])).toThrow(
+        /requires top-level lookup key fields/
+    );
+});
+
+test("rejects lookup output fields that collide with primary data", () => {
+    const lookup = new LookupTransform(
+        {
+            type: "lookup",
+            from: { values: [] },
+            key: "codon",
+        },
+        collect([{ codon: "ATG", aminoAcid: "M" }])
+    );
+
+    expect(() =>
+        processData(lookup, [{ codon: "ATG", aminoAcid: "unknown" }])
+    ).toThrow(/already exists in primary data/);
+});
+
+test("uses as to avoid lookup output field collisions", () => {
+    const lookup = new LookupTransform(
+        {
+            type: "lookup",
+            from: { values: [] },
+            key: "codon",
+            values: ["aminoAcid"],
+            as: ["translatedAminoAcid"],
+        },
+        collect([{ codon: "ATG", aminoAcid: "M" }])
+    );
+
+    expect(
+        processData(lookup, [{ codon: "ATG", aminoAcid: "unknown" }])
+    ).toEqual([
+        {
+            codon: "ATG",
+            aminoAcid: "unknown",
+            translatedAminoAcid: "M",
+        },
     ]);
 });
 
@@ -106,7 +210,8 @@ test("requires the foreign table to complete before primary data", () => {
     const lookup = new LookupTransform(
         {
             type: "lookup",
-            from: { data: { values: [] }, key: "codon" },
+            from: { values: [] },
+            key: "codon",
             fields: ["codon"],
             values: ["aminoAcid"],
         },
@@ -122,7 +227,8 @@ test("uses refreshed table values after primary data is reloaded", () => {
     const lookup = new LookupTransform(
         {
             type: "lookup",
-            from: { data: { values: [] }, key: "codon" },
+            from: { values: [] },
+            key: "codon",
             fields: ["codon"],
             values: ["aminoAcid"],
         },
@@ -149,7 +255,8 @@ test("repropagates a buffered primary collector when the table reloads", () => {
     const lookup = new LookupTransform(
         {
             type: "lookup",
-            from: { data: { values: [] }, key: "codon" },
+            from: { values: [] },
+            key: "codon",
             fields: ["codon"],
             values: ["aminoAcid"],
         },
@@ -181,7 +288,8 @@ test("reloads the primary source when the table reloads", async () => {
     const lookup = new LookupTransform(
         {
             type: "lookup",
-            from: { data: { values: [] }, key: "codon" },
+            from: { values: [] },
+            key: "codon",
             fields: ["codon"],
             values: ["aminoAcid"],
         },
@@ -224,12 +332,10 @@ test("reloads primary data after a lookup URL parameter changes", async () => {
             {
                 type: "lookup",
                 from: {
-                    data: {
-                        url: { expr: "tableUrl" },
-                        format: { type: "csv" },
-                    },
-                    key: "codon",
+                    url: { expr: "tableUrl" },
+                    format: { type: "csv" },
                 },
+                key: "codon",
                 fields: ["codon"],
                 values: ["aminoAcid"],
             },
@@ -254,7 +360,8 @@ test("rejects duplicate foreign keys", () => {
     const lookup = new LookupTransform(
         {
             type: "lookup",
-            from: { data: { values: [] }, key: "codon" },
+            from: { values: [] },
+            key: "codon",
             fields: ["codon"],
             values: ["aminoAcid"],
         },
@@ -276,14 +383,12 @@ test("loads an inline lookup table without a separate view", async () => {
             {
                 type: "lookup",
                 from: {
-                    data: {
-                        values: [
-                            { codon: "ATG", aminoAcid: "M" },
-                            { codon: "TGG", aminoAcid: "W" },
-                        ],
-                    },
-                    key: "codon",
+                    values: [
+                        { codon: "ATG", aminoAcid: "M" },
+                        { codon: "TGG", aminoAcid: "W" },
+                    ],
                 },
+                key: "codon",
                 fields: ["codon"],
                 values: ["aminoAcid"],
             },
@@ -320,12 +425,10 @@ test("loads a CSV lookup table through the regular data source", async () => {
             {
                 type: "lookup",
                 from: {
-                    data: {
-                        url: "data/genetic-code.csv",
-                        format: { type: "csv" },
-                    },
-                    key: "codon",
+                    url: "data/genetic-code.csv",
+                    format: { type: "csv" },
                 },
+                key: "codon",
                 fields: ["codon"],
                 values: ["aminoAcid"],
             },
@@ -350,10 +453,8 @@ test("rejects lazy lookup tables", async () => {
             transform: [
                 {
                     type: "lookup",
-                    from: {
-                        data: { lazy: { type: "axisGenome", channel: "x" } },
-                        key: "name",
-                    },
+                    from: { lazy: { type: "axisGenome", channel: "x" } },
+                    key: "name",
                     fields: ["codon"],
                     values: ["name"],
                 },

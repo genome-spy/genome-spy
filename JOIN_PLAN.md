@@ -39,7 +39,7 @@ GenomeSpy:
 }
 ```
 
-`from.data` is a normal data descriptor. `fields` and `from.key` are aligned
+`from` is a normal data descriptor. `fields` and `key` are aligned
 field arrays that form an exact key tuple. `values` selects fields copied from
 the matching row, `as` names their output fields, and `default` is written when
 no row matches. If `as` is omitted, use the corresponding `values` names.
@@ -90,7 +90,7 @@ only canonical contig names.
 
    Tentative commit: `feat(core): implement keyed lookup transform`
 
-3. Extend flow construction and lifecycle handling so `from.data` creates an
+3. Extend flow construction and lifecycle handling so `from` creates an
    auxiliary source and collector. Reuse the normal source creation path for
    inline, URL, and named data. Reject lazy data. Load the table before primary
    data and remove the auxiliary source when it has no remaining consumers.

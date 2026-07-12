@@ -1,19 +1,12 @@
 # Lookup
 
-The `"lookup"` transform adds values from a keyed table to each input data
-object. Input objects without a matching key are retained.
+The `"lookup"` transform performs a keyed, one-to-one left outer join: it
+retains every input data object and adds values from a matching lookup-table
+row.
 
-The table uses an eager [`data`](../data/index.md) descriptor. It can contain
+The table uses an eager [`data`](../data/eager.md) descriptor. It can contain
 inline values, load a URL in any supported format such as CSV or Parquet, or
-refer to named data. The table is loaded before primary data.
-
-## Limitations
-
-- Lookup tables are fully materialized in memory and must have unique keys.
-- Lookup matches exact field values. Range, overlap, and many-to-many joins
-  are not supported.
-- Lookup tables cannot use lazy data sources.
-- Reloading a lookup table automatically refreshes the primary data.
+refer to named data.
 
 ## Parameters
 
@@ -45,17 +38,13 @@ This transform copies `aminoAcid` from the matching table row. The unmatched
 {
   "type": "lookup",
   "from": {
-    "data": {
-      "values": [
-        { "codon": "ATG", "aminoAcid": "M" },
-        { "codon": "TGG", "aminoAcid": "W" },
-        { "codon": "TAA", "aminoAcid": "Stop" }
-      ]
-    },
-    "key": "codon"
+    "values": [
+      { "codon": "ATG", "aminoAcid": "M" },
+      { "codon": "TGG", "aminoAcid": "W" },
+      { "codon": "TAA", "aminoAcid": "Stop" }
+    ]
   },
-  "fields": ["codon"],
-  "values": ["aminoAcid"],
+  "key": "codon",
   "default": "?"
 }
 ```
@@ -69,8 +58,11 @@ The resulting data is:
 | 7        | TAA   | 6         | Stop      |
 | 10       | NNN   | 1         | ?         |
 
-Use matching `fields` and `from.key` arrays for a composite key, for example
-`fields: ["sample", "codon"]` and `from.key: ["sample", "codon"]`.
+Use matching `fields` and `key` arrays for a composite key, for example
+`fields: ["sample", "codon"]` and `key: ["sample", "codon"]`.
 
-When `values` is omitted, lookup writes the complete matching table row to the
-single field named by `as`.
+When the key fields have the same names in both data sets, omit `fields`. When
+`values` is omitted, lookup copies every non-key field from the table. Use
+explicit `values` and `as` to select or rename copied fields. Copied fields
+must not have the same names as primary-data fields. Implicit values
+require top-level lookup key fields.

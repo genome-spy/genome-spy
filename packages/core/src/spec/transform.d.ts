@@ -69,42 +69,36 @@ export interface FormulaParams extends TransformParamsBase {
     as: string;
 }
 
-export interface LookupFrom {
+export interface LookupParams extends TransformParamsBase {
+    type: "lookup";
+
     /**
      * The non-lazy data source that provides the lookup table.
      */
-    data: DataSource;
+    from: DataSource;
 
     /**
      * The key field or fields in the lookup table. When multiple fields are
      * provided, they form a composite key.
      */
     key: Field | Field[];
-}
-
-export interface LookupParams extends TransformParamsBase {
-    type: "lookup";
-
-    /**
-     * The lookup table and its key field.
-     */
-    from: LookupFrom;
 
     /**
      * The fields in the input data to match against the lookup-table key.
-     * This array must have the same length and order as `from.key`.
+     * This array must have the same length and order as `key`. Defaults to
+     * `key`.
      */
-    fields: Field[];
+    fields?: Field | Field[] | null;
 
     /**
-     * Fields to copy from a matching lookup-table row. When omitted, the
-     * complete row is written to the output field.
+     * Fields to copy from a matching lookup-table row. Defaults to all fields
+     * except `key`.
      */
-    values?: Field[];
+    values?: Field[] | null;
 
     /**
-     * Output field names. When `values` is provided for one input field, the
-     * names default to `values`. Otherwise, this property is required.
+     * Output field names. Defaults to `values`. Requires an explicit `values`
+     * array.
      */
     as?: string[];
 

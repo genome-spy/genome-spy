@@ -337,11 +337,9 @@ describe("flowInit", () => {
                         {
                             type: "lookup",
                             from: {
-                                data: {
-                                    values: [{ codon: "ATG", aminoAcid: "M" }],
-                                },
-                                key: "codon",
+                                values: [{ codon: "ATG", aminoAcid: "M" }],
                             },
+                            key: "codon",
                             fields: ["codon"],
                             values: ["aminoAcid"],
                         },
