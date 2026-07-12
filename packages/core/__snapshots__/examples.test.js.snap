@@ -12299,27 +12299,34 @@ exports[`shared examples > initializes examples/docs/grammar/transform/window/wi
       "identifier": null,
       "type": "InlineSource",
     },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendGradientSource",
-    },
-    {
-      "identifier": null,
-      "type": "LegendGradientTicksSource",
-    },
   ],
   "hierarchy": {
     "baseUrl": null,
     "children": [
       {
         "baseUrl": "examples/",
-        "children": [],
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer0",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer1",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer2",
+            "type": "UnitView",
+          },
+        ],
         "name": "grid0",
-        "type": "UnitView",
+        "type": "LayerView",
       },
     ],
     "name": "implicitRoot",
