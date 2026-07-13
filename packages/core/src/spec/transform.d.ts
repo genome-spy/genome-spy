@@ -343,8 +343,9 @@ export interface WindowParams extends TransformParamsBase {
     params?: (number | null)[];
 
     /**
-     * Output field names. A missing or `null` entry uses Vega-compatible
-     * operation and field naming.
+     * Output field names. A missing or `null` entry uses the operation and
+     * field name joined with an underscore, such as `sum_score`. Operations
+     * without a field use only the operation name, such as `rank`.
      */
     as?: (string | null)[];
 
