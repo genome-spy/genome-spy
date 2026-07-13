@@ -64,7 +64,9 @@ const functionContext = {
     },
 
     reverse(/** @type {any} */ seq) {
-        return array(seq).slice().reverse();
+        return isString(seq)
+            ? Array.from(seq).reverse().join("")
+            : array(seq).slice().reverse();
     },
 
     slice(

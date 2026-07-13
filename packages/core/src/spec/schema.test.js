@@ -53,6 +53,23 @@ describe("generated core schema", () => {
         );
     });
 
+    test("accepts the indexed FASTA six-frame translation example", () => {
+        const spec = JSON.parse(
+            fs.readFileSync(
+                path.join(
+                    repoRoot,
+                    "examples/docs/genomic-data/examples/indexed-fasta-six-frame-translation.json"
+                ),
+                "utf8"
+            )
+        );
+        const validate = createCoreValidator();
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
     test("includes transform descriptions in the generated schema", () => {
         const schema = createCoreSchema();
         const aggregateParams =

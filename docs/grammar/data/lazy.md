@@ -49,10 +49,11 @@ SCHEMA IndexedFastaData
 
 The visualization below shows a sequence track backed by an indexed FASTA
 source. GenomeSpy fetches new sequence only when the visible region is smaller
-than the source window size (default: 7000 bp). For a fuller explanation of the
-track, see [Indexed FASTA Sequence Track](../../genomic-data/examples/indexed-fasta-sequence-track.md).
+than the source window size (default: 7000 bp). The [Indexed FASTA Six-Frame
+Translation](../../genomic-data/examples/indexed-fasta-six-frame-translation.md)
+example builds on this source with reference bases and translated reading frames.
 
-EXAMPLE examples/docs/genomic-data/examples/indexed-fasta-sequence-track.json height=60 spechidden
+EXAMPLE examples/docs/grammar/data/lazy/indexed-fasta-sequence-track.json height=60 spechidden
 
 !!! disclaimer ""
 

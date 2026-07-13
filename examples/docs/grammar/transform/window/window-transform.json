@@ -1,0 +1,60 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Window transform showing lead arrows and a two-row moving mean.",
+
+  "data": {
+    "values": [
+      { "position": 1, "value": 2 },
+      { "position": 2, "value": 5 },
+      { "position": 3, "value": 3 },
+      { "position": 4, "value": 7 },
+      { "position": 5, "value": 6 }
+    ]
+  },
+
+  "transform": [
+    {
+      "type": "window",
+      "sort": { "field": "position" },
+      "ops": ["lead", "lead", "mean"],
+      "fields": ["position", "value", "value"],
+      "as": ["nextPosition", "nextValue", "movingMean"],
+      "frame": [-1, 0]
+    }
+  ],
+
+  "encoding": {
+    "x": { "field": "position", "type": "quantitative" },
+    "y": { "field": "value", "type": "quantitative" }
+  },
+
+  "layer": [
+    {
+      "mark": { "type": "point", "filled": true },
+      "encoding": { "color": { "value": "#4C78A8" } }
+    },
+    {
+      "mark": "point",
+      "encoding": {
+        "y": { "field": "movingMean", "type": "quantitative" },
+        "color": { "value": "black" }
+      }
+    },
+    {
+      "transform": [
+        { "type": "filter", "expr": "isValid(datum.nextPosition)" }
+      ],
+      "mark": {
+        "type": "arrow",
+        "size": 1,
+        "headWidth": 15
+      },
+      "encoding": {
+        "x2": { "field": "nextPosition" },
+        "y2": { "field": "nextValue" },
+        "color": { "value": "#A0A0A0" }
+      }
+    }
+  ]
+}

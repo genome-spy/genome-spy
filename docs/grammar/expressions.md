@@ -130,6 +130,9 @@ package.
 [`sort`](https://vega.github.io/vega/docs/expressions/#sort),
 [`span`](https://vega.github.io/vega/docs/expressions/#span)
 
+`reverse` also accepts strings. It returns a reversed string without modifying
+the input and reverses by Unicode code point rather than UTF-16 code unit.
+
 #### String Functions
 
 [`parseFloat`](https://vega.github.io/vega/docs/expressions/#parseFloat),

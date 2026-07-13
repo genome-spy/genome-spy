@@ -22,6 +22,7 @@ import FlattenSequenceTransform from "./flattenSequence.js";
 import AggregateTransform from "./aggregate.js";
 import IdentifierTransform from "./identifier.js";
 import TruncateTextTransform from "./truncateText.js";
+import WindowTransform from "./window.js";
 
 /**
  * TODO: Make this dynamic
@@ -51,6 +52,7 @@ export const transforms = {
     regexFold: RegexFoldTransform,
     sample: SampleTransform,
     truncateText: TruncateTextTransform,
+    window: WindowTransform,
     stack: StackTransform,
 };
 
