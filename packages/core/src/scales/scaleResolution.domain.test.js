@@ -37,6 +37,31 @@ describe("Scale resolution domain handling", () => {
         expect(resolution.getResolvedScaleType()).toBe("index");
     });
 
+    test("index scale can use its data domain as the zoom extent", async () => {
+        const view = await initView(
+            {
+                data: { values: [0, 5, 10] },
+                mark: "point",
+                encoding: {
+                    x: {
+                        field: "data",
+                        type: "index",
+                        scale: {
+                            domain: [3, 5],
+                            zoom: { extent: "data" },
+                        },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const resolution = getRequiredScaleResolution(view, "x");
+
+        expect(resolution.scale.domain()).toEqual([3, 6]);
+        expect(resolution.zoomExtent).toEqual([0, 11]);
+    });
+
     test("Scales are shared and explicit domains merged properly", async () => {
         const view = await initView(
             {

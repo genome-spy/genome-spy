@@ -35,17 +35,20 @@ function createAnimator() {
  * @param {ReturnType<typeof createAnimator>} [options.animator]
  * @param {() => void} [options.renderImmediately]
  * @param {() => number[]} [options.getGenomeExtent]
+ * @param {() => number[] | undefined} [options.getDataZoomExtent]
  */
 function createController({
     scale,
     animator,
     renderImmediately,
     getGenomeExtent,
+    getDataZoomExtent,
 } = {}) {
     return new ScaleInteractionController({
         getScale: () => scale ?? createLinearScale([0, 10]),
         getAnimator: () => animator ?? createAnimator(),
         getInitialDomainSnapshot: () => [0, 10],
+        getDataZoomExtent: getDataZoomExtent ?? (() => [0, 10]),
         getResetDomain: () => [0, 10],
         fromComplexInterval: /** @returns {number[]} */ (
             /** @type {any} */ interval
@@ -99,6 +102,49 @@ describe("ScaleInteractionController", () => {
         });
 
         expect(controller.getZoomExtent()).toEqual([0, 12]);
+    });
+
+    test("zoom extent can be derived from data", () => {
+        const scale = createLinearScale([2, 8], {
+            zoom: { extent: "data" },
+        });
+        const controller = createController({
+            scale,
+            getDataZoomExtent: () => [-5, 15],
+        });
+
+        expect(controller.getZoomExtent()).toEqual([-5, 15]);
+    });
+
+    test("unbounded zoom extent does not clamp zooming", () => {
+        const scale = createLinearScale([0, 10], {
+            zoom: { extent: "unbounded" },
+        });
+        const controller = createController({ scale });
+
+        expect(controller.zoom(2, 5, 0)).toBe(true);
+        expect(scale.domain()).toEqual([-5, 15]);
+    });
+
+    test("unbounded zoom extent rejects locus scales", () => {
+        const scale = createLinearScale([0, 10], {
+            type: "locus",
+            zoom: { extent: "unbounded" },
+        });
+        const controller = createController({ scale });
+
+        expect(() => controller.getZoomExtent()).toThrow(
+            'Zoom extent "unbounded" is not supported for locus scales.'
+        );
+    });
+
+    test("unbounded zoom level uses the initial domain as reference", () => {
+        const scale = createLinearScale([-5, 15], {
+            zoom: { extent: "unbounded" },
+        });
+        const controller = createController({ scale });
+
+        expect(controller.getZoomLevel()).toBe(0.5);
     });
 
     test("isZoomed is true only when current domain differs from reset domain", () => {

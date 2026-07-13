@@ -236,11 +236,12 @@ Both `"index"` and `"locus"` scales are zoomable by default.
 
 ### Zoom extent
 
-The zoom `extent` allows you to control how far the scale can be zoomed out or
-panned (translated). Zoom extent equals the scale domain by default, except for
-the `"locus"` scale, where it includes the whole genome. Example:
+SCHEMA ZoomParams
 
 For `"index"` and `"locus"` scales, two-point zoom extents are inclusive.
+
+The following scale starts at `[10, 20]` and allows zooming out to the full
+data extent:
 
 ```json
 {
@@ -248,7 +249,7 @@ For `"index"` and `"locus"` scales, two-point zoom extents are inclusive.
   "scale": {
     "domain": [10, 20],
     "zoom": {
-      "extent": [0, 30]
+      "extent": "data"
     }
   }
 }

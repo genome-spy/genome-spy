@@ -341,6 +341,19 @@ export type ScalarDomain = NumericDomain | string[] | boolean[];
 export type ComplexDomain = ChromosomalLocus[];
 
 export interface ZoomParams {
-    /** The boundaries that limit the zoom and pan interactions. */
-    extent?: ScalarDomain | ComplexDomain;
+    /**
+     * The boundaries that limit zoom and pan interactions.
+     *
+     * A domain array sets explicit boundaries. `"data"` derives the boundaries
+     * from the data that contributes to the scale domain. For index and
+     * quantitative scales, `"unbounded"` allows zooming and panning without
+     * fixed boundaries. Locus scales do not support unbounded zoom.
+     *
+     * With an unbounded extent, the initial scale domain is used as the
+     * reference for the `zoomLevel` expression parameter.
+     *
+     * __Default value:__ The initial scale domain, except the whole genome for
+     * locus scales.
+     */
+    extent?: ScalarDomain | ComplexDomain | "data" | "unbounded";
 }

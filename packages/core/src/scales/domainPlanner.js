@@ -271,6 +271,19 @@ export default class DomainPlanner {
     }
 
     /**
+     * Returns the data-derived domain in the internal coordinate system used
+     * by zoom interactions.
+     *
+     * @returns {number[] | undefined}
+     */
+    getDataZoomExtent() {
+        return toInternalIndexLikeDataDomain(
+            this.#getType(),
+            this.getDataDomain()
+        );
+    }
+
+    /**
      * @param {import("../types/encoder.js").VegaScale} scale
      * @param {boolean} domainWasInitialized
      * @param {any[]} [snapshotDomain]

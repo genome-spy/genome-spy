@@ -309,6 +309,36 @@ describe("generated core schema", () => {
         );
     });
 
+    test("accepts data-derived and unbounded zoom extents", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: { values: [{ x: 1, y: 2 }] },
+            mark: "point",
+            encoding: {
+                x: {
+                    field: "x",
+                    type: "quantitative",
+                    scale: {
+                        domain: [0, 2],
+                        zoom: { extent: "data" },
+                    },
+                },
+                y: {
+                    field: "y",
+                    type: "quantitative",
+                    scale: {
+                        domain: [1, 3],
+                        zoom: { extent: "unbounded" },
+                    },
+                },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
     test("accepts arrow mark shape parameters", () => {
         const schema = createCoreSchema();
         const validate = new Ajv.default({

@@ -191,6 +191,7 @@ export default class ScaleResolution {
             renderImmediately: () => this.#viewContext.renderImmediately(),
             getInitialDomainSnapshot: () =>
                 this.#domainAggregator.initialDomainSnapshot,
+            getDataZoomExtent: () => this.#domainAggregator.getDataZoomExtent(),
             getResetDomain: () => this.#getConfiguredOrDefaultDomain(),
             fromComplexInterval: this.fromComplexInterval.bind(this),
             getGenomeExtent: () => this.#getLocusExtent(),

@@ -45,6 +45,9 @@ export default class ScaleInteractionController {
     /** @type {() => number[]} */
     #getInitialDomainSnapshot;
 
+    /** @type {() => number[] | undefined} */
+    #getDataZoomExtent;
+
     /** @type {() => number[]} */
     #getResetDomain;
 
@@ -63,6 +66,7 @@ export default class ScaleInteractionController {
      * @param {() => import("../utils/animator.js").default} options.getAnimator
      * @param {() => void} options.renderImmediately
      * @param {() => number[]} options.getInitialDomainSnapshot
+     * @param {() => number[] | undefined} options.getDataZoomExtent
      * @param {() => number[]} options.getResetDomain
      * @param {(domain: ScalarDomain | ComplexDomain) => number[]} options.fromComplexInterval
      * @param {() => number[]} options.getGenomeExtent
@@ -72,6 +76,7 @@ export default class ScaleInteractionController {
         getAnimator,
         renderImmediately,
         getInitialDomainSnapshot,
+        getDataZoomExtent,
         getResetDomain,
         fromComplexInterval,
         getGenomeExtent,
@@ -80,6 +85,7 @@ export default class ScaleInteractionController {
         this.#getAnimator = getAnimator;
         this.#renderImmediately = renderImmediately;
         this.#getInitialDomainSnapshot = getInitialDomainSnapshot;
+        this.#getDataZoomExtent = getDataZoomExtent;
         this.#getResetDomain = getResetDomain;
         this.#fromComplexInterval = fromComplexInterval;
         this.#getGenomeExtent = getGenomeExtent;
@@ -93,7 +99,8 @@ export default class ScaleInteractionController {
             zoom,
             this.#fromComplexInterval,
             this.#getGenomeExtent,
-            this.#getInitialDomainSnapshot
+            this.#getInitialDomainSnapshot,
+            this.#getDataZoomExtent
         );
     }
 
@@ -291,9 +298,13 @@ export default class ScaleInteractionController {
      * Returns the zoom level with respect to the reference domain span (the original domain).
      */
     getZoomLevel() {
-        // Zoom level makes sense only for user-zoomable scales where zoom extent is defined
         if (this.isZoomable()) {
-            return span(this.getZoomExtent()) / span(this.#getScale().domain());
+            const zoomExtent = this.getZoomExtent();
+            const referenceDomain = zoomExtent.every(Number.isFinite)
+                ? zoomExtent
+                : (this.#getInitialDomainSnapshot() ??
+                  this.#getScale().domain());
+            return span(referenceDomain) / span(this.#getScale().domain());
         }
 
         return 1.0;
@@ -339,6 +350,7 @@ function normalizeZoomToOptions(options) {
  * @param {(interval: ScalarDomain | ComplexDomain) => number[]} fromComplexInterval
  * @param {() => number[]} getGenomeExtent
  * @param {() => number[]} getInitialDomainSnapshot
+ * @param {() => number[] | undefined} getDataZoomExtent
  * @returns {number[]}
  */
 function resolveZoomExtent(
@@ -346,7 +358,8 @@ function resolveZoomExtent(
     zoom,
     fromComplexInterval,
     getGenomeExtent,
-    getInitialDomainSnapshot
+    getInitialDomainSnapshot,
+    getDataZoomExtent
 ) {
     if (isZoomParams(zoom)) {
         if (isArray(zoom.extent)) {
@@ -355,6 +368,19 @@ function resolveZoomExtent(
                 zoom.extent,
                 fromComplexInterval
             );
+        } else if (zoom.extent === "data") {
+            return (
+                getDataZoomExtent() ??
+                getInitialDomainSnapshot() ??
+                scale.domain()
+            );
+        } else if (zoom.extent === "unbounded") {
+            if (scale.props.type === "locus") {
+                throw new Error(
+                    'Zoom extent "unbounded" is not supported for locus scales.'
+                );
+            }
+            return [-Infinity, Infinity];
         }
     }
 
@@ -364,7 +390,7 @@ function resolveZoomExtent(
 
     // TODO: Perhaps this should be "domain" for index scale and nothing for quantitative.
     // Would behave similarly to Vega-Lite, which doesn't have constraints.
-    return getInitialDomainSnapshot();
+    return getInitialDomainSnapshot() ?? scale.domain();
 }
 
 /**
