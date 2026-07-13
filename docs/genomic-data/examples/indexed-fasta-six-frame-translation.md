@@ -50,6 +50,8 @@ This example combines several GenomeSpy capabilities in one track:
   codons through root-level lookup tables.
 - [`window`](../../grammar/transform/window.md) uses sorted `lead` values to
   create overlapping three-base windows without sequence-specific logic.
+- [Named templates](../../grammar/import.md#repeating-with-named-templates)
+  define the shared translation track, with each import supplying its strand.
 - [`vconcat`](../../grammar/composition/concat.md) keeps the reference sequence
   and translation tracks separate while sharing their x scale.
 - [`arrow`](../../grammar/mark/arrow.md) marks show the forward and reverse

@@ -11,6 +11,15 @@
 
   "name": "indexed-fasta-six-frame-translation",
 
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr7", "pos": 20395929 },
+        { "chrom": "chr7", "pos": 20395976 }
+      ]
+    }
+  },
+
   "datasets": {
     "nucleotideComplements": [
       { "base": "A", "complement": "T" },
@@ -85,15 +94,6 @@
       { "codon": "GGA", "aminoAcid": "G", "kind": "other" },
       { "codon": "GGG", "aminoAcid": "G", "kind": "other" }
     ]
-  },
-
-  "scales": {
-    "x": {
-      "domain": [
-        { "chrom": "chr7", "pos": 20395929 },
-        { "chrom": "chr7", "pos": 20395976 }
-      ]
-    }
   },
 
   "resolve": { "axis": { "x": "shared" } },
@@ -189,8 +189,7 @@
               "reverse 0",
               "reverse 1",
               "reverse 2"
-            ],
-            "paddingInner": 0.0
+            ]
           },
           "axis": { "title": null }
         },
@@ -227,126 +226,80 @@
         { "type": "formula", "expr": "datum.pos + 3", "as": "end" }
       ],
 
+      "templates": {
+        "amino-acid-translation": {
+          "params": [{ "name": "strand", "value": "forward" }],
+
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "strand === 'reverse' ? datum.complement2 + datum.complement1 + datum.complement : datum.base + datum.base1 + datum.base2",
+              "as": "codon"
+            },
+            {
+              "type": "lookup",
+              "from": { "name": "geneticCode" },
+              "key": "codon",
+              "default": "?"
+            },
+            {
+              "type": "formula",
+              "expr": "strand + ' ' + (datum.pos % 3)",
+              "as": "lane"
+            }
+          ],
+
+          "layer": [
+            {
+              "name": "amino-acids",
+              "mark": {
+                "type": "arrow",
+                "style": "arrow-block-notch",
+                "stroke": "#C0C0C0",
+                "headAngle": 65,
+                "strokeWidth": 1,
+                "tooltip": null
+              },
+              "encoding": {
+                "direction": { "value": { "expr": "strand" } },
+                "color": {
+                  "field": "kind",
+                  "type": "nominal",
+                  "scale": {
+                    "domain": ["start", "stop", "other", "?"],
+                    "range": ["#40B050", "#F06060", "#F8F8F8", "#E0E0E0"]
+                  },
+                  "legend": null
+                }
+              }
+            },
+            {
+              "name": "amino-acid-labels",
+              "mark": {
+                "type": "text",
+                "size": 12,
+                "paddingX": 1.5,
+                "tooltip": null
+              },
+              "encoding": {
+                "color": { "value": "black" },
+                "text": { "field": "aminoAcid" }
+              }
+            }
+          ]
+        }
+      },
+
       "layer": [
         {
+          "import": { "template": "amino-acid-translation" },
           "name": "forward-translation",
-
-          "transform": [
-            {
-              "type": "formula",
-              "expr": "datum.base + datum.base1 + datum.base2",
-              "as": "codon"
-            },
-            {
-              "type": "lookup",
-              "from": { "name": "geneticCode" },
-              "key": "codon",
-              "default": "?"
-            },
-            {
-              "type": "formula",
-              "expr": "'forward ' + (datum.pos % 3)",
-              "as": "lane"
-            }
-          ],
-          "layer": [
-            {
-              "name": "amino-acids",
-              "mark": {
-                "type": "arrow",
-                "style": "arrow-block-notch",
-                "stroke": "#C0C0C0",
-                "headAngle": 65,
-                "strokeWidth": 1,
-                "tooltip": null
-              },
-              "encoding": {
-                "direction": { "value": "forward" },
-                "color": {
-                  "field": "kind",
-                  "type": "nominal",
-                  "scale": {
-                    "domain": ["start", "stop", "other", "?"],
-                    "range": ["#00A000", "#F00000", "#F8F8F8", "#E0E0E0"]
-                  },
-                  "legend": null
-                }
-              }
-            },
-            {
-              "name": "amino-acid-labels",
-              "mark": {
-                "type": "text",
-                "size": 12,
-                "paddingX": 1.5,
-                "tooltip": null
-              },
-              "encoding": {
-                "color": { "value": "black" },
-                "text": { "field": "aminoAcid" }
-              }
-            }
-          ]
+          "params": { "strand": "forward" }
         },
         {
+          "import": { "template": "amino-acid-translation" },
           "name": "reverse-translation",
-
-          "transform": [
-            {
-              "type": "formula",
-              "expr": "datum.complement2 + datum.complement1 + datum.complement",
-              "as": "codon"
-            },
-            {
-              "type": "lookup",
-              "from": { "name": "geneticCode" },
-              "key": "codon",
-              "default": "?"
-            },
-            {
-              "type": "formula",
-              "expr": "'reverse ' + (datum.pos % 3)",
-              "as": "lane"
-            }
-          ],
-          "layer": [
-            {
-              "name": "amino-acids",
-              "mark": {
-                "type": "arrow",
-                "style": "arrow-block-notch",
-                "stroke": "#C0C0C0",
-                "headAngle": 65,
-                "strokeWidth": 1,
-                "tooltip": null
-              },
-              "encoding": {
-                "direction": { "value": "reverse" },
-                "color": {
-                  "field": "kind",
-                  "type": "nominal",
-                  "scale": {
-                    "domain": ["start", "stop", "other", "?"],
-                    "range": ["#00A000", "#F00000", "#D0D0D0", "#E0E0E0"]
-                  },
-                  "legend": null
-                }
-              }
-            },
-            {
-              "name": "amino-acid-labels",
-              "mark": {
-                "type": "text",
-                "size": 12,
-                "paddingX": 1.5,
-                "tooltip": null
-              },
-              "encoding": {
-                "color": { "value": "black" },
-                "text": { "field": "aminoAcid" }
-              }
-            }
-          ]
+          "params": { "strand": "reverse" }
         }
       ]
     }
