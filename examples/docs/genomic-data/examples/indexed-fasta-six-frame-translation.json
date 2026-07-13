@@ -90,8 +90,8 @@
   "scales": {
     "x": {
       "domain": [
-        { "chrom": "chr7", "pos": 20003500 },
-        { "chrom": "chr7", "pos": 20003540 }
+        { "chrom": "chr7", "pos": 20395929 },
+        { "chrom": "chr7", "pos": 20395976 }
       ]
     }
   },
@@ -175,7 +175,7 @@
     {
       "name": "translation",
 
-      "height": { "step": 19 },
+      "height": { "step": 17 },
 
       "encoding": {
         "y": {
@@ -193,7 +193,14 @@
             "paddingInner": 0.0
           },
           "axis": { "title": null }
-        }
+        },
+        "x": {
+          "chrom": "chrom",
+          "pos": "pos",
+          "type": "locus",
+          "band": 0
+        },
+        "x2": { "chrom": "chrom", "pos": "end", "band": 0 }
       },
 
       "transform": [
@@ -219,6 +226,7 @@
         },
         { "type": "formula", "expr": "datum.pos + 3", "as": "end" }
       ],
+
       "layer": [
         {
           "name": "forward-translation",
@@ -233,8 +241,6 @@
               "type": "lookup",
               "from": { "name": "geneticCode" },
               "key": "codon",
-              "values": ["aminoAcid", "kind"],
-              "as": ["aminoAcid", "kind"],
               "default": "?"
             },
             {
@@ -243,22 +249,13 @@
               "as": "lane"
             }
           ],
-          "encoding": {
-            "x": {
-              "chrom": "chrom",
-              "pos": "pos",
-              "type": "locus",
-              "band": 0
-            },
-            "x2": { "chrom": "chrom", "pos": "end", "band": 0 }
-          },
           "layer": [
             {
-              "name": "forward-amino-acids",
+              "name": "amino-acids",
               "mark": {
                 "type": "arrow",
                 "style": "arrow-block-notch",
-                "stroke": "white",
+                "stroke": "#C0C0C0",
                 "headAngle": 65,
                 "strokeWidth": 1,
                 "tooltip": null
@@ -270,14 +267,14 @@
                   "type": "nominal",
                   "scale": {
                     "domain": ["start", "stop", "other", "?"],
-                    "range": ["#00A000", "#F00000", "#D0D0D0", "#E0E0E0"]
+                    "range": ["#00A000", "#F00000", "#F8F8F8", "#E0E0E0"]
                   },
                   "legend": null
                 }
               }
             },
             {
-              "name": "forward-amino-acid-labels",
+              "name": "amino-acid-labels",
               "mark": {
                 "type": "text",
                 "size": 12,
@@ -304,8 +301,6 @@
               "type": "lookup",
               "from": { "name": "geneticCode" },
               "key": "codon",
-              "values": ["aminoAcid", "kind"],
-              "as": ["aminoAcid", "kind"],
               "default": "?"
             },
             {
@@ -314,22 +309,13 @@
               "as": "lane"
             }
           ],
-          "encoding": {
-            "x": {
-              "chrom": "chrom",
-              "pos": "pos",
-              "type": "locus",
-              "band": 0
-            },
-            "x2": { "chrom": "chrom", "pos": "end", "band": 0 }
-          },
           "layer": [
             {
-              "name": "reverse-amino-acids",
+              "name": "amino-acids",
               "mark": {
                 "type": "arrow",
                 "style": "arrow-block-notch",
-                "stroke": "white",
+                "stroke": "#C0C0C0",
                 "headAngle": 65,
                 "strokeWidth": 1,
                 "tooltip": null
@@ -348,7 +334,7 @@
               }
             },
             {
-              "name": "reverse-amino-acid-labels",
+              "name": "amino-acid-labels",
               "mark": {
                 "type": "text",
                 "size": 12,
