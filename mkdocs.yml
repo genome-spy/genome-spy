@@ -101,7 +101,6 @@ nav:
           - Examples:
                 - "genomic-data/examples/index.md"
                 - Chromosome Ideogram from Cytobands: "genomic-data/examples/cytobands.md"
-                - Indexed FASTA Sequence Track: "genomic-data/examples/indexed-fasta-sequence-track.md"
                 - Indexed FASTA Six-Frame Translation: "genomic-data/examples/indexed-fasta-six-frame-translation.md"
                 - RefSeq Gene Annotations with Scored Labels: "genomic-data/examples/refseq-genes.md"
                 - GENCODE Gene Annotations from GFF3: "genomic-data/examples/gencode-gff3-gene-annotations.md"
