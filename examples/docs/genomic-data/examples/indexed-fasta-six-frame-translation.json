@@ -176,6 +176,7 @@
       "name": "translation",
 
       "height": { "step": 17 },
+      "view": { "stroke": "#c0c0c0" },
 
       "encoding": {
         "y": {
@@ -257,7 +258,9 @@
                 "style": "arrow-block-notch",
                 "stroke": "#C0C0C0",
                 "headAngle": 65,
-                "strokeWidth": 1,
+                "strokeWidth": {
+                  "expr": "1.0 - smoothstep(0.2, 1, span(domain('x')) / width)"
+                },
                 "tooltip": null
               },
               "encoding": {
