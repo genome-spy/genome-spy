@@ -1,0 +1,156 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "Multiple Sequence Alignment",
+    "Visualizes the 16SRNA_Deino_87seq nucleotide alignment with a sequence logo showing per-position information content and a zoomable base-by-base alignment.",
+    "Data source: 16SRNA_Deino_87seq.aln from NCBI's Multiple Sequence Alignment Viewer tutorial and NCBI FTP. NCBI places no restrictions on use or distribution of molecular data in its databases, but original submitters may hold third-party intellectual-property rights."
+  ],
+
+  "data": {
+    "url": "https://data.genomespy.app/sample-data/16SRNA_Deino_87seq.aln",
+    "format": {
+      "type": "fasta"
+    }
+  },
+
+  "transform": [{ "type": "flattenSequence" }],
+
+  "encoding": {
+    "color": {
+      "field": "sequence",
+      "type": "nominal",
+      "scale": {
+        "type": "ordinal",
+        "domain": ["A", "C", "T", "G", "-"],
+        "range": ["#7BD56C", "#FF9B9B", "#86BBF1", "#FFC56C", "#f5f5f5"]
+      }
+    }
+  },
+
+  "scales": {
+    "x": {
+      "domain": [190, 230],
+      "zoom": { "extent": "data" }
+    }
+  },
+
+  "resolve": {
+    "scale": { "x": "shared" },
+    "axis": { "x": "independent" }
+  },
+
+  "vconcat": [
+    {
+      "height": 50,
+
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["pos", "sequence"]
+        },
+        {
+          "type": "formula",
+          "expr": "datum.sequence == '-' ? null : datum.sequence",
+          "as": "sequence"
+        },
+        {
+          "type": "stack",
+          "field": "count",
+          "groupby": ["pos"],
+          "offset": "information",
+          "as": ["_y0", "_y1"],
+          "baseField": "sequence",
+          "sort": { "field": "count", "order": "ascending" }
+        }
+      ],
+      "encoding": {
+        "x": { "field": "pos", "type": "index", "axis": null },
+        "y": {
+          "field": "_y0",
+          "type": "quantitative",
+          "scale": { "domain": [0, 2] },
+          "title": "Information"
+        },
+        "y2": { "field": "_y1" },
+        "text": { "field": "sequence", "title": "base" }
+      },
+      "stops": [0.25],
+      "multiscale": [
+        {
+          "name": "Sequence logo overview",
+          "layer": [
+            {
+              "mark": {
+                "type": "text",
+                "font": "Source Sans Pro",
+                "fontWeight": 700,
+                "size": 100,
+                "squeeze": true,
+                "fitToBand": true,
+
+                "paddingX": 0,
+                "paddingY": 0,
+
+                "logoLetters": true
+              }
+            },
+            {
+              "mark": "rect"
+            }
+          ]
+        },
+        {
+          "name": "Sequence logo detail",
+          "mark": {
+            "type": "text",
+            "font": "Source Sans Pro",
+            "fontWeight": 700,
+            "size": 100,
+            "squeeze": true,
+            "fitToBand": true,
+
+            "paddingX": 0,
+            "paddingY": 0,
+
+            "logoLetters": true
+          }
+        }
+      ]
+    },
+    {
+      "height": { "step": 13 },
+      "viewportHeight": "container",
+
+      "view": { "stroke": "lightgray" },
+
+      "encoding": {
+        "x": { "field": "pos", "type": "index" },
+        "y": {
+          "field": "identifier",
+          "type": "nominal",
+          "axis": { "maxExtent": 90, "title": null }
+        }
+      },
+      "layer": [
+        {
+          "mark": "rect"
+        },
+        {
+          "mark": {
+            "type": "text",
+            "size": 11,
+            "fitToBand": true,
+            "paddingX": 1.5,
+            "paddingY": 1,
+            "opacity": 0.7
+          },
+          "encoding": {
+            "color": { "value": "black" },
+            "text": { "field": "sequence", "title": "base" }
+          }
+        }
+      ]
+    }
+  ]
+}

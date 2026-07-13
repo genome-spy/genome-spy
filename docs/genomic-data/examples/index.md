@@ -18,6 +18,7 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 - [GENCODE Gene Annotations from GFF3](gencode-gff3-gene-annotations.md) gff3-gene-annotations.json
 - [Indexed FASTA Six-Frame Translation](indexed-fasta-six-frame-translation.md) indexed-fasta-six-frame-translation.json
 - [BAM Read Alignments](bam-read-alignments.md) bam-read-alignments.json
+- [Multiple Sequence Alignment](multiple-sequence-alignment.md) msa.json
 
 ## More examples
 

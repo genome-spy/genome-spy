@@ -17,3 +17,7 @@ EXAMPLE examples/docs/grammar/transform/stack/stacked-bar-plot.json height=250
 ### Sequence logo
 
 EXAMPLE examples/docs/grammar/transform/stack/sequence-logo.json height=150
+
+For a genomic application, see the [Multiple Sequence Alignment
+example](../../genomic-data/examples/multiple-sequence-alignment.md), which
+uses `offset: "information"` to build a sequence logo from aligned bases.
