@@ -7,15 +7,11 @@ dependencies = []
 
 [dependency-groups]
 docs = [
-    "cairosvg",
+    "genomespy-extension",
     "markdown",
     "mdx-truly-sane-lists",
-    "mkdocs",
-    "mkdocs-git-revision-date-localized-plugin",
-    "mkdocs-material",
-    "pillow",
     "pymdown-extensions",
-    "genomespy-extension",
+    "zensical",
 ]
 
 [tool.uv.sources]

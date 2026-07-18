@@ -292,7 +292,7 @@ App-specific architecture now lives in `packages/app/APP_ARCHITECTURE.md`.
 
 - `packages/doc-embed` provides a `<genome-spy-doc-embed>` web component that
   upgrades Markdown `<code>` blocks into live specs; the README describes the
-  transformation and ties into the MkDocs extension pipeline
+  transformation and ties into the Zensical Python Markdown extension pipeline
   (`packages/doc-embed/README.md#L1`).
 - `packages/embed-examples` gathers standalone HTML/JS pages that cover shared
   scale domains, dynamic data updates, FASTA data, named data providers, and the
@@ -308,11 +308,11 @@ App-specific architecture now lives in `packages/app/APP_ARCHITECTURE.md`.
 
 ## Documentation site resources
 
-- The MkDocs sources in `docs/` (e.g., `docs/index.md#L1`, `docs/getting-started.md`, `docs/grammar/`) host the canonical tutorials, grammar reference, data examples, and schema (`docs/genome-spy-schema.json`).
-- `mkdocs.yml#L1` configures the build (site metadata, theme/custom theme,
-  plugin stack, markdown extensions, extra JS/CSS, navigation, and custom theme
-  directory), so the file is the entry point to customizing and rebuilding the
-  documentation site.
+- The Zensical sources in `docs/` (e.g., `docs/index.md#L1`, `docs/getting-started.md`, `docs/grammar/`) host the canonical tutorials, grammar reference, data examples, and schema (`docs/genome-spy-schema.json`).
+- `zensical.toml#L1` configures the build (site metadata, theme/custom theme,
+  Markdown extensions, extra JS/CSS, navigation, and custom theme directory),
+  so the file is the entry point to customizing and rebuilding the documentation
+  site.
 - `custom_theme/`, `docs/stylesheets/`, and `site/` hold the theming overrides,
   extra CSS, and the generated site output (`site/index.html`, `site/api`, etc.),
   which helps anyone who needs to tweak how documentation examples render or
