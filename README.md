@@ -57,21 +57,16 @@ If you want to use or develop the core library, launch a single-page app using:
 
 ### Building Docs
 
-The docs toolchain uses a repo-local Python virtual environment managed by
-[`uv`](https://docs.astral.sh/uv/). Install `uv` once on your machine, then
-sync the docs dependencies into `.venv` from the repo root:
+The docs toolchain uses [Zensical](https://zensical.org/) in a repo-local Python
+virtual environment managed by [`uv`](https://docs.astral.sh/uv/). Install `uv`
+once on your machine, then sync the docs dependencies into `.venv` from the
+repo root:
 
 1. `brew install uv` on macOS, or install `uv` on Linux using the method from
    the upstream docs
 2. `npm ci`
 3. `npm run docs:install`
 4. `npm run docs:serve` for local preview, or `npm run build:docs` for a full build
-
-MkDocs Material's social-card generation depends on native Cairo libraries. On
-macOS, install Cairo with Homebrew if it is missing:
-`brew install cairo`.
-On Ubuntu/Debian, install:
-`libcairo2-dev libfreetype6-dev libffi-dev libjpeg-dev libpng-dev zlib1g-dev`
 
 ### Contributing guidelines
 

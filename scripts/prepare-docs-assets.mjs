@@ -45,7 +45,7 @@ const inspectorPackageSource = path.join(
     "package.json"
 );
 
-// Files that MkDocs and the custom markdown extension consume.
+// Files that Zensical and the custom Markdown extension consume.
 const docsDir = path.join(repoRoot, "docs");
 const docsAppDir = path.join(docsDir, "app");
 const docsExamplesDir = path.join(docsDir, "examples");

@@ -6,8 +6,8 @@ turns static code blocks in the documentation into interactive visualizations.
 By embedding example specifications within this element, they are presented as
 live, interactive displays alongside the code.
 
-The documentation is generated using MkDocs, which uses a syntax highlighter to
-convert the markdown code blocks into colorized `<code>` elements, which the
+The documentation is generated using Zensical, which uses a syntax highlighter
+to convert the markdown code blocks into colorized `<code>` elements, which the
 `<genome-spy-doc-embed>` element then transforms into interactive visualizations.
 
 ## Example
