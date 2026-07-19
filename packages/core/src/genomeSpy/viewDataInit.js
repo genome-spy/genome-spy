@@ -1,9 +1,9 @@
 import {
     broadcastSubtreeDataReady,
+    findAncestorDataSource,
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
-import DataSource from "../data/sources/dataSource.js";
 import { finalizeSubtreeGraphics } from "../view/viewUtils.js";
 import { VISIT_SKIP } from "../view/view.js";
 
@@ -128,7 +128,7 @@ export async function initializeViewDataForViews(
     /** @type {import("../view/view.js").default[]} */
     const viewsNeedingLoad = [];
     for (const view of viewsToInitialize) {
-        if (view.spec.data || hasLookupTransform(view)) {
+        if (view.spec.data || hasAuxiliaryDataTransform(view)) {
             viewsNeedingLoad.push(view);
             continue;
         }
@@ -178,8 +178,11 @@ export async function initializeViewDataForViews(
 /**
  * @param {import("../view/view.js").default} view
  */
-function hasLookupTransform(view) {
-    return view.spec.transform?.some((transform) => transform.type == "lookup");
+function hasAuxiliaryDataTransform(view) {
+    return view.spec.transform?.some(
+        (transform) =>
+            transform.type == "lookup" || transform.type == "coordinateLookup"
+    );
 }
 
 /**
@@ -231,8 +234,9 @@ function collectDataSourceRoots(views) {
         }
         dataSources.add(current.flowHandle.dataSource);
         for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
-            if (collector.parent instanceof DataSource) {
-                dataSources.add(collector.parent);
+            const dataSource = findAncestorDataSource(collector);
+            if (dataSource) {
+                dataSources.add(dataSource);
             }
         }
     }

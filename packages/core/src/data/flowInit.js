@@ -79,6 +79,19 @@ export function syncFlowHandles(root, canonicalBySource) {
 }
 
 /**
+ * Finds the data source at the root of a flow-node branch.
+ *
+ * @param {import("./flowNode.js").default | undefined} node
+ * @returns {DataSource | undefined}
+ */
+export function findAncestorDataSource(node) {
+    while (node && !(node instanceof DataSource)) {
+        node = node.parent;
+    }
+    return node instanceof DataSource ? node : undefined;
+}
+
+/**
  * Initializes data flow and mark wiring for a subtree without rebuilding the
  * entire view hierarchy. This is the primary entry point for dynamic view
  * insertion: build the subtree fully, call this, then attach the subtree to
@@ -290,12 +303,9 @@ function addSubtreeAuxiliaryDataSources(subtreeRoot, dataSources, viewFilter) {
  */
 function addAuxiliaryDataSources(view, dataSources) {
     for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
-        let node = collector.parent;
-        while (node && !(node instanceof DataSource)) {
-            node = node.parent;
-        }
-        if (node instanceof DataSource) {
-            dataSources.add(node);
+        const dataSource = findAncestorDataSource(collector);
+        if (dataSource) {
+            dataSources.add(dataSource);
         }
     }
 }
