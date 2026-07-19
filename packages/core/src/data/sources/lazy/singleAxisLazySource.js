@@ -162,6 +162,16 @@ export default class SingleAxisLazySource extends DataSource {
     }
 
     /**
+     * Clears propagated data and its coverage after the source's backing data
+     * has become unavailable or changed.
+     */
+    invalidateData() {
+        this._lastLoadedDomain = undefined;
+        this.reset();
+        this.complete();
+    }
+
+    /**
      * Resets the data flow and propagates the data, which should be an array of data chunks.
      * A chunk is an ordinary array of data objects. Typically all data objects are stored
      * in a single chunk, but sometimes they may be split into multiple chunks, e.g., one per

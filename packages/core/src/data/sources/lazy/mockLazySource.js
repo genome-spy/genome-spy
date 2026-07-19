@@ -34,7 +34,7 @@ export default class MockLazySource extends SingleAxisLazySource {
                 url: params.url,
                 paramRuntime: view.paramRuntime,
                 listener: () => {
-                    this._lastLoadedDomain = undefined;
+                    this.invalidateData();
                     this.onDomainChanged();
                 },
                 registerDisposer: (disposer) => this.registerDisposer(disposer),
