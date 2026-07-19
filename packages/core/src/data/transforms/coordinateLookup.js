@@ -1,12 +1,12 @@
 import { field } from "../../utils/field.js";
 import SingleAxisLazySource from "../sources/lazy/singleAxisLazySource.js";
-import KeyedLookupTransform from "./keyedLookup.js";
+import LookupTransform from "./lookup.js";
 
 /**
  * Performs an exact keyed lookup from a lazy side input on a shared positional
  * scale. Primary rows outside the side input's loaded coverage are omitted.
  */
-export default class CoordinateLookupTransform extends KeyedLookupTransform {
+export default class CoordinateLookupTransform extends LookupTransform {
     /**
      * @param {import("../../spec/transform.js").CoordinateLookupParams} params
      * @param {import("../collector.js").default} foreignCollector
