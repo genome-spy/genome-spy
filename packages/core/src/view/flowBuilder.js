@@ -93,7 +93,22 @@ export function buildDataFlow(
     }
 
     /**
+     * Appends a transform and any defensive clone it requires.
      *
+     * @param {FlowNode} transform
+     * @param {(node: FlowNode) => void} append
+     */
+    function appendTransformWithClone(transform, append) {
+        if (transform.behavior & BEHAVIOR_MODIFIES) {
+            // Make a defensive copy before modifying data so that the
+            // modification is not visible in other branches of the flow.
+            // These copies can later be optimized away where possible.
+            append(new CloneTransform());
+        }
+        append(transform);
+    }
+
+    /**
      * @param {import("../spec/transform.js").TransformParams[]} transforms
      * @param {View} view
      */
@@ -144,14 +159,7 @@ export function buildDataFlow(
                 );
             }
 
-            if (transform.behavior & BEHAVIOR_MODIFIES) {
-                // Make defensive copies before every modifying transform to
-                // ensure that modifications don't inadvertently become visible
-                // in other branches of the flow.
-                // These can be later optimized away where possible.
-                appendTransform(new CloneTransform());
-            }
-            appendTransform(transform);
+            appendTransformWithClone(transform, appendTransform);
 
             if (foreignInput) {
                 transform.registerDisposer(() =>
@@ -187,13 +195,10 @@ export function buildDataFlow(
                     );
                 }
                 const transform = createTransform(params, view);
-                if (transform.behavior & BEHAVIOR_MODIFIES) {
-                    const clone = new CloneTransform();
-                    node.addChild(clone);
-                    node = clone;
-                }
-                node.addChild(transform);
-                node = transform;
+                appendTransformWithClone(transform, (child) => {
+                    node.addChild(child);
+                    node = child;
+                });
             }
         } catch (error) {
             dataSource.disposeSubtree();
