@@ -83,7 +83,6 @@
               { "type": "formula", "expr": "datum.start", "as": "pos" }
             ]
           },
-          "coordinate": { "chrom": "chrom", "pos": "pos" },
           "key": ["chrom", "pos"],
           "values": ["score"]
         },

@@ -34,7 +34,6 @@ test("omits primary rows outside loaded side-input coverage", () => {
         {
             type: "coordinateLookup",
             from: { data: { lazy: /** @type {any} */ ({ type: "mockLazy" }) } },
-            coordinate: { field: "pos" },
             key: "pos",
             values: ["score"],
         },
@@ -91,7 +90,6 @@ test("joins flattened lazy sequence with a lazy coordinate side input", async ()
                         { type: "formula", expr: "datum.start", as: "pos" },
                     ],
                 },
-                coordinate: { chrom: "chrom", pos: "pos" },
                 key: ["chrom", "pos"],
                 values: ["score"],
             },
@@ -146,7 +144,7 @@ test("joins flattened lazy sequence with a lazy coordinate side input", async ()
     });
 });
 
-test("replays eager primary data after the lazy side input arrives", async () => {
+test("uses fields for primary coordinates and replays eager data", async () => {
     unregisters.push(
         registerLazyDataSource(
             (params) => /** @type {any} */ (params).type == "mockLazy",
@@ -156,7 +154,9 @@ test("replays eager primary data after the lazy side input arrives", async () =>
 
     const { view } = await createHeadlessEngine({
         assembly: "hg38",
-        data: { values: [{ chrom: "chr1", pos: 100, base: "A" }] },
+        data: {
+            values: [{ chromosome: "chr1", position: 100, base: "A" }],
+        },
         transform: [
             {
                 type: "coordinateLookup",
@@ -169,8 +169,8 @@ test("replays eager primary data after the lazy side input arrives", async () =>
                         }),
                     },
                 },
-                coordinate: { chrom: "chrom", pos: "pos" },
                 key: ["chrom", "pos"],
+                fields: ["chromosome", "position"],
                 values: ["score"],
             },
         ],
@@ -185,16 +185,53 @@ test("replays eager primary data after the lazy side input arrives", async () =>
         },
         mark: "point",
         encoding: {
-            x: { chrom: "chrom", pos: "pos", type: "locus" },
+            x: { chrom: "chromosome", pos: "position", type: "locus" },
             y: { field: "score", type: "quantitative" },
         },
     });
 
     await vi.waitFor(() => {
         expect([...view.flowHandle.collector.getData()]).toMatchObject([
-            { chrom: "chr1", pos: 100, base: "A", score: 0.5 },
+            {
+                chromosome: "chr1",
+                position: 100,
+                base: "A",
+                score: 0.5,
+            },
         ]);
     });
+});
+
+test("requires a continuous field or chrom/pos fields", () => {
+    const scaleResolution = {
+        getDomain: () => [0, 1],
+        getScale: () => ({}),
+    };
+    const view = {
+        getScaleResolution: () => scaleResolution,
+    };
+    const source = new TestLazySource(view);
+
+    expect(
+        () =>
+            new CoordinateLookupTransform(
+                {
+                    type: "coordinateLookup",
+                    from: {
+                        data: {
+                            lazy: /** @type {any} */ ({ type: "mockLazy" }),
+                        },
+                    },
+                    key: /** @type {any} */ (["chrom", "pos", "strand"]),
+                    values: ["score"],
+                },
+                new Collector({ type: "collect" }),
+                source,
+                /** @type {any} */ (view)
+            )
+    ).toThrow(
+        "Coordinate lookup requires one continuous field or chrom/pos fields."
+    );
 });
 
 class TestLazySource extends SingleAxisLazySource {

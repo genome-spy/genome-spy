@@ -33,8 +33,10 @@ export default class KeyedLookupTransform extends Transform {
     constructor(params, foreignCollector, options = {}) {
         super(params);
         this.params = params;
-        const foreignKeyFields = asArray(params.key);
-        const primaryFields = asArray(params.fields ?? foreignKeyFields);
+        const foreignKeyFields = /** @type {string[]} */ (asArray(params.key));
+        const primaryFields = /** @type {string[]} */ (
+            asArray(params.fields ?? foreignKeyFields)
+        );
         if (primaryFields.length === 0) {
             throw new Error('The "fields" property must not be empty.');
         }

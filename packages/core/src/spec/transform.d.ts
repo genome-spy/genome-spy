@@ -121,26 +121,6 @@ export interface CoordinateLookupInput {
     transform?: TransformParams[];
 }
 
-export type CoordinateLookupCoordinate =
-    | {
-          /** A field containing positions on the shared continuous scale. */
-          field: Field;
-      }
-    | {
-          /** Field containing the chromosome or contig. */
-          chrom: Field;
-
-          /** Field containing the intra-chromosomal position. */
-          pos: Field;
-
-          /**
-           * Value subtracted from `pos` before lookup.
-           *
-           * __Default value:__ `0`
-           */
-          offset?: number;
-      };
-
 export interface CoordinateLookupParams
     extends TransformParamsBase, LookupMatchParams {
     type: "coordinateLookup";
@@ -159,11 +139,17 @@ export interface CoordinateLookupParams
     channel?: PrimaryPositionalChannel;
 
     /**
-     * Position of each primary row on the shared positional scale. Rows outside
-     * the loaded side-input interval are not passed through. This does not
-     * select a matching side-input row; use `key` and `fields` for that.
+     * Coordinate field or `[chrom, pos]` fields in the lazy side input. The
+     * same fields in the primary data determine both the exact match and
+     * whether a row is within the loaded side-input interval.
      */
-    coordinate: CoordinateLookupCoordinate;
+    key: Field | [Field, Field];
+
+    /**
+     * Coordinate field or `[chrom, pos]` fields in the primary data. Defaults
+     * to `key`.
+     */
+    fields?: Field | [Field, Field] | null;
 }
 
 export interface ProjectParams extends TransformParamsBase {

@@ -2,7 +2,7 @@
 
 The `"coordinateLookup"` transform adds values from a lazy side input to rows
 whose coordinates are on the same positional scale. It performs an exact,
-one-to-one keyed lookup within the side input's available coordinate interval.
+one-to-one lookup by a continuous coordinate or a `[chrom, pos]` pair.
 
 Unlike [`"lookup"`](lookup.md), this transform does not retain primary rows
 outside that interval. Within the interval, unmatched keys receive `default`.
@@ -10,23 +10,13 @@ outside that interval. Within the interval, unmatched keys receive `default`.
 The side input must be a single-axis lazy data source using the same resolved
 `x` or `y` scale as the primary data.
 
-`from.transform` runs on the side input before the keyed lookup. It can expose
-or normalize its key fields.
+`key` names the coordinate field or `[chrom, pos]` fields in the side input.
+`fields` names the corresponding primary-data fields and defaults to `key`.
+These fields determine both the lookup match and whether a primary row falls
+within the loaded side-input interval.
 
-## Coverage coordinate
-
-`coordinate` is not a lookup key. It identifies the position of each primary
-row on the shared scale so that the transform can determine whether the lazy
-side input has loaded data there:
-
-- Within the loaded interval, the transform performs the exact keyed lookup.
-  An unmatched key receives `default`.
-- Outside the loaded interval, the primary row is not passed through because
-  the side input might contain a match that has not been loaded yet.
-
-Use `{ "field": "position" }` for a continuous scale, or
-`{ "chrom": "chrom", "pos": "pos" }` for a locus scale. `key` and
-`fields` independently select the matching side-input row.
+`from.transform` runs on the side input before lookup. It can normalize fields
+to the coordinate names used by `key`.
 
 ## Parameters
 
@@ -36,8 +26,8 @@ SCHEMA CoordinateLookupParams
 
 The following transform adds BigWig scores to base-level rows produced by an
 indexed FASTA pipeline. The preceding transforms provide `chrom` and `pos` in
-the primary data. The side-input formula exposes the BigWig `start` field as
-the matching position.
+the primary data. The side-input formula renames the BigWig `start` field to
+the position field used for lookup.
 
 ```json
 {
@@ -52,15 +42,15 @@ the matching position.
     },
     "transform": [{ "type": "formula", "expr": "datum.start", "as": "pos" }]
   },
-  "coordinate": { "chrom": "chrom", "pos": "pos" },
   "key": ["chrom", "pos"],
   "values": ["score"]
 }
 ```
 
-The `coordinate` object checks side-input coverage for each primary base. The
-`key` array then matches that base to a score row. Omit `fields` when the
-primary and side-input key fields have the same names.
+The shared `chrom` and `pos` fields identify each primary base, determine
+side-input coverage, and match a score row. If the primary fields use different
+names, provide them with `fields`, for example
+`fields: ["chromosome", "position"]`.
 
 For a complete reference-versus-alternate sequence-contribution visualization,
 see the [SPI1 Binding-QTL Dynseq Track](../../genomic-data/examples/dynseq-spi1-bqtl.md).

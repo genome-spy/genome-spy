@@ -29,7 +29,10 @@ export default class CoordinateLookupTransform extends KeyedLookupTransform {
             );
         }
 
-        const position = createPositionAccessor(params, foreignSource);
+        const position = createPositionAccessor(
+            params.fields ?? params.key,
+            foreignSource
+        );
         let min = 0;
         let max = 0;
 
@@ -64,16 +67,15 @@ export default class CoordinateLookupTransform extends KeyedLookupTransform {
 }
 
 /**
- * @param {import("../../spec/transform.js").CoordinateLookupParams} params
+ * @param {string | [string, string]} fields
  * @param {SingleAxisLazySource} foreignSource
  * @returns {(datum: import("../flowNode.js").Datum) => number}
  */
-function createPositionAccessor(params, foreignSource) {
-    const coordinate = params.coordinate;
-    if ("field" in coordinate) {
-        const accessor = field(coordinate.field);
+function createPositionAccessor(fields, foreignSource) {
+    if (typeof fields === "string") {
+        const accessor = field(fields);
         return (datum) => +accessor(datum);
-    } else {
+    } else if (fields.length == 2) {
         const scale = foreignSource.scaleResolution.getScale();
         const genome = "genome" in scale ? scale.genome() : undefined;
         if (!genome) {
@@ -82,13 +84,13 @@ function createPositionAccessor(params, foreignSource) {
             );
         }
 
-        const chromAccessor = field(coordinate.chrom);
-        const posAccessor = field(coordinate.pos);
-        const offset = coordinate.offset ?? 0;
+        const chromAccessor = field(fields[0]);
+        const posAccessor = field(fields[1]);
         return (datum) =>
-            genome.toContinuous(
-                chromAccessor(datum),
-                +posAccessor(datum) - offset
-            );
+            genome.toContinuous(chromAccessor(datum), +posAccessor(datum));
+    } else {
+        throw new Error(
+            "Coordinate lookup requires one continuous field or chrom/pos fields."
+        );
     }
 }
