@@ -5,7 +5,7 @@
  * @template R
  */
 export function debounce(func, wait, rejectOnDebounce = true) {
-    /** @type {number} */
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
     let timeout;
 
     /** @type {(reason?: any) => void} */
@@ -29,7 +29,7 @@ export function debounce(func, wait, rejectOnDebounce = true) {
             clearTimeout(timeout);
 
             rejectPrevious = reject;
-            timeout = window.setTimeout(
+            timeout = setTimeout(
                 later,
                 typeof wait == "function" ? wait() : wait
             );
