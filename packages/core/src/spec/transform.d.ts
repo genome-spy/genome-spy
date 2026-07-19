@@ -20,6 +20,41 @@ export interface TransformParamsBase {
     description?: string;
 }
 
+/** Common exact-match and output options for lookup transforms. */
+interface LookupMatchParams {
+    /**
+     * The key field or fields in the side input. When multiple fields are
+     * provided, they form a composite key.
+     */
+    key: Field | Field[];
+
+    /**
+     * The fields in the input data to match against the side-input key.
+     * This array must have the same length and order as `key`. Defaults to
+     * `key`.
+     */
+    fields?: Field | Field[] | null;
+
+    /**
+     * Fields to copy from a matching side-input row. Defaults to all fields
+     * except `key`.
+     */
+    values?: Field[] | null;
+
+    /**
+     * Output field names. Defaults to `values`. Requires an explicit `values`
+     * array.
+     */
+    as?: string[];
+
+    /**
+     * Value written when no side-input row matches.
+     *
+     * __Default value:__ `null`
+     */
+    default?: any;
+}
+
 export interface IdentifierParams extends TransformParamsBase {
     type: "identifier";
 
@@ -69,45 +104,13 @@ export interface FormulaParams extends TransformParamsBase {
     as: string;
 }
 
-export interface LookupParams extends TransformParamsBase {
+export interface LookupParams extends TransformParamsBase, LookupMatchParams {
     type: "lookup";
 
     /**
      * The non-lazy data source that provides the lookup table.
      */
     from: DataSource;
-
-    /**
-     * The key field or fields in the lookup table. When multiple fields are
-     * provided, they form a composite key.
-     */
-    key: Field | Field[];
-
-    /**
-     * The fields in the input data to match against the lookup-table key.
-     * This array must have the same length and order as `key`. Defaults to
-     * `key`.
-     */
-    fields?: Field | Field[] | null;
-
-    /**
-     * Fields to copy from a matching lookup-table row. Defaults to all fields
-     * except `key`.
-     */
-    values?: Field[] | null;
-
-    /**
-     * Output field names. Defaults to `values`. Requires an explicit `values`
-     * array.
-     */
-    as?: string[];
-
-    /**
-     * Value written when no lookup-table row matches.
-     *
-     * __Default value:__ `null`
-     */
-    default?: any;
 }
 
 export interface CoordinateLookupInput {
@@ -138,7 +141,8 @@ export type CoordinateLookupCoordinate =
           offset?: number;
       };
 
-export interface CoordinateLookupParams extends TransformParamsBase {
+export interface CoordinateLookupParams
+    extends TransformParamsBase, LookupMatchParams {
     type: "coordinateLookup";
 
     /**
@@ -156,25 +160,6 @@ export interface CoordinateLookupParams extends TransformParamsBase {
 
     /** Coordinates of primary rows on the shared positional scale. */
     coordinate: CoordinateLookupCoordinate;
-
-    /** Key field or fields in the side input. */
-    key: Field | Field[];
-
-    /** Fields in primary data that match `key`. Defaults to `key`. */
-    fields?: Field | Field[] | null;
-
-    /** Fields copied from matching side-input rows. */
-    values?: Field[] | null;
-
-    /** Output field names. Defaults to `values`. */
-    as?: string[];
-
-    /**
-     * Value written when no side-input row matches within loaded coverage.
-     *
-     * __Default value:__ `null`
-     */
-    default?: any;
 }
 
 export interface ProjectParams extends TransformParamsBase {

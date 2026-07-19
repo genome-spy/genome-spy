@@ -87,6 +87,29 @@ describe("generated core schema", () => {
         expect(selectionFilterParams.properties.description).toBeTruthy();
     });
 
+    test("includes shared lookup options in concrete transform schemas", () => {
+        const schema = createCoreSchema();
+        const lookupParams =
+            /** @type {{ properties: Record<string, unknown> }} */ (
+                schema.definitions.LookupParams
+            );
+        const coordinateLookupParams =
+            /** @type {{ properties: Record<string, unknown> }} */ (
+                schema.definitions.CoordinateLookupParams
+            );
+
+        // These inherited options are part of both public transform contracts.
+        for (const params of [lookupParams, coordinateLookupParams]) {
+            expect(params.properties).toMatchObject({
+                key: expect.any(Object),
+                fields: expect.any(Object),
+                values: expect.any(Object),
+                as: expect.any(Object),
+                default: expect.any(Object),
+            });
+        }
+    });
+
     test("accepts initial legend configuration and channel legend properties", () => {
         const schema = createCoreSchema();
         const validate = new Ajv.default({
