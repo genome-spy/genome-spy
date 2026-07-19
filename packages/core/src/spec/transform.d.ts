@@ -1,5 +1,5 @@
-import { PositionalChannel } from "./channel.js";
-import { DataSource } from "./data.js";
+import { PositionalChannel, PrimaryPositionalChannel } from "./channel.js";
+import { DataSource, LazyData } from "./data.js";
 import { FontStyle, FontWeight } from "./font.js";
 import { ExprRef } from "./parameter.js";
 
@@ -104,6 +104,73 @@ export interface LookupParams extends TransformParamsBase {
 
     /**
      * Value written when no lookup-table row matches.
+     *
+     * __Default value:__ `null`
+     */
+    default?: any;
+}
+
+export interface CoordinateLookupInput {
+    /** The lazy side data source. */
+    data: LazyData;
+
+    /** Transforms applied to the side data before lookup. */
+    transform?: TransformParams[];
+}
+
+export type CoordinateLookupCoordinate =
+    | {
+          /** A field containing positions on the shared continuous scale. */
+          field: Field;
+      }
+    | {
+          /** Field containing the chromosome or contig. */
+          chrom: Field;
+
+          /** Field containing the intra-chromosomal position. */
+          pos: Field;
+
+          /**
+           * Value subtracted from `pos` before lookup.
+           *
+           * __Default value:__ `0`
+           */
+          offset?: number;
+      };
+
+export interface CoordinateLookupParams extends TransformParamsBase {
+    type: "coordinateLookup";
+
+    /**
+     * The lazy side input and its optional transforms. Rows outside the loaded
+     * side-input domain are not passed through.
+     */
+    from: CoordinateLookupInput;
+
+    /**
+     * The positional channel shared with the lazy side input.
+     *
+     * __Default value:__ `"x"`
+     */
+    channel?: PrimaryPositionalChannel;
+
+    /** Coordinates of primary rows on the shared positional scale. */
+    coordinate: CoordinateLookupCoordinate;
+
+    /** Key field or fields in the side input. */
+    key: Field | Field[];
+
+    /** Fields in primary data that match `key`. Defaults to `key`. */
+    fields?: Field | Field[] | null;
+
+    /** Fields copied from matching side-input rows. */
+    values?: Field[] | null;
+
+    /** Output field names. Defaults to `values`. */
+    as?: string[];
+
+    /**
+     * Value written when no side-input row matches within loaded coverage.
      *
      * __Default value:__ `null`
      */
@@ -957,6 +1024,7 @@ export type TransformParams =
     | AggregateParams
     | CollectParams
     | CoverageParams
+    | CoordinateLookupParams
     | FlattenDelimitedParams
     | FormulaParams
     | LookupParams

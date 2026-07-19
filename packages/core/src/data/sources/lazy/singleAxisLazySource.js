@@ -178,10 +178,11 @@ export default class SingleAxisLazySource extends DataSource {
      * chromosome.
      *
      * @param {import("../../flowNode.js").Datum[][]} chunks An array of data chunks.
+     * @param {number[]} [loadedDomain] Continuous interval covered by the batch.
      * @protected
      */
-    publishData(chunks) {
-        this._lastLoadedDomain = Array.from(this.scaleResolution.getDomain());
+    publishData(chunks, loadedDomain = this.scaleResolution.getDomain()) {
+        this._lastLoadedDomain = Array.from(loadedDomain);
         this.reset();
         this.beginBatch({ type: "file" });
 
@@ -211,6 +212,15 @@ export default class SingleAxisLazySource extends DataSource {
         if (!this.isDataReadyForDomain({ [this.channel]: domain })) {
             this.requestDataForDomain(domain);
         }
+    }
+
+    /**
+     * Returns the continuous interval covered by the latest data batch.
+     *
+     * @returns {number[] | undefined}
+     */
+    getLoadedDomain() {
+        return this._lastLoadedDomain;
     }
 
     /**

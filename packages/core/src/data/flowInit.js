@@ -290,8 +290,12 @@ function addSubtreeAuxiliaryDataSources(subtreeRoot, dataSources, viewFilter) {
  */
 function addAuxiliaryDataSources(view, dataSources) {
     for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
-        if (collector.parent instanceof DataSource) {
-            dataSources.add(collector.parent);
+        let node = collector.parent;
+        while (node && !(node instanceof DataSource)) {
+            node = node.parent;
+        }
+        if (node instanceof DataSource) {
+            dataSources.add(node);
         }
     }
 }
@@ -324,15 +328,15 @@ export function loadViewSubtreeData(
         auxiliaryDataSources,
         viewFilter
     );
-    const lookupDataSources = Array.from(dataSources).filter((dataSource) =>
-        auxiliaryDataSources.has(dataSource)
+    const auxiliaryDataSourcesToLoad = Array.from(dataSources).filter(
+        (dataSource) => auxiliaryDataSources.has(dataSource)
     );
     const primaryDataSources = Array.from(dataSources).filter(
         (dataSource) => !auxiliaryDataSources.has(dataSource)
     );
 
     return Promise.all(
-        lookupDataSources.map((dataSource) =>
+        auxiliaryDataSourcesToLoad.map((dataSource) =>
             loadDataSourceOnce(dataSource, loadOptions)
         )
     )

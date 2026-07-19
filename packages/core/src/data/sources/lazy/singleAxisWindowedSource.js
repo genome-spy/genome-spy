@@ -127,12 +127,7 @@ export default class SingleAxisWindowedSource extends SingleAxisLazySource {
      * @protected
      */
     publishData(chunks) {
-        // Preserve window coverage; base publishData would overwrite it with the current scale domain.
-        const loadedDomain = this._lastLoadedDomain;
-        super.publishData(chunks);
-        if (loadedDomain) {
-            this._lastLoadedDomain = loadedDomain;
-        }
+        super.publishData(chunks, this._lastLoadedDomain);
     }
 
     /**

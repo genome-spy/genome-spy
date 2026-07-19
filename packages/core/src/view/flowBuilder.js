@@ -101,21 +101,41 @@ export function buildDataFlow(
         for (const params of transforms) {
             /** @type {FlowNode} */
             let transform;
-            /** @type {Collector | undefined} */
-            let foreignCollector;
+            /**
+             * @type {{ collector: Collector, source: DataSource } | undefined}
+             */
+            let foreignInput;
             try {
                 if (params.type == "lookup") {
-                    foreignCollector = createLookupCollector(
+                    const lookup =
                         /** @type {import("../spec/transform.js").LookupParams} */ (
                             params
-                        ),
+                        );
+                    if ("lazy" in lookup.from) {
+                        throw new Error(
+                            "Lookup tables cannot use lazy data sources."
+                        );
+                    }
+                    foreignInput = createAuxiliaryDataBranch(
+                        lookup.from,
+                        [],
+                        view
+                    );
+                } else if (params.type == "coordinateLookup") {
+                    const lookup =
+                        /** @type {import("../spec/transform.js").CoordinateLookupParams} */ (
+                            params
+                        );
+                    foreignInput = createAuxiliaryDataBranch(
+                        lookup.from.data,
+                        lookup.from.transform ?? [],
                         view
                     );
                 }
-                transform = createTransform(params, view, foreignCollector);
+                transform = createTransform(params, view, foreignInput);
             } catch (e) {
-                if (foreignCollector) {
-                    releaseLookupCollector(view, foreignCollector);
+                if (foreignInput) {
+                    releaseAuxiliaryCollector(view, foreignInput.collector);
                 }
                 console.warn(e);
                 throw new Error(
@@ -133,34 +153,55 @@ export function buildDataFlow(
             }
             appendTransform(transform);
 
-            if (foreignCollector) {
+            if (foreignInput) {
                 transform.registerDisposer(() =>
-                    releaseLookupCollector(view, foreignCollector)
+                    releaseAuxiliaryCollector(view, foreignInput.collector)
                 );
             }
         }
     }
 
     /**
-     * Creates a source branch that materializes a lookup table without a view.
+     * Creates a side-input source branch with optional unary transforms.
      *
-     * @param {import("../spec/transform.js").LookupParams} params
+     * @param {import("../spec/data.js").DataSource} data
+     * @param {import("../spec/transform.js").TransformParams[]} transforms
      * @param {View} view
+     * @returns {{ collector: Collector, source: DataSource }}
      */
-    function createLookupCollector(params, view) {
-        const lookupData = params.from;
-        if ("lazy" in lookupData) {
-            throw new Error("Lookup tables cannot use lazy data sources.");
+    function createAuxiliaryDataBranch(data, transforms, view) {
+        const dataSource = isNamedData(data)
+            ? new NamedSource(data, view, view.context.getNamedDataFromProvider)
+            : createDataSource(data, view);
+
+        /** @type {FlowNode} */
+        let node = dataSource;
+        try {
+            for (const params of transforms) {
+                if (
+                    params.type == "lookup" ||
+                    params.type == "coordinateLookup"
+                ) {
+                    throw new Error(
+                        "Lookup transforms cannot be used in a side-input transform pipeline."
+                    );
+                }
+                const transform = createTransform(params, view);
+                if (transform.behavior & BEHAVIOR_MODIFIES) {
+                    const clone = new CloneTransform();
+                    node.addChild(clone);
+                    node = clone;
+                }
+                node.addChild(transform);
+                node = transform;
+            }
+        } catch (error) {
+            dataSource.disposeSubtree();
+            throw error;
         }
-        const dataSource = isNamedData(lookupData)
-            ? new NamedSource(
-                  lookupData,
-                  view,
-                  view.context.getNamedDataFromProvider
-              )
-            : createDataSource(lookupData, view);
+
         const collector = new Collector({ type: "collect" });
-        dataSource.addChild(collector);
+        node.addChild(collector);
         dataFlow.addDataSource(dataSource);
         dataFlow.addCollector(collector);
 
@@ -168,14 +209,14 @@ export function buildDataFlow(
         view.flowHandle.auxiliaryCollectors ??= new Set();
         view.flowHandle.auxiliaryCollectors.add(collector);
 
-        return collector;
+        return { collector, source: dataSource };
     }
 
     /**
      * @param {View} view
      * @param {Collector} collector
      */
-    function releaseLookupCollector(view, collector) {
+    function releaseAuxiliaryCollector(view, collector) {
         view.flowHandle?.auxiliaryCollectors?.delete(collector);
         dataFlow.pruneCollectorBranch(collector);
         dataFlow.removeCollector(collector);
