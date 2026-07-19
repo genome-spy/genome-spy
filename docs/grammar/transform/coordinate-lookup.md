@@ -1,11 +1,14 @@
 # Coordinate Lookup
 
-The `"coordinateLookup"` transform adds values from a lazy side input to rows
-whose coordinates are on the same positional scale. It performs an exact,
+The `"coordinateLookup"` transform is the lazy, coordinate-constrained form of
+[`"lookup"`](lookup.md). It adds values from a [lazy](../data/lazy.md) side
+input to rows whose coordinates are on the same positional scale, using an exact
 one-to-one lookup by a continuous coordinate or a `[chrom, pos]` pair.
 
-Unlike [`"lookup"`](lookup.md), this transform does not retain primary rows
-outside that interval. Within the interval, unmatched keys receive `default`.
+Within the side input's loaded interval, it has the same unmatched-key behavior
+as `"lookup"`: the primary row is retained and receives `default`. Outside
+that interval, it drops the primary row because a matching side-input row might
+not have loaded yet.
 
 The side input must be a single-axis lazy data source using the same resolved
 `x` or `y` scale as the primary data.
