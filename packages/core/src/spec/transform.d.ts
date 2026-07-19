@@ -158,7 +158,11 @@ export interface CoordinateLookupParams
      */
     channel?: PrimaryPositionalChannel;
 
-    /** Coordinates of primary rows on the shared positional scale. */
+    /**
+     * Position of each primary row on the shared positional scale. Rows outside
+     * the loaded side-input interval are not passed through. This does not
+     * select a matching side-input row; use `key` and `fields` for that.
+     */
     coordinate: CoordinateLookupCoordinate;
 }
 
