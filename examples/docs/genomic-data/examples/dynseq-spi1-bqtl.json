@@ -1,0 +1,152 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "SPI1 Binding-QTL Dynseq Track",
+    "Compares per-base projected DeepSHAP contribution scores for the reference C and alternate G alleles of rs5764238 in GM12878 SPI1 ChIP-seq BPNet predictions.",
+    "Data source: pinned original BigWigs from the dynseq-paper SPI1 bQTL vignette. Terms: Zenodo record 6582100 is licensed under CC BY 4.0."
+  ],
+
+  "assembly": "hg38",
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr22", "pos": 43720850 },
+        { "chrom": "chr22", "pos": 43720960 }
+      ],
+      "zoom": {
+        "extent": [
+          { "chrom": "chr22", "pos": 43719872 },
+          { "chrom": "chr22", "pos": 43721985 }
+        ]
+      }
+    }
+  },
+
+  "data": {
+    "lazy": {
+      "type": "indexedFasta",
+      "url": "https://data.genomespy.app/genomes/hg38/hg38.fa"
+    }
+  },
+
+  "transform": [
+    {
+      "type": "flattenSequence",
+      "field": "sequence",
+      "as": ["rawPos", "base"]
+    },
+    { "type": "formula", "expr": "upper(datum.base)", "as": "base" },
+    { "type": "formula", "expr": "datum.start + datum.rawPos", "as": "pos" }
+  ],
+
+  "resolve": { "scale": { "y": "shared" }, "axis": { "x": "shared" } },
+
+  "vconcat": [
+    {
+      "import": { "template": "allele-track" },
+      "params": { "allele": "ref" }
+    },
+    {
+      "import": { "template": "allele-track" },
+      "params": { "allele": "alt" }
+    }
+  ],
+
+  "templates": {
+    "allele-track": {
+      "params": [{ "name": "allele", "value": "ref" }],
+
+      "title": {
+        "text": {
+          "expr": "allele === 'ref' ? 'Reference allele (C)' : 'Alternate allele (G)'"
+        },
+        "style": "overlay-title"
+      },
+      "height": 120,
+
+      "transform": [
+        {
+          "type": "coordinateLookup",
+          "from": {
+            "data": {
+              "lazy": {
+                "type": "bigwig",
+                "url": {
+                  "expr": "allele === 'ref' ? 'https://raw.githubusercontent.com/kundajelab/dynseq-paper/febc9180d72e92302d35c549002e0d56c79c536e/SPI1_bQTL/bigwigs/chip_imp_ref.bw' : 'https://raw.githubusercontent.com/kundajelab/dynseq-paper/febc9180d72e92302d35c549002e0d56c79c536e/SPI1_bQTL/bigwigs/chip_imp_alt.bw'"
+                },
+                "pixelsPerBin": 1
+              }
+            },
+            "transform": [
+              { "type": "formula", "expr": "datum.start", "as": "pos" }
+            ]
+          },
+          "coordinate": { "chrom": "chrom", "pos": "pos" },
+          "key": ["chrom", "pos"],
+          "values": ["score"]
+        },
+        { "type": "filter", "expr": "isValid(datum.score)" },
+        {
+          "type": "formula",
+          "description": "Show the rs5764238 alternate G allele while retaining the shared reference FASTA source.",
+          "expr": "allele === 'alt' && datum.pos === 43720929 ? 'G' : datum.base",
+          "as": "base"
+        }
+      ],
+
+      "layer": [
+        {
+          "name": "baseline",
+          "data": { "values": [{}] },
+          "encoding": {
+            "y": { "datum": 0, "type": "quantitative" },
+            "color": { "value": "gray" }
+          },
+          "mark": "rule"
+        },
+        {
+          "name": "dynseq",
+          "encoding": {
+            "x": {
+              "chrom": "chrom",
+              "pos": "pos",
+              "type": "locus"
+            },
+            "y": {
+              "datum": 0,
+              "type": "quantitative",
+              "scale": { "zero": true, "nice": false },
+              "axis": { "title": "Score" }
+            },
+            "y2": { "field": "score" },
+            "text": { "field": "base" },
+            "color": {
+              "field": "base",
+              "type": "nominal",
+              "scale": {
+                "domain": ["A", "C", "G", "T"],
+                "range": ["green", "blue", "orange", "red"]
+              },
+              "legend": null
+            }
+          },
+          "mark": {
+            "type": "text",
+            "font": "Source Sans Pro",
+            "fontWeight": 700,
+            "size": 100,
+            "squeeze": true,
+            "fitToBand": true,
+            "paddingX": 0,
+            "paddingY": 0,
+            "logoLetters": true
+          }
+        }
+      ]
+    }
+  },
+
+  "config": { "view": { "fill": "#FAFAFA" } }
+}

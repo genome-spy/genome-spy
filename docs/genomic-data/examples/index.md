@@ -19,6 +19,7 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 - [Indexed FASTA Six-Frame Translation](indexed-fasta-six-frame-translation.md) indexed-fasta-six-frame-translation.json
 - [BAM Read Alignments](bam-read-alignments.md) bam-read-alignments.json
 - [Multiple Sequence Alignment](multiple-sequence-alignment.md) msa.json
+- [SPI1 Binding-QTL Dynseq Track](dynseq-spi1-bqtl.md) dynseq-spi1-bqtl.json
 
 ## More examples
 
