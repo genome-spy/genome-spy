@@ -19,7 +19,8 @@ These fields determine both the lookup match and whether a primary row falls
 within the loaded side-input interval.
 
 `from.transform` runs on the side input before lookup. It can normalize fields
-to the coordinate names used by `key`.
+to the coordinate names used by `key`. It cannot contain `"lookup"` or
+`"coordinateLookup"` transforms.
 
 ## Parameters
 
