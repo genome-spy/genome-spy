@@ -129,7 +129,11 @@
                 "range": ["green", "blue", "orange", "red"]
               },
               "legend": null
-            }
+            },
+            "tooltip": [
+              { "field": "base", "type": "nominal" },
+              { "field": "score", "type": "quantitative" }
+            ]
           },
           "mark": {
             "type": "text",
