@@ -60,21 +60,21 @@ export const transforms = {
 /**
  * @param {import("../../spec/transform.js").TransformParamsBase} params
  * @param {import("../../view/view.js").default} [view]
- * @param {{ collector: import("../collector.js").default, source: import("../sources/dataSource.js").default}} [foreignInput]
+ * @param {{ collector: import("../collector.js").default, source: import("../sources/dataSource.js").default}} [auxiliaryInput]
  */
-export default function createTransform(params, view, foreignInput) {
+export default function createTransform(params, view, auxiliaryInput) {
     if (params.type == "lookup") {
-        if (!foreignInput) {
+        if (!auxiliaryInput) {
             throw new Error("Lookup transform requires a foreign collector.");
         }
         return new LookupTransform(
             /** @type {import("../../spec/transform.js").LookupParams} */ (
                 params
             ),
-            foreignInput.collector
+            auxiliaryInput.collector
         );
     } else if (params.type == "coordinateLookup") {
-        if (!foreignInput || !view) {
+        if (!auxiliaryInput || !view) {
             throw new Error(
                 "Coordinate lookup requires a view and a foreign data source."
             );
@@ -83,8 +83,8 @@ export default function createTransform(params, view, foreignInput) {
             /** @type {import("../../spec/transform.js").CoordinateLookupParams} */ (
                 params
             ),
-            foreignInput.collector,
-            foreignInput.source,
+            auxiliaryInput.collector,
+            auxiliaryInput.source,
             view
         );
     }

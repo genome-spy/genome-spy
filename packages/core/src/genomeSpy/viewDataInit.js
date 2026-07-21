@@ -4,6 +4,7 @@ import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../data/flowInit.js";
+import { hasAuxiliaryDataInput } from "../data/transforms/auxiliaryData.js";
 import { finalizeSubtreeGraphics } from "../view/viewUtils.js";
 import { VISIT_SKIP } from "../view/view.js";
 
@@ -128,7 +129,10 @@ export async function initializeViewDataForViews(
     /** @type {import("../view/view.js").default[]} */
     const viewsNeedingLoad = [];
     for (const view of viewsToInitialize) {
-        if (view.spec.data || hasAuxiliaryDataTransform(view)) {
+        if (
+            view.spec.data ||
+            view.spec.transform?.some(hasAuxiliaryDataInput)
+        ) {
             viewsNeedingLoad.push(view);
             continue;
         }
@@ -173,16 +177,6 @@ export async function initializeViewDataForViews(
     broadcastSubtreeDataReady(viewRoot);
 
     return builtDataFlow;
-}
-
-/**
- * @param {import("../view/view.js").default} view
- */
-function hasAuxiliaryDataTransform(view) {
-    return view.spec.transform?.some(
-        (transform) =>
-            transform.type == "lookup" || transform.type == "coordinateLookup"
-    );
 }
 
 /**

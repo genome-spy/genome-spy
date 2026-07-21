@@ -1,4 +1,8 @@
 import Collector from "../data/collector.js";
+import {
+    getAuxiliaryDataInput,
+    hasAuxiliaryDataInput,
+} from "../data/transforms/auxiliaryData.js";
 import createTransform from "../data/transforms/transformFactory.js";
 import createDataSource from "../data/sources/dataSourceFactory.js";
 import UnitView from "./unitView.js";
@@ -119,38 +123,20 @@ export function buildDataFlow(
             /**
              * @type {{ collector: Collector, source: DataSource } | undefined}
              */
-            let foreignInput;
+            let auxiliaryInput;
             try {
-                if (params.type == "lookup") {
-                    const lookup =
-                        /** @type {import("../spec/transform.js").LookupParams} */ (
-                            params
-                        );
-                    if ("lazy" in lookup.from) {
-                        throw new Error(
-                            "Lookup tables cannot use lazy data sources."
-                        );
-                    }
-                    foreignInput = createAuxiliaryDataBranch(
-                        lookup.from,
-                        [],
-                        view
-                    );
-                } else if (params.type == "coordinateLookup") {
-                    const lookup =
-                        /** @type {import("../spec/transform.js").CoordinateLookupParams} */ (
-                            params
-                        );
-                    foreignInput = createAuxiliaryDataBranch(
-                        lookup.from.data,
-                        lookup.from.transform ?? [],
+                const auxiliaryData = getAuxiliaryDataInput(params);
+                if (auxiliaryData) {
+                    auxiliaryInput = createAuxiliaryDataBranch(
+                        auxiliaryData.data,
+                        auxiliaryData.transforms,
                         view
                     );
                 }
-                transform = createTransform(params, view, foreignInput);
+                transform = createTransform(params, view, auxiliaryInput);
             } catch (e) {
-                if (foreignInput) {
-                    releaseAuxiliaryCollector(view, foreignInput.collector);
+                if (auxiliaryInput) {
+                    releaseAuxiliaryCollector(view, auxiliaryInput.collector);
                 }
                 console.warn(e);
                 throw new Error(
@@ -161,9 +147,9 @@ export function buildDataFlow(
 
             appendTransformWithClone(transform, appendTransform);
 
-            if (foreignInput) {
+            if (auxiliaryInput) {
                 transform.registerDisposer(() =>
-                    releaseAuxiliaryCollector(view, foreignInput.collector)
+                    releaseAuxiliaryCollector(view, auxiliaryInput.collector)
                 );
             }
         }
@@ -186,12 +172,9 @@ export function buildDataFlow(
         let node = dataSource;
         try {
             for (const params of transforms) {
-                if (
-                    params.type == "lookup" ||
-                    params.type == "coordinateLookup"
-                ) {
+                if (hasAuxiliaryDataInput(params)) {
                     throw new Error(
-                        "Lookup transforms cannot be used in a side-input transform pipeline."
+                        "Transforms with side inputs cannot be used in a side-input transform pipeline."
                     );
                 }
                 const transform = createTransform(params, view);
