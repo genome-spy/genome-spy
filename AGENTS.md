@@ -19,26 +19,6 @@ aware interactions.
 - TypeScript for more complex type definitions and JSON Schema generation
 - Monorepo managed with lerna-lite
 
-## Documentation
-
-- TypeScript `.d.ts` specs in `packages/core/src/spec/` are compiled into the JSON schema; keep their docs user-facing
-- When documenting defaults in spec `.d.ts`, use the `__Default value:__` convention at the end of the JSDoc block
-- Keep docs focused on user-visible behavior and semantics; avoid implementation details unless they are necessary for correct usage
-- Prefer concise, direct wording in docs and JSDoc in `.d.ts`.
-- Avoid vague or tentative phrasing unless it carries real meaning
-- Prefer plain statements about behavior over analogies or design commentary
-- Use imperative phrasing such as "Use ..." or "Use this to ..." only when the
-  action is required or strongly recommended. When something is one available
-  option, present it as an option.
-- User-facing docs should not include implementation details or internal design rationale unless they are necessary for correct usage
-- If a sentence does not help the reader use the feature, shorten it or remove it
-- Documention in `docs/` is user-facing and should be written with the same principles as JSDoc;
-- Docs macros:
-  - `SCHEMA <TypeName>` embeds schema-derived property docs (for example, `SCHEMA ExprRef`)
-  - `EXAMPLE examples/docs/...json` embeds a small self-contained docs spec from `examples/docs/`
-  - Docs macros are implemented in `utils/markdown_extension/extension/extension.py`
-- If a new or renamed type is missing during docs build, regenerate schema/docs artifacts (for example, `npm run build && npm run build:docs`)
-
 ### Core
 
 - WebGL rendering via twgl.js
@@ -189,6 +169,28 @@ aware interactions.
 - Notes should be Markdown.
 - Start with a brief prose-style rationale paragraph.
 - Follow with concise key points focused on user-visible benefits; skip minor refactors.
+
+## Documentation
+
+- TypeScript `.d.ts` specs in `packages/core/src/spec/` are compiled into the JSON schema; keep their docs user-facing
+- When documenting defaults in spec `.d.ts`, use the `__Default value:__` convention at the end of the JSDoc block
+- Keep docs focused on user-visible behavior and semantics; avoid implementation details unless they are necessary for correct usage
+- Prefer concise, direct wording in docs and JSDoc in `.d.ts`.
+- Avoid vague or tentative phrasing unless it carries real meaning
+- Prefer plain statements about behavior over analogies or design commentary
+- Use imperative phrasing such as "Use ..." or "Use this to ..." only when the
+  action is required or strongly recommended. When something is one available
+  option, present it as an option.
+- User-facing docs should not include implementation details or internal design rationale unless they are necessary for correct usage
+- If a sentence does not help the reader use the feature, shorten it or remove it
+- Documention in `docs/` is user-facing and should be written with the same principles as JSDoc;
+- Docs macros:
+  - `SCHEMA <TypeName>` embeds schema-derived property docs (for example, `SCHEMA ExprRef`)
+  - `EXAMPLE examples/docs/...json` embeds a small self-contained docs spec from `examples/docs/`
+  - Docs macros are implemented in `utils/markdown_extension/extension/extension.py`
+- If a new or renamed type is missing during docs build, regenerate schema/docs artifacts (for example, `npm run build && npm run build:docs`)
+- User-facing docs use Zensical (https://zensical.org/). Site structure is configured in `zensical.toml`.
+-
 
 ## Architecture pointers
 
