@@ -80,6 +80,7 @@ export default class LookupTransform extends Transform {
         const requestForeignData =
             options.requestForeignData ?? (() => undefined);
         const prepareBatch = options.prepareBatch ?? (() => undefined);
+        // Coordinate lookup uses this to omit rows outside loaded coverage.
         const hasDatumFilter = !!options.acceptsDatum;
         const acceptsDatum = options.acceptsDatum ?? (() => true);
 
@@ -152,6 +153,7 @@ export default class LookupTransform extends Transform {
             }
         };
 
+        // Keep eager lookup's per-row path free of the optional predicate.
         const propagate = hasDatumFilter
             ? propagateAcceptedLookup
             : propagateLookup;
