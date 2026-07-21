@@ -126,6 +126,25 @@ describe("Tooltip context rows", () => {
         ]);
     });
 
+    test("Auto mode renders a locus row for equal coordinate endpoints", () => {
+        const datum = {
+            linearizedX: 10,
+        };
+
+        const mark = makeMark({
+            encoders: {
+                x: makeLocusEncoder("linearizedX"),
+                x2: makeLocusEncoder("linearizedX"),
+            },
+        });
+
+        const context = createTooltipContext(datum, mark);
+
+        expect(context.genomicRows).toEqual([
+            { key: "Coordinate", value: "chr1:11" },
+        ]);
+    });
+
     test("Auto mode renders an interval row for two coordinates in the same group", () => {
         const datum = {
             chrom: "chr1",

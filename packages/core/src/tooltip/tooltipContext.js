@@ -231,13 +231,17 @@ function buildGenomicRowsForAxis(
 }
 
 /**
- * @param {{ field?: string }} primary
- * @param {{ field?: string } | undefined} secondary
+ * @param {{ value: number, field?: string }} primary
+ * @param {{ value: number, field?: string } | undefined} secondary
  * @param {Map<string, {groupId: string, chrom: string, pos: string, offset: number, channel: "x" | "y", ambiguous: boolean}>} mappingByLinearizedField
  * @returns {TooltipGenomicDisplayMode}
  */
 function resolveAutoMode(primary, secondary, mappingByLinearizedField) {
     if (!secondary) {
+        return "locus";
+    }
+
+    if (primary.value === secondary.value) {
         return "locus";
     }
 
