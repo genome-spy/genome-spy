@@ -7,9 +7,18 @@ import Transform from "./transform.js";
 /** @typedef {import("../flowNode.js").Datum} Datum */
 /** @typedef {(datum: Datum) => any} FieldAccessor */
 /** @typedef {(output: Datum, foreignDatum: Datum | undefined) => void} LookupWriter */
+/**
+ * @typedef {object} LookupOptions
+ * @prop {() => boolean} [isForeignDataReady]
+ * @prop {() => void} [requestForeignData]
+ * @prop {() => void} [prepareBatch]
+ * @prop {(datum: Datum) => boolean} [acceptsDatum]
+ */
 
 /**
- * Extends primary data rows with values from a keyed foreign data table.
+ * Extends primary rows with values from an exact keyed side input.
+ * CoordinateLookupTransform inherits this implementation to add lazy
+ * readiness and coverage behavior.
  */
 export default class LookupTransform extends Transform {
     get behavior() {
@@ -17,15 +26,17 @@ export default class LookupTransform extends Transform {
     }
 
     /**
-     * @param {import("../../spec/transform.js").LookupParams} params
+     * @param {import("../../spec/transform.js").LookupParams | import("../../spec/transform.js").CoordinateLookupParams} params
      * @param {import("../collector.js").default} foreignCollector
+     * @param {LookupOptions} [options]
      */
-    constructor(params, foreignCollector) {
+    constructor(params, foreignCollector, options = {}) {
         super(params);
         this.params = params;
-
-        const foreignKeyFields = asArray(params.key);
-        const primaryFields = asArray(params.fields ?? foreignKeyFields);
+        const foreignKeyFields = /** @type {string[]} */ (asArray(params.key));
+        const primaryFields = /** @type {string[]} */ (
+            asArray(params.fields ?? foreignKeyFields)
+        );
         if (primaryFields.length === 0) {
             throw new Error('The "fields" property must not be empty.');
         }
@@ -65,6 +76,13 @@ export default class LookupTransform extends Transform {
         let writeValues;
 
         const firstAccessor = primaryAccessors[0];
+        const isForeignDataReady = options.isForeignDataReady ?? (() => true);
+        const requestForeignData =
+            options.requestForeignData ?? (() => undefined);
+        const prepareBatch = options.prepareBatch ?? (() => undefined);
+        // Coordinate lookup uses this to omit rows outside loaded coverage.
+        const hasDatumFilter = !!options.acceptsDatum;
+        const acceptsDatum = options.acceptsDatum ?? (() => true);
 
         // Select the common single-key path once instead of branching per row.
         /** @type {(datum: Datum) => Datum | undefined} */
@@ -88,6 +106,7 @@ export default class LookupTransform extends Transform {
                   };
 
         const ensureIndex = () => {
+            prepareBatch();
             if (index) {
                 return;
             }
@@ -127,6 +146,18 @@ export default class LookupTransform extends Transform {
             this._propagate(output);
         };
 
+        /** @param {Datum} datum */
+        const propagateAcceptedLookup = (datum) => {
+            if (acceptsDatum(datum)) {
+                propagateLookup(datum);
+            }
+        };
+
+        // Keep eager lookup's per-row path free of the optional predicate.
+        const propagate = hasDatumFilter
+            ? propagateAcceptedLookup
+            : propagateLookup;
+
         /**
          * Validates the first datum and installs a fixed output writer. Dataflow
          * batches have a stable input shape, as required by the cached cloner.
@@ -145,8 +176,8 @@ export default class LookupTransform extends Transform {
 
             clone = createCloner(datum);
             // Subsequent rows use the indexed handler directly.
-            this.handle = propagateLookup;
-            propagateLookup(datum);
+            this.handle = propagate;
+            propagate(datum);
         };
 
         const invalidateIndex = () => {
@@ -177,30 +208,39 @@ export default class LookupTransform extends Transform {
             })
         );
 
+        const reset = this.reset.bind(this);
         this.reset = () => {
-            super.reset();
+            reset();
             primaryCompleted = false;
             // The cached table index remains valid until the foreign collector updates.
             this.handle = specializeAndPropagate;
         };
 
-        /**
-         * @param {import("../../types/flowBatch.js").FlowBatch} flowBatch
-         */
+        const beginBatch = this.beginBatch.bind(this);
+        /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
         this.beginBatch = (flowBatch) => {
-            ensureIndex();
-            this.handle = specializeAndPropagate;
-            super.beginBatch(flowBatch);
+            if (isForeignDataReady()) {
+                ensureIndex();
+                this.handle = specializeAndPropagate;
+            } else {
+                requestForeignData();
+                this.handle = discardDatum;
+            }
+            beginBatch(flowBatch);
         };
 
+        const complete = this.complete.bind(this);
         this.complete = () => {
             primaryCompleted = true;
-            super.complete();
+            complete();
         };
 
         this.handle = specializeAndPropagate;
     }
 }
+
+/** @param {Datum} _datum */
+function discardDatum(_datum) {}
 
 /**
  * @param {Iterable<Datum>} foreignData

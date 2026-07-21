@@ -162,16 +162,27 @@ export default class SingleAxisLazySource extends DataSource {
     }
 
     /**
+     * Clears propagated data and its coverage after the source's backing data
+     * has become unavailable or changed.
+     */
+    invalidateData() {
+        this._lastLoadedDomain = undefined;
+        this.reset();
+        this.complete();
+    }
+
+    /**
      * Resets the data flow and propagates the data, which should be an array of data chunks.
      * A chunk is an ordinary array of data objects. Typically all data objects are stored
      * in a single chunk, but sometimes they may be split into multiple chunks, e.g., one per
      * chromosome.
      *
      * @param {import("../../flowNode.js").Datum[][]} chunks An array of data chunks.
+     * @param {number[]} [loadedDomain] Continuous interval covered by the batch.
      * @protected
      */
-    publishData(chunks) {
-        this._lastLoadedDomain = Array.from(this.scaleResolution.getDomain());
+    publishData(chunks, loadedDomain = this.scaleResolution.getDomain()) {
+        this._lastLoadedDomain = Array.from(loadedDomain);
         this.reset();
         this.beginBatch({ type: "file" });
 
@@ -201,6 +212,15 @@ export default class SingleAxisLazySource extends DataSource {
         if (!this.isDataReadyForDomain({ [this.channel]: domain })) {
             this.requestDataForDomain(domain);
         }
+    }
+
+    /**
+     * Returns the continuous interval covered by the latest data batch.
+     *
+     * @returns {number[] | undefined}
+     */
+    getLoadedDomain() {
+        return this._lastLoadedDomain;
     }
 
     /**

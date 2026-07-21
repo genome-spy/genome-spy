@@ -113,7 +113,7 @@ export default class BigWigSource extends SingleAxisWindowedSource {
         await updateUrlDescriptorState({
             controller: this.#urlDescriptors,
             state: this.#descriptorState,
-            clearData: () => this.load(),
+            clearData: () => this.invalidateData(),
             setLoadingStatus: (status, detail) =>
                 this.setLoadingStatus(status, detail),
             loadModules: loadBigWigModules,

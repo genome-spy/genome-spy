@@ -1,4 +1,8 @@
 import Collector from "../data/collector.js";
+import {
+    getAuxiliaryDataInput,
+    hasAuxiliaryDataInput,
+} from "../data/transforms/auxiliaryData.js";
 import createTransform from "../data/transforms/transformFactory.js";
 import createDataSource from "../data/sources/dataSourceFactory.js";
 import UnitView from "./unitView.js";
@@ -93,7 +97,22 @@ export function buildDataFlow(
     }
 
     /**
+     * Appends a transform and any defensive clone it requires.
      *
+     * @param {FlowNode} transform
+     * @param {(node: FlowNode) => void} append
+     */
+    function appendTransformWithClone(transform, append) {
+        if (transform.behavior & BEHAVIOR_MODIFIES) {
+            // Make a defensive copy before modifying data so that the
+            // modification is not visible in other branches of the flow.
+            // These copies can later be optimized away where possible.
+            append(new CloneTransform());
+        }
+        append(transform);
+    }
+
+    /**
      * @param {import("../spec/transform.js").TransformParams[]} transforms
      * @param {View} view
      */
@@ -101,21 +120,23 @@ export function buildDataFlow(
         for (const params of transforms) {
             /** @type {FlowNode} */
             let transform;
-            /** @type {Collector | undefined} */
-            let foreignCollector;
+            /**
+             * @type {{ collector: Collector, source: DataSource } | undefined}
+             */
+            let auxiliaryInput;
             try {
-                if (params.type == "lookup") {
-                    foreignCollector = createLookupCollector(
-                        /** @type {import("../spec/transform.js").LookupParams} */ (
-                            params
-                        ),
+                const auxiliaryData = getAuxiliaryDataInput(params);
+                if (auxiliaryData) {
+                    auxiliaryInput = createAuxiliaryDataBranch(
+                        auxiliaryData.data,
+                        auxiliaryData.transforms,
                         view
                     );
                 }
-                transform = createTransform(params, view, foreignCollector);
+                transform = createTransform(params, view, auxiliaryInput);
             } catch (e) {
-                if (foreignCollector) {
-                    releaseLookupCollector(view, foreignCollector);
+                if (auxiliaryInput) {
+                    releaseAuxiliaryCollector(view, auxiliaryInput.collector);
                 }
                 console.warn(e);
                 throw new Error(
@@ -124,43 +145,51 @@ export function buildDataFlow(
                 );
             }
 
-            if (transform.behavior & BEHAVIOR_MODIFIES) {
-                // Make defensive copies before every modifying transform to
-                // ensure that modifications don't inadvertently become visible
-                // in other branches of the flow.
-                // These can be later optimized away where possible.
-                appendTransform(new CloneTransform());
-            }
-            appendTransform(transform);
+            appendTransformWithClone(transform, appendTransform);
 
-            if (foreignCollector) {
+            if (auxiliaryInput) {
                 transform.registerDisposer(() =>
-                    releaseLookupCollector(view, foreignCollector)
+                    releaseAuxiliaryCollector(view, auxiliaryInput.collector)
                 );
             }
         }
     }
 
     /**
-     * Creates a source branch that materializes a lookup table without a view.
+     * Creates a side-input source branch with optional unary transforms.
      *
-     * @param {import("../spec/transform.js").LookupParams} params
+     * @param {import("../spec/data.js").DataSource} data
+     * @param {import("../spec/transform.js").TransformParams[]} transforms
      * @param {View} view
+     * @returns {{ collector: Collector, source: DataSource }}
      */
-    function createLookupCollector(params, view) {
-        const lookupData = params.from;
-        if ("lazy" in lookupData) {
-            throw new Error("Lookup tables cannot use lazy data sources.");
+    function createAuxiliaryDataBranch(data, transforms, view) {
+        const dataSource = isNamedData(data)
+            ? new NamedSource(data, view, view.context.getNamedDataFromProvider)
+            : createDataSource(data, view);
+
+        /** @type {FlowNode} */
+        let node = dataSource;
+        try {
+            for (const params of transforms) {
+                if (hasAuxiliaryDataInput(params)) {
+                    throw new Error(
+                        "Transforms with side inputs cannot be used in a side-input transform pipeline."
+                    );
+                }
+                const transform = createTransform(params, view);
+                appendTransformWithClone(transform, (child) => {
+                    node.addChild(child);
+                    node = child;
+                });
+            }
+        } catch (error) {
+            dataSource.disposeSubtree();
+            throw error;
         }
-        const dataSource = isNamedData(lookupData)
-            ? new NamedSource(
-                  lookupData,
-                  view,
-                  view.context.getNamedDataFromProvider
-              )
-            : createDataSource(lookupData, view);
+
         const collector = new Collector({ type: "collect" });
-        dataSource.addChild(collector);
+        node.addChild(collector);
         dataFlow.addDataSource(dataSource);
         dataFlow.addCollector(collector);
 
@@ -168,14 +197,14 @@ export function buildDataFlow(
         view.flowHandle.auxiliaryCollectors ??= new Set();
         view.flowHandle.auxiliaryCollectors.add(collector);
 
-        return collector;
+        return { collector, source: dataSource };
     }
 
     /**
      * @param {View} view
      * @param {Collector} collector
      */
-    function releaseLookupCollector(view, collector) {
+    function releaseAuxiliaryCollector(view, collector) {
         view.flowHandle?.auxiliaryCollectors?.delete(collector);
         dataFlow.pruneCollectorBranch(collector);
         dataFlow.removeCollector(collector);

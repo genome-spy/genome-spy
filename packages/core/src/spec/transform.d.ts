@@ -1,5 +1,5 @@
-import { PositionalChannel } from "./channel.js";
-import { DataSource } from "./data.js";
+import { PositionalChannel, PrimaryPositionalChannel } from "./channel.js";
+import { DataSource, LazyData } from "./data.js";
 import { FontStyle, FontWeight } from "./font.js";
 import { ExprRef } from "./parameter.js";
 
@@ -18,6 +18,41 @@ export interface TransformParamsBase {
      * and agent context.
      */
     description?: string;
+}
+
+/** Common exact-match and output options for lookup transforms. */
+interface LookupMatchParams {
+    /**
+     * The key field or fields in the side input. When multiple fields are
+     * provided, they form a composite key.
+     */
+    key: Field | Field[];
+
+    /**
+     * The fields in the input data to match against the side-input key.
+     * This array must have the same length and order as `key`. Defaults to
+     * `key`.
+     */
+    fields?: Field | Field[] | null;
+
+    /**
+     * Fields to copy from a matching side-input row. Defaults to all fields
+     * except `key`.
+     */
+    values?: Field[] | null;
+
+    /**
+     * Output field names. Defaults to `values`. Requires an explicit `values`
+     * array.
+     */
+    as?: string[];
+
+    /**
+     * Value written when no side-input row matches.
+     *
+     * __Default value:__ `null`
+     */
+    default?: any;
 }
 
 export interface IdentifierParams extends TransformParamsBase {
@@ -69,45 +104,52 @@ export interface FormulaParams extends TransformParamsBase {
     as: string;
 }
 
-export interface LookupParams extends TransformParamsBase {
+export interface LookupParams extends TransformParamsBase, LookupMatchParams {
     type: "lookup";
 
     /**
      * The non-lazy data source that provides the lookup table.
      */
     from: DataSource;
+}
+
+export interface CoordinateLookupInput {
+    /** The lazy side data source. */
+    data: LazyData;
+
+    /** Transforms applied to the side data before lookup. */
+    transform?: TransformParams[];
+}
+
+export interface CoordinateLookupParams
+    extends TransformParamsBase, LookupMatchParams {
+    type: "coordinateLookup";
 
     /**
-     * The key field or fields in the lookup table. When multiple fields are
-     * provided, they form a composite key.
+     * The lazy side input and its optional transforms. Rows outside the loaded
+     * side-input domain are not passed through.
      */
-    key: Field | Field[];
+    from: CoordinateLookupInput;
 
     /**
-     * The fields in the input data to match against the lookup-table key.
-     * This array must have the same length and order as `key`. Defaults to
-     * `key`.
-     */
-    fields?: Field | Field[] | null;
-
-    /**
-     * Fields to copy from a matching lookup-table row. Defaults to all fields
-     * except `key`.
-     */
-    values?: Field[] | null;
-
-    /**
-     * Output field names. Defaults to `values`. Requires an explicit `values`
-     * array.
-     */
-    as?: string[];
-
-    /**
-     * Value written when no lookup-table row matches.
+     * The positional channel shared with the lazy side input.
      *
-     * __Default value:__ `null`
+     * __Default value:__ `"x"`
      */
-    default?: any;
+    channel?: PrimaryPositionalChannel;
+
+    /**
+     * Coordinate field or `[chrom, pos]` fields in the lazy side input. The
+     * same fields in the primary data determine both the exact match and
+     * whether a row is within the loaded side-input interval.
+     */
+    key: Field | [Field, Field];
+
+    /**
+     * Coordinate field or `[chrom, pos]` fields in the primary data. Defaults
+     * to `key`.
+     */
+    fields?: Field | [Field, Field] | null;
 }
 
 export interface ProjectParams extends TransformParamsBase {
@@ -957,6 +999,7 @@ export type TransformParams =
     | AggregateParams
     | CollectParams
     | CoverageParams
+    | CoordinateLookupParams
     | FlattenDelimitedParams
     | FormulaParams
     | LookupParams

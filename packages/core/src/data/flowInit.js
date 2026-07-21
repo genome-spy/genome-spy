@@ -79,6 +79,19 @@ export function syncFlowHandles(root, canonicalBySource) {
 }
 
 /**
+ * Finds the data source at the root of a flow-node branch.
+ *
+ * @param {import("./flowNode.js").default | undefined} node
+ * @returns {DataSource | undefined}
+ */
+export function findAncestorDataSource(node) {
+    while (node && !(node instanceof DataSource)) {
+        node = node.parent;
+    }
+    return node instanceof DataSource ? node : undefined;
+}
+
+/**
  * Initializes data flow and mark wiring for a subtree without rebuilding the
  * entire view hierarchy. This is the primary entry point for dynamic view
  * insertion: build the subtree fully, call this, then attach the subtree to
@@ -290,8 +303,9 @@ function addSubtreeAuxiliaryDataSources(subtreeRoot, dataSources, viewFilter) {
  */
 function addAuxiliaryDataSources(view, dataSources) {
     for (const collector of view.flowHandle?.auxiliaryCollectors ?? []) {
-        if (collector.parent instanceof DataSource) {
-            dataSources.add(collector.parent);
+        const dataSource = findAncestorDataSource(collector);
+        if (dataSource) {
+            dataSources.add(dataSource);
         }
     }
 }
@@ -324,15 +338,15 @@ export function loadViewSubtreeData(
         auxiliaryDataSources,
         viewFilter
     );
-    const lookupDataSources = Array.from(dataSources).filter((dataSource) =>
-        auxiliaryDataSources.has(dataSource)
+    const auxiliaryDataSourcesToLoad = Array.from(dataSources).filter(
+        (dataSource) => auxiliaryDataSources.has(dataSource)
     );
     const primaryDataSources = Array.from(dataSources).filter(
         (dataSource) => !auxiliaryDataSources.has(dataSource)
     );
 
     return Promise.all(
-        lookupDataSources.map((dataSource) =>
+        auxiliaryDataSourcesToLoad.map((dataSource) =>
             loadDataSourceOnce(dataSource, loadOptions)
         )
     )

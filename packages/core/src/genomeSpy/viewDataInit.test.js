@@ -3,6 +3,8 @@ import { describe, expect, test, vi } from "vitest";
 import UnitView from "../view/unitView.js";
 import ConcatView from "../view/concatView.js";
 import NamedSource from "../data/sources/namedSource.js";
+import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
+import MockLazySource from "../data/sources/lazy/mockLazySource.js";
 
 import { createTestViewContext } from "../view/testUtils.js";
 import {
@@ -125,6 +127,100 @@ describe("viewDataInit", () => {
         expect(hiddenView?.flowHandle?.collector).toBeDefined();
         expect(hiddenView?.getDataInitializationState()).toBe("ready");
         expect(visibleView?.flowHandle?.collector).toBe(visibleCollector);
+    });
+
+    test("loads transformed coordinate lookup data for newly visible views", async () => {
+        const unregister = registerLazyDataSource(
+            (params) => /** @type {any} */ (params).type == "mockLazy",
+            MockLazySource
+        );
+        const loadSpy = vi.spyOn(MockLazySource.prototype, "load");
+
+        try {
+            const context = createTestViewContext();
+            context.isViewConfiguredVisible = (view) =>
+                view.spec.visible ?? true;
+
+            /** @type {import("../spec/root.js").RootSpec} */
+            const spec = {
+                assembly: "hg38",
+                data: { values: [{ chrom: "chr1", pos: 100, base: "A" }] },
+                vconcat: [
+                    {
+                        name: "visible",
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                chrom: "chrom",
+                                pos: "pos",
+                                type: "locus",
+                            },
+                        },
+                    },
+                    {
+                        name: "hidden",
+                        visible: false,
+                        transform: [
+                            {
+                                type: "coordinateLookup",
+                                from: {
+                                    data: {
+                                        lazy: /** @type {any} */ ({
+                                            type: "mockLazy",
+                                            channel: "x",
+                                        }),
+                                    },
+                                    transform: [
+                                        {
+                                            type: "formula",
+                                            expr: "datum.start",
+                                            as: "pos",
+                                        },
+                                    ],
+                                },
+                                key: ["chrom", "pos"],
+                                values: ["score"],
+                            },
+                        ],
+                        mark: "point",
+                        encoding: {
+                            x: {
+                                chrom: "chrom",
+                                pos: "pos",
+                                type: "locus",
+                            },
+                            y: { field: "score", type: "quantitative" },
+                        },
+                    },
+                ],
+            };
+
+            const root = await context.createOrImportView(
+                spec,
+                null,
+                null,
+                "root"
+            );
+            await initializeViewData(
+                root,
+                context.dataFlow,
+                context.fontManager,
+                () => undefined
+            );
+
+            context.isViewConfiguredVisible = () => true;
+            await initializeVisibleViewData(
+                root,
+                context.dataFlow,
+                context.fontManager
+            );
+
+            // The side branch has a formula between its source and collector.
+            expect(loadSpy).toHaveBeenCalledTimes(1);
+        } finally {
+            loadSpy.mockRestore();
+            unregister();
+        }
     });
 
     test("shared sources do not add duplicate observers for existing views", async () => {

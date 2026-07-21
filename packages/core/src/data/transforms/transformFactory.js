@@ -1,5 +1,6 @@
 import Collector from "../collector.js";
 import AlignmentMismatchesTransform from "./alignmentMismatches.js";
+import CoordinateLookupTransform from "./coordinateLookup.js";
 import CoverageTransform from "./coverage.js";
 import FilterScoredLabelsTransform from "./filterScoredLabels.js";
 import FilterTransform from "./filter.js";
@@ -59,18 +60,32 @@ export const transforms = {
 /**
  * @param {import("../../spec/transform.js").TransformParamsBase} params
  * @param {import("../../view/view.js").default} [view]
- * @param {import("../collector.js").default} [foreignCollector]
+ * @param {{ collector: import("../collector.js").default, source: import("../sources/dataSource.js").default}} [auxiliaryInput]
  */
-export default function createTransform(params, view, foreignCollector) {
+export default function createTransform(params, view, auxiliaryInput) {
     if (params.type == "lookup") {
-        if (!foreignCollector) {
+        if (!auxiliaryInput) {
             throw new Error("Lookup transform requires a foreign collector.");
         }
         return new LookupTransform(
             /** @type {import("../../spec/transform.js").LookupParams} */ (
                 params
             ),
-            foreignCollector
+            auxiliaryInput.collector
+        );
+    } else if (params.type == "coordinateLookup") {
+        if (!auxiliaryInput || !view) {
+            throw new Error(
+                "Coordinate lookup requires a view and a foreign data source."
+            );
+        }
+        return new CoordinateLookupTransform(
+            /** @type {import("../../spec/transform.js").CoordinateLookupParams} */ (
+                params
+            ),
+            auxiliaryInput.collector,
+            auxiliaryInput.source,
+            view
         );
     }
 

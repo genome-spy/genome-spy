@@ -110,7 +110,7 @@ export default class TabixSource extends SingleAxisWindowedSource {
         await updateUrlDescriptorState({
             controller: this.#urlDescriptors,
             state: this.#descriptorState,
-            clearData: () => this.load(),
+            clearData: () => this.invalidateData(),
             setLoadingStatus: (status, detail) =>
                 this.setLoadingStatus(status, detail),
             loadModules: async () => {

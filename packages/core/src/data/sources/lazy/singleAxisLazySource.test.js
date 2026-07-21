@@ -21,6 +21,11 @@ class TestLazySource extends SingleAxisLazySource {
     onDomainChanged(domain, complexDomain) {
         this.calls.push({ domain, complexDomain });
     }
+
+    /** @param {number[]} domain */
+    setLoadedDomain(domain) {
+        this._lastLoadedDomain = domain;
+    }
 }
 
 function createViewStub() {
@@ -89,5 +94,25 @@ describe("SingleAxisLazySource", () => {
 
         broadcastListeners.get("layoutComputed")?.();
         expect(source.calls.map((call) => call.domain)).toEqual([domain]);
+    });
+
+    test("keeps coverage during a source reload", async () => {
+        const { view } = createViewStub();
+        const source = new TestLazySource(view);
+        source.setLoadedDomain([0, 10]);
+
+        await source.load();
+
+        expect(source.isDataReadyForDomain({ x: [0, 10] })).toBe(true);
+    });
+
+    test("clears coverage when backing data are invalidated", () => {
+        const { view } = createViewStub();
+        const source = new TestLazySource(view);
+        source.setLoadedDomain([0, 10]);
+
+        source.invalidateData();
+
+        expect(source.isDataReadyForDomain({ x: [0, 10] })).toBe(false);
     });
 });
