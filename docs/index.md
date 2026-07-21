@@ -29,31 +29,27 @@ The toolkit comprises two JavaScript packages:
 Check the [Getting Started](getting-started.md) page to get started with
 GenomeSpy and make your own tailored visualizations.
 
-## Genomic examples
-
-GenomeSpy includes practical examples for common genomic visualization tasks:
-
-- [Chromosome Ideogram from Cytobands](genomic-data/examples/cytobands.md)
-  shows a compact ideogram built from UCSC cytoband intervals.
-- [RefSeq Gene Annotations with Scored Labels](genomic-data/examples/refseq-genes.md)
-  shows transcript structure, exon intervals, and dynamically fitted gene
-  labels.
-- [ClinVar Small-Variant Classifications](genomic-data/examples/clinvar-variants.md)
-  shows ClinVar VCF variants colored by germline classification.
-- [ASCAT Copy-Number Segmentation](genomic-data/examples/ascat.md) combines
-  copy-number, LogR, BAF, ideogram, and gene annotation tracks.
-- [Sashimi Plot from Splice Junctions](genomic-data/examples/sashimi-plot.md)
-  combines BigWig coverage with splice-junction arcs.
-
-See [Genomic Data Examples](genomic-data/examples/index.md) for the full list.
-
 ## Minimal interactive example
 
 The example below introduces basic grammar concepts such as data transforms,
-encodings, marks, and interactive zooming. You can zoom in using the mouse
+encodings, marks, and interactive zooming. It renders a large synthetic point
+cloud smoothly, with point size increasing as you zoom in using the mouse
 wheel.
 
 EXAMPLE examples/docs/index/interactive-overview.json
+
+## Genome visualization in practice
+
+GenomeSpy applies the same declarative grammar to genomic data. These examples
+show two richer, domain-specific visualizations: translated sequence context and
+splice-junction evidence.
+
+EXAMPLE_GALLERY examples/docs/genomic-data/examples
+
+- [Indexed FASTA Six-Frame Translation](genomic-data/examples/indexed-fasta-six-frame-translation.md) indexed-fasta-six-frame-translation.json
+- [Sashimi Plot from Splice Junctions](genomic-data/examples/sashimi-plot.md) sashimi-plot.json
+
+See [Genomic Data Examples](genomic-data/examples/index.md) for the full list.
 
 ## About
 
