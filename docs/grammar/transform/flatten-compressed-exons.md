@@ -1,19 +1,19 @@
 # Flatten Compressed Exons
 
-The `"flattenCompressedExons"` transform expands a compact exon encoding into
-one datum per exon.
+The `"flattenCompressedExons"` transform expands a compact representation of
+gene exons into one datum per exon. This encoding keeps gene annotation data
+compact.
 
 It reads the transcript start coordinate from `start` and parses `exons` as
 alternating segment lengths in `gap, exon, gap, exon, ...` order. The first gap
 is typically `0`, so the first exon begins at `start`.
 
-Each output row is a clone of the input datum with added exon interval fields.
-By default, these are `exonStart` and `exonEnd`.
+Each output row copies the input datum and adds exon interval fields. By
+default, these are `exonStart` and `exonEnd`.
 
-This transform is mainly intended to be used with an optimized gene annotation
-track. Read more at [Annotation
-Tracks](https://observablehq.com/@tuner/annotation-tracks?collection=@tuner/genomespy)
-notebook.
+See the [RefSeq Gene Annotations with Scored
+Labels](../../genomic-data/examples/refseq-genes.md) example for a gene
+annotation track that uses this transform.
 
 ## Parameters
 

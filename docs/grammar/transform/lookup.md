@@ -66,3 +66,6 @@ When the key fields have the same names in both data sets, omit `fields`. When
 explicit `values` and `as` to select or rename copied fields. Copied fields
 must not have the same names as primary-data fields. Implicit values
 require top-level lookup key fields.
+
+For an example that maps nucleotide complements and codons, see [Indexed FASTA
+Six-Frame Translation](../../genomic-data/examples/indexed-fasta-six-frame-translation.md).

@@ -60,3 +60,6 @@ that offset, so one mismatch row is emitted:
 
 Layers can color `base` with a nominal scale and filter or fade marks using
 `baseQuality`.
+
+For a complete genomic visualization example, see the [SPI1 Binding-QTL Dynseq
+Track](../../genomic-data/examples/dynseq-spi1-bqtl.md).
