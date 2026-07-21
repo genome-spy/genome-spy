@@ -42,7 +42,7 @@ This example combines several GenomeSpy capabilities in one spec:
 - [`link`](../../grammar/mark/link.md) draws the dome-shaped splice arcs.
 - [`text`](../../grammar/mark/text.md) labels the arcs with their junction
   scores.
-- [`ExprRef`](../../grammar/types.md#exprref) expressions use the
+- [`ExprRef`](../../grammar/expressions.md) expressions use the
   [scale functions](../../grammar/expressions.md#scale-functions) to couple the
   junction y-scale domain to the current x-domain, which keeps the shared arc
   height and label placement proportional to the visible genomic window.

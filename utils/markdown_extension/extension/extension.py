@@ -3,6 +3,7 @@ import json
 import os
 import re
 import shlex
+from urllib.parse import unquote
 
 from markdown.preprocessors import Preprocessor
 from markdown.extensions import Extension
@@ -53,7 +54,7 @@ types_with_descriptions = {
     'Field': 'string (field name)',
 }
 
-refPattern = re.compile('^#/definitions/(\\w+)$')
+refPattern = re.compile('^#/definitions/(.+)$')
 schemaLinePattern = re.compile(r'^\s*"\$schema"\s*:\s*".*",?\s*$')
 
 class MyPreprocessor(Preprocessor):
@@ -264,7 +265,7 @@ class MyPreprocessor(Preprocessor):
     def refToString(self, ref, schema):
         m = refPattern.match(ref)
         if m:
-            type_name = m.group(1)
+            type_name = unquote(m.group(1))
             ref_type = schema['definitions'][type_name]
             any_of = ref_type.get('anyOf')
             enum = ref_type.get('enum')
@@ -334,7 +335,7 @@ class MyPreprocessor(Preprocessor):
             m = refPattern.match(type['$ref'])
             if not m:
                 return ['Unknown type: ' + type_name]
-            type = schema['definitions'].get(m.group(1))
+            type = schema['definitions'].get(unquote(m.group(1)))
             if not type:
                 return ['Unknown type: ' + type_name]
         
@@ -347,7 +348,23 @@ class MyPreprocessor(Preprocessor):
             lines.append('Type: ' + self.propTypesToString(anyOf, schema))
             return lines
 
+        enum = type.get('enum')
+        if enum:
+            if type.get('type') == 'string':
+                lines.append('Type: ' + ' | '.join(['`"{}"`'.format(e) for e in enum]))
+            else:
+                lines.append('Type: ' + ' | '.join(['`{}`'.format(e) for e in enum]))
+            return lines
+
         properties = type.get('properties')
+        value_type = type.get('type')
+        if value_type and not properties:
+            if isinstance(value_type, list):
+                lines.append('Type: ' + ' | '.join(value_type))
+            else:
+                lines.append('Type: ' + self.propTypeToString(type, schema))
+            return lines
+
         if not properties:
             return ['No properties']
 

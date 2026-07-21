@@ -46,7 +46,7 @@ This example combines several GenomeSpy capabilities in one alignment view:
 
 - [Lazy data sources](../../grammar/data/lazy.md) load BAM alignments only for
   the visible region. The BAM loading window is controlled by an
-  [`ExprRef`](../../grammar/types.md#exprref) so the same parameter can drive
+  [`ExprRef`](../../grammar/expressions.md) so the same parameter can drive
   the zoom message.
 - [Parameters](../../grammar/parameters.md) bind mapping-quality and
   base-quality thresholds to sliders.
