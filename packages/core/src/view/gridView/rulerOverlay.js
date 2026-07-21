@@ -75,6 +75,8 @@ export function createRulerOverlaySpec({
                 stroke: "black",
                 strokeWidth: 1,
                 ...mark,
+                // Rulers are decorative and must not replace hovered data marks.
+                tooltip: null,
             },
         });
     } else {
@@ -91,6 +93,8 @@ export function createRulerOverlaySpec({
                     strokeWidth: 1,
                     opacity: 0.8,
                     ...mark,
+                    // Rulers are decorative and must not replace hovered data marks.
+                    tooltip: null,
                 },
             });
 

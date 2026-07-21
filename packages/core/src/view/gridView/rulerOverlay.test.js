@@ -50,6 +50,7 @@ describe("createRulerOverlaySpec", () => {
                         clip: true,
                         stroke: "red",
                         strokeWidth: 2,
+                        tooltip: null,
                     },
                 },
             ],
@@ -146,6 +147,7 @@ describe("createRulerOverlaySpec", () => {
                     clip: true,
                     fillOpacity: 0.15,
                     strokeWidth: 1,
+                    tooltip: null,
                 },
             },
         ]);
