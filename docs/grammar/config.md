@@ -62,11 +62,12 @@ GenomeSpy currently supports these built-in themes:
 
 The `genomespy` theme is the default GenomeSpy look. The `vegalite` theme
 follows Vega-Lite defaults where GenomeSpy supports the same features. The
-Vega-inspired themes are based on `vegalite`.
+remaining themes are loosely adapted from
+[vega-themes](https://github.com/vega/vega-themes).
 
 Theme selection is root-only. Specs can choose one of the built-in themes.
 
-EXAMPLE examples/docs/grammar/config/theme.json height=220
+EXAMPLE examples/docs/grammar/config/theme.json height=420
 
 ## Config scopes
 

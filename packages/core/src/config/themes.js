@@ -1,3 +1,9 @@
+/**
+ * Themes are adapted from vega-themes (https://github.com/vega/vega-themes).
+ * They are not generally exact matches, but are intended to provide a similar
+ * look and feel.
+ */
+
 import { mergeConfigScopes } from "./mergeConfig.js";
 
 /** @type {import("../spec/config.js").GenomeSpyConfig} */
