@@ -3,6 +3,7 @@ import rawPlugin from "vite-raw-plugin";
 
 export default defineConfig({
     resolve: {
+        conditions: ["development"],
         dedupe: ["lit"],
     },
     plugins: [
