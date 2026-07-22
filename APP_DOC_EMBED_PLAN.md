@@ -11,10 +11,24 @@ leave listeners behind after the page is removed.
 The proposed authoring form is:
 
 ```md
-EXAMPLE examples/docs/app/copy-numbers.json runtime=app height=460 spechidden
+EXAMPLE examples/app/copy-numbers.json runtime=app height=460 spechidden
 ```
 
 `runtime` defaults to `core`, preserving every existing Core embed unchanged.
+
+## Implementation status
+
+Implemented on `docs/app-embed`:
+
+- ESM documentation bundles and lazy App runtime: `2cd2ee065`, `d8ed413b6`
+- lifecycle-safe embedded App mode: `e595962a7`
+- `runtime=app` macro support and live copy-number example: `6dd0854ae`,
+  `ae1962ff3`
+- cache-safe documentation builds and browser-compatible App bundling:
+  `be1bfc92e`, `c304bd9e8`
+
+The copy-number example was smoke-tested in a clean, built static site. It
+loads the visualization and embedded toolbar without browser-console errors.
 
 ## Findings and decisions
 
@@ -28,6 +42,8 @@ EXAMPLE examples/docs/app/copy-numbers.json runtime=app height=460 spechidden
   link. The current URL mapping supports `/examples/app/`.
 - The copy-number spec has inline data. It needs no data staging, URL rewrite,
   or special App configuration beyond selecting the App runtime.
+- Zensical caches transformed Markdown in `.cache` without invalidating it for
+  Markdown-extension changes. The full docs build therefore uses `--clean`.
 
 ### Why selecting the App runtime is not sufficient
 
@@ -272,7 +288,7 @@ per-instance, but it is not required for the initial integration.
    replacing or supplementing the current link-only list. Use:
 
    ```md
-   EXAMPLE examples/docs/app/copy-numbers.json runtime=app height=460 spechidden
+   EXAMPLE examples/app/copy-numbers.json runtime=app height=460 spechidden
    ```
 
 2. Explain in one concise paragraph that the example uses App's SampleView and
