@@ -38,6 +38,7 @@ class ExampleMacroTest(unittest.TestCase):
         self.assertIn('runtime="app"', html)
         self.assertIn('height="200"', html)
         self.assertIn('spechidden="true"', html)
+        self.assertNotIn('playground-url=', html)
         self.assertNotIn('$schema', html)
 
     def test_core_runtime_remains_implicit(self) -> None:
@@ -46,7 +47,9 @@ class ExampleMacroTest(unittest.TestCase):
 
             lines = preprocessor.getExample('examples/docs/demo/track.json')
 
-        self.assertNotIn('runtime=', '\n'.join(lines))
+        html = '\n'.join(lines)
+        self.assertNotIn('runtime=', html)
+        self.assertIn('playground-url=', html)
 
     def test_rejects_app_example_without_app_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

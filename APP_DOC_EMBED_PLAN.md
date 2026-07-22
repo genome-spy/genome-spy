@@ -37,9 +37,9 @@ loads the visualization and embedded toolbar without browser-console errors.
 - `scripts/prepare-docs-assets.mjs` copies the complete `examples/` tree to
   `docs/examples/`. Therefore `examples/app/copy-numbers.json` is already
   available to the built site at `examples/app/copy-numbers.json`.
-- The Markdown preprocessor already removes `$schema` from `EXAMPLE` files,
-  reads the JSON, passes `base-url="examples/"`, and creates a Playground
-  link. The current URL mapping supports `/examples/app/`.
+- The Markdown preprocessor removes `$schema` from `EXAMPLE` files, reads the
+  JSON, and passes `base-url="examples/"`. It creates a Playground link only
+  for Core embeds because Playground cannot render App specifications.
 - The copy-number spec has inline data. It needs no data staging, URL rewrite,
   or special App configuration beyond selecting the App runtime.
 - Zensical caches transformed Markdown in `.cache` without invalidating it for
@@ -338,8 +338,8 @@ per-instance, but it is not required for the initial integration.
   `runtime="core"` implicitly.
 - `copy-numbers.json` renders interactively in
   `docs/sample-collections/visualizing.md` from the built site.
-- Its inline specification is shown/hidden by the existing control and its
-  Playground link still targets the staged App example.
+- Its inline specification is shown/hidden by the existing control. App embeds
+  omit the Playground edit link because Playground cannot render App specs.
 - An App documentation example includes provenance undo/redo and applicable
   view controls, but does not create bookmarks, expose sharing, touch
   URL hash/history, or interfere with another example.

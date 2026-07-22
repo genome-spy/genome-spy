@@ -172,12 +172,17 @@ class MyPreprocessor(Preprocessor):
             return ['Cannot preprocess example file {}: {}'.format(example_path, exc)]
 
         base_url = 'examples/'
-        playground_spec_path = '/docs/' + example_path
 
         attributes = [
             'base-url="{}"'.format(base_url),
-            'playground-url="/playground/?spec={}"'.format(playground_spec_path),
         ]
+        if runtime == 'core':
+            playground_spec_path = '/docs/' + example_path
+            attributes.append(
+                'playground-url="/playground/?spec={}"'.format(
+                    playground_spec_path
+                )
+            )
         if height:
             attributes.append('height="{}"'.format(height))
         if spec_hidden:
