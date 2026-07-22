@@ -11,7 +11,7 @@ leave listeners behind after the page is removed.
 The proposed authoring form is:
 
 ```md
-EXAMPLE examples/docs/app/copy-numbers.json runtime=app height=420 spechidden
+EXAMPLE examples/docs/app/copy-numbers.json runtime=app height=460 spechidden
 ```
 
 `runtime` defaults to `core`, preserving every existing Core embed unchanged.
@@ -34,8 +34,9 @@ EXAMPLE examples/docs/app/copy-numbers.json runtime=app height=420 spechidden
 - `packages/doc-embed/index.js` imports only `@genome-spy/core` and always
   calls Core's `embed` function.
 - `packages/app/src/app.js` always renders an App shell containing a toolbar.
-  That toolbar includes bookmark and menu controls which are inappropriate for
-  a small in-document example.
+  Its provenance controls are useful in an embedded App, but its bookmark and
+  sharing controls currently assume that the App owns persistent browser and
+  URL state.
 - During `launch()`, App reads `window.location.hash`, subscribes to the App
   store and zoomable scales, registers a `hashchange` listener, and writes
   provenance and zoom state back using `window.history.replaceState(...)`.
@@ -59,19 +60,22 @@ Add the following public App embedding mode, with the existing behavior as the
 default:
 
 ```ts
-embedMode?: "standalone" | "document";
+embedMode?: "standalone" | "embedded";
 ```
 
-`"document"` has these intentionally bundled semantics:
+`"embedded"` means that App is one component in a host page rather than the
+page owner. It has these intentionally bundled semantics:
 
-- render only the visualization workspace, without the App toolbar or
-  side-panel shell;
+- render the visualization workspace with an embedded-safe App toolbar, but
+  without the side-panel shell;
 - keep App's view factory, SampleView, reducers, transforms, selections, and
   normal Core interactions;
 - do not create IndexedDB bookmark databases or load remote bookmarks;
 - do not read, listen to, or write the browser URL hash;
-- do not install App-only global keyboard shortcuts; canvas-local Core
-  interactions remain available;
+- retain provenance and view-visibility controls, including undo/redo, while
+  omitting controls that persist or share host-page state;
+- scope App keyboard shortcuts to the focused visualization rather than
+  claiming shortcuts from the host page;
 - dispose App-owned subscriptions/listeners and UI resources when the embed is
   finalized.
 
@@ -79,11 +83,21 @@ This is preferable to making `doc-embed` reach into App internals or exposing
 several loosely related booleans. It also leaves room for a future
 `"compact"` App mode if documentation later needs selected App controls.
 
-The first implementation will deliberately be content-only. Toolbar menus,
-dialogs, and context menus currently append elements to `document.body`; adding
-full chrome would require a separate overlay-host design and broader visual
-testing. It is not needed to demonstrate `aggregateSamples` or other
-App-specific view behavior.
+The first implementation will include the toolbar because App interactions
+produce provenance actions that users need to undo and redo. Embedded mode must
+instead give the existing toolbar an explicit, safe feature set:
+
+- keep search, provenance history/undo/redo, and view settings;
+- omit bookmark storage and sharing, because they persist data or encode state
+  in the host page URL;
+- retain the overflow menu only for operations that work on an embedded
+  instance, such as PNG export and fullscreen, after browser verification;
+- ensure menus and dialogs that deliberately use `document.body` receive the
+  App stylesheet when the App runtime is loaded.
+
+This avoids a docs-only toolbar and makes embedded mode suitable for dashboards
+and other host pages. A future overlay-host API can make menus and dialogs
+per-instance, but it is not required for the initial integration.
 
 ## Step-by-step implementation plan
 
@@ -124,7 +138,7 @@ App-specific view behavior.
 
 `build(doc-embed): ship documentation embeds as ES modules`
 
-### 2. Add a lifecycle-safe, content-only App embedding mode
+### 2. Add a lifecycle-safe App embedding mode
 
 **Files:**
 
@@ -132,8 +146,11 @@ App-specific view behavior.
 - `packages/app/src/embedTypes.d.ts`
 - `packages/app/src/app.js`
 - `packages/app/src/index.js`
+- `packages/app/src/components/toolbar/toolbar.js`
+- `packages/app/src/components/toolbar/bookmarkButton.js`
 - `packages/app/src/app.test.js`
 - `packages/app/src/index.test.js`
+- focused toolbar tests as needed
 - related focused tests for subscriptions/UI disposal, if extracting helpers
   makes those tests clearer
 
@@ -141,32 +158,46 @@ App-specific view behavior.
    `"standalone"`. Keep normal App embeds byte-for-byte behaviorally
    compatible where possible.
 2. Split App launch responsibilities into local setup and standalone-only
-   state persistence. In document mode, skip:
+   state persistence. In embedded mode, skip:
 
    - bookmark database setup and remote bookmark fetch;
    - initial URL-hash restoration;
    - the `hashchange` listener;
    - the debounced store/scale listeners that call `_updateStateToUrl()`;
-   - App global keyboard shortcuts.
+   - page-level keyboard handling; only attach shortcuts while the embedded
+     visualization has focus.
 
-3. Render a workspace-only shell in document mode. It must still include the
-   `.genome-spy-container` that provides layout sizing to Core, but omit
-   `genome-spy-toolbar` and the side-panel host.
-4. Add `App.finalize()` (or a clearly named equivalent) which is idempotent.
+3. Render the regular `genome-spy-toolbar` in embedded mode and omit only the
+   side-panel host. The shell must still include `.genome-spy-container`, which
+   provides layout sizing to Core.
+4. Give the toolbar an explicit embedded configuration, derived from the App
+   mode rather than inferred from missing bookmark databases. It must retain:
+
+   - provenance undo, redo, and history;
+   - search when a genome scale makes it applicable;
+   - view visibility/settings controls.
+
+   It must omit the bookmark/share button as a whole, including its current
+   unconditional Share action. The overflow menu should retain Save PNG and
+   Fullscreen only after verifying that they operate on the embed container;
+   retain About and Help if their body-level dialogs/links work cleanly in the
+   docs host.
+5. Add `App.finalize()` (or a clearly named equivalent) which is idempotent.
    Track and release the hash listener, Redux subscription, scale-domain
-   listeners, `AppUiRegistry` observers, and any document-mode resources.
+   listeners, `AppUiRegistry` observers, and any embedded-mode resources.
    Keep view-root disposers under Core's existing destruction path.
-5. Call the App finalizer from `@genome-spy/app`'s public embed result before
+6. Call the App finalizer from `@genome-spy/app`'s public embed result before
    destroying the Core instance and clearing the host element. Preserve the
    current reverse-order plugin disposer behavior.
-6. Add focused jsdom tests using the existing App mock pattern to prove that
-   document mode reaches App with the correct option and finalization delegates
-   to App cleanup. Add App-level tests that document mode neither updates
-   `window.history` nor registers URL persistence.
+7. Add focused jsdom tests using the existing App mock pattern to prove that
+   embedded mode reaches App with the correct option and finalization delegates
+   to App cleanup. Add toolbar tests that embedded mode renders provenance
+   controls but no bookmark/share control. Add App-level tests that embedded
+   mode neither updates `window.history` nor registers URL persistence.
 
 **Tentative commit:**
 
-`feat(app): add lifecycle-safe document embedding mode`
+`feat(app): add lifecycle-safe embedded mode`
 
 ### 3. Teach `doc-embed` to dispatch Core and App specifications
 
@@ -185,7 +216,7 @@ App-specific view behavior.
 
    - `core`: use the existing Core embed call;
    - `app`: await the App-runtime chunk and call App `embed` with
-     `{ embedMode: "document" }`.
+     `{ embedMode: "embedded" }`.
 
 3. Retain the returned handle and implement `disconnectedCallback()` to call
    `finalize()` once. Guard against the async load completing after disconnect:
@@ -195,14 +226,12 @@ App-specific view behavior.
    chunk's stylesheet automatically in library mode, make the loader append a
    single deduplicated `<link rel="stylesheet">` using the emitted CSS URL.
    The stylesheet must be available both to the custom-element shadow tree and
-   to any intentional body-level overlay. The initial content-only mode should
-   not open those overlays, but the CSS contract should not leave them
-   unstyled.
+   to intentional body-level toolbar menus and dialogs.
 5. Remove or correct the unconditional `/app/style.css` link in the current
    component; it currently targets a file that asset preparation does not
    create.
 6. Add jsdom tests that mock both embed functions and assert runtime dispatch,
-   `baseUrl`, document-mode options, invalid-runtime error reporting, and
+   `baseUrl`, embedded-mode options, invalid-runtime error reporting, and
    finalization on disconnect. Keep WebGL out of these unit tests.
 
 **Tentative commit:**
@@ -243,14 +272,14 @@ App-specific view behavior.
    replacing or supplementing the current link-only list. Use:
 
    ```md
-   EXAMPLE examples/docs/app/copy-numbers.json runtime=app height=420 spechidden
+   EXAMPLE examples/docs/app/copy-numbers.json runtime=app height=460 spechidden
    ```
 
 2. Explain in one concise paragraph that the example uses App's SampleView and
    `aggregateSamples`; the hidden specification remains available via the
    existing “Show specification” link.
-3. Verify the fixed height accounts for the workspace only. It should not
-   reserve toolbar space in document mode.
+3. Verify the fixed height accounts for the 38-pixel toolbar as well as the
+   workspace, without clipping the summary track or sample rows.
 
 **Tentative commit:**
 
@@ -267,8 +296,9 @@ App-specific view behavior.
 1. Run the focused App and macro unit tests, then run
    `npm run build:docs:prepare` and the Zensical build.
 2. Serve the built site with a static server and use Playwright to open the
-   sample-collection page. Assert that the App widget contains a canvas and
-   does not contain the App toolbar.
+   sample-collection page. Assert that the App widget contains both a canvas
+   and the App toolbar, including undo/redo controls but excluding bookmark and
+   share controls.
 3. Verify the network log: the Core-only home page must not request the App
    chunk or App CSS; the copy-number page must request each when its embed
    becomes visible.
@@ -294,8 +324,9 @@ App-specific view behavior.
   `docs/sample-collections/visualizing.md` from the built site.
 - Its inline specification is shown/hidden by the existing control and its
   Playground link still targets the staged App example.
-- An App documentation example does not show the toolbar, create bookmarks,
-  touch URL hash/history, or interfere with another example.
+- An App documentation example includes provenance undo/redo and applicable
+  view controls, but does not create bookmarks, expose sharing, touch
+  URL hash/history, or interfere with another example.
 - Removing the element or navigating away releases the App resources.
 - The initial docs payload excludes App JavaScript and App CSS on Core-only
   pages; App assets load lazily only after an App embed is needed.
@@ -304,8 +335,8 @@ App-specific view behavior.
 
 ## Scope deliberately deferred
 
-- Full App toolbar, bookmarks, sharing, remote bookmark tours, and App dialogs
-  in documentation embeds.
+- Bookmark storage, sharing, remote bookmark tours, and any other controls
+  that persist or encode state in the host page URL.
 - A general body-overlay host that would make all App menus and dialogs scoped
   to a particular embedded instance.
 - Gallery cards/thumbnails for App examples. The live `EXAMPLE` macro is the
