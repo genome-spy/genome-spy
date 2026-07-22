@@ -248,9 +248,13 @@ summary encoding.
 Use the provided `sampleCount` parameter to normalize summary values by the
 number of samples in the current group.
 
-Examples:
+This example shows the per-sample segments with aggregate amplification and
+deletion tracks. The embedded toolbar supports undoing and redoing interactions.
 
-- [`copy-numbers.json`](/docs/examples/app/copy-numbers.json)
+EXAMPLE examples/app/copy-numbers.json runtime=app height=460 spechidden
+
+Related examples:
+
 - [`expression-zscores.json`](/docs/examples/app/expression-zscores.json)
 - [Spec from the GenomeSpy paper](https://github.com/HautaniemiLab/genomespy-paper-2024-spec/blob/main/cnv-segments.json)
 

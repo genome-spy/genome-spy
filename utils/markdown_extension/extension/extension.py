@@ -120,12 +120,6 @@ class MyPreprocessor(Preprocessor):
             return ['Invalid EXAMPLE usage: missing example path']
 
         example_path = tokens[0]
-        if not example_path.startswith('examples/docs/'):
-            return [
-                'Only `examples/docs/...` paths are supported in EXAMPLE macros. Got `{}`.'.format(
-                    example_path
-                )
-            ]
 
         height = None
         spec_hidden = False
@@ -146,6 +140,18 @@ class MyPreprocessor(Preprocessor):
                     ]
             else:
                 return ['Unknown EXAMPLE option: `{}`'.format(token)]
+
+        supports_docs_example = example_path.startswith('examples/docs/')
+        supports_app_example = (
+            runtime == 'app' and example_path.startswith('examples/app/')
+        )
+        if not supports_docs_example and not supports_app_example:
+            return [
+                'Only `examples/docs/...` paths are supported in EXAMPLE macros. '
+                'Use `runtime=app` for `examples/app/...` paths. Got `{}`.'.format(
+                    example_path
+                )
+            ]
 
         source_path = os.path.join(self.repo_root, *example_path.split('/'))
 
