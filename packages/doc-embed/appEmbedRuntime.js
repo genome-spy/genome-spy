@@ -1,4 +1,4 @@
-import { embed } from "@genome-spy/app";
-import appStyles from "@genome-spy/app/style.css?inline";
+import { embed } from "../app/src/index.js";
+import appStyles from "../app/dist/style.css?inline";
 
 export { appStyles, embed };

@@ -2,8 +2,10 @@ import { defineConfig } from "vite";
 import rawPlugin from "vite-raw-plugin";
 
 export default defineConfig({
+    define: {
+        "process.env.NODE_ENV": JSON.stringify("production"),
+    },
     resolve: {
-        conditions: ["development"],
         dedupe: ["lit"],
     },
     plugins: [
