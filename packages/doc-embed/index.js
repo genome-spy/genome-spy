@@ -116,6 +116,12 @@ export class GenomeSpyDocEmbed extends LitElement {
                     color: var(--md-accent-fg-color);
                 }
             }
+
+            .genome-spy-app {
+                box-shadow: 0px 5px 20px rgba(0, 0, 0, 0.1);
+                border-radius: 3px;
+                overflow: hidden;
+            }
         `;
     }
 
