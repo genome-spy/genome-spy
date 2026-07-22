@@ -78,6 +78,13 @@ describe("GenomeSpyDocEmbed", () => {
     });
 
     it("loads App lazily in embedded mode and finalizes it on disconnect", async () => {
+        appEmbed.mockImplementation((container) => {
+            expect(
+                container.getRootNode().querySelector("style")?.textContent
+            ).toContain(".genome-spy-app { color: red; }");
+            return Promise.resolve({ finalize: appFinalize });
+        });
+
         const element = await mountEmbed("app");
 
         expect(appEmbed).toHaveBeenCalledWith(

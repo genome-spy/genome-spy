@@ -56,9 +56,10 @@ function resolveSitePath(sitePath) {
  * @param {object | string} conf configuration object or url to json configuration
  * @param {string | undefined} baseUrl
  * @param {string} runtime
- * @returns {Promise<{handle: import("@genome-spy/core/types/embedApi.js").EmbedResult, styles?: string} | undefined>}
+ * @param {(styles: string) => Promise<void>} prepareAppStyles
+ * @returns {Promise<import("@genome-spy/core/types/embedApi.js").EmbedResult | undefined>}
  */
-async function embedToDoc(container, conf, baseUrl, runtime) {
+async function embedToDoc(container, conf, baseUrl, runtime, prepareAppStyles) {
     const examplesBaseUrl = resolveSitePath("examples/");
 
     try {
@@ -67,14 +68,11 @@ async function embedToDoc(container, conf, baseUrl, runtime) {
             (baseUrl ? resolveSitePath(baseUrl) : examplesBaseUrl);
 
         if (runtime === "core") {
-            return { handle: await embedCore(container, conf) };
+            return await embedCore(container, conf);
         } else if (runtime === "app") {
             const { appStyles, embed } = await import("./appEmbedRuntime.js");
-            installAppStyles(appStyles);
-            return {
-                handle: await embed(container, conf, { embedMode: "embedded" }),
-                styles: appStyles,
-            };
+            await prepareAppStyles(appStyles);
+            return await embed(container, conf, { embedMode: "embedded" });
         } else {
             throw new Error(`Unknown GenomeSpy embed runtime: ${runtime}`);
         }
@@ -244,21 +242,30 @@ export class GenomeSpyDocEmbed extends LitElement {
             container,
             spec,
             this.baseUrl,
-            this.runtime
+            this.runtime,
+            (styles) => this.#prepareAppStyles(styles)
         );
         if (!result) {
             return;
         }
 
         if (this.disconnected) {
-            result.handle.finalize();
+            result.finalize();
         } else {
-            this.embedResult = result.handle;
-            if (result.styles) {
-                this.appStyles = result.styles;
-                this.requestUpdate();
-            }
+            this.embedResult = result;
         }
+    }
+
+    /**
+     * Installs App styles in this shadow root before the App inserts its UI.
+     *
+     * @param {string} styles
+     */
+    async #prepareAppStyles(styles) {
+        installAppStyles(styles);
+        this.appStyles = styles;
+        this.requestUpdate();
+        await this.updateComplete;
     }
 
     disconnectedCallback() {
