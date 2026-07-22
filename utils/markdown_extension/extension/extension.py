@@ -129,12 +129,21 @@ class MyPreprocessor(Preprocessor):
 
         height = None
         spec_hidden = False
+        runtime = 'core'
 
         for token in tokens[1:]:
             if token == 'spechidden':
                 spec_hidden = True
             elif token.startswith('height='):
                 height = token.split('=', 1)[1]
+            elif token.startswith('runtime='):
+                runtime = token.split('=', 1)[1]
+                if runtime not in ('core', 'app'):
+                    return [
+                        'Invalid EXAMPLE runtime: `{}`. Use `core` or `app`.'.format(
+                            runtime
+                        )
+                    ]
             else:
                 return ['Unknown EXAMPLE option: `{}`'.format(token)]
 
@@ -167,6 +176,8 @@ class MyPreprocessor(Preprocessor):
             attributes.append('height="{}"'.format(height))
         if spec_hidden:
             attributes.append('spechidden="true"')
+        if runtime == 'app':
+            attributes.append('runtime="app"')
 
         lines = ['<div><genome-spy-doc-embed {}>'.format(' '.join(attributes)), '']
         lines.append('```json')

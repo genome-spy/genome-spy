@@ -32,3 +32,15 @@ to convert the markdown code blocks into colorized `<code>` elements, which the
 
 </genome-spy-doc-embed></div>
 ````
+
+## App examples
+
+Set `runtime="app"` to render a GenomeSpy App specification. The embedded App
+keeps its interaction toolbar, including undo and redo, without using the host
+page's URL or bookmarks.
+
+```html
+<genome-spy-doc-embed runtime="app" height="460">
+  <!-- An App specification with `samples` and `spec` -->
+</genome-spy-doc-embed>
+```
