@@ -26,6 +26,7 @@ const { AppMock } = vi.hoisted(() => ({
             exportCanvas: vi.fn(),
         };
         this.launch = vi.fn(async () => true);
+        this.finalize = vi.fn();
     }),
 }));
 
@@ -66,5 +67,15 @@ describe("embed", () => {
         handle.finalize();
 
         expect(pluginDispose).toHaveBeenCalledTimes(1);
+        expect(AppMock.mock.instances[0].finalize).toHaveBeenCalledTimes(1);
+    });
+
+    it("passes embedded mode to App", async () => {
+        const element = document.createElement("div");
+        document.body.appendChild(element);
+
+        await embed(element, {}, { embedMode: "embedded" });
+
+        expect(AppMock.mock.instances[0].options.embedMode).toBe("embedded");
     });
 });

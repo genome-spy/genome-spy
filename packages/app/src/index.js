@@ -81,6 +81,7 @@ export async function embed(el, spec, options = {}) {
             for (let index = disposers.length - 1; index >= 0; index -= 1) {
                 disposers[index]();
             }
+            app?.finalize();
             genomeSpy?.destroy();
             genomeSpy = undefined;
             while (element.firstChild) {
