@@ -68,6 +68,10 @@ repo root:
 3. `npm run docs:install`
 4. `npm run docs:serve` for local preview, or `npm run build:docs` for a full build
 
+Zensical caches transformed Markdown in `.cache`. The full-build command clears
+that cache. After changing `utils/markdown_extension` while a preview server is
+running, restart it and run `npm run build:docs` before relying on the preview.
+
 ### Contributing guidelines
 
 Please see the [CONTRIBUTING.md](./CONTRIBUTING.md) file for more information.
