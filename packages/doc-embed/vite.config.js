@@ -2,6 +2,9 @@ import { defineConfig } from "vite";
 import rawPlugin from "vite-raw-plugin";
 
 export default defineConfig({
+    resolve: {
+        dedupe: ["lit"],
+    },
     plugins: [
         rawPlugin({
             fileRegex: /\.(glsl)$/,
@@ -11,11 +14,9 @@ export default defineConfig({
         outDir: "dist",
         emptyOutDir: true,
         lib: {
-            formats: ["umd"],
+            formats: ["es"],
             entry: "index.js",
-            name: "genomeSpyDocEmbed",
             fileName: () => "index.js",
         },
-        dedupe: ["lit"],
     },
 });
