@@ -74,6 +74,10 @@ while the top layer might show single-nucleotide variants.
     graphical marks can span multiple bands. You could, for example, draw lines
     between the bands.
 
+### Example
+
+EXAMPLE examples/app/samples.json runtime=app height=350 spechidden
+
 ### Implicit sample identifiers
 
 By default, the identifiers of the samples are extracted from the
@@ -251,7 +255,7 @@ number of samples in the current group.
 This example shows the per-sample segments with aggregate amplification and
 deletion tracks. The embedded toolbar supports undoing and redoing interactions.
 
-EXAMPLE examples/app/copy-numbers.json runtime=app height=460 spechidden
+EXAMPLE examples/app/copy-numbers.json runtime=app height=300 spechidden
 
 Related examples:
 
