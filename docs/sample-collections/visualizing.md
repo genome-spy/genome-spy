@@ -106,12 +106,19 @@ or the complete sample set independently from the visualized data.
 ```
 
 This configuration reads sample ids and display names from `samples.tsv`.
-Configure metadata sources and metadata matrix layout in
-[`metadata`](metadata-sources.md).
+Sample metadata, like clinical attributes, has to be provided separately in a
+[`metadata`](metadata-sources.md) source.
 
 The following properties configure `samples.identity`:
 
 APP_SCHEMA SampleIdentityDef
+
+#### Example
+
+The example below defines three samples and their display names with inline identity
+data.
+
+EXAMPLE examples/app/samples-identity.json runtime=app height=200
 
 ### Showing sample y-axes
 
