@@ -5,10 +5,9 @@
 
   "data": {
     "values": [
-      { "sample": "A", "start": 0, "end": 20, "state": "loss" },
-      { "sample": "A", "start": 20, "end": 45, "state": "neutral" },
-      { "sample": "A", "start": 45, "end": 70, "state": "gain" },
-      { "sample": "A", "start": 70, "end": 100, "state": "neutral" },
+      { "sample": "A", "start": 0, "end": 15, "state": "neutral" },
+      { "sample": "A", "start": 15, "end": 20, "state": "gain" },
+      { "sample": "A", "start": 20, "end": 100, "state": "neutral" },
       { "sample": "B", "start": 0, "end": 25, "state": "neutral" },
       { "sample": "B", "start": 25, "end": 55, "state": "gain" },
       { "sample": "B", "start": 55, "end": 80, "state": "loss" },
@@ -23,15 +22,10 @@
   "samples": {},
 
   "spec": {
-    "name": "segments",
     "mark": "rect",
-    "view": { "fill": "#f8f8f8" },
     "encoding": {
       "sample": { "field": "sample" },
-      "x": {
-        "field": "start",
-        "type": "index"
-      },
+      "x": { "field": "start", "type": "index" },
       "x2": { "field": "end" },
       "color": {
         "field": "state",
