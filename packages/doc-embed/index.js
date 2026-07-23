@@ -148,10 +148,12 @@ export class GenomeSpyDocEmbed extends LitElement {
         /** @type {IntersectionObserver | undefined} */
         this.observer = undefined;
         this.disconnected = false;
+        this.#specToggleEnabled = false;
     }
 
     render() {
-        const shouldShowLinks = this.playgroundUrl || this.specHidden;
+        const shouldShowSpecToggle = this.specHidden || this.#specToggleEnabled;
+        const shouldShowLinks = this.playgroundUrl || shouldShowSpecToggle;
 
         return html`
             ${this.appStyles
@@ -169,19 +171,21 @@ export class GenomeSpyDocEmbed extends LitElement {
             ${shouldShowLinks
                 ? html`
                       <div class="embed-links">
-                          ${this.specHidden
+                          ${shouldShowSpecToggle
                               ? html`
                                     <a
                                         href="#"
                                         @click=${(event) => {
-                                            this.specHidden = false;
+                                            this.#specToggleEnabled = true;
+                                            this.specHidden = !this.specHidden;
                                             event.preventDefault();
                                         }}
-                                        >Show specification</a
+                                        >${this.specHidden ? "Show" : "Hide"}
+                                        specification</a
                                     >
                                 `
                               : nothing}
-                          ${this.playgroundUrl && this.specHidden
+                          ${this.playgroundUrl && shouldShowSpecToggle
                               ? html` - `
                               : nothing}
                           ${this.playgroundUrl
@@ -205,6 +209,9 @@ export class GenomeSpyDocEmbed extends LitElement {
             </div>
         `;
     }
+
+    /** @type {boolean} */
+    #specToggleEnabled;
 
     firstUpdated() {
         const spec = this.shadowRoot

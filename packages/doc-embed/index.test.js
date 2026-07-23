@@ -41,10 +41,12 @@ class TestIntersectionObserver {
 
 /**
  * @param {string} runtime
+ * @param {boolean} [specHidden]
  */
-async function mountEmbed(runtime) {
+async function mountEmbed(runtime, specHidden = false) {
     const element = document.createElement("genome-spy-doc-embed");
     element.runtime = runtime;
+    element.specHidden = specHidden;
     element.innerHTML = `<pre>{"mark":"point"}</pre>`;
     document.body.append(element);
     await element.updateComplete;
@@ -115,6 +117,34 @@ describe("GenomeSpyDocEmbed", () => {
 
         expect(coreFinalize).toHaveBeenCalledTimes(1);
         expect(appEmbed).not.toHaveBeenCalled();
+    });
+
+    it("toggles a hidden specification", async () => {
+        const element = await mountEmbed("core", true);
+
+        const getToggle = () =>
+            /** @type {HTMLAnchorElement} */ (
+                element.shadowRoot.querySelector(".embed-links a")
+            );
+        const getSpec = () =>
+            /** @type {HTMLElement} */ (
+                element.shadowRoot.querySelector(".embed-spec")
+            );
+
+        expect(getToggle().textContent).toBe("Show specification");
+        expect(getSpec().style.display).toBe("none");
+
+        getToggle().click();
+        await element.updateComplete;
+
+        expect(getToggle().textContent).toBe("Hide specification");
+        expect(getSpec().style.display).toBe("block");
+
+        getToggle().click();
+        await element.updateComplete;
+
+        expect(getToggle().textContent).toBe("Show specification");
+        expect(getSpec().style.display).toBe("none");
     });
 
     it("renders an error for an unknown runtime", async () => {
