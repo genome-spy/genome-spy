@@ -74,14 +74,18 @@ while the top layer might show single-nucleotide variants.
     graphical marks can span multiple bands. You could, for example, draw lines
     between the bands.
 
-### Example
-
-EXAMPLE examples/app/samples.json runtime=app height=350 spechidden
-
 ### Implicit sample identifiers
 
-By default, the identifiers of the samples are extracted from the
-data, and each sample gets its own track.
+By default, GenomeSpy extracts sample identifiers from the field encoded with
+the `sample` channel, and each sample gets its own track.
+
+#### Example
+
+This example displays four segments for each of three samples. The required
+`samples` object is empty, so GenomeSpy derives the samples and their order
+from the `sample` field in the data.
+
+EXAMPLE examples/app/samples.json runtime=app height=200
 
 ### Defining sample identity
 
