@@ -3,6 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from markdown import markdown
+
 from extension.extension import MyPreprocessor
 
 
@@ -27,6 +29,40 @@ class ExampleGalleryPreprocessorTest(unittest.TestCase):
         lines = preprocessor.getType("Transition")
 
         self.assertIn("`halfLife`", lines)
+
+    def test_schema_macro_keeps_property_descriptions_in_definition_list(self):
+        schema = {
+            "definitions": {
+                "Example": {
+                    "properties": {
+                        "first": {
+                            "description": "First property.\n\nAdditional details.",
+                            "type": "string",
+                        },
+                        "second": {
+                            "description": "Second property.",
+                            "type": "number",
+                        },
+                    },
+                    "type": "object",
+                }
+            }
+        }
+        preprocessor = MyPreprocessor(None, schema, {}, "")
+
+        html = markdown(
+            "\n".join(preprocessor.getType("Example")),
+            extensions=["def_list"],
+        )
+
+        first_definition_start = html.index("<dd>")
+        first_definition_end = html.index("</dd>", first_definition_start)
+        description_start = html.index("<p>First property.</p>")
+
+        self.assertEqual(html.count("<dl>"), 1)
+        self.assertEqual(html.count("<dd>"), 2)
+        self.assertLess(first_definition_start, description_start)
+        self.assertLess(description_start, first_definition_end)
 
     def test_gallery_accepts_blank_line_after_macro(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -430,7 +430,7 @@ class MyPreprocessor(Preprocessor):
             if propTypes:
                 paragraphs.insert(0, 'Type: ' + self.propTypesToString(propTypes, schema))
 
-            continuation_indent = '  '
+            continuation_indent = '    '
 
             for lineno, paragraph in enumerate(paragraphs):
                 paragraph_lines = paragraph.split('\n')
