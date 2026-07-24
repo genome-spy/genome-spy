@@ -165,9 +165,7 @@ const collectAxisResolutionMembers = (view) => {
 const collectLegendResolutionMembers = (view) => {
     /** @type {ResolutionMember[]} */
     const legendMembers = [];
-    for (const [channel, channelDef] of Object.entries(
-        view.spec.encoding ?? {}
-    )) {
+    for (const [channel, channelDef] of Object.entries(view.getEncoding())) {
         if (!channelDef || Array.isArray(channelDef)) {
             continue;
         }

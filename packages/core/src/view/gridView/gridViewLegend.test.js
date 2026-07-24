@@ -1115,6 +1115,46 @@ describe("GridView legends", () => {
             expect(getLegendRegions(view)).toHaveLength(1);
         });
 
+        test("creates a legend for an encoding inherited by a layer child", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "alpha" },
+                                { x: 2, y: 3, group: "beta" },
+                            ],
+                        },
+                        encoding: {
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: { title: "Group" },
+                            },
+                        },
+                        layer: [
+                            {
+                                mark: "point",
+                                encoding: {
+                                    x: {
+                                        field: "x",
+                                        type: "quantitative",
+                                    },
+                                    y: {
+                                        field: "y",
+                                        type: "quantitative",
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            expect(getLegendTitles(view)).toEqual(["Group"]);
+        });
+
         test("stacks same-region legends with a gap and data-driven height", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

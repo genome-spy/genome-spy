@@ -364,7 +364,7 @@ function getLegendType(channel, channelDef) {
  * @returns {import("../spec/channel.js").ChannelDefWithScale | undefined}
  */
 function getLegendChannelDef(channel, legendParent) {
-    return findChannelDefWithScale(legendParent.spec.encoding?.[channel]);
+    return findChannelDefWithScale(legendParent.getEncoding()[channel]);
 }
 
 /**
