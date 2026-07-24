@@ -299,6 +299,17 @@ group and `attributeGroupSeparator` defines how grouped names are interpreted.
   is treated as one group name (for example `"Expression/RNA"` stays one group
   id).
 
+### Example
+
+This inline data example creates the hierarchy described above. The separator
+turns the dotted column names into the `clinical` and `signature` groups, whose
+definitions provide shared type and scale defaults to their child attributes.
+No visibility overrides are configured, so both groups and all five attributes
+are visible when the view opens. The toolbar button lets users toggle the
+visibility of each group.
+
+EXAMPLE examples/app/metadata-hierarchy.json runtime=app height=220 spechidden
+
 ## Schema reference
 
 ### `metadata` configuration
