@@ -154,6 +154,9 @@ export class GenomeSpyDocEmbed extends LitElement {
     render() {
         const shouldShowSpecToggle = this.specHidden || this.#specToggleEnabled;
         const shouldShowLinks = this.playgroundUrl || shouldShowSpecToggle;
+        const specToggleLabel = this.specHidden
+            ? "Show specification"
+            : "Hide specification";
 
         return html`
             ${this.appStyles
@@ -180,8 +183,7 @@ export class GenomeSpyDocEmbed extends LitElement {
                                             this.specHidden = !this.specHidden;
                                             event.preventDefault();
                                         }}
-                                        >${this.specHidden ? "Show" : "Hide"}
-                                        specification</a
+                                        >${specToggleLabel}</a
                                     >
                                 `
                               : nothing}
