@@ -77,6 +77,16 @@ means load all columns by default. The backend excludes `sampleIdField`
 automatically; use `excludeColumns` for other helper fields such as
 `displayName`.
 
+### Inline data backend example
+
+This example defines three samples and a metadata source entirely with inline
+data using the [`data` backend](#data-backend). Optional properties are omitted
+to keep the configuration simple. The data backend loads all three metadata
+columns by default. It infers `purity` as quantitative and `response` and
+`subtype` as categorical, including their default scales.
+
+EXAMPLE examples/app/metadata-data-source.json runtime=app height=220
+
 ## Splitting configuration into files
 
 When source definitions become long, you can keep `metadata.sources`

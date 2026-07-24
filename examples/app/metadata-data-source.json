@@ -1,0 +1,57 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
+
+  "description": "Three samples with inline metadata.",
+
+  "samples": {
+    "identity": {
+      "data": {
+        "values": [
+          { "sample": "S1", "displayName": "Control" },
+          { "sample": "S2", "displayName": "Treatment A" },
+          { "sample": "S3", "displayName": "Treatment B" }
+        ]
+      },
+      "displayNameField": "displayName"
+    }
+  },
+
+  "metadata": {
+    "sources": [
+      {
+        "backend": {
+          "backend": "data",
+          "data": {
+            "values": [
+              {
+                "sample": "S1",
+                "purity": 0.32,
+                "response": "None",
+                "subtype": "A"
+              },
+              {
+                "sample": "S2",
+                "purity": 0.58,
+                "response": "Partial",
+                "subtype": "B"
+              },
+              {
+                "sample": "S3",
+                "purity": 0.76,
+                "response": "Complete",
+                "subtype": "A"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "titleReserve": true
+  },
+
+  "spec": {
+    "view": { "fill": "#f8f8f8" },
+    "data": { "values": [{}] },
+    "mark": { "type": "text", "text": "Data" }
+  }
+}
