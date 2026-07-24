@@ -574,7 +574,10 @@ export class MetadataView extends ConcatView {
                         name: groupViewName,
                         hconcat: [],
                         configurableVisibility: true,
-                        title: attributeDef.title ?? node.part,
+                        title: {
+                            text: attributeDef.title ?? node.part,
+                            orient: "none",
+                        },
                         visible: attributeDef.visible ?? true,
                         spacing: this.#sampleView.spec.metadata?.spacing ?? 1,
                         resolve: {

@@ -361,7 +361,7 @@ describe("MetadataView", () => {
         expect(metadataView.spec.title).toBeNull();
     });
 
-    it("clips metadata cells to the sample row bounds, excluding title overhang", async () => {
+    it("clips metadata cells to the sample row bounds without group title overhang", async () => {
         const { sampleView, metadataView } =
             await createMetadataViewTestHarness({
                 sampleMetadata: {
@@ -389,7 +389,7 @@ describe("MetadataView", () => {
         );
 
         const expectedClipInput = coords.shrink(metadataView.getOverhang());
-        expect(metadataView.getOverhang().top).toBeGreaterThan(0);
+        expect(metadataView.getOverhang().top).toBe(0);
         const actualClipInput = clipBySummary.mock.calls[0][0];
         expect(actualClipInput.x).toBe(expectedClipInput.x);
         expect(actualClipInput.y).toBe(expectedClipInput.y);
