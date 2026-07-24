@@ -83,9 +83,11 @@ export default class Toolbar extends LitElement {
             html`<genome-spy-view-visibility></genome-spy-view-visibility>`
         );
 
-        elements.push(html`
-            <genome-spy-bookmark-button></genome-spy-bookmark-button>
-        `);
+        if (!this.app.isEmbedded()) {
+            elements.push(html`
+                <genome-spy-bookmark-button></genome-spy-bookmark-button>
+            `);
+        }
 
         /**
          * The first entry in the description array is shown as a title in the toolbar

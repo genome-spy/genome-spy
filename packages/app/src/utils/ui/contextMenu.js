@@ -225,6 +225,10 @@ function renderAndPositionSubmenu(items, openerElement, level) {
 function renderAndPositionMenu(items, openerElement, level, placement) {
     const menuElement = document.createElement("ul");
     menuElement.classList.add("gs-context-menu");
+    // A fixed menu appended to a long document would otherwise initially have
+    // a static position below its content. The alignment adjustment below must
+    // measure it from the viewport instead.
+    menuElement.style.top = "0";
     menuElement.addEventListener("mouseenter", () => {
         debouncer(() => {
             // nop. clear the debouncer.
@@ -248,6 +252,7 @@ function renderAndPositionMenu(items, openerElement, level, placement) {
     const adjust = !/^(top|bottom)/.test(placement);
 
     computePosition(openerElement, menuElement, {
+        strategy: "fixed",
         placement,
         middleware: level < 1 && adjust ? [offset(2), flip()] : [flip()],
     }).then(({ x, y }) => {

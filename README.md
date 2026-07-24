@@ -68,6 +68,9 @@ repo root:
 3. `npm run docs:install`
 4. `npm run docs:serve` for local preview, or `npm run build:docs` for a full build
 
+Zensical caches transformed Markdown in `.cache`. The full-build command clears
+that cache.
+
 ### Contributing guidelines
 
 Please see the [CONTRIBUTING.md](./CONTRIBUTING.md) file for more information.

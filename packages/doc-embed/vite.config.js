@@ -1,7 +1,11 @@
 import { defineConfig } from "vite";
 import rawPlugin from "vite-raw-plugin";
+import replace from "@rollup/plugin-replace";
 
 export default defineConfig({
+    resolve: {
+        dedupe: ["lit"],
+    },
     plugins: [
         rawPlugin({
             fileRegex: /\.(glsl)$/,
@@ -11,11 +15,16 @@ export default defineConfig({
         outDir: "dist",
         emptyOutDir: true,
         lib: {
-            formats: ["umd"],
+            formats: ["es"],
             entry: "index.js",
-            name: "genomeSpyDocEmbed",
             fileName: () => "index.js",
         },
-        dedupe: ["lit"],
+        rollupOptions: {
+            plugins: [
+                replace({
+                    "process.env.NODE_ENV": JSON.stringify("production"),
+                }),
+            ],
+        },
     },
 });

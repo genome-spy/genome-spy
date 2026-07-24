@@ -1,4 +1,6 @@
-import { embed } from "@genome-spy/core";
+/* global IntersectionObserver, HTMLElement, console, customElements, document, fetch, setTimeout */
+
+import { embed as embedCore } from "@genome-spy/core";
 import { html, css, LitElement, nothing } from "lit";
 import { styleMap } from "lit/directives/style-map.js";
 import { ref, createRef } from "lit/directives/ref.js";
@@ -53,19 +55,45 @@ function resolveSitePath(sitePath) {
  * @param {HTMLElement} container
  * @param {object | string} conf configuration object or url to json configuration
  * @param {string | undefined} baseUrl
+ * @param {string} runtime
+ * @param {(styles: string) => Promise<void>} prepareAppStyles
+ * @returns {Promise<import("@genome-spy/core/types/embedApi.js").EmbedResult | undefined>}
  */
-async function embedToDoc(container, conf, baseUrl) {
+async function embedToDoc(container, conf, baseUrl, runtime, prepareAppStyles) {
     const examplesBaseUrl = resolveSitePath("examples/");
 
     try {
         conf.baseUrl =
             conf.baseUrl ||
             (baseUrl ? resolveSitePath(baseUrl) : examplesBaseUrl);
-        await embed(container, conf, { bare: true });
+
+        if (runtime === "core") {
+            return await embedCore(container, conf);
+        } else if (runtime === "app") {
+            const { appStyles, embed } = await import("./appEmbedRuntime.js");
+            await prepareAppStyles(appStyles);
+            return await embed(container, conf, { embedMode: "embedded" });
+        } else {
+            throw new Error(`Unknown GenomeSpy embed runtime: ${runtime}`);
+        }
     } catch (e) {
         const pre = document.createElement("pre");
-        pre.innerText = e.toString();
+        pre.textContent = e.toString();
         container.appendChild(pre);
+    }
+}
+
+const APP_STYLE_ID = "genome-spy-app-embed-styles";
+
+/**
+ * @param {string} styles
+ */
+function installAppStyles(styles) {
+    if (!document.getElementById(APP_STYLE_ID)) {
+        const style = document.createElement("style");
+        style.id = APP_STYLE_ID;
+        style.textContent = styles;
+        document.head.appendChild(style);
     }
 }
 
@@ -86,6 +114,12 @@ export class GenomeSpyDocEmbed extends LitElement {
                     color: var(--md-accent-fg-color);
                 }
             }
+
+            .genome-spy-app {
+                box-shadow: 0px 5px 20px rgba(0, 0, 0, 0.1);
+                border-radius: 3px;
+                overflow: hidden;
+            }
         `;
     }
 
@@ -95,6 +129,7 @@ export class GenomeSpyDocEmbed extends LitElement {
             specHidden: { type: Boolean },
             baseUrl: { type: String, attribute: "base-url" },
             playgroundUrl: { type: String, attribute: "playground-url" },
+            runtime: { type: String },
         };
     }
 
@@ -104,14 +139,31 @@ export class GenomeSpyDocEmbed extends LitElement {
         this.specHidden = false;
         this.baseUrl = undefined;
         this.playgroundUrl = undefined;
+        this.runtime = "core";
         this.embedRef = createRef();
+        this.appStyles = "";
+
+        /** @type {import("@genome-spy/core/types/embedApi.js").EmbedResult | undefined} */
+        this.embedResult = undefined;
+        /** @type {IntersectionObserver | undefined} */
+        this.observer = undefined;
+        this.disconnected = false;
+        this.#specToggleEnabled = false;
     }
 
     render() {
-        const shouldShowLinks = this.playgroundUrl || this.specHidden;
+        const shouldShowSpecToggle = this.specHidden || this.#specToggleEnabled;
+        const shouldShowLinks = this.playgroundUrl || shouldShowSpecToggle;
+        const specToggleLabel = this.specHidden
+            ? "Show specification"
+            : "Hide specification";
 
         return html`
-            <link rel="stylesheet" href=${getBaseUrl() + "/app/style.css"} />
+            ${this.appStyles
+                ? html`<style>
+                      ${this.appStyles}
+                  </style>`
+                : nothing}
             <div
                 class="embed-container"
                 style=${styleMap({
@@ -122,19 +174,20 @@ export class GenomeSpyDocEmbed extends LitElement {
             ${shouldShowLinks
                 ? html`
                       <div class="embed-links">
-                          ${this.specHidden
+                          ${shouldShowSpecToggle
                               ? html`
                                     <a
                                         href="#"
                                         @click=${(event) => {
-                                            this.specHidden = false;
+                                            this.#specToggleEnabled = true;
+                                            this.specHidden = !this.specHidden;
                                             event.preventDefault();
                                         }}
-                                        >Show specification</a
+                                        >${specToggleLabel}</a
                                     >
                                 `
                               : nothing}
-                          ${this.playgroundUrl && this.specHidden
+                          ${this.playgroundUrl && shouldShowSpecToggle
                               ? html` - `
                               : nothing}
                           ${this.playgroundUrl
@@ -159,6 +212,9 @@ export class GenomeSpyDocEmbed extends LitElement {
         `;
     }
 
+    /** @type {boolean} */
+    #specToggleEnabled;
+
     firstUpdated() {
         const spec = this.shadowRoot
             .querySelector("slot")
@@ -166,21 +222,67 @@ export class GenomeSpyDocEmbed extends LitElement {
             .filter((el) => el instanceof HTMLElement)[0]?.textContent;
 
         if (spec) {
-            const observer = new IntersectionObserver((entries) => {
+            this.observer = new IntersectionObserver((entries) => {
                 entries.forEach((entry) => {
                     if (entry.isIntersecting) {
                         const container = entry.target;
 
-                        embedToDoc(container, JSON.parse(spec), this.baseUrl);
+                        this.embedToDoc(container, JSON.parse(spec));
 
-                        observer.unobserve(container);
+                        this.observer.unobserve(container);
                     }
                 });
             });
 
             // Slight delay to reduce layout flickering.
-            setTimeout(() => observer.observe(this.embedRef.value), 80);
+            setTimeout(() => {
+                if (!this.disconnected) {
+                    this.observer.observe(this.embedRef.value);
+                }
+            }, 80);
         }
+    }
+
+    /**
+     * @param {HTMLElement} container
+     */
+    async embedToDoc(container, spec) {
+        const result = await embedToDoc(
+            container,
+            spec,
+            this.baseUrl,
+            this.runtime,
+            (styles) => this.#prepareAppStyles(styles)
+        );
+        if (!result) {
+            return;
+        }
+
+        if (this.disconnected) {
+            result.finalize();
+        } else {
+            this.embedResult = result;
+        }
+    }
+
+    /**
+     * Installs App styles in this shadow root before the App inserts its UI.
+     *
+     * @param {string} styles
+     */
+    async #prepareAppStyles(styles) {
+        installAppStyles(styles);
+        this.appStyles = styles;
+        this.requestUpdate();
+        await this.updateComplete;
+    }
+
+    disconnectedCallback() {
+        this.disconnected = true;
+        this.observer?.disconnect();
+        this.embedResult?.finalize();
+        this.embedResult = undefined;
+        super.disconnectedCallback();
     }
 }
 

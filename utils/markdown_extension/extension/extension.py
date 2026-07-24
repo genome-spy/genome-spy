@@ -120,23 +120,38 @@ class MyPreprocessor(Preprocessor):
             return ['Invalid EXAMPLE usage: missing example path']
 
         example_path = tokens[0]
-        if not example_path.startswith('examples/docs/'):
-            return [
-                'Only `examples/docs/...` paths are supported in EXAMPLE macros. Got `{}`.'.format(
-                    example_path
-                )
-            ]
 
         height = None
         spec_hidden = False
+        runtime = 'core'
 
         for token in tokens[1:]:
             if token == 'spechidden':
                 spec_hidden = True
             elif token.startswith('height='):
                 height = token.split('=', 1)[1]
+            elif token.startswith('runtime='):
+                runtime = token.split('=', 1)[1]
+                if runtime not in ('core', 'app'):
+                    return [
+                        'Invalid EXAMPLE runtime: `{}`. Use `core` or `app`.'.format(
+                            runtime
+                        )
+                    ]
             else:
                 return ['Unknown EXAMPLE option: `{}`'.format(token)]
+
+        supports_docs_example = example_path.startswith('examples/docs/')
+        supports_app_example = (
+            runtime == 'app' and example_path.startswith('examples/app/')
+        )
+        if not supports_docs_example and not supports_app_example:
+            return [
+                'Only `examples/docs/...` paths are supported in EXAMPLE macros. '
+                'Use `runtime=app` for `examples/app/...` paths. Got `{}`.'.format(
+                    example_path
+                )
+            ]
 
         source_path = os.path.join(self.repo_root, *example_path.split('/'))
 
@@ -157,16 +172,23 @@ class MyPreprocessor(Preprocessor):
             return ['Cannot preprocess example file {}: {}'.format(example_path, exc)]
 
         base_url = 'examples/'
-        playground_spec_path = '/docs/' + example_path
 
         attributes = [
             'base-url="{}"'.format(base_url),
-            'playground-url="/playground/?spec={}"'.format(playground_spec_path),
         ]
+        if runtime == 'core':
+            playground_spec_path = '/docs/' + example_path
+            attributes.append(
+                'playground-url="/playground/?spec={}"'.format(
+                    playground_spec_path
+                )
+            )
         if height:
             attributes.append('height="{}"'.format(height))
         if spec_hidden:
             attributes.append('spechidden="true"')
+        if runtime == 'app':
+            attributes.append('runtime="app"')
 
         lines = ['<div><genome-spy-doc-embed {}>'.format(' '.join(attributes)), '']
         lines.append('```json')
@@ -408,7 +430,7 @@ class MyPreprocessor(Preprocessor):
             if propTypes:
                 paragraphs.insert(0, 'Type: ' + self.propTypesToString(propTypes, schema))
 
-            continuation_indent = '  '
+            continuation_indent = '    '
 
             for lineno, paragraph in enumerate(paragraphs):
                 paragraph_lines = paragraph.split('\n')

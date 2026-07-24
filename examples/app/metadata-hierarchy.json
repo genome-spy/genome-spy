@@ -1,0 +1,75 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
+
+  "description": "Inline metadata with grouped attribute names.",
+
+  "samples": {
+    "identity": {
+      "data": {
+        "values": [
+          { "sample": "S1", "displayName": "Control" },
+          { "sample": "S2", "displayName": "Treatment A" },
+          { "sample": "S3", "displayName": "Treatment B" }
+        ]
+      },
+      "displayNameField": "displayName"
+    }
+  },
+
+  "metadata": {
+    "sources": [
+      {
+        "attributeGroupSeparator": ".",
+        "attributes": {
+          "patientId": { "type": "nominal" },
+          "clinical": {
+            "type": "quantitative",
+            "scale": { "scheme": "blues" }
+          },
+          "signature": {
+            "type": "quantitative",
+            "scale": { "scheme": "yelloworangered" }
+          }
+        },
+        "backend": {
+          "backend": "data",
+          "data": {
+            "values": [
+              {
+                "sample": "S1",
+                "patientId": "P1",
+                "clinical.PFI": 14,
+                "clinical.OS": 18,
+                "signature.HRD": 0.2,
+                "signature.APOBEC": 0.4
+              },
+              {
+                "sample": "S2",
+                "patientId": "P2",
+                "clinical.PFI": 8,
+                "clinical.OS": 12,
+                "signature.HRD": 0.7,
+                "signature.APOBEC": 0.1
+              },
+              {
+                "sample": "S3",
+                "patientId": "P3",
+                "clinical.PFI": 20,
+                "clinical.OS": 24,
+                "signature.HRD": 0.5,
+                "signature.APOBEC": 0.9
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "titleReserve": true
+  },
+
+  "spec": {
+    "view": { "fill": "#f8f8f8" },
+    "data": { "values": [{}] },
+    "mark": { "type": "text", "text": "Data" }
+  }
+}

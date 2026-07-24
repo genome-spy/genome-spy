@@ -6,6 +6,17 @@ export type UrlHash = Partial<BookmarkEntry>;
 
 export type AppEmbedOptions =
     import("@genome-spy/core/types/embedApi.js").EmbedOptions & {
+        /**
+         * Controls whether GenomeSpy App owns page-level state.
+         *
+         * Use `"embedded"` when App is one component in a larger web page.
+         * Embedded instances keep the toolbar's local interaction controls but
+         * do not use bookmarks or the browser URL for state persistence.
+         *
+         * __Default value:__ `"standalone"`
+         */
+        embedMode?: "standalone" | "embedded";
+
         plugins?: AppPlugin[];
     };
 
@@ -55,6 +66,7 @@ export interface AppUiRegistry extends AppUiHost, EventTarget {
         import("./utils/ui/contextMenu.js").MenuItem
     >;
     attachAppShell(appShell: HTMLElement): void;
+    dispose(): void;
     registerSidePanel(panel: SidePanelSpec): SidePanelHandle;
 }
 

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
+
+  "description": "Three samples with display names defined by inline identity data.",
+
+  "samples": {
+    "identity": {
+      "data": {
+        "values": [
+          { "sample": "S1", "displayName": "Control" },
+          { "sample": "S2", "displayName": "Treatment A" },
+          { "sample": "S3", "displayName": "Treatment B" }
+        ]
+      },
+      "idField": "sample",
+      "displayNameField": "displayName"
+    }
+  },
+
+  "spec": {
+    "view": { "fill": "#f8f8f8" },
+    "data": { "values": [{}] },
+    "mark": { "type": "text", "text": "Data" }
+  }
+}

@@ -67,6 +67,18 @@ export default class AppUiRegistry extends EventTarget {
         this.#renderActiveSidePanel();
     }
 
+    dispose() {
+        this.#sidePanelResizeObserver?.disconnect();
+        this.#sidePanelResizeObserver = undefined;
+
+        for (const panel of this.#sidePanels.values()) {
+            panel.element.remove();
+        }
+        this.#sidePanels.clear();
+        this.#activeSidePanelId = undefined;
+        this.#sidePanelHost = undefined;
+    }
+
     /**
      * @param {import("./appTypes.js").ToolbarButtonSpec} button
      * @returns {() => void}

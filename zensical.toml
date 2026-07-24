@@ -3,7 +3,7 @@ site_name = "GenomeSpy Docs"
 site_url = "https://genomespy.app/docs/"
 repo_url = "https://github.com/genome-spy/genome-spy"
 edit_uri = "edit/master/docs/"
-extra_javascript = ["app/index.js"]
+extra_javascript = [{ path = "app/index.js", type = "module" }]
 extra_css = ["stylesheets/extra.css"]
 nav = [
     { "Introduction" = "index.md" },
@@ -90,7 +90,10 @@ nav = [
     { "Working with Sample Collections" = [
         "sample-collections/index.md",
         { "Visualizing" = "sample-collections/visualizing.md" },
+        { "Sample View Parameters" = "sample-collections/sample-view-parameters.md" },
+        { "Aggregating Samples" = "sample-collections/aggregating-samples.md" },
         { "Configuring Metadata Sources" = "sample-collections/metadata-sources.md" },
+        { "Configuring App Features" = "sample-collections/app-features.md" },
         { "Analyzing" = "sample-collections/analyzing.md" },
         { "Importing Metadata" = "sample-collections/importing-metadata.md" },
     ] },

@@ -78,7 +78,7 @@ parameters.
 
     GenomeSpy App's SampleView is a common use case for reactive URL templates,
     because the currently visible samples can determine which files are loaded. See
-    [Visible sample parameters](../../sample-collections/visualizing.md#visible-sample-parameters)
+    [Visible sample parameters](../../sample-collections/sample-view-parameters.md#visible-samples)
     for App-specific parameters such as `visibleSamples` and
     `visibleSampleMetadata`.
 

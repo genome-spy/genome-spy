@@ -1,56 +1,40 @@
 {
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/app/dist/schema.json",
 
-  "description": "A trivial example showing how to display multiple samples in the App.",
+  "description": "A simple segmented view of three samples.",
 
   "data": {
     "values": [
-      { "sample": "A", "x": 1 },
-      { "sample": "A", "x": 2 },
-      { "sample": "A", "x": 5 },
-      { "sample": "A", "x": 3 },
-      { "sample": "B", "x": 8 },
-      { "sample": "B", "x": 6 },
-      { "sample": "B", "x": 9 },
-      { "sample": "B", "x": 3 },
-      { "sample": "C", "x": 9 },
-      { "sample": "C", "x": 2 },
-      { "sample": "C", "x": 3 },
-      { "sample": "C", "x": 5 }
+      { "sample": "A", "start": 0, "end": 15, "state": "neutral" },
+      { "sample": "A", "start": 15, "end": 20, "state": "gain" },
+      { "sample": "A", "start": 20, "end": 100, "state": "neutral" },
+      { "sample": "B", "start": 0, "end": 25, "state": "neutral" },
+      { "sample": "B", "start": 25, "end": 55, "state": "gain" },
+      { "sample": "B", "start": 55, "end": 80, "state": "loss" },
+      { "sample": "B", "start": 80, "end": 100, "state": "neutral" },
+      { "sample": "C", "start": 0, "end": 30, "state": "gain" },
+      { "sample": "C", "start": 30, "end": 60, "state": "neutral" },
+      { "sample": "C", "start": 60, "end": 85, "state": "loss" },
+      { "sample": "C", "start": 85, "end": 100, "state": "gain" }
     ]
   },
-
-  "transform": [
-    {
-      "type": "stack",
-      "field": "x",
-      "groupby": ["sample"],
-      "offset": "normalize",
-      "as": ["from", "to"]
-    }
-  ],
 
   "samples": {},
 
   "spec": {
-    "name": "segments",
     "mark": "rect",
-    "view": { "fill": "#f0f0f0" },
     "encoding": {
       "sample": { "field": "sample" },
-      "y": {
-        "expr": "1 / datum.x + 0.5",
-        "type": "quantitative",
-        "axis": null
-      },
-      "x": {
-        "field": "from",
-        "type": "quantitative",
-        "scale": { "zoom": true },
-        "axis": { "grid": true }
-      },
-      "x2": { "field": "to" },
-      "color": { "field": "x", "type": "nominal" }
+      "x": { "field": "start", "type": "index" },
+      "x2": { "field": "end" },
+      "color": {
+        "field": "state",
+        "type": "nominal",
+        "scale": {
+          "domain": ["loss", "neutral", "gain"],
+          "range": ["#5090e0", "#e0e0e0", "#ff6040"]
+        }
+      }
     }
   }
 }

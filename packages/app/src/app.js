@@ -2,7 +2,7 @@ import { loader as vegaLoader } from "vega-loader";
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
 import "./styles/genome-spy-app.scss";
 import favIcon from "@genome-spy/core/img/genomespy-favicon.svg";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 
 import { VISIT_STOP } from "@genome-spy/core/view/view.js";
 import SampleView from "./sampleView/sampleView.js";
@@ -64,6 +64,11 @@ export default class App {
      */
     #agentApiPromise;
 
+    /** @type {Set<() => void>} */
+    #disposers = new Set();
+
+    #finalized = false;
+
     /**
      * @param {HTMLElement} appContainerElement
      * @param {import("./spec/appSpec.js").AppRootSpec} rootSpec
@@ -73,6 +78,7 @@ export default class App {
         this.rootSpec = rootSpec;
 
         this.options = {
+            embedMode: /** @type {const} */ ("standalone"),
             ...options,
             // App has a specialized handler for input bindings
             inputBindingContainer: /** @type {"none"} */ ("none"),
@@ -92,17 +98,21 @@ export default class App {
                 <genome-spy-toolbar .app=${this}></genome-spy-toolbar>
                 <div class="genome-spy-workspace">
                     <div class="genome-spy-container"></div>
-                    <div class="genome-spy-side-panel-host"></div>
+                    ${this.isEmbedded()
+                        ? nothing
+                        : html`<div class="genome-spy-side-panel-host"></div>`}
                 </div>
             </div>`,
             this.appContainer
         );
 
-        this.ui.attachAppShell(
-            /** @type {HTMLElement} */ (
-                this.appContainer.querySelector(".genome-spy-app")
-            )
-        );
+        if (!this.isEmbedded()) {
+            this.ui.attachAppShell(
+                /** @type {HTMLElement} */ (
+                    this.appContainer.querySelector(".genome-spy-app")
+                )
+            );
+        }
 
         // Dependency injection
         // TODO: Replace this with something standard-based when such a thing becomes available
@@ -217,10 +227,11 @@ export default class App {
          * Local bookmarks in the IndexedDB
          * @type {import("./bookmark/bookmarkDatabase.js").default}
          */
-        this.localBookmarkDatabase =
-            typeof this.rootSpec.specId == "string"
-                ? new IDBBookmarkDatabase(this.rootSpec.specId)
-                : undefined;
+        this.localBookmarkDatabase = this.isEmbedded()
+            ? undefined
+            : typeof this.rootSpec.specId == "string"
+              ? new IDBBookmarkDatabase(this.rootSpec.specId)
+              : undefined;
 
         /**
          * Remote bookmarks loaded from a URL
@@ -334,22 +345,50 @@ export default class App {
         return this.appContainer == document.body;
     }
 
+    isEmbedded() {
+        return this.options.embedMode === "embedded";
+    }
+
+    finalize() {
+        if (this.#finalized) {
+            return;
+        }
+        this.#finalized = true;
+
+        for (const disposer of Array.from(this.#disposers).reverse()) {
+            disposer();
+        }
+        this.#disposers.clear();
+        this.ui.dispose();
+    }
+
+    /**
+     * @param {() => void} disposer
+     */
+    #registerDisposer(disposer) {
+        this.#disposers.add(disposer);
+    }
+
     async launch() {
         /**
          * Initiate async fetching of the remote bookmark entries.
          * @type {Promise<import("./bookmark/databaseSchema.js").BookmarkEntry[]>}
          */
-        const remoteBookmarkPromise = this.rootSpec.bookmarks?.remote
-            ? vegaLoader({ baseURL: this.rootSpec.baseUrl })
-                  .load(this.rootSpec.bookmarks.remote.url)
-                  .then((/** @type {string} */ str) =>
-                      Promise.resolve(JSON.parse(str))
-                  )
-            : Promise.resolve([]);
+        const remoteBookmarkPromise = this.isEmbedded()
+            ? Promise.resolve([])
+            : this.rootSpec.bookmarks?.remote
+              ? vegaLoader({ baseURL: this.rootSpec.baseUrl })
+                    .load(this.rootSpec.bookmarks.remote.url)
+                    .then((/** @type {string} */ str) =>
+                        Promise.resolve(JSON.parse(str))
+                    )
+              : Promise.resolve([]);
 
         // Restore view visibility early so initial data/scale init honors bookmarks.
         // This avoids lazy-init races where in-flight loads miss newly visible branches.
-        await this.#restoreViewSettingsFromUrlHash(remoteBookmarkPromise);
+        if (!this.isEmbedded()) {
+            await this.#restoreViewSettingsFromUrlHash(remoteBookmarkPromise);
+        }
 
         const result = await this.genomeSpy.launch();
         if (!result) {
@@ -428,63 +467,79 @@ export default class App {
             .querySelector("canvas")
             .setAttribute("tabindex", "-1");
 
-        subscribeTo(
-            this.store,
-            (state) => state.viewSettings?.visibilities,
-            withMicrotask(() => {
-                // TODO: Optimize: only invalidate the affected views
-                void this.genomeSpy.initializeVisibleViewData();
-                this.genomeSpy.viewRoot._invalidateCacheByPrefix(
-                    "size",
-                    "progeny"
-                );
+        this.#registerDisposer(
+            subscribeTo(
+                this.store,
+                (state) => state.viewSettings?.visibilities,
+                withMicrotask(() => {
+                    if (this.#finalized) {
+                        return;
+                    }
+                    // TODO: Optimize: only invalidate the affected views
+                    void this.genomeSpy.initializeVisibleViewData();
+                    this.genomeSpy.viewRoot._invalidateCacheByPrefix(
+                        "size",
+                        "progeny"
+                    );
 
-                const context = this.genomeSpy.viewRoot.context;
-                clearHiddenViewCoords(this.genomeSpy.viewRoot);
-                context.highlightView(null);
-                context.requestLayoutReflow();
+                    const context = this.genomeSpy.viewRoot.context;
+                    clearHiddenViewCoords(this.genomeSpy.viewRoot);
+                    context.highlightView(null);
+                    context.requestLayoutReflow();
+                })
+            )
+        );
+        this.#registerDisposer(
+            attachIntentStatusUi({
+                store: this.store,
+                intentPipeline: this.intentPipeline,
+                provenance: this.provenance,
             })
         );
-        attachIntentStatusUi({
-            store: this.store,
-            intentPipeline: this.intentPipeline,
-            provenance: this.provenance,
-        });
 
-        try {
-            await this.#ensureRemoteBookmarks(remoteBookmarkPromise);
-        } catch (e) {
-            throw new Error(`Cannot load remote bookmarks: ${e}`, {
-                cause: e,
-            });
-        }
+        if (!this.isEmbedded()) {
+            try {
+                await this.#ensureRemoteBookmarks(remoteBookmarkPromise);
+            } catch (e) {
+                throw new Error(`Cannot load remote bookmarks: ${e}`, {
+                    cause: e,
+                });
+            }
 
-        try {
-            await this._restoreStateFromUrlOrBookmark();
-        } catch (e) {
-            showMessageDialog(e.toString());
-        }
+            try {
+                await this._restoreStateFromUrlOrBookmark();
+            } catch (e) {
+                showMessageDialog(e.toString());
+            }
 
-        window.addEventListener(
-            "hashchange",
-            () =>
+            const onHashChange = () =>
                 this._restoreStateFromUrl().catch((e) =>
                     showMessageDialog(e.toString())
-                ),
-            false
-        );
+                );
+            window.addEventListener("hashchange", onHashChange, false);
+            this.#registerDisposer(() =>
+                window.removeEventListener("hashchange", onHashChange, false)
+            );
 
-        const debouncedUpdateUrl = debounce(
-            () => this._updateStateToUrl(),
-            500,
-            false
-        );
+            const debouncedUpdateUrl = debounce(
+                () => {
+                    if (!this.#finalized) {
+                        this._updateStateToUrl();
+                    }
+                },
+                500,
+                false
+            );
 
-        this.store.subscribe(debouncedUpdateUrl);
+            this.#registerDisposer(this.store.subscribe(debouncedUpdateUrl));
 
-        for (const [, res] of this.genomeSpy.getNamedScaleResolutions()) {
-            if (res.isZoomable()) {
-                res.addEventListener("domain", debouncedUpdateUrl);
+            for (const [, res] of this.genomeSpy.getNamedScaleResolutions()) {
+                if (res.isZoomable()) {
+                    res.addEventListener("domain", debouncedUpdateUrl);
+                    this.#registerDisposer(() =>
+                        res.removeEventListener("domain", debouncedUpdateUrl)
+                    );
+                }
             }
         }
 
