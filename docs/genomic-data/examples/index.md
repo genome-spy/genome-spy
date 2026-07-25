@@ -1,11 +1,12 @@
 # Genomic Data Examples
 
 This page collects non-trivial genomic examples that are useful as reference
-material.
+material and demonstate the capabilities of GenomeSpy.
 
 ## Linked examples
 
-The example specs below mostly focus on a single track or layout.
+The example specs below mostly display a single dataset to keep the examples
+simple and focused. Gene annotation track, etc. are omitted from the examples.
 
 EXAMPLE_GALLERY examples/docs/genomic-data/examples
 
@@ -14,6 +15,7 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 - [ASCAT Copy-Number Segmentation](ascat.md) ASCAT.json
 - [ASCAT Algorithm in GenomeSpy](ascat-algorithm.md) ASCAT-algorithm.json
 - [HCC1954 Structural Variants and Copy Number](hcc1954-sv-cnv.md) hcc1954-sv-cnv.json
+- [TCGA Ovarian Cancer GISTIC2 Copy-Number Landscape](tcga-ov-gistic.md) tcga-ov-gistic.json
 - [Sashimi Plot from Splice Junctions](sashimi-plot.md) sashimi-plot.json
 - [ClinVar Small-Variant Classifications](clinvar-variants.md) clinvar-variants.json
 - [GENCODE Gene Annotations from GFF3](gencode-gff3-gene-annotations.md) gff3-gene-annotations.json
@@ -40,6 +42,4 @@ The [genomespy.app](https://genomespy.app/) main page showcases several
 examples, some of which focus on genomic data.
 
 - [GWAS Manhattan Plot](https://genomespy.app/examples/?spec=OCAC/ocac.json) ([spec](https://github.com/genome-spy/website-examples/blob/master/OCAC/ocac.json))
-- [Multiple-Sequence Alignment](https://genomespy.app/examples/?spec=MSA/msa.json) ([spec](https://github.com/genome-spy/website-examples/blob/master/MSA/msa.json))
-- [Structural Variants](https://genomespy.app/examples/?spec=SV/sv.json) ([spec](https://github.com/genome-spy/website-examples/blob/master/SV/sv.json))
 - [Multiple Cell Lines](https://genomespy.app/examples/?spec=PARPiCL/parpicl.json) ([spec](https://github.com/genome-spy/website-examples/blob/master/PARPiCL/parpicl.json))

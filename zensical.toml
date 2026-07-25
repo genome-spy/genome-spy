@@ -81,6 +81,7 @@ nav = [
             { "ASCAT Copy-Number Segmentation" = "genomic-data/examples/ascat.md" },
             { "ASCAT Algorithm in GenomeSpy" = "genomic-data/examples/ascat-algorithm.md" },
             { "HCC1954 Structural Variants and Copy Number" = "genomic-data/examples/hcc1954-sv-cnv.md" },
+            { "TCGA Ovarian Cancer GISTIC2 Copy-Number Landscape" = "genomic-data/examples/tcga-ov-gistic.md" },
             { "Sashimi plot from splice junctions" = "genomic-data/examples/sashimi-plot.md" },
             { "SPI1 Binding-QTL Dynseq Track" = "genomic-data/examples/dynseq-spi1-bqtl.md" },
             { "ClinVar Small-Variant Classifications" = "genomic-data/examples/clinvar-variants.md" },

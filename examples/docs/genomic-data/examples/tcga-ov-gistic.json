@@ -1,0 +1,206 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "TCGA Ovarian Cancer GISTIC2 Copy-Number Landscape",
+    "Shows recurrent GISTIC2 copy-number amplifications and deletions across the TCGA ovarian serous cystadenocarcinoma cohort."
+  ],
+
+  "assembly": "hg19",
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr18", "pos": 14593640 },
+        { "chrom": "chr20", "pos": 22538731 }
+      ]
+    }
+  },
+
+  "name": "gistic-track",
+
+  "resolve": { "axis": { "x": "shared" } },
+
+  "vconcat": [
+    {
+      "name": "gistic-q-value",
+
+      "title": {
+        "text": "GISTIC q-values from the TCGA OV-TP cohort",
+        "style": "overlay-title"
+      },
+
+      "layer": [
+        {
+          "name": "zero-line",
+
+          "data": { "values": [0] },
+
+          "encoding": {
+            "y": { "field": "data", "type": "quantitative", "title": null }
+          },
+
+          "mark": {
+            "type": "rule",
+            "color": "black",
+            "opacity": 0.3
+          }
+        },
+        {
+          "name": "q-value-rects",
+
+          "data": {
+            "url": "https://data.genomespy.app/sample-data/TCGA-OV-GISTIC/scores.gistic",
+            "format": { "type": "tsv" }
+          },
+
+          "transform": [
+            {
+              "type": "formula",
+              "expr": "datum['-log10(q-value)'] * (datum.Type == 'Del' ? -1 : 1)",
+              "as": "-log10(q-value)"
+            }
+          ],
+
+          "encoding": {
+            "color": {
+              "field": "Type",
+              "type": "nominal",
+              "scale": {
+                "domain": ["Amp", "Del"],
+                "range": ["#e45756", "#4c78a8"]
+              }
+            },
+            "y": { "field": "-log10(q-value)", "type": "quantitative" },
+            "x": {
+              "chrom": "Chromosome",
+              "pos": "Start",
+              "type": "locus"
+            },
+            "x2": { "chrom": "Chromosome", "pos": "End" }
+          },
+
+          "mark": {
+            "type": "rect",
+            "minOpacity": 1
+          }
+        },
+        {
+          "name": "q-value-thresholds",
+
+          "data": {
+            "values": [0.602, -0.602]
+          },
+
+          "encoding": {
+            "y": { "field": "data", "type": "quantitative", "title": null }
+          },
+
+          "mark": {
+            "type": "rule",
+            "strokeDash": [3, 1],
+            "color": "black",
+            "opacity": 0.3
+          }
+        }
+      ]
+    },
+    {
+      "name": "gistic-all-lesions",
+      "title": { "text": "Regions and peaks", "orient": "none" },
+
+      "height": { "step": 20 },
+
+      "data": {
+        "url": "https://data.genomespy.app/sample-data/TCGA-OV-GISTIC/all_lesions.conf_99.txt",
+        "format": { "type": "tsv" }
+      },
+
+      "transform": [
+        {
+          "type": "regexExtract",
+          "field": "Unique Name",
+          "regex": "^(Amplification|Deletion) Peak[ ]+\\d+$",
+          "as": ["Type"],
+          "skipInvalidInput": true
+        },
+        { "type": "filter", "expr": "!!datum.Type" },
+        {
+          "type": "regexFold",
+          "columnRegex": ["^(.*) Limits$"],
+          "asValue": ["limits"],
+          "asKey": "Segment type"
+        },
+        {
+          "type": "regexExtract",
+          "field": "limits",
+          "regex": "^(chr[^:]+):(\\d+)-(\\d+)",
+          "as": ["Chrom", "Start", "End"]
+        },
+        {
+          "type": "project",
+          "fields": [
+            "Segment type",
+            "Chrom",
+            "Start",
+            "End",
+            "Type",
+            "Descriptor",
+            "q values"
+          ]
+        }
+      ],
+
+      "encoding": {
+        "color": {
+          "field": "Type",
+          "type": "nominal",
+          "scale": {
+            "domain": ["Amplification", "Deletion"],
+            "range": ["#e45756", "#4c78a8"]
+          }
+        },
+        "y": {
+          "field": "Type",
+          "type": "nominal",
+          "scale": { "domain": ["Amplification", "Deletion"], "padding": 0.2 },
+          "title": null
+        },
+        "x": {
+          "chrom": "Chrom",
+          "pos": "Start",
+          "type": "locus"
+        },
+        "x2": { "chrom": "Chrom", "pos": "End" },
+        "opacity": {
+          "field": "Segment type",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": ["Wide Peak", "Peak", "Region"],
+            "range": [0.3, 1, 0.3]
+          }
+        },
+        "size": {
+          "field": "Segment type",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": ["Wide Peak", "Peak", "Region"],
+            "range": [11, 15, 2]
+          }
+        }
+      },
+
+      "mark": {
+        "type": "rule",
+        "minLength": 2
+      }
+    }
+  ],
+
+  "config": {
+    "legend": { "disable": true },
+    "view": { "stroke": "lightgray" }
+  }
+}
