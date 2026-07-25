@@ -23,13 +23,13 @@ export interface TransformParamsBase {
 /** Common exact-match and output options for lookup transforms. */
 interface LookupMatchParams {
     /**
-     * The key field or fields in the side input. When multiple fields are
+     * The key field or fields in the lookup table. When multiple fields are
      * provided, they form a composite key.
      */
     key: Field | Field[];
 
     /**
-     * The fields in the input data to match against the side-input key.
+     * The fields in the input data to match against the lookup-table key.
      * This array must have the same length and order as `key`. Defaults to
      * `key`.
      */
@@ -104,13 +104,23 @@ export interface FormulaParams extends TransformParamsBase {
     as: string;
 }
 
+export interface LookupSelfInput {
+    /**
+     * Use the current input data as the lookup table. Lookup reads all records
+     * from one input file or inline dataset before emitting results. Multiple
+     * files and facets are indexed separately.
+     */
+    source: "input";
+}
+
 export interface LookupParams extends TransformParamsBase, LookupMatchParams {
     type: "lookup";
 
     /**
-     * The non-lazy data source that provides the lookup table.
+     * The non-lazy data source that provides the lookup table, or the current
+     * input data.
      */
-    from: DataSource;
+    from: DataSource | LookupSelfInput;
 }
 
 export interface CoordinateLookupInput {

@@ -7,6 +7,7 @@ import Transform from "./transform.js";
 /** @typedef {import("../flowNode.js").Datum} Datum */
 /** @typedef {(datum: Datum) => any} FieldAccessor */
 /** @typedef {(output: Datum, foreignDatum: Datum | undefined) => void} LookupWriter */
+/** @typedef {import("../../types/flowBatch.js").FlowBatch} FlowBatch */
 /**
  * @typedef {object} LookupOptions
  * @prop {() => boolean} [isForeignDataReady]
@@ -16,7 +17,7 @@ import Transform from "./transform.js";
  */
 
 /**
- * Extends primary rows with values from an exact keyed side input.
+ * Extends primary rows with values from an exact keyed lookup table.
  * CoordinateLookupTransform inherits this implementation to add lazy
  * readiness and coverage behavior.
  */
@@ -27,12 +28,16 @@ export default class LookupTransform extends Transform {
 
     /**
      * @param {import("../../spec/transform.js").LookupParams | import("../../spec/transform.js").CoordinateLookupParams} params
-     * @param {import("../collector.js").default} foreignCollector
+     * @param {import("../collector.js").default} [foreignCollector]
      * @param {LookupOptions} [options]
      */
     constructor(params, foreignCollector, options = {}) {
         super(params);
         this.params = params;
+        const selfInput = isSelfLookup(params);
+        if (!selfInput && !foreignCollector) {
+            throw new Error("Lookup transform requires a foreign collector.");
+        }
         const foreignKeyFields = /** @type {string[]} */ (asArray(params.key));
         const primaryFields = /** @type {string[]} */ (
             asArray(params.fields ?? foreignKeyFields)
@@ -67,6 +72,13 @@ export default class LookupTransform extends Transform {
         let outputFields = as ?? values ?? [];
         const defaultValue = params.default ?? null;
         let primaryCompleted = false;
+        // Self-input rows must wait for their group to end so forward
+        // references can be resolved.
+        /** @type {Datum[]} */
+        let bufferedData = [];
+        /** @type {FlowBatch | undefined} */
+        let bufferedBatch;
+        let hasBufferedBatch = false;
 
         /** @type {(datum: Datum) => Datum} */
         let clone;
@@ -105,18 +117,21 @@ export default class LookupTransform extends Transform {
                       return level.get(primaryAccessors.at(-1)(datum));
                   };
 
-        const ensureIndex = () => {
+        /**
+         * @param {Iterable<Datum>} [lookupData]
+         */
+        const ensureIndex = (lookupData) => {
             prepareBatch();
             if (index) {
                 return;
             }
-            if (!foreignCollector.completed) {
+            if (!lookupData && !foreignCollector.completed) {
                 throw new Error(
                     "Lookup table must be loaded before primary data."
                 );
             }
 
-            const foreignData = foreignCollector.getData();
+            const foreignData = lookupData ?? foreignCollector.getData();
             if (implicitValues) {
                 const resolved = resolveImplicitValues(
                     foreignData[Symbol.iterator]().next().value,
@@ -166,11 +181,15 @@ export default class LookupTransform extends Transform {
          */
         const specializeAndPropagate = (datum) => {
             ensureIndex();
-            for (const name of outputFields) {
-                if (Object.hasOwn(datum, name)) {
-                    throw new Error(
-                        `Lookup output field "${name}" already exists in primary data.`
-                    );
+            // Implicit self lookup copies fields already present in the input
+            // record, but still writes them only to its clone.
+            if (!(selfInput && implicitValues)) {
+                for (const name of outputFields) {
+                    if (Object.hasOwn(datum, name)) {
+                        throw new Error(
+                            `Lookup output field "${name}" already exists in primary data.`
+                        );
+                    }
                 }
             }
 
@@ -199,44 +218,116 @@ export default class LookupTransform extends Transform {
             }
         };
 
-        this.registerDisposer(
-            foreignCollector.observe(() => {
-                // Keep the index for primary-only reloads, but rebuild it when
-                // the lookup table itself has changed.
-                invalidateIndex();
-                reloadPrimaryData();
-            })
-        );
+        if (foreignCollector) {
+            this.registerDisposer(
+                foreignCollector.observe(() => {
+                    // Keep the index for primary-only reloads, but rebuild it when
+                    // the lookup table itself has changed.
+                    invalidateIndex();
+                    reloadPrimaryData();
+                })
+            );
+        }
+
+        /**
+         * Builds one batch-local index and replays the batch in input order.
+         */
+        const flushBufferedBatch = () => {
+            ensureIndex(bufferedData);
+            this.handle = specializeAndPropagate;
+            clone = undefined;
+            if (hasBufferedBatch) {
+                // Forward the delayed boundary immediately before its rows.
+                beginBatch(/** @type {FlowBatch} */ (bufferedBatch));
+            }
+            for (const datum of bufferedData) {
+                this.handle(datum);
+            }
+
+            bufferedData = [];
+            bufferedBatch = undefined;
+            hasBufferedBatch = false;
+            index = null;
+            if (implicitValues) {
+                valueAccessors = [];
+                outputFields = [];
+            }
+            this.handle = bufferDatum;
+        };
+
+        /** @param {Datum} datum */
+        function bufferDatum(datum) {
+            bufferedData.push(datum);
+        }
 
         const reset = this.reset.bind(this);
         this.reset = () => {
             reset();
             primaryCompleted = false;
-            // The cached table index remains valid until the foreign collector updates.
-            this.handle = specializeAndPropagate;
+            clone = undefined;
+            if (selfInput) {
+                bufferedData = [];
+                bufferedBatch = undefined;
+                hasBufferedBatch = false;
+                index = null;
+                if (implicitValues) {
+                    valueAccessors = [];
+                    outputFields = [];
+                }
+                this.handle = bufferDatum;
+            } else {
+                // The cached table index remains valid until the foreign collector updates.
+                this.handle = specializeAndPropagate;
+            }
         };
 
         const beginBatch = this.beginBatch.bind(this);
-        /** @param {import("../../types/flowBatch.js").FlowBatch} flowBatch */
+        /** @param {FlowBatch} flowBatch */
         this.beginBatch = (flowBatch) => {
-            if (isForeignDataReady()) {
-                ensureIndex();
-                this.handle = specializeAndPropagate;
+            if (selfInput) {
+                // A new boundary proves that the preceding group is complete.
+                if (hasBufferedBatch || bufferedData.length > 0) {
+                    flushBufferedBatch();
+                }
+                bufferedBatch = flowBatch;
+                hasBufferedBatch = true;
             } else {
-                requestForeignData();
-                this.handle = discardDatum;
+                if (isForeignDataReady()) {
+                    ensureIndex();
+                    this.handle = specializeAndPropagate;
+                } else {
+                    requestForeignData();
+                    this.handle = discardDatum;
+                }
+                beginBatch(flowBatch);
             }
-            beginBatch(flowBatch);
         };
 
         const complete = this.complete.bind(this);
         this.complete = () => {
+            // No later boundary exists to flush the final group.
+            if (selfInput && (hasBufferedBatch || bufferedData.length > 0)) {
+                flushBufferedBatch();
+            }
             primaryCompleted = true;
             complete();
         };
 
-        this.handle = specializeAndPropagate;
+        this.handle = selfInput ? bufferDatum : specializeAndPropagate;
     }
+}
+
+/**
+ * Tests whether a lookup uses its current input batch as the lookup table.
+ *
+ * @param {import("../../spec/transform.js").LookupParams | import("../../spec/transform.js").CoordinateLookupParams} params
+ */
+export function isSelfLookup(params) {
+    return (
+        params.type == "lookup" &&
+        "source" in params.from &&
+        params.from.source == "input"
+    );
 }
 
 /** @param {Datum} _datum */

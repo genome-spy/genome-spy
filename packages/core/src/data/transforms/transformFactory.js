@@ -10,7 +10,7 @@ import FlattenCigarTransform from "./flattenCigar.js";
 import FlattenDelimitedTransform from "./flattenDelimited.js";
 import FormulaTransform from "./formula.js";
 import LinearizeGenomicCoordinate from "./linearizeGenomicCoordinate.js";
-import LookupTransform from "./lookup.js";
+import LookupTransform, { isSelfLookup } from "./lookup.js";
 import MeasureTextTransform from "./measureText.js";
 import PackLegendLabelsTransform from "./packLegendLabels.js";
 import PileupTransform from "./pileup.js";
@@ -64,15 +64,14 @@ export const transforms = {
  */
 export default function createTransform(params, view, auxiliaryInput) {
     if (params.type == "lookup") {
-        if (!auxiliaryInput) {
-            throw new Error("Lookup transform requires a foreign collector.");
-        }
-        return new LookupTransform(
+        const lookupParams =
             /** @type {import("../../spec/transform.js").LookupParams} */ (
                 params
-            ),
-            auxiliaryInput.collector
-        );
+            );
+        if (!auxiliaryInput && !isSelfLookup(lookupParams)) {
+            throw new Error("Lookup transform requires a foreign collector.");
+        }
+        return new LookupTransform(lookupParams, auxiliaryInput?.collector);
     } else if (params.type == "coordinateLookup") {
         if (!auxiliaryInput || !view) {
             throw new Error(

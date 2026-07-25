@@ -110,6 +110,36 @@ describe("generated core schema", () => {
         }
     });
 
+    test("accepts lookup from the current input batch", () => {
+        const validate = createCoreValidator();
+        const spec = {
+            data: {
+                values: [
+                    { id: "a", mate: "b" },
+                    { id: "b", mate: "a" },
+                ],
+            },
+            transform: [
+                {
+                    type: "lookup",
+                    from: { source: "input" },
+                    key: "id",
+                    fields: "mate",
+                    values: ["id"],
+                    as: ["mateId"],
+                },
+            ],
+            mark: "point",
+            encoding: {
+                x: { field: "id", type: "nominal" },
+            },
+        };
+
+        expect(validate(spec), JSON.stringify(validate.errors, null, 2)).toBe(
+            true
+        );
+    });
+
     test("accepts initial legend configuration and channel legend properties", () => {
         const schema = createCoreSchema();
         const validate = new Ajv.default({

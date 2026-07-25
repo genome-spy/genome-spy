@@ -4,9 +4,10 @@ The `"lookup"` transform performs a keyed, one-to-one left outer join: it
 retains every input data object and adds values from a matching lookup-table
 row.
 
-The table uses an eager [`data`](../data/eager.md) descriptor. It can contain
+The table can use an eager [`data`](../data/eager.md) descriptor. It can contain
 inline values, load a URL in any supported format such as CSV or Parquet, or
-refer to named data.
+refer to named data. Alternatively, `{ "source": "input" }` uses the current
+input data as the lookup table.
 
 ## Parameters
 
@@ -69,3 +70,50 @@ require top-level lookup key fields.
 
 For an example that maps nucleotide complements and codons, see [Indexed FASTA
 Six-Frame Translation](../../genomic-data/examples/indexed-fasta-six-frame-translation.md).
+
+## Lookup from the input
+
+Use `{ "source": "input" }` to match records against other records in the input
+data. For example, these records refer to each other through `relatedId`:
+
+| id  | relatedId | label |
+| --- | --------- | ----- |
+| A   | B         | Alpha |
+| B   | A         | Beta  |
+| C   | X         | Gamma |
+
+```json
+{
+  "type": "lookup",
+  "from": { "source": "input" },
+  "fields": "relatedId",
+  "key": "id",
+  "values": ["label"],
+  "as": ["relatedLabel"]
+}
+```
+
+The result is:
+
+| id  | relatedId | label | relatedLabel |
+| --- | --------- | ----- | ------------ |
+| A   | B         | Alpha | Beta         |
+| B   | A         | Beta  | Alpha        |
+| C   | X         | Gamma | null         |
+
+Self-input lookup reads all records from one input file or inline dataset before
+emitting results. Results preserve the original input order. Reading all records
+first allows a record to match another record that appears later in the data.
+
+When a data source loads multiple files, each file is indexed separately. Keys
+in different files neither match nor conflict. Likewise, if upstream data has
+been divided into facets, each facet is indexed separately.
+
+With lazy or incrementally loaded genomic data, a self-input lookup can only
+match records loaded together. For example, a structural-variant mate outside
+the loaded genomic window is unavailable and receives `default`.
+
+When `values` is omitted for a self-input lookup, all non-key fields from the
+matching record replace the corresponding fields in the cloned input record.
+Use explicit `values` and `as` to retain the original fields and add renamed
+mate fields.

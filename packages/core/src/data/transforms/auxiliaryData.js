@@ -1,3 +1,5 @@
+import { isSelfLookup } from "./lookup.js";
+
 /**
  * @typedef {object} AuxiliaryDataInput
  * @prop {import("../../spec/data.js").DataSource} data
@@ -8,7 +10,15 @@
  * @param {import("../../spec/transform.js").TransformParamsBase} params
  */
 export function hasAuxiliaryDataInput(params) {
-    return params.type == "lookup" || params.type == "coordinateLookup";
+    return (
+        (params.type == "lookup" &&
+            !isSelfLookup(
+                /** @type {import("../../spec/transform.js").LookupParams} */ (
+                    params
+                )
+            )) ||
+        params.type == "coordinateLookup"
+    );
 }
 
 /**
@@ -23,10 +33,18 @@ export function getAuxiliaryDataInput(params) {
             /** @type {import("../../spec/transform.js").LookupParams} */ (
                 params
             );
+        if (isSelfLookup(lookup)) {
+            return;
+        }
         if ("lazy" in lookup.from) {
             throw new Error("Lookup tables cannot use lazy data sources.");
         }
-        return { data: lookup.from, transforms: [] };
+        return {
+            data: /** @type {import("../../spec/data.js").DataSource} */ (
+                lookup.from
+            ),
+            transforms: [],
+        };
     } else if (params.type == "coordinateLookup") {
         const lookup =
             /** @type {import("../../spec/transform.js").CoordinateLookupParams} */ (

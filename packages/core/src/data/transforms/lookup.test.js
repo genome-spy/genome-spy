@@ -105,6 +105,208 @@ test("matches differently named single key fields", () => {
     ]);
 });
 
+test("matches forward and backward references within the same input batch", () => {
+    const lookup = new LookupTransform({
+        type: "lookup",
+        from: { source: "input" },
+        key: "ID[0]",
+        fields: "INFO.MATE_ID[0]",
+        values: ["CHROM", "POS"],
+        as: ["mateChrom", "matePos"],
+    });
+    const input = [
+        {
+            ID: ["bnd-a"],
+            CHROM: "chr1",
+            POS: 101,
+            INFO: { MATE_ID: ["bnd-b"] },
+        },
+        {
+            ID: ["bnd-b"],
+            CHROM: "chr2",
+            POS: 202,
+            INFO: { MATE_ID: ["bnd-a"] },
+        },
+    ];
+
+    const output = processData(lookup, input);
+
+    expect(output).toEqual([
+        { ...input[0], mateChrom: "chr2", matePos: 202 },
+        { ...input[1], mateChrom: "chr1", matePos: 101 },
+    ]);
+    expect(output.map((datum) => datum.ID[0])).toEqual(["bnd-a", "bnd-b"]);
+    expect(output[0]).not.toBe(input[0]);
+});
+
+test("applies explicit defaults to missing self-input keys", () => {
+    const lookup = new LookupTransform({
+        type: "lookup",
+        from: { source: "input" },
+        key: "id",
+        fields: "mate",
+        values: ["label"],
+        as: ["mateLabel"],
+        default: "missing",
+    });
+
+    expect(
+        processData(lookup, [
+            { id: "a", mate: "b", label: "Alpha" },
+            { id: "b", mate: "outside", label: "Beta" },
+        ])
+    ).toEqual([
+        { id: "a", mate: "b", label: "Alpha", mateLabel: "Beta" },
+        { id: "b", mate: "outside", label: "Beta", mateLabel: "missing" },
+    ]);
+});
+
+test("supports implicit values in a self-input lookup", () => {
+    const lookup = new LookupTransform({
+        type: "lookup",
+        from: { source: "input" },
+        key: "id",
+        fields: "mate",
+    });
+
+    expect(
+        processData(lookup, [
+            { id: "a", mate: "b", label: "Alpha" },
+            { id: "b", mate: "a", label: "Beta" },
+        ])
+    ).toEqual([
+        { id: "a", mate: "a", label: "Beta" },
+        { id: "b", mate: "b", label: "Alpha" },
+    ]);
+});
+
+test("matches composite self-input keys", () => {
+    const lookup = new LookupTransform({
+        type: "lookup",
+        from: { source: "input" },
+        key: ["sample", "id"],
+        fields: ["sample", "mate"],
+        values: ["label"],
+        as: ["mateLabel"],
+    });
+
+    expect(
+        processData(lookup, [
+            { sample: "s1", id: 1, mate: 2, label: "first" },
+            { sample: "s1", id: 2, mate: 1, label: "second" },
+        ])
+    ).toEqual([
+        {
+            sample: "s1",
+            id: 1,
+            mate: 2,
+            label: "first",
+            mateLabel: "second",
+        },
+        {
+            sample: "s1",
+            id: 2,
+            mate: 1,
+            label: "second",
+            mateLabel: "first",
+        },
+    ]);
+});
+
+test("scopes self-input indexes and duplicate keys to individual batches", () => {
+    const lookup = new LookupTransform({
+        type: "lookup",
+        from: { source: "input" },
+        key: "id",
+        fields: "mate",
+        values: ["label"],
+        as: ["mateLabel"],
+        default: null,
+    });
+    const output = new Collector({ type: "collect" });
+    lookup.addChild(output);
+
+    lookup.beginBatch({ type: "file", url: "first.vcf" });
+    lookup.handle({ id: "shared", mate: "later", label: "first-file" });
+    expect(lookup.stats.count).toBe(0);
+
+    lookup.beginBatch({ type: "file", url: "second.vcf" });
+    expect(lookup.stats.count).toBe(1);
+    lookup.handle({ id: "shared", mate: "shared", label: "second-file" });
+    lookup.complete();
+
+    expect([...output.getData()]).toEqual([
+        {
+            id: "shared",
+            mate: "later",
+            label: "first-file",
+            mateLabel: null,
+        },
+        {
+            id: "shared",
+            mate: "shared",
+            label: "second-file",
+            mateLabel: "second-file",
+        },
+    ]);
+});
+
+test("rejects duplicate self-input keys within a batch", () => {
+    const lookup = new LookupTransform({
+        type: "lookup",
+        from: { source: "input" },
+        key: "id",
+        fields: "mate",
+        values: ["label"],
+        as: ["mateLabel"],
+    });
+
+    expect(() =>
+        processData(lookup, [
+            { id: "duplicate", mate: "duplicate", label: "first" },
+            { id: "duplicate", mate: "duplicate", label: "second" },
+        ])
+    ).toThrow(/Duplicate lookup key/);
+});
+
+test("handles empty self input", () => {
+    const lookup = new LookupTransform({
+        type: "lookup",
+        from: { source: "input" },
+        key: "id",
+        values: ["label"],
+    });
+
+    expect(processData(lookup, [])).toEqual([]);
+});
+
+test("clears buffered self input and indexes on reset", () => {
+    const lookup = new LookupTransform({
+        type: "lookup",
+        from: { source: "input" },
+        key: "id",
+        fields: "mate",
+        values: ["label"],
+        as: ["mateLabel"],
+        default: "missing",
+    });
+
+    lookup.beginBatch({ type: "file", url: "aborted.vcf" });
+    lookup.handle({ id: "stale", mate: "stale", label: "Stale" });
+    lookup.reset();
+
+    expect(
+        processData(lookup, [{ id: "fresh", mate: "stale", label: "Fresh" }])
+    ).toEqual([
+        {
+            id: "fresh",
+            mate: "stale",
+            label: "Fresh",
+            mateLabel: "missing",
+        },
+    ]);
+});
+
 test("requires aligned primary and foreign key fields", () => {
     expect(
         () =>
@@ -464,6 +666,61 @@ test("loads a CSV lookup table through the regular data source", async () => {
         { codon: "ATG", aminoAcid: "M" },
         { codon: "TGG", aminoAcid: "W" },
     ]);
+});
+
+test("loads and parses each VCF once while matching within file batches", async () => {
+    const header = `##fileformat=VCFv4.3
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type">
+##INFO=<ID=MATE_ID,Number=1,Type=String,Description="Mate identifier">
+#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO`;
+    const first =
+        header +
+        "\nchr1\t101\tbnd1\tN\tN]chr2:202]\t60\tPASS\tSVTYPE=BND;MATE_ID=bnd2" +
+        "\nchr2\t202\tbnd2\tN\tN]chr1:101]\t60\tPASS\tSVTYPE=BND;MATE_ID=bnd1\n";
+    const second =
+        header +
+        "\nchr3\t303\tbnd1\tN\tN]chr4:404]\t60\tPASS\tSVTYPE=BND;MATE_ID=bnd2" +
+        "\nchr4\t404\tbnd2\tN\tN]chr3:303]\t60\tPASS\tSVTYPE=BND;MATE_ID=bnd1\n";
+    const fetchMock = vi.fn(async (url) => {
+        if (url == "first.vcf") {
+            return new Response(first);
+        } else if (url == "second.vcf") {
+            return new Response(second);
+        }
+        throw new Error(`Unexpected URL: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { view, context } = await createHeadlessEngine({
+        data: {
+            url: ["first.vcf", "second.vcf"],
+            format: { type: "vcf" },
+        },
+        transform: [
+            {
+                type: "lookup",
+                from: { source: "input" },
+                key: "ID[0]",
+                fields: "INFO.MATE_ID[0]",
+                values: ["CHROM", "POS"],
+                as: ["mateChrom", "matePos"],
+            },
+        ],
+        mark: "point",
+        encoding: {
+            x: { field: "CHROM", type: "nominal" },
+            y: { field: "matePos", type: "quantitative" },
+        },
+    });
+
+    expect([...view.flowHandle.collector.getData()]).toMatchObject([
+        { CHROM: "chr1", mateChrom: "chr2", matePos: 202 },
+        { CHROM: "chr2", mateChrom: "chr1", matePos: 101 },
+        { CHROM: "chr3", mateChrom: "chr4", matePos: 404 },
+        { CHROM: "chr4", mateChrom: "chr3", matePos: 303 },
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(context.dataFlow.dataSources).toHaveLength(1);
 });
 
 test("rejects lazy lookup tables", async () => {
