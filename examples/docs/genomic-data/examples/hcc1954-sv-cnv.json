@@ -1,0 +1,151 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "HCC1954 Structural Variants and Copy Number",
+    "Shows paired Severus somatic SV arcs and Wakhan ploidy-relative copy-number segments for the highly rearranged HCC1954 breast-cancer cell line.",
+    "Keskus et al., Severus: accurate detection and characterization of somatic structural variation in tumor genomes using long reads; Ahmad et al., Wakhan: reconstruction of chromosome-scale copy number profiles of tumor genomes with long-read sequencing; Akdemir et al. (2020), https://doi.org/10.1038/s41588-019-0564-y"
+  ],
+
+  "assembly": "hg38",
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr21", "pos": 4708647 },
+        { "chrom": "chr22", "pos": 43863053 }
+      ]
+    }
+  },
+
+  "resolve": { "scale": { "x": "shared" }, "axis": { "x": "shared" } },
+
+  "spacing": 1,
+
+  "vconcat": [
+    {
+      "name": "sv-link-layers",
+      "data": {
+        "url": "https://data.genomespy.app/sample-data/HCC1954/sv-links.tsv"
+      },
+      "encoding": {
+        "color": {
+          "field": "sv_type",
+          "type": "nominal",
+          "scale": {
+            "domain": ["DEL", "DUP", "BND"],
+            "range": ["#2563eb", "#dc2626", "#808080"]
+          },
+          "legend": { "title": "Severus SV type", "orient": "top" }
+        }
+      },
+      "layer": [
+        {
+          "transform": [
+            {
+              "type": "regexFold",
+              "columnRegex": [
+                "^chrom(1|2)$",
+                "^breakpoint(1|2)$",
+                "^strand(1|2)$"
+              ],
+              "asValue": ["chrom", "pos", "strand"],
+              "asKey": "endpoint"
+            }
+          ],
+          "mark": {
+            "type": "point",
+            "size": 100,
+            "tooltip": null,
+            "y": 0,
+            "dy": 0.5,
+            "opacity": 0.5
+          },
+          "encoding": {
+            "x": {
+              "chrom": "chrom",
+              "pos": "pos",
+              "type": "locus",
+              "band": 0
+            },
+            "shape": {
+              "field": "strand",
+              "type": "nominal",
+              "scale": {
+                "domain": ["-", "+"],
+                "range": ["tick-right", "tick-left"]
+              },
+              "legend": null
+            }
+          }
+        },
+        {
+          "title": {
+            "text": "Severus somatic structural variants used by Wakhan",
+            "orient": "none"
+          },
+          "params": [
+            {
+              "name": "svHover",
+              "select": { "type": "point", "on": "mouseover" },
+              "persist": false
+            }
+          ],
+          "mark": {
+            "type": "link",
+            "arcFadingDistance": { "expr": "[height - 20, height + 20]" },
+            "segments": 200
+          },
+          "encoding": {
+            "x": {
+              "chrom": "chrom1",
+              "pos": "breakpoint1",
+              "type": "locus",
+              "band": 0
+            },
+            "x2": { "chrom": "chrom2", "pos": "breakpoint2", "band": 0 },
+            "size": {
+              "field": "variant_allele_frequency",
+              "type": "quantitative",
+              "scale": { "range": [0.1, 2.5], "type": "pow" },
+              "legend": {
+                "title": "Variant allele frequency",
+                "orient": "top"
+              },
+              "condition": [{ "param": "svHover", "empty": false, "value": 3 }]
+            },
+            "opacity": {
+              "condition": [{ "param": "svHover", "empty": false, "value": 1 }],
+              "value": 0.5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "copy-numbers",
+      "title": {
+        "text": "Wakhan total copy number relative to ploidy (4.57)",
+        "orient": "none"
+      },
+      "height": 32,
+      "data": {
+        "url": "https://data.genomespy.app/sample-data/HCC1954/copy-numbers.tsv"
+      },
+      "mark": { "type": "rect" },
+      "encoding": {
+        "x": { "chrom": "chrom", "pos": "start", "type": "locus" },
+        "x2": { "chrom": "chrom", "pos": "end" },
+        "color": {
+          "field": "relative_copy_ratio",
+          "type": "quantitative",
+          "scale": {
+            "domain": [0, 1, 3, 8],
+            "range": ["#1060f8", "#f6f6f6", "#ff4000", "#801800"]
+          },
+          "legend": { "title": "Total CN / ploidy", "values": [0, 1, 3, 8] }
+        }
+      }
+    }
+  ]
+}

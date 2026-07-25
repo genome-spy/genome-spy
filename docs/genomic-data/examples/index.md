@@ -13,6 +13,7 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 - [RefSeq Gene Annotations with Scored Labels](refseq-genes.md) scored-refSeq-genes.json
 - [ASCAT Copy-Number Segmentation](ascat.md) ASCAT.json
 - [ASCAT Algorithm in GenomeSpy](ascat-algorithm.md) ASCAT-algorithm.json
+- [HCC1954 Structural Variants and Copy Number](hcc1954-sv-cnv.md) hcc1954-sv-cnv.json
 - [Sashimi Plot from Splice Junctions](sashimi-plot.md) sashimi-plot.json
 - [ClinVar Small-Variant Classifications](clinvar-variants.md) clinvar-variants.json
 - [GENCODE Gene Annotations from GFF3](gencode-gff3-gene-annotations.md) gff3-gene-annotations.json
