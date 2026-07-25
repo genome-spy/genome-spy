@@ -2605,6 +2605,18 @@ exports[`shared examples > initializes examples/core/layout/layer/lollipop.json 
     },
     {
       "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
+    },
+    {
+      "identifier": null,
       "type": "SequenceSource",
     },
   ],
@@ -8309,6 +8321,18 @@ exports[`shared examples > initializes examples/docs/grammar/composition/layer/l
     {
       "identifier": null,
       "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientSource",
+    },
+    {
+      "identifier": null,
+      "type": "LegendGradientTicksSource",
     },
     {
       "identifier": null,
