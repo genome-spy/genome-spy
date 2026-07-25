@@ -137,7 +137,8 @@
               "darkgreen",
               "gray"
             ]
-          }
+          },
+          "legend": null
         }
       }
     }
