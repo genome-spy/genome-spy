@@ -63,5 +63,5 @@ are preserved:
 Layers can filter by `cigarType` and render different operation types with
 ordinary marks.
 
-For a complete genomic visualization example, see the [SPI1 Binding-QTL Dynseq
-Track](../../genomic-data/examples/dynseq-spi1-bqtl.md).
+For a complete genomic visualization example, see [BAM Read
+Alignments](../../genomic-data/examples/bam-read-alignments.md).
