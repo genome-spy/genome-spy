@@ -288,6 +288,10 @@ SCHEMA LegendTitleOrient
 
 SCHEMA LerpTransition
 
+## LookupSelfInput
+
+SCHEMA LookupSelfInput
+
 ## MarkPropExprDef
 
 SCHEMA MarkPropExprDef
@@ -607,6 +611,10 @@ SCHEMA VConcatSpec
 ## ValueParameter
 
 SCHEMA ValueParameter
+
+## VcfDataFormat
+
+SCHEMA VcfDataFormat
 
 ## ViewBackground
 

@@ -26,11 +26,76 @@
     {
       "name": "sv-link-layers",
       "data": {
-        "url": "https://data.genomespy.app/sample-data/HCC1954/sv-links.tsv"
+        "url": "https://data.genomespy.app/sample-data/HCC1954/severus_somatic.vcf.gz",
+        "format": { "type": "vcf" }
       },
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.FILTER == 'PASS' && test(/^chr([1-9]|1[0-9]|2[0-2]|X|Y)$/, datum.CHROM) && test(/^(DEL|DUP|BND)$/, datum.INFO.SVTYPE[0])"
+        },
+        {
+          "type": "window",
+          "ops": ["row_number"],
+          "as": ["_source_order"],
+          "description": "Record VCF order so one record from each BND mate pair can be retained."
+        },
+        {
+          "type": "formula",
+          "expr": "datum.INFO.SVTYPE[0] == 'BND' ? datum.INFO.MATE_ID[0] : datum.ID[0]",
+          "as": "_lookup_mate_id",
+          "description": "Use MATE_ID for BND records and the record's own ID for DEL and DUP lookup."
+        },
+        {
+          "type": "lookup",
+          "from": { "source": "input" },
+          "fields": "_lookup_mate_id",
+          "key": "ID[0]",
+          "values": ["CHROM", "POS", "_source_order"],
+          "as": ["mateChrom", "matePos", "mateOrder"],
+          "description": "Attach the matching BND record's coordinates and source order."
+        },
+        {
+          "type": "filter",
+          "expr": "datum.INFO.SVTYPE[0] != 'BND' || datum._source_order < datum.mateOrder",
+          "description": "Keep one representative from each BND pair and retain every DEL and DUP."
+        },
+        {
+          "type": "formula",
+          "expr": "datum.CHROM",
+          "as": "chrom1"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.POS",
+          "as": "breakpoint1"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.INFO.SVTYPE[0] == 'BND' ? datum.mateChrom : datum.CHROM",
+          "as": "chrom2",
+          "description": "Use the mate chromosome for BND and the source chromosome for interval variants."
+        },
+        {
+          "type": "formula",
+          "expr": "datum.INFO.SVTYPE[0] == 'BND' ? datum.matePos : datum.INFO.END[0]",
+          "as": "breakpoint2",
+          "description": "Use the mate position for BND and INFO.END for interval variants."
+        },
+        {
+          "type": "formula",
+          "expr": "datum.INFO.STRANDS[0][0]",
+          "as": "strand1"
+        },
+        {
+          "type": "formula",
+          "expr": "datum.INFO.STRANDS[0][1]",
+          "as": "strand2"
+        }
+      ],
       "encoding": {
         "color": {
-          "field": "sv_type",
+          "field": "INFO.SVTYPE[0]",
           "type": "nominal",
           "scale": {
             "domain": ["DEL", "DUP", "BND"],
@@ -44,6 +109,7 @@
           "transform": [
             {
               "type": "regexFold",
+              "description": "Fold both link endpoints into rows for breakpoint markers.",
               "columnRegex": [
                 "^chrom(1|2)$",
                 "^breakpoint(1|2)$",
@@ -81,7 +147,7 @@
         },
         {
           "title": {
-            "text": "Severus somatic structural variants used by Wakhan",
+            "text": "Severus somatic structural variants loaded directly from VCF",
             "orient": "none"
           },
           "params": [
@@ -105,7 +171,7 @@
             },
             "x2": { "chrom": "chrom2", "pos": "breakpoint2", "band": 0 },
             "size": {
-              "field": "variant_allele_frequency",
+              "field": "SAMPLES.wakhan_haplotagged.VAF[0]",
               "type": "quantitative",
               "scale": { "range": [0.1, 2.5], "type": "pow" },
               "legend": {
@@ -117,7 +183,48 @@
             "opacity": {
               "condition": [{ "param": "svHover", "empty": false, "value": 1 }],
               "value": 0.5
-            }
+            },
+            "tooltip": [
+              {
+                "expr": "datum.INFO.SVTYPE[0] == 'BND' ? replace(datum.ID[0], /_[12]$/, '') : datum.ID[0]",
+                "title": "SV ID"
+              },
+              {
+                "field": "INFO.SVTYPE[0]",
+                "title": "SV type"
+              },
+              {
+                "expr": "isValid(datum.INFO.DETAILED_TYPE) ? datum.INFO.DETAILED_TYPE[0] : null",
+                "title": "Detailed type"
+              },
+              {
+                "field": "SAMPLES.wakhan_haplotagged.VAF[0]",
+                "title": "Variant allele frequency",
+                "format": ".3f"
+              },
+              {
+                "field": "SAMPLES.wakhan_haplotagged.hVAF",
+                "title": "Haplotype VAF",
+                "format": ".3f"
+              },
+              {
+                "field": "SAMPLES.wakhan_haplotagged.GT[0]",
+                "title": "Genotype"
+              },
+              {
+                "expr": "datum.SAMPLES.wakhan_haplotagged.DV[0] + ' variant, ' + datum.SAMPLES.wakhan_haplotagged.DR[0] + ' reference'",
+                "title": "Read support"
+              },
+              {
+                "expr": "isValid(datum.INFO.HP) ? datum.INFO.HP[0] : null",
+                "title": "Haplotype"
+              },
+              {
+                "expr": "isValid(datum.INFO.PHASESETID) ? datum.INFO.PHASESETID[0] : null",
+                "title": "Phase set"
+              },
+              { "field": "INFO.MAPQ[0]", "title": "Mapping quality" }
+            ]
           }
         }
       ]
