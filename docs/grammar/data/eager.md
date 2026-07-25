@@ -382,6 +382,33 @@ Behavior details:
 
 EXAMPLE examples/docs/grammar/data/eager/bedpe.json height=160
 
+### VCF
+
+[VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) parsing is based on
+GMOD's [vcf-js](https://github.com/GMOD/vcf-js) library. Each VCF row produces
+an object with fields such as `CHROM`, `POS`, `ID`, `REF`, `ALT`, `QUAL`,
+`FILTER`, and `INFO`. Sample columns are materialized in the `SAMPLES` object.
+
+VCF files can be loaded directly with the eager `url` data source:
+
+```json
+{
+  "data": {
+    "url": "variants.vcf.gz",
+    "format": {
+      "type": "vcf"
+    }
+  }
+}
+```
+
+The format is inferred for URLs ending in `.vcf`, including compressed suffixes
+such as `.vcf.gz`.
+
+Eager loading downloads, decompresses, and parses the whole file. For large
+bgzip-compressed and tabix-indexed VCF files, use the lazy
+[VCF data source](lazy.md#vcf) to retrieve only the visible genomic region.
+
 ### FASTA
 
 The type of _FASTA_ format is `"fasta"` as shown in the example below:

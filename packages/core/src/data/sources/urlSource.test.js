@@ -4,6 +4,7 @@ import Collector from "../collector.js";
 import { makeParamRuntimeProvider } from "../flowTestUtils.js";
 import bed from "../formats/bed.js";
 import bedpe from "../formats/bedpe.js";
+import "../formats/vcf.js";
 import UrlSource from "./urlSource.js";
 
 vegaFormats("bed", bed);
@@ -155,6 +156,46 @@ test("UrlSource reads gzip-compressed TSV content transparently", async () => {
         {
             chrom: "chr1",
             start: 10,
+        },
+    ]);
+});
+
+test("UrlSource infers and reads a gzip-compressed VCF", async () => {
+    const text = `##fileformat=VCFv4.3
+#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO
+chr1\t101\trs1\tA\tT\t50\tPASS\t.`;
+    const compressed = await gzipText(text);
+
+    global.fetch = /** @type {any} */ (
+        vi.fn(
+            async () =>
+                new Response(compressed, {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "application/gzip",
+                    },
+                })
+        )
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.vcf.gz",
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toMatchObject([
+        {
+            CHROM: "chr1",
+            POS: 101,
+            ID: ["rs1"],
+            REF: "A",
+            ALT: ["T"],
+            QUAL: 50,
+            FILTER: "PASS",
+            INFO: {},
+            SAMPLES: {},
         },
     ]);
 });

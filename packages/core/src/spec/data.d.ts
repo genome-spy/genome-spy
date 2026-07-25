@@ -109,6 +109,14 @@ export interface BedpeDataFormat extends DataFormatBase {
     columns?: string[];
 }
 
+export interface VcfDataFormat extends DataFormatBase {
+    /**
+     * Parses Variant Call Format records and materializes sample columns in
+     * the `SAMPLES` object.
+     */
+    type: "vcf";
+}
+
 /**
  * Other data format, such as `"fasta"`
  */
@@ -122,6 +130,7 @@ export type DataFormat =
     | JsonDataFormat
     | BedDataFormat
     | BedpeDataFormat
+    | VcfDataFormat
     | OtherDataFormat;
 
 export type DataFormatType = "json" | "csv" | "tsv" | "dsv" | string;

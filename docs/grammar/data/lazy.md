@@ -151,13 +151,19 @@ SCHEMA TabixTsvData
 
 ## VCF
 
-The tabix-based `"vcf"` source enables the retrieval of variant data stored in
-VCF files. The object format GenomeSpy uses is described in
-[vcf-js](https://github.com/GMOD/vcf-js/tree/master?tab=readme-ov-file#methods)'s
-documentation.
+[VCF](https://samtools.github.io/hts-specs/VCFv4.3.pdf) parsing is based on
+GMOD's [vcf-js](https://github.com/GMOD/vcf-js) library. Each VCF row produces
+an object with fields such as `CHROM`, `POS`, `ID`, `REF`, `ALT`, `QUAL`,
+`FILTER`, and `INFO`. Sample columns are materialized in the `SAMPLES` object.
+
+The tabix-based `"vcf"` source retrieves variant data from bgzip-compressed,
+tabix-indexed VCF files based on the visible genomic region.
 
 For partitioned VCF files, use the same multi-file mechanism as Tabix. Complex
 multi-sample VCF row shaping may still require additional transforms.
+
+Small VCF files that do not need indexed region queries can also be loaded
+directly with the eager [`url` data source](eager.md#vcf).
 
 ### Parameters
 
@@ -178,9 +184,6 @@ EXAMPLE examples/docs/genomic-data/examples/clinvar-variants.json height=130 spe
     [ClinVar FTP downloads](https://www.ncbi.nlm.nih.gov/clinvar/docs/maintenance_use/).
     ClinVar asks that redistributed data be attributed to ClinVar as the data
     source.
-
-The data source is based on [GMOD](http://gmod.org/)'s
-[vcf-js](https://github.com/GMOD/vcf-js) library.
 
 ## GFF3
 
