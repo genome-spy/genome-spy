@@ -23,6 +23,7 @@ import {
     configureViewHierarchy,
     finalizeViewConfiguration,
 } from "./viewHierarchyConfig.js";
+import { syncViewGuideViews } from "../view/gridView/guideViewSync.js";
 import { initializeViewData } from "./viewDataInit.js";
 
 /**
@@ -206,6 +207,7 @@ export async function createHeadlessEngine(spec, options = {}) {
     attachViewLevelAxisProps(view);
     attachViewLevelLegendProps(view);
     await ensureAssembliesForView(view, context.genomeStore);
+    await syncViewGuideViews(view);
     prepareViewHierarchy(view);
 
     await initializeViewData(

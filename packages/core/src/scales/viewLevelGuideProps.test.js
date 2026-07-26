@@ -2,7 +2,10 @@
 
 import { describe, expect, test } from "vitest";
 
+import AxisView from "../view/axisView.js";
+import ConcatView from "../view/concatView.js";
 import LayerView from "../view/layerView.js";
+import LegendView from "../view/legendView.js";
 import { initView } from "./scaleResolutionTestUtils.js";
 
 describe("view-level guide property attachment", () => {
@@ -36,6 +39,46 @@ describe("view-level guide property attachment", () => {
         expect(axisProps.grid).toBe(false);
         expect(axisProps.chromGrid).toBe(true);
         expect(axisProps.chromGridDash).toEqual([3, 3]);
+    });
+
+    test("materializes shared axes after attaching view-level properties", async () => {
+        const view = await initView(
+            {
+                resolve: { axis: { x: "shared" } },
+                axes: { x: { orient: "top", title: null } },
+                vconcat: [axisUnit("first"), axisUnit("generated title")],
+            },
+            ConcatView
+        );
+
+        const axes = view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof AxisView);
+
+        expect(axes).toHaveLength(1);
+        expect(axes[0].axisProps.orient).toBe("top");
+        expect(axes[0].axisProps.title).toBeNull();
+    });
+
+    test("preserves an explicit null title on a grid-child axis", async () => {
+        const view = await initView(
+            {
+                vconcat: [
+                    {
+                        axes: { x: { title: null } },
+                        layer: [axisUnit("generated title")],
+                    },
+                ],
+            },
+            ConcatView
+        );
+
+        const axes = view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof AxisView);
+
+        expect(axes).toHaveLength(1);
+        expect(axes[0].axisProps.title).toBeNull();
     });
 
     test("ancestor view-level axis props shadow all descendant props", async () => {
@@ -180,6 +223,33 @@ describe("view-level guide property attachment", () => {
         expect(definition.legend.disable).toBe(false);
     });
 
+    test("materializes shared legends after attaching view-level properties", async () => {
+        const view = await initView(
+            {
+                resolve: {
+                    scale: { color: "shared" },
+                    legend: { color: "shared" },
+                },
+                legends: {
+                    color: {
+                        orient: "bottom",
+                        title: "Shared legend",
+                    },
+                },
+                vconcat: [legendUnit(), legendUnit()],
+            },
+            ConcatView
+        );
+
+        const legends = view
+            .getDescendants()
+            .filter((descendant) => descendant instanceof LegendView);
+
+        expect(legends).toHaveLength(1);
+        expect(legends[0].legendProps.orient).toBe("bottom");
+        expect(legends[0].legendProps.title).toBe("Shared legend");
+    });
+
     test("ancestor view-level legend props shadow all descendant props", async () => {
         const view = await initView(
             {
@@ -284,6 +354,20 @@ function axisLayer(props) {
 }
 
 /**
+ * @param {string} field
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function axisUnit(field) {
+    return {
+        data: { values: [{ [field]: 1 }] },
+        mark: "point",
+        encoding: {
+            x: { field, type: "quantitative" },
+        },
+    };
+}
+
+/**
  * @param {import("../spec/legend.js").Legend} props
  * @returns {import("../spec/view.js").LayerSpec}
  */
@@ -298,5 +382,23 @@ function legendLayer(props) {
                 },
             },
         ],
+    };
+}
+
+/**
+ * @returns {import("../spec/view.js").UnitSpec}
+ */
+function legendUnit() {
+    return {
+        data: {
+            values: [{ group: "A" }, { group: "B" }],
+        },
+        mark: "point",
+        encoding: {
+            color: {
+                field: "group",
+                type: "nominal",
+            },
+        },
     };
 }

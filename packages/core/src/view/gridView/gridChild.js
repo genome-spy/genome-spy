@@ -523,7 +523,9 @@ export default class GridChild {
                 }
             }
 
-            props.title ??= r.getTitle();
+            if (props.title === undefined) {
+                props.title = r.getTitle();
+            }
 
             if (!CHANNEL_ORIENTS[channel].includes(props.orient)) {
                 throw new Error(

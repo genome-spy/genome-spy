@@ -39,6 +39,7 @@ import {
     attachViewLevelAxisProps,
     attachViewLevelLegendProps,
 } from "./scales/viewLevelGuideProps.js";
+import { syncViewGuideViews } from "./view/gridView/guideViewSync.js";
 import { resolveRootGenomeConfig } from "./genome/rootGenomeConfig.js";
 import { awaitSubtreeLazyReady } from "./view/dataReadiness.js";
 import { INTERNAL_DEFAULT_CONFIG } from "./config/defaultConfig.js";
@@ -453,6 +454,7 @@ export default class GenomeSpy {
         attachViewLevelAxisProps(this.viewRoot);
         attachViewLevelLegendProps(this.viewRoot);
         await ensureAssembliesForView(this.viewRoot, this.genomeStore);
+        await syncViewGuideViews(this.viewRoot);
 
         this.#loadingStatusRegistry.set(this.viewRoot, "loading");
 
