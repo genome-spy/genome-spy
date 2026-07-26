@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+import { createViewMutationApi } from "../view/viewMutationApi.js";
 import NamedSource from "./sources/namedSource.js";
 
 /**
@@ -140,6 +141,16 @@ describe("named dataset scopes", () => {
         );
         expect(first.flowHandle.dataSource.identifier).toBe("values");
         expect(second.flowHandle.dataSource.identifier).toBe("values");
+
+        const api = createViewMutationApi({ viewRoot: view });
+        api.get({ scope: ["first"], view: "first" }).datasets.set("values", [
+            { value: "updated" },
+        ]);
+
+        expect(getRows(first).map((datum) => datum.value)).toEqual(["updated"]);
+        expect(getRows(second).map((datum) => datum.value)).toEqual([
+            "imported",
+        ]);
     });
 
     test("resolves imported named lookup data from the imported root", async () => {
@@ -183,6 +194,39 @@ describe("named dataset scopes", () => {
         expect(getRows(translation).map((datum) => datum.aminoAcid)).toEqual([
             "M",
             "STOP",
+        ]);
+    });
+
+    test("resets an undeclared legacy binding to its provider", async () => {
+        let providerRows = [{ value: "initial" }];
+        const { view, context } = await createHeadlessEngine(
+            {
+                data: { name: "legacy" },
+                mark: "point",
+                encoding: {
+                    x: { field: "value", type: "nominal" },
+                },
+            },
+            {
+                contextOptions: {
+                    getNamedDataFromProvider: (name) =>
+                        name === "legacy" ? providerRows : undefined,
+                },
+            }
+        );
+        const source =
+            context.dataFlow.findNamedDataSource("legacy")?.dataSource;
+        if (!source) {
+            throw new Error("Expected legacy named source.");
+        }
+
+        source.updateDynamicData([{ value: "override" }]);
+        expect(getRows(view).map((datum) => datum.value)).toEqual(["override"]);
+
+        providerRows = [{ value: "refreshed" }];
+        source.updateDynamicData();
+        expect(getRows(view).map((datum) => datum.value)).toEqual([
+            "refreshed",
         ]);
     });
 });

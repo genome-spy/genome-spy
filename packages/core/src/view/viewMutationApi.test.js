@@ -386,6 +386,48 @@ describe("ViewMutationApi", () => {
         expect(getCollectorValues(consumerView)).toEqual([2]);
     });
 
+    test("keeps a shared dataset live after removing one consumer", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "owner",
+            datasets: {
+                results: [{ value: 1 }],
+            },
+            vconcat: [
+                {
+                    name: "consumerA",
+                    data: { name: "results" },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+                {
+                    name: "consumerB",
+                    data: { name: "results" },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const owner = api.root();
+        const consumerA = api.get({ scope: [], view: "consumerA" });
+        const consumerBView = view
+            .getDescendants()
+            .find((candidate) => candidate.explicitName === "consumerB");
+        if (!consumerBView) {
+            throw new Error("Expected remaining consumer view.");
+        }
+
+        await api.remove(consumerA);
+        owner.datasets.set("results", [{ value: 2 }]);
+
+        expect(consumerA.isAlive()).toBe(false);
+        expect(getCollectorValues(consumerBView)).toEqual([2]);
+    });
+
     test("inserts a direct spec into a concat container", async () => {
         const { view } = await createHeadlessViewHierarchy({
             name: "tracks",
