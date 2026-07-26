@@ -19,10 +19,10 @@ from a URL. Declare the dataset in the view that owns it and reference it with
 }
 ```
 
-`datasets` declarations are lexically scoped through the data-parent
-hierarchy. Descendants can reference an ancestor's declaration, while a
-descendant declaration with the same name shadows it. Repeated import instances
-therefore own independent datasets.
+`datasets` declarations are lexically scoped through nested views. A view can
+reference a dataset declared on itself or an enclosing view. A more deeply
+nested declaration with the same name shadows the enclosing declaration.
+Repeated import instances therefore own independent datasets.
 
 ### Updating named data
 

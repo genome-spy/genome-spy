@@ -273,8 +273,8 @@ Use `data.name` to reference a dataset declared separately with `datasets`.
 ```
 
 The `datasets` property declares named arrays for a view subtree. A named data
-reference first checks its own view and then searches its data ancestors. A
-declaration in a descendant view shadows an ancestor declaration with the same
+reference first checks its own view and then its enclosing views. A declaration
+in a more deeply nested view shadows an enclosing declaration with the same
 name.
 
 ```json title="Example: Named dataset"
