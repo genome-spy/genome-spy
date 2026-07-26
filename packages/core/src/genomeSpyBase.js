@@ -50,9 +50,7 @@ import {
     getBuiltInThemeBackground,
     resolveThemeSelection,
 } from "./config/themes.js";
-
-const namedDataProviderWarningTargets = new WeakSet();
-const updateNamedDataWarningTargets = new WeakSet();
+import { warnOnce } from "./utils/warning.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -157,8 +155,6 @@ export default class GenomeSpy {
      */
     registerNamedDataProvider(provider) {
         warnOnce(
-            this,
-            namedDataProviderWarningTargets,
             "The `namedDataProvider` embed option is deprecated. Declare named datasets in the owning view and update them through `ViewHandle.datasets`."
         );
         this.namedDataProviders.unshift(provider);
@@ -184,8 +180,6 @@ export default class GenomeSpy {
      */
     updateNamedData(name, data) {
         warnOnce(
-            this,
-            updateNamedDataWarningTargets,
             "`updateNamedData()` is deprecated. Update the dataset through its owning view's `ViewHandle.datasets` API."
         );
 
@@ -751,18 +745,6 @@ export default class GenomeSpy {
             }
         });
         return resolutions;
-    }
-}
-
-/**
- * @param {object} target
- * @param {WeakSet<object>} warnedTargets
- * @param {string} message
- */
-function warnOnce(target, warnedTargets, message) {
-    if (!warnedTargets.has(target)) {
-        warnedTargets.add(target);
-        console.warn(message);
     }
 }
 

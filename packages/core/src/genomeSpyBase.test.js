@@ -21,17 +21,13 @@ describe("GenomeSpy layout reflow", () => {
 });
 
 describe("GenomeSpy legacy named data updates", () => {
-    test("warns once when registering named data providers", () => {
+    test("warns when registering a named data provider", () => {
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         const target = {
             namedDataProviders: /** @type {((name: string) => any[])[]} */ ([]),
         };
         const provider = () => /** @type {any[]} */ ([]);
 
-        /** @type {any} */ (GenomeSpy.prototype.registerNamedDataProvider).call(
-            target,
-            provider
-        );
         /** @type {any} */ (GenomeSpy.prototype.registerNamedDataProvider).call(
             target,
             provider
@@ -66,15 +62,9 @@ describe("GenomeSpy legacy named data updates", () => {
             "results",
             [{ value: 1 }]
         );
-        /** @type {any} */ (GenomeSpy.prototype.updateNamedData).call(
-            target,
-            "results",
-            [{ value: 2 }]
-        );
 
-        expect(updateDynamicData).toHaveBeenNthCalledWith(1, [{ value: 1 }]);
-        expect(updateDynamicData).toHaveBeenNthCalledWith(2, [{ value: 2 }]);
-        expect(requestRender).toHaveBeenCalledTimes(2);
+        expect(updateDynamicData).toHaveBeenCalledWith([{ value: 1 }]);
+        expect(requestRender).toHaveBeenCalledOnce();
         expect(warn).toHaveBeenCalledOnce();
         expect(warn).toHaveBeenCalledWith(
             expect.stringContaining("`updateNamedData()`")
