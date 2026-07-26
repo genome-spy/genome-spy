@@ -59,9 +59,9 @@ document
     .querySelectorAll("input[type='range']")
     .forEach((/** @type {HTMLInputElement}*/ input) => {
         input.addEventListener("input", () => {
-            dataOwner.setNamedData(input.name, [
+            dataOwner.datasets.set(input.name, [
                 { x: input.name, y: input.value },
             ]);
         });
-        dataOwner.setNamedData(input.name, [{ x: input.name, y: input.value }]);
+        dataOwner.datasets.set(input.name, [{ x: input.name, y: input.value }]);
     });

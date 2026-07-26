@@ -83,7 +83,7 @@ const generateData = () => {
 };
 
 const update = () => {
-    dataOwner.setNamedData("dynamicData", generateData());
+    dataOwner.datasets.set("dynamicData", generateData());
 };
 
 const animate = () => {

@@ -28,7 +28,7 @@ export interface EmbedOptions {
      *
      * @deprecated Declare the dataset in the owning view and provide initial
      * rows through the specification or update it through
-     * `ViewHandle.setNamedData()`.
+     * `ViewHandle.datasets.set()`.
      */
     namedDataProvider?: (name: string) => any[];
 
@@ -184,6 +184,31 @@ export interface MoveViewOptions {
 }
 
 /**
+ * Runtime updates for datasets declared by a view.
+ */
+export interface ViewDatasetApi {
+    /**
+     * Replaces a named dataset declared by the handle's exact view.
+     *
+     * Descendant views that resolve the declaration receive the updated data.
+     */
+    set: <T = unknown>(name: string, data: T[]) => void;
+
+    /**
+     * Restores a named dataset declared by the handle's exact view to its
+     * configured values.
+     */
+    reset: (name: string) => void;
+}
+
+// Design intent: "Opaque" below means that callers cannot access the internal
+// View representation; it does not mean that this is an inert address.
+// ViewHandle is a capability-bearing reference. Operations inherently scoped
+// to one view belong here under resource namespaces (such as datasets and,
+// eventually, params), while hierarchy-wide lookup and structural mutations
+// remain on ViewApi. Namespaces avoid accumulating unrelated flat methods.
+
+/**
  * Live handle to a view in the embedded GenomeSpy instance.
  *
  * The exposed hierarchy matches the layout tree derived from the
@@ -236,17 +261,9 @@ export interface ViewHandle {
     children: () => ViewHandle[];
 
     /**
-     * Replaces a named dataset declared by this exact view.
-     *
-     * Descendant views that resolve the declaration receive the updated data.
+     * Updates datasets declared by this exact view.
      */
-    setNamedData: <T = unknown>(name: string, data: T[]) => void;
-
-    /**
-     * Restores a named dataset declared by this exact view to its configured
-     * values.
-     */
-    resetNamedData: (name: string) => void;
+    readonly datasets: ViewDatasetApi;
 }
 
 /**
@@ -435,8 +452,8 @@ export interface EmbedResult {
      *
      * @param name data source to update
      * @param data new data. If left undefined, the data is retrieved from a provider.
-     * @deprecated Use `ViewHandle.setNamedData()` or
-     * `ViewHandle.resetNamedData()`.
+     * @deprecated Use `ViewHandle.datasets.set()` or
+     * `ViewHandle.datasets.reset()`.
      */
     updateNamedData: (name: string, data?: any[]) => void;
 

@@ -43,25 +43,27 @@ independent datasets incorrectly.
 
 ### Runtime updates
 
-Add write-only methods directly to `ViewHandle`:
+Expose a write-only dataset namespace on `ViewHandle`:
 
 ```ts
 interface ViewHandle {
-    setNamedData: <T = unknown>(name: string, data: T[]) => void;
-    resetNamedData: (name: string) => void;
+    readonly datasets: {
+        set: <T = unknown>(name: string, data: T[]) => void;
+        reset: (name: string) => void;
+    };
 }
 ```
 
 The view handle identifies the dataset owner:
 
-- `setNamedData()` operates only on a dataset declared in that exact view's
+- `datasets.set()` operates only on a dataset declared in that exact view's
   `datasets` object.
 - It does not search ancestors and does not create an implicit local binding.
 - If an ancestor owns the requested dataset, throw an error that identifies
   that the caller must use the owner's handle.
 - If no declaration exists, throw an error that recommends adding a
   `datasets` entry.
-- `resetNamedData()` removes the runtime override and restores the rows from
+- `datasets.reset()` removes the runtime override and restores the rows from
   the declaration.
 - Runtime updates never mutate the specification object.
 - Do not add dataset handles, dataset selectors, subscriptions, or a read API.
@@ -74,8 +76,8 @@ const translation = api.views.get({
     view: "translationA",
 });
 
-translation.setNamedData("geneticCode", customGeneticCode);
-translation.resetNamedData("geneticCode");
+translation.datasets.set("geneticCode", customGeneticCode);
+translation.datasets.reset("geneticCode");
 ```
 
 ### Initial and asynchronous data
@@ -93,7 +95,7 @@ update:
 ```js
 const api = await embed("#container", spec);
 const owner = api.views.get({ scope: [], view: "resultsOwner" });
-owner.setNamedData("results", await loadResults());
+owner.datasets.set("results", await loadResults());
 ```
 
 GenomeSpy's dynamic dataflow update support makes a synchronous provider
@@ -145,7 +147,7 @@ JSDoc, and user-facing documentation. The recommended migration is:
 
 1. Add a `datasets` declaration to the intended owner view.
 2. Resolve that owner through `api.views`.
-3. Use `setNamedData()` and `resetNamedData()`.
+3. Use `datasets.set()` and `datasets.reset()`.
 
 The deprecated global update should retain its existing behavior where
 possible. If scoped bindings make a bare name ambiguous, it must throw an
@@ -202,7 +204,8 @@ legacy methods/options themselves.
 
 ### 3. Public API
 
-- Extend `ViewHandle` with `setNamedData()` and `resetNamedData()`.
+- Extend `ViewHandle` with a `datasets` namespace containing `set()` and
+  `reset()`.
 - Resolve only declarations owned by the handle's exact view.
 - Validate arrays at the runtime API boundary.
 - Request the necessary render/layout/domain refresh after propagation.
@@ -232,7 +235,7 @@ legacy methods/options themselves.
 - Update relevant `packages/embed-examples` specs to declare their datasets.
 - Replace calls to `updateNamedData()` with owner-handle calls.
 - Supply initial rows through `spec.datasets` where available.
-- Use empty declarations followed by `setNamedData()` for asynchronous data.
+- Use empty declarations followed by `datasets.set()` for asynchronous data.
 - Keep a legacy example only if explicit deprecated-API coverage is valuable.
 
 ## Focused tests
@@ -325,7 +328,7 @@ build or pass tests.
 
 2. `feat(core): add owner-scoped named data updates`
 
-   Add `ViewHandle.setNamedData()` and `resetNamedData()`, lifecycle handling,
+   Add `ViewHandle.datasets.set()` and `datasets.reset()`, lifecycle handling,
    exact-owner validation, and focused API/mutation tests.
 
 3. `refactor(core): isolate deprecated global named data support`

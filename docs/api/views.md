@@ -103,8 +103,8 @@ const owner = api.views.get({
   view: "translationA",
 });
 
-owner.setNamedData("geneticCode", rows);
-owner.resetNamedData("geneticCode");
+owner.datasets.set("geneticCode", rows);
+owner.datasets.reset("geneticCode");
 ```
 
 Descendants resolve `datasets` declarations lexically, but updates do not

@@ -94,7 +94,7 @@ describe("named dataset scopes", () => {
             )
         ).toHaveLength(2);
         expect(() => context.dataFlow.findNamedDataSource("shared")).toThrow(
-            /ambiguous.*ViewHandle\.setNamedData/i
+            /ambiguous.*ViewHandle\.datasets\.set/i
         );
     });
 

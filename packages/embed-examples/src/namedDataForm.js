@@ -35,5 +35,5 @@ const dataOwner = api.views.get({
 });
 
 document.getElementById("form").addEventListener("input", () => {
-    dataOwner.setNamedData("myData", getFormData());
+    dataOwner.datasets.set("myData", getFormData());
 });

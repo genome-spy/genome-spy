@@ -172,7 +172,7 @@ export default class GenomeSpy {
      *
      * @param {string} name
      * @param {any[]} data
-     * @deprecated Use ViewHandle.setNamedData() or resetNamedData().
+     * @deprecated Use ViewHandle.datasets.set() or datasets.reset().
      */
     updateNamedData(name, data) {
         // TODO: Remove this global name lookup with the deprecated provider

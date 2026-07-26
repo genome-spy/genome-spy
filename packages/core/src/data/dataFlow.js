@@ -117,7 +117,7 @@ export default class DataFlow {
                 if (name === dataSource.identifier) {
                     if (namedSource && namedSource !== dataSource) {
                         throw new Error(
-                            `Named data "${name}" is ambiguous across scoped datasets. Use the dataset owner's ViewHandle.setNamedData() method.`
+                            `Named data "${name}" is ambiguous across scoped datasets. Use the dataset owner's ViewHandle.datasets.set() method.`
                         );
                     }
                     namedSource = dataSource;

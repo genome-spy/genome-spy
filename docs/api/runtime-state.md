@@ -26,7 +26,7 @@ therefore own independent datasets.
 
 ### Updating named data
 
-Resolve the declaring view and call `setNamedData()` on its handle:
+Resolve the declaring view and use its `datasets` API:
 
 ```js
 const api = await embed("#container", spec);
@@ -35,21 +35,21 @@ const owner = api.views.get({
   view: "resultsOwner",
 });
 
-owner.setNamedData("myResults", [
+owner.datasets.set("myResults", [
   { x: 1, y: 2 },
   { x: 2, y: 3 },
 ]);
 ```
 
 The handle must represent the exact view containing the `datasets` property.
-Calling `setNamedData()` on a descendant does not modify an ancestor's dataset.
+Calling `datasets.set()` on a descendant does not modify an ancestor's dataset.
 This makes ownership explicit when the same name occurs in multiple subtrees.
 
-`resetNamedData()` removes the runtime override and restores the values from
+`datasets.reset()` removes the runtime override and restores the values from
 the declaration:
 
 ```js
-owner.resetNamedData("myResults");
+owner.datasets.reset("myResults");
 ```
 
 To avoid an initially empty dataset, a host can place initial rows in the
@@ -74,7 +74,7 @@ shadowed declarations reliably.
 Existing integrations may continue using them during the compatibility period.
 A global update throws when the name identifies multiple scoped datasets.
 Migrate by adding a `datasets` declaration to the intended owner and calling
-`setNamedData()` or `resetNamedData()` through that view's handle.
+`datasets.set()` or `datasets.reset()` through that view's handle.
 
 Undeclared `data.name` references also retain their embed-wide fallback
 behavior temporarily. New specifications should declare every named dataset

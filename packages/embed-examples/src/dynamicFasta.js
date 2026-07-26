@@ -206,7 +206,7 @@ async function handleDomainChange(domain, complexDomain) {
                   ),
               ];
 
-    dataOwner.setNamedData("fasta", await Promise.all(sequences));
+    dataOwner.datasets.set("fasta", await Promise.all(sequences));
 }
 
 /**

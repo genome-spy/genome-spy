@@ -165,16 +165,18 @@ export function createViewMutationApi(genomeSpy) {
                 return children.map((child) => getHandle(child));
             },
 
-            setNamedData: (name, data) => {
-                const binding = getOwnedNamedDataBinding(view, name);
-                binding.setData(data);
-                reloadNamedDataBinding(view, binding);
-            },
+            datasets: {
+                set: (name, data) => {
+                    const binding = getOwnedNamedDataBinding(view, name);
+                    binding.setData(data);
+                    reloadNamedDataBinding(view, binding);
+                },
 
-            resetNamedData: (name) => {
-                const binding = getOwnedNamedDataBinding(view, name);
-                binding.resetData();
-                reloadNamedDataBinding(view, binding);
+                reset: (name) => {
+                    const binding = getOwnedNamedDataBinding(view, name);
+                    binding.resetData();
+                    reloadNamedDataBinding(view, binding);
+                },
             },
         };
 

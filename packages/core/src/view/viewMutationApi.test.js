@@ -228,7 +228,7 @@ describe("ViewMutationApi", () => {
         expect(child.isAlive()).toBe(false);
         expect(api.resolve(child)).toBeUndefined();
         expect(() => api.get(child)).toThrow(/stale/i);
-        expect(() => child.setNamedData("results", [{ value: 1 }])).toThrow(
+        expect(() => child.datasets.set("results", [{ value: 1 }])).toThrow(
             /stale/i
         );
     });
@@ -268,10 +268,10 @@ describe("ViewMutationApi", () => {
 
         expect(getCollectorValues(consumerView)).toEqual([1]);
 
-        owner.setNamedData("results", [{ value: 2 }, { value: 3 }]);
+        owner.datasets.set("results", [{ value: 2 }, { value: 3 }]);
         expect(getCollectorValues(consumerView)).toEqual([2, 3]);
 
-        owner.resetNamedData("results");
+        owner.datasets.reset("results");
         expect(getCollectorValues(consumerView)).toEqual([1]);
     });
 
@@ -303,14 +303,14 @@ describe("ViewMutationApi", () => {
         const consumer = api.get({ scope: [], view: "consumer" });
         const undeclared = api.get({ scope: [], view: "undeclared" });
 
-        expect(() => consumer.setNamedData("results", [{ value: 2 }])).toThrow(
+        expect(() => consumer.datasets.set("results", [{ value: 2 }])).toThrow(
             /ancestor view/i
         );
         expect(() =>
-            undeclared.setNamedData("missing", [{ value: 2 }])
+            undeclared.datasets.set("missing", [{ value: 2 }])
         ).toThrow(/does not declare/i);
         expect(() =>
-            /** @type {any} */ (api.root()).setNamedData("results", {})
+            /** @type {any} */ (api.root()).datasets.set("results", {})
         ).toThrow(/not an array/i);
     });
 
@@ -325,7 +325,7 @@ describe("ViewMutationApi", () => {
         const api = createViewMutationApi({ viewRoot: view });
         const owner = api.root();
 
-        owner.setNamedData("results", [{ value: 7 }]);
+        owner.datasets.set("results", [{ value: 7 }]);
         await api.insert(owner, {
             name: "consumer",
             data: { name: "results" },
