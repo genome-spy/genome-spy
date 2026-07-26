@@ -344,6 +344,48 @@ describe("ViewMutationApi", () => {
         expect(getCollectorValues(consumerView)).toEqual([7]);
     });
 
+    test("updates a dataset owned by an authored layer inside an implicit root", async () => {
+        // Browser embeds wrap root layers for chrome, but the authored layer
+        // remains the exact dataset owner.
+        const { view } = await createHeadlessEngine(
+            {
+                name: "owner",
+                datasets: {
+                    results: [{ value: 1 }],
+                },
+                layer: [
+                    {
+                        name: "consumer",
+                        data: { name: "results" },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "value", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            {
+                contextOptions: {
+                    viewFactoryOptions: { wrapRoot: true },
+                },
+            }
+        );
+        const api = createViewMutationApi({ viewRoot: view });
+        const owner = api.get({ scope: [], view: "owner" });
+        const consumerView = view
+            .getDescendants()
+            .find((candidate) => candidate.explicitName === "consumer");
+        if (!consumerView) {
+            throw new Error("Expected consumer view.");
+        }
+
+        expect(api.root().name).toBe("implicitRoot");
+        expect(owner.parent()).toBe(api.root());
+
+        owner.datasets.set("results", [{ value: 2 }]);
+        expect(getCollectorValues(consumerView)).toEqual([2]);
+    });
+
     test("inserts a direct spec into a concat container", async () => {
         const { view } = await createHeadlessViewHierarchy({
             name: "tracks",

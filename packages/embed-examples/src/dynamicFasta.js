@@ -21,6 +21,7 @@ const fasta = new IndexedFasta({
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
+    name: "fastaDataOwner",
     datasets: {
         fasta: [],
     },
@@ -117,7 +118,12 @@ const spec = {
 const container = document.getElementById("container");
 
 const api = await embed(container, spec);
-const dataOwner = api.views.root();
+// A root layer receives an implicit layout wrapper, so address the authored
+// view that actually declares the dataset.
+const dataOwner = api.views.get({
+    scope: [],
+    view: "fastaDataOwner",
+});
 
 /**
  *
