@@ -168,14 +168,12 @@ export function createViewMutationApi(genomeSpy) {
             datasets: {
                 set: (name, data) => {
                     const binding = getOwnedNamedDataBinding(view, name);
-                    binding.setData(data);
-                    reloadNamedDataBinding(view, binding);
+                    updateNamedDataBinding(view, binding, data);
                 },
 
                 reset: (name) => {
                     const binding = getOwnedNamedDataBinding(view, name);
-                    binding.resetData();
-                    reloadNamedDataBinding(view, binding);
+                    updateNamedDataBinding(view, binding);
                 },
             },
         };
@@ -230,9 +228,10 @@ export function createViewMutationApi(genomeSpy) {
     /**
      * @param {import("./view.js").default} view
      * @param {import("../data/namedDataScope.js").NamedDataBinding} binding
+     * @param {import("../data/flowNode.js").Datum[]} [data]
      */
-    function reloadNamedDataBinding(view, binding) {
-        view.context.dataFlow.reloadNamedDataBinding(binding);
+    function updateNamedDataBinding(view, binding, data) {
+        view.context.dataFlow.updateNamedDataBinding(binding, data);
         view.context.animator.requestRender();
     }
 

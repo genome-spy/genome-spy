@@ -133,11 +133,20 @@ export default class DataFlow {
     }
 
     /**
-     * Reloads all named sources connected to a dataset binding.
+     * Updates a dataset binding and reloads all connected named sources.
+     * Omitting data resets the binding to its configured or provider-backed
+     * default.
      *
      * @param {import("./namedDataScope.js").NamedDataBinding} binding
+     * @param {import("./flowNode.js").Datum[]} [data]
      */
-    reloadNamedDataBinding(binding) {
+    updateNamedDataBinding(binding, data) {
+        if (data === undefined) {
+            binding.resetData();
+        } else {
+            binding.setData(data);
+        }
+
         for (const dataSource of this.#dataSources.values()) {
             if (
                 dataSource instanceof NamedSource &&

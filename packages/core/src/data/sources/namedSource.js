@@ -37,17 +37,13 @@ export default class NamedSource extends DataSource {
     }
 
     /**
-     * Update the named data. If data is omitted, a data provider is used instead.
+     * Updates the dataset binding and reloads all of its consumers. Omitting
+     * data resets the binding to its configured or provider-backed default.
      *
      * @param {import("../flowNode.js").Datum[]} [data]
      */
     updateDynamicData(data) {
-        if (data === undefined) {
-            this.binding.resetData();
-        } else {
-            this.binding.setData(data);
-        }
-        this.loadSynchronously();
+        this.view.context.dataFlow.updateNamedDataBinding(this.binding, data);
     }
 
     loadSynchronously() {
