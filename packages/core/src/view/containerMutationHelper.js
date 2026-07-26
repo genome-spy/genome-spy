@@ -1,14 +1,14 @@
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
 import { initializeViewDataForViews } from "../genomeSpy/viewDataInit.js";
 import {
-    attachViewLevelScaleConfigs,
-    clearViewLevelScaleConfigs,
-} from "../scales/viewLevelScaleConfig.js";
+    attachViewLevelScaleProps,
+    clearViewLevelScaleProps,
+} from "../scales/viewLevelScaleProps.js";
 import {
-    attachViewLevelAxisConfigs,
-    attachViewLevelLegendConfigs,
-    clearViewLevelGuideConfigs,
-} from "../scales/viewLevelGuideConfig.js";
+    attachViewLevelAxisProps,
+    attachViewLevelLegendProps,
+    clearViewLevelGuideProps,
+} from "../scales/viewLevelGuideProps.js";
 import { configureViewsAfterScaleResolution } from "../genomeSpy/viewHierarchyConfig.js";
 import { isChromeView } from "./viewSelectors.js";
 
@@ -102,9 +102,9 @@ export default class ContainerMutationHelper {
             );
             viewInserted = true;
 
-            attachViewLevelScaleConfigs(this.container);
-            attachViewLevelAxisConfigs(this.container);
-            attachViewLevelLegendConfigs(this.container);
+            attachViewLevelScaleProps(this.container);
+            attachViewLevelAxisProps(this.container);
+            attachViewLevelLegendProps(this.container);
 
             // Reminder: ensure assemblies from the real child hierarchy before any
             // downstream work that may initialize scales (axis prep / encoders).
@@ -182,17 +182,17 @@ export default class ContainerMutationHelper {
      */
     async removeChildAt(index, options = {}) {
         const { removeAt } = this.options.getChildSpecs();
-        clearViewLevelScaleConfigs(this.container);
-        clearViewLevelGuideConfigs(this.container);
+        clearViewLevelScaleProps(this.container);
+        clearViewLevelGuideProps(this.container);
         this.options.removeView(index);
         removeAt(index);
 
         if (this.options.afterRemove) {
             await this.options.afterRemove(index);
         }
-        attachViewLevelScaleConfigs(this.container);
-        attachViewLevelAxisConfigs(this.container);
-        attachViewLevelLegendConfigs(this.container);
+        attachViewLevelScaleProps(this.container);
+        attachViewLevelAxisProps(this.container);
+        attachViewLevelLegendProps(this.container);
 
         // Removed children may change shared guide ownership and visibility.
         if (this.options.syncMutationGuideViews) {

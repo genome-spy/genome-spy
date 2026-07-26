@@ -312,10 +312,10 @@ participant:
 }
 ```
 
-Use view-level `scales` to configure the same shared scale at the subtree that
-owns it:
+Use view-level `scales` to define properties for a shared scale at the subtree
+that owns it:
 
-```json title="View-level scale configuration"
+```json title="View-level scale properties"
 {
   "scales": {
     "x": {
@@ -355,16 +355,18 @@ owns it:
 ```
 
 Use [`resolve.scale`](./composition/index.md#scale-axis-and-legend-resolution) to
-choose how scales are shared. A view-level `scales.<channel>` entry configures
-the shared scale used by that view subtree. If the subtree has multiple
+choose how scales are shared. A view-level `scales.<channel>` entry owns the
+shared scale properties for that view subtree. If the subtree has multiple
 independent scales for the same channel, place `scales.<channel>` closer to the
 intended subtree or make the sharing explicit with `resolve.scale`.
 
-View-level configuration is exclusive. When nested view-level configs target
-the same scale resolution, the ancestor config shadows the whole descendant
-config; their properties are not merged. Configs in separate sibling subtrees
-remain ambiguous and cause an error. This keeps the effective scale settings
-stable when descendant views are added or removed.
+A view-level scale declaration is exclusive. When nested declarations target
+the same scale resolution, the ancestor declaration shadows the whole
+descendant declaration; their properties are not merged. Declarations in
+separate sibling subtrees remain ambiguous and cause an error. This keeps the
+shared scale under a single, predictable owner. Its effective properties do not
+depend on which descendant views are present, and imported subtrees can retain
+declarations that make them useful on their own.
 
 Do not mix view-level `scales.<channel>` with participating
 `encoding.<channel>.scale` objects for the same shared scale. Keep

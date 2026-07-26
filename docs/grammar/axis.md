@@ -129,7 +129,7 @@ column. Grid lines are drawn for all participating views.
 For shared axis resolutions, axis properties can also be placed at the view level
 with `axes.<channel>`:
 
-```json title="View-level axis configuration"
+```json title="View-level axis properties"
 {
   "axes": {
     "x": {
@@ -143,15 +143,16 @@ with `axes.<channel>`:
 }
 ```
 
-A view-level axis config must map to one axis resolution. If the subtree has
-multiple independent axes for the same channel, place the config closer to the
-intended subtree or use local `encoding.<channel>.axis` settings. Do not mix
-view-level `axes.<channel>` with participating channel-level axis config for the
-same resolved axis.
+A view-level axis declaration must map to one axis resolution. If the subtree
+has multiple independent axes for the same channel, place the declaration
+closer to the intended subtree or use local `encoding.<channel>.axis`
+properties. Do not mix view-level `axes.<channel>` with participating
+channel-level axis properties for the same resolved axis.
 
-When nested view-level axis configs target the same resolution, the ancestor
-config shadows the whole descendant config; their properties are not merged.
-Configs in separate sibling subtrees remain ambiguous and cause an error.
+When nested view-level axis declarations target the same resolution, the
+ancestor declaration shadows the whole descendant declaration; their
+properties are not merged. Declarations in separate sibling subtrees remain
+ambiguous and cause an error.
 
 ## Genome Axis for Loci
 

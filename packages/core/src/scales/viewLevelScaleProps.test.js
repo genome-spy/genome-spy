@@ -10,12 +10,12 @@ import ConcatView from "../view/concatView.js";
 import LayerView from "../view/layerView.js";
 import { initView } from "./scaleResolutionTestUtils.js";
 import {
-    attachViewLevelScaleConfigs,
-    mapViewLevelScaleConfigs,
-} from "./viewLevelScaleConfig.js";
+    attachViewLevelScaleProps,
+    mapViewLevelScaleProps,
+} from "./viewLevelScaleProps.js";
 
-describe("view-level scale config mapping", () => {
-    test("initial view creation attaches mapped configs automatically", async () => {
+describe("view-level scale property mapping", () => {
+    test("initial view creation attaches mapped declarations automatically", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [{ value: 1 }] },
@@ -39,7 +39,7 @@ describe("view-level scale config mapping", () => {
         ]);
     });
 
-    test("updates transitioned scale helper params when attaching initial configs", async () => {
+    test("updates transitioned scale helper params when attaching initial declarations", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [{ value: 100 }] },
@@ -78,7 +78,7 @@ describe("view-level scale config mapping", () => {
         expect(message.paramRuntime.getTargetValue("zoomMessageState")).toBe(0);
     });
 
-    test("maps a subtree config to a unique visible scale resolution", async () => {
+    test("maps a subtree declaration to a unique visible scale resolution", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [{ value: 1 }] },
@@ -102,18 +102,18 @@ describe("view-level scale config mapping", () => {
         };
 
         const view = await initView(spec, LayerView);
-        const mappings = mapViewLevelScaleConfigs(view);
+        const mappings = mapViewLevelScaleProps(view);
 
         expect(mappings).toHaveLength(1);
         expect(mappings[0]).toMatchObject({
             view,
             channel: "x",
-            config: { domain: [0, 10] },
+            props: { domain: [0, 10] },
         });
         expect(mappings[0].resolution).toBe(view.getScaleResolution("x"));
     });
 
-    test("maps a composed view config to its shared inherited positional scale", async () => {
+    test("maps a composed view declaration to its shared inherited positional scale", async () => {
         // Mirrors tracks where a shared x encoding is defined on a vconcat and
         // one child repeats the inherited channel to customize other encodings.
         /** @type {import("../spec/view.js").ConcatSpec} */
@@ -171,13 +171,13 @@ describe("view-level scale config mapping", () => {
         };
 
         const view = await initView(spec, ConcatView);
-        const mappings = mapViewLevelScaleConfigs(view);
+        const mappings = mapViewLevelScaleProps(view);
 
         expect(mappings).toHaveLength(1);
         expect(mappings[0]).toMatchObject({
             view,
             channel: "x",
-            config: {
+            props: {
                 domain: [
                     { chrom: "chr11", pos: 5280000 },
                     { chrom: "chr11", pos: 5290000 },
@@ -192,7 +192,7 @@ describe("view-level scale config mapping", () => {
         );
     });
 
-    test("ignores excluded child subtrees when mapping a parent config", async () => {
+    test("ignores excluded child subtrees when mapping a parent props", async () => {
         /** @type {import("../spec/view.js").ConcatSpec} */
         const spec = {
             assembly: "hg38",
@@ -280,7 +280,7 @@ describe("view-level scale config mapping", () => {
         const view = await initView(spec, ConcatView);
         const detail = view.children[1];
         const resolution = detail.getScaleResolution("x");
-        const mappings = mapViewLevelScaleConfigs(view);
+        const mappings = mapViewLevelScaleProps(view);
 
         expect(mappings).toHaveLength(1);
         expect(mappings[0].resolution).toBe(resolution);
@@ -294,7 +294,7 @@ describe("view-level scale config mapping", () => {
         });
     });
 
-    test("keeps an empty subtree config pending", async () => {
+    test("keeps an empty subtree props pending", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             scales: {
@@ -304,18 +304,18 @@ describe("view-level scale config mapping", () => {
         };
 
         const view = await initView(spec, LayerView);
-        const mappings = mapViewLevelScaleConfigs(view);
+        const mappings = mapViewLevelScaleProps(view);
 
         expect(mappings).toHaveLength(1);
         expect(mappings[0]).toMatchObject({
             view,
             channel: "x",
-            config: { domain: [0, 10] },
+            props: { domain: [0, 10] },
             resolution: undefined,
         });
     });
 
-    test("rejects configs that map to multiple visible scale resolutions", async () => {
+    test("rejects declarations that map to multiple visible scale resolutions", async () => {
         /** @type {import("../spec/view.js").ConcatSpec} */
         const spec = {
             scales: {
@@ -341,12 +341,12 @@ describe("view-level scale config mapping", () => {
 
         const { view } = await createHeadlessViewHierarchy(spec);
 
-        expect(() => mapViewLevelScaleConfigs(view)).toThrow(
+        expect(() => mapViewLevelScaleProps(view)).toThrow(
             "View-level scales.x maps to multiple scale resolutions."
         );
     });
 
-    test("attaches mapped configs to target scale resolutions", async () => {
+    test("attaches mapped declarations to target scale resolutions", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [{ value: 1 }] },
@@ -364,15 +364,15 @@ describe("view-level scale config mapping", () => {
         };
 
         const view = await initView(spec, LayerView);
-        const [mapping] = attachViewLevelScaleConfigs(view);
+        const [mapping] = attachViewLevelScaleProps(view);
 
-        expect(mapping.resolution.getViewLevelScaleConfig()).toEqual({
+        expect(mapping.resolution.getViewLevelScaleProps()).toEqual({
             view,
-            config: { domain: [0, 10] },
+            props: { domain: [0, 10] },
         });
     });
 
-    test("attaches pending config when a matching child is added", async () => {
+    test("attaches pending props when a matching child is added", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             scales: {
@@ -395,7 +395,7 @@ describe("view-level scale config mapping", () => {
         ]);
     });
 
-    test("dynamically added descendant config is shadowed by an attached ancestor config", async () => {
+    test("dynamically added descendant props is shadowed by an attached ancestor props", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [{ value: 1 }] },
@@ -437,15 +437,15 @@ describe("view-level scale config mapping", () => {
             ],
         });
 
-        expect(resolution.getViewLevelScaleConfig()).toEqual({
+        expect(resolution.getViewLevelScaleProps()).toEqual({
             view,
-            config: { domain: [0, 10] },
+            props: { domain: [0, 10] },
         });
         expect(resolution.getScale().domain()).toEqual([0, 10]);
         expect(resolution.getScale().props.reverse).toBeUndefined();
     });
 
-    test("returns a view-level config to pending when the last matching child is removed", async () => {
+    test("returns a view-level props to pending when the last matching child is removed", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             scales: {
@@ -465,18 +465,18 @@ describe("view-level scale config mapping", () => {
         const removedResolution = view.getScaleResolution("x");
 
         await view.removeChildAt(0);
-        const [mapping] = mapViewLevelScaleConfigs(view);
+        const [mapping] = mapViewLevelScaleProps(view);
 
-        expect(removedResolution.getViewLevelScaleConfig()).toBeUndefined();
+        expect(removedResolution.getViewLevelScaleProps()).toBeUndefined();
         expect(mapping).toMatchObject({
             view,
             channel: "x",
-            config: { domain: [0, 10] },
+            props: { domain: [0, 10] },
             resolution: undefined,
         });
     });
 
-    test("rejects ambiguous view-level config during initialization", async () => {
+    test("rejects ambiguous view-level props during initialization", async () => {
         /** @type {import("../spec/view.js").ConcatSpec} */
         const spec = {
             scales: {

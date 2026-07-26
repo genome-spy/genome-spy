@@ -14,11 +14,11 @@ import { resolveBaseConfig } from "../config/resolveConfig.js";
 import { createViewContext } from "./viewContextFactory.js";
 import { ViewFactory, VIEW_ROOT_NAME } from "../view/viewFactory.js";
 import { ensureAssembliesForView } from "../genome/assemblyPreflight.js";
-import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
+import { attachViewLevelScaleProps } from "../scales/viewLevelScaleProps.js";
 import {
-    attachViewLevelAxisConfigs,
-    attachViewLevelLegendConfigs,
-} from "../scales/viewLevelGuideConfig.js";
+    attachViewLevelAxisProps,
+    attachViewLevelLegendProps,
+} from "../scales/viewLevelGuideProps.js";
 import {
     configureViewHierarchy,
     finalizeViewConfiguration,
@@ -202,9 +202,9 @@ export async function createHeadlessEngine(spec, options = {}) {
         VIEW_ROOT_NAME
     );
 
-    attachViewLevelScaleConfigs(view);
-    attachViewLevelAxisConfigs(view);
-    attachViewLevelLegendConfigs(view);
+    attachViewLevelScaleProps(view);
+    attachViewLevelAxisProps(view);
+    attachViewLevelLegendProps(view);
     await ensureAssembliesForView(view, context.genomeStore);
     prepareViewHierarchy(view);
 

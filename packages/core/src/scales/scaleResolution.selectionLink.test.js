@@ -19,7 +19,7 @@ import {
     getRequiredScaleResolution,
     initView,
 } from "./scaleResolutionTestUtils.js";
-import { attachViewLevelScaleConfigs } from "./viewLevelScaleConfig.js";
+import { attachViewLevelScaleProps } from "./viewLevelScaleProps.js";
 
 const packageDir = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -431,7 +431,7 @@ describe("Scale resolution selection-linked domains", () => {
         );
 
         checkForDuplicateScaleNames(view);
-        attachViewLevelScaleConfigs(view);
+        attachViewLevelScaleProps(view);
         await ensureAssembliesForView(view, context.genomeStore);
 
         const { dataSources } = initializeViewSubtree(view, context.dataFlow);

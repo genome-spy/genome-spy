@@ -13,7 +13,7 @@ import mergeObjects from "../utils/mergeObjects.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 import { isChromeView } from "../view/viewSelectors.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
-import { getViewLevelConfigPrecedence } from "./viewLevelConfigPrecedence.js";
+import { getResolutionOwnerPrecedence } from "./resolutionOwnerPrecedence.js";
 
 /**
  * @template {import("../spec/channel.js").PositionalChannel}[T=PositionalChannel]
@@ -32,8 +32,8 @@ export default class AxisResolution {
     /** @type {Set<AxisResolutionMember>} The involved views */
     #members = new Set();
 
-    /** @type {{ view: import("../view/view.js").default, config: Partial<import("../spec/axis.js").Axis & import("../spec/axis.js").GenomeAxis> } | undefined} */
-    #viewLevelAxisConfig;
+    /** @type {{ view: import("../view/view.js").default, props: Partial<import("../spec/axis.js").Axis & import("../spec/axis.js").GenomeAxis> } | undefined} */
+    #viewLevelAxisProps;
 
     /**
      * @param {import("../spec/channel.js").PrimaryPositionalChannel} channel
@@ -122,7 +122,7 @@ export default class AxisResolution {
             channel: this.channel,
             hostView:
                 this.scaleResolution?.getDebugState().hostView ??
-                this.#viewLevelAxisConfig?.view ??
+                this.#viewLevelAxisProps?.view ??
                 this.#members.values().next().value?.view,
             scaleResolution: this.scaleResolution,
             title: this.getTitle(),
@@ -133,10 +133,10 @@ export default class AxisResolution {
                 channel: member.channel,
                 channelDef: structuredClone(member.channelDef),
             })),
-            viewLevelAxisConfig: this.#viewLevelAxisConfig
+            viewLevelAxisProps: this.#viewLevelAxisProps
                 ? {
-                      view: this.#viewLevelAxisConfig.view,
-                      config: structuredClone(this.#viewLevelAxisConfig.config),
+                      view: this.#viewLevelAxisProps.view,
+                      props: structuredClone(this.#viewLevelAxisProps.props),
                   }
                 : undefined,
         };
@@ -146,8 +146,8 @@ export default class AxisResolution {
         return getCachedOrCall(this, "axisProps", () => {
             /** @type {(false | null | Partial<import("../spec/axis.js").Axis & import("../spec/axis.js").GenomeAxis> | undefined)[]} */
             let propArray;
-            if (this.#viewLevelAxisConfig) {
-                propArray = [this.#viewLevelAxisConfig.config];
+            if (this.#viewLevelAxisProps) {
+                propArray = [this.#viewLevelAxisProps.props];
             } else {
                 const members = this.#getNonChromeMembers();
                 if (!members.length) {
@@ -179,8 +179,8 @@ export default class AxisResolution {
     }
 
     getTitle() {
-        if (this.#viewLevelAxisConfig?.config.title !== undefined) {
-            return this.#viewLevelAxisConfig.config.title;
+        if (this.#viewLevelAxisProps?.props.title !== undefined) {
+            return this.#viewLevelAxisProps.props.title;
         }
 
         /** @param {AxisResolutionMember} member} */
@@ -253,22 +253,22 @@ export default class AxisResolution {
 
     /**
      * @param {import("../view/view.js").default} view
-     * @param {Partial<import("../spec/axis.js").Axis & import("../spec/axis.js").GenomeAxis>} config
+     * @param {Partial<import("../spec/axis.js").Axis & import("../spec/axis.js").GenomeAxis>} props
      */
-    attachViewLevelAxisConfig(view, config) {
+    attachViewLevelAxisProps(view, props) {
         if (
-            this.#viewLevelAxisConfig &&
-            this.#viewLevelAxisConfig.view !== view
+            this.#viewLevelAxisProps &&
+            this.#viewLevelAxisProps.view !== view
         ) {
-            const precedence = getViewLevelConfigPrecedence(
-                this.#viewLevelAxisConfig.view,
+            const precedence = getResolutionOwnerPrecedence(
+                this.#viewLevelAxisProps.view,
                 view
             );
             if (precedence === "current") {
                 return;
             } else if (precedence === "conflict") {
                 throw new Error(
-                    `Multiple view-level axis configs target the same ${this.channel} axis resolution.`
+                    `Multiple view-level axis declarations target the same ${this.channel} axis resolution.`
                 );
             }
         }
@@ -282,22 +282,22 @@ export default class AxisResolution {
             }
         }
 
-        this.#viewLevelAxisConfig = { view, config };
+        this.#viewLevelAxisProps = { view, props };
         invalidate(this, "axisProps");
     }
 
     /**
      * @param {import("../view/view.js").default} view
      */
-    clearViewLevelAxisConfig(view) {
-        if (this.#viewLevelAxisConfig?.view === view) {
-            this.#viewLevelAxisConfig = undefined;
+    clearViewLevelAxisProps(view) {
+        if (this.#viewLevelAxisProps?.view === view) {
+            this.#viewLevelAxisProps = undefined;
             invalidate(this, "axisProps");
         }
     }
 
-    getViewLevelAxisConfig() {
-        return this.#viewLevelAxisConfig;
+    getViewLevelAxisProps() {
+        return this.#viewLevelAxisProps;
     }
 
     /**
@@ -320,7 +320,7 @@ export default class AxisResolution {
      * @param {AxisResolutionMember} member
      */
     #assertNoMixing(member) {
-        if (!this.#viewLevelAxisConfig) {
+        if (!this.#viewLevelAxisProps) {
             return;
         }
 

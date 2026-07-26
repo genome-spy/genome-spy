@@ -111,7 +111,7 @@ describe("Axes resolve properly", () => {
                 channelDef: { field: "x", type: "quantitative" },
             })
         );
-        resolution.attachViewLevelAxisConfig(/** @type {any} */ ({}), {
+        resolution.attachViewLevelAxisProps(/** @type {any} */ ({}), {
             grid: true,
         });
 
@@ -157,7 +157,7 @@ describe("Axes resolve properly", () => {
         );
 
         expect(() =>
-            resolution.attachViewLevelAxisConfig(/** @type {any} */ ({}), {
+            resolution.attachViewLevelAxisProps(/** @type {any} */ ({}), {
                 grid: true,
             })
         ).not.toThrow();

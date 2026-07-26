@@ -8,90 +8,90 @@ import {
     initView,
 } from "./scaleResolutionTestUtils.js";
 
-describe("ScaleResolution view-level config attachment", () => {
-    test("stores and clears view-level scale config", async () => {
+describe("ScaleResolution view-level property attachment", () => {
+    test("stores and clears view-level scale props", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
-        const config = { domain: [0, 10] };
+        const props = { domain: [0, 10] };
 
-        resolution.attachViewLevelScaleConfig(view, config);
+        resolution.attachViewLevelScaleProps(view, props);
 
-        expect(resolution.getViewLevelScaleConfig()).toEqual({
+        expect(resolution.getViewLevelScaleProps()).toEqual({
             view,
-            config,
+            props,
         });
 
-        resolution.clearViewLevelScaleConfig(view);
+        resolution.clearViewLevelScaleProps(view);
 
-        expect(resolution.getViewLevelScaleConfig()).toBeUndefined();
+        expect(resolution.getViewLevelScaleProps()).toBeUndefined();
     });
 
-    test("allows the same view to replace its view-level scale config", async () => {
+    test("allows the same view to replace its view-level scale props", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
-        const firstConfig = { domain: [0, 10] };
-        const secondConfig = { domain: [2, 8] };
+        const firstProps = { domain: [0, 10] };
+        const secondProps = { domain: [2, 8] };
 
-        resolution.attachViewLevelScaleConfig(view, firstConfig);
-        resolution.attachViewLevelScaleConfig(view, secondConfig);
+        resolution.attachViewLevelScaleProps(view, firstProps);
+        resolution.attachViewLevelScaleProps(view, secondProps);
 
-        expect(resolution.getViewLevelScaleConfig()).toEqual({
+        expect(resolution.getViewLevelScaleProps()).toEqual({
             view,
-            config: secondConfig,
+            props: secondProps,
         });
     });
 
-    test("keeps the ancestor view-level config instead of merging a descendant config", async () => {
+    test("keeps ancestor view-level props instead of merging descendant props", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
-        const config = { domain: [0, 10] };
+        const props = { domain: [0, 10] };
 
-        resolution.attachViewLevelScaleConfig(view, config);
-        resolution.attachViewLevelScaleConfig(view.children[0], {
+        resolution.attachViewLevelScaleProps(view, props);
+        resolution.attachViewLevelScaleProps(view.children[0], {
             domain: [2, 8],
             reverse: true,
         });
 
-        expect(resolution.getViewLevelScaleConfig()).toEqual({
+        expect(resolution.getViewLevelScaleProps()).toEqual({
             view,
-            config,
+            props,
         });
     });
 
-    test("replaces a descendant view-level config with an ancestor config", async () => {
+    test("replaces descendant view-level props with ancestor props", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
-        const config = { domain: [0, 10] };
+        const props = { domain: [0, 10] };
 
-        resolution.attachViewLevelScaleConfig(view.children[0], {
+        resolution.attachViewLevelScaleProps(view.children[0], {
             domain: [2, 8],
         });
-        resolution.attachViewLevelScaleConfig(view, config);
+        resolution.attachViewLevelScaleProps(view, props);
 
-        expect(resolution.getViewLevelScaleConfig()).toEqual({
+        expect(resolution.getViewLevelScaleProps()).toEqual({
             view,
-            config,
+            props,
         });
     });
 
-    test("rejects sibling view-level configs for the same resolution", async () => {
+    test("rejects sibling view-level declarations for the same resolution", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
 
-        resolution.attachViewLevelScaleConfig(view.children[0], {
+        resolution.attachViewLevelScaleProps(view.children[0], {
             domain: [0, 10],
         });
 
         expect(() =>
-            resolution.attachViewLevelScaleConfig(view.children[1], {
+            resolution.attachViewLevelScaleProps(view.children[1], {
                 domain: [2, 8],
             })
         ).toThrow(
-            "Multiple view-level scale configs target the same x scale resolution."
+            "Multiple view-level scale declarations target the same x scale resolution."
         );
     });
 
-    test("rejects member scale config when attaching view-level config", async () => {
+    test("rejects member scale props when attaching view-level props", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [{ value: 1 }] },
@@ -113,13 +113,13 @@ describe("ScaleResolution view-level config attachment", () => {
         const resolution = getRequiredScaleResolution(view, "x");
 
         expect(() =>
-            resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] })
+            resolution.attachViewLevelScaleProps(view, { domain: [0, 10] })
         ).toThrow(
             "Cannot mix view-level scales.x with encoding.x.scale in the same scale resolution."
         );
     });
 
-    test("rejects secondary member scale config in the same resolution", async () => {
+    test("rejects secondary member scale props in the same resolution", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             data: { values: [{ start: 1, end: 2 }] },
@@ -144,7 +144,7 @@ describe("ScaleResolution view-level config attachment", () => {
         const resolution = getRequiredScaleResolution(view, "x");
 
         expect(() =>
-            resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] })
+            resolution.attachViewLevelScaleProps(view, { domain: [0, 10] })
         ).toThrow(
             "Cannot mix view-level scales.x with encoding.x2.scale in the same scale resolution."
         );
@@ -154,7 +154,7 @@ describe("ScaleResolution view-level config attachment", () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
 
-        resolution.attachViewLevelScaleConfig(view, {
+        resolution.attachViewLevelScaleProps(view, {
             type: "log",
             base: 2,
         });
@@ -163,7 +163,7 @@ describe("ScaleResolution view-level config attachment", () => {
         expect(resolution.getScale().base()).toBe(2);
     });
 
-    test("binds range expressions through the view-level config view", async () => {
+    test("binds range expressions through the view-level props view", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {
             params: [{ name: "prefix", value: "c" }],
@@ -197,7 +197,7 @@ describe("ScaleResolution view-level config attachment", () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
 
-        resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] });
+        resolution.attachViewLevelScaleProps(view, { domain: [0, 10] });
 
         expect(resolution.getScale().type).toBe("linear");
     });
@@ -226,7 +226,7 @@ describe("ScaleResolution view-level config attachment", () => {
         const resolution = getRequiredScaleResolution(view, "x");
 
         expect(() =>
-            resolution.attachViewLevelScaleConfig(view, { type: "linear" })
+            resolution.attachViewLevelScaleProps(view, { type: "linear" })
         ).toThrow(
             'View-level scales.x.type "linear" is incompatible with "locus" data.'
         );
@@ -236,7 +236,7 @@ describe("ScaleResolution view-level config attachment", () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
 
-        resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] });
+        resolution.attachViewLevelScaleProps(view, { domain: [0, 10] });
 
         expect(resolution.getScale().domain()).toEqual([0, 10]);
         expect(resolution.isDomainDefinedExplicitly()).toBe(true);
@@ -246,7 +246,7 @@ describe("ScaleResolution view-level config attachment", () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
 
-        resolution.attachViewLevelScaleConfig(view, { domainMin: 0 });
+        resolution.attachViewLevelScaleProps(view, { domainMin: 0 });
         resolution.reconfigure();
 
         expect(resolution.getScale().domain()).toEqual([0, 1]);
@@ -257,7 +257,7 @@ describe("ScaleResolution view-level config attachment", () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
 
-        resolution.attachViewLevelScaleConfig(view, {
+        resolution.attachViewLevelScaleProps(view, {
             domainMax: 10,
             zero: false,
         });
@@ -271,7 +271,7 @@ describe("ScaleResolution view-level config attachment", () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
 
-        resolution.attachViewLevelScaleConfig(view, { domainMid: 0.5 });
+        resolution.attachViewLevelScaleProps(view, { domainMid: 0.5 });
         resolution.reconfigure();
 
         expect(resolution.getScale().domain()).toEqual([0, 0.5, 1]);

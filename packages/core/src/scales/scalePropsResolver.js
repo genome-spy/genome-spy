@@ -28,7 +28,7 @@ import { INDEX, LOCUS } from "./scaleResolutionConstants.js";
  * @param {Channel} options.channel
  * @param {import("../spec/channel.js").Type} options.dataType
  * @param {ScaleResolutionMember[]} options.orderedMembers
- * @param {{ view: import("../view/view.js").default, config: Scale } | undefined} [options.viewLevelScaleConfig]
+ * @param {{ view: import("../view/view.js").default, props: Scale } | undefined} [options.viewLevelScaleProps]
  * @param {boolean} options.isExplicitDomain
  * @param {import("../spec/config.js").GenomeSpyConfig[]} options.configScopes
  * @returns {Scale}
@@ -37,7 +37,7 @@ export function resolveScalePropsBase({
     channel,
     dataType,
     orderedMembers,
-    viewLevelScaleConfig,
+    viewLevelScaleProps,
     isExplicitDomain,
     configScopes,
 }) {
@@ -51,8 +51,8 @@ export function resolveScalePropsBase({
         )
         .filter((markType) => !!markType);
 
-    const propArray = viewLevelScaleConfig
-        ? [viewLevelScaleConfig.config]
+    const propArray = viewLevelScaleProps
+        ? [viewLevelScaleProps.props]
         : memberList
               .map((member) => member.channelDef.scale)
               .filter((props) => props !== undefined);
@@ -88,7 +88,7 @@ export function resolveScalePropsBase({
     validateScaleTypeCompatibility(
         channel,
         dataType,
-        viewLevelScaleConfig ? props.type : undefined,
+        viewLevelScaleProps ? props.type : undefined,
         `View-level scales.${channel}.type`
     );
 
@@ -155,7 +155,7 @@ export function resolveScalePropsBase({
                         member.channelDef.scale?.domain
                     ).length > 0
             ) ||
-            collectConfiguredDomainExprRefs(viewLevelScaleConfig?.config.domain)
+            collectConfiguredDomainExprRefs(viewLevelScaleProps?.props.domain)
                 .length > 0;
         props.domainTransition = !hasExprDrivenDomain;
     }
@@ -166,8 +166,8 @@ export function resolveScalePropsBase({
         memberList.length > 0
     ) {
         const rangeOwner =
-            viewLevelScaleConfig?.config.range !== undefined
-                ? viewLevelScaleConfig.view
+            viewLevelScaleProps?.props.range !== undefined
+                ? viewLevelScaleProps.view
                 : memberList.find(
                       (member) => member.channelDef.scale?.range !== undefined
                   )?.view;

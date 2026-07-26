@@ -7,7 +7,7 @@ import {
 import { getConfiguredLegendDefaults } from "../config/legendConfig.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
-import { getViewLevelConfigPrecedence } from "./viewLevelConfigPrecedence.js";
+import { getResolutionOwnerPrecedence } from "./resolutionOwnerPrecedence.js";
 import { isChromeView } from "../view/viewSelectors.js";
 
 /**
@@ -46,8 +46,8 @@ export default class LegendResolution {
     /** @type {Set<LegendResolutionMember>} */
     #members = new Set();
 
-    /** @type {{ view: import("../view/view.js").default, config: import("../spec/legend.js").Legend } | undefined} */
-    #viewLevelLegendConfig;
+    /** @type {{ view: import("../view/view.js").default, props: import("../spec/legend.js").Legend } | undefined} */
+    #viewLevelLegendProps;
 
     /**
      * @param {import("../spec/channel.js").ChannelWithScale} channel
@@ -114,7 +114,7 @@ export default class LegendResolution {
 
         const memberLegend =
             "legend" in channelDef ? channelDef.legend : undefined;
-        if (!this.#viewLevelLegendConfig && memberLegend === null) {
+        if (!this.#viewLevelLegendProps && memberLegend === null) {
             return undefined;
         }
 
@@ -123,7 +123,7 @@ export default class LegendResolution {
         }
 
         const explicitLegend =
-            this.#viewLevelLegendConfig?.config ?? memberLegend;
+            this.#viewLevelLegendProps?.props ?? memberLegend;
         const legendOverrides =
             explicitLegend === undefined
                 ? undefined
@@ -214,7 +214,7 @@ export default class LegendResolution {
             channel: this.channel,
             hostView:
                 legendDefs[0]?.scaleResolution.getDebugState().hostView ??
-                this.#viewLevelLegendConfig?.view ??
+                this.#viewLevelLegendProps?.view ??
                 this.#members.values().next().value?.view,
             legendDefs: legendDefs.map((definition) => ({
                 ...definition,
@@ -227,12 +227,10 @@ export default class LegendResolution {
                 view: member.view,
                 channel: member.channel,
             })),
-            viewLevelLegendConfig: this.#viewLevelLegendConfig
+            viewLevelLegendProps: this.#viewLevelLegendProps
                 ? {
-                      view: this.#viewLevelLegendConfig.view,
-                      config: structuredClone(
-                          this.#viewLevelLegendConfig.config
-                      ),
+                      view: this.#viewLevelLegendProps.view,
+                      props: structuredClone(this.#viewLevelLegendProps.props),
                   }
                 : undefined,
         };
@@ -240,55 +238,55 @@ export default class LegendResolution {
 
     /**
      * @param {import("../view/view.js").default} view
-     * @param {import("../spec/legend.js").Legend} config
+     * @param {import("../spec/legend.js").Legend} props
      */
-    attachViewLevelLegendConfig(view, config) {
+    attachViewLevelLegendProps(view, props) {
         if (
-            this.#viewLevelLegendConfig &&
-            this.#viewLevelLegendConfig.view !== view
+            this.#viewLevelLegendProps &&
+            this.#viewLevelLegendProps.view !== view
         ) {
-            const precedence = getViewLevelConfigPrecedence(
-                this.#viewLevelLegendConfig.view,
+            const precedence = getResolutionOwnerPrecedence(
+                this.#viewLevelLegendProps.view,
                 view
             );
             if (precedence === "current") {
                 return;
             } else if (precedence === "conflict") {
                 throw new Error(
-                    `Multiple view-level legend configs target the same ${this.channel} legend resolution.`
+                    `Multiple view-level legend declarations target the same ${this.channel} legend resolution.`
                 );
             }
         }
 
-        const configuredMember = Array.from(this.#members).find((member) =>
-            hasExplicitLegendConfig(member)
+        const memberWithProps = Array.from(this.#members).find((member) =>
+            hasExplicitLegendProps(member)
         );
-        if (configuredMember) {
+        if (memberWithProps) {
             throw new Error(
-                `Cannot mix view-level legends.${this.channel} with encoding.${configuredMember.channel}.legend in the same legend resolution.`
+                `Cannot mix view-level legends.${this.channel} with encoding.${memberWithProps.channel}.legend in the same legend resolution.`
             );
         }
-        this.#viewLevelLegendConfig = { view, config };
+        this.#viewLevelLegendProps = { view, props };
     }
 
     /**
      * @param {import("../view/view.js").default} view
      */
-    clearViewLevelLegendConfig(view) {
-        if (this.#viewLevelLegendConfig?.view === view) {
-            this.#viewLevelLegendConfig = undefined;
+    clearViewLevelLegendProps(view) {
+        if (this.#viewLevelLegendProps?.view === view) {
+            this.#viewLevelLegendProps = undefined;
         }
     }
 
-    getViewLevelLegendConfig() {
-        return this.#viewLevelLegendConfig;
+    getViewLevelLegendProps() {
+        return this.#viewLevelLegendProps;
     }
 
     /**
      * @param {LegendResolutionMember} member
      */
     #assertNoMixing(member) {
-        if (this.#viewLevelLegendConfig && hasExplicitLegendConfig(member)) {
+        if (this.#viewLevelLegendProps && hasExplicitLegendProps(member)) {
             throw new Error(
                 `Cannot mix view-level legends.${this.channel} with encoding.${member.channel}.legend in the same legend resolution.`
             );
@@ -300,7 +298,7 @@ export default class LegendResolution {
  * @param {LegendResolutionMember} member
  * @returns {boolean}
  */
-function hasExplicitLegendConfig(member) {
+function hasExplicitLegendProps(member) {
     const channelDef = getLegendChannelDef(member.channel, member.view);
     return Boolean(
         channelDef && "legend" in channelDef && channelDef.legend !== undefined

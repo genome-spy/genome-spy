@@ -33,7 +33,7 @@ import createIndexer from "../utils/indexer.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 import { resolveUrl } from "../utils/url.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
-import { getViewLevelConfigPrecedence } from "./viewLevelConfigPrecedence.js";
+import { getResolutionOwnerPrecedence } from "./resolutionOwnerPrecedence.js";
 import {
     findIntervalSelectionBindingOwners,
     getIntervalSelection,
@@ -143,9 +143,9 @@ export default class ScaleResolution {
     #hostView;
 
     /**
-     * @type {{ view: import("../view/view.js").default, config: import("../spec/scale.js").Scale } | undefined}
+     * @type {{ view: import("../view/view.js").default, props: import("../spec/scale.js").Scale } | undefined}
      */
-    #viewLevelScaleConfig;
+    #viewLevelScaleProps;
 
     #resolvingScaleProps = 0;
 
@@ -172,8 +172,7 @@ export default class ScaleResolution {
             getAllMembers: () => this.#members,
             getDataMembers: () =>
                 this.#getActiveMembers(this.#dataDomainMembers),
-            getViewLevelConfiguredDomain: () =>
-                this.#getViewLevelConfiguredDomain(),
+            getViewLevelDomainSource: () => this.#getViewLevelDomainSource(),
             getType: () => this.type,
             getLocusExtent: (assembly) => this.#getLocusExtent(assembly),
             fromComplexInterval: this.fromComplexInterval.bind(this),
@@ -407,7 +406,7 @@ export default class ScaleResolution {
      * @returns {boolean}
      */
     #hasConfiguredDomain() {
-        if (this.#viewLevelScaleConfig?.config.domain !== undefined) {
+        if (this.#viewLevelScaleProps?.props.domain !== undefined) {
             return true;
         }
 
@@ -599,31 +598,31 @@ export default class ScaleResolution {
 
     /**
      * @param {import("../view/view.js").default} view
-     * @param {import("../spec/scale.js").Scale} config
+     * @param {import("../spec/scale.js").Scale} props
      */
-    attachViewLevelScaleConfig(view, config) {
+    attachViewLevelScaleProps(view, props) {
         if (
-            this.#viewLevelScaleConfig &&
-            this.#viewLevelScaleConfig.view !== view
+            this.#viewLevelScaleProps &&
+            this.#viewLevelScaleProps.view !== view
         ) {
-            const precedence = getViewLevelConfigPrecedence(
-                this.#viewLevelScaleConfig.view,
+            const precedence = getResolutionOwnerPrecedence(
+                this.#viewLevelScaleProps.view,
                 view
             );
             if (precedence === "current") {
                 return;
             } else if (precedence === "conflict") {
                 throw new Error(
-                    `Multiple view-level scale configs target the same ${this.channel} scale resolution.`
+                    `Multiple view-level scale declarations target the same ${this.channel} scale resolution.`
                 );
             }
         }
 
         for (const member of this.#members) {
-            this.#assertMemberHasNoScaleConfig(member);
+            this.#assertMemberHasNoScaleProps(member);
         }
 
-        this.#viewLevelScaleConfig = { view, config };
+        this.#viewLevelScaleProps = { view, props };
         this.#invalidateMergedScaleProps();
         this.#invalidateConfiguredDomain();
         this.#refreshSelectionDomainParamSubscriptions();
@@ -634,9 +633,9 @@ export default class ScaleResolution {
     /**
      * @param {import("../view/view.js").default} view
      */
-    clearViewLevelScaleConfig(view) {
-        if (this.#viewLevelScaleConfig?.view === view) {
-            this.#viewLevelScaleConfig = undefined;
+    clearViewLevelScaleProps(view) {
+        if (this.#viewLevelScaleProps?.view === view) {
+            this.#viewLevelScaleProps = undefined;
             this.#invalidateMergedScaleProps();
             this.#invalidateConfiguredDomain();
             this.#refreshSelectionDomainParamSubscriptions();
@@ -658,26 +657,26 @@ export default class ScaleResolution {
     }
 
     /**
-     * @returns {{ view: import("../view/view.js").default, config: import("../spec/scale.js").Scale } | undefined}
+     * @returns {{ view: import("../view/view.js").default, props: import("../spec/scale.js").Scale } | undefined}
      */
-    getViewLevelScaleConfig() {
-        return this.#viewLevelScaleConfig;
+    getViewLevelScaleProps() {
+        return this.#viewLevelScaleProps;
     }
 
-    #getViewLevelConfiguredDomain() {
-        const viewLevelScaleConfig = this.#viewLevelScaleConfig;
-        if (!viewLevelScaleConfig) {
+    #getViewLevelDomainSource() {
+        const viewLevelScaleProps = this.#viewLevelScaleProps;
+        if (!viewLevelScaleProps) {
             return undefined;
         }
 
         return {
-            view: viewLevelScaleConfig.view,
+            view: viewLevelScaleProps.view,
             channel:
                 /** @type {import("../spec/channel.js").ChannelWithScale} */ (
                     this.channel
                 ),
             type: this.type,
-            domain: viewLevelScaleConfig.config.domain,
+            domain: viewLevelScaleProps.props.domain,
         };
     }
 
@@ -685,17 +684,17 @@ export default class ScaleResolution {
      * @param {ScaleResolutionMember} member
      */
     #assertCanRegisterMember(member) {
-        if (!this.#viewLevelScaleConfig) {
+        if (!this.#viewLevelScaleProps) {
             return;
         }
 
-        this.#assertMemberHasNoScaleConfig(member);
+        this.#assertMemberHasNoScaleProps(member);
     }
 
     /**
      * @param {ScaleResolutionMember} member
      */
-    #assertMemberHasNoScaleConfig(member) {
+    #assertMemberHasNoScaleProps(member) {
         if (member.channelDef.scale === undefined) {
             return;
         }
@@ -790,12 +789,12 @@ export default class ScaleResolution {
             }
         }
 
-        const viewLevelDomain = this.#viewLevelScaleConfig?.config.domain;
+        const viewLevelDomain = this.#viewLevelScaleProps?.props.domain;
         const viewLevelExprRefs =
             collectConfiguredDomainExprRefs(viewLevelDomain);
         for (const exprRef of viewLevelExprRefs) {
             const expr =
-                this.#viewLevelScaleConfig.view.paramRuntime.createExpression(
+                this.#viewLevelScaleProps.view.paramRuntime.createExpression(
                     exprRef.expr
                 );
             const unsubscribe = expr.subscribe(listener);
@@ -889,7 +888,7 @@ export default class ScaleResolution {
                 channel: this.channel,
                 dataType: this.type,
                 orderedMembers: this.#getOrderedMembers(),
-                viewLevelScaleConfig: this.#viewLevelScaleConfig,
+                viewLevelScaleProps: this.#viewLevelScaleProps,
                 isExplicitDomain: this.isDomainDefinedExplicitly(),
                 configScopes: this.#resolutionView.getConfigScopes(),
             });
@@ -954,12 +953,10 @@ export default class ScaleResolution {
             ),
             activeMemberCount: this.#getActiveMembers().size,
             dataDomainMemberCount: this.#dataDomainMembers.size,
-            viewLevelScaleConfig: this.#viewLevelScaleConfig
+            viewLevelScaleProps: this.#viewLevelScaleProps
                 ? {
-                      view: this.#viewLevelScaleConfig.view,
-                      config: structuredClone(
-                          this.#viewLevelScaleConfig.config
-                      ),
+                      view: this.#viewLevelScaleProps.view,
+                      props: structuredClone(this.#viewLevelScaleProps.props),
                   }
                 : undefined,
         };

@@ -6,10 +6,10 @@ import {
 } from "../genomeSpy/headlessBootstrap.js";
 import { broadcastSubtreeDataReady } from "../data/flowInit.js";
 import {
-    attachViewLevelAxisConfigs,
-    attachViewLevelLegendConfigs,
-} from "../scales/viewLevelGuideConfig.js";
-import { attachViewLevelScaleConfigs } from "../scales/viewLevelScaleConfig.js";
+    attachViewLevelAxisProps,
+    attachViewLevelLegendProps,
+} from "../scales/viewLevelGuideProps.js";
+import { attachViewLevelScaleProps } from "../scales/viewLevelScaleProps.js";
 import Animator from "../utils/animator.js";
 import LayerView from "./layerView.js";
 import { isMultiscaleSpec, normalizeMultiscaleSpec } from "./multiscale.js";
@@ -241,9 +241,9 @@ describe("multiscale", () => {
             "root"
         );
         const view = requireLayerView(rawView);
-        attachViewLevelScaleConfigs(view);
-        attachViewLevelAxisConfigs(view);
-        attachViewLevelLegendConfigs(view);
+        attachViewLevelScaleProps(view);
+        attachViewLevelAxisProps(view);
+        attachViewLevelLegendProps(view);
         prepareViewHierarchy(view);
 
         // Simulate the first layout arriving before the subtree finishes loading.

@@ -1,19 +1,19 @@
 /**
  * @typedef {import("../view/view.js").default} View
- * @typedef {"current" | "incoming" | "conflict"} ViewLevelConfigPrecedence
+ * @typedef {"current" | "incoming" | "conflict"} ResolutionOwnerPrecedence
  */
 
 /**
- * Resolves exclusive view-level config ownership between two views.
+ * Resolves exclusive resolution ownership between two views.
  *
- * An ancestor config owns the whole shared resolution and shadows descendant
- * configs. Unrelated views cannot both configure the same resolution.
+ * An ancestor declaration owns the whole shared resolution and shadows
+ * descendant declarations. Unrelated views cannot both own the resolution.
  *
  * @param {View} currentView
  * @param {View} incomingView
- * @returns {ViewLevelConfigPrecedence}
+ * @returns {ResolutionOwnerPrecedence}
  */
-export function getViewLevelConfigPrecedence(currentView, incomingView) {
+export function getResolutionOwnerPrecedence(currentView, incomingView) {
     if (
         currentView === incomingView ||
         currentView.getDataAncestors().includes(incomingView)

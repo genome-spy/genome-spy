@@ -116,15 +116,17 @@ level with `legends.<channel>`:
 }
 ```
 
-A view-level legend config must map to one legend resolution. If the subtree has
-multiple independent legends for the same channel, place the config closer to
-the intended subtree or use local `encoding.<channel>.legend` settings. Do not
-mix view-level `legends.<channel>` with participating channel-level legend
-config for the same resolved legend.
+A view-level legend declaration must map to one legend resolution. If the
+subtree has multiple independent legends for the same channel, place the
+declaration closer to the intended subtree or use local
+`encoding.<channel>.legend` properties. Do not mix view-level
+`legends.<channel>` with participating channel-level legend properties for the
+same resolved legend.
 
-When nested view-level legend configs target the same resolution, the ancestor
-config shadows the whole descendant config; their properties are not merged.
-Configs in separate sibling subtrees remain ambiguous and cause an error.
+When nested view-level legend declarations target the same resolution, the
+ancestor declaration shadows the whole descendant declaration; their
+properties are not merged. Declarations in separate sibling subtrees remain
+ambiguous and cause an error.
 
 ## Titles
 

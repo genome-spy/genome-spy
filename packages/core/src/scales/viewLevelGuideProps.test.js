@@ -5,7 +5,7 @@ import { describe, expect, test } from "vitest";
 import LayerView from "../view/layerView.js";
 import { initView } from "./scaleResolutionTestUtils.js";
 
-describe("view-level guide config attachment", () => {
+describe("view-level guide property attachment", () => {
     test("uses view-level axis properties for a shared axis resolution", async () => {
         const view = await initView(
             {
@@ -38,7 +38,7 @@ describe("view-level guide config attachment", () => {
         expect(axisProps.chromGridDash).toEqual([3, 3]);
     });
 
-    test("ancestor view-level axis config shadows the whole descendant config", async () => {
+    test("ancestor view-level axis props shadow all descendant props", async () => {
         const view = await initView(
             {
                 data: { values: [{ value: 1 }] },
@@ -55,9 +55,9 @@ describe("view-level guide config attachment", () => {
 
         const resolution = view.resolutions.axis.x;
 
-        expect(resolution.getViewLevelAxisConfig()).toEqual({
+        expect(resolution.getViewLevelAxisProps()).toEqual({
             view,
-            config: {
+            props: {
                 orient: "bottom",
                 grid: false,
             },
@@ -66,7 +66,7 @@ describe("view-level guide config attachment", () => {
         expect(resolution.getAxisProps().grid).toBe(false);
     });
 
-    test("rejects ambiguous view-level axis config", async () => {
+    test("rejects ambiguous view-level axis props", async () => {
         await expect(
             initView(
                 {
@@ -97,7 +97,7 @@ describe("view-level guide config attachment", () => {
         );
     });
 
-    test("rejects sibling view-level axis configs for a shared resolution", async () => {
+    test("rejects sibling view-level axis declarations for a shared resolution", async () => {
         await expect(
             initView(
                 {
@@ -110,11 +110,11 @@ describe("view-level guide config attachment", () => {
                 LayerView
             )
         ).rejects.toThrow(
-            "Multiple view-level axis configs target the same x axis resolution."
+            "Multiple view-level axis declarations target the same x axis resolution."
         );
     });
 
-    test("rejects member axis config in the same resolution", async () => {
+    test("rejects member axis props in the same resolution", async () => {
         await expect(
             initView(
                 {
@@ -180,7 +180,7 @@ describe("view-level guide config attachment", () => {
         expect(definition.legend.disable).toBe(false);
     });
 
-    test("ancestor view-level legend config shadows the whole descendant config", async () => {
+    test("ancestor view-level legend props shadow all descendant props", async () => {
         const view = await initView(
             {
                 data: {
@@ -208,9 +208,9 @@ describe("view-level guide config attachment", () => {
         const resolution = view.resolutions.legend.color;
         const [definition] = resolution.getLegendDefs();
 
-        expect(resolution.getViewLevelLegendConfig()).toEqual({
+        expect(resolution.getViewLevelLegendProps()).toEqual({
             view,
-            config: {
+            props: {
                 title: "Outer",
                 orient: "right",
             },
@@ -219,7 +219,7 @@ describe("view-level guide config attachment", () => {
         expect(definition.legend.orient).toBe("right");
     });
 
-    test("rejects member legend config in the same resolution", async () => {
+    test("rejects member legend props in the same resolution", async () => {
         await expect(
             initView(
                 {
@@ -247,7 +247,7 @@ describe("view-level guide config attachment", () => {
         );
     });
 
-    test("rejects sibling view-level legend configs for a shared resolution", async () => {
+    test("rejects sibling view-level legend declarations for a shared resolution", async () => {
         await expect(
             initView(
                 {
@@ -260,18 +260,18 @@ describe("view-level guide config attachment", () => {
                 LayerView
             )
         ).rejects.toThrow(
-            "Multiple view-level legend configs target the same color legend resolution."
+            "Multiple view-level legend declarations target the same color legend resolution."
         );
     });
 });
 
 /**
- * @param {Partial<import("../spec/axis.js").Axis>} config
+ * @param {Partial<import("../spec/axis.js").Axis>} props
  * @returns {import("../spec/view.js").LayerSpec}
  */
-function axisLayer(config) {
+function axisLayer(props) {
     return {
-        axes: { x: config },
+        axes: { x: props },
         layer: [
             {
                 mark: "point",
@@ -284,12 +284,12 @@ function axisLayer(config) {
 }
 
 /**
- * @param {import("../spec/legend.js").Legend} config
+ * @param {import("../spec/legend.js").Legend} props
  * @returns {import("../spec/view.js").LayerSpec}
  */
-function legendLayer(config) {
+function legendLayer(props) {
     return {
-        legends: { color: config },
+        legends: { color: props },
         layer: [
             {
                 mark: "point",

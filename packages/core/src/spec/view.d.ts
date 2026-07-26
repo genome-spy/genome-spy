@@ -235,37 +235,38 @@ export interface ViewSpecBase extends ResolveSpec {
     config?: GenomeSpyConfig;
 
     /**
-     * Configures scale resolutions used by this view subtree.
+     * Defines properties for scale resolutions used by this view subtree.
      *
      * Use this when a composed view shares a scale across child views and the
      * scale settings, such as the visible domain, belong to the composed view
-     * rather than an individual encoding. An ancestor config shadows the whole
-     * config of a descendant that targets the same resolution. Configs in
-     * separate sibling subtrees are ambiguous and cause an error.
+     * rather than an individual encoding. An ancestor declaration shadows the
+     * whole declaration of a descendant that targets the same resolution.
+     * Declarations in separate sibling subtrees are ambiguous and cause an
+     * error.
      */
     scales?: Partial<Record<ChannelWithScale, Scale>>;
 
     /**
-     * Configures axis resolutions used by this view subtree.
+     * Defines properties for axis resolutions used by this view subtree.
      *
      * Use this when a composed view shares an axis across child views and the
      * axis settings belong to the composed view rather than an individual
-     * encoding. An ancestor config shadows the whole config of a descendant
-     * that targets the same resolution. Configs in separate sibling subtrees
-     * are ambiguous and cause an error.
+     * encoding. An ancestor declaration shadows the whole declaration of a
+     * descendant that targets the same resolution. Declarations in separate
+     * sibling subtrees are ambiguous and cause an error.
      */
     axes?: Partial<
         Record<PrimaryPositionalChannel, Partial<Axis & GenomeAxis>>
     >;
 
     /**
-     * Configures legend resolutions used by this view subtree.
+     * Defines properties for legend resolutions used by this view subtree.
      *
      * Use this when a composed view shares a legend across child views and the
      * legend settings belong to the composed view rather than an individual
-     * encoding. An ancestor config shadows the whole config of a descendant
-     * that targets the same resolution. Configs in separate sibling subtrees
-     * are ambiguous and cause an error.
+     * encoding. An ancestor declaration shadows the whole declaration of a
+     * descendant that targets the same resolution. Declarations in separate
+     * sibling subtrees are ambiguous and cause an error.
      */
     legends?: Partial<Record<NonPositionalChannelWithScale, Legend>>;
 

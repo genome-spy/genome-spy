@@ -7,22 +7,23 @@ import { visitNonChromeViews } from "../view/viewSelectors.js";
  * @typedef {import("../view/view.js").default} View
  * @typedef {import("./scaleResolution.js").default} ScaleResolution
  *
- * @typedef {object} ViewLevelScaleConfigMapping
+ * @typedef {object} ViewLevelScalePropsMapping
  * @prop {View} view
  * @prop {ChannelWithScale} channel
- * @prop {Scale} config
+ * @prop {Scale} props
  * @prop {ScaleResolution | undefined} resolution
  */
 
 /**
- * Maps view-level scale configs to the unique scale resolution visible from
- * each configured subtree. Configs with no matching resolution stay pending.
+ * Maps view-level scale declarations to the unique scale resolution visible
+ * from each declaring subtree. Declarations with no matching resolution stay
+ * pending.
  *
  * @param {View} root
- * @returns {ViewLevelScaleConfigMapping[]}
+ * @returns {ViewLevelScalePropsMapping[]}
  */
-export function mapViewLevelScaleConfigs(root) {
-    /** @type {ViewLevelScaleConfigMapping[]} */
+export function mapViewLevelScaleProps(root) {
+    /** @type {ViewLevelScalePropsMapping[]} */
     const mappings = [];
 
     for (const view of root.getDescendants()) {
@@ -31,12 +32,12 @@ export function mapViewLevelScaleConfigs(root) {
             continue;
         }
 
-        for (const [channel, config] of Object.entries(scales)) {
+        for (const [channel, props] of Object.entries(scales)) {
             mappings.push(
-                mapViewLevelScaleConfig(
+                mapViewLevelScaleDeclaration(
                     view,
                     /** @type {ChannelWithScale} */ (channel),
-                    config
+                    props
                 )
             );
         }
@@ -46,20 +47,20 @@ export function mapViewLevelScaleConfigs(root) {
 }
 
 /**
- * Maps view-level scale configs and attaches non-pending configs to their
+ * Maps view-level scale declarations and attaches non-pending props to their
  * target resolutions.
  *
  * @param {View} root
- * @returns {ViewLevelScaleConfigMapping[]}
+ * @returns {ViewLevelScalePropsMapping[]}
  */
-export function attachViewLevelScaleConfigs(root) {
-    clearViewLevelScaleConfigs(root);
-    const mappings = mapViewLevelScaleConfigs(root);
+export function attachViewLevelScaleProps(root) {
+    clearViewLevelScaleProps(root);
+    const mappings = mapViewLevelScaleProps(root);
     for (const mapping of mappings) {
         if (mapping.resolution) {
-            mapping.resolution.attachViewLevelScaleConfig(
+            mapping.resolution.attachViewLevelScaleProps(
                 mapping.view,
-                mapping.config
+                mapping.props
             );
         }
     }
@@ -67,18 +68,18 @@ export function attachViewLevelScaleConfigs(root) {
 }
 
 /**
- * Clears view-level scale configs owned by views in the subtree.
+ * Clears view-level scale props owned by views in the subtree.
  *
  * @param {View} root
  */
-export function clearViewLevelScaleConfigs(root) {
+export function clearViewLevelScaleProps(root) {
     const views = new Set(root.getDescendants());
     const resolutions = collectAllScaleResolutions(root);
 
     for (const resolution of resolutions) {
-        const config = resolution.getViewLevelScaleConfig();
-        if (config && views.has(config.view)) {
-            resolution.clearViewLevelScaleConfig(config.view);
+        const attachment = resolution.getViewLevelScaleProps();
+        if (attachment && views.has(attachment.view)) {
+            resolution.clearViewLevelScaleProps(attachment.view);
         }
     }
 }
@@ -86,10 +87,10 @@ export function clearViewLevelScaleConfigs(root) {
 /**
  * @param {View} view
  * @param {ChannelWithScale} channel
- * @param {Scale} config
- * @returns {ViewLevelScaleConfigMapping}
+ * @param {Scale} props
+ * @returns {ViewLevelScalePropsMapping}
  */
-function mapViewLevelScaleConfig(view, channel, config) {
+function mapViewLevelScaleDeclaration(view, channel, props) {
     const resolutions = collectVisibleScaleResolutions(view, channel);
 
     if (resolutions.size > 1) {
@@ -103,7 +104,7 @@ function mapViewLevelScaleConfig(view, channel, config) {
     return {
         view,
         channel,
-        config,
+        props,
         resolution,
     };
 }

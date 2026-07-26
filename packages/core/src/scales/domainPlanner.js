@@ -38,7 +38,7 @@ import {
  * @typedef {import("./scaleResolution.js").ScaleResolutionMember} ScaleResolutionMember
  * @typedef {{ view: import("../view/view.js").default, channel: import("../spec/channel.js").ChannelWithScale, type: import("../spec/channel.js").Type, domain: import("../spec/scale.js").Scale["domain"] }} ConfiguredDomainSource
  * @typedef {() => Set<ScaleResolutionMember>} ScaleMembersGetter
- * @typedef {() => ConfiguredDomainSource | undefined} ViewLevelConfiguredDomainGetter
+ * @typedef {() => ConfiguredDomainSource | undefined} ViewLevelDomainSourceGetter
  * @typedef {(interval: ScalarDomain | ComplexDomain) => number[]} FromComplexInterval
  * @typedef {(assembly: import("../spec/scale.js").Scale["assembly"] | undefined) => number[]} GetLocusExtent
  * @typedef {{
@@ -78,8 +78,8 @@ export default class DomainPlanner {
     /** @type {ScaleMembersGetter} */
     #getDataMembers;
 
-    /** @type {ViewLevelConfiguredDomainGetter | undefined} */
-    #getViewLevelConfiguredDomain;
+    /** @type {ViewLevelDomainSourceGetter | undefined} */
+    #getViewLevelDomainSource;
 
     /** @type {() => import("../spec/channel.js").Type} */
     #getType;
@@ -109,7 +109,7 @@ export default class DomainPlanner {
      * @param {ScaleMembersGetter} options.getActiveMembers Active shared-scale members used for configured domain planning.
      * @param {ScaleMembersGetter} [options.getAllMembers] All members, including inactive ones, used for conflict validation.
      * @param {ScaleMembersGetter} [options.getDataMembers] Members used for data-domain extraction; defaults to `getActiveMembers`.
-     * @param {ViewLevelConfiguredDomainGetter} [options.getViewLevelConfiguredDomain] View-level configured domain source.
+     * @param {ViewLevelDomainSourceGetter} [options.getViewLevelDomainSource] View-level domain source.
      * @param {() => import("../spec/channel.js").Type} options.getType
      * @param {GetLocusExtent} options.getLocusExtent
      * @param {FromComplexInterval} options.fromComplexInterval
@@ -118,7 +118,7 @@ export default class DomainPlanner {
         getActiveMembers,
         getAllMembers,
         getDataMembers,
-        getViewLevelConfiguredDomain,
+        getViewLevelDomainSource,
         getType,
         getLocusExtent,
         fromComplexInterval,
@@ -126,7 +126,7 @@ export default class DomainPlanner {
         this.#getActiveMembers = getActiveMembers;
         this.#getAllMembers = getAllMembers ?? getActiveMembers;
         this.#getDataMembers = getDataMembers ?? getActiveMembers;
-        this.#getViewLevelConfiguredDomain = getViewLevelConfiguredDomain;
+        this.#getViewLevelDomainSource = getViewLevelDomainSource;
         this.#getType = getType;
         this.#getLocusExtent = getLocusExtent;
         this.#fromComplexInterval = fromComplexInterval;
@@ -240,7 +240,7 @@ export default class DomainPlanner {
 
         const configuredDomain = resolveConfiguredDomain(
             this.#getActiveMembers(),
-            this.#getViewLevelConfiguredDomain?.(),
+            this.#getViewLevelDomainSource?.(),
             this.#fromComplexInterval,
             includeSelectionInitial
         );

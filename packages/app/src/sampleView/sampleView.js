@@ -76,12 +76,12 @@ import {
     resolveParamSelector,
     markViewAsChrome,
 } from "@genome-spy/core/view/viewSelectors.js";
-import { attachViewLevelScaleConfigs } from "@genome-spy/core/scales/viewLevelScaleConfig.js";
+import { attachViewLevelScaleProps } from "@genome-spy/core/scales/viewLevelScaleProps.js";
 import { createClipOptions } from "@genome-spy/core/view/renderingContext/clipOptions.js";
 import {
-    attachViewLevelAxisConfigs,
-    attachViewLevelLegendConfigs,
-} from "@genome-spy/core/scales/viewLevelGuideConfig.js";
+    attachViewLevelAxisProps,
+    attachViewLevelLegendProps,
+} from "@genome-spy/core/scales/viewLevelGuideProps.js";
 import { isContinuous, isDiscrete } from "vega-scale";
 import {
     MULTIPLE_POINT_SELECTION_PARAMS_REASON,
@@ -731,15 +731,15 @@ export default class SampleView extends ContainerView {
             );
         };
 
-        attachViewLevelScaleConfigs(this);
-        attachViewLevelAxisConfigs(this);
-        attachViewLevelLegendConfigs(this);
+        attachViewLevelScaleProps(this);
+        attachViewLevelAxisProps(this);
+        attachViewLevelLegendProps(this);
 
         await this.#gridChild.syncGuideViews();
         await this.#createSummaryViews();
-        attachViewLevelScaleConfigs(this);
-        attachViewLevelAxisConfigs(this);
-        attachViewLevelLegendConfigs(this);
+        attachViewLevelScaleProps(this);
+        attachViewLevelAxisProps(this);
+        attachViewLevelLegendProps(this);
         await this.#gridChild.summaryViews.syncGuideViews();
 
         await this.sampleGroupView.initializeChildren();
