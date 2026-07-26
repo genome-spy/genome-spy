@@ -114,6 +114,21 @@ export class NamedDataScope {
     }
 
     /**
+     * Returns the nearest declared binding without creating a compatibility
+     * binding for an undeclared name.
+     *
+     * @param {string} name
+     * @returns {NamedDataBinding | undefined}
+     */
+    findDeclaredBinding(name) {
+        const local = this.#localBindings.get(name);
+        if (local) {
+            return local;
+        }
+        return this.view.dataParent?.namedDataScope.findDeclaredBinding(name);
+    }
+
+    /**
      * Resolves a dataset declaration through the data-parent hierarchy.
      *
      * @param {string} name

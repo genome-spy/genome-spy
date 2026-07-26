@@ -135,5 +135,21 @@ export default class DataFlow {
         }
     }
 
+    /**
+     * Reloads all named sources connected to a dataset binding.
+     *
+     * @param {import("./namedDataScope.js").NamedDataBinding} binding
+     */
+    reloadNamedDataBinding(binding) {
+        for (const dataSource of this.#dataSources.values()) {
+            if (
+                dataSource instanceof NamedSource &&
+                dataSource.binding === binding
+            ) {
+                dataSource.loadSynchronously();
+            }
+        }
+    }
+
     // Initialization is handled by subtree helpers to avoid global init order.
 }

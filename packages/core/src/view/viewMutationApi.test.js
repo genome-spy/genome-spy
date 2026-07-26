@@ -160,6 +160,16 @@ function getLegends(view) {
     );
 }
 
+/**
+ * @param {import("./view.js").default} view
+ */
+function getCollectorValues(view) {
+    return Array.from(
+        view.flowHandle.collector.getData(),
+        (datum) => datum.value
+    );
+}
+
 describe("ViewMutationApi", () => {
     test("returns handles for the root and layout children", async () => {
         const { view } = await createHeadlessViewHierarchy({
@@ -218,6 +228,120 @@ describe("ViewMutationApi", () => {
         expect(child.isAlive()).toBe(false);
         expect(api.resolve(child)).toBeUndefined();
         expect(() => api.get(child)).toThrow(/stale/i);
+        expect(() => child.setNamedData("results", [{ value: 1 }])).toThrow(
+            /stale/i
+        );
+    });
+
+    test("updates and resets a dataset declared by the handle's view", async () => {
+        const { view } = await createHeadlessEngine({
+            vconcat: [
+                {
+                    name: "owner",
+                    datasets: {
+                        results: [{ value: 1 }],
+                    },
+                    vconcat: [
+                        {
+                            name: "consumer",
+                            data: { name: "results" },
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "value",
+                                    type: "quantitative",
+                                },
+                            },
+                        },
+                    ],
+                },
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const owner = api.get({ scope: [], view: "owner" });
+        const consumerView = view
+            .getDescendants()
+            .find((candidate) => candidate.explicitName === "consumer");
+        if (!consumerView) {
+            throw new Error("Expected consumer view.");
+        }
+
+        expect(getCollectorValues(consumerView)).toEqual([1]);
+
+        owner.setNamedData("results", [{ value: 2 }, { value: 3 }]);
+        expect(getCollectorValues(consumerView)).toEqual([2, 3]);
+
+        owner.resetNamedData("results");
+        expect(getCollectorValues(consumerView)).toEqual([1]);
+    });
+
+    test("requires named data updates to target the exact owner", async () => {
+        const { view } = await createHeadlessEngine({
+            datasets: {
+                results: [{ value: 1 }],
+            },
+            vconcat: [
+                {
+                    name: "consumer",
+                    data: { name: "results" },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+                {
+                    name: "undeclared",
+                    data: { values: [{ value: 1 }] },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+            ],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const consumer = api.get({ scope: [], view: "consumer" });
+        const undeclared = api.get({ scope: [], view: "undeclared" });
+
+        expect(() => consumer.setNamedData("results", [{ value: 2 }])).toThrow(
+            /ancestor view/i
+        );
+        expect(() =>
+            undeclared.setNamedData("missing", [{ value: 2 }])
+        ).toThrow(/does not declare/i);
+        expect(() =>
+            /** @type {any} */ (api.root()).setNamedData("results", {})
+        ).toThrow(/not an array/i);
+    });
+
+    test("retains an update until a consumer is inserted", async () => {
+        const { view } = await createHeadlessEngine({
+            name: "owner",
+            datasets: {
+                results: [],
+            },
+            vconcat: [],
+        });
+        const api = createViewMutationApi({ viewRoot: view });
+        const owner = api.root();
+
+        owner.setNamedData("results", [{ value: 7 }]);
+        await api.insert(owner, {
+            name: "consumer",
+            data: { name: "results" },
+            mark: "point",
+            encoding: {
+                x: { field: "value", type: "quantitative" },
+            },
+        });
+
+        const consumerView = view
+            .getDescendants()
+            .find((candidate) => candidate.explicitName === "consumer");
+        if (!consumerView) {
+            throw new Error("Expected inserted consumer view.");
+        }
+        expect(getCollectorValues(consumerView)).toEqual([7]);
     });
 
     test("inserts a direct spec into a concat container", async () => {

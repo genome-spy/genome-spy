@@ -164,11 +164,74 @@ export function createViewMutationApi(genomeSpy) {
 
                 return children.map((child) => getHandle(child));
             },
+
+            setNamedData: (name, data) => {
+                const binding = getOwnedNamedDataBinding(view, name);
+                binding.setData(data);
+                reloadNamedDataBinding(view, binding);
+            },
+
+            resetNamedData: (name) => {
+                const binding = getOwnedNamedDataBinding(view, name);
+                binding.resetData();
+                reloadNamedDataBinding(view, binding);
+            },
         };
 
         handlesByView.set(view, handle);
         viewsByHandle.set(handle, view);
         return handle;
+    }
+
+    /**
+     * @param {import("./view.js").default} view
+     * @param {string} name
+     * @returns {import("../data/namedDataScope.js").NamedDataBinding}
+     */
+    function getOwnedNamedDataBinding(view, name) {
+        if (!isLiveView(view)) {
+            throw new ViewMutationError(
+                "staleHandle",
+                "Cannot update named data through a stale view handle."
+            );
+        }
+        if (typeof name !== "string" || !name.length) {
+            throw new ViewMutationError(
+                "invalidNamedData",
+                "Named dataset name must be a non-empty string."
+            );
+        }
+
+        const local = view.namedDataScope.getLocalBinding(name);
+        if (local) {
+            return local;
+        }
+
+        const inherited = view.namedDataScope.findDeclaredBinding(name);
+        if (inherited) {
+            throw new ViewMutationError(
+                "namedDataOwnerMismatch",
+                'Named dataset "' +
+                    name +
+                    "\" is declared by an ancestor view. Use the dataset owner's handle."
+            );
+        }
+
+        throw new ViewMutationError(
+            "namedDataNotDeclared",
+            'View does not declare named dataset "' +
+                name +
+                "\". Add it to the view's datasets object before updating it."
+        );
+    }
+
+    /**
+     * @param {import("./view.js").default} view
+     * @param {import("../data/namedDataScope.js").NamedDataBinding} binding
+     */
+    function reloadNamedDataBinding(view, binding) {
+        view.context.dataFlow.reloadNamedDataBinding(binding);
+        view.context.animator.requestRender();
     }
 
     /**

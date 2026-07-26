@@ -230,6 +230,19 @@ export interface ViewHandle {
      * Returns handles for the current layout child views in spec order.
      */
     children: () => ViewHandle[];
+
+    /**
+     * Replaces a named dataset declared by this exact view.
+     *
+     * Descendant views that resolve the declaration receive the updated data.
+     */
+    setNamedData: <T = unknown>(name: string, data: T[]) => void;
+
+    /**
+     * Restores a named dataset declared by this exact view to its configured
+     * values.
+     */
+    resetNamedData: (name: string) => void;
 }
 
 /**
