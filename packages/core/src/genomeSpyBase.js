@@ -149,6 +149,8 @@ export default class GenomeSpy {
     /**
      *
      * @param {(name: string) => any[]} provider
+     * @deprecated Declare datasets in the specification and update them through
+     * their owning view handles.
      */
     registerNamedDataProvider(provider) {
         this.namedDataProviders.unshift(provider);
@@ -170,8 +172,13 @@ export default class GenomeSpy {
      *
      * @param {string} name
      * @param {any[]} data
+     * @deprecated Use ViewHandle.setNamedData() or resetNamedData().
      */
     updateNamedData(name, data) {
+        // TODO: Remove this global name lookup with the deprecated provider
+        // chain after consumers migrate to owner-scoped updates. This will
+        // eliminate global ambiguity and leave binding identity as the only
+        // named-data update and sharing contract.
         const namedSource =
             this.viewRoot.context.dataFlow.findNamedDataSource(name);
         if (!namedSource) {

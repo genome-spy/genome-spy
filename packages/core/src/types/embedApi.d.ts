@@ -25,6 +25,10 @@ export interface EmbedOptions {
      * A function that allows retrieval of named data. There are two ways to provide named data:
      * 1. A data provider (this)
      * 2. Explicit updates using the `updateNamedData` method (the other).
+     *
+     * @deprecated Declare the dataset in the owning view and provide initial
+     * rows through the specification or update it through
+     * `ViewHandle.setNamedData()`.
      */
     namedDataProvider?: (name: string) => any[];
 
@@ -431,6 +435,8 @@ export interface EmbedResult {
      *
      * @param name data source to update
      * @param data new data. If left undefined, the data is retrieved from a provider.
+     * @deprecated Use `ViewHandle.setNamedData()` or
+     * `ViewHandle.resetNamedData()`.
      */
     updateNamedData: (name: string, data?: any[]) => void;
 

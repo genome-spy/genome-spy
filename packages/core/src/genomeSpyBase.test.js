@@ -19,3 +19,30 @@ describe("GenomeSpy layout reflow", () => {
         expect(requestTransition).toHaveBeenCalledWith(layoutReflowTransition);
     });
 });
+
+describe("GenomeSpy legacy named data updates", () => {
+    test("updates an unambiguous named source", () => {
+        const updateDynamicData = vi.fn();
+        const requestRender = vi.fn();
+
+        /** @type {any} */ (GenomeSpy.prototype.updateNamedData).call(
+            {
+                viewRoot: {
+                    context: {
+                        dataFlow: {
+                            findNamedDataSource: () => ({
+                                dataSource: { updateDynamicData },
+                            }),
+                        },
+                    },
+                },
+                animator: { requestRender },
+            },
+            "results",
+            [{ value: 1 }]
+        );
+
+        expect(updateDynamicData).toHaveBeenCalledWith([{ value: 1 }]);
+        expect(requestRender).toHaveBeenCalledOnce();
+    });
+});

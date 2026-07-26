@@ -145,6 +145,10 @@ export class NamedDataScope {
             return parentScope.resolve(name);
         }
 
+        // TODO: Remove this embed-wide fallback together with the deprecated
+        // namedDataProvider and updateNamedData APIs. Unresolved names can then
+        // fail fast, leaving one explicit lexical ownership model and simpler
+        // source sharing, update routing, and disposal.
         let legacy = this.#legacyBindings.get(name);
         if (!legacy) {
             legacy = new NamedDataBinding(name, undefined, () =>

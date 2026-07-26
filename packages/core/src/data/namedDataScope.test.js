@@ -93,6 +93,9 @@ describe("named dataset scopes", () => {
                 (source) => source instanceof NamedSource
             )
         ).toHaveLength(2);
+        expect(() => context.dataFlow.findNamedDataSource("shared")).toThrow(
+            /ambiguous.*ViewHandle\.setNamedData/i
+        );
     });
 
     test("keeps repeated imported dataset declarations independent", async () => {
