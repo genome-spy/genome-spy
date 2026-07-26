@@ -3,14 +3,14 @@
     <head>
         <meta charset="UTF-8" />
         <link rel="stylesheet" href="style.scss" />
-        <title>Named Data Provider</title>
+        <title>Named Data Form</title>
     </head>
 
     <body>
-        <h1>Named Data Provider (with dynamic updates)</h1>
+        <h1>Named data with dynamic updates</h1>
         <p>
-            Data is fetched from a provider. Dynamic updates are signaled using
-            <code>updateNamedData</code>.
+            Initial data is declared in the specification. Form changes update
+            it through the owning view's <code>setNamedData</code> method.
         </p>
 
         <div id="container"></div>
@@ -27,6 +27,6 @@
             </div>
         </form>
 
-        <script type="module" src="/namedDataProvider.js"></script>
+        <script type="module" src="/namedDataForm.js"></script>
     </body>
 </html>

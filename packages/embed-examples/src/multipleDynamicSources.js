@@ -2,6 +2,11 @@ import { embed } from "@genome-spy/core/minimal";
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
+    datasets: {
+        point: [],
+        rect: [],
+        rule: [],
+    },
     height: 250,
     width: 250,
     view: { stroke: "lightgray" },
@@ -48,14 +53,15 @@ const spec = {
 const container = document.getElementById("container");
 
 const api = await embed(container, spec);
+const dataOwner = api.views.root();
 
 document
     .querySelectorAll("input[type='range']")
     .forEach((/** @type {HTMLInputElement}*/ input) => {
         input.addEventListener("input", () => {
-            api.updateNamedData(input.name, [
+            dataOwner.setNamedData(input.name, [
                 { x: input.name, y: input.value },
             ]);
         });
-        api.updateNamedData(input.name, [{ x: input.name, y: input.value }]);
+        dataOwner.setNamedData(input.name, [{ x: input.name, y: input.value }]);
     });

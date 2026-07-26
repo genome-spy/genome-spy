@@ -24,7 +24,7 @@ export default defineConfig({
                 linkedEmbeds: "src/linkedEmbeds.html",
                 dynamicNamedData: "src/dynamicNamedData.html",
                 multipleDynamicSources: "src/multipleDynamicSources.html",
-                namedDataProvider: "src/namedDataProvider.html",
+                namedDataForm: "src/namedDataForm.html",
                 dynamicFasta: "src/dynamicFasta.html",
                 reactComponent: "src/reactComponent.html",
             },

@@ -4,6 +4,9 @@ import GenomeSpy from "@genome-spy/react-component";
 const App = () => {
     /** @type {import("packages/core/src/spec/root.js").RootSpec} */
     const spec = {
+        datasets: {
+            dynamicData: [],
+        },
         data: {
             name: "dynamicData",
         },
@@ -37,7 +40,7 @@ const App = () => {
 
     /** @type {(api: import("@genome-spy/core/types/embedApi.js").EmbedResult) => void} */
     const updateData = (api) => {
-        api.updateNamedData("dynamicData", data);
+        api.views.root().setNamedData("dynamicData", data);
     };
 
     return (
