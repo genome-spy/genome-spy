@@ -165,7 +165,7 @@ export function buildDataFlow(
      */
     function createAuxiliaryDataBranch(data, transforms, view) {
         const dataSource = isNamedData(data)
-            ? new NamedSource(data, view, view.context.getNamedDataFromProvider)
+            ? new NamedSource(data, view)
             : createDataSource(data, view);
 
         /** @type {FlowNode} */
@@ -246,17 +246,13 @@ export function buildDataFlow(
             if (
                 previousDataSource &&
                 previousDataSource.view === view &&
-                !previousDataSource.identifier
+                !previousDataSource.shareKey
             ) {
                 dataFlow.removeDataSource(previousDataSource);
             }
 
             const dataSource = isNamedData(view.spec.data)
-                ? new NamedSource(
-                      view.spec.data,
-                      view,
-                      view.context.getNamedDataFromProvider
-                  )
+                ? new NamedSource(view.spec.data, view)
                 : createDataSource(view.spec.data, view);
 
             currentNode = dataSource;

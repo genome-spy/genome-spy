@@ -28,6 +28,7 @@ import {
 } from "./renderingContext/clipOptions.js";
 import { isInChromeSubtree } from "./viewChrome.js";
 import { getPostScaleParams } from "./postScaleParams.js";
+import { NamedDataScope } from "../data/namedDataScope.js";
 
 // TODO: View classes have too many responsibilities. Come up with a way
 // to separate the concerns. However, most concerns are tightly tied to
@@ -95,6 +96,9 @@ const defaultOpacityFunction = (parentOpacity) => parentOpacity;
 export default class View {
     /** @type {TSpec} */
     spec;
+
+    /** @type {NamedDataScope} */
+    namedDataScope;
 
     /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
     #configScopes;
@@ -178,6 +182,7 @@ export default class View {
         this.dataParent = dataParent;
         this.#defaultName = name;
         this.spec = spec;
+        this.namedDataScope = new NamedDataScope(this);
 
         if (dataParent && /** @type {any} */ (spec).theme !== undefined) {
             throw new Error(
@@ -946,12 +951,13 @@ export default class View {
         if (
             handle?.dataSource &&
             handle.dataSource.view === this &&
-            !handle.dataSource.identifier
+            !handle.dataSource.shareKey
         ) {
             this.context.dataFlow.removeDataSource(handle.dataSource);
         }
 
         this.paramRuntime.dispose();
+        this.namedDataScope.dispose();
 
         this.context.dataFlow.loadingStatusRegistry.delete(this);
 

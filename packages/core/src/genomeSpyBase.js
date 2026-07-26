@@ -434,10 +434,6 @@ export default class GenomeSpy {
         /** @type {ViewSpec & RootConfig} */
         const rootSpec = this.spec;
 
-        if (rootSpec.datasets) {
-            this.registerNamedDataProvider((name) => rootSpec.datasets[name]);
-        }
-
         // Create the view hierarchy.
         // This also resolves scales and axes.
         this.viewRoot = await context.createOrImportView(

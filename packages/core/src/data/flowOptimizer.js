@@ -88,11 +88,11 @@ export function combineAndPullCollectorsUp() {
 export function combineIdenticalDataSources(dataFlow) {
     const dataSources = dataFlow.dataSources;
 
-    /** @type {Map<string, import("./sources/dataSource.js").default>} */
-    const sourcesByIdentifiers = new Map();
+    /** @type {Map<unknown, import("./sources/dataSource.js").default>} */
+    const sourcesByShareKeys = new Map();
     for (const ds of dataSources) {
-        if (ds.identifier && !sourcesByIdentifiers.has(ds.identifier)) {
-            sourcesByIdentifiers.set(ds.identifier, ds);
+        if (ds.shareKey && !sourcesByShareKeys.has(ds.shareKey)) {
+            sourcesByShareKeys.set(ds.shareKey, ds);
         }
     }
 
@@ -102,8 +102,8 @@ export function combineIdenticalDataSources(dataFlow) {
     const canonicalBySource = new Map();
 
     for (const dataSource of dataSources) {
-        if (dataSource.identifier) {
-            const target = sourcesByIdentifiers.get(dataSource.identifier);
+        if (dataSource.shareKey) {
+            const target = sourcesByShareKeys.get(dataSource.shareKey);
             if (target) {
                 if (target !== dataSource) {
                     target.adoptChildrenOf(dataSource);
