@@ -33,6 +33,7 @@ import createIndexer from "../utils/indexer.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 import { resolveUrl } from "../utils/url.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
+import { getViewLevelConfigPrecedence } from "./viewLevelConfigPrecedence.js";
 import {
     findIntervalSelectionBindingOwners,
     getIntervalSelection,
@@ -605,9 +606,17 @@ export default class ScaleResolution {
             this.#viewLevelScaleConfig &&
             this.#viewLevelScaleConfig.view !== view
         ) {
-            throw new Error(
-                `Multiple view-level scale configs target the same ${this.channel} scale resolution.`
+            const precedence = getViewLevelConfigPrecedence(
+                this.#viewLevelScaleConfig.view,
+                view
             );
+            if (precedence === "current") {
+                return;
+            } else if (precedence === "conflict") {
+                throw new Error(
+                    `Multiple view-level scale configs target the same ${this.channel} scale resolution.`
+                );
+            }
         }
 
         for (const member of this.#members) {

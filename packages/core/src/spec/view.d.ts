@@ -239,7 +239,9 @@ export interface ViewSpecBase extends ResolveSpec {
      *
      * Use this when a composed view shares a scale across child views and the
      * scale settings, such as the visible domain, belong to the composed view
-     * rather than an individual encoding.
+     * rather than an individual encoding. An ancestor config shadows the whole
+     * config of a descendant that targets the same resolution. Configs in
+     * separate sibling subtrees are ambiguous and cause an error.
      */
     scales?: Partial<Record<ChannelWithScale, Scale>>;
 
@@ -248,7 +250,9 @@ export interface ViewSpecBase extends ResolveSpec {
      *
      * Use this when a composed view shares an axis across child views and the
      * axis settings belong to the composed view rather than an individual
-     * encoding.
+     * encoding. An ancestor config shadows the whole config of a descendant
+     * that targets the same resolution. Configs in separate sibling subtrees
+     * are ambiguous and cause an error.
      */
     axes?: Partial<
         Record<PrimaryPositionalChannel, Partial<Axis & GenomeAxis>>
@@ -259,7 +263,9 @@ export interface ViewSpecBase extends ResolveSpec {
      *
      * Use this when a composed view shares a legend across child views and the
      * legend settings belong to the composed view rather than an individual
-     * encoding.
+     * encoding. An ancestor config shadows the whole config of a descendant
+     * that targets the same resolution. Configs in separate sibling subtrees
+     * are ambiguous and cause an error.
      */
     legends?: Partial<Record<NonPositionalChannelWithScale, Legend>>;
 

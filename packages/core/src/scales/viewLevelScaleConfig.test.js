@@ -395,6 +395,56 @@ describe("view-level scale config mapping", () => {
         ]);
     });
 
+    test("dynamically added descendant config is shadowed by an attached ancestor config", async () => {
+        /** @type {import("../spec/view.js").LayerSpec} */
+        const spec = {
+            data: { values: [{ value: 1 }] },
+            scales: {
+                x: { domain: [0, 10] },
+            },
+            layer: [
+                {
+                    layer: [
+                        {
+                            mark: "point",
+                            encoding: {
+                                x: {
+                                    field: "value",
+                                    type: "quantitative",
+                                },
+                            },
+                        },
+                    ],
+                },
+            ],
+        };
+
+        const view = await initView(spec, LayerView);
+        const nestedView = /** @type {LayerView} */ (view.children[0]);
+        const resolution = view.getScaleResolution("x");
+
+        await nestedView.addChildSpec({
+            scales: {
+                x: { domain: [2, 8], reverse: true },
+            },
+            layer: [
+                {
+                    mark: "point",
+                    encoding: {
+                        x: { field: "value", type: "quantitative" },
+                    },
+                },
+            ],
+        });
+
+        expect(resolution.getViewLevelScaleConfig()).toEqual({
+            view,
+            config: { domain: [0, 10] },
+        });
+        expect(resolution.getScale().domain()).toEqual([0, 10]);
+        expect(resolution.getScale().props.reverse).toBeUndefined();
+    });
+
     test("returns a view-level config to pending when the last matching child is removed", async () => {
         /** @type {import("../spec/view.js").LayerSpec} */
         const spec = {

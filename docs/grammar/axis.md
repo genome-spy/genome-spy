@@ -149,6 +149,10 @@ intended subtree or use local `encoding.<channel>.axis` settings. Do not mix
 view-level `axes.<channel>` with participating channel-level axis config for the
 same resolved axis.
 
+When nested view-level axis configs target the same resolution, the ancestor
+config shadows the whole descendant config; their properties are not merged.
+Configs in separate sibling subtrees remain ambiguous and cause an error.
+
 ## Genome Axis for Loci
 
 The genome axis is a special axis for the `"locus"` scale. It displays

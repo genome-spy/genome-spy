@@ -7,6 +7,7 @@ import {
 import { getConfiguredLegendDefaults } from "../config/legendConfig.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
+import { getViewLevelConfigPrecedence } from "./viewLevelConfigPrecedence.js";
 import { isChromeView } from "../view/viewSelectors.js";
 
 /**
@@ -246,9 +247,17 @@ export default class LegendResolution {
             this.#viewLevelLegendConfig &&
             this.#viewLevelLegendConfig.view !== view
         ) {
-            throw new Error(
-                `Multiple view-level legend configs target the same ${this.channel} legend resolution.`
+            const precedence = getViewLevelConfigPrecedence(
+                this.#viewLevelLegendConfig.view,
+                view
             );
+            if (precedence === "current") {
+                return;
+            } else if (precedence === "conflict") {
+                throw new Error(
+                    `Multiple view-level legend configs target the same ${this.channel} legend resolution.`
+                );
+            }
         }
 
         const configuredMember = Array.from(this.#members).find((member) =>

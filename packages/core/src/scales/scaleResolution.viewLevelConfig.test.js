@@ -41,14 +41,49 @@ describe("ScaleResolution view-level config attachment", () => {
         });
     });
 
-    test("rejects duplicate view-level configs for the same resolution", async () => {
+    test("keeps the ancestor view-level config instead of merging a descendant config", async () => {
+        const view = await createSharedLayer();
+        const resolution = getRequiredScaleResolution(view, "x");
+        const config = { domain: [0, 10] };
+
+        resolution.attachViewLevelScaleConfig(view, config);
+        resolution.attachViewLevelScaleConfig(view.children[0], {
+            domain: [2, 8],
+            reverse: true,
+        });
+
+        expect(resolution.getViewLevelScaleConfig()).toEqual({
+            view,
+            config,
+        });
+    });
+
+    test("replaces a descendant view-level config with an ancestor config", async () => {
+        const view = await createSharedLayer();
+        const resolution = getRequiredScaleResolution(view, "x");
+        const config = { domain: [0, 10] };
+
+        resolution.attachViewLevelScaleConfig(view.children[0], {
+            domain: [2, 8],
+        });
+        resolution.attachViewLevelScaleConfig(view, config);
+
+        expect(resolution.getViewLevelScaleConfig()).toEqual({
+            view,
+            config,
+        });
+    });
+
+    test("rejects sibling view-level configs for the same resolution", async () => {
         const view = await createSharedLayer();
         const resolution = getRequiredScaleResolution(view, "x");
 
-        resolution.attachViewLevelScaleConfig(view, { domain: [0, 10] });
+        resolution.attachViewLevelScaleConfig(view.children[0], {
+            domain: [0, 10],
+        });
 
         expect(() =>
-            resolution.attachViewLevelScaleConfig(view.children[0], {
+            resolution.attachViewLevelScaleConfig(view.children[1], {
                 domain: [2, 8],
             })
         ).toThrow(

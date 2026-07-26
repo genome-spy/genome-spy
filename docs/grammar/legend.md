@@ -122,6 +122,10 @@ the intended subtree or use local `encoding.<channel>.legend` settings. Do not
 mix view-level `legends.<channel>` with participating channel-level legend
 config for the same resolved legend.
 
+When nested view-level legend configs target the same resolution, the ancestor
+config shadows the whole descendant config; their properties are not merged.
+Configs in separate sibling subtrees remain ambiguous and cause an error.
+
 ## Titles
 
 The legend title defaults to the channel title. Set `title` to override it, or

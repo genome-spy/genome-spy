@@ -12,7 +12,7 @@ const curatedBaseUrl = "examples/";
 
 const examplePaths = collectSharedExamplePaths().filter((examplePath) => {
     const spec = loadSharedExampleSpec(examplePath);
-    return !hasExternalDataUrl(spec);
+    return !requiresExternalLoading(spec);
 });
 
 describe("shared examples", () => {
@@ -141,34 +141,38 @@ function visitSpec(node, visitor) {
 }
 
 /**
- * Exclude examples that require network access from the offline snapshot suite.
+ * Exclude examples that require network access or URL imports from the offline
+ * snapshot suite, which deliberately disables external view loading.
  *
  * @param {any} node
  */
-function hasExternalDataUrl(node) {
-    let foundExternalUrl = false;
+function requiresExternalLoading(node) {
+    let foundExternalLoading = false;
 
     visitSpec(node, (currentNode) => {
         if (
-            foundExternalUrl ||
+            foundExternalLoading ||
             !currentNode ||
             typeof currentNode !== "object"
         ) {
             return;
         }
 
-        if (isAbsoluteHttpUrl(currentNode.url)) {
-            foundExternalUrl = true;
+        if (
+            isAbsoluteHttpUrl(currentNode.url) ||
+            typeof currentNode.import?.url === "string"
+        ) {
+            foundExternalLoading = true;
         } else if (
             currentNode.name === "url" &&
             (isAbsoluteHttpUrl(currentNode.value) ||
                 currentNode.bind?.options?.some(isAbsoluteHttpUrl))
         ) {
-            foundExternalUrl = true;
+            foundExternalLoading = true;
         }
     });
 
-    return foundExternalUrl;
+    return foundExternalLoading;
 }
 
 /**

@@ -13,6 +13,7 @@ import mergeObjects from "../utils/mergeObjects.js";
 import { getCachedOrCall, invalidate } from "../utils/propertyCacher.js";
 import { isChromeView } from "../view/viewSelectors.js";
 import { orderResolutionMembers } from "./resolutionMemberOrder.js";
+import { getViewLevelConfigPrecedence } from "./viewLevelConfigPrecedence.js";
 
 /**
  * @template {import("../spec/channel.js").PositionalChannel}[T=PositionalChannel]
@@ -259,9 +260,17 @@ export default class AxisResolution {
             this.#viewLevelAxisConfig &&
             this.#viewLevelAxisConfig.view !== view
         ) {
-            throw new Error(
-                `Multiple view-level axis configs target the same ${this.channel} axis resolution.`
+            const precedence = getViewLevelConfigPrecedence(
+                this.#viewLevelAxisConfig.view,
+                view
             );
+            if (precedence === "current") {
+                return;
+            } else if (precedence === "conflict") {
+                throw new Error(
+                    `Multiple view-level axis configs target the same ${this.channel} axis resolution.`
+                );
+            }
         }
 
         for (const member of this.#getNonChromeMembers()) {

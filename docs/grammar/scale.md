@@ -360,6 +360,12 @@ the shared scale used by that view subtree. If the subtree has multiple
 independent scales for the same channel, place `scales.<channel>` closer to the
 intended subtree or make the sharing explicit with `resolve.scale`.
 
+View-level configuration is exclusive. When nested view-level configs target
+the same scale resolution, the ancestor config shadows the whole descendant
+config; their properties are not merged. Configs in separate sibling subtrees
+remain ambiguous and cause an error. This keeps the effective scale settings
+stable when descendant views are added or removed.
+
 Do not mix view-level `scales.<channel>` with participating
 `encoding.<channel>.scale` objects for the same shared scale. Keep
 `encoding.<channel>.type` on member encodings; it describes the encoded data and
