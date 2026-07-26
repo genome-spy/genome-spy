@@ -93,6 +93,27 @@ if (tracks.isAlive()) {
 }
 ```
 
+## Updating named data
+
+A view handle can update datasets declared by that exact view:
+
+```js
+const owner = api.views.get({
+  scope: ["translationA"],
+  view: "translationA",
+});
+
+owner.setNamedData("geneticCode", rows);
+owner.resetNamedData("geneticCode");
+```
+
+Descendants resolve `datasets` declarations lexically, but updates do not
+search ancestors. Use the declaring view's handle so that ownership stays
+unambiguous when imports or nested subtrees reuse the same dataset name.
+
+See [Runtime State](runtime-state.md#named-data) for declarations, initial data,
+and migration from the deprecated global APIs.
+
 ## Reading layout bounds
 
 `getLayoutBounds()` returns the rendered bounds of a view for positioning

@@ -3,11 +3,15 @@
 ## Named data
 
 Named data sources allow data to be provided at runtime instead of loading it
-from a URL or embedding it directly in the specification. In the view
-specification, declare a named data source with the `data.name` property:
+from a URL. Declare the dataset in the view that owns it and reference it with
+`data.name`:
 
 ```json
 {
+  "name": "resultsOwner",
+  "datasets": {
+    "myResults": []
+  },
   "data": {
     "name": "myResults"
   },
@@ -15,46 +19,66 @@ specification, declare a named data source with the `data.name` property:
 }
 ```
 
-There are two ways to provide the data:
+`datasets` declarations are lexically scoped through the data-parent
+hierarchy. Descendants can reference an ancestor's declaration, while a
+descendant declaration with the same name shadows it. Repeated import instances
+therefore own independent datasets.
 
-### `updateNamedData()`
+### Updating named data
 
-Call `updateNamedData(name, data)` when your application provides updated data
-explicitly.
+Resolve the declaring view and call `setNamedData()` on its handle:
 
 ```js
 const api = await embed("#container", spec);
+const owner = api.views.get({
+  scope: [],
+  view: "resultsOwner",
+});
 
-api.updateNamedData("myResults", [
+owner.setNamedData("myResults", [
   { x: 1, y: 2 },
   { x: 2, y: 3 },
 ]);
 ```
 
-### `namedDataProvider`
+The handle must represent the exact view containing the `datasets` property.
+Calling `setNamedData()` on a descendant does not modify an ancestor's dataset.
+This makes ownership explicit when the same name occurs in multiple subtrees.
 
-The `namedDataProvider` embed option lets GenomeSpy load named data on demand.
+`resetNamedData()` removes the runtime override and restores the values from
+the declaration:
 
 ```js
-const api = await embed("#container", spec, {
-  namedDataProvider(name) {
-    if (name == "myResults") {
-      return [
-        { x: 1, y: 2 },
-        { x: 2, y: 3 },
-      ];
-    }
-  },
-});
+owner.resetNamedData("myResults");
 ```
 
-If `updateNamedData(name)` is called without the second argument, GenomeSpy
-retrieves the data from the provider instead.
+To avoid an initially empty dataset, a host can place initial rows in the
+JavaScript specification before embedding:
+
+```js
+spec.datasets.myResults = initialRows;
+const api = await embed("#container", spec);
+```
 
 Named data can be updated dynamically, but it does not automatically react to
 user interactions. For practical examples, see the
 [embed-examples](https://github.com/genome-spy/genome-spy/tree/master/packages/embed-examples)
 package.
+
+### Deprecated global APIs
+
+`api.updateNamedData(name, data)` and the `namedDataProvider` embed option are
+deprecated. They use embed-wide name lookup, which cannot address repeated or
+shadowed declarations reliably.
+
+Existing integrations may continue using them during the compatibility period.
+A global update throws when the name identifies multiple scoped datasets.
+Migrate by adding a `datasets` declaration to the intended owner and calling
+`setNamedData()` or `resetNamedData()` through that view's handle.
+
+Undeclared `data.name` references also retain their embed-wide fallback
+behavior temporarily. New specifications should declare every named dataset
+explicitly.
 
 ## Named scales
 
