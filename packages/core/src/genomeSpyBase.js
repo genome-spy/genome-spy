@@ -51,6 +51,9 @@ import {
     resolveThemeSelection,
 } from "./config/themes.js";
 
+const namedDataProviderWarningTargets = new WeakSet();
+const updateNamedDataWarningTargets = new WeakSet();
+
 /**
  * Events that are broadcasted to all views.
  * @typedef {"dataFlowBuilt" | "layout" | "layoutComputed" | "subtreeDataReady"} BroadcastEventType
@@ -153,6 +156,11 @@ export default class GenomeSpy {
      * their owning view handles.
      */
     registerNamedDataProvider(provider) {
+        warnOnce(
+            this,
+            namedDataProviderWarningTargets,
+            "The `namedDataProvider` embed option is deprecated. Declare named datasets in the owning view and update them through `ViewHandle.datasets`."
+        );
         this.namedDataProviders.unshift(provider);
     }
 
@@ -175,6 +183,12 @@ export default class GenomeSpy {
      * @deprecated Use ViewHandle.datasets.set() or datasets.reset().
      */
     updateNamedData(name, data) {
+        warnOnce(
+            this,
+            updateNamedDataWarningTargets,
+            "`updateNamedData()` is deprecated. Update the dataset through its owning view's `ViewHandle.datasets` API."
+        );
+
         // TODO: Remove this global name lookup with the deprecated provider
         // chain after consumers migrate to owner-scoped updates. This will
         // eliminate global ambiguity and leave binding identity as the only
@@ -737,6 +751,18 @@ export default class GenomeSpy {
             }
         });
         return resolutions;
+    }
+}
+
+/**
+ * @param {object} target
+ * @param {WeakSet<object>} warnedTargets
+ * @param {string} message
+ */
+function warnOnce(target, warnedTargets, message) {
+    if (!warnedTargets.has(target)) {
+        warnedTargets.add(target);
+        console.warn(message);
     }
 }
 
