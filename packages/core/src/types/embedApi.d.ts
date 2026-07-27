@@ -189,7 +189,7 @@ export interface MoveViewOptions {
  *
  * The dataset must be declared in the owner's `datasets` property.
  */
-export interface ViewDatasetApi {
+export interface DatasetApi {
     /**
      * Replaces a named dataset declared by the associated owner.
      *
@@ -266,7 +266,7 @@ export interface ViewHandle {
     /**
      * Updates datasets declared by this exact view.
      */
-    readonly datasets: ViewDatasetApi;
+    readonly datasets: DatasetApi;
 }
 
 /**
@@ -420,7 +420,7 @@ export interface EmbedResult {
      * This namespace is unaffected by implicit layout wrappers and does not
      * search nested views.
      */
-    readonly datasets: ViewDatasetApi;
+    readonly datasets: DatasetApi;
 
     /**
      * Developer-only hooks for optional runtime inspection tools.

@@ -38,7 +38,7 @@ export class ViewMutationError extends Error {
  * specification.
  *
  * @param {{ viewRoot: import("./view.js").default }} genomeSpy
- * @returns {import("../types/embedApi.js").ViewDatasetApi}
+ * @returns {import("../types/embedApi.js").DatasetApi}
  */
 export function createTopLevelDatasetApi(genomeSpy) {
     const getRootView = () => genomeSpy.viewRoot;
@@ -51,7 +51,7 @@ export function createTopLevelDatasetApi(genomeSpy) {
 /**
  * @param {() => import("./view.js").default} getOwnerView
  * @param {() => import("./view.js").default} getRootView
- * @returns {import("../types/embedApi.js").ViewDatasetApi}
+ * @returns {import("../types/embedApi.js").DatasetApi}
  */
 function createViewDatasetApi(getOwnerView, getRootView) {
     return {
