@@ -12,6 +12,7 @@ import {
     resolveViewSelector,
 } from "./viewSelectors.js";
 import { getViewIdentityRegistry } from "./viewIdentityRegistry.js";
+import { getTopLevelSpecView } from "./viewFactory.js";
 
 /**
  * Error thrown by the public view mutation API.
@@ -30,6 +31,104 @@ export class ViewMutationError extends Error {
          */
         this.code = code;
     }
+}
+
+/**
+ * Creates the dataset API for declarations on the top-level input
+ * specification.
+ *
+ * @param {{ viewRoot: import("./view.js").default }} genomeSpy
+ * @returns {import("../types/embedApi.js").ViewDatasetApi}
+ */
+export function createTopLevelDatasetApi(genomeSpy) {
+    const getRootView = () => genomeSpy.viewRoot;
+    return createViewDatasetApi(
+        () => getTopLevelSpecView(getRootView()),
+        getRootView
+    );
+}
+
+/**
+ * @param {() => import("./view.js").default} getOwnerView
+ * @param {() => import("./view.js").default} getRootView
+ * @returns {import("../types/embedApi.js").ViewDatasetApi}
+ */
+function createViewDatasetApi(getOwnerView, getRootView) {
+    return {
+        set(name, data) {
+            const owner = getOwnerView();
+            const binding = getOwnedNamedDataBinding(owner, name, getRootView);
+            updateNamedDataBinding(owner, binding, data);
+        },
+
+        reset(name) {
+            const owner = getOwnerView();
+            const binding = getOwnedNamedDataBinding(owner, name, getRootView);
+            updateNamedDataBinding(owner, binding);
+        },
+    };
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @param {() => import("./view.js").default} getRootView
+ */
+function isLiveView(view, getRootView) {
+    const root = getRootView();
+    return view === root || Boolean(root?.getDescendants?.().includes(view));
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @param {string} name
+ * @param {() => import("./view.js").default} getRootView
+ * @returns {import("../data/namedDataScope.js").NamedDataBinding}
+ */
+function getOwnedNamedDataBinding(view, name, getRootView) {
+    if (!isLiveView(view, getRootView)) {
+        throw new ViewMutationError(
+            "staleHandle",
+            "Cannot update named data through a stale view handle."
+        );
+    }
+    if (typeof name !== "string" || !name.length) {
+        throw new ViewMutationError(
+            "invalidNamedData",
+            "Named dataset name must be a non-empty string."
+        );
+    }
+
+    const local = view.namedDataScope.getLocalBinding(name);
+    if (local) {
+        return local;
+    }
+
+    const inherited = view.namedDataScope.findDeclaredBinding(name);
+    if (inherited) {
+        throw new ViewMutationError(
+            "namedDataOwnerMismatch",
+            'Named dataset "' +
+                name +
+                "\" is declared by an ancestor view. Use the dataset owner's handle."
+        );
+    }
+
+    throw new ViewMutationError(
+        "namedDataNotDeclared",
+        'View does not declare named dataset "' +
+            name +
+            "\". Add it to the view's datasets object before updating it."
+    );
+}
+
+/**
+ * @param {import("./view.js").default} view
+ * @param {import("../data/namedDataScope.js").NamedDataBinding} binding
+ * @param {import("../data/flowNode.js").Datum[]} [data]
+ */
+function updateNamedDataBinding(view, binding, data) {
+    view.context.dataFlow.updateNamedDataBinding(binding, data);
+    view.context.animator.requestRender();
 }
 
 /**
@@ -72,17 +171,6 @@ export function createViewMutationApi(genomeSpy) {
      */
     function getRootView() {
         return genomeSpy.viewRoot;
-    }
-
-    /**
-     * @param {import("./view.js").default} view
-     * @returns {boolean}
-     */
-    function isLiveView(view) {
-        const root = getRootView();
-        return (
-            view === root || Boolean(root?.getDescendants?.().includes(view))
-        );
     }
 
     /**
@@ -146,10 +234,10 @@ export function createViewMutationApi(genomeSpy) {
                 return getHandleType(view);
             },
 
-            isAlive: () => isLiveView(view),
+            isAlive: () => isLiveView(view, getRootView),
 
             parent: () => {
-                if (!isLiveView(view) || !view.layoutParent) {
+                if (!isLiveView(view, getRootView) || !view.layoutParent) {
                     return undefined;
                 }
 
@@ -158,81 +246,19 @@ export function createViewMutationApi(genomeSpy) {
 
             children: () => {
                 const children = getLayoutChildren(view);
-                if (!isLiveView(view) || !children) {
+                if (!isLiveView(view, getRootView) || !children) {
                     return [];
                 }
 
                 return children.map((child) => getHandle(child));
             },
 
-            datasets: {
-                set: (name, data) => {
-                    const binding = getOwnedNamedDataBinding(view, name);
-                    updateNamedDataBinding(view, binding, data);
-                },
-
-                reset: (name) => {
-                    const binding = getOwnedNamedDataBinding(view, name);
-                    updateNamedDataBinding(view, binding);
-                },
-            },
+            datasets: createViewDatasetApi(() => view, getRootView),
         };
 
         handlesByView.set(view, handle);
         viewsByHandle.set(handle, view);
         return handle;
-    }
-
-    /**
-     * @param {import("./view.js").default} view
-     * @param {string} name
-     * @returns {import("../data/namedDataScope.js").NamedDataBinding}
-     */
-    function getOwnedNamedDataBinding(view, name) {
-        if (!isLiveView(view)) {
-            throw new ViewMutationError(
-                "staleHandle",
-                "Cannot update named data through a stale view handle."
-            );
-        }
-        if (typeof name !== "string" || !name.length) {
-            throw new ViewMutationError(
-                "invalidNamedData",
-                "Named dataset name must be a non-empty string."
-            );
-        }
-
-        const local = view.namedDataScope.getLocalBinding(name);
-        if (local) {
-            return local;
-        }
-
-        const inherited = view.namedDataScope.findDeclaredBinding(name);
-        if (inherited) {
-            throw new ViewMutationError(
-                "namedDataOwnerMismatch",
-                'Named dataset "' +
-                    name +
-                    "\" is declared by an ancestor view. Use the dataset owner's handle."
-            );
-        }
-
-        throw new ViewMutationError(
-            "namedDataNotDeclared",
-            'View does not declare named dataset "' +
-                name +
-                "\". Add it to the view's datasets object before updating it."
-        );
-    }
-
-    /**
-     * @param {import("./view.js").default} view
-     * @param {import("../data/namedDataScope.js").NamedDataBinding} binding
-     * @param {import("../data/flowNode.js").Datum[]} [data]
-     */
-    function updateNamedDataBinding(view, binding, data) {
-        view.context.dataFlow.updateNamedDataBinding(binding, data);
-        view.context.animator.requestRender();
     }
 
     /**

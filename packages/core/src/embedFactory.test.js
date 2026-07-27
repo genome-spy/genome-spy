@@ -86,6 +86,10 @@ describe("embed factory", () => {
         const api = await embed(element, /** @type {any} */ ({}));
 
         expect(api.views.root().name).toBe("root");
+        expect(api.datasets).toMatchObject({
+            set: expect.any(Function),
+            reset: expect.any(Function),
+        });
     });
 
     test("exposes debug hooks for developer tooling", async () => {

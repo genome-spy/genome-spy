@@ -151,11 +151,11 @@ export default class GenomeSpy {
      *
      * @param {(name: string) => any[]} provider
      * @deprecated Declare datasets in the specification and update them through
-     * their owning view handles.
+     * EmbedResult.datasets or their owning view handles.
      */
     registerNamedDataProvider(provider) {
         warnOnce(
-            "The `namedDataProvider` embed option is deprecated. Declare named datasets in the owning view and update them through `ViewHandle.datasets`."
+            "The `namedDataProvider` embed option is deprecated. Declare named datasets explicitly and update them through `api.datasets` or the owning `ViewHandle.datasets`."
         );
         this.namedDataProviders.unshift(provider);
     }
@@ -176,11 +176,12 @@ export default class GenomeSpy {
      *
      * @param {string} name
      * @param {any[]} data
-     * @deprecated Use ViewHandle.datasets.set() or datasets.reset().
+     * @deprecated Use EmbedResult.datasets for top-level declarations or
+     * ViewHandle.datasets for nested declarations.
      */
     updateNamedData(name, data) {
         warnOnce(
-            "`updateNamedData()` is deprecated. Update the dataset through its owning view's `ViewHandle.datasets` API."
+            "`updateNamedData()` is deprecated. Update an explicitly declared dataset through `api.datasets` or its owning `ViewHandle.datasets`."
         );
 
         // TODO: Remove this global name lookup with the deprecated provider

@@ -162,6 +162,8 @@ export interface ViewSpecBase extends ResolveSpec {
      * Named datasets available to this view and its descendants.
      *
      * A descendant declaration with the same name shadows this declaration.
+     * Declare named data here to establish reliable lexical scope and enable
+     * scoped runtime updates.
      */
     datasets?: Record<string, any[]>;
 

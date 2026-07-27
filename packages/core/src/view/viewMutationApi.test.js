@@ -7,7 +7,10 @@ import {
 import AxisView from "./axisView.js";
 import LegendView from "./legendView.js";
 import { renderToLayout } from "./testUtils.js";
-import { createViewMutationApi } from "./viewMutationApi.js";
+import {
+    createTopLevelDatasetApi,
+    createViewMutationApi,
+} from "./viewMutationApi.js";
 
 /**
  * @param {string} name
@@ -384,6 +387,66 @@ describe("ViewMutationApi", () => {
 
         owner.datasets.set("results", [{ value: 2 }]);
         expect(getCollectorValues(consumerView)).toEqual([2]);
+    });
+
+    test("updates only top-level declarations through the embed dataset API", async () => {
+        // The convenience API bypasses an implicit layout root without turning
+        // dataset names into a global lookup.
+        const { view } = await createHeadlessEngine(
+            {
+                datasets: {
+                    results: [{ value: 1 }],
+                },
+                layer: [
+                    {
+                        name: "topLevelConsumer",
+                        data: { name: "results" },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "value", type: "quantitative" },
+                        },
+                    },
+                    {
+                        name: "nestedOwner",
+                        datasets: {
+                            results: [{ value: 10 }],
+                            nestedOnly: [],
+                        },
+                        data: { name: "results" },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "value", type: "quantitative" },
+                        },
+                    },
+                ],
+            },
+            {
+                contextOptions: {
+                    viewFactoryOptions: { wrapRoot: true },
+                },
+            }
+        );
+        const datasets = createTopLevelDatasetApi({ viewRoot: view });
+        const topLevelConsumer = view
+            .getDescendants()
+            .find((candidate) => candidate.explicitName === "topLevelConsumer");
+        const nestedOwner = view
+            .getDescendants()
+            .find((candidate) => candidate.explicitName === "nestedOwner");
+        if (!topLevelConsumer || !nestedOwner) {
+            throw new Error("Expected named dataset consumers.");
+        }
+
+        datasets.set("results", [{ value: 2 }]);
+
+        expect(getCollectorValues(topLevelConsumer)).toEqual([2]);
+        expect(getCollectorValues(nestedOwner)).toEqual([10]);
+        expect(() => datasets.set("nestedOnly", [])).toThrow(
+            /does not declare/i
+        );
+
+        datasets.reset("results");
+        expect(getCollectorValues(topLevelConsumer)).toEqual([1]);
     });
 
     test("keeps a shared dataset live after removing one consumer", async () => {

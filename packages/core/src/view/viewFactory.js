@@ -27,6 +27,19 @@ import {
 
 export const VIEW_ROOT_NAME = "viewRoot";
 
+/** @type {WeakMap<View, View>} */
+const topLevelSpecViews = new WeakMap();
+
+/**
+ * Returns the view created from the top-level input specification, bypassing
+ * any implicit layout wrapper.
+ *
+ * @param {View} viewRoot
+ */
+export function getTopLevelSpecView(viewRoot) {
+    return topLevelSpecViews.get(viewRoot) ?? viewRoot;
+}
+
 /**
  * @typedef {object} ViewFactoryOptions
  * @property {boolean} [allowImport] allows imports from urls
@@ -289,6 +302,13 @@ export class ViewFactory {
 
         if (view instanceof ContainerView) {
             await view.initializeChildren();
+        }
+
+        if (isImplicitRoot) {
+            topLevelSpecViews.set(
+                view,
+                /** @type {ConcatView} */ (view).children[0]
+            );
         }
 
         view.registerSizeInvalidation();
