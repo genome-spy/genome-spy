@@ -159,6 +159,15 @@ export interface ViewSpecBase extends ResolveSpec {
     name?: string;
 
     /**
+     * Named datasets available to this view and its descendants.
+     *
+     * A descendant declaration with the same name shadows this declaration.
+     * Declare named data here to establish reliable lexical scope and enable
+     * scoped runtime updates.
+     */
+    datasets?: Record<string, any[]>;
+
+    /**
      * Mouse cursor shown while the pointer is inside the view.
      * The deepest matching cursor wins: mark cursor first, then the pointed
      * view, then ancestor views outward toward the root.

@@ -92,7 +92,8 @@ export class MetadataView extends ConcatView {
             name: "sample-metadata",
             title,
             configurableVisibility: true,
-            data: { name: null },
+            datasets: { metadata: [] },
+            data: { name: "metadata" },
             hconcat: [], // Contents are added dynamically
             spacing: metadataDef.spacing ?? 1,
             resolve: {

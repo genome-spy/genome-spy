@@ -11,21 +11,14 @@ export function isNamedData(data) {
 
 export default class NamedSource extends DataSource {
     /**
-     * Data that has been provided explicitly using the updateDynamicData method
-     * @type {any[]}
-     */
-    #explicitData;
-
-    /**
      * @param {import("../../spec/data.js").NamedData} params
      * @param {import("../../view/view.js").default} view
-     * @param {function(string):any[]} provider Function that retrieves a dataset using a name
      */
-    constructor(params, view, provider) {
+    constructor(params, view) {
         super(view);
 
-        this.provider = provider;
         this.params = params;
+        this.binding = view.namedDataScope.resolve(params.name);
     }
 
     /**
@@ -35,24 +28,26 @@ export default class NamedSource extends DataSource {
         return this.params.name;
     }
 
+    get shareKey() {
+        return this.binding;
+    }
+
     get label() {
         return "namedSource";
     }
 
     /**
-     * Update the named data. If data is omitted, a data provider is used instead.
+     * Updates the dataset binding and reloads all of its consumers. Omitting
+     * data resets the binding to its configured or provider-backed default.
      *
      * @param {import("../flowNode.js").Datum[]} [data]
      */
     updateDynamicData(data) {
-        // TODO: Throw is data is undefined and the provider is unable to provide any data
-        this.#explicitData = data;
-        this.loadSynchronously();
+        this.view.context.dataFlow.updateNamedDataBinding(this.binding, data);
     }
 
     loadSynchronously() {
-        const data =
-            this.#explicitData ?? this.provider(this.params.name) ?? [];
+        const data = this.binding.getData();
 
         /** @type {(x: any) => import("../flowNode.js").Datum} */
         let wrap = (x) => x;
@@ -62,10 +57,6 @@ export default class NamedSource extends DataSource {
                 // TODO: Should check the whole array and abort if types are heterogeneous
                 wrap = makeWrapper(data[0]);
             }
-        } else {
-            throw new Error(
-                `Named data "${this.params.name}" is not an array!`
-            );
         }
 
         this.reset();

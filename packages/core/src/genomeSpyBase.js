@@ -50,6 +50,7 @@ import {
     getBuiltInThemeBackground,
     resolveThemeSelection,
 } from "./config/themes.js";
+import { warnOnce } from "./utils/warning.js";
 
 /**
  * Events that are broadcasted to all views.
@@ -149,8 +150,13 @@ export default class GenomeSpy {
     /**
      *
      * @param {(name: string) => any[]} provider
+     * @deprecated Declare datasets in the specification and update them through
+     * EmbedResult.datasets or their owning view handles.
      */
     registerNamedDataProvider(provider) {
+        warnOnce(
+            "The `namedDataProvider` embed option is deprecated. Declare named datasets explicitly and update them through `api.datasets` or the owning `ViewHandle.datasets`."
+        );
         this.namedDataProviders.unshift(provider);
     }
 
@@ -170,8 +176,18 @@ export default class GenomeSpy {
      *
      * @param {string} name
      * @param {any[]} data
+     * @deprecated Use EmbedResult.datasets for top-level declarations or
+     * ViewHandle.datasets for nested declarations.
      */
     updateNamedData(name, data) {
+        warnOnce(
+            "`updateNamedData()` is deprecated. Update an explicitly declared dataset through `api.datasets` or its owning `ViewHandle.datasets`."
+        );
+
+        // TODO: Remove this global name lookup with the deprecated provider
+        // chain after consumers migrate to owner-scoped updates. This will
+        // eliminate global ambiguity and leave binding identity as the only
+        // named-data update and sharing contract.
         const namedSource =
             this.viewRoot.context.dataFlow.findNamedDataSource(name);
         if (!namedSource) {
@@ -433,10 +449,6 @@ export default class GenomeSpy {
     async #initializeViewHierarchy(context) {
         /** @type {ViewSpec & RootConfig} */
         const rootSpec = this.spec;
-
-        if (rootSpec.datasets) {
-            this.registerNamedDataProvider((name) => rootSpec.datasets[name]);
-        }
 
         // Create the view hierarchy.
         // This also resolves scales and axes.

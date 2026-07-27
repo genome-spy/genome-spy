@@ -112,15 +112,12 @@ export default class DataFlow {
         /** @type {NamedSource} */
         let namedSource;
 
-        // Note: If named sources with the same name are present at multiple locations in the
-        // view hierarchy, they should actually be exactly the same instance.
         for (const dataSource of this.#dataSources.values()) {
             if (dataSource instanceof NamedSource) {
-                if (name == dataSource.identifier) {
+                if (name === dataSource.identifier) {
                     if (namedSource && namedSource !== dataSource) {
-                        // TODO: Write a test case for this and remove the runtime check.
                         throw new Error(
-                            `Found multiple instances of named data: ${name}. Data flow optimization is broken (it's a bug).`
+                            `Named data "${name}" is ambiguous across scoped datasets. Use the dataset owner's ViewHandle.datasets.set() method.`
                         );
                     }
                     namedSource = dataSource;
@@ -132,6 +129,31 @@ export default class DataFlow {
             return {
                 dataSource: namedSource,
             };
+        }
+    }
+
+    /**
+     * Updates a dataset binding and reloads all connected named sources.
+     * Omitting data resets the binding to its configured or provider-backed
+     * default.
+     *
+     * @param {import("./namedDataScope.js").NamedDataBinding} binding
+     * @param {import("./flowNode.js").Datum[]} [data]
+     */
+    updateNamedDataBinding(binding, data) {
+        if (data === undefined) {
+            binding.resetData();
+        } else {
+            binding.setData(data);
+        }
+
+        for (const dataSource of this.#dataSources.values()) {
+            if (
+                dataSource instanceof NamedSource &&
+                dataSource.binding === binding
+            ) {
+                dataSource.loadSynchronously();
+            }
         }
     }
 

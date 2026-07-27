@@ -27,7 +27,7 @@ The following eager source forms are available:
 | ---------- | ---------------------------------------- | ---------------------------------------------- |
 | `values`   | Embed data directly in the specification | Small examples, constants, test data           |
 | `url`      | Load data from one or more files         | CSV/TSV/JSON and other eager file formats      |
-| `name`     | Bind a dataset by name                   | Root-level `datasets` or runtime-provided data |
+| `name`     | Bind a dataset by name                   | Lexically scoped `datasets` declarations       |
 | `sequence` | Generate a numeric sequence              | Derived coordinates, bins, synthetic data      |
 
 ## Inline Data
@@ -262,21 +262,13 @@ disabled and delimited fields remain strings.
 
 ## Named Data
 
-Use `data.name` when the data should be supplied separately from the view
-specification.
+Use `data.name` to reference a dataset declared separately with `datasets`.
+The `datasets` property declares named arrays for a view subtree. A named data
+reference first checks its own view and then its enclosing views. A declaration
+in a more deeply nested view shadows an enclosing declaration with the same
+name.
 
-```json title="Example: Named data source"
-{
-  "data": {
-    "name": "myResults"
-  }
-}
-```
-
-One way to provide named data is the root-level `datasets` property, which
-embeds reusable datasets in the root specification and exposes them by name.
-
-```json title="Example: Root-level datasets"
+```json title="Example: Named dataset"
 {
   "datasets": {
     "myResults": [
@@ -290,9 +282,28 @@ embeds reusable datasets in the root specification and exposes them by name.
 }
 ```
 
-Another way is the [JavaScript API](../../api/runtime-state.md#named-data), which can provide
-or update named data at runtime. Named datasets must be arrays. If a named
-dataset is not found, GenomeSpy treats it as empty data.
+The declaring view owns the dataset. Its descendants may reference it, but a
+runtime update must target the declaring view itself. An empty declaration is
+useful when all rows will be supplied dynamically:
+
+```json
+{
+  "datasets": {
+    "myResults": []
+  },
+  "data": {
+    "name": "myResults"
+  }
+}
+```
+
+Each imported instance owns its declarations independently. Thus, repeated
+imports can use the same dataset names without collisions.
+
+Named datasets must be arrays. See
+[Runtime State](../../api/runtime-state.md#named-data) for dynamic updates.
+During the legacy compatibility period, unresolved names still use the
+embed-wide named-data fallback and otherwise produce empty data.
 
 ## Sequence Generator
 

@@ -34,11 +34,6 @@ export interface RootConfig {
     background?: string;
 
     /**
-     * https://vega.github.io/vega-lite/docs/data.html#datasets
-     */
-    datasets?: Record<string, any[]>;
-
-    /**
      * Global configuration defaults and theme tokens.
      *
      * The configuration is inherited by descendant views and can be overridden

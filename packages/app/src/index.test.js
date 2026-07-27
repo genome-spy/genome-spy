@@ -63,6 +63,10 @@ describe("embed", () => {
         expect(plugin.install).toHaveBeenCalledTimes(1);
         expect(plugin.install).toHaveBeenCalledWith(AppMock.mock.instances[0]);
         expect(AppMock).toHaveBeenCalledTimes(1);
+        expect(handle.datasets).toMatchObject({
+            set: expect.any(Function),
+            reset: expect.any(Function),
+        });
 
         handle.finalize();
 

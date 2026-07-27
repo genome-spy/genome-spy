@@ -2,7 +2,10 @@ import { isObject, isString } from "vega-util";
 
 import GenomeSpy from "@genome-spy/core/genomeSpy.js";
 import { loadSpec } from "@genome-spy/core/index.js";
-import { createViewMutationApi } from "@genome-spy/core/view/viewMutationApi.js";
+import {
+    createTopLevelDatasetApi,
+    createViewMutationApi,
+} from "@genome-spy/core/view/viewMutationApi.js";
 import App from "./app.js";
 import icon from "@genome-spy/core/img/bowtie.svg";
 import { html } from "lit";
@@ -71,6 +74,7 @@ export async function embed(el, spec, options = {}) {
 
     return {
         views: createViewMutationApi(genomeSpy),
+        datasets: createTopLevelDatasetApi(genomeSpy),
 
         debug: app.debug,
 

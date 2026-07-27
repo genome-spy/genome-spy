@@ -223,7 +223,8 @@ function createLabelViewSpec(sampleDef, metadataDef) {
     /** @type {import("../spec/view.js").AppUnitSpec} */
     const labelSpec = {
         name: "sample-labels",
-        data: { name: null },
+        datasets: { samples: [] },
+        data: { name: "samples" },
         width: sampleDef.labelLength ?? 0,
         configurableVisibility: true,
         transform: [

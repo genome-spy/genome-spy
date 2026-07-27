@@ -21,6 +21,9 @@ const fasta = new IndexedFasta({
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
+    datasets: {
+        fasta: [],
+    },
     height: 30,
 
     genome: {
@@ -202,7 +205,7 @@ async function handleDomainChange(domain, complexDomain) {
                   ),
               ];
 
-    api.updateNamedData("fasta", await Promise.all(sequences));
+    api.datasets.set("fasta", await Promise.all(sequences));
 }
 
 /**

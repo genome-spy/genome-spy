@@ -190,12 +190,6 @@ export async function createHeadlessEngine(spec, options = {}) {
     const context =
         options.context ?? createHeadlessViewContext(options.contextOptions);
 
-    if (spec.datasets) {
-        const getNamedDataFromProvider = context.getNamedDataFromProvider;
-        context.getNamedDataFromProvider = (name) =>
-            spec.datasets[name] ?? getNamedDataFromProvider(name);
-    }
-
     const view = await context.createOrImportView(
         /** @type {import("../spec/view.js").ViewSpec} */ (spec),
         null,
@@ -239,12 +233,6 @@ export async function createHeadlessViewHierarchy(spec, options = {}) {
             ...options.contextOptions,
             viewFactoryOptions: options.viewFactoryOptions,
         });
-
-    if (spec.datasets) {
-        const getNamedDataFromProvider = context.getNamedDataFromProvider;
-        context.getNamedDataFromProvider = (name) =>
-            spec.datasets[name] ?? getNamedDataFromProvider(name);
-    }
 
     const view = await context.createOrImportView(
         /** @type {import("../spec/view.js").ViewSpec} */ (spec),

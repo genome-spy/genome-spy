@@ -2,6 +2,9 @@ import { embed } from "@genome-spy/core/minimal";
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
+    datasets: {
+        dynamicData: [],
+    },
     data: {
         name: "dynamicData",
     },
@@ -79,7 +82,7 @@ const generateData = () => {
 };
 
 const update = () => {
-    api.updateNamedData("dynamicData", generateData());
+    api.datasets.set("dynamicData", generateData());
 };
 
 const animate = () => {

@@ -93,6 +93,28 @@ if (tracks.isAlive()) {
 }
 ```
 
+## Updating named data
+
+Use `api.datasets` for declarations in the top-level input specification. For a
+declaration in a nested or imported view, resolve the exact declaring view:
+
+```js
+const owner = api.views.get({
+  scope: ["translationA"],
+  view: "translationA",
+});
+
+owner.datasets.set("geneticCode", rows);
+owner.datasets.reset("geneticCode");
+```
+
+Descendants can reference the declaration, but updates do not search ancestors.
+Use the declaring view's handle so that repeated imports and nested subtrees
+remain independent.
+
+See [Runtime State](runtime-state.md#named-data) for declarations, initial data,
+and migration from the deprecated global APIs.
+
 ## Reading layout bounds
 
 `getLayoutBounds()` returns the rendered bounds of a view for positioning

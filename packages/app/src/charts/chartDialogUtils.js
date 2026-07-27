@@ -43,11 +43,18 @@ export function downloadChartPng(
  * @returns {Promise<import("@genome-spy/core/types/embedApi.js").EmbedResult>}
  */
 export async function embedRenderablePlot(container, plot) {
-    const api = await embed(container, plot.spec);
+    const spec =
+        plot.namedData.length > 0
+            ? {
+                  ...plot.spec,
+                  datasets: {
+                      ...plot.spec.datasets,
+                      ...Object.fromEntries(
+                          plot.namedData.map((data) => [data.name, data.rows])
+                      ),
+                  },
+              }
+            : plot.spec;
 
-    for (const data of plot.namedData) {
-        api.updateNamedData(data.name, data.rows);
-    }
-
-    return api;
+    return embed(container, spec);
 }

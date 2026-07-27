@@ -25,6 +25,11 @@ export interface EmbedOptions {
      * A function that allows retrieval of named data. There are two ways to provide named data:
      * 1. A data provider (this)
      * 2. Explicit updates using the `updateNamedData` method (the other).
+     *
+     * @deprecated Declare the dataset in the owning view and provide initial
+     * rows through the specification or update it through
+     * `EmbedResult.datasets.set()` for a top-level declaration or
+     * `ViewHandle.datasets.set()` for a nested declaration.
      */
     namedDataProvider?: (name: string) => any[];
 
@@ -180,6 +185,33 @@ export interface MoveViewOptions {
 }
 
 /**
+ * Runtime updates for datasets declared by one exact owner.
+ *
+ * The dataset must be declared in the owner's `datasets` property.
+ */
+export interface DatasetApi {
+    /**
+     * Replaces a named dataset declared by the associated owner.
+     *
+     * Descendant views that resolve the declaration receive the updated data.
+     */
+    set: <T = unknown>(name: string, data: T[]) => void;
+
+    /**
+     * Restores a named dataset declared by the associated owner to its configured
+     * values.
+     */
+    reset: (name: string) => void;
+}
+
+// Design intent: "Opaque" below means that callers cannot access the internal
+// View representation; it does not mean that this is an inert address.
+// ViewHandle is a capability-bearing reference. Operations inherently scoped
+// to one view belong here under resource namespaces (such as datasets and,
+// eventually, params), while hierarchy-wide lookup and structural mutations
+// remain on ViewApi. Namespaces avoid accumulating unrelated flat methods.
+
+/**
  * Live handle to a view in the embedded GenomeSpy instance.
  *
  * The exposed hierarchy matches the layout tree derived from the
@@ -230,6 +262,11 @@ export interface ViewHandle {
      * Returns handles for the current layout child views in spec order.
      */
     children: () => ViewHandle[];
+
+    /**
+     * Updates datasets declared by this exact view.
+     */
+    readonly datasets: DatasetApi;
 }
 
 /**
@@ -357,6 +394,14 @@ export interface EmbedDebugApi {
     getModules: () => Promise<typeof import("../debug/index.js")>;
 }
 
+// Design intent: EmbedResult.datasets and ViewHandle.datasets use the same
+// exact-owner model. The embed-level namespace is a convenience capability for
+// datasets declared by the top-level authored specification; it deliberately
+// bypasses an implicit layout root and never searches descendants by name.
+// Nested declarations require their owning ViewHandle. This top-level/scoped
+// split is intended to extend to parameters when they gain a view-scoped API;
+// the existing flat getParam() lookup remains separate for compatibility.
+
 /**
  * An API for controlling the embedded GenomeSpy instance.
  */
@@ -365,6 +410,17 @@ export interface EmbedResult {
      * Inspects and controls the live view hierarchy.
      */
     views: ViewApi;
+
+    /**
+     * Updates datasets declared by the top-level input specification.
+     *
+     * The dataset must be declared in that specification's `datasets`
+     * property.
+     *
+     * This namespace is unaffected by implicit layout wrappers and does not
+     * search nested views.
+     */
+    readonly datasets: DatasetApi;
 
     /**
      * Developer-only hooks for optional runtime inspection tools.
@@ -418,6 +474,8 @@ export interface EmbedResult {
      *
      * @param name data source to update
      * @param data new data. If left undefined, the data is retrieved from a provider.
+     * @deprecated Use `EmbedResult.datasets` for a top-level declaration or
+     * `ViewHandle.datasets` for a nested declaration.
      */
     updateNamedData: (name: string, data?: any[]) => void;
 

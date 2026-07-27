@@ -33,7 +33,8 @@ export default class SampleGroupView extends LayerView {
             width: GROUP_COLUMN_WIDTH,
             // TODO: Make step size, colors, font size, etc. configurable.
 
-            data: { name: null },
+            datasets: { groups: [] },
+            data: { name: "groups" },
 
             transform: [
                 { type: "filter", expr: "datum._depth > 0" },

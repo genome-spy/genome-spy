@@ -26,6 +26,15 @@ export default class DataSource extends FlowNode {
     }
 
     /**
+     * Returns an opaque identity used for merging equivalent data sources.
+     *
+     * @returns {unknown}
+     */
+    get shareKey() {
+        return this.identifier;
+    }
+
+    /**
      * Sets the loading status of the data source. The status is shown in the UI.
      *
      * @param {import("../../types/viewContext.js").DataLoadingStatus} status

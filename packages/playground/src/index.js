@@ -31,6 +31,10 @@ import "./playground.scss";
 import addMarkdownProps from "./markdownProps.js";
 import { asArray } from "@genome-spy/core/utils/arrayUtils.js";
 import { createEditorState } from "./editorState.js";
+import {
+    addUploadedDatasets,
+    findMissingNamedData,
+} from "./uploadedDatasets.js";
 
 registerJsonSchema();
 
@@ -436,18 +440,6 @@ function getEffectiveBaseUrlInfo(explicitBaseUrl, sourceBaseUrl) {
     }
 }
 
-/**
- * @param {string} name
- */
-function getNamedData(name) {
-    let file = files[name];
-    if (!file) {
-        missingFiles.add(name);
-    }
-
-    return file?.data;
-}
-
 async function formatWithPrettier() {
     const [prettier, prettierPluginBabel, prettierPluginEstree] =
         await Promise.all([
@@ -519,6 +511,9 @@ async function update(force = false) {
 
         previousStringifiedSpec = stringifiedSpec;
 
+        missingFiles = findMissingNamedData(parsedSpec, files);
+        addUploadedDatasets(parsedSpec, files);
+
         if (embedResult) {
             embedResult.finalize();
         }
@@ -535,7 +530,6 @@ async function update(force = false) {
             /** @type {HTMLElement} */ (genomeSpyContainerRef.value),
             parsedSpec,
             {
-                namedDataProvider: getNamedData,
                 powerPreference: "high-performance",
             }
         );
@@ -672,7 +666,7 @@ const layoutTemplate = () => html`
                           </section>
                           <section id="file-pane" slot="2">
                               <file-pane
-                                  @upload=${update}
+                                  @upload=${() => update(true)}
                                   .files=${files}
                                   .missingFiles=${missingFiles}
                               ></file-pane>
