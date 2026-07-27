@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
+
+### Bug Fixes
+
+* **app:** remove rendered metadata group titles ([bb6ed9c](https://github.com/genome-spy/genome-spy/commit/bb6ed9c8b9901642f34668d7d8f448ccacda46d1)) by @tuner
+* **core:** reload unavailable lazy data ([a3b6815](https://github.com/genome-spy/genome-spy/commit/a3b68150207422c2a4660be69bcba8c0a8fca627)) by @tuner
+
+### Features
+
+* **core:** add lexically scoped named datasets ([#442](https://github.com/genome-spy/genome-spy/issues/442)) ([b0b1c51](https://github.com/genome-spy/genome-spy/commit/b0b1c516d72f0d6bbd48137020d43d55f6103e15)) by @tuner
+* **core:** add numeric param transitions ([#435](https://github.com/genome-spy/genome-spy/issues/435)) ([6ea4e64](https://github.com/genome-spy/genome-spy/commit/6ea4e64606ac8bc41342593fc45f3a577d6c2dc9)) by @tuner
+* **core:** support ExprRef view sizing ([dd2f3db](https://github.com/genome-spy/genome-spy/commit/dd2f3db2b6b191aeb1904fe06f491f1fe4b21f2d)) by @tuner
+* **docs:** embed App examples in documentation ([#441](https://github.com/genome-spy/genome-spy/issues/441)) ([68e0084](https://github.com/genome-spy/genome-spy/commit/68e008468b79d068becf4f8f8e6ed722b6343f90)) by @tuner
+
 # [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
 
 ### Bug Fixes

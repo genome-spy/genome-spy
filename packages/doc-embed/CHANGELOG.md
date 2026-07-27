@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
+
+### Features
+
+* **docs:** embed App examples in documentation ([#441](https://github.com/genome-spy/genome-spy/issues/441)) ([68e0084](https://github.com/genome-spy/genome-spy/commit/68e008468b79d068becf4f8f8e6ed722b6343f90)) by @tuner
+
 # [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
 
 **Note:** Version bump only for package @genome-spy/doc-embed

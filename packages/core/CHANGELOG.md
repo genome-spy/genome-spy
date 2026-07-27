@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.81.0](https://github.com/genome-spy/genome-spy/compare/v0.80.0...v0.81.0) (2026-07-27)
+
+### Bug Fixes
+
+* **core:** defer lazy source listeners until load ([4afaca8](https://github.com/genome-spy/genome-spy/commit/4afaca8f4a12eaa13a480f6918c3128359a07fe1)) by @tuner
+* **core:** inherit encodings in legends ([4f14d4f](https://github.com/genome-spy/genome-spy/commit/4f14d4fa796be5c72ff7f0e11307ff44a168ab47)) by @tuner
+* **core:** make legend gradients smoother ([dab7a13](https://github.com/genome-spy/genome-spy/commit/dab7a1383fa29c2b7173cc7c0820d48be5f19f4e)) by @tuner
+* **core:** make ruler overlays tooltip inert ([f219839](https://github.com/genome-spy/genome-spy/commit/f2198393fbbeade86d12561f1ba866005af795b7)) by @tuner
+* **core:** refresh guides after property mapping ([cd99459](https://github.com/genome-spy/genome-spy/commit/cd9945926667694b6d89bfe495c076512c107bd0)) by @tuner
+* **core:** reload unavailable lazy data ([a3b6815](https://github.com/genome-spy/genome-spy/commit/a3b68150207422c2a4660be69bcba8c0a8fca627)) by @tuner
+* **core:** show equal genomic endpoints as coordinate ([b1bc8fa](https://github.com/genome-spy/genome-spy/commit/b1bc8faba35be184deb5d8085645e7a4d06cfdb5)) by @tuner
+* **core:** suppress initial shared-domain transitions ([889c651](https://github.com/genome-spy/genome-spy/commit/889c6519fb7d5727e4e5a6c9ac015aa7505b3f00)) by @tuner
+* **core:** update step-sized views on lazy domain changes ([21d37c5](https://github.com/genome-spy/genome-spy/commit/21d37c5ce15159624a5b3e25d9628af79f74bc12)) by @tuner
+* **core:** validate ranged endpoint coordinate spaces ([7ba892f](https://github.com/genome-spy/genome-spy/commit/7ba892fe07ca405592775b57ef52348d3dafde6a)) by @tuner
+
+### Features
+
+* **core:** add arrow mark ([#432](https://github.com/genome-spy/genome-spy/issues/432)) ([63b127b](https://github.com/genome-spy/genome-spy/commit/63b127bc259e7ab0947806fdf2a793bd53e2dede)) by @tuner
+* **core:** add BAM alignment transforms ([#433](https://github.com/genome-spy/genome-spy/issues/433)) ([cd68477](https://github.com/genome-spy/genome-spy/commit/cd6847759c521d818210459508257a69f0bc26f8)) by @tuner
+* **core:** add coordinate lookup transform ([#440](https://github.com/genome-spy/genome-spy/issues/440)) ([feee95b](https://github.com/genome-spy/genome-spy/commit/feee95bb05966e067a367d14dac987a40cb8d43b)) by @tuner
+* **core:** add eager VCF support ([fe5919f](https://github.com/genome-spy/genome-spy/commit/fe5919f1f385fe3f948fba3c8a5ba32f7a67c984)) by @tuner
+* **core:** add hierarchical resolution ownership ([ef9f534](https://github.com/genome-spy/genome-spy/commit/ef9f534d1fb446330f0beec9a043c823f3e173fd)) by @tuner
+* **core:** add lexically scoped named datasets ([#442](https://github.com/genome-spy/genome-spy/issues/442)) ([b0b1c51](https://github.com/genome-spy/genome-spy/commit/b0b1c516d72f0d6bbd48137020d43d55f6103e15)) by @tuner
+* **core:** add lookup transform ([#437](https://github.com/genome-spy/genome-spy/issues/437)) ([47cf63f](https://github.com/genome-spy/genome-spy/commit/47cf63f6c5b15b9f733c04fa901e039afd439637)) by @tuner
+* **core:** add numeric param transitions ([#435](https://github.com/genome-spy/genome-spy/issues/435)) ([6ea4e64](https://github.com/genome-spy/genome-spy/commit/6ea4e64606ac8bc41342593fc45f3a577d6c2dc9)) by @tuner
+* **core:** add tooltip encoding channel ([#434](https://github.com/genome-spy/genome-spy/issues/434)) ([8c3dd29](https://github.com/genome-spy/genome-spy/commit/8c3dd2941bf3181101a97f61e37d43bc328f93b7)) by @tuner
+* **core:** add transitioned multiscale stages ([#436](https://github.com/genome-spy/genome-spy/issues/436)) ([ad73f17](https://github.com/genome-spy/genome-spy/commit/ad73f1707d69ed824c380df2a6658519935c8e4e)) by @tuner
+* **core:** add window transform and FASTA translation example ([#438](https://github.com/genome-spy/genome-spy/issues/438)) ([17d42db](https://github.com/genome-spy/genome-spy/commit/17d42db0adaaabeaa89e884b6effa4165fab16ce)) by @tuner
+* **core:** support configurable zoom extents ([037affa](https://github.com/genome-spy/genome-spy/commit/037affa47dfffd17594b3f0037b7012b97a87cff)) by @tuner
+* **core:** support ExprRef view sizing ([dd2f3db](https://github.com/genome-spy/genome-spy/commit/dd2f3db2b6b191aeb1904fe06f491f1fe4b21f2d)) by @tuner
+* **core:** support lookup from current input ([51a9a40](https://github.com/genome-spy/genome-spy/commit/51a9a40ab9b8825ff5918159646f8346cbc7e12b)) by @tuner
+
 # [0.80.0](https://github.com/genome-spy/genome-spy/compare/v0.79.1...v0.80.0) (2026-07-02)
 
 ### Bug Fixes
