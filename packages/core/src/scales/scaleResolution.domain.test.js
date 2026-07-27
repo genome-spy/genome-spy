@@ -4,9 +4,13 @@ import { describe, expect, test, vi } from "vitest";
 
 import { toRegularArray as r } from "../utils/domainArray.js";
 import GenomeStore from "../genome/genomeStore.js";
+import { initializeViewSubtree } from "../data/flowInit.js";
+import { registerLazyDataSource } from "../data/sources/dataSourceFactory.js";
+import MockLazySource from "../data/sources/lazy/mockLazySource.js";
 import LayerView from "../view/layerView.js";
 import UnitView from "../view/unitView.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
+import { create } from "../view/testUtils.js";
 import {
     getRequiredScaleResolution,
     getScaleDomain,
@@ -832,6 +836,66 @@ describe("Scale resolution domain handling", () => {
         spy.mockRestore();
     });
 
+    test("shared root data waits for every coordinate lookup initially", async () => {
+        const unregister = registerLazyDataSource(
+            (params) => /** @type {any} */ (params).type == "mockLazy",
+            MockLazySource
+        );
+
+        try {
+            const view = await create(
+                {
+                    data: {
+                        lazy: /** @type {any} */ ({
+                            type: "mockLazy",
+                            channel: "x",
+                            data: [{ x: 0 }, { x: 1 }],
+                        }),
+                    },
+                    scales: { x: { domain: [0, 1] } },
+                    resolve: { scale: { x: "shared", y: "shared" } },
+                    layer: [
+                        createCoordinateLookupLayer([1, 2], 0),
+                        createCoordinateLookupLayer([4, 5], 100),
+                    ],
+                },
+                LayerView
+            );
+            initializeViewSubtree(view, view.context.dataFlow);
+
+            const resolution = getRequiredScaleResolution(view, "y");
+            const zoomTo = vi.spyOn(resolution, "zoomTo");
+            const rootSource = /** @type {MockLazySource} */ (
+                view.flowHandle.dataSource
+            );
+            const [firstSideSource] = /** @type {MockLazySource[]} */ (
+                view.context.dataFlow.dataSources.filter(
+                    (source) => source !== rootSource
+                )
+            );
+
+            for (const child of view.children) {
+                child.onBeforeRender();
+            }
+
+            rootSource.requestDataForDomain([0, 1]);
+            await vi.waitFor(() =>
+                expect(r(resolution.scale.domain())).toEqual([0, 5])
+            );
+            expect(zoomTo).not.toHaveBeenCalled();
+
+            firstSideSource.params.data = [
+                { x: 0, score: 6 },
+                { x: 1, score: 7 },
+            ];
+            firstSideSource.requestDataForDomain([0, 1]);
+            await vi.waitFor(() => expect(zoomTo).toHaveBeenCalled());
+            zoomTo.mockRestore();
+        } finally {
+            unregister();
+        }
+    });
+
     test("reconfigureDomain skips zoom animation for non-zoomable index scales", async () => {
         const view = await initView(
             {
@@ -929,3 +993,42 @@ describe("Scale resolution domain handling", () => {
         expect(scale.domain()).toEqual(["a", "b", "c"]);
     });
 });
+
+/**
+ * @param {[number, number]} scores
+ * @param {number} delay
+ */
+function createCoordinateLookupLayer(scores, delay) {
+    return {
+        transform: [
+            {
+                type: "coordinateLookup",
+                from: {
+                    data: {
+                        lazy: /** @type {any} */ ({
+                            type: "mockLazy",
+                            channel: "x",
+                            delay,
+                            data: [
+                                { x: 0, score: scores[0] },
+                                { x: 1, score: scores[1] },
+                            ],
+                        }),
+                    },
+                },
+                key: "x",
+                values: ["score"],
+            },
+        ],
+        mark: "rule",
+        encoding: {
+            x: {
+                field: "x",
+                type: "quantitative",
+                scale: { domain: [0, 1] },
+            },
+            y: { datum: 0, type: "quantitative" },
+            y2: { field: "score" },
+        },
+    };
+}

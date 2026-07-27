@@ -24,8 +24,8 @@ import {
     QUANTITATIVE,
 } from "./scaleResolutionConstants.js";
 
-import { getAccessorDomainKey } from "../encoder/accessor.js";
-import { isSecondaryChannel } from "../encoder/encoder.js";
+import { getAccessorDomainKey, isScaleAccessor } from "../encoder/accessor.js";
+import { getEncoderAccessors, isSecondaryChannel } from "../encoder/encoder.js";
 import { collectConfiguredDomainExprRefs } from "./domainExpressions.js";
 import { NominalDomain } from "../utils/domainArray.js";
 import { shallowArrayEquals } from "../utils/arrayUtils.js";
@@ -100,6 +100,10 @@ export default class ScaleResolution {
 
     /** @type {Set<ScaleResolutionMember>} */
     #dataDomainMembers = new Set();
+
+    // Suppress distracting transitions through partial domains while initial
+    // lazy data sources load. Later dynamic domain updates still animate.
+    #initialDomainDataReady = false;
 
     /** @type {ScaleResolutionMember[] | undefined} */
     #orderedMembers;
@@ -529,6 +533,7 @@ export default class ScaleResolution {
         this.#members.add(member);
         if (member.contributesToDomain) {
             this.#dataDomainMembers.add(member);
+            this.#initialDomainDataReady = false;
         }
         return member;
     }
@@ -809,6 +814,64 @@ export default class ScaleResolution {
             }
         }
         return false;
+    }
+
+    /**
+     * Marks initial data as ready after every visible non-constant domain
+     * contributor has produced a value. Until then, apply partial initial
+     * domains directly instead of visibly transitioning between them.
+     *
+     * @returns {boolean} whether initial data became ready now
+     */
+    #markInitialDomainDataReady() {
+        if (this.#initialDomainDataReady) {
+            return false;
+        }
+
+        for (const member of this.#dataDomainMembers) {
+            const view = member.view;
+            if (!view.isConfiguredVisible()) {
+                continue;
+            }
+            if (!view.isDataInitialized()) {
+                if (!member.channelDef.scale?.domain) {
+                    return false;
+                }
+                continue;
+            }
+            if (!this.#hasInitialDomainDataCoverage(member)) {
+                return false;
+            }
+        }
+
+        this.#initialDomainDataReady = true;
+        return true;
+    }
+
+    /**
+     * @param {ScaleResolutionMember} member
+     */
+    #hasInitialDomainDataCoverage(member) {
+        const accessors = getScaleMemberAccessors(member).filter(
+            (accessor) => !accessor.constant && !accessor.channelDef.domainInert
+        );
+        if (accessors.length === 0) {
+            return true;
+        }
+
+        const collector = member.view.getCollector();
+        if (!collector || !collector.completed) {
+            return false;
+        }
+
+        return accessors.some(
+            (accessor) =>
+                collector.getDomain(
+                    getAccessorDomainKey(accessor, this.type),
+                    this.type,
+                    accessor
+                ).length > 0
+        );
     }
 
     /**
@@ -1265,6 +1328,7 @@ export default class ScaleResolution {
         const initialDomainSnapshot = hasSelectionConfiguredDomain
             ? this.#domainAggregator.getDefaultDomain(true)
             : undefined;
+        const initialDomainDataBecameReady = this.#markInitialDomainDataReady();
 
         if (
             this.#domainAggregator.captureInitialDomain(
@@ -1274,6 +1338,13 @@ export default class ScaleResolution {
             )
         ) {
             // Domain changes were suppressed during reconfigure; notify explicitly.
+            this.#notifyListeners("domain");
+            return;
+        }
+
+        if (initialDomainDataBecameReady) {
+            // Apply the complete initial domain directly. Subsequent updates
+            // use the normal transition path below.
             this.#notifyListeners("domain");
             return;
         }
@@ -1580,6 +1651,15 @@ function intervalsEqual(a, b) {
     }
 
     return a.length === b.length && shallowArrayEquals(a, b);
+}
+
+/**
+ * @param {ScaleResolutionMember} member
+ * @returns {import("../types/encoder.js").ScaleAccessor[]}
+ */
+function getScaleMemberAccessors(member) {
+    const encoder = member.view.mark.encoders?.[member.channel];
+    return encoder ? getEncoderAccessors(encoder).filter(isScaleAccessor) : [];
 }
 
 /**
