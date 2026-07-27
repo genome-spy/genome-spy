@@ -105,8 +105,8 @@ describe("view-level scale property mapping", () => {
         const mappings = mapViewLevelScaleProps(view);
 
         expect(mappings).toHaveLength(1);
+        expect(mappings[0].view).toBe(view);
         expect(mappings[0]).toMatchObject({
-            view,
             channel: "x",
             props: { domain: [0, 10] },
         });
@@ -174,8 +174,8 @@ describe("view-level scale property mapping", () => {
         const mappings = mapViewLevelScaleProps(view);
 
         expect(mappings).toHaveLength(1);
+        expect(mappings[0].view).toBe(view);
         expect(mappings[0]).toMatchObject({
-            view,
             channel: "x",
             props: {
                 domain: [
@@ -307,8 +307,8 @@ describe("view-level scale property mapping", () => {
         const mappings = mapViewLevelScaleProps(view);
 
         expect(mappings).toHaveLength(1);
+        expect(mappings[0].view).toBe(view);
         expect(mappings[0]).toMatchObject({
-            view,
             channel: "x",
             props: { domain: [0, 10] },
             resolution: undefined,
@@ -468,8 +468,8 @@ describe("view-level scale property mapping", () => {
         const [mapping] = mapViewLevelScaleProps(view);
 
         expect(removedResolution.getViewLevelScaleProps()).toBeUndefined();
+        expect(mapping.view).toBe(view);
         expect(mapping).toMatchObject({
-            view,
             channel: "x",
             props: { domain: [0, 10] },
             resolution: undefined,
