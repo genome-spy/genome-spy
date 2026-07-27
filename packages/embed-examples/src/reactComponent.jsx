@@ -40,7 +40,7 @@ const App = () => {
 
     /** @type {(api: import("@genome-spy/core/types/embedApi.js").EmbedResult) => void} */
     const updateData = (api) => {
-        api.views.root().datasets.set("dynamicData", data);
+        api.datasets.set("dynamicData", data);
     };
 
     return (

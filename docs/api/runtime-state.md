@@ -3,12 +3,11 @@
 ## Named data
 
 Named data sources allow data to be provided at runtime instead of loading it
-from a URL. Declare the dataset in the view that owns it and reference it with
-`data.name`:
+from a URL. Declare every named dataset in the `datasets` property of the view
+that owns it, and reference it with `data.name`:
 
 ```json
 {
-  "name": "resultsOwner",
   "datasets": {
     "myResults": []
   },
@@ -19,6 +18,11 @@ from a URL. Declare the dataset in the view that owns it and reference it with
 }
 ```
 
+The declaration is required for reliable scoping. It identifies the lexical
+owner used for shadowing, repeated imports, and scoped runtime updates. A bare
+`data: { "name": "myResults" }` without a matching declaration uses only the
+deprecated embed-wide compatibility fallback.
+
 `datasets` declarations are lexically scoped through nested views. A view can
 reference a dataset declared on itself or an enclosing view. A more deeply
 nested declaration with the same name shadows the enclosing declaration.
@@ -26,19 +30,32 @@ Repeated import instances therefore own independent datasets.
 
 ### Updating named data
 
-Resolve the declaring view and use its `datasets` API:
+Use the embed-level `datasets` API for a dataset declared by the top-level input
+specification:
 
 ```js
 const api = await embed("#container", spec);
-const owner = api.views.get({
-  scope: [],
-  view: "resultsOwner",
-});
 
-owner.datasets.set("myResults", [
+api.datasets.set("myResults", [
   { x: 1, y: 2 },
   { x: 2, y: 3 },
 ]);
+```
+
+`api.datasets` always targets the top-level authored specification, even when
+GenomeSpy adds an implicit layout wrapper. It never searches nested views by
+name.
+
+For a declaration in a nested or imported view, resolve the declaring view and
+use its `datasets` API:
+
+```js
+const owner = api.views.get({
+  scope: ["translationA"],
+  view: "translationA",
+});
+
+owner.datasets.set("geneticCode", rows);
 ```
 
 The handle must represent the exact view containing the `datasets` property.
@@ -49,7 +66,7 @@ This makes ownership explicit when the same name occurs in multiple subtrees.
 the declaration:
 
 ```js
-owner.datasets.reset("myResults");
+api.datasets.reset("myResults");
 ```
 
 To avoid an initially empty dataset, a host can place initial rows in the
@@ -74,7 +91,8 @@ shadowed declarations reliably.
 Existing integrations may continue using them during the compatibility period.
 A global update throws when the name identifies multiple scoped datasets.
 Migrate by adding a `datasets` declaration to the intended owner and calling
-`datasets.set()` or `datasets.reset()` through that view's handle.
+`api.datasets.set()` or `api.datasets.reset()` for a top-level declaration, or
+the owning view handle's `datasets` methods for a nested declaration.
 
 Undeclared `data.name` references also retain their embed-wide fallback
 behavior temporarily. New specifications should declare every named dataset

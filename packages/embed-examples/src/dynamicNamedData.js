@@ -59,7 +59,6 @@ const spec = {
 const container = document.getElementById("container");
 
 const api = await embed(container, spec);
-const dataOwner = api.views.root();
 
 const generateData = () => {
     const pi = 3.141;
@@ -83,7 +82,7 @@ const generateData = () => {
 };
 
 const update = () => {
-    dataOwner.datasets.set("dynamicData", generateData());
+    api.datasets.set("dynamicData", generateData());
 };
 
 const animate = () => {

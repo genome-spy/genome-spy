@@ -311,11 +311,12 @@ useful when all rows will be supplied dynamically:
 Each imported instance owns its declarations independently. Thus, repeated
 imports can use the same dataset names without collisions.
 
-Named datasets must be arrays. See
+Declare every named dataset in `datasets`. The declaration establishes its
+lexical owner and is required for reliable shadowing, repeated imports, and
+scoped runtime updates. Named datasets must be arrays. See
 [Runtime State](../../api/runtime-state.md#named-data) for dynamic updates.
 During the legacy compatibility period, unresolved names still use the
-embed-wide named-data fallback and otherwise produce empty data. Declare all
-new named datasets explicitly.
+embed-wide named-data fallback and otherwise produce empty data.
 
 ## Sequence Generator
 

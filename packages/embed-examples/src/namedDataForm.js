@@ -9,7 +9,6 @@ const getFormData = () =>
 
 /** @type {import("@genome-spy/core/spec/root.js").RootSpec} */
 const spec = {
-    name: "namedDataForm",
     datasets: {
         myData: getFormData(),
     },
@@ -29,11 +28,7 @@ const spec = {
 const container = document.getElementById("container");
 
 const api = await embed(container, spec);
-const dataOwner = api.views.get({
-    scope: [],
-    view: "namedDataForm",
-});
 
 document.getElementById("form").addEventListener("input", () => {
-    dataOwner.datasets.set("myData", getFormData());
+    api.datasets.set("myData", getFormData());
 });

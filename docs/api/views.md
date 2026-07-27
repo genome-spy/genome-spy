@@ -95,7 +95,17 @@ if (tracks.isAlive()) {
 
 ## Updating named data
 
-A view handle can update datasets declared by that exact view:
+Use `api.datasets` for datasets declared by the top-level input specification:
+
+```js
+api.datasets.set("results", rows);
+api.datasets.reset("results");
+```
+
+This targets the authored top-level view even if GenomeSpy adds an implicit
+layout wrapper. It does not search nested views.
+
+A view handle updates datasets declared by that exact nested or imported view:
 
 ```js
 const owner = api.views.get({
@@ -110,6 +120,8 @@ owner.datasets.reset("geneticCode");
 Descendants resolve `datasets` declarations lexically, but updates do not
 search ancestors. Use the declaring view's handle so that ownership stays
 unambiguous when imports or nested subtrees reuse the same dataset name.
+Declare every named dataset in `datasets`; the declaration establishes its
+scope and makes runtime addressing reliable.
 
 See [Runtime State](runtime-state.md#named-data) for declarations, initial data,
 and migration from the deprecated global APIs.
