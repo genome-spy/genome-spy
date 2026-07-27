@@ -263,15 +263,6 @@ disabled and delimited fields remain strings.
 ## Named Data
 
 Use `data.name` to reference a dataset declared separately with `datasets`.
-
-```json title="Example: Named data source"
-{
-  "data": {
-    "name": "myResults"
-  }
-}
-```
-
 The `datasets` property declares named arrays for a view subtree. A named data
 reference first checks its own view and then its enclosing views. A declaration
 in a more deeply nested view shadows an enclosing declaration with the same
@@ -279,7 +270,6 @@ name.
 
 ```json title="Example: Named dataset"
 {
-  "name": "results",
   "datasets": {
     "myResults": [
       { "x": 1, "y": 2 },
@@ -298,7 +288,6 @@ useful when all rows will be supplied dynamically:
 
 ```json
 {
-  "name": "results",
   "datasets": {
     "myResults": []
   },
@@ -311,9 +300,7 @@ useful when all rows will be supplied dynamically:
 Each imported instance owns its declarations independently. Thus, repeated
 imports can use the same dataset names without collisions.
 
-Declare every named dataset in `datasets`. The declaration establishes its
-lexical owner and is required for reliable shadowing, repeated imports, and
-scoped runtime updates. Named datasets must be arrays. See
+Named datasets must be arrays. See
 [Runtime State](../../api/runtime-state.md#named-data) for dynamic updates.
 During the legacy compatibility period, unresolved names still use the
 embed-wide named-data fallback and otherwise produce empty data.

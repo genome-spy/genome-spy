@@ -18,15 +18,11 @@ that owns it, and reference it with `data.name`:
 }
 ```
 
-The declaration is required for reliable scoping. It identifies the lexical
-owner used for shadowing, repeated imports, and scoped runtime updates. A bare
-`data: { "name": "myResults" }` without a matching declaration uses only the
-deprecated embed-wide compatibility fallback.
-
 `datasets` declarations are lexically scoped through nested views. A view can
 reference a dataset declared on itself or an enclosing view. A more deeply
 nested declaration with the same name shadows the enclosing declaration.
-Repeated import instances therefore own independent datasets.
+Repeated import instances therefore own independent datasets. The declaration
+establishes the owner used for scoped runtime updates.
 
 ### Updating named data
 
@@ -46,8 +42,8 @@ api.datasets.set("myResults", [
 GenomeSpy adds an implicit layout wrapper. It never searches nested views by
 name.
 
-For a declaration in a nested or imported view, resolve the declaring view and
-use its `datasets` API:
+For a declaration in a nested or imported view, use the exact declaring view's
+`datasets` API:
 
 ```js
 const owner = api.views.get({
@@ -58,9 +54,8 @@ const owner = api.views.get({
 owner.datasets.set("geneticCode", rows);
 ```
 
-The handle must represent the exact view containing the `datasets` property.
-Calling `datasets.set()` on a descendant does not modify an ancestor's dataset.
-This makes ownership explicit when the same name occurs in multiple subtrees.
+Updates do not search ancestors or descendants. Exact ownership keeps updates
+unambiguous when multiple subtrees use the same dataset name.
 
 `datasets.reset()` removes the runtime override and restores the values from
 the declaration:
