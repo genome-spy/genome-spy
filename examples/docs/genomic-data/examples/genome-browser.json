@@ -1,0 +1,40 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "A genome-browser-like view with multiple tracks",
+    "Combines existing visualizations into a genome-browser-like view with multiple tracks sharing the x-axis.",
+    "Data source: See the imported specifications."
+  ],
+
+  "assembly": "hg38",
+
+  "scales": {
+    "x": {
+      "domain": [
+        { "chrom": "chr20", "pos": 10006452 },
+        { "chrom": "chr20", "pos": 10006533 }
+      ]
+    }
+  },
+
+  "resolve": { "axis": { "x": "shared" } },
+  "axes": { "x": { "orient": "top", "title": null } },
+
+  "vconcat": [
+    { "import": { "url": "docs/genomic-data/examples/cytobands.json" } },
+    {
+      "import": {
+        "url": "docs/genomic-data/examples/indexed-fasta-six-frame-translation.json"
+      }
+    },
+    {
+      "import": { "url": "docs/genomic-data/examples/bam-read-alignments.json" }
+    },
+    {
+      "import": { "url": "docs/genomic-data/examples/scored-refSeq-genes.json" }
+    }
+  ],
+
+  "config": { "legend": { "disable": true } }
+}

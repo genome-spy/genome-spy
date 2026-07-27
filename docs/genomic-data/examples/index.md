@@ -23,6 +23,7 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 - [BAM Read Alignments](bam-read-alignments.md) bam-read-alignments.json
 - [Multiple Sequence Alignment](multiple-sequence-alignment.md) msa.json
 - [SPI1 Binding-QTL Dynseq Track](dynseq-spi1-bqtl.md) dynseq-spi1-bqtl.json
+- [Composing a Genome Browser](genome-browser.md) genome-browser.json
 
 ## More examples
 

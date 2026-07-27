@@ -250,8 +250,7 @@
                   "chrom": "chrom",
                   "pos": "start",
                   "type": "locus",
-                  "band": 0,
-                  "axis": {}
+                  "band": 0
                 },
                 "x2": { "chrom": "chrom", "pos": "end", "band": 0 },
                 "direction": {

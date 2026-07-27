@@ -68,6 +68,8 @@
     }
   ],
 
+  "axes": { "x": { "title": null } },
+
   "encoding": {
     "y": {
       "field": "_lane",
@@ -133,8 +135,7 @@
           "encoding": {
             "x": {
               "field": "_start",
-              "type": "locus",
-              "axis": { "title": null }
+              "type": "locus"
             },
             "x2": { "field": "_end" },
             "search": { "field": "symbol" }

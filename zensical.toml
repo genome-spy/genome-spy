@@ -87,6 +87,7 @@ nav = [
             { "ClinVar Small-Variant Classifications" = "genomic-data/examples/clinvar-variants.md" },
             { "BAM Read Alignments" = "genomic-data/examples/bam-read-alignments.md" },
             { "Multiple Sequence Alignment" = "genomic-data/examples/multiple-sequence-alignment.md" },
+            { "Composing a Genome Browser" = "genomic-data/examples/genome-browser.md" },
         ] },
     ] },
     { "Working with Sample Collections" = [
