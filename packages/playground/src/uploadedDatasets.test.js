@@ -68,4 +68,47 @@ describe("uploaded datasets", () => {
 
         expect(findMissingNamedData(spec, {})).toEqual(new Set());
     });
+
+    test("resolves declarations through lexical ancestry", () => {
+        const spec = {
+            datasets: {
+                rootData: /** @type {any[]} */ ([]),
+            },
+            vconcat: [
+                {
+                    datasets: {
+                        localData: /** @type {any[]} */ ([]),
+                    },
+                    data: { name: "localData" },
+                    layer: [{ data: { name: "rootData" } }],
+                },
+            ],
+        };
+
+        expect(findMissingNamedData(spec, {})).toEqual(new Set());
+    });
+
+    test("does not resolve declarations from sibling subtrees", () => {
+        const spec = {
+            vconcat: [
+                {
+                    datasets: {
+                        siblingData: /** @type {any[]} */ ([]),
+                    },
+                },
+                {
+                    data: { name: "siblingData" },
+                },
+            ],
+        };
+
+        expect(findMissingNamedData(spec, {})).toEqual(
+            new Set(["siblingData"])
+        );
+        expect(
+            findMissingNamedData(spec, {
+                siblingData: { data: [] },
+            })
+        ).toEqual(new Set());
+    });
 });

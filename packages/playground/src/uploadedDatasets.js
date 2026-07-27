@@ -36,50 +36,58 @@ export function addUploadedDatasets(spec, files) {
  * @returns {Set<string>}
  */
 export function findMissingNamedData(spec, files) {
-    const references = new Set();
-    const declarations = new Set(Object.keys(files));
+    const missing = new Set();
 
-    collectNamedData(spec, references, declarations);
+    collectMissingNamedData(spec, new Set(Object.keys(files)), missing);
 
-    return new Set(
-        Array.from(references).filter((name) => !declarations.has(name))
-    );
+    return missing;
 }
 
 /**
  * @param {unknown} value
- * @param {Set<string>} references
- * @param {Set<string>} declarations
+ * @param {Set<string>} inheritedDeclarations
+ * @param {Set<string>} missing
  */
-function collectNamedData(value, references, declarations) {
+function collectMissingNamedData(value, inheritedDeclarations, missing) {
     if (Array.isArray(value)) {
         value.forEach((item) =>
-            collectNamedData(item, references, declarations)
+            collectMissingNamedData(item, inheritedDeclarations, missing)
         );
     } else if (value && typeof value == "object") {
         const object = /** @type {Record<string, any>} */ (value);
-
-        if (isObject(object.datasets)) {
-            Object.keys(object.datasets).forEach((name) =>
-                declarations.add(name)
-            );
-        }
+        const declarations = isObject(object.datasets)
+            ? new Set([
+                  ...inheritedDeclarations,
+                  ...Object.keys(object.datasets),
+              ])
+            : inheritedDeclarations;
 
         if (isNamedData(object.data)) {
-            references.add(object.data.name);
+            addMissingName(object.data.name, declarations, missing);
         }
 
         if (object.type == "lookup" && isNamedData(object.from)) {
-            references.add(object.from.name);
+            addMissingName(object.from.name, declarations, missing);
         }
 
         Object.entries(object).forEach(([key, child]) => {
             // Dataset contents and inline values may contain arbitrary objects
             // that happen to resemble visualization specifications.
             if (key != "datasets" && key != "values") {
-                collectNamedData(child, references, declarations);
+                collectMissingNamedData(child, declarations, missing);
             }
         });
+    }
+}
+
+/**
+ * @param {string} name
+ * @param {Set<string>} declarations
+ * @param {Set<string>} missing
+ */
+function addMissingName(name, declarations, missing) {
+    if (!declarations.has(name)) {
+        missing.add(name);
     }
 }
 
