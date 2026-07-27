@@ -229,7 +229,7 @@
               "field": "_lane",
               "type": "index",
               "scale": {
-                "padding": 0.2,
+                "padding": 0.25,
                 "reverse": true,
                 "zoom": false
               }
@@ -243,7 +243,9 @@
                 "type": "arrow",
                 "style": "arrow-block",
                 "minStemLength": 10,
-                "color": "#c8c8c8"
+                "fill": "#e0e0e0",
+                "stroke": "#c4c4c4",
+                "strokeWidth": { "expr": "linearstep(3, 8, laneHeight)" }
               },
               "encoding": {
                 "x": {
