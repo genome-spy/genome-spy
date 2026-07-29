@@ -7113,6 +7113,316 @@ exports[`shared examples > initializes examples/core/transforms/pileup.json 1`] 
 }
 `;
 
+exports[`shared examples > initializes examples/docs/genomic-data/examples/ASCAT-algorithm.json 1`] = `
+{
+  "assemblies": [
+    "hg19",
+  ],
+  "dataSources": [
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisGenomeSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+    {
+      "identifier": null,
+      "type": "SequenceSource",
+    },
+    {
+      "identifier": "{"params":{"url":"https://data.genomespy.app/sample-data/ASCAT/ascat_fit_segments_S96.tsv.gz"},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+    {
+      "identifier": "{"params":{"url":"https://data.genomespy.app/sample-data/ASCAT/ascat_raw_S96.tsv.gz"},"baseUrl":"examples/"}",
+      "type": "UrlSource",
+    },
+  ],
+  "hierarchy": {
+    "baseUrl": "examples/",
+    "children": [
+      {
+        "baseUrl": "examples/",
+        "children": [],
+        "name": "sunrise",
+        "type": "UnitView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "bar",
+                "type": "UnitView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "text",
+                "type": "UnitView",
+              },
+            ],
+            "name": "selectedGoodnessOfFit",
+            "type": "LayerView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "layer0",
+                "type": "UnitView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "mismatchMajor",
+                "type": "UnitView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "layer2",
+                "type": "UnitView",
+              },
+              {
+                "baseUrl": "examples/",
+                "children": [],
+                "name": "layer3",
+                "type": "UnitView",
+              },
+            ],
+            "name": "roundedAndDifference",
+            "type": "LayerView",
+          },
+        ],
+        "name": "grid1",
+        "type": "ConcatView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer0",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer1",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer2",
+            "type": "UnitView",
+          },
+        ],
+        "name": "logRTrack",
+        "type": "LayerView",
+      },
+      {
+        "baseUrl": "examples/",
+        "children": [
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer0",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer1",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer2",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer3",
+            "type": "UnitView",
+          },
+          {
+            "baseUrl": "examples/",
+            "children": [],
+            "name": "layer4",
+            "type": "UnitView",
+          },
+        ],
+        "name": "bafTrack",
+        "type": "LayerView",
+      },
+    ],
+    "name": "viewRoot",
+    "type": "ConcatView",
+  },
+}
+`;
+
 exports[`shared examples > initializes examples/docs/genomic-data/genomic-coordinates/point-features.json 1`] = `
 {
   "assemblies": [

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import { describe, expect, test, vi } from "vitest";
 
 import Collector from "../data/collector.js";
+import CrossTransform from "../data/transforms/cross.js";
 import { createHeadlessEngine } from "../genomeSpy/headlessBootstrap.js";
 import View from "../view/view.js";
 import * as resolutionMemberOrder from "./resolutionMemberOrder.js";
@@ -41,7 +42,7 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
         }
     });
 
-    test("rho/psi changes do not re-run path-based member ordering", async () => {
+    test("ruler fit changes stay independent of the sunrise cross", async () => {
         const spec = createTrimmedAscatSpec();
 
         const pathSpy = vi.spyOn(View.prototype, "getPathString");
@@ -53,36 +54,133 @@ describe("Interactive updates keep scale-resolution work bounded", () => {
             ScaleResolution.prototype,
             "reconfigureDomain"
         );
+        const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
 
         try {
             const { view } = await createHeadlessEngine(spec);
             const target = view
                 .getDescendants()
                 .find((descendant) =>
-                    descendant.paramRuntime.hasLocalParam("rho")
+                    descendant.paramRuntime.hasLocalParam("selectedFit")
                 );
+            const goodnessOfFitContainer = view
+                .getDescendants()
+                .find(
+                    (descendant) => descendant.name === "selectedGoodnessOfFit"
+                );
+            const goodnessOfFit = goodnessOfFitContainer
+                ?.getDescendants()
+                .find((descendant) => descendant.flowHandle?.collector);
 
-            if (!target) {
-                throw new Error("Expected the ASCAT parameter view to exist.");
+            if (!target || !goodnessOfFit?.flowHandle?.collector) {
+                throw new Error(
+                    "Expected the ASCAT ruler parameter and selected score view."
+                );
             }
+
+            const initialScore = Array.from(
+                goodnessOfFit.flowHandle.collector.getData()
+            )[0].goodnessOfFit;
 
             // Ignore the setup cost. This regression is about interactive updates.
             pathSpy.mockClear();
             orderSpy.mockClear();
             reconfigureSpy.mockClear();
+            crossSpy.mockClear();
 
-            target.paramRuntime.setValue("rho", 0.57);
-            target.paramRuntime.setValue("psi", 2.8);
+            target.paramRuntime.setValue("selectedFit", {
+                type: "ruler",
+                values: { x: 2.817, y: 0.573 },
+            });
 
             await Promise.resolve();
 
             expect(reconfigureSpy).toHaveBeenCalled();
+            expect(crossSpy).not.toHaveBeenCalled();
             expect(orderSpy).not.toHaveBeenCalled();
             expect(pathSpy).not.toHaveBeenCalled();
+            expect(
+                Array.from(goodnessOfFit.flowHandle.collector.getData())[0]
+                    .goodnessOfFit
+            ).not.toBe(initialScore);
         } finally {
             pathSpy.mockRestore();
             orderSpy.mockRestore();
             reconfigureSpy.mockRestore();
+            crossSpy.mockRestore();
+        }
+    });
+
+    test("gamma changes recompute the ASCAT sunrise surface", async () => {
+        const spec = createTrimmedAscatSpec();
+        const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
+
+        try {
+            const { view } = await createHeadlessEngine(spec);
+            const target = view
+                .getDescendants()
+                .find((descendant) =>
+                    descendant.paramRuntime.hasLocalParam("gamma")
+                );
+            const sunrise = view
+                .getDescendants()
+                .find((descendant) => descendant.name === "sunrise");
+
+            if (!target || !sunrise?.flowHandle?.collector) {
+                throw new Error(
+                    "Expected the ASCAT gamma parameter and sunrise view."
+                );
+            }
+
+            expect(sunrise.flowHandle.collector.getItemCount()).toBe(9);
+            crossSpy.mockClear();
+
+            target.paramRuntime.setValue("gamma", 0.6);
+            await Promise.resolve();
+
+            expect(crossSpy).toHaveBeenCalled();
+            expect(sunrise.flowHandle.collector.getItemCount()).toBe(9);
+        } finally {
+            crossSpy.mockRestore();
+        }
+    });
+
+    test("balanced-run weighting recomputes the ASCAT sunrise surface", async () => {
+        const spec = createTrimmedAscatSpec();
+        const crossSpy = vi.spyOn(CrossTransform.prototype, "handle");
+
+        try {
+            const { view } = await createHeadlessEngine(spec);
+            const target = view
+                .getDescendants()
+                .find((descendant) =>
+                    descendant.paramRuntime.hasLocalParam("downweightBalanced")
+                );
+            const sunrise = view
+                .getDescendants()
+                .find((descendant) => descendant.name === "sunrise");
+
+            if (!target || !sunrise?.flowHandle?.collector) {
+                throw new Error(
+                    "Expected the ASCAT weighting parameter and sunrise view."
+                );
+            }
+
+            const initialDistance = Array.from(
+                sunrise.flowHandle.collector.getData()
+            )[0].meanRoundingError;
+            crossSpy.mockClear();
+
+            target.paramRuntime.setValue("downweightBalanced", false);
+            await Promise.resolve();
+
+            expect(crossSpy).toHaveBeenCalled();
+            expect(
+                Array.from(sunrise.flowHandle.collector.getData())[0]
+                    .meanRoundingError
+            ).not.toBe(initialDistance);
+        } finally {
+            crossSpy.mockRestore();
         }
     });
 
@@ -269,16 +367,49 @@ function rewriteDatasetUrls(node) {
         return;
     }
 
-    if (isRecord(node.data) && typeof node.data.url === "string") {
-        if (node.data.url.endsWith("segments_S96.tsv")) {
+    if (isRecord(node.data) && "url" in node.data) {
+        const url = node.data.url;
+        const urlText =
+            typeof url === "string"
+                ? url
+                : isRecord(url) && typeof url.expr === "string"
+                  ? url.expr
+                  : "";
+
+        if (urlText.includes("segments_")) {
             node.data = { name: "segments_S96" };
-        } else if (node.data.url.endsWith("raw_S96.tsv")) {
+        } else if (urlText.includes("raw_")) {
             node.data = { name: "raw_S96" };
         }
     }
 
     for (const value of Object.values(node)) {
         rewriteDatasetUrls(value);
+    }
+}
+
+/**
+ * Keeps the two-stage candidate cross in the regression fixture while reducing
+ * the sampled surface to 3 × 3 cells.
+ *
+ * @param {Record<string, any>} node
+ */
+function trimCandidateSequences(node) {
+    if (!isRecord(node)) {
+        return;
+    }
+
+    if (isRecord(node.sequence)) {
+        if (
+            node.sequence.as === "rhoCandidate" ||
+            node.sequence.as === "psiCandidate"
+        ) {
+            node.sequence.stop = node.sequence.start + node.sequence.step * 3;
+        }
+    }
+
+    for (const value of Object.values(node)) {
+        trimCandidateSequences(value);
     }
 }
 
@@ -307,6 +438,7 @@ function createTrimmedAscatSpec() {
         segments_S96: SEGMENTS_S96,
         raw_S96: RAW_S96,
     };
+    trimCandidateSequences(spec);
     rewriteDatasetUrls(spec);
 
     return spec;
