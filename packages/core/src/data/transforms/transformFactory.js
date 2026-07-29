@@ -1,6 +1,7 @@
 import Collector from "../collector.js";
 import AlignmentMismatchesTransform from "./alignmentMismatches.js";
 import CoordinateLookupTransform from "./coordinateLookup.js";
+import CrossTransform from "./cross.js";
 import CoverageTransform from "./coverage.js";
 import FilterScoredLabelsTransform from "./filterScoredLabels.js";
 import FilterTransform from "./filter.js";
@@ -85,6 +86,16 @@ export default function createTransform(params, view, auxiliaryInput) {
             auxiliaryInput.collector,
             auxiliaryInput.source,
             view
+        );
+    } else if (params.type == "cross") {
+        if (!auxiliaryInput) {
+            throw new Error("Cross transform requires a foreign collector.");
+        }
+        return new CrossTransform(
+            /** @type {import("../../spec/transform.js").CrossParams} */ (
+                params
+            ),
+            auxiliaryInput.collector
         );
     }
 

@@ -22,6 +22,7 @@ nav = [
             { "AlignmentMismatches" = "grammar/transform/alignment-mismatches.md" },
             { "Collect" = "grammar/transform/collect.md" },
             { "Coverage" = "grammar/transform/coverage.md" },
+            { "Cross" = "grammar/transform/cross.md" },
             { "Filter" = "grammar/transform/filter.md" },
             { "FilterScoredLabels" = "grammar/transform/filter-scored-labels.md" },
             { "Flatten" = "grammar/transform/flatten.md" },

@@ -1,5 +1,12 @@
 import { PositionalChannel, PrimaryPositionalChannel } from "./channel.js";
-import { DataSource, LazyData } from "./data.js";
+import {
+    DataSource,
+    Generator,
+    InlineData,
+    LazyData,
+    NamedData,
+    UrlData,
+} from "./data.js";
 import { FontStyle, FontWeight } from "./font.js";
 import { ExprRef } from "./parameter.js";
 
@@ -102,6 +109,29 @@ export interface FormulaParams extends TransformParamsBase {
 
     /** The (new) field where the computed value is written to */
     as: string;
+}
+
+export type CrossData = UrlData | InlineData | NamedData | Generator;
+
+export interface CrossInput {
+    /**
+     * Finite eager data crossed with the primary input.
+     */
+    data: CrossData;
+
+    /**
+     * Unary transforms applied to the foreign data before crossing.
+     */
+    transform?: TransformParams[];
+}
+
+export interface CrossParams extends TransformParamsBase {
+    type: "cross";
+
+    /**
+     * The finite eager foreign data and its optional preprocessing transforms.
+     */
+    from: CrossInput;
 }
 
 export interface LookupSelfInput {
@@ -1010,6 +1040,7 @@ export type TransformParams =
     | CollectParams
     | CoverageParams
     | CoordinateLookupParams
+    | CrossParams
     | FlattenDelimitedParams
     | FormulaParams
     | LookupParams

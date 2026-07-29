@@ -70,6 +70,51 @@ describe("generated core schema", () => {
         );
     });
 
+    test("accepts eager cross data and rejects lazy cross data", () => {
+        const validate = createCoreValidator();
+        const baseSpec = {
+            data: { values: [{ x: 1 }] },
+            mark: "point",
+            encoding: {
+                x: { field: "x", type: "quantitative" },
+                y: { field: "y", type: "quantitative" },
+            },
+        };
+
+        const eagerSpec = {
+            ...baseSpec,
+            transform: [
+                {
+                    type: "cross",
+                    from: {
+                        data: {
+                            sequence: { start: 0, stop: 2, as: "y" },
+                        },
+                    },
+                },
+            ],
+        };
+        expect(
+            validate(eagerSpec),
+            JSON.stringify(validate.errors, null, 2)
+        ).toBe(true);
+
+        const lazySpec = {
+            ...baseSpec,
+            transform: [
+                {
+                    type: "cross",
+                    from: {
+                        data: {
+                            lazy: { type: "axisTicks", channel: "x" },
+                        },
+                    },
+                },
+            ],
+        };
+        expect(validate(lazySpec)).toBe(false);
+    });
+
     test("includes transform descriptions in the generated schema", () => {
         const schema = createCoreSchema();
         const aggregateParams =

@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import Collector from "../data/collector.js";
+import CrossTransform from "../data/transforms/cross.js";
 import FilterTransform from "../data/transforms/filter.js";
 import FormulaTransform from "../data/transforms/formula.js";
 import InlineSource from "../data/sources/inlineSource.js";
@@ -123,6 +124,47 @@ test("Nested data sources", async () => {
     expect(byPath(dataSources[1], [0])).toBeInstanceOf(CloneTransform);
     expect(byPath(dataSources[1], [0, 0])).toBeInstanceOf(FormulaTransform);
     expect(byPath(dataSources[1], [0, 0, 0])).toBeInstanceOf(Collector);
+});
+
+test("Cross transform builds a unary auxiliary data branch", async () => {
+    const root = await create(
+        {
+            data: { values: [{ x: 1 }] },
+            transform: [
+                {
+                    type: "cross",
+                    from: {
+                        data: {
+                            sequence: { start: 0, stop: 2, as: "y" },
+                        },
+                        transform: [
+                            {
+                                type: "formula",
+                                expr: "datum.y * 2",
+                                as: "doubled",
+                            },
+                        ],
+                    },
+                },
+            ],
+            mark,
+        },
+        UnitView
+    );
+
+    const flow = buildDataFlow(root);
+    const primarySource = flow.dataSources.find(
+        (source) => source instanceof InlineSource
+    );
+    const foreignSource = flow.dataSources.find(
+        (source) => source instanceof SequenceSource
+    );
+
+    expect(byPath(primarySource, [0])).toBeInstanceOf(CrossTransform);
+    expect(byPath(primarySource, [0, 0])).toBeInstanceOf(Collector);
+    expect(byPath(foreignSource, [0])).toBeInstanceOf(CloneTransform);
+    expect(byPath(foreignSource, [0, 0])).toBeInstanceOf(FormulaTransform);
+    expect(byPath(foreignSource, [0, 0, 0])).toBeInstanceOf(Collector);
 });
 
 test("Linearize does not rewrite synthesized secondary locus channels", async () => {

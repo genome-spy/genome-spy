@@ -120,6 +120,14 @@ SCHEMA CoordinateLookupInput
 
 SCHEMA CoreRootSpec
 
+## CrossData
+
+SCHEMA CrossData
+
+## CrossInput
+
+SCHEMA CrossInput
+
 ## CsvDataFormat
 
 SCHEMA CsvDataFormat
