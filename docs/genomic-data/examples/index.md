@@ -13,7 +13,7 @@ EXAMPLE_GALLERY examples/docs/genomic-data/examples
 - [Chromosome Ideogram from Cytobands](cytobands.md) cytobands.json
 - [RefSeq Gene Annotations with Scored Labels](refseq-genes.md) scored-refSeq-genes.json
 - [ASCAT Copy-Number Segmentation](ascat.md) ASCAT.json
-- [ASCAT Algorithm in GenomeSpy](ascat-algorithm.md) ASCAT-algorithm.json
+- [Interactive ASCAT-like Purity/Ploidy Fitting](ascat-algorithm.md) ASCAT-algorithm.json
 - [HCC1954 Structural Variants and Copy Number](hcc1954-sv-cnv.md) hcc1954-sv-cnv.json
 - [TCGA Ovarian Cancer GISTIC2 Copy-Number Landscape](tcga-ov-gistic.md) tcga-ov-gistic.json
 - [Sashimi Plot from Splice Junctions](sashimi-plot.md) sashimi-plot.json

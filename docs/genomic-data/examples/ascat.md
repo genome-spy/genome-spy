@@ -12,7 +12,7 @@ Segmentation](https://observablehq.com/@tuner/ascat-copy-number-segmentation?col
 where it is structured a bit differently.
 
 For the core purity/ploidy fit and rounding step, see the companion
-[ASCAT Algorithm in GenomeSpy](ascat-algorithm.md) page.
+[Interactive ASCAT-like Purity/Ploidy Fitting](ascat-algorithm.md) page.
 
 EXAMPLE examples/docs/genomic-data/examples/ASCAT.json height=500 spechidden
 

@@ -2,20 +2,121 @@
   "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "ASCAT Algorithm in GenomeSpy",
-    "Visualizes the ASCAT purity/ploidy fit for simulated sample S96 and shows how rounded allele-specific copy-number estimates change when rho and psi are adjusted.",
+    "Interactive ASCAT-like Purity/Ploidy Fitting",
+    "Visualizes ASCAT purity/ploidy fits for simulated samples and shows how rounded allele-specific copy-number estimates change when rho and psi are adjusted.",
     "Loo P Van, Nordgard SH, Lingjærde OC, et al.",
     "Allele-specific copy number analysis of tumors",
     "Proc Natl Acad Sci. 2010;107(39):16910-16915. doi:10.1073/pnas.1009843107"
   ],
 
-  "assembly": "hg18",
+  "assembly": "hg19",
 
   "data": {
-    "url": "https://data.genomespy.app/sample-data/ASCAT/segments_S96.tsv"
+    "url": {
+      "expr": "'https://data.genomespy.app/sample-data/ASCAT/ascat_fit_segments_' + sample + '.tsv.gz'"
+    }
   },
 
-  "params": [{ "name": "minLength", "value": 1 }],
+  "transform": [
+    {
+      "type": "collect"
+    },
+    {
+      "type": "formula",
+      "expr": "(selectedFit.values.y - 1 + pow(2, datum.logRMean / gamma) * (1 - datum.bafMean) * (2 * (1 - selectedFit.values.y) + selectedFit.values.y * selectedFit.values.x)) / selectedFit.values.y",
+      "as": "aRaw",
+      "description": "Apply ASCAT Supporting Information Eq. S7 to estimate raw major-allele copy number at the selected purity and tumor ploidy."
+    },
+    {
+      "type": "formula",
+      "expr": "(selectedFit.values.y - 1 + pow(2, datum.logRMean / gamma) * datum.bafMean * (2 * (1 - selectedFit.values.y) + selectedFit.values.y * selectedFit.values.x)) / selectedFit.values.y",
+      "as": "bRaw",
+      "description": "Apply ASCAT Supporting Information Eq. S8 to estimate raw minor-allele copy number at the selected purity and tumor ploidy."
+    },
+    {
+      "type": "formula",
+      "expr": "max(0, round(datum.aRaw))",
+      "as": "nMajor",
+      "description": "Round the raw major-allele estimate to a nonnegative integer copy number as in Supporting Information Eq. S10."
+    },
+    {
+      "type": "formula",
+      "expr": "max(0, round(datum.bRaw))",
+      "as": "nMinor",
+      "description": "Round the raw minor-allele estimate to a nonnegative integer copy number as in Supporting Information Eq. S11."
+    },
+    {
+      "type": "formula",
+      "expr": "abs(datum.aRaw - datum.nMajor)",
+      "as": "aError"
+    },
+    {
+      "type": "formula",
+      "expr": "abs(datum.bRaw - datum.nMinor)",
+      "as": "bError"
+    },
+    {
+      "type": "formula",
+      "expr": "gamma * log((2 * (1 - selectedFit.values.y) + selectedFit.values.y * (datum.nMajor + datum.nMinor)) / (2 * (1 - selectedFit.values.y) + selectedFit.values.y * selectedFit.values.x)) / LN2",
+      "as": "logRMean_ASCAT",
+      "description": "Project the rounded copy numbers back to fitted LogR using Supporting Information Eq. S12."
+    },
+    {
+      "type": "formula",
+      "expr": "(1 - selectedFit.values.y + selectedFit.values.y * datum.nMinor) / (2 - 2 * selectedFit.values.y + selectedFit.values.y * (datum.nMajor + datum.nMinor))",
+      "as": "bafMean_ASCAT",
+      "description": "Project the rounded copy numbers back to fitted BAF using Supporting Information Eq. S13."
+    },
+    {
+      "type": "identifier"
+    }
+  ],
+
+  "params": [
+    { "name": "minLength", "value": 1 },
+    { "name": "selectedFit" },
+    {
+      "name": "sample",
+      "value": "S96",
+      "bind": {
+        "input": "select",
+        "options": [
+          "S17",
+          "S36",
+          "S54",
+          "S64",
+          "S77",
+          "S84",
+          "S96",
+          "S97",
+          "S100"
+        ],
+        "name": "Sample"
+      }
+    },
+    {
+      "name": "gamma",
+      "value": 0.55,
+      "bind": {
+        "input": "range",
+        "min": 0.2,
+        "max": 1.2,
+        "step": 0.05,
+        "name": "LogR decompaction (gamma)",
+        "debounce": 100,
+        "description": "Controls LogR decompaction in the ASCAT copy-number equations."
+      }
+    },
+    {
+      "name": "downweightBalanced",
+      "value": true,
+      "bind": {
+        "input": "checkbox",
+        "name": "Downweight balanced segments",
+        "description": "Multiply the heterozygous-probe-count weight of exactly balanced segments by 0.05, as in ASCAT R v3.2.0."
+      }
+    }
+  ],
 
   "resolve": { "axis": { "x": "shared" } },
 
@@ -36,88 +137,185 @@
 
   "vconcat": [
     {
+      "name": "sunrise",
+
+      "title": {
+        "text": {
+          "expr": "'Purity/ploidy integer-fit distance - ' + sample"
+        },
+        "style": "overlay-title"
+      },
+
+      "height": 240,
+
       "params": [
         {
-          "name": "rho",
-          "value": 0.56,
-          "bind": {
-            "input": "range",
-            "min": 0.01,
-            "max": 1.0,
-            "step": 0.01,
-            "description": "Aberrant cell fraction (Tumor purity)"
-          }
-        },
-        {
-          "name": "psi",
-          "value": 2.75,
-          "bind": {
-            "input": "range",
-            "min": 0.5,
-            "max": 7.0,
-            "step": 0.05,
-            "description": "Average ploidy"
+          "name": "selectedFit",
+          "push": "outer",
+          "value": { "x": 2.75, "y": 0.56 },
+          "ruler": {
+            "encodings": ["x", "y"],
+            "on": "mousedown",
+            "clear": false,
+            "snap": false,
+            "mark": {
+              "strokeDash": [5, 3]
+            }
           }
         }
       ],
+
+      "data": {
+        "sequence": {
+          "start": 0.1,
+          "stop": 1.051,
+          "step": 0.01,
+          "as": "rhoCandidate"
+        }
+      },
 
       "transform": [
         {
-          "type": "collect"
+          "type": "cross",
+          "description": "Form the purity and tumor-ploidy grid used by the ASCAT parameter search.",
+          "from": {
+            "data": {
+              "sequence": {
+                "start": 1,
+                "stop": 6.001,
+                "step": 0.05,
+                "as": "psiCandidate"
+              }
+            }
+          }
+        },
+        {
+          "type": "cross",
+          "description": "Cross every purity/ploidy candidate with ASCAT's joint segmented LogR/BAF runs for distance evaluation.",
+          "from": {
+            "data": {
+              "url": {
+                "expr": "'https://data.genomespy.app/sample-data/ASCAT/ascat_fit_segments_' + sample + '.tsv.gz'"
+              }
+            },
+            "transform": [
+              {
+                "type": "filter",
+                "expr": "datum.chr !== 'X'"
+              },
+              {
+                "type": "project",
+                "fields": ["logRMean", "bafMean", "nProbes"]
+              },
+              {
+                "type": "formula",
+                "expr": "datum.nProbes * (downweightBalanced && datum.bafMean === 0.5 ? 0.05 : 1)",
+                "as": "fitWeight",
+                "description": "Weight each joint run by its heterozygous-probe count and, optionally, downweight exactly balanced runs 20-fold as in ASCAT R v3.2.0."
+              }
+            ]
+          }
         },
         {
           "type": "formula",
-          "expr": "(rho - 1 + pow(2, datum.logRMean) * (1 - datum.bafMean) * (2 * (1 - rho) + rho * psi)) / rho",
-          "as": "aRaw"
+          "expr": "(datum.rhoCandidate - 1 + pow(2, datum.logRMean / gamma) * datum.bafMean * (2 * (1 - datum.rhoCandidate) + datum.rhoCandidate * datum.psiCandidate)) / datum.rhoCandidate",
+          "as": "bRawCandidate",
+          "description": "Apply ASCAT Supporting Information Eq. S8 to estimate minor-allele copy number for each candidate and segment."
         },
         {
           "type": "formula",
-          "expr": "(rho - 1 + pow(2, datum.logRMean) * datum.bafMean * (2 * (1 - rho) + rho * psi)) / rho",
-          "as": "bRaw"
+          "expr": "max(0, round(datum.bRawCandidate))",
+          "as": "nMinorCandidate",
+          "description": "Round each candidate's raw minor-allele estimate to a nonnegative integer copy number."
         },
         {
           "type": "formula",
-          "expr": "max(0, round(datum.aRaw))",
-          "as": "nMajor"
+          "expr": "pow(datum.bRawCandidate - datum.nMinorCandidate, 2) * datum.fitWeight",
+          "as": "errorSquaredWeighted",
+          "description": "Evaluate the minor-allele counterpart of paper Eq. 3: uncapped squared distance to a nonnegative integer, weighted by ASCAT's probe-based run weight."
+        },
+        {
+          "type": "aggregate",
+          "groupby": ["rhoCandidate", "psiCandidate"],
+          "fields": ["fitWeight", "errorSquaredWeighted"],
+          "ops": ["sum", "sum"],
+          "as": ["totalWeight", "distanceSum"],
+          "description": "Aggregate the minor-allele integer-fit distance for each purity and tumor-ploidy candidate."
         },
         {
           "type": "formula",
-          "expr": "max(0, round(datum.bRaw))",
-          "as": "nMinor"
+          "expr": "datum.distanceSum / datum.totalWeight",
+          "as": "meanRoundingError",
+          "description": "Normalize the summed error into the mean integer-fit distance displayed by the sunrise plot."
         },
         {
           "type": "formula",
-          "expr": "abs(datum.aRaw - datum.nMajor)",
-          "as": "aError"
+          "expr": "max(0.1, datum.rhoCandidate - 0.005)",
+          "as": "rhoStart"
         },
         {
           "type": "formula",
-          "expr": "abs(datum.bRaw - datum.nMinor)",
-          "as": "bError"
+          "expr": "min(1.05, datum.rhoCandidate + 0.005)",
+          "as": "rhoEnd"
         },
         {
           "type": "formula",
-          "expr": "log((2 * (1 - rho) + rho * (datum.nMajor + datum.nMinor)) / (2 * (1 - rho) + rho * psi)) / LN2",
-          "as": "logRMean_ASCAT"
+          "expr": "max(1, datum.psiCandidate - 0.025)",
+          "as": "psiStart"
         },
         {
           "type": "formula",
-          "expr": "(1 - rho + rho * datum.nMinor) / (2 - 2 * rho + rho * (datum.nMajor + datum.nMinor))",
-          "as": "bafMean_ASCAT"
-        },
-        {
-          "type": "identifier"
+          "expr": "min(6, datum.psiCandidate + 0.025)",
+          "as": "psiEnd"
         }
       ],
 
+      "resolve": {
+        "scale": { "x": "excluded" },
+        "axis": { "x": "excluded" }
+      },
+
+      "mark": {
+        "type": "rect",
+        "tooltip": null
+      },
+
+      "encoding": {
+        "x": {
+          "field": "psiStart",
+          "type": "quantitative",
+          "scale": { "domain": [1, 6] },
+          "axis": { "title": "Tumor ploidy (psi)", "format": ".1f" }
+        },
+        "x2": { "field": "psiEnd" },
+        "y": {
+          "field": "rhoStart",
+          "type": "quantitative",
+          "scale": { "domain": [0.1, 1.05] },
+          "axis": { "title": "Tumor purity (rho)", "format": ".2f" }
+        },
+        "y2": { "field": "rhoEnd" },
+        "color": {
+          "field": "meanRoundingError",
+          "type": "quantitative",
+          "scale": {
+            "scheme": "redblue",
+            "type": "log",
+            "reverse": true
+          }
+        }
+      }
+    },
+
+    {
       "resolve": { "axis": { "x": "shared" } },
 
       "vconcat": [
         {
-          "name": "goodnessOfFit",
+          "name": "selectedGoodnessOfFit",
 
           "title": {
-            "text": "Goodness of fit",
+            "text": "Selected fit",
             "orient": "none"
           },
 
@@ -130,38 +328,37 @@
 
           "transform": [
             {
+              "type": "filter",
+              "expr": "datum.chr !== 'X'"
+            },
+            {
               "type": "project",
-              "fields": ["startpos", "endpos", "aError", "bError"]
+              "fields": ["bafMean", "bError", "nProbes"]
             },
             {
               "type": "formula",
-              "expr": "datum.endpos - datum.startpos",
-              "as": "segmentLength"
+              "expr": "datum.nProbes * (downweightBalanced && datum.bafMean === 0.5 ? 0.05 : 1)",
+              "as": "fitWeight",
+              "description": "Apply the same ASCAT probe-based and optional balanced-run weighting as the sunrise."
             },
             {
               "type": "formula",
-              "expr": "min(datum.aError * datum.aError, 0.25) * datum.segmentLength",
-              "as": "aErrorSquaredWeighted"
-            },
-            {
-              "type": "formula",
-              "expr": "min(datum.bError * datum.bError, 0.25) * datum.segmentLength",
-              "as": "bErrorSquaredWeighted"
+              "expr": "datum.bError * datum.bError * datum.fitWeight",
+              "as": "errorSquaredWeighted",
+              "description": "Evaluate the selected fit with the same weighted minor-allele error as the sunrise."
             },
             {
               "type": "aggregate",
-              "fields": [
-                "segmentLength",
-                "aErrorSquaredWeighted",
-                "bErrorSquaredWeighted"
-              ],
-              "ops": ["sum", "sum", "sum"],
-              "as": ["totalLength", "aSum", "bSum"]
+              "fields": ["fitWeight", "errorSquaredWeighted"],
+              "ops": ["sum", "sum"],
+              "as": ["totalWeight", "distanceSum"],
+              "description": "Aggregate the selected fit's minor-allele error over all autosomal joint runs."
             },
             {
               "type": "formula",
-              "expr": "100 - (datum.aSum + datum.bSum) / (datum.totalLength * 0.5) * 100",
-              "as": "goodnessOfFit"
+              "expr": "100 - datum.distanceSum / (datum.totalWeight * 0.25) * 100",
+              "as": "goodnessOfFit",
+              "description": "Convert the selected mean distance to an ASCAT-like goodness score; the publication defines the original rescaling after Eq. 3."
             }
           ],
 
@@ -182,7 +379,8 @@
                   "scale": {
                     "domain": [0, 100],
                     "clamp": true
-                  }
+                  },
+                  "axis": null
                 },
 
                 "x2": { "datum": 0 }
@@ -193,7 +391,7 @@
 
               "mark": {
                 "type": "text",
-                "size": 20,
+                "size": 12,
                 "tooltip": null
               },
 
@@ -201,8 +399,7 @@
                 "x": { "value": 0.5 },
                 "x2": null,
                 "text": {
-                  "field": "goodnessOfFit",
-                  "format": ".2f"
+                  "expr": "'rho ' + (round(selectedFit.values.y * 1000) / 1000) + ' | psi ' + (round(selectedFit.values.x * 1000) / 1000) + ' | gamma ' + gamma + ' | score ' + (round(datum.goodnessOfFit * 100) / 100)"
                 }
               }
             }
@@ -342,7 +539,9 @@
       "layer": [
         {
           "data": {
-            "url": "https://data.genomespy.app/sample-data/ASCAT/raw_S96.tsv"
+            "url": {
+              "expr": "'https://data.genomespy.app/sample-data/ASCAT/ascat_raw_' + sample + '.tsv.gz'"
+            }
           },
 
           "title": "Single probe",
@@ -379,6 +578,22 @@
             "size": { "value": 3 },
             "color": { "value": "black" }
           }
+        },
+        {
+          "title": "ASCAT-like fitted LogR",
+          "mark": {
+            "type": "rule",
+            "minLength": { "expr": "minLength" }
+          },
+          "encoding": {
+            "y": {
+              "field": "logRMean_ASCAT",
+              "type": "quantitative",
+              "title": null
+            },
+            "size": { "value": 2 },
+            "color": { "value": "#f06850" }
+          }
         }
       ]
     },
@@ -389,7 +604,9 @@
       "layer": [
         {
           "data": {
-            "url": "https://data.genomespy.app/sample-data/ASCAT/raw_S96.tsv"
+            "url": {
+              "expr": "'https://data.genomespy.app/sample-data/ASCAT/ascat_raw_' + sample + '.tsv.gz'"
+            }
           },
 
           "transform": [{ "type": "filter", "expr": "datum.baf !== null" }],
@@ -444,6 +661,38 @@
             },
             "size": { "value": 3 },
             "color": { "value": "black" }
+          }
+        },
+        {
+          "title": "ASCAT-like fitted minor-allele BAF",
+          "mark": {
+            "type": "rule",
+            "minLength": { "expr": "minLength" }
+          },
+          "encoding": {
+            "y": {
+              "field": "bafMean_ASCAT",
+              "type": "quantitative",
+              "title": null
+            },
+            "size": { "value": 2 },
+            "color": { "value": "#88d27a" }
+          }
+        },
+        {
+          "title": "ASCAT-like fitted major-allele BAF",
+          "mark": {
+            "type": "rule",
+            "minLength": { "expr": "minLength" }
+          },
+          "encoding": {
+            "y": {
+              "expr": "1 - datum.bafMean_ASCAT",
+              "type": "quantitative",
+              "title": null
+            },
+            "size": { "value": 2 },
+            "color": { "value": "#f06850" }
           }
         }
       ]
