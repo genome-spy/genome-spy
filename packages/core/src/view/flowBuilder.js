@@ -158,7 +158,7 @@ export function buildDataFlow(
     /**
      * Creates a side-input source branch with optional unary transforms.
      *
-     * @param {import("../spec/data.js").DataSource} data
+     * @param {import("../spec/data.js").Data} data
      * @param {import("../spec/transform.js").TransformParams[]} transforms
      * @param {View} view
      * @returns {{ collector: Collector, source: DataSource }}

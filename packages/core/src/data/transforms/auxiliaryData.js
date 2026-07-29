@@ -2,7 +2,7 @@ import { isSelfLookup } from "./lookup.js";
 
 /**
  * @typedef {object} AuxiliaryDataInput
- * @prop {import("../../spec/data.js").DataSource} data
+ * @prop {import("../../spec/data.js").Data} data
  * @prop {import("../../spec/transform.js").TransformParams[]} transforms
  */
 
@@ -17,7 +17,8 @@ export function hasAuxiliaryDataInput(params) {
                     params
                 )
             )) ||
-        params.type == "coordinateLookup"
+        params.type == "coordinateLookup" ||
+        params.type == "cross"
     );
 }
 
@@ -53,6 +54,18 @@ export function getAuxiliaryDataInput(params) {
         return {
             data: lookup.from.data,
             transforms: lookup.from.transform ?? [],
+        };
+    } else if (params.type == "cross") {
+        const cross =
+            /** @type {import("../../spec/transform.js").CrossParams} */ (
+                params
+            );
+        if ("lazy" in cross.from.data) {
+            throw new Error("Cross cannot use lazy foreign data.");
+        }
+        return {
+            data: cross.from.data,
+            transforms: cross.from.transform ?? [],
         };
     }
 }
