@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import "@genome-spy/core/data/formats/parquet.js";
+import "@genome-spy/core/data/formats/arrow.js";
 import "@genome-spy/core/data/formats/bed.js";
 import "@genome-spy/core/data/formats/bedpe.js";
 import "@genome-spy/core/data/formats/fasta.js";

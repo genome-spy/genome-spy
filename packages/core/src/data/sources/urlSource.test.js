@@ -1,7 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest";
+import { tableFromArrays, tableToIPC } from "@uwdata/flechette";
 import { formats as vegaFormats } from "vega-loader";
 import Collector from "../collector.js";
 import { makeParamRuntimeProvider } from "../flowTestUtils.js";
+import "../formats/arrow.js";
 import bed from "../formats/bed.js";
 import bedpe from "../formats/bedpe.js";
 import "../formats/vcf.js";
@@ -127,6 +129,35 @@ test("UrlSource reads BEDPE using format.type bedpe", async () => {
             strand1: 1,
             strand2: -1,
         },
+    ]);
+});
+
+test("UrlSource infers and reads Arrow IPC data", async () => {
+    const bytes = tableToIPC(
+        tableFromArrays({
+            sample: ["S1", "S2"],
+            value: [10, 20],
+        }),
+        { format: "file" }
+    );
+
+    global.fetch = /** @type {any} */ (
+        vi.fn(
+            async () =>
+                new Response(new Uint8Array(bytes).buffer, { status: 200 })
+        )
+    );
+
+    const source = new UrlSource(
+        {
+            url: "example.arrow",
+        },
+        createViewStub()
+    );
+
+    expect(await collectSource(source)).toEqual([
+        { sample: "S1", value: 10 },
+        { sample: "S2", value: 20 },
     ]);
 });
 

@@ -11,6 +11,7 @@ import rawPlugin from "vite-raw-plugin";
 const forbiddenSources = [
     "src/genomeSpy.js",
     "src/data/formats/parquet.js",
+    "src/data/formats/arrow.js",
     "src/data/formats/bed.js",
     "src/data/formats/bedpe.js",
     "src/data/formats/fasta.js",

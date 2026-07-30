@@ -15,9 +15,9 @@ behavior directly.
 
 GenomeSpy can read eager data as `"csv"`, `"tsv"`, `"dsv"`, and `"json"`, as
 well as additional URL-based formats such as [`"bed"`](#bed),
-[`"bedpe"`](#bedpe), [`"fasta"`](#fasta), and [`"parquet"`](#parquet). Whatever
-the source, the data is treated as a table of records that can be further
-processed with [transforms](../transform/index.md).
+[`"bedpe"`](#bedpe), [`"fasta"`](#fasta), [`"arrow"`](#arrow), and
+[`"parquet"`](#parquet). Whatever the source, the data is treated as a table of
+records that can be further processed with [transforms](../transform/index.md).
 
 ## Overview
 
@@ -440,6 +440,36 @@ The FASTA loader produces data objects with two fields: `identifier` and
 `sequence`. With the [`"flattenSequence"`](../transform/flatten-sequence.md)
 transform you can split the sequences into individual bases (one object per
 base) for easier visualization.
+
+### Arrow
+
+[_Apache Arrow_](https://arrow.apache.org/) IPC is a column-oriented binary
+format for transferring tabular data. GenomeSpy supports both the Arrow IPC
+file and stream encodings and materializes their contents as row objects.
+
+The format type is `"arrow"`:
+
+```json
+{
+  "data": {
+    "url": "data.arrow",
+    "format": {
+      "type": "arrow"
+    }
+  }
+}
+```
+
+The format is inferred automatically for URLs ending in `.arrow`. For other
+file extensions, specify the format type explicitly.
+
+Arrow dates and timestamps are decoded as numeric values, and 64-bit integers
+are converted to JavaScript numbers. Arrow IPC buffer compression requires
+separate LZ4 or Zstandard codecs and is not currently supported. Gzip
+compression of the complete file, such as `data.arrow.gz`, is supported.
+
+The implementation is based on
+[Flechette](https://github.com/uwdata/flechette).
 
 ### Parquet
 
