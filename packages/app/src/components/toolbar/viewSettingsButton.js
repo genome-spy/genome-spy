@@ -262,19 +262,8 @@ class ViewSettingsButton extends LitElement {
             /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
             const submenuItems = [];
 
-            if (hasVariableBindings(view)) {
-                submenuItems.push(
-                    {
-                        label: "Parameters",
-                        type: "header",
-                    },
-                    { type: "divider" },
-                    {
-                        customContent: html`<div class="gs-input-binding">
-                            ${createBindingInputs(view.paramRuntime)}
-                        </div>`,
-                    }
-                );
+            if (view !== viewRoot && hasVariableBindings(view)) {
+                submenuItems.push(...createParameterSubmenuItems(view, true));
             }
 
             if (view instanceof MetadataView) {
@@ -334,9 +323,11 @@ class ViewSettingsButton extends LitElement {
                     <input
                         style=${`margin-left: ${depth * 1.5}em;`}
                         type=${isRadioGroup ? "radio" : "checkbox"}
-                        ?disabled=${!selectorKey ||
-                        !uniqueSelectorKeys.has(selectorKey) ||
-                        !isVisibilityConfigurable(view)}
+                        ?disabled=${
+                            !selectorKey ||
+                            !uniqueSelectorKeys.has(selectorKey) ||
+                            !isVisibilityConfigurable(view)
+                        }
                         .checked=${live(checked)}
                         @change=${(/** @type {UIEvent} */ event) =>
                             isRadioGroup
@@ -371,7 +362,11 @@ class ViewSettingsButton extends LitElement {
             return items;
         }
 
-        const startDepth = this.#nestedPaths.children.length ? -1 : 0;
+        const startDepth =
+            this.#nestedPaths.children.length ||
+            !this.#nestedPaths.item.explicitName
+                ? -1
+                : 0;
         nestedItemToHtml(this.#nestedPaths, startDepth);
 
         return items;
@@ -379,23 +374,42 @@ class ViewSettingsButton extends LitElement {
 
     #showDropdown() {
         this.#updateNestedPaths();
-        const items = this.#makeToggles();
+        const viewRoot = this.#app.genomeSpy.viewRoot;
+        const visibilityItems = this.#makeToggles();
 
         const defaultVis = !Object.keys(this.getVisibilities()).length;
 
+        /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
+        const items = [];
+
+        if (viewRoot && hasVariableBindings(viewRoot)) {
+            items.push({
+                label: "Parameters",
+                submenu: () => createParameterSubmenuItems(viewRoot, false),
+            });
+        }
+
+        if (visibilityItems.length) {
+            if (items.length) {
+                items.push({ type: "divider" });
+            }
+
+            items.push(
+                { label: "View visibility", type: "header" },
+                {
+                    label: "Restore defaults",
+                    callback: defaultVis
+                        ? undefined
+                        : () => this.#handleResetClick(),
+                },
+                { type: "divider" },
+                ...visibilityItems
+            );
+        }
+
         dropdownMenu(
             {
-                items: [
-                    { label: "View visibility", type: "header" },
-                    {
-                        label: "Restore defaults",
-                        callback: defaultVis
-                            ? undefined
-                            : () => this.#handleResetClick(),
-                    },
-                    { type: "divider" },
-                    ...items,
-                ],
+                items,
             },
             this.#buttonRef.value,
             "bottom-start"
@@ -413,7 +427,7 @@ class ViewSettingsButton extends LitElement {
                 <button
                     ${ref(this.#buttonRef)}
                     class="tool-btn"
-                    title="Toggle view visibilities"
+                    title="View settings"
                     @click=${this.#handleDropdownClick.bind(this)}
                 >
                     ${icon(faSlidersH).node[0]}
@@ -456,6 +470,31 @@ const hasVariableBindings = (/** @type {View} */ view) =>
     [...view.paramRuntime.paramConfigs.values()].some(
         (param) => isVariableParameter(param) && param.bind
     );
+
+/**
+ * @param {View} view
+ * @param {boolean} includeHeader
+ * @returns {import("../../utils/ui/contextMenu.js").MenuItem[]}
+ */
+const createParameterSubmenuItems = (view, includeHeader) => {
+    /** @type {import("../../utils/ui/contextMenu.js").MenuItem[]} */
+    const items = [];
+
+    if (includeHeader) {
+        items.push(
+            { label: "Parameters", type: "header" },
+            { type: "divider" }
+        );
+    }
+
+    items.push({
+        customContent: html`<div class="gs-input-binding">
+            ${createBindingInputs(view.paramRuntime)}
+        </div>`,
+    });
+
+    return items;
+};
 
 const isIncluded = (/** @type {View} */ view) =>
     (isVisibilityConfigurable(view) && Boolean(view.explicitName)) ||
