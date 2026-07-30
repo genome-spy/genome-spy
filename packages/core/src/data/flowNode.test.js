@@ -47,4 +47,20 @@ describe("Flow mutation", () => {
 
         expect(validateLinks(a)).toBeTruthy();
     });
+
+    test("Adopt all children from another parent", () => {
+        const target = new FlowNode();
+        const source = new FlowNode();
+        const children = [new FlowNode(), new FlowNode(), new FlowNode()];
+
+        for (const child of children) {
+            source.addChild(child);
+        }
+
+        target.adoptChildrenOf(source);
+
+        expect(target.children).toEqual(children);
+        expect(source.children).toEqual([]);
+        expect(validateLinks(target)).toBeTruthy();
+    });
 });

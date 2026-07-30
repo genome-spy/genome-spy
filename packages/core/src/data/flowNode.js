@@ -234,7 +234,8 @@ export default class FlowNode {
      * @param {FlowNode} otherParent
      */
     adoptChildrenOf(otherParent) {
-        for (const child of otherParent.children) {
+        // Adoption removes each child from the source, so iterate a snapshot.
+        for (const child of otherParent.children.slice()) {
             this.adopt(child);
         }
     }
