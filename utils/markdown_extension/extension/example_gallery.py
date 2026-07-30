@@ -33,7 +33,10 @@ def render_example_gallery(
             )
         ]
 
-    image_root = '../../examples'
+    # Docs assets are served from /docs, regardless of the page containing the
+    # gallery. A relative path would resolve differently on the landing page
+    # and nested documentation pages.
+    image_root = '/docs/examples'
     for token in tokens[1:]:
         if token.startswith('imageRoot='):
             image_root = token.split('=', 1)[1].rstrip('/')
