@@ -54,5 +54,8 @@
     }
   ],
 
-  "config": { "view": { "stroke": "lightgray" } }
+  "config": {
+    "view": { "stroke": "lightgray" },
+    "legend": { "layout": { "right": { "anchor": "middle" } } }
+  }
 }
