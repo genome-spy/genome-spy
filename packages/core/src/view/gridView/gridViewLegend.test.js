@@ -3816,7 +3816,8 @@ describe("GridView legends", () => {
             const labelData = getLegendData(legend, "gradientLabels");
             const borderData = getUnitData(border);
 
-            expect(body.getSize().height).toEqual({ px: 120, grow: 0 });
+            // The body reserves half the centered border stroke on every edge.
+            expect(body.getSize().height).toEqual({ px: 122, grow: 0 });
             expect(legend.getSize().height.grow).toBeUndefined();
             expect(legend.getPerpendicularSize()).toBeGreaterThanOrEqual(24);
             expect(ramp.mark.properties.opacity).toBe(0.4);
