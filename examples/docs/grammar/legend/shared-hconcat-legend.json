@@ -26,7 +26,7 @@
         "color": {
           "field": "Species",
           "type": "nominal",
-          "legend": { "orient": "bottom" }
+          "legend": { "orient": "bottom", "direction": "horizontal" }
         }
       }
     },
@@ -45,7 +45,7 @@
         "color": {
           "field": "Species",
           "type": "nominal",
-          "legend": { "orient": "bottom" }
+          "legend": { "orient": "bottom", "direction": "horizontal" }
         }
       }
     }

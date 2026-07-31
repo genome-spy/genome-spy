@@ -227,15 +227,15 @@ function createLegendRootSpec(legend, body, context, forcedScaleChannels = []) {
 /**
  * @param {LegendConfig} legend
  */
-function isTopBottomLegend(legend) {
-    return legend.orient == "top" || legend.orient == "bottom";
+function isHorizontalLegend(legend) {
+    return legend.direction == "horizontal";
 }
 
 /**
  * @param {LegendConfig} legend
  */
-function isHorizontalLegend(legend) {
-    return isTopBottomLegend(legend) || legend.direction == "horizontal";
+function hasHorizontalRegionAxis(legend) {
+    return legend.orient == "top" || legend.orient == "bottom";
 }
 
 /**
@@ -1287,18 +1287,12 @@ export default class LegendView extends ContainerView {
         }
 
         const contentHorizontal = isHorizontalLegend(this.legendProps);
-        const mainSize = { grow: 1 };
         const perpendicularSize = { px: this.getPerpendicularSize() };
         const parallelSize = this.#hasFlexibleParallelSize()
             ? this.#getFlexibleStackedParallelSize()
             : { px: this.getStackedParallelSize() };
 
-        if (isTopBottomLegend(this.legendProps)) {
-            return new FlexDimensions(
-                this.#hasAdaptiveGradientLength() ? mainSize : parallelSize,
-                perpendicularSize
-            );
-        } else if (contentHorizontal) {
+        if (contentHorizontal) {
             return new FlexDimensions(parallelSize, perpendicularSize);
         } else {
             return new FlexDimensions(perpendicularSize, parallelSize);
@@ -1322,9 +1316,12 @@ export default class LegendView extends ContainerView {
     }
 
     #hasFlexibleParallelSize() {
+        // An adaptive ramp can fill the region only when its axis is parallel
+        // to the region. Otherwise it would make the chrome thickness flexible.
         return (
             this.#hasAdaptiveGradientLength() &&
-            !isHorizontalLegend(this.legendProps)
+            isHorizontalLegend(this.legendProps) ==
+                hasHorizontalRegionAxis(this.legendProps)
         );
     }
 

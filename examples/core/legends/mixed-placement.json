@@ -35,6 +35,7 @@
           "legend": {
             "placement": "local",
             "orient": "bottom",
+            "direction": "horizontal",
             "title": "Cohort"
           }
         }

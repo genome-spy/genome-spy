@@ -19,9 +19,11 @@ uses the same scale as the plotted data.
 
 EXAMPLE examples/docs/grammar/legend/gradient-legend.json height=300
 
-The ramp length adapts to available space by default. Set `gradientLength` for
-a fixed ramp, and use the other gradient properties to adjust its appearance
-and desired tick density:
+The ramp fills available space when its direction is parallel to its legend
+region, such as a horizontal ramp at the bottom or a vertical ramp at the
+right. In the perpendicular arrangement it uses a natural length of 200 pixels.
+Set `gradientLength` for a fixed ramp, and use the other gradient properties to
+adjust its appearance and desired tick density:
 
 ```json
 {
@@ -92,6 +94,17 @@ one legend:
 
 The `orient` property selects the region where the legend is placed. Side
 legends are outside the plot area. Corner legends are inside the plot area.
+It does not change how the entries are arranged: `direction` defaults to
+`"vertical"` regardless of orientation. Configure `direction` when horizontal
+entries are wanted, for example for every legend in a subtree:
+
+```json
+{
+  "config": {
+    "legend": { "direction": "horizontal" }
+  }
+}
+```
 
 Supported orientations:
 

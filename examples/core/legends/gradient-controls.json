@@ -58,6 +58,7 @@
           "scale": { "scheme": "magma" },
           "legend": {
             "orient": "bottom",
+            "direction": "horizontal",
             "title": "Signal",
             "gradientLength": 220,
             "gradientThickness": 16,

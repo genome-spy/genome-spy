@@ -4,6 +4,7 @@ import ConcatView from "../concatView.js";
 import AxisView from "../axisView.js";
 import AxisGridView from "../axisGridView.js";
 import LegendView, { LegendRegionView } from "../legendView.js";
+import { getSizeDefMinPx } from "../layout/flexLayout.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
@@ -1510,10 +1511,10 @@ describe("GridView legends", () => {
             const [region] = getLegendRegions(view);
             const legends = getLegends(view);
             const legendHeights = legends.map((legend) =>
-                legend.getPerpendicularSize()
+                getSizeDefMinPx(legend.getSize().height)
             );
             const legendWidths = legends.map((legend) =>
-                legend.getStackedParallelSize()
+                getSizeDefMinPx(legend.getSize().width)
             );
 
             expect(region.getPerpendicularSize()).toBe(
@@ -1555,7 +1556,10 @@ describe("GridView legends", () => {
                             color: {
                                 field: "value",
                                 type: "quantitative",
-                                legend: { orient: "top" },
+                                legend: {
+                                    orient: "top",
+                                    direction: "horizontal",
+                                },
                             },
                         },
                     },
@@ -1572,6 +1576,38 @@ describe("GridView legends", () => {
             region.render(context, Rectangle.create(0, 0, 300, 80));
 
             expect(context.legendCoords.get(legend)?.width).toBe(300);
+        });
+
+        test("keeps a vertical top gradient at its natural length", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, value: 10 },
+                                { x: 2, y: 3, value: 20 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "value",
+                                type: "quantitative",
+                                legend: { orient: "top" },
+                            },
+                        },
+                    },
+                ],
+            });
+            const [legend] = getLegends(view);
+
+            expect(legend.legendProps.direction).toBe("vertical");
+            expect(legend.getSize().height).toEqual({
+                px: legend.getStackedParallelSize(),
+            });
         });
 
         test("gives remaining horizontal region width to an adaptive gradient", async () => {
@@ -1592,12 +1628,20 @@ describe("GridView legends", () => {
                             shape: {
                                 field: "group",
                                 type: "nominal",
-                                legend: { orient: "top", title: "Symbol" },
+                                legend: {
+                                    orient: "top",
+                                    direction: "horizontal",
+                                    title: "Symbol",
+                                },
                             },
                             color: {
                                 field: "value",
                                 type: "quantitative",
-                                legend: { orient: "top", title: "Gradient" },
+                                legend: {
+                                    orient: "top",
+                                    direction: "horizontal",
+                                    title: "Gradient",
+                                },
                             },
                         },
                     },
@@ -1672,7 +1716,7 @@ describe("GridView legends", () => {
             });
             const [region] = getLegendRegions(view);
             const legendHeights = getLegends(view).map((legend) =>
-                legend.getPerpendicularSize()
+                getSizeDefMinPx(legend.getSize().height)
             );
 
             expect(region.getPerpendicularSize()).toBe(
@@ -1973,6 +2017,60 @@ describe("GridView legends", () => {
             );
         });
 
+        test("keeps entry direction independent of top placement", async () => {
+            const createTopLegend = async (
+                /** @type {import("../../spec/legend.js").LegendDirection | undefined} */ direction
+            ) => {
+                const view = await createLegendTestView({
+                    config: {
+                        legend: {
+                            disable: false,
+                            ...(direction ? { direction } : {}),
+                        },
+                    },
+                    vconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 1, y: 2, group: "A" },
+                                    { x: 2, y: 3, group: "B" },
+                                    { x: 3, y: 4, group: "C" },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                color: {
+                                    field: "group",
+                                    type: "nominal",
+                                    legend: { orient: "top", title: null },
+                                },
+                            },
+                        },
+                    ],
+                });
+                const legend = getLegends(view)[0];
+                getLegendData(legend, "labels");
+
+                return legend;
+            };
+
+            const defaultLegend = await createTopLegend(undefined);
+            const horizontalLegend = await createTopLegend("horizontal");
+
+            expect(defaultLegend.legendProps.direction).toBe("vertical");
+            expect(
+                getSizeDefMinPx(defaultLegend.getSize().height)
+            ).toBeGreaterThan(getSizeDefMinPx(defaultLegend.getSize().width));
+            expect(horizontalLegend.legendProps.direction).toBe("horizontal");
+            expect(
+                getSizeDefMinPx(horizontalLegend.getSize().width)
+            ).toBeGreaterThan(
+                getSizeDefMinPx(horizontalLegend.getSize().height)
+            );
+        });
+
         test("keeps horizontal symbol legend extent data-driven", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
@@ -1993,6 +2091,7 @@ describe("GridView legends", () => {
                                 type: "nominal",
                                 legend: {
                                     orient: "bottom",
+                                    direction: "horizontal",
                                     title: "Origin",
                                     titleOrient: "left",
                                 },
@@ -3490,7 +3589,10 @@ describe("GridView legends", () => {
                             color: {
                                 field: "measurement",
                                 type: "quantitative",
-                                legend: { orient: "bottom" },
+                                legend: {
+                                    orient: "bottom",
+                                    direction: "horizontal",
+                                },
                             },
                         },
                     },

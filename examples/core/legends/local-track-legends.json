@@ -32,7 +32,11 @@
         "color": {
           "field": "state",
           "type": "nominal",
-          "legend": { "orient": "bottom", "title": null }
+          "legend": {
+            "orient": "bottom",
+            "direction": "horizontal",
+            "title": null
+          }
         }
       }
     },
@@ -53,7 +57,11 @@
         "color": {
           "field": "consequence",
           "type": "nominal",
-          "legend": { "orient": "bottom", "title": null }
+          "legend": {
+            "orient": "bottom",
+            "direction": "horizontal",
+            "title": null
+          }
         }
       }
     },
@@ -77,6 +85,7 @@
           "type": "quantitative",
           "legend": {
             "orient": "bottom",
+            "direction": "horizontal",
             "title": null,
             "gradientLength": 180
           }

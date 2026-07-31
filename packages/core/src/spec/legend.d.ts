@@ -74,7 +74,10 @@ export interface Legend {
     placement?: LegendPlacement;
 
     /**
-     * The direction in which legend entries are laid out.
+     * The direction in which legend entries are laid out. This is independent
+     * of `orient`, which selects the legend region.
+     *
+     * __Default value:__ `"vertical"`
      */
     direction?: LegendDirection;
 
@@ -104,7 +107,8 @@ export interface Legend {
     /**
      * Fixed length of the gradient ramp in pixels. This is the width of a
      * horizontal ramp and the height of a vertical ramp. When omitted, the
-     * ramp length adapts to the available layout space.
+     * ramp fills available space when its direction is parallel to its legend
+     * region. Otherwise its natural length is 200 pixels.
      *
      * @minimum 0
      */
