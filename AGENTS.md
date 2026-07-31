@@ -40,7 +40,7 @@ aware interactions.
 
 - An LLM agent/chatbot is in early development, implemented in `packages/app-agent/` and the Python relay in `packages/app-agent/server/`.
 
-### Testing
+## Testing
 
 - Unit tests with Vitest
 - Tests live next to code, with `.test.` in the filename
@@ -146,6 +146,30 @@ aware interactions.
   setup.
 - Prefer using iterator helpers (`map`, `filter`, `flatMap`) on iterables
   instead of converting them to arrays first.
+
+## Planning and design
+
+- When the user requests a design proposal file, place it under
+  `plans/[feature-name]/[feature-name]-plan.md`.
+- Base proposals on the current implementation and reference relevant files,
+  types, and architectural constraints.
+- When designing new features or architecture, study how comparable established
+  projects solve the same problem. Prefer proven patterns when they fit
+  GenomeSpy's requirements; use a custom design when it provides clear benefits,
+  and document the tradeoffs.
+- Preserve the provenance of borrowed ideas. Cite the source in the proposal and
+  in relevant code comments using wording such as "Adapted from ..." or "Based
+  on the design of ...", with a link or other durable source reference.
+- Before copying or closely adapting code, verify that its license is compatible
+  with GenomeSpy. Keep the source attribution and applicable copyright and
+  license notice near the copied block, in addition to any other notices required
+  by the license.
+- State the goals, non-goals, key decisions, alternatives considered, risks,
+  unresolved questions, and acceptance criteria.
+- Split large proposals into focused files under the same folder.
+- Divide implementation into independently reviewable steps. For each step,
+  describe the intended outcome, affected areas, verification, documentation or
+  migration work, and a tentative Conventional Commit message.
 
 ## Commit conventions
 
