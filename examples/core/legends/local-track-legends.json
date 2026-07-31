@@ -1,7 +1,10 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "description": "A vertical track stack keeps each independent legend directly below the track that owns it.",
+  "description": [
+    "Local legends below stacked tracks",
+    "Each independent legend stays directly below the track that owns it."
+  ],
 
   "background": "#fafafa",
   "width": 650,

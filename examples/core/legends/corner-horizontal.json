@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
   "description": [
-    "Legend test case for a horizontal inside-corner legend.",
+    "Horizontal legend inside a plot corner",
     "The right plot uses orient top-right with direction horizontal; the legend should stay inside the plot and align its title and entries cleanly."
   ],
 

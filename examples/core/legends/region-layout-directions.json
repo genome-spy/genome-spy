@@ -1,7 +1,10 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "description": "Complete legends use orientation-dependent region directions independently of entry direction. Side legends stack vertically, top legends horizontally, and the corner region is explicitly overridden to vertical.",
+  "description": [
+    "Legend region and entry directions",
+    "Side legends stack vertically, top legends horizontally, and the corner region is explicitly overridden to vertical. Entry direction is configured independently."
+  ],
 
   "config": {
     "legend": {

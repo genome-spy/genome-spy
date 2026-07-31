@@ -1,7 +1,10 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "description": "A matrix-like composition keeps four independent color mappings while collecting their legends into one region around the root view.",
+  "description": [
+    "Independent legends collected at the root",
+    "A matrix-like composition collects four legends without merging their color mappings."
+  ],
 
   "background": "#fafafa",
   "width": 170,

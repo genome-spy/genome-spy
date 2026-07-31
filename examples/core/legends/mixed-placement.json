@@ -1,7 +1,10 @@
 {
   "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
 
-  "description": "Local and root legend placement coexist without sharing or merging their independent color mappings.",
+  "description": [
+    "Mixed local and root legend placement",
+    "Independent color mappings remain separate when their legends use different placement."
+  ],
 
   "background": "#fafafa",
   "width": 520,
