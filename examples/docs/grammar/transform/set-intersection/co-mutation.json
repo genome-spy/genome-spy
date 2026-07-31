@@ -1,0 +1,162 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": "Exact co-mutation profiles across samples.",
+
+  "data": {
+    "values": [
+      { "sample": "S1", "gene": "TP53" },
+      { "sample": "S1", "gene": "KRAS" },
+      { "sample": "S2", "gene": "TP53" },
+      { "sample": "S3", "gene": "PIK3CA" },
+      { "sample": "S3", "gene": "PTEN" },
+      { "sample": "S4", "gene": "TP53" },
+      { "sample": "S4", "gene": "PIK3CA" },
+      { "sample": "S5", "gene": "KRAS" },
+      { "sample": "S6", "gene": "TP53" },
+      { "sample": "S6", "gene": "KRAS" },
+      { "sample": "S7", "gene": "PTEN" },
+      { "sample": "S8", "gene": "TP53" },
+      { "sample": "S8", "gene": "PIK3CA" },
+      { "sample": "S9", "gene": "KRAS" },
+      { "sample": "S9", "gene": "PIK3CA" },
+      { "sample": "S10", "gene": "TP53" }
+    ]
+  },
+
+  "transform": [
+    { "type": "setIntersection", "element": "sample", "set": "gene" },
+    {
+      "type": "window",
+      "sort": {
+        "field": ["profileSize", "profileDegree", "profileKey"],
+        "order": ["descending", "descending", "ascending"]
+      },
+      "ops": ["dense_rank"],
+      "fields": [null],
+      "as": ["profileNumber"]
+    },
+    {
+      "type": "formula",
+      "expr": "datum.profileNumber - 1",
+      "as": "profileIndex"
+    }
+  ],
+
+  "spacing": 0,
+  "resolve": { "scale": { "x": "shared" } },
+  "scales": { "x": { "paddingInner": 0.22, "paddingOuter": 0.12 } },
+
+  "vconcat": [
+    {
+      "width": { "step": 38 },
+      "height": 180,
+      "padding": { "left": 70 },
+      "scales": { "y": { "zero": true, "nice": true } },
+      "transform": [{ "type": "filter", "expr": "datum.setIndex == 0" }],
+      "layer": [
+        {
+          "mark": { "type": "rect", "color": "#3b3b3b" },
+          "encoding": {
+            "x": { "field": "profileIndex", "type": "index", "axis": null },
+            "y": {
+              "field": "profileSize",
+              "type": "quantitative",
+              "axis": { "title": "Profile size", "tickMinStep": 1 }
+            }
+          }
+        },
+        {
+          "mark": { "type": "text", "dy": -7, "fontWeight": "bold" },
+          "encoding": {
+            "x": { "field": "profileIndex", "type": "index" },
+            "y": { "field": "profileSize", "type": "quantitative" },
+            "text": { "field": "profileSize", "type": "quantitative" }
+          }
+        }
+      ]
+    },
+
+    {
+      "width": { "step": 38 },
+      "height": { "step": 32 },
+      "padding": { "left": 70 },
+      "layer": [
+        {
+          "mark": {
+            "type": "point",
+            "filled": true,
+            "size": 85,
+            "color": "#d1d1d1"
+          },
+          "encoding": {
+            "x": { "field": "profileIndex", "type": "index", "axis": null },
+            "y": { "field": "setIndex", "type": "index", "axis": null }
+          }
+        },
+        {
+          "transform": [
+            { "type": "filter", "expr": "datum.member" },
+            {
+              "type": "aggregate",
+              "groupby": ["profileKey", "profileIndex"],
+              "fields": ["setIndex", "setIndex"],
+              "ops": ["min", "max"],
+              "as": ["firstSetIndex", "lastSetIndex"]
+            }
+          ],
+          "mark": { "type": "rule", "color": "#3b3b3b", "size": 2.5 },
+          "encoding": {
+            "x": { "field": "profileIndex", "type": "index", "axis": null },
+            "y": { "field": "firstSetIndex", "type": "index", "axis": null },
+            "y2": { "field": "lastSetIndex" }
+          }
+        },
+        {
+          "transform": [{ "type": "filter", "expr": "datum.member" }],
+          "mark": {
+            "type": "point",
+            "filled": true,
+            "size": 105,
+            "color": "#3b3b3b"
+          },
+          "encoding": {
+            "x": { "field": "profileIndex", "type": "index", "axis": null },
+            "y": { "field": "setIndex", "type": "index", "axis": null },
+            "tooltip": [
+              { "field": "profileSize", "title": "Profile size" },
+              { "field": "profileDegree", "title": "Degree" },
+              { "field": "profileKey", "title": "Profile" }
+            ]
+          }
+        },
+        {
+          "transform": [
+            { "type": "filter", "expr": "datum.profileIndex == 0" }
+          ],
+          "mark": {
+            "type": "text",
+            "align": "right",
+            "dx": -14,
+            "clip": "never"
+          },
+          "encoding": {
+            "x": { "value": 0 },
+            "y": { "field": "setIndex", "type": "index" },
+            "text": { "field": "set" },
+            "color": { "value": "#555" }
+          }
+        }
+      ]
+    }
+  ],
+
+  "config": {
+    "axis": {
+      "gridColor": "#e6e6e6",
+      "labelColor": "#555",
+      "titleColor": "#333",
+      "titleFontWeight": "normal"
+    }
+  }
+}
