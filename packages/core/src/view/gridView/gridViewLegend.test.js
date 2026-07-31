@@ -1506,12 +1506,19 @@ describe("GridView legends", () => {
                 ],
             });
             const [region] = getLegendRegions(view);
-            const legendHeights = getLegends(view).map((legend) =>
+            const legends = getLegends(view);
+            const legendHeights = legends.map((legend) =>
                 legend.getPerpendicularSize()
+            );
+            const legendWidths = legends.map((legend) =>
+                legend.getStackedParallelSize()
             );
 
             expect(region.getPerpendicularSize()).toBe(
                 Math.max(...legendHeights)
+            );
+            expect(region.getWidth()).toBe(
+                legendWidths.reduce((sum, width) => sum + width, 0) + 10
             );
 
             const context = new LegendRecordingRenderingContext({
@@ -1522,8 +1529,109 @@ describe("GridView legends", () => {
 
             expect(coords).toHaveLength(2);
             expect(coords[0].x).toBe(0);
-            expect(coords[1].x).toBeGreaterThan(coords[0].x);
+            expect(coords[0].width).toBe(legendWidths[0]);
+            expect(coords[1].width).toBe(legendWidths[1]);
+            expect(coords[1].x - coords[0].x - coords[0].width).toBe(10);
             expect(coords[0].y).toBe(coords[1].y);
+        });
+
+        test("lets an adaptive top gradient fill the available width", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, value: 10 },
+                                { x: 2, y: 3, value: 20 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "value",
+                                type: "quantitative",
+                                legend: { orient: "top" },
+                            },
+                        },
+                    },
+                ],
+            });
+            const [legend] = getLegends(view);
+            const [region] = getLegendRegions(view);
+
+            expect(legend.getSize().width.grow).toBe(1);
+
+            const context = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            region.render(context, Rectangle.create(0, 0, 300, 80));
+
+            expect(context.legendCoords.get(legend)?.width).toBe(300);
+        });
+
+        test("gives remaining horizontal region width to an adaptive gradient", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "A", value: 10 },
+                                { x: 2, y: 3, group: "B", value: 20 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            shape: {
+                                field: "group",
+                                type: "nominal",
+                                legend: { orient: "top", title: "Symbol" },
+                            },
+                            color: {
+                                field: "value",
+                                type: "quantitative",
+                                legend: { orient: "top", title: "Gradient" },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legends = getLegends(view);
+            const symbolLegend = legends.find(
+                (legend) => legend.legendProps.title == "Symbol"
+            );
+            const gradientLegend = legends.find(
+                (legend) => legend.legendProps.title == "Gradient"
+            );
+            if (!symbolLegend || !gradientLegend) {
+                throw new Error("Expected symbol and gradient legends");
+            }
+
+            const [region] = getLegendRegions(view);
+            const context = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            region.render(context, Rectangle.create(0, 0, 320, 80));
+
+            const symbolCoords = context.legendCoords.get(symbolLegend);
+            const gradientCoords = context.legendCoords.get(gradientLegend);
+            if (!symbolCoords || !gradientCoords) {
+                throw new Error("Expected both legends to render");
+            }
+
+            const [left, right] = [symbolCoords, gradientCoords].sort(
+                (a, b) => a.x - b.x
+            );
+            expect(symbolCoords.width).toBe(
+                symbolLegend.getStackedParallelSize()
+            );
+            expect(right.x - left.x - left.width).toBe(10);
+            expect(symbolCoords.width + gradientCoords.width + 10).toBe(320);
         });
 
         test("supports vertical packing for a bottom legend region", async () => {

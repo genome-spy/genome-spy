@@ -1295,7 +1295,7 @@ export default class LegendView extends ContainerView {
 
         if (isTopBottomLegend(this.legendProps)) {
             return new FlexDimensions(
-                this.#hasFixedGradientLength() ? parallelSize : mainSize,
+                this.#hasAdaptiveGradientLength() ? mainSize : parallelSize,
                 perpendicularSize
             );
         } else if (contentHorizontal) {
@@ -1323,16 +1323,15 @@ export default class LegendView extends ContainerView {
 
     #hasFlexibleParallelSize() {
         return (
-            this.#type == "gradient" &&
-            this.legendProps.gradientLength === undefined &&
+            this.#hasAdaptiveGradientLength() &&
             !isHorizontalLegend(this.legendProps)
         );
     }
 
-    #hasFixedGradientLength() {
+    #hasAdaptiveGradientLength() {
         return (
             this.#type == "gradient" &&
-            this.legendProps.gradientLength !== undefined
+            this.legendProps.gradientLength === undefined
         );
     }
 
