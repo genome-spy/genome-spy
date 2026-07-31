@@ -1148,6 +1148,7 @@ describe("GridView legends", () => {
             const [legend] = getLegends(view);
 
             expect(legend.legendProps.orient).toBe("bottom");
+            expect(legend.legendProps.direction).toBe("horizontal");
             expect(legend.legendProps.titleOrient).toBe("left");
             expect(legend.legendProps.spacing).toBe(3);
             expect(legend.legendProps.offset).toBe(3);
@@ -1207,6 +1208,7 @@ describe("GridView legends", () => {
             const [legend] = getLegends(view);
 
             expect(legend.legendProps.orient).toBe("bottom");
+            expect(legend.legendProps.direction).toBe("horizontal");
             expect(legend.legendProps.titleOrient).toBe("left");
         });
 
