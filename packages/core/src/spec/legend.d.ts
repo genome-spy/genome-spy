@@ -15,6 +15,24 @@ export type LegendDirection = "vertical" | "horizontal";
 
 export type LegendTitleOrient = "top" | "bottom" | "left" | "right";
 
+export interface LegendRegionLayout {
+    /**
+     * Direction in which complete legends are arranged within a legend region.
+     */
+    direction?: LegendDirection;
+}
+
+export interface LegendLayout extends LegendRegionLayout {
+    left?: LegendRegionLayout;
+    right?: LegendRegionLayout;
+    top?: LegendRegionLayout;
+    bottom?: LegendRegionLayout;
+    "top-left"?: LegendRegionLayout;
+    "top-right"?: LegendRegionLayout;
+    "bottom-left"?: LegendRegionLayout;
+    "bottom-right"?: LegendRegionLayout;
+}
+
 // TODO: Consider adding more Vega/Vega-Lite legend properties when concrete
 // use cases appear. Known gaps include tick controls (`tickCount`,
 // `tickMinStep`), explicit legend `type`, gradient sizing/styling knobs
@@ -133,6 +151,13 @@ export interface LegendConfig extends Legend {
      * __Default value:__ `false`
      */
     disable?: boolean | ExprRef;
+
+    /**
+     * Layout of complete legends within each orientation region. A general
+     * direction applies to every region unless the orientation has its own
+     * override.
+     */
+    layout?: LegendLayout;
 
     /**
      * Spacing in pixels between legends collected into the same legend region.

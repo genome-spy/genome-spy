@@ -1,4 +1,34 @@
 import { createConfigLayerStack } from "./configLayers.js";
+import { mergeConfigScopes } from "./mergeConfig.js";
+
+/**
+ * @param {import("../spec/legend.js").LegendOrient} orient
+ * @returns {import("../spec/legend.js").LegendDirection}
+ */
+export function getDefaultLegendRegionDirection(orient) {
+    return orient == "left" || orient == "right" ? "vertical" : "horizontal";
+}
+
+/**
+ * Resolves region layout from the destination collector's configuration
+ * scopes. Region layout is deliberately separate from individual legend
+ * properties.
+ *
+ * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
+ * @param {import("../spec/legend.js").LegendOrient} orient
+ * @returns {import("../spec/legend.js").LegendDirection}
+ */
+export function getConfiguredLegendRegionDirection(scopes, orient) {
+    const layout = /** @type {import("../spec/legend.js").LegendLayout} */ (
+        mergeConfigScopes(scopes.map((scope) => scope.legend?.layout))
+    );
+
+    return (
+        layout[orient]?.direction ??
+        layout.direction ??
+        getDefaultLegendRegionDirection(orient)
+    );
+}
 
 /**
  * @param {import("../spec/config.js").GenomeSpyConfig[]} scopes
@@ -22,8 +52,11 @@ export function getConfiguredLegendDefaults(scopes, legend, options = {}) {
 
     appendLegendConfigLayer(layers, scopes, legend);
 
+    const legendDefaults = layers.merge();
+    delete legendDefaults.layout;
+
     return /** @type {import("../spec/legend.js").LegendConfig} */ (
-        layers.merge()
+        legendDefaults
     );
 }
 

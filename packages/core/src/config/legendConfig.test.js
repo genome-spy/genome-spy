@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
-import { getConfiguredLegendDefaults } from "./legendConfig.js";
+import {
+    getConfiguredLegendDefaults,
+    getConfiguredLegendRegionDirection,
+} from "./legendConfig.js";
 
 describe("legendConfig", () => {
     test("internal defaults keep legends visible", () => {
@@ -120,5 +123,65 @@ describe("legendConfig", () => {
 
         expect(defaults.orient).toBe("right");
         expect(defaults.titleOrient).toBe("left");
+    });
+
+    test("uses orientation-dependent legend region directions", () => {
+        expect(
+            getConfiguredLegendRegionDirection(
+                [INTERNAL_DEFAULT_CONFIG],
+                "left"
+            )
+        ).toBe("vertical");
+        expect(
+            getConfiguredLegendRegionDirection([INTERNAL_DEFAULT_CONFIG], "top")
+        ).toBe("horizontal");
+        expect(
+            getConfiguredLegendRegionDirection(
+                [INTERNAL_DEFAULT_CONFIG],
+                "bottom-right"
+            )
+        ).toBe("horizontal");
+    });
+
+    test("orientation-specific region direction overrides the general direction", () => {
+        const scopes = [
+            INTERNAL_DEFAULT_CONFIG,
+            {
+                legend: {
+                    layout: {
+                        direction: "vertical",
+                        top: { direction: "horizontal" },
+                    },
+                },
+            },
+        ];
+
+        expect(getConfiguredLegendRegionDirection(scopes, "right")).toBe(
+            "vertical"
+        );
+        expect(getConfiguredLegendRegionDirection(scopes, "top")).toBe(
+            "horizontal"
+        );
+    });
+
+    test("closest region layout scope wins", () => {
+        const scopes = [
+            INTERNAL_DEFAULT_CONFIG,
+            { legend: { layout: { top: { direction: "vertical" } } } },
+            { legend: { layout: { top: { direction: "horizontal" } } } },
+        ];
+
+        expect(getConfiguredLegendRegionDirection(scopes, "top")).toBe(
+            "horizontal"
+        );
+    });
+
+    test("region layout does not leak into individual legend defaults", () => {
+        const defaults = getConfiguredLegendDefaults([
+            INTERNAL_DEFAULT_CONFIG,
+            { legend: { layout: { direction: "horizontal" } } },
+        ]);
+
+        expect(defaults).not.toHaveProperty("layout");
     });
 });
