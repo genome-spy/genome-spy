@@ -136,7 +136,7 @@ background improves readability.
 
 When several complete legends share an orientation, left and right regions
 stack them vertically by default. Top, bottom, and corner regions arrange them
-horizontally. Override all regions or one orientation with
+horizontally. Configure all regions or one orientation with
 `config.legend.layout`:
 
 ```json
@@ -145,7 +145,8 @@ horizontally. Override all regions or one orientation with
     "legend": {
       "layout": {
         "direction": "vertical",
-        "top": { "direction": "horizontal" }
+        "top": { "direction": "horizontal" },
+        "right": { "anchor": "middle" }
       }
     }
   }
@@ -154,6 +155,10 @@ horizontally. Override all regions or one orientation with
 
 Region layout is separate from `legend.direction`: region `direction` arranges
 complete legends, while `legend.direction` arranges entries within one legend.
+For external orientations, `anchor` positions the complete stack along the
+plot edge using `"start"` (the default), `"middle"`, or `"end"`. Anchoring is
+independent of the region direction. Corner legends remain anchored to their
+specified corner.
 
 ## Resolution
 

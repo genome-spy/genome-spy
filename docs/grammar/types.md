@@ -296,6 +296,10 @@ SCHEMA LegendOrient
 
 SCHEMA LegendPlacement
 
+## LegendRegionAnchor
+
+SCHEMA LegendRegionAnchor
+
 ## LegendRegionLayout
 
 SCHEMA LegendRegionLayout
