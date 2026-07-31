@@ -34,6 +34,7 @@ import {
     getLegendOverhang,
     getHierarchyLegendOwners,
     getOrderedLegendEntries,
+    isRootPlacedLegend,
     iterateLegendViews,
 } from "./gridChildLegends.js";
 import { isInChromeSubtree } from "../viewChrome.js";
@@ -466,9 +467,8 @@ export default class GridView extends ContainerView {
         const entries = getOrderedLegendEntries(owners).filter(
             ({ owner, definition }) =>
                 isRootCollector
-                    ? owner === this ||
-                      (definition.legend.placement ?? "local") === "root"
-                    : (definition.legend.placement ?? "local") === "local"
+                    ? owner === this || isRootPlacedLegend(definition)
+                    : !isRootPlacedLegend(definition)
         );
 
         for (const { definition, resolution } of entries) {

@@ -1,3 +1,8 @@
+export const DEFAULT_GRADIENT_OPACITY = 1;
+export const DEFAULT_GRADIENT_STROKE_WIDTH = 0;
+export const DEFAULT_GRADIENT_THICKNESS = 12;
+export const DEFAULT_GRADIENT_TICK_COUNT = 5;
+
 /**
  * Initial legend defaults are adapted from Vega:
  * https://github.com/vega/vega/
@@ -18,10 +23,10 @@ export const LEGEND_DEFAULTS = {
     labelBaseline: "middle",
     labelLimit: 160,
     labelOffset: 4,
-    gradientThickness: 12,
-    gradientOpacity: 1,
-    gradientStrokeWidth: 0,
-    tickCount: 5,
+    gradientThickness: DEFAULT_GRADIENT_THICKNESS,
+    gradientOpacity: DEFAULT_GRADIENT_OPACITY,
+    gradientStrokeWidth: DEFAULT_GRADIENT_STROKE_WIDTH,
+    tickCount: DEFAULT_GRADIENT_TICK_COUNT,
     symbolType: "circle",
     symbolSize: 100,
     symbolOffset: 0,

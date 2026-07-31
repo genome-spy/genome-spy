@@ -27,6 +27,7 @@ import {
     disposeLegendViews,
     getLegendOverhang,
     getOrderedLegendEntries,
+    isRootPlacedLegend,
     iterateLegendViews,
 } from "./gridChildLegends.js";
 import { RulerMouseEventController } from "../../ruler/rulerMouseEventController.js";
@@ -686,7 +687,7 @@ export default class GridChild {
         for (const { definition, resolution } of getOrderedLegendEntries(
             getLegendOwners(view)
         )) {
-            if ((definition.legend.placement ?? "local") === "root") {
+            if (isRootPlacedLegend(definition)) {
                 continue;
             }
 

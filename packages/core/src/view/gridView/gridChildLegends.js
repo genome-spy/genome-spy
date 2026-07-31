@@ -154,6 +154,13 @@ export function getHierarchyLegendOwners(viewRoot) {
 }
 
 /**
+ * @param {import("../../scales/legendResolution.js").LegendDefinition} definition
+ */
+export function isRootPlacedLegend(definition) {
+    return definition.legend.placement === "root";
+}
+
+/**
  * @param {import("../../spec/channel.js").ChannelDef | undefined} channelDef
  * @returns {import("../../spec/channel.js").ValueDef | undefined}
  */

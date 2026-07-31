@@ -31,14 +31,17 @@ import UnitView from "./unitView.js";
 import { markViewAsChrome, markViewAsNonAddressable } from "./viewSelectors.js";
 import { truncateText } from "../data/transforms/truncateText.js";
 import { measureText, requestFont } from "../fonts/textMetrics.js";
+import {
+    DEFAULT_GRADIENT_STROKE_WIDTH,
+    DEFAULT_GRADIENT_THICKNESS,
+    DEFAULT_GRADIENT_TICK_COUNT,
+} from "../config/defaults/legendDefaults.js";
 
 const LABEL_WIDTH_FIELD = "_legendLabelWidth";
 const SYMBOL_SIZE_FIELD = "_legendSymbolSize";
 const SYMBOL_STROKE_WIDTH_FIELD = "_legendStrokeWidth";
 const DEFAULT_GRADIENT_LEGEND_LENGTH = 200;
 const DEFAULT_GRADIENT_SAMPLE_COUNT = 256;
-const DEFAULT_GRADIENT_TICK_COUNT = 5;
-const DEFAULT_GRADIENT_THICKNESS = 12;
 const DEFAULT_GRADIENT_TICK_SIZE = 4;
 const MIN_GRADIENT_LEGEND_LENGTH = 40;
 const AUTO_EXTENT_GROW_THRESHOLD_PX = 2;
@@ -245,7 +248,7 @@ function hasHorizontalRegionAxis(legend) {
  */
 function getGradientBorderOutset(legend) {
     return legend.gradientStrokeColor !== undefined
-        ? (legend.gradientStrokeWidth ?? 0)
+        ? (legend.gradientStrokeWidth ?? DEFAULT_GRADIENT_STROKE_WIDTH)
         : 0;
 }
 
@@ -591,7 +594,8 @@ export function createGradientLegendSpec({ channel, legend, format, context }) {
     const h = isHorizontalLegend(legend);
     const gradientThickness =
         legend.gradientThickness ?? DEFAULT_GRADIENT_THICKNESS;
-    const gradientStrokeWidth = legend.gradientStrokeWidth ?? 0;
+    const gradientStrokeWidth =
+        legend.gradientStrokeWidth ?? DEFAULT_GRADIENT_STROKE_WIDTH;
     const gradientBorderOutset = getGradientBorderOutset(legend);
     const hasGradientBorder = gradientBorderOutset > 0;
     const gradientLength =
