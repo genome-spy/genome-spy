@@ -158,6 +158,7 @@ describe("legendConfig", () => {
     });
 
     test("orientation-specific region direction overrides the general direction", () => {
+        /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
         const scopes = [
             INTERNAL_DEFAULT_CONFIG,
             {
@@ -179,6 +180,7 @@ describe("legendConfig", () => {
     });
 
     test("closest region layout scope wins", () => {
+        /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
         const scopes = [
             INTERNAL_DEFAULT_CONFIG,
             { legend: { layout: { top: { direction: "vertical" } } } },

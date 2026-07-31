@@ -862,6 +862,18 @@ export function getExternalLegendOverhang(legendView) {
         : 0;
 }
 
+/**
+ * @param {string} name
+ * @param {number} spacing
+ * @param {import("../spec/legend.js").LegendDirection} direction
+ * @returns {import("../spec/view.js").ContainerSpec}
+ */
+function createLegendRegionSpec(name, spacing, direction) {
+    return direction === "horizontal"
+        ? { name, spacing, hconcat: [] }
+        : { name, spacing, vconcat: [] };
+}
+
 export class LegendRegionView extends ContainerView {
     /** @type {import("./view.js").default | undefined} */
     #child;
@@ -890,13 +902,12 @@ export class LegendRegionView extends ContainerView {
         layoutParent,
         dataParent
     ) {
-        const concat = direction == "horizontal" ? "hconcat" : "vconcat";
         super(
-            {
-                name: "legend_region_" + orient,
-                spacing: stackSpacing,
-                [concat]: [],
-            },
+            createLegendRegionSpec(
+                "legend_region_" + orient,
+                stackSpacing,
+                direction
+            ),
             context,
             layoutParent,
             dataParent,
@@ -913,13 +924,12 @@ export class LegendRegionView extends ContainerView {
     }
 
     async initializeChildren() {
-        const concat = this.#direction == "horizontal" ? "hconcat" : "vconcat";
         this.#child = await this.context.createOrImportView(
-            {
-                name: "legendStack",
-                spacing: this.#stackSpacing,
-                [concat]: [],
-            },
+            createLegendRegionSpec(
+                "legendStack",
+                this.#stackSpacing,
+                this.#direction
+            ),
             this,
             this,
             this.getNextAutoName("legendStack")
