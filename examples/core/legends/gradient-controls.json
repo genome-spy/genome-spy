@@ -1,0 +1,73 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "Fixed horizontal and vertical gradient legends demonstrate ramp length, thickness, opacity, border, and automatic tick density controls.",
+
+  "background": "#fafafa",
+  "width": 310,
+  "height": 230,
+
+  "config": { "legend": { "disable": false, "offset": 14 } },
+
+  "data": {
+    "sequence": { "start": 0, "stop": 81, "step": 1, "as": "x" }
+  },
+  "transform": [
+    {
+      "type": "formula",
+      "expr": "30 + 18 * sin(datum.x / 9)",
+      "as": "value"
+    }
+  ],
+
+  "encoding": {
+    "x": { "field": "x", "type": "quantitative" },
+    "y": { "field": "value", "type": "quantitative" }
+  },
+
+  "hconcat": [
+    {
+      "title": "Vertical ramp",
+      "mark": { "type": "point", "filled": true, "size": 38 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "scheme": "viridis" },
+          "legend": {
+            "orient": "right",
+            "title": "Signal",
+            "gradientLength": 150,
+            "gradientThickness": 20,
+            "gradientOpacity": 0.7,
+            "gradientStrokeColor": "#444",
+            "gradientStrokeWidth": 1,
+            "tickCount": 4
+          }
+        }
+      }
+    },
+
+    {
+      "title": "Horizontal ramp",
+      "mark": { "type": "point", "filled": true, "size": 38 },
+      "encoding": {
+        "color": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": { "scheme": "magma" },
+          "legend": {
+            "orient": "bottom",
+            "title": "Signal",
+            "gradientLength": 220,
+            "gradientThickness": 16,
+            "gradientOpacity": 0.8,
+            "gradientStrokeColor": "#666",
+            "gradientStrokeWidth": 2,
+            "tickCount": 6
+          }
+        }
+      }
+    }
+  ]
+}

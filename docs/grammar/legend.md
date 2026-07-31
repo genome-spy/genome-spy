@@ -19,6 +19,26 @@ uses the same scale as the plotted data.
 
 EXAMPLE examples/docs/grammar/legend/gradient-legend.json height=300
 
+The ramp length adapts to available space by default. Set `gradientLength` for
+a fixed ramp, and use the other gradient properties to adjust its appearance
+and desired tick density:
+
+```json
+{
+  "legend": {
+    "gradientLength": 160,
+    "gradientThickness": 16,
+    "gradientOpacity": 0.8,
+    "gradientStrokeColor": "#666",
+    "gradientStrokeWidth": 1,
+    "tickCount": 4
+  }
+}
+```
+
+Explicit `values` determine the ticks when provided and take precedence over
+`tickCount`.
+
 ## Configuration
 
 Legend properties are usually placed in the encoding channel that creates the
@@ -44,8 +64,34 @@ In composed views with shared legend resolution, view-level
 
 ## Placement
 
-The `orient` property controls where the legend is placed. Side legends are
-placed outside the plot area. Corner legends are placed inside the plot area.
+The `placement` property selects the view that lays out a legend:
+
+- `"local"` keeps the legend next to its resolution owner or related view. This
+  is the default and works well for vertically stacked tracks.
+- `"root"` collects the legend around the root view. This works well for dense
+  compositions where individual views have no room for adjacent legends.
+
+Placement does not change scale or legend resolution. Distinct independent
+legends remain distinct when collected at the root, and local and root legends
+can coexist.
+
+EXAMPLE examples/docs/grammar/legend/placement.json height=360
+
+Set the default for all legends in the root configuration, or override it for
+one legend:
+
+```json
+{
+  "config": {
+    "legend": { "placement": "root" }
+  }
+}
+```
+
+### Orientation
+
+The `orient` property selects the region where the legend is placed. Side
+legends are outside the plot area. Corner legends are inside the plot area.
 
 Supported orientations:
 
@@ -72,6 +118,29 @@ background improves readability.
   }
 }
 ```
+
+### Multiple legends in a region
+
+When several complete legends share an orientation, left and right regions
+stack them vertically by default. Top, bottom, and corner regions arrange them
+horizontally. Override all regions or one orientation with
+`config.legend.layout`:
+
+```json
+{
+  "config": {
+    "legend": {
+      "layout": {
+        "direction": "vertical",
+        "top": { "direction": "horizontal" }
+      }
+    }
+  }
+}
+```
+
+Region layout is separate from `legend.direction`: region `direction` arranges
+complete legends, while `legend.direction` arranges entries within one legend.
 
 ## Resolution
 

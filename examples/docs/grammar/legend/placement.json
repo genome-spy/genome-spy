@@ -1,0 +1,64 @@
+{
+  "$schema": "https://unpkg.com/@genome-spy/core/dist/schema.json",
+
+  "description": "One legend stays below its view while another is collected to the right of the root view.",
+
+  "width": 450,
+  "height": 110,
+
+  "config": { "legend": { "disable": false } },
+  "resolve": {
+    "scale": { "color": "independent" },
+    "legend": { "color": "independent" }
+  },
+
+  "vconcat": [
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 2, "group": "A" },
+          { "x": 2, "y": 5, "group": "B" },
+          { "x": 3, "y": 3, "group": "A" }
+        ]
+      },
+      "mark": { "type": "point", "filled": true, "size": 65 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative", "axis": null },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": {
+          "field": "group",
+          "type": "nominal",
+          "legend": {
+            "placement": "local",
+            "orient": "bottom",
+            "title": "Local"
+          }
+        }
+      }
+    },
+
+    {
+      "data": {
+        "values": [
+          { "x": 1, "y": 4, "status": "pass" },
+          { "x": 2, "y": 2, "status": "review" },
+          { "x": 3, "y": 6, "status": "fail" }
+        ]
+      },
+      "mark": { "type": "point", "filled": true, "size": 65 },
+      "encoding": {
+        "x": { "field": "x", "type": "quantitative" },
+        "y": { "field": "y", "type": "quantitative" },
+        "color": {
+          "field": "status",
+          "type": "nominal",
+          "legend": {
+            "placement": "root",
+            "orient": "right",
+            "title": "Root"
+          }
+        }
+      }
+    }
+  ]
+}
