@@ -552,6 +552,37 @@ describe("GridView legends", () => {
             );
         });
 
+        test("builds root legends once after nested concat initialization", async () => {
+            const initializeChildren = vi.spyOn(
+                LegendView.prototype,
+                "initializeChildren"
+            );
+
+            try {
+                await createLegendTestView({
+                    config: {
+                        legend: { disable: false, placement: "root" },
+                    },
+                    resolve: {
+                        scale: { color: "independent" },
+                        legend: { color: "independent" },
+                    },
+                    vconcat: [
+                        {
+                            vconcat: [
+                                createIndexColorPlotSpec(),
+                                createIndexColorPlotSpec(),
+                            ],
+                        },
+                    ],
+                });
+
+                expect(initializeChildren).toHaveBeenCalledTimes(2);
+            } finally {
+                initializeChildren.mockRestore();
+            }
+        });
+
         test("allows local and root legends to coexist", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },

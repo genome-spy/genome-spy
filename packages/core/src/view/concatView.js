@@ -74,7 +74,9 @@ export default class ConcatView extends GridView {
             )
         );
 
-        await this.syncGuideViews();
+        // An ancestor concat synchronizes root-collected legends after all of
+        // its concurrently initialized children are ready.
+        await this.syncGuideViews({ bubbleRootLegends: false });
     }
 
     /**

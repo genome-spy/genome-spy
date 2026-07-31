@@ -369,7 +369,7 @@ export default class GridView extends ContainerView {
      * Shared guides always depend on the whole container. Grid-child guides can
      * be limited to newly inserted children during mutations.
      *
-     * @param {{ gridChildren?: GridChild[] }} [options]
+     * @param {{ gridChildren?: GridChild[], bubbleRootLegends?: boolean }} [options]
      */
     async syncGuideViews(options = {}) {
         const gridChildren = options.gridChildren ?? this.#children;
@@ -386,6 +386,7 @@ export default class GridView extends ContainerView {
 
         const rootCollector = this.#getEffectiveRootLegendCollector();
         if (
+            (options.bubbleRootLegends ?? true) &&
             rootCollector &&
             rootCollector !== this &&
             !isInChromeSubtree(this)

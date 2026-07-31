@@ -31,6 +31,8 @@ export async function syncViewGuideViews(viewRoot) {
         .filter((view) => view instanceof GridView);
 
     for (const gridView of gridViews) {
-        await gridView.syncGuideViews();
+        // The root collector is included in gridViews and synchronizes its
+        // legends once. Nested grids must not repeatedly rebuild it.
+        await gridView.syncGuideViews({ bubbleRootLegends: false });
     }
 }
