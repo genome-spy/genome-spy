@@ -32,10 +32,12 @@ import {
     createGridChildLegend,
     disposeLegendViews,
     getLegendOverhang,
+    getHierarchyLegendOwners,
     getOrderedLegendEntries,
     iterateLegendViews,
     isActiveLegendRegion,
 } from "./gridChildLegends.js";
+import { isInChromeSubtree } from "../viewChrome.js";
 import SeparatorView, { resolveSeparatorProps } from "./separatorView.js";
 import { getZoomableResolutions } from "./zoomNavigationUtils.js";
 import { moveArrayItem } from "../../utils/arrayUtils.js";
@@ -416,6 +418,24 @@ export default class GridView extends ContainerView {
             gridChildren.map((gridChild) => gridChild.syncGuideViews())
         );
         this.invalidateSizeCache();
+
+        const rootCollector = this.#getEffectiveRootLegendCollector();
+        if (
+            rootCollector &&
+            rootCollector !== this &&
+            !isInChromeSubtree(this)
+        ) {
+            await rootCollector.#syncSharedLegends();
+            rootCollector.invalidateSizeCache();
+        }
+    }
+
+    /**
+     * @returns {GridView | undefined}
+     */
+    #getEffectiveRootLegendCollector() {
+        const root = this.getLayoutAncestors().at(-1);
+        return root instanceof GridView ? root : undefined;
     }
 
     /**
@@ -473,9 +493,19 @@ export default class GridView extends ContainerView {
         disposeLegendViews(this.#sharedLegends);
         this.#sharedLegends = {};
 
-        for (const { definition, resolution } of getOrderedLegendEntries([
-            this,
-        ])) {
+        const isRootCollector = this.layoutParent === null;
+        const owners = isRootCollector
+            ? getHierarchyLegendOwners(this)
+            : [this];
+        const entries = getOrderedLegendEntries(owners).filter(
+            ({ owner, definition }) =>
+                isRootCollector
+                    ? owner === this ||
+                      (definition.legend.placement ?? "local") === "root"
+                    : (definition.legend.placement ?? "local") === "local"
+        );
+
+        for (const { definition, resolution } of entries) {
             const legend = await createGridChildLegend(definition, this);
             await addLegendView(this.#sharedLegends, legend, resolution);
         }

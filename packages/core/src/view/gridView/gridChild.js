@@ -686,6 +686,10 @@ export default class GridChild {
         for (const { definition, resolution } of getOrderedLegendEntries(
             getLegendOwners(view)
         )) {
+            if ((definition.legend.placement ?? "local") === "root") {
+                continue;
+            }
+
             const legend = await createGridChildLegend(
                 definition,
                 this.layoutParent

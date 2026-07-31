@@ -7,13 +7,18 @@ import LegendView, { LegendRegionView } from "../legendView.js";
 import Rectangle from "../layout/rectangle.js";
 import UnitView from "../unitView.js";
 import ViewRenderingContext from "../renderingContext/viewRenderingContext.js";
-import { createAndInitialize, createTestViewContext } from "../testUtils.js";
+import {
+    create,
+    createAndInitialize,
+    createTestViewContext,
+} from "../testUtils.js";
 import { translateLegendCoords } from "./legendLayout.js";
 import createScale from "../../scale/scale.js";
 import {
     initializeViewSubtree,
     loadViewSubtreeData,
 } from "../../data/flowInit.js";
+import { syncViewGuideViews } from "./guideViewSync.js";
 
 // Minimal context for layout-driven render calls without WebGL.
 class NoOpRenderingContext extends ViewRenderingContext {
@@ -419,6 +424,221 @@ describe("GridView legends", () => {
             });
             expect(renderContext.markNames).toEqual(
                 expect.arrayContaining(["symbols", "labels"])
+            );
+        });
+
+        test("collects independent descendant legends at the root", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: {
+                        disable: false,
+                        placement: "root",
+                        layout: { right: { direction: "horizontal" } },
+                    },
+                },
+                resolve: {
+                    scale: { color: "independent" },
+                    legend: { color: "independent" },
+                },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "alpha" },
+                                { x: 2, y: 3, group: "beta" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: { title: "Group" },
+                            },
+                        },
+                    },
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 4, status: "open" },
+                                { x: 2, y: 5, status: "closed" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "status",
+                                type: "nominal",
+                                legend: { title: "Status" },
+                            },
+                        },
+                    },
+                ],
+            });
+            const legends = getLegends(view);
+            const [region] = getLegendRegions(view);
+
+            expect(legends).toHaveLength(2);
+            expect(getLegendTitles(view)).toEqual(["Group", "Status"]);
+            expect(getLegendRegions(view)).toHaveLength(1);
+            expect(region.getWidth()).toBeGreaterThan(
+                Math.max(
+                    ...legends.map((legend) => legend.getPerpendicularSize())
+                )
+            );
+        });
+
+        test("allows local and root legends to coexist", async () => {
+            const view = await createLegendTestView({
+                config: { legend: { disable: false } },
+                resolve: {
+                    scale: { color: "independent" },
+                    legend: { color: "independent" },
+                },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "alpha" },
+                                { x: 2, y: 3, group: "beta" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: {
+                                    title: "Collected",
+                                    placement: "root",
+                                },
+                            },
+                        },
+                    },
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 4, status: "open" },
+                                { x: 2, y: 5, status: "closed" },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "status",
+                                type: "nominal",
+                                legend: { title: "Local" },
+                            },
+                        },
+                    },
+                ],
+            });
+
+            expect(getLegends(view)).toHaveLength(2);
+            expect(getLegendRegions(view)).toHaveLength(2);
+            expect(getLegendTitles(view).sort()).toEqual([
+                "Collected",
+                "Local",
+            ]);
+        });
+
+        test("keeps root legends synchronized across child mutations", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: { disable: false, placement: "root" },
+                },
+                resolve: {
+                    scale: { color: "independent" },
+                    legend: { color: "independent" },
+                },
+                vconcat: [createIndexColorPlotSpec(40)],
+            });
+
+            expect(getLegends(view)).toHaveLength(1);
+            expect(getLegendRegions(view)).toHaveLength(1);
+
+            await view.addChildSpec({
+                ...createIndexColorPlotSpec(40),
+                encoding: {
+                    ...createIndexColorPlotSpec(40).encoding,
+                    color: {
+                        field: "Origin",
+                        type: "nominal",
+                        legend: { title: "Inserted" },
+                    },
+                },
+            });
+
+            expect(getLegends(view)).toHaveLength(2);
+            expect(getLegendRegions(view)).toHaveLength(1);
+
+            await view.removeChildAt(1);
+
+            expect(getLegends(view)).toHaveLength(1);
+            expect(getLegendRegions(view)).toHaveLength(1);
+        });
+
+        test("uses an implicit root as the root legend collector", async () => {
+            const view = await create(
+                /** @type {import("../../spec/root.js").RootSpec} */ ({
+                    config: {
+                        legend: { disable: false, placement: "root" },
+                    },
+                    data: {
+                        values: [
+                            { x: 1, y: 2, group: "alpha" },
+                            { x: 2, y: 3, group: "beta" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: { field: "group", type: "nominal" },
+                    },
+                }),
+                ConcatView,
+                { wrapRoot: true }
+            );
+
+            expect(view.name).toBe("implicitRoot");
+            expect(getLegends(view)).toHaveLength(1);
+            expect(getLegendRegions(view)).toHaveLength(1);
+        });
+
+        test("fails clearly when root placement has no root grid", async () => {
+            const view = await create(
+                /** @type {import("../../spec/root.js").RootSpec} */ ({
+                    config: {
+                        legend: { disable: false, placement: "root" },
+                    },
+                    data: {
+                        values: [
+                            { x: 1, y: 2, group: "alpha" },
+                            { x: 2, y: 3, group: "beta" },
+                        ],
+                    },
+                    mark: "point",
+                    encoding: {
+                        x: { field: "x", type: "quantitative" },
+                        y: { field: "y", type: "quantitative" },
+                        color: { field: "group", type: "nominal" },
+                    },
+                }),
+                UnitView,
+                { wrapRoot: false }
+            );
+
+            await expect(syncViewGuideViews(view)).rejects.toThrow(
+                'Legend placement "root" requires an effective root GridView'
             );
         });
 
