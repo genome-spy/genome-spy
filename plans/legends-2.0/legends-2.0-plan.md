@@ -58,6 +58,8 @@ retain the applicable copyright and license notice near the adapted block.
   default, matching Vega.
 - Allow the region direction to be overridden globally or for one
   orientation.
+- Allow external legend stacks to be anchored at the start, middle, or end of
+  the plot edge.
 - Reuse `LegendView`, `LegendRegionView`, `GridView`, existing overhang
   calculation, deterministic ordering, and active-legend behavior.
 - Preserve the current visual result for local left and right regions and for
@@ -79,8 +81,8 @@ retain the applicable copyright and license notice near the adapted block.
 - New legend deduplication, channel combination, or scale-sharing behavior.
 - Free positioning equivalent to Vega's `orient: "none"`.
 - Automatic wrapping of an overlong legend region.
-- Full support for Vega's legend layout options such as `anchor`, `bounds`, or
-  `center`.
+- Full support for Vega's remaining legend layout options such as `bounds`,
+  margins, or automatic wrapping.
 - Redesigning entries within an individual legend.
 - Vega-Lite's separate horizontal and vertical minimum and maximum gradient
   length configuration.
@@ -106,10 +108,12 @@ The following concepts are independent:
   inside one legend.
 - **Region direction:** The new layout direction that arranges multiple
   complete legends inside one legend region.
+- **Region anchor:** The position of a complete external legend stack along
+  its plot edge.
 
 In particular, region direction must not reuse or change `legend.direction`.
 
-## Current implementation
+## Architecture baseline
 
 Legend definitions are created by
 [`legendResolution.js`](../../packages/core/src/scales/legendResolution.js).
@@ -117,10 +121,10 @@ Legend definitions are created by
 orders definitions, creates `LegendView` instances, and adds them to an
 orientation-specific `LegendRegionView`.
 
-Every `LegendRegionView` currently constructs a `vconcat` and manually computes
-sizes assuming vertical packing. The region takes its spacing from the first
-legend that creates it. External regions contribute overhang; corner regions
-are rendered inside the plot by
+Before this work, every `LegendRegionView` constructed a `vconcat` and manually
+computed sizes assuming vertical packing. The region took its spacing from the
+first legend that created it. External regions contributed overhang; corner
+regions were rendered inside the plot by
 [`legendLayout.js`](../../packages/core/src/view/gridView/legendLayout.js).
 
 Local legends are owned by `GridChild`. Legends whose resolution is owned by a
@@ -144,9 +148,11 @@ configuration property of a collector, not a property of one generated legend.
 
 ```ts
 type LegendRegionDirection = "horizontal" | "vertical";
+type LegendRegionAnchor = "start" | "middle" | "end";
 
 interface LegendRegionLayout {
     direction?: LegendRegionDirection;
+    anchor?: LegendRegionAnchor;
 }
 
 interface LegendLayout extends LegendRegionLayout {
@@ -165,9 +171,9 @@ interface LegendConfig extends Legend {
 }
 ```
 
-The initial surface includes only `direction`. The nested object intentionally
-leaves room for additional proven region-level options if concrete use cases
-appear later.
+The initial surface includes `direction` and `anchor`. Direction controls
+packing inside the region. Anchor positions an external region along the plot
+edge; corner regions remain fixed to their specified corner.
 
 Examples:
 
@@ -186,7 +192,8 @@ Examples:
   "config": {
     "legend": {
       "layout": {
-        "top-right": { "direction": "vertical" }
+        "top-right": { "direction": "vertical" },
+        "right": { "anchor": "middle" }
       }
     }
   }
@@ -305,15 +312,16 @@ When no region direction is configured, use orientation-dependent defaults:
 | `top-left`, `top-right`, `bottom-left`, `bottom-right` | `horizontal` |
 
 These defaults match Vega's orientation-group direction. They differ from
-GenomeSpy's current vertical packing for top, bottom, and corner regions.
+GenomeSpy's previous vertical packing for top, bottom, and corner regions.
+The default anchor is `"start"` for every external orientation.
 
 ### Resolution precedence
 
-Resolve a region's direction in this order:
+Resolve each region property in this order:
 
-1. `config.legend.layout[orient].direction` at the collector.
-2. `config.legend.layout.direction` at the collector.
-3. The orientation-dependent default above.
+1. `config.legend.layout[orient]` at the collector.
+2. `config.legend.layout` at the collector.
+3. The orientation-dependent direction or `"start"` anchor default above.
 
 The configuration scopes belong to the destination `GridView`. They do not
 belong to the first legend contribution in the region. This ensures that a root
@@ -367,6 +375,11 @@ active legend list. When the active set changes, the region recomputes its
 packed extent and requests layout reflow through the existing invalidation
 path.
 
+For top and bottom regions, anchor the natural packed width along the
+horizontal plot edge. For left and right regions, anchor the natural packed
+height along the vertical edge. Adaptive regions still fill the available edge
+and therefore have no visible anchoring offset. Corner regions ignore anchor.
+
 ### Ordering
 
 Keep the current deterministic order:
@@ -380,11 +393,10 @@ the sequence.
 
 ### Overflow
 
-The initial implementation does not wrap an overlong horizontal region. Its
-parallel minimum participates in the existing flex constraints and may grow the
-composition. This is equivalent to the current treatment of other fixed guide
-minima and keeps wrapping out of scope until a concrete overflow case requires
-it.
+The initial implementation does not wrap or clamp an overlong region. It keeps
+its natural parallel extent without changing sibling flex allocation, so a
+middle- or end-anchored oversized stack may extend beyond one or both ends of
+the plot edge.
 
 ## Design 2: local and root placement
 
@@ -576,8 +588,8 @@ gradient geometry or appearance.
 - Use one plan and one implementation stream for region layout, local/root
   placement, and gradient dimensions because all three affect
   `LegendRegionView` sizing and the `GridView` guide lifecycle.
-- Use the Vega-compatible `config.legend.layout` shape, initially supporting
-  only region `direction`.
+- Use the Vega-compatible `config.legend.layout` shape for region `direction`
+  and external-edge `anchor`.
 - Compute orientation-dependent direction defaults rather than encoding all
   defaults as nested config values. A general configured direction can then
   override every orientation unless a specific orientation is also configured.
@@ -616,10 +628,10 @@ clearer owner.
 
 ### Implement all Vega legend layout properties
 
-Vega also supports anchors, bounds policies, centering, and margins. Adding the
-full surface would create implementation and testing work without a current
-GenomeSpy use case. The nested layout object remains extensible if those needs
-appear.
+Vega also supports bounds policies and margins. Adding the full surface would
+create implementation and testing work without a current GenomeSpy use case.
+Direction and anchoring cover the concrete packing needs while the nested
+layout object remains extensible.
 
 ### Add Vega-Lite's orientation-specific gradient length bounds
 
@@ -666,8 +678,10 @@ requiring an explicit grid when wrapping is disabled is more predictable.
 
 - Horizontal top, bottom, and corner regions change existing multi-legend
   layouts.
-- A horizontal region can establish a large minimum width because automatic
+- A horizontal region can overflow the available edge because automatic
   wrapping is deferred.
+- A middle- or end-anchored oversized region may overflow the plot edge because
+  clamping is deferred.
 - Flexible gradient legends may expose assumptions in the current
   perpendicular/parallel size calculations.
 - Fixed gradient lengths must compose correctly with flexible sibling legends
@@ -688,46 +702,34 @@ requiring an explicit grid when wrapping is disabled is more predictable.
 - Internal callers using `wrapRoot: false` may encounter a new fail-fast error
   if they request root placement without an explicit root grid.
 
-## Unresolved questions
+## Resolved scope decisions
 
-- Should root placement without an effective root `GridView` fail during view
-  creation, guide synchronization, or legend-definition routing?
-- Should `spacing` remain sourced from the first legend for the initial release,
-  or is root collection sufficient reason to move it into
-  `config.legend.layout` now?
-- Should the changed top/bottom/corner default be announced as a migration in
-  release notes even though single-legend regions are unaffected?
-- Is `placement` the clearest public name, or would `layoutOwner` communicate
-  the semantics better without implying coordinates?
-
-None of these questions requires a generic slot system. The placement property
-name and spacing scope should be settled before implementation begins.
+- Missing root collectors fail during guide synchronization.
+- Region spacing remains sourced from the first legend for compatibility.
+- The public property is named `placement`.
+- Direction and anchor are collector configuration; entry layout and visual
+  properties remain source-legend configuration.
 
 ## Implementation steps
 
 ### 1. Define region layout configuration
 
-**Outcome:** Add the public region layout types, orientation-dependent default
-helper, and collector-scope resolution without changing rendered layout yet.
+**Outcome:** Add public direction and anchor types, orientation-dependent
+defaults, and collector-scope resolution.
 
-**Affected areas:**
+**Affected areas:** Legend spec types, configuration resolution, schema, and
+focused config tests.
 
-- `packages/core/src/spec/legend.d.ts`
-- `packages/core/src/config/defaults/legendDefaults.js`
-- `packages/core/src/config/legendConfig.js`
-- `packages/core/src/config/legendConfig.test.js`
-- `packages/core/src/scales/legendResolution.js`
-- Generated JSON Schema artifacts
-
-**Verification:** Test the general direction, orientation-specific override,
-nearest collector config scope, and built-in orientation defaults. Run the
+**Verification:** Test general and orientation-specific direction and anchor
+overrides, nearest collector config scope, and built-in defaults. Run the
 focused config and schema suites plus workspace TypeScript checks.
 
 **Documentation and migration:** Add schema-derived documentation for the new
 types. Do not describe the changed visual default until the rendering step is
 implemented.
 
-**Tentative commit:** `feat(core): define legend region layout configuration`
+**Commits:** `feat(core): define legend region layout configuration` and
+`feat(core): configure legend region anchors`
 
 ### 2. Add gradient legend controls
 
@@ -735,14 +737,8 @@ implemented.
 dimensions and tick count, and support fixed or adaptive ramp length without
 changing the default rendering.
 
-**Affected areas:**
-
-- `packages/core/src/spec/legend.d.ts`
-- `packages/core/src/config/defaults/legendDefaults.js`
-- `packages/core/src/view/legendView.js`
-- `packages/core/src/data/sources/lazy/legendGradientSource.js`
-- Focused legend extent, grid legend, and layout snapshot tests
-- Generated JSON Schema artifacts
+**Affected areas:** Legend spec/defaults, generated legend views, tick data,
+schema, and focused extent tests.
 
 **Verification:** Cover horizontal and vertical gradients with explicit and
 adaptive length, thickness-dependent extent, opacity, one outer border,
@@ -755,34 +751,28 @@ concise usage snippet. The complete rendered gradient-control demonstration
 belongs in `examples/core/legends/` as described in step 6. Defaults preserve
 existing rendering, so no migration is required.
 
-**Tentative commit:** `feat(core): add gradient legend controls`
+**Commit:** `feat(core): add gradient legend controls`
 
-### 3. Implement direction-aware region packing
+### 3. Implement direction-aware region packing and anchoring
 
 **Outcome:** Generalize `LegendRegionView` sizing and rendering so left/right
 regions default to vertical and top/bottom/corner regions default to
-horizontal, with configuration overrides.
+horizontal, with configuration overrides and external-edge anchoring.
 
-**Affected areas:**
+**Affected areas:** `LegendRegionView`, legend coordinate translation,
+collector configuration, and focused layout tests.
 
-- `packages/core/src/view/legendView.js`
-- `packages/core/src/view/gridView/legendLayout.js`
-- `packages/core/src/view/gridView/gridChildLegends.js`
-- `packages/core/src/view/gridView/gridView.js`
-- Focused legend and layout snapshot tests
+**Verification:** Cover multiple symbol and gradient legends at all eight
+orientations, both region directions, three anchors, mixed extents, matching
+axes, and reactive disable. Verify natural parallel extent and external
+overhang. Run focused legend, grid, layout snapshot, and TypeScript checks.
 
-**Verification:** Add stable layout snapshots for multiple symbol and gradient
-legends at all eight orientations, both region directions, mixed legend
-extents, matching axes, and reactive disable. Verify parallel constraints and
-external overhang. Run focused legend, grid, layout snapshot, and TypeScript
-checks.
+**Documentation and migration:** Distinguish entry direction, region direction,
+and region anchor. Document the new defaults and show the compatibility
+override as a short snippet.
 
-**Documentation and migration:** Update `docs/grammar/legend.md` concisely with
-the difference between entry and region direction. Document the new defaults
-and show the vertical compatibility override as a short snippet rather than a
-new rendered docs example.
-
-**Tentative commit:** `feat(core): support directional legend region layout`
+**Commits:** `feat(core): support directional legend region layout` and
+`feat(core): anchor legend stacks along plot edges`
 
 ### 4. Define local and root placement
 
@@ -790,13 +780,8 @@ new rendered docs example.
 carry the resolved value into each `LegendDefinition`, without changing guide
 routing yet.
 
-**Affected areas:**
-
-- `packages/core/src/spec/legend.d.ts`
-- `packages/core/src/config/defaults/legendDefaults.js`
-- `packages/core/src/config/legendConfig.js`
-- `packages/core/src/scales/legendResolution.js`
-- Focused config and legend-resolution tests
+**Affected areas:** Legend spec/defaults, legend resolution, schema, and
+focused configuration tests.
 
 **Verification:** Test the `"local"` default and precedence through root config,
 nested config, view-level legend declaration, and channel-level legend object.
@@ -805,7 +790,7 @@ Reject unsupported placement values through schema validation.
 **Documentation and migration:** Add schema-derived placement documentation.
 No migration is needed because `"local"` preserves existing behavior.
 
-**Tentative commit:** `feat(core): define local and root legend placement`
+**Commit:** `feat(core): define local and root legend placement`
 
 ### 5. Route root legends into the effective root grid
 
@@ -813,15 +798,8 @@ No migration is needed because `"local"` preserves existing behavior.
 them once at the effective root, and render them through the root's existing
 orientation regions.
 
-**Affected areas:**
-
-- `packages/core/src/view/gridView/gridChildLegends.js`
-- `packages/core/src/view/gridView/gridChild.js`
-- `packages/core/src/view/gridView/gridView.js`
-- `packages/core/src/view/gridView/guideViewSync.js`
-- `packages/core/src/view/viewFactory.js` only if root-host validation requires
-  a small extension
-- View mutation and layout snapshot tests
+**Affected areas:** Grid-child routing, root guide synchronization, implicit
+root validation, mutation tests, and layout snapshots.
 
 **Verification:** Cover:
 
@@ -843,7 +821,7 @@ new rendered docs example for the essential local-versus-root collection
 concept; keep mixed placement and layout permutations in the Core example
 gallery.
 
-**Tentative commit:** `feat(core): collect legends at the root view`
+**Commit:** `feat(core): collect legends at the root view`
 
 ### 6. Add curated Core examples and essential documentation
 
@@ -851,33 +829,12 @@ gallery.
 `examples/core/legends/`. Demonstrate the two motivating use cases and the new
 gradient controls without making the grammar page an exhaustive showcase.
 
-Add small, stable Core specs covering:
+Add small Core specs for region direction and anchoring, local track legends,
+root collection, mixed placement, and gradient controls. Keep existing focused
+examples free of unrelated Legends 2.0 options.
 
-- `region-layout-directions.json`: multiple complete legends using the default
-  side/top/corner directions and one configured override.
-- `local-track-legends.json`: a vertically concatenated track stack with each
-  legend adjacent to its relevant track or resolution owner.
-- `root-collected-legends.json`: a matrix-like composition with distinct
-  legends collected around the root.
-- `mixed-placement.json`: local and root legends coexisting without changing
-  their scale or legend resolutions.
-- `gradient-controls.json`: horizontal and vertical ramps demonstrating fixed
-  length, thickness, opacity, border, and tick count. Combine related knobs in
-  one readable spec rather than creating one file per property.
-
-Existing examples such as `corner-horizontal.json`,
-`layered-legend-regions.json`, and the gradient-scale examples remain focused
-on their current behavior. Reuse their small inline datasets and visual style
-where useful, but do not overload them with unrelated Legends 2.0 options.
-
-**Affected areas:**
-
-- `examples/core/legends/`
-- `examples/docs/grammar/legend/` for at most one essential new rendered docs
-  example
-- `docs/grammar/legend.md`
-- `docs/grammar/composition/index.md` if a short placement-versus-resolution
-  clarification is needed
+**Affected areas:** `examples/core/legends/`, one essential rendered grammar
+example, and `docs/grammar/legend.md`.
 
 **Verification:** Follow `examples/README.md`, validate and render every new
 Core example, and build schema/docs artifacts. Confirm that placement examples
@@ -890,7 +847,7 @@ and gradient controls, schema-derived property documentation, and pointers to
 the curated Core examples for broader combinations. Do not embed every new
 Core example in the grammar page.
 
-**Tentative commit:** `docs(core): add Legends 2.0 examples`
+**Commit:** `docs(core): add Legends 2.0 examples`
 
 ## Acceptance criteria
 
@@ -902,9 +859,13 @@ Core example in the grammar page.
 - A general region direction overrides every orientation without a specific
   override.
 - An orientation-specific direction overrides the general direction.
+- External regions support start, middle, and end anchoring along the plot
+  edge.
+- Orientation-specific anchor configuration overrides the general anchor.
+- Corner regions ignore anchor and remain fixed to their specified corner.
 - `legend.direction` continues to control only entries inside one legend.
-- External region overhang and parallel flex constraints match the packed
-  physical dimensions.
+- External region overhang matches the packed perpendicular extent without
+  changing sibling flex allocation.
 - Corner regions remain inside the plot and contribute no external overhang.
 - Active legend changes reflow horizontal and vertical regions correctly.
 - Deterministic legend order remains unchanged.
@@ -934,7 +895,8 @@ Core example in the grammar page.
 - `gradientThickness` changes ramp geometry and measured cross-axis extent.
 - `gradientOpacity` affects only the ramp.
 - Gradient stroke properties draw one border around the ramp without changing
-  the represented scale or producing seams between samples.
+  the represented scale or producing seams between samples, and the allocated
+  extent includes the centered border stroke.
 - `tickCount` controls automatically derived tick density, while explicit
   `values` take precedence.
 - Continuous, threshold, and quantize gradient legends honor the applicable
@@ -953,7 +915,7 @@ Core example in the grammar page.
 ### Documentation and provenance
 
 - User-facing documentation distinguishes scale resolution, legend resolution,
-  legend placement, entry direction, and region direction.
+  legend placement, entry direction, region direction, and region anchor.
 - Changed multi-legend defaults and their compatibility override are documented.
 - The track-stack and centralized-matrix use cases are both demonstrated in
   the curated Core examples.
