@@ -3,10 +3,6 @@
 
   "description": "Complete legends use orientation-dependent region directions. Side legends stack vertically, top legends horizontally, and the corner region is explicitly overridden to vertical.",
 
-  "background": "#fafafa",
-  "width": 800,
-  "height": 210,
-
   "config": {
     "legend": {
       "disable": false,

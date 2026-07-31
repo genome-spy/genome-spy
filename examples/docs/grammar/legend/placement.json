@@ -3,15 +3,6 @@
 
   "description": "One legend stays below its view while another is collected to the right of the root view.",
 
-  "width": 450,
-  "height": 110,
-
-  "config": { "legend": { "disable": false } },
-  "resolve": {
-    "scale": { "color": "independent" },
-    "legend": { "color": "independent" }
-  },
-
   "vconcat": [
     {
       "data": {
@@ -60,5 +51,7 @@
         }
       }
     }
-  ]
+  ],
+
+  "config": { "view": { "stroke": "lightgray" } }
 }
