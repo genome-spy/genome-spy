@@ -5,7 +5,7 @@ annotation dataset for GRCh38.p13. It loads transcript annotations from a
 tabix-indexed GFF3 file and renders transcript bodies, exons, UTR/CDS
 intervals, and transcript labels in packed lanes.
 
-EXAMPLE examples/docs/genomic-data/examples/gff3-gene-annotations.json height=360 spechidden
+EXAMPLE examples/docs/examples/genomic-data/gff3-gene-annotations.json height=360 spechidden
 
 !!! disclaimer ""
 

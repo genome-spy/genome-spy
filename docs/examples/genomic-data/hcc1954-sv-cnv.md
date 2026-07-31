@@ -6,7 +6,7 @@ pair. It uses PacBio HiFi results from the CASTLE tumour-normal dataset: the
 Severus somatic calls consumed by Wakhan and the corresponding
 haplotype-specific CN solution.
 
-EXAMPLE examples/docs/genomic-data/examples/hcc1954-sv-cnv.json height=320 spechidden
+EXAMPLE examples/docs/examples/genomic-data/hcc1954-sv-cnv.json height=320 spechidden
 
 !!! disclaimer ""
 

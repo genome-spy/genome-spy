@@ -6,7 +6,7 @@ recreates the small-variant classification view described in NCBI's
 post: each variant is placed by genomic position, while vertical position and
 color encode the germline classification.
 
-EXAMPLE examples/docs/genomic-data/examples/clinvar-variants.json height=130 spechidden
+EXAMPLE examples/docs/examples/genomic-data/clinvar-variants.json height=130 spechidden
 
 !!! disclaimer ""
 

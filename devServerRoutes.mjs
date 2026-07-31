@@ -118,7 +118,7 @@ function specList(req, res, next) {
 
     <p>
         In the deployed docs, the same curated examples resolve against
-        <code>/docs/examples/</code>, which keeps the source specs identical across
+        <code>/docs/example-specs/</code>, which keeps the source specs identical across
         local dev, docs, and playground.
     </p>
 

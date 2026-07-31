@@ -7,7 +7,7 @@ track is a sequence logo that summarizes the bases and information content at
 each alignment position. The lower track shows the aligned bases for each
 sequence, with zoom-dependent labels.
 
-EXAMPLE examples/docs/genomic-data/examples/msa.json height=400 spechidden
+EXAMPLE examples/docs/examples/genomic-data/msa.json height=400 spechidden
 
 !!! disclaimer ""
 

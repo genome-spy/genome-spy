@@ -22,17 +22,17 @@
   "axes": { "x": { "orient": "top", "title": null } },
 
   "vconcat": [
-    { "import": { "url": "docs/genomic-data/examples/cytobands.json" } },
+    { "import": { "url": "docs/examples/genomic-data/cytobands.json" } },
     {
       "import": {
-        "url": "docs/genomic-data/examples/indexed-fasta-six-frame-translation.json"
+        "url": "docs/examples/genomic-data/indexed-fasta-six-frame-translation.json"
       }
     },
     {
-      "import": { "url": "docs/genomic-data/examples/bam-read-alignments.json" }
+      "import": { "url": "docs/examples/genomic-data/bam-read-alignments.json" }
     },
     {
-      "import": { "url": "docs/genomic-data/examples/scored-refSeq-genes.json" }
+      "import": { "url": "docs/examples/genomic-data/scored-refSeq-genes.json" }
     }
   ],
 

@@ -62,4 +62,4 @@ Layers can color `base` with a nominal scale and filter or fade marks using
 `baseQuality`.
 
 For a complete genomic visualization example, see [BAM Read
-Alignments](../../genomic-data/examples/bam-read-alignments.md).
+Alignments](../../examples/genomic-data/bam-read-alignments.md).

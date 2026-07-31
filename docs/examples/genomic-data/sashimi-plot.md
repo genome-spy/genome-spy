@@ -10,7 +10,7 @@ example](https://igv.org/web/release/3.8.0/examples/spliceJunctions.html) with
 the same data, but uses GenomeSpy's declarative grammar to control filtering,
 arc geometry and style, and label placement.
 
-EXAMPLE examples/docs/genomic-data/examples/sashimi-plot.json height=220 spechidden
+EXAMPLE examples/docs/examples/genomic-data/sashimi-plot.json height=220 spechidden
 
 !!! disclaimer ""
 

@@ -20,7 +20,11 @@ node_modules/
 **/static/examples/drafts/
 
 /docs/app/
-/docs/examples/
+/docs/examples/*
+!/docs/examples/
+!/docs/examples/**/
+!/docs/examples/**/*.md
+/docs/example-specs/
 /docs/schema.json
 /docs/app-schema.json
 /docs/genome-spy-schema.json

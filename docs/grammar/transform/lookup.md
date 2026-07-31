@@ -69,7 +69,7 @@ must not have the same names as primary-data fields. Implicit values
 require top-level lookup key fields.
 
 For an example that maps nucleotide complements and codons, see [Indexed FASTA
-Six-Frame Translation](../../genomic-data/examples/indexed-fasta-six-frame-translation.md).
+Six-Frame Translation](../../examples/genomic-data/indexed-fasta-six-frame-translation.md).
 
 ## Lookup from the input
 

@@ -14,7 +14,7 @@ where it is structured a bit differently.
 For the core purity/ploidy fit and rounding step, see the companion
 [Interactive ASCAT-like Purity/Ploidy Fitting](ascat-algorithm.md) page.
 
-EXAMPLE examples/docs/genomic-data/examples/ASCAT.json height=500 spechidden
+EXAMPLE examples/docs/examples/genomic-data/ASCAT.json height=500 spechidden
 
 !!! disclaimer ""
 

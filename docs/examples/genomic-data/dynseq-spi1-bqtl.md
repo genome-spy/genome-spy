@@ -7,7 +7,7 @@ from the SPI1 ChIP-seq BPNet model; negative scores extend below zero. It
 recreates the reference-versus-alternate SPI1 ChIP plot in the
 [dynseq SPI1 bQTL notebook](https://github.com/kundajelab/dynseq-paper/blob/main/SPI1_bQTL/SPI1_bQTL_recreate.ipynb).
 
-EXAMPLE examples/docs/genomic-data/examples/dynseq-spi1-bqtl.json height=285 spechidden
+EXAMPLE examples/docs/examples/genomic-data/dynseq-spi1-bqtl.json height=285 spechidden
 
 !!! disclaimer ""
 

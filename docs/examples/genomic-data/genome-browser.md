@@ -5,7 +5,7 @@ track specifications and stacking them vertically. The imported cytoband,
 six-frame translation, BAM alignment, and gene annotation views can also be used
 independently.
 
-EXAMPLE examples/docs/genomic-data/examples/genome-browser.json height=600
+EXAMPLE examples/docs/examples/genomic-data/genome-browser.json height=600
 
 !!! disclaimer ""
 

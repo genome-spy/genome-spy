@@ -5,7 +5,7 @@ building blocks. It combines depth coverage, mismatch and insertion support,
 read pileup, read direction, CIGAR operation overlays, per-read mismatch bases,
 and zoom-dependent lazy loading.
 
-EXAMPLE examples/docs/genomic-data/examples/bam-read-alignments.json height=600 spechidden
+EXAMPLE examples/docs/examples/genomic-data/bam-read-alignments.json height=600 spechidden
 
 !!! disclaimer ""
 

@@ -426,7 +426,7 @@ function createTrimmedAscatSpec() {
     const spec = JSON.parse(
         fs.readFileSync(
             new URL(
-                "../../../../examples/docs/genomic-data/examples/ASCAT-algorithm.json",
+                "../../../../examples/docs/examples/genomic-data/ASCAT-algorithm.json",
                 import.meta.url
             ),
             "utf8"

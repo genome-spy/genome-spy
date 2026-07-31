@@ -60,7 +60,7 @@ function resolveSitePath(sitePath) {
  * @returns {Promise<import("@genome-spy/core/types/embedApi.js").EmbedResult | undefined>}
  */
 async function embedToDoc(container, conf, baseUrl, runtime, prepareAppStyles) {
-    const examplesBaseUrl = resolveSitePath("examples/");
+    const examplesBaseUrl = resolveSitePath("example-specs/");
 
     try {
         conf.baseUrl =
@@ -159,11 +159,13 @@ export class GenomeSpyDocEmbed extends LitElement {
             : "Hide specification";
 
         return html`
-            ${this.appStyles
-                ? html`<style>
-                      ${this.appStyles}
-                  </style>`
-                : nothing}
+            ${
+                this.appStyles
+                    ? html`<style>
+                          ${this.appStyles}
+                      </style>`
+                    : nothing
+            }
             <div
                 class="embed-container"
                 style=${styleMap({
@@ -171,35 +173,43 @@ export class GenomeSpyDocEmbed extends LitElement {
                 })}
                 ${ref(this.embedRef)}
             ></div>
-            ${shouldShowLinks
-                ? html`
-                      <div class="embed-links">
-                          ${shouldShowSpecToggle
-                              ? html`
-                                    <a
-                                        href="#"
-                                        @click=${(event) => {
+            ${
+                shouldShowLinks
+                    ? html`
+                          <div class="embed-links">
+                              ${
+                              shouldShowSpecToggle
+                                  ? html`
+                                        <a
+                                            href="#"
+                                            @click=${(event) => {
                                             this.#specToggleEnabled = true;
                                             this.specHidden = !this.specHidden;
                                             event.preventDefault();
                                         }}
-                                        >${specToggleLabel}</a
-                                    >
-                                `
-                              : nothing}
-                          ${this.playgroundUrl && shouldShowSpecToggle
-                              ? html` - `
-                              : nothing}
-                          ${this.playgroundUrl
-                              ? html`
-                                    <a href=${this.playgroundUrl}
-                                        >Edit this example in Playground</a
-                                    >
-                                `
-                              : nothing}
-                      </div>
-                  `
-                : nothing}
+                                            >${specToggleLabel}</a
+                                        >
+                                    `
+                                  : nothing
+                          }
+                              ${
+                              this.playgroundUrl && shouldShowSpecToggle
+                                  ? html` - `
+                                  : nothing
+                          }
+                              ${
+                              this.playgroundUrl
+                                  ? html`
+                                        <a href=${this.playgroundUrl}
+                                            >Edit this example in Playground</a
+                                        >
+                                    `
+                                  : nothing
+                          }
+                          </div>
+                      `
+                    : nothing
+            }
 
             <div
                 class="embed-spec"

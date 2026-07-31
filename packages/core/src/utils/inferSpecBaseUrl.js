@@ -1,5 +1,5 @@
 const CURATED_EXAMPLE_BASES = [
-    ["/docs/examples/", "/docs/examples/"],
+    ["/docs/example-specs/", "/docs/example-specs/"],
     ["/examples/core/", "/examples/"],
     ["/examples/docs/", "/examples/"],
     ["/examples/app/", "/examples/"],

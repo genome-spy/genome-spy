@@ -12,7 +12,7 @@ Each output row copies the input datum and adds exon interval fields. By
 default, these are `exonStart` and `exonEnd`.
 
 See the [RefSeq Gene Annotations with Scored
-Labels](../../genomic-data/examples/refseq-genes.md) example for a gene
+Labels](../../examples/genomic-data/refseq-genes.md) example for a gene
 annotation track that uses this transform.
 
 ## Parameters

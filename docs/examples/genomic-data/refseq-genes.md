@@ -8,7 +8,7 @@ the most useful labels visible as the view changes. The prioritized gene
 symbols act as landmarks for navigating the genome, and the small arrows
 visible at high zoom levels indicate transcript direction.
 
-EXAMPLE examples/docs/genomic-data/examples/scored-refSeq-genes.json height=110 spechidden
+EXAMPLE examples/docs/examples/genomic-data/scored-refSeq-genes.json height=110 spechidden
 
 !!! disclaimer ""
 

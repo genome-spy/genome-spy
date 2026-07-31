@@ -11,17 +11,17 @@ test("inferSpecBaseUrl uses examples root for curated local examples", () => {
     expect(inferSpecBaseUrl("/examples/app/demo.json")).toBe("/examples/");
 });
 
-test("inferSpecBaseUrl uses docs examples root for staged docs examples", () => {
+test("inferSpecBaseUrl uses docs example-specs root for staged docs examples", () => {
     expect(
         inferSpecBaseUrl(
-            "/docs/examples/docs/grammar/mark/point/point-mark.json"
+            "/docs/example-specs/docs/grammar/mark/point/point-mark.json"
         )
-    ).toBe("/docs/examples/");
+    ).toBe("/docs/example-specs/");
     expect(
         inferSpecBaseUrl(
-            "https://genomespy.app/docs/examples/docs/index/interactive-overview.json"
+            "https://genomespy.app/docs/example-specs/docs/index/interactive-overview.json"
         )
-    ).toBe("https://genomespy.app/docs/examples/");
+    ).toBe("https://genomespy.app/docs/example-specs/");
 });
 
 test("inferSpecBaseUrl falls back to the spec directory for non-curated specs", () => {

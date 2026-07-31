@@ -36,6 +36,7 @@ class ExampleMacroTest(unittest.TestCase):
 
         html = '\n'.join(lines)
         self.assertIn('runtime="app"', html)
+        self.assertIn('base-url="example-specs/"', html)
         self.assertIn('height="200"', html)
         self.assertIn('spechidden="true"', html)
         self.assertNotIn('playground-url=', html)
@@ -49,6 +50,11 @@ class ExampleMacroTest(unittest.TestCase):
 
         html = '\n'.join(lines)
         self.assertNotIn('runtime=', html)
+        self.assertIn('base-url="example-specs/"', html)
+        self.assertIn(
+            'playground-url="/playground/?spec=/docs/example-specs/docs/demo/track.json"',
+            html,
+        )
         self.assertIn('playground-url=', html)
 
     def test_rejects_app_example_without_app_runtime(self) -> None:

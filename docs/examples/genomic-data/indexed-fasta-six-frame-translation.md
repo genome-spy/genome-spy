@@ -4,7 +4,7 @@ This example translates the visible reference sequence in all three reading
 frames on both strands. A reference sequence track sits above the six
 translation lanes.
 
-EXAMPLE examples/docs/genomic-data/examples/indexed-fasta-six-frame-translation.json height=170 spechidden
+EXAMPLE examples/docs/examples/genomic-data/indexed-fasta-six-frame-translation.json height=170 spechidden
 
 !!! disclaimer ""
 

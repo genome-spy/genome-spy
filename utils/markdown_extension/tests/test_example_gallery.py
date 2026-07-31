@@ -28,7 +28,7 @@ class ExampleGalleryTest(unittest.TestCase):
         self.assertIn('class="example-gallery"', html)
         self.assertIn('href="demo/"', html)
         self.assertIn(
-            'src="/docs/examples/docs/demo/track.png"',
+            'src="/docs/example-specs/docs/demo/track.png"',
             html,
         )
         self.assertIn("Demo Track", html)

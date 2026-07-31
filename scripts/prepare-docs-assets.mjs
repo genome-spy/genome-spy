@@ -1,4 +1,13 @@
-import { access, cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+    access,
+    cp,
+    copyFile,
+    mkdir,
+    readdir,
+    readFile,
+    rm,
+    writeFile,
+} from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,7 +57,7 @@ const inspectorPackageSource = path.join(
 // Files that Zensical and the custom Markdown extension consume.
 const docsDir = path.join(repoRoot, "docs");
 const docsAppDir = path.join(docsDir, "app");
-const docsExamplesDir = path.join(docsDir, "examples");
+const docsExampleSpecsDir = path.join(docsDir, "example-specs");
 const docsSnippetTemplatesDir = path.join(docsDir, "snippets-src");
 const docsGeneratedSnippetsDir = path.join(docsDir, "generated-snippets");
 const coreSchemaTarget = path.join(docsDir, "schema.json");
@@ -60,7 +69,7 @@ const vegaDatasetsSourceDir = path.join(
     "vega-datasets",
     "data"
 );
-const docsVegaDatasetsDir = path.join(docsExamplesDir, "vega-datasets");
+const docsVegaDatasetsDir = path.join(docsExampleSpecsDir, "vega-datasets");
 
 /**
  * @param {string} sourcePath
@@ -99,6 +108,57 @@ async function getSnippetTemplateFiles(sourceDir) {
 }
 
 /**
+ * @param {string} sourceDir
+ * @returns {Promise<string[]>}
+ */
+async function getExampleAssetFiles(sourceDir) {
+    /** @type {string[]} */
+    const files = [];
+    const entries = await readdir(sourceDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+        if (entry.name === ".DS_Store" || entry.name === "README.md") {
+            continue;
+        }
+
+        const sourcePath = path.join(sourceDir, entry.name);
+        if (entry.isDirectory()) {
+            files.push(...(await getExampleAssetFiles(sourcePath)));
+        } else {
+            files.push(sourcePath);
+        }
+    }
+
+    return files;
+}
+
+/**
+ * Map repository example paths to their stable public docs asset paths.
+ *
+ * @param {string} relativePath
+ */
+function getExampleAssetRelativePath(relativePath) {
+    return relativePath;
+}
+
+/**
+ * @param {string} sourceDir
+ * @param {string} targetDir
+ */
+async function stageExampleAssets(sourceDir, targetDir) {
+    for (const sourcePath of await getExampleAssetFiles(sourceDir)) {
+        const relativePath = path.relative(sourceDir, sourcePath);
+        const targetPath = path.join(
+            targetDir,
+            getExampleAssetRelativePath(relativePath)
+        );
+
+        await mkdir(path.dirname(targetPath), { recursive: true });
+        await copyFile(sourcePath, targetPath);
+    }
+}
+
+/**
  * @param {Record<string, string>} replacements
  * @param {string} content
  */
@@ -107,13 +167,6 @@ function renderSnippetTemplate(replacements, content) {
         (rendered, [key, value]) => rendered.replaceAll(`{{${key}}}`, value),
         content
     );
-}
-
-/**
- * @param {string} sourcePath
- */
-function includeDocsAsset(sourcePath) {
-    return path.basename(sourcePath) !== "README.md";
 }
 
 // Fail fast with a clear message if prerequisites are missing.
@@ -142,13 +195,10 @@ const snippetReplacements = {
 // Replace staged docs assets atomically to avoid stale files from older builds.
 await mkdir(docsDir, { recursive: true });
 await rm(docsAppDir, { recursive: true, force: true });
-await rm(docsExamplesDir, { recursive: true, force: true });
+await rm(docsExampleSpecsDir, { recursive: true, force: true });
 await rm(docsGeneratedSnippetsDir, { recursive: true, force: true });
 await cp(docEmbedDistDir, docsAppDir, { recursive: true });
-await cp(examplesSourceDir, docsExamplesDir, {
-    recursive: true,
-    filter: includeDocsAsset,
-});
+await stageExampleAssets(examplesSourceDir, docsExampleSpecsDir);
 await cp(vegaDatasetsSourceDir, docsVegaDatasetsDir, { recursive: true });
 await cp(coreSchemaSource, coreSchemaTarget);
 await cp(appSchemaSource, appSchemaTarget);

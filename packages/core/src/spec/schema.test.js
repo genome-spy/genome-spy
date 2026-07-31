@@ -58,7 +58,7 @@ describe("generated core schema", () => {
             fs.readFileSync(
                 path.join(
                     repoRoot,
-                    "examples/docs/genomic-data/examples/indexed-fasta-six-frame-translation.json"
+                    "examples/docs/examples/genomic-data/indexed-fasta-six-frame-translation.json"
                 ),
                 "utf8"
             )

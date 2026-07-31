@@ -8,7 +8,7 @@ the available space, and dashed separators mark chromosome boundaries.
 The spec loads UCSC's gzipped cytoband file directly. Because the file has no
 header line, the TSV columns are declared explicitly.
 
-EXAMPLE examples/docs/genomic-data/examples/cytobands.json height=60 spechidden
+EXAMPLE examples/docs/examples/genomic-data/cytobands.json height=60 spechidden
 
 !!! disclaimer ""
 

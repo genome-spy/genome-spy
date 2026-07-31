@@ -8,6 +8,9 @@ from typing import Any
 
 gallery_item_pattern = re.compile(r'^\s*-\s+\[([^\]]+)\]\(([^)]+)\)\s+(.+?)\s*$')
 
+DOCS_EXAMPLE_SOURCE_PREFIX = 'examples/docs/'
+DOCS_EXAMPLE_PUBLIC_ROOT = '/docs/example-specs'
+
 
 GalleryCard = dict[str, str]
 
@@ -36,7 +39,7 @@ def render_example_gallery(
     # Docs assets are served from /docs, regardless of the page containing the
     # gallery. A relative path would resolve differently on the landing page
     # and nested documentation pages.
-    image_root = '/docs/examples'
+    image_root = DOCS_EXAMPLE_PUBLIC_ROOT
     for token in tokens[1:]:
         if token.startswith('imageRoot='):
             image_root = token.split('=', 1)[1].rstrip('/')
@@ -96,8 +99,15 @@ def parse_gallery_item(
         'title': title,
         'href': normalize_markdown_href(href),
         'description': get_description(spec),
-        'thumbnail': image_root + '/' + thumbnail_path.removeprefix('examples/'),
+        'thumbnail': image_root + '/' + get_public_example_path(thumbnail_path),
     }
+
+
+def get_public_example_path(example_path: str) -> str:
+    if example_path.startswith(DOCS_EXAMPLE_SOURCE_PREFIX):
+        return example_path.removeprefix('examples/')
+    else:
+        raise ValueError('Unsupported example path: {}'.format(example_path))
 
 
 def normalize_markdown_href(href: str) -> str:

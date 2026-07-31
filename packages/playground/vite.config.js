@@ -31,7 +31,7 @@ export default defineConfig({
                     express.static(vegaDatasetsDir)
                 );
                 server.middlewares.use(
-                    "/docs/examples/vega-datasets",
+                    "/docs/example-specs/vega-datasets",
                     express.static(vegaDatasetsDir)
                 );
                 server.middlewares.use(
@@ -39,7 +39,7 @@ export default defineConfig({
                     express.static(examplesDir)
                 );
                 server.middlewares.use(
-                    "/docs/examples",
+                    "/docs/example-specs",
                     express.static(examplesDir)
                 );
                 server.middlewares.use("/example-catalog.json", (_req, res) => {
@@ -64,7 +64,10 @@ export default defineConfig({
                     type: "asset",
                     fileName: "example-catalog.json",
                     source: JSON.stringify(
-                        generateExampleCatalog(examplesDir, "/docs/examples"),
+                        generateExampleCatalog(
+                            examplesDir,
+                            "/docs/example-specs"
+                        ),
                         null,
                         2
                     ),

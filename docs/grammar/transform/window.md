@@ -87,8 +87,8 @@ The _six-frame FASTA translation example_ below sorts flattened bases by genomic
 position and uses four `lead` operations to gather the next two bases and
 complements for every row.
 
-EXAMPLE examples/docs/genomic-data/examples/indexed-fasta-six-frame-translation.json height=180 spechidden
+EXAMPLE examples/docs/examples/genomic-data/indexed-fasta-six-frame-translation.json height=180 spechidden
 
 See [Indexed FASTA Six-Frame
-Translation](../../genomic-data/examples/indexed-fasta-six-frame-translation.md)
+Translation](../../examples/genomic-data/indexed-fasta-six-frame-translation.md)
 for a more detailed description of the example and its data sources.

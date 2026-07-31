@@ -7113,7 +7113,7 @@ exports[`shared examples > initializes examples/core/transforms/pileup.json 1`] 
 }
 `;
 
-exports[`shared examples > initializes examples/docs/genomic-data/examples/ASCAT-algorithm.json 1`] = `
+exports[`shared examples > initializes examples/docs/examples/genomic-data/ASCAT-algorithm.json 1`] = `
 {
   "assemblies": [
     "hg19",
@@ -7174,6 +7174,14 @@ exports[`shared examples > initializes examples/docs/genomic-data/examples/ASCAT
     {
       "identifier": null,
       "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
     },
     {
       "identifier": null,

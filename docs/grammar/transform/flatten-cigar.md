@@ -64,4 +64,4 @@ Layers can filter by `cigarType` and render different operation types with
 ordinary marks.
 
 For a complete genomic visualization example, see [BAM Read
-Alignments](../../genomic-data/examples/bam-read-alignments.md).
+Alignments](../../examples/genomic-data/bam-read-alignments.md).

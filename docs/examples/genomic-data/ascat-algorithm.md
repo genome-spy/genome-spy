@@ -32,7 +32,7 @@ segments, aggregates the distance grid, and links the selected solution to the
 genomic tracks. No application-specific JavaScript is needed: moving the ruler
 or changing `gamma` reactively recomputes the affected dataflow.
 
-EXAMPLE examples/docs/genomic-data/examples/ASCAT-algorithm.json height=870 spechidden
+EXAMPLE examples/docs/examples/genomic-data/ASCAT-algorithm.json height=870 spechidden
 
 !!! disclaimer ""
 

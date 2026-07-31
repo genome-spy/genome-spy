@@ -44,12 +44,12 @@ GenomeSpy applies the same declarative grammar to genomic data. These examples
 show two richer, domain-specific visualizations: translated sequence context and
 splice-junction evidence.
 
-EXAMPLE_GALLERY examples/docs/genomic-data/examples
+EXAMPLE_GALLERY examples/docs/examples/genomic-data
 
-- [Indexed FASTA Six-Frame Translation](genomic-data/examples/indexed-fasta-six-frame-translation.md) indexed-fasta-six-frame-translation.json
-- [Sashimi Plot from Splice Junctions](genomic-data/examples/sashimi-plot.md) sashimi-plot.json
+- [Indexed FASTA Six-Frame Translation](examples/genomic-data/indexed-fasta-six-frame-translation.md) indexed-fasta-six-frame-translation.json
+- [Sashimi Plot from Splice Junctions](examples/genomic-data/sashimi-plot.md) sashimi-plot.json
 
-See [Genomic Data Examples](genomic-data/examples/index.md) for the full list.
+See [Genomic Data Examples](examples/index.md) for the full list.
 
 ## About
 

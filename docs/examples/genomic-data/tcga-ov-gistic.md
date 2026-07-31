@@ -6,7 +6,7 @@ serous cystadenocarcinoma cohort (`OV-TP`) with
 Institute TCGA Genome Data Analysis Center Firehose. The source analysis used
 GISTIC2.0.22 and hg19 coordinates.
 
-EXAMPLE examples/docs/genomic-data/examples/tcga-ov-gistic.json height=280 spechidden
+EXAMPLE examples/docs/examples/genomic-data/tcga-ov-gistic.json height=280 spechidden
 
 !!! disclaimer ""
 

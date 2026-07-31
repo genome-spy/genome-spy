@@ -50,7 +50,7 @@ SCHEMA IndexedFastaData
 The visualization below shows a sequence track backed by an indexed FASTA
 source. GenomeSpy fetches new sequence only when the visible region is smaller
 than the source window size (default: 7000 bp). The [Indexed FASTA Six-Frame
-Translation](../../genomic-data/examples/indexed-fasta-six-frame-translation.md)
+Translation](../../examples/genomic-data/indexed-fasta-six-frame-translation.md)
 example builds on this source with reference bases and translated reading frames.
 
 EXAMPLE examples/docs/grammar/data/lazy/indexed-fasta-sequence-track.json height=60 spechidden
@@ -173,9 +173,9 @@ SCHEMA VcfData
 
 The visualization below shows ClinVar variants loaded from a tabix-indexed VCF
 file and reshaped for a small-variant classification track. For a fuller
-explanation of the track, see [ClinVar Small-Variant Classifications](../../genomic-data/examples/clinvar-variants.md).
+explanation of the track, see [ClinVar Small-Variant Classifications](../../examples/genomic-data/clinvar-variants.md).
 
-EXAMPLE examples/docs/genomic-data/examples/clinvar-variants.json height=130 spechidden
+EXAMPLE examples/docs/examples/genomic-data/clinvar-variants.json height=130 spechidden
 
 !!! disclaimer ""
 
@@ -204,9 +204,9 @@ SCHEMA Gff3Data
 The visualization below loads the human (GRCh38.p13)
 [GENCODE](https://www.gencodegenes.org/) v43 annotation dataset from a
 tabix-indexed GFF3 file. For a fuller explanation of the track, see [GENCODE
-Gene Annotations from GFF3](../../genomic-data/examples/gencode-gff3-gene-annotations.md).
+Gene Annotations from GFF3](../../examples/genomic-data/gencode-gff3-gene-annotations.md).
 
-EXAMPLE examples/docs/genomic-data/examples/gff3-gene-annotations.json height=360 spechidden
+EXAMPLE examples/docs/examples/genomic-data/gff3-gene-annotations.json height=360 spechidden
 
 !!! disclaimer ""
 
@@ -250,7 +250,7 @@ Returned fields:
 Use [`flattenCigar`](../transform/flatten-cigar.md) and
 [`alignmentMismatches`](../transform/alignment-mismatches.md) when reshaping BAM
 rows for custom alignment views. See [BAM Read
-Alignments](../../genomic-data/examples/bam-read-alignments.md) example for a
+Alignments](../../examples/genomic-data/bam-read-alignments.md) example for a
 fuller alignment visualization with coverage, CIGAR annotations, insertions, and
 mismatch evidence.
 

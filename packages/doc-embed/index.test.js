@@ -91,7 +91,7 @@ describe("GenomeSpyDocEmbed", () => {
 
         expect(appEmbed).toHaveBeenCalledWith(
             expect.any(HTMLDivElement),
-            { baseUrl: "/docs/examples/", mark: "point" },
+            { baseUrl: "/docs/example-specs/", mark: "point" },
             { embedMode: "embedded" }
         );
         expect(element.appStyles).toBe(".genome-spy-app { color: red; }");
@@ -109,7 +109,7 @@ describe("GenomeSpyDocEmbed", () => {
         const element = await mountEmbed("core");
 
         expect(coreEmbed).toHaveBeenCalledWith(expect.any(HTMLDivElement), {
-            baseUrl: "/docs/examples/",
+            baseUrl: "/docs/example-specs/",
             mark: "point",
         });
 

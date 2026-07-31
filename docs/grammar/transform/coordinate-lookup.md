@@ -57,4 +57,4 @@ names, provide them with `fields`, for example
 `fields: ["chromosome", "position"]`.
 
 For a complete reference-versus-alternate sequence-contribution visualization,
-see the [SPI1 Binding-QTL Dynseq Track](../../genomic-data/examples/dynseq-spi1-bqtl.md).
+see the [SPI1 Binding-QTL Dynseq Track](../../examples/genomic-data/dynseq-spi1-bqtl.md).

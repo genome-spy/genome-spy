@@ -13,6 +13,10 @@ from .example_gallery import render_example_gallery
 # TODO: Don't use absolute URLs. Instead generate relative links.
 docs_baseurl = 'https://genomespy.app/docs'
 
+DOCS_EXAMPLE_SOURCE_PREFIX = 'examples/docs/'
+APP_EXAMPLE_SOURCE_PREFIX = 'examples/app/'
+DOCS_EXAMPLE_PUBLIC_PREFIX = '/docs/example-specs/'
+
 types_with_links = {
     'Encoding': '/grammar/mark/#encoding',
     'ExprRef': '/grammar/expressions/',
@@ -53,6 +57,15 @@ types_with_links = {
 types_with_descriptions = {
     'Field': 'string (field name)',
 }
+
+
+def get_public_example_path(example_path):
+    if example_path.startswith(DOCS_EXAMPLE_SOURCE_PREFIX) or example_path.startswith(
+        APP_EXAMPLE_SOURCE_PREFIX
+    ):
+        return example_path.removeprefix('examples/')
+    else:
+        raise ValueError('Unsupported example path: {}'.format(example_path))
 
 refPattern = re.compile('^#/definitions/(.+)$')
 schemaLinePattern = re.compile(r'^\s*"\$schema"\s*:\s*".*",?\s*$')
@@ -141,9 +154,9 @@ class MyPreprocessor(Preprocessor):
             else:
                 return ['Unknown EXAMPLE option: `{}`'.format(token)]
 
-        supports_docs_example = example_path.startswith('examples/docs/')
+        supports_docs_example = example_path.startswith(DOCS_EXAMPLE_SOURCE_PREFIX)
         supports_app_example = (
-            runtime == 'app' and example_path.startswith('examples/app/')
+            runtime == 'app' and example_path.startswith(APP_EXAMPLE_SOURCE_PREFIX)
         )
         if not supports_docs_example and not supports_app_example:
             return [
@@ -171,13 +184,15 @@ class MyPreprocessor(Preprocessor):
         except ValueError as exc:
             return ['Cannot preprocess example file {}: {}'.format(example_path, exc)]
 
-        base_url = 'examples/'
+        base_url = 'example-specs/'
 
         attributes = [
             'base-url="{}"'.format(base_url),
         ]
         if runtime == 'core':
-            playground_spec_path = '/docs/' + example_path
+            playground_spec_path = DOCS_EXAMPLE_PUBLIC_PREFIX + get_public_example_path(
+                example_path
+            )
             attributes.append(
                 'playground-url="/playground/?spec={}"'.format(
                     playground_spec_path

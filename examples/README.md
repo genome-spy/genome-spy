@@ -40,7 +40,7 @@ Shared examples use three dataset classes:
 Use example-root-relative URLs such as `"url": "data/sincos.csv"` and
 `"url": "vega-datasets/cars.json"`. Do not hardcode `"/examples/..."` in specs.
 The same spec must work both in local dev and in deployed docs under
-`/docs/examples/...`.
+`/docs/example-specs/...`.
 
 The offline shared-example Vitest suite skips specs that contain absolute
 `http://` or `https://` data URLs. Those examples remain available in docs, the

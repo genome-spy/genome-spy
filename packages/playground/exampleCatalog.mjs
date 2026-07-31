@@ -55,6 +55,7 @@ function visit(dir, visitor) {
  */
 function createCatalogEntry(absolutePath, relativePath, specUrlRoot, spec) {
     const specPath = `examples/${relativePath}`;
+    const publicRelativePath = getPublicRelativePath(relativePath);
     const pathSegments = relativePath.split("/");
     const sourceGroup = pathSegments[0];
     const categorySegments = trimTrailingIndex(pathSegments.slice(1, -1));
@@ -72,13 +73,20 @@ function createCatalogEntry(absolutePath, relativePath, specUrlRoot, spec) {
             ? categorySegments.map(humanizeSegment).join(" / ")
             : "General",
         specPath,
-        specUrl: `${specUrlRoot}/${relativePath}`,
+        specUrl: `${specUrlRoot}/${publicRelativePath}`,
         screenshotPath: hasScreenshot ? screenshotPath : null,
         screenshotUrl: hasScreenshot
-            ? `${specUrlRoot}/${relativePath.replace(/\.json$/, ".png")}`
+            ? `${specUrlRoot}/${publicRelativePath.replace(/\.json$/, ".png")}`
             : null,
         sourceMode: "shared-example",
     };
+}
+
+/**
+ * @param {string} relativePath
+ */
+function getPublicRelativePath(relativePath) {
+    return relativePath;
 }
 
 /**
