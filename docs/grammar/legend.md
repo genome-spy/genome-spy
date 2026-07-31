@@ -77,7 +77,7 @@ Placement does not change scale or legend resolution. Distinct independent
 legends remain distinct when collected at the root, and local and root legends
 can coexist.
 
-EXAMPLE examples/docs/grammar/legend/placement.json height=360
+EXAMPLE examples/docs/grammar/legend/placement.json height=250 spechidden
 
 Set the default for all legends in the root configuration, or override it for
 one legend:

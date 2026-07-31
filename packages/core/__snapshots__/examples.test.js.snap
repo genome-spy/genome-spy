@@ -10194,10 +10194,6 @@ exports[`shared examples > initializes examples/docs/grammar/legend/placement.js
     },
     {
       "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
       "type": "LegendEntriesSource",
     },
     {

@@ -6,22 +6,26 @@
     "One legend stays below its view while another is collected to the right of the root view."
   ],
 
+  "data": {
+    "values": [
+      { "x": 1, "group": "A", "status": "pass" },
+      { "x": 2, "group": "B", "status": "review" },
+      { "x": 3, "group": "A", "status": "fail" }
+    ]
+  },
+
+  "resolve": { "scale": { "x": "shared" } },
+
   "vconcat": [
     {
-      "data": {
-        "values": [
-          { "x": 1, "group": "A" },
-          { "x": 2, "group": "B" },
-          { "x": 3, "group": "A" }
-        ]
-      },
-      "mark": { "type": "point", "filled": true, "size": 65 },
+      "mark": { "type": "rect" },
       "encoding": {
-        "x": { "field": "x", "type": "quantitative", "axis": null },
+        "x": { "field": "x", "type": "ordinal", "axis": null },
         "color": {
           "field": "group",
           "type": "nominal",
           "legend": {
+            "offset": 5,
             "placement": "local",
             "orient": "bottom",
             "direction": "horizontal",
@@ -32,16 +36,9 @@
     },
 
     {
-      "data": {
-        "values": [
-          { "x": 1, "status": "pass" },
-          { "x": 2, "status": "review" },
-          { "x": 3, "status": "fail" }
-        ]
-      },
-      "mark": { "type": "point", "filled": true, "size": 65 },
+      "mark": { "type": "rect" },
       "encoding": {
-        "x": { "field": "x", "type": "quantitative" },
+        "x": { "field": "x", "type": "ordinal" },
         "color": {
           "field": "status",
           "type": "nominal",
@@ -58,5 +55,6 @@
   "config": {
     "view": { "stroke": "lightgray" },
     "legend": { "layout": { "right": { "anchor": "middle" } } }
-  }
+  },
+  "background": "#f8f8f8"
 }
