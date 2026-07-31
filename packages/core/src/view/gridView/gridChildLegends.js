@@ -1,4 +1,5 @@
 import { findChannelDefWithScale, isValueDef } from "../../encoder/encoder.js";
+import { getConfiguredLegendRegionDirection } from "../../config/legendConfig.js";
 import {
     activateExprRefProps,
     resolveInitOnlyExprRef,
@@ -438,8 +439,13 @@ export async function addLegendView(legends, legend, resolution) {
     let region = legends[orient];
 
     if (!region) {
+        const direction = getConfiguredLegendRegionDirection(
+            legend.layoutParent.getConfigScopes(),
+            orient
+        );
         const regionView = new LegendRegionView(
             orient,
+            direction,
             legend.legendProps.spacing ?? 0,
             legend.context,
             legend.layoutParent,

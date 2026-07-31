@@ -1226,7 +1226,7 @@ describe("GridView legends", () => {
             expect(legendHeights.at(-1)).toBeGreaterThan(100);
         });
 
-        test("includes stack spacing in top and bottom legend overhang", async () => {
+        test("packs top and bottom legend regions horizontally by default", async () => {
             const view = await createLegendTestView({
                 config: { legend: { disable: false } },
                 vconcat: [
@@ -1282,6 +1282,61 @@ describe("GridView legends", () => {
                                 },
                             },
                         ],
+                    },
+                ],
+            });
+            const [region] = getLegendRegions(view);
+            const legendHeights = getLegends(view).map((legend) =>
+                legend.getPerpendicularSize()
+            );
+
+            expect(region.getPerpendicularSize()).toBe(
+                Math.max(...legendHeights)
+            );
+
+            const context = new LegendRecordingRenderingContext({
+                picking: false,
+            });
+            region.render(context, Rectangle.create(0, 0, 300, 80));
+            const coords = Array.from(context.legendCoords.values());
+
+            expect(coords).toHaveLength(2);
+            expect(coords[0].x).toBe(0);
+            expect(coords[1].x).toBeGreaterThan(coords[0].x);
+            expect(coords[0].y).toBe(coords[1].y);
+        });
+
+        test("supports vertical packing for a bottom legend region", async () => {
+            const view = await createLegendTestView({
+                config: {
+                    legend: {
+                        disable: false,
+                        layout: { bottom: { direction: "vertical" } },
+                    },
+                },
+                vconcat: [
+                    {
+                        data: {
+                            values: [
+                                { x: 1, y: 2, group: "a", amount: 10 },
+                                { x: 2, y: 3, group: "b", amount: 20 },
+                            ],
+                        },
+                        mark: "point",
+                        encoding: {
+                            x: { field: "x", type: "quantitative" },
+                            y: { field: "y", type: "quantitative" },
+                            color: {
+                                field: "group",
+                                type: "nominal",
+                                legend: { orient: "bottom" },
+                            },
+                            size: {
+                                field: "amount",
+                                type: "quantitative",
+                                legend: { orient: "bottom" },
+                            },
+                        },
                     },
                 ],
             });

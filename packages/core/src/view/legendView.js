@@ -871,19 +871,31 @@ export class LegendRegionView extends ContainerView {
 
     #stackSpacing;
 
+    /** @type {import("../spec/legend.js").LegendDirection} */
+    #direction;
+
     /**
      * @param {import("../spec/legend.js").LegendOrient} orient
+     * @param {import("../spec/legend.js").LegendDirection} direction
      * @param {number} stackSpacing
      * @param {import("../types/viewContext.js").default} context
      * @param {import("./containerView.js").default} layoutParent
      * @param {import("./view.js").default} dataParent
      */
-    constructor(orient, stackSpacing, context, layoutParent, dataParent) {
+    constructor(
+        orient,
+        direction,
+        stackSpacing,
+        context,
+        layoutParent,
+        dataParent
+    ) {
+        const concat = direction == "horizontal" ? "hconcat" : "vconcat";
         super(
             {
                 name: "legend_region_" + orient,
                 spacing: stackSpacing,
-                vconcat: [],
+                [concat]: [],
             },
             context,
             layoutParent,
@@ -893,6 +905,7 @@ export class LegendRegionView extends ContainerView {
 
         this.needsAxes = { x: false, y: false };
         this.orient = orient;
+        this.#direction = direction;
         this.#stackSpacing = stackSpacing;
 
         markViewAsNonAddressable(this, { skipSubtree: true });
@@ -900,11 +913,12 @@ export class LegendRegionView extends ContainerView {
     }
 
     async initializeChildren() {
+        const concat = this.#direction == "horizontal" ? "hconcat" : "vconcat";
         this.#child = await this.context.createOrImportView(
             {
                 name: "legendStack",
                 spacing: this.#stackSpacing,
-                vconcat: [],
+                [concat]: [],
             },
             this,
             this,
@@ -946,88 +960,70 @@ export class LegendRegionView extends ContainerView {
     }
 
     getSize() {
-        const mainSize = this.#getParallelSizeDef();
-        const perpendicularSize = { px: this.getPerpendicularSize() };
-
-        if (this.orient == "top" || this.orient == "bottom") {
-            return new FlexDimensions(mainSize, perpendicularSize);
-        } else {
-            return new FlexDimensions(perpendicularSize, mainSize);
-        }
+        const { width, height } = this.#getPhysicalSizeDefs();
+        return new FlexDimensions(width, height);
     }
 
     /**
-     * @returns {import("./layout/flexLayout.js").SizeDef}
+     * @returns {{
+     *     width: import("./layout/flexLayout.js").SizeDef,
+     *     height: import("./layout/flexLayout.js").SizeDef
+     * }}
      */
-    #getParallelSizeDef() {
+    #getPhysicalSizeDefs() {
         // Legend disable is reactive and separate from configured view
         // visibility, so the internal legendStack concat cannot be used
         // directly for region sizing.
         const legendViews = this.#getVisibleLegendViews();
 
         if (!legendViews.length) {
-            return { grow: 1 };
+            const empty = { px: 0, grow: 0 };
+            return { width: empty, height: empty };
         }
 
-        if (this.orient == "top" || this.orient == "bottom") {
-            return getLargestSize(
-                legendViews.map((legendView) => legendView.getSize().width)
-            );
-        } else {
-            /** @type {import("./layout/flexLayout.js").SizeDef[]} */
-            const sizeDefs = [];
-            for (const [index, legendView] of legendViews.entries()) {
-                if (index > 0) {
-                    sizeDefs.push({ px: this.#stackSpacing, grow: 0 });
-                }
-                sizeDefs.push(legendView.getSize().height);
-            }
-            return sumSizeDefs(sizeDefs);
-        }
+        const widths = legendViews.map(
+            (legendView) => legendView.getSize().width
+        );
+        const heights = legendViews.map(
+            (legendView) => legendView.getSize().height
+        );
+        const sumWithSpacing = (
+            /** @type {import("./layout/flexLayout.js").SizeDef[]} */ sizes
+        ) =>
+            sumSizeDefs([
+                ...sizes,
+                {
+                    px: this.#stackSpacing * Math.max(0, sizes.length - 1),
+                    grow: 0,
+                },
+            ]);
+
+        return this.#direction == "horizontal"
+            ? {
+                  width: sumWithSpacing(widths),
+                  height: getLargestSize(heights),
+              }
+            : {
+                  width: getLargestSize(widths),
+                  height: sumWithSpacing(heights),
+              };
     }
 
     getPerpendicularSize() {
-        if (!this.#child) {
-            return 0;
-        }
-
-        const legendViews = this.#getVisibleLegendViews();
-
-        if (this.orient == "top" || this.orient == "bottom") {
-            return legendViews.reduce(
-                (sum, legendView, index) =>
-                    sum +
-                    legendView.getPerpendicularSize() +
-                    (index > 0 ? this.#stackSpacing : 0),
-                0
-            );
-        } else {
-            return Math.max(
-                0,
-                ...legendViews.map((legendView) =>
-                    legendView.getPerpendicularSize()
-                )
-            );
-        }
+        const size = this.getSize();
+        return getSizeDefMinPx(
+            this.orient == "top" || this.orient == "bottom"
+                ? size.height
+                : size.width
+        );
     }
 
     getWidth() {
-        return Math.max(
-            0,
-            ...this.#getVisibleLegendViews().map((legendView) =>
-                getSizeDefMinPx(legendView.getSize().width)
-            )
-        );
+        return getSizeDefMinPx(this.getSize().width);
     }
 
     getHeight() {
-        return this.#getVisibleLegendViews().reduce(
-            (sum, legendView, index) =>
-                sum +
-                getSizeDefMinPx(legendView.getSize().height) +
-                (index > 0 ? this.#stackSpacing : 0),
-            0
-        );
+        return getSizeDefMinPx(this.getSize().height);
     }
 
     getOffset() {
@@ -1045,7 +1041,11 @@ export class LegendRegionView extends ContainerView {
             return 0;
         }
 
-        const parallelSize = this.#getParallelSizeDef();
+        const size = this.getSize();
+        const parallelSize =
+            this.orient == "top" || this.orient == "bottom"
+                ? size.width
+                : size.height;
         // Undefined asks legendLayout to stretch the region to the available
         // viewport size. Fixed stacks return a numeric natural extent.
         if (getSizeDefMaxPx(parallelSize) === undefined) {
@@ -1073,22 +1073,35 @@ export class LegendRegionView extends ContainerView {
 
         context.pushView(this, coords);
         const legendViews = this.#getVisibleLegendViews();
-        const legendSizes = legendViews.map(
-            (legendView) => legendView.getSize().height
-        );
-        const legendLocSizes = mapToPixelCoords(legendSizes, coords.height, {
-            spacing: this.#stackSpacing,
-            devicePixelRatio: context.getDevicePixelRatio(),
+        const horizontal = this.#direction == "horizontal";
+        const legendSizes = legendViews.map((legendView) => {
+            const size = legendView.getSize();
+            return horizontal ? size.width : size.height;
         });
+        const legendLocSizes = mapToPixelCoords(
+            legendSizes,
+            horizontal ? coords.width : coords.height,
+            {
+                spacing: this.#stackSpacing,
+                devicePixelRatio: context.getDevicePixelRatio(),
+            }
+        );
 
         for (const [index, legendView] of legendViews.entries()) {
             const locSize = legendLocSizes[index];
-            const legendCoords = new Rectangle(
-                () => coords.x,
-                () => coords.y + locSize.location,
-                () => coords.width,
-                () => locSize.size
-            );
+            const legendCoords = horizontal
+                ? new Rectangle(
+                      () => coords.x + locSize.location,
+                      () => coords.y,
+                      () => locSize.size,
+                      () => coords.height
+                  )
+                : new Rectangle(
+                      () => coords.x,
+                      () => coords.y + locSize.location,
+                      () => coords.width,
+                      () => locSize.size
+                  );
             legendView.render(context, legendCoords, options);
         }
         context.popView(this);
