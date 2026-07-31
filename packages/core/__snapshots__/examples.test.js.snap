@@ -10166,30 +10166,6 @@ exports[`shared examples > initializes examples/docs/grammar/legend/placement.js
     },
     {
       "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "AxisTickSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
-      "type": "InlineSource",
-    },
-    {
-      "identifier": null,
       "type": "InlineSource",
     },
     {
