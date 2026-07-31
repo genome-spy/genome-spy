@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { INTERNAL_DEFAULT_CONFIG } from "./defaultConfig.js";
 import {
     getConfiguredLegendDefaults,
-    getConfiguredLegendRegionDirection,
+    getConfiguredLegendRegionLayout,
 } from "./legendConfig.js";
 
 describe("legendConfig", () => {
@@ -160,57 +160,70 @@ describe("legendConfig", () => {
         expect(defaults.titleOrient).toBe("left");
     });
 
-    test("uses orientation-dependent legend region directions", () => {
+    test("uses orientation-dependent legend region layout defaults", () => {
         expect(
-            getConfiguredLegendRegionDirection(
-                [INTERNAL_DEFAULT_CONFIG],
-                "left"
-            )
-        ).toBe("vertical");
+            getConfiguredLegendRegionLayout([INTERNAL_DEFAULT_CONFIG], "left")
+        ).toEqual({ anchor: "start", direction: "vertical" });
         expect(
-            getConfiguredLegendRegionDirection([INTERNAL_DEFAULT_CONFIG], "top")
-        ).toBe("horizontal");
+            getConfiguredLegendRegionLayout([INTERNAL_DEFAULT_CONFIG], "top")
+        ).toEqual({ anchor: "start", direction: "horizontal" });
         expect(
-            getConfiguredLegendRegionDirection(
+            getConfiguredLegendRegionLayout(
                 [INTERNAL_DEFAULT_CONFIG],
                 "bottom-right"
             )
-        ).toBe("horizontal");
+        ).toEqual({ anchor: "start", direction: "horizontal" });
     });
 
-    test("orientation-specific region direction overrides the general direction", () => {
+    test("orientation-specific region layout overrides general layout", () => {
         /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
         const scopes = [
             INTERNAL_DEFAULT_CONFIG,
             {
                 legend: {
                     layout: {
+                        anchor: "middle",
                         direction: "vertical",
-                        top: { direction: "horizontal" },
+                        top: { anchor: "end", direction: "horizontal" },
                     },
                 },
             },
         ];
 
-        expect(getConfiguredLegendRegionDirection(scopes, "right")).toBe(
-            "vertical"
-        );
-        expect(getConfiguredLegendRegionDirection(scopes, "top")).toBe(
-            "horizontal"
-        );
+        expect(getConfiguredLegendRegionLayout(scopes, "right")).toEqual({
+            anchor: "middle",
+            direction: "vertical",
+        });
+        expect(getConfiguredLegendRegionLayout(scopes, "top")).toEqual({
+            anchor: "end",
+            direction: "horizontal",
+        });
     });
 
     test("closest region layout scope wins", () => {
         /** @type {import("../spec/config.js").GenomeSpyConfig[]} */
         const scopes = [
             INTERNAL_DEFAULT_CONFIG,
-            { legend: { layout: { top: { direction: "vertical" } } } },
-            { legend: { layout: { top: { direction: "horizontal" } } } },
+            {
+                legend: {
+                    layout: {
+                        top: { anchor: "middle", direction: "vertical" },
+                    },
+                },
+            },
+            {
+                legend: {
+                    layout: {
+                        top: { anchor: "end", direction: "horizontal" },
+                    },
+                },
+            },
         ];
 
-        expect(getConfiguredLegendRegionDirection(scopes, "top")).toBe(
-            "horizontal"
-        );
+        expect(getConfiguredLegendRegionLayout(scopes, "top")).toEqual({
+            anchor: "end",
+            direction: "horizontal",
+        });
     });
 
     test("region layout does not leak into individual legend defaults", () => {

@@ -13,11 +13,21 @@ export type LegendOrient =
 
 export type LegendDirection = "vertical" | "horizontal";
 
+export type LegendRegionAnchor = "start" | "middle" | "end";
+
 export type LegendTitleOrient = "top" | "bottom" | "left" | "right";
 
 export type LegendPlacement = "local" | "root";
 
 export interface LegendRegionLayout {
+    /**
+     * Position of the complete legend stack along the plot edge. This property
+     * applies to external orientations; corner legends remain corner-anchored.
+     *
+     * __Default value:__ `"start"`
+     */
+    anchor?: LegendRegionAnchor;
+
     /**
      * Direction in which complete legends are arranged within a legend region.
      */
