@@ -16,6 +16,10 @@ describe("legendConfig", () => {
         expect(defaults.orient).toBe("right");
         expect(defaults.direction).toBe("vertical");
         expect(defaults.labelOffset).toBe(4);
+        expect(defaults.gradientThickness).toBe(12);
+        expect(defaults.gradientOpacity).toBe(1);
+        expect(defaults.gradientStrokeWidth).toBe(0);
+        expect(defaults.tickCount).toBe(5);
         expect(defaults.symbolType).toBe("circle");
         expect(defaults.titleOrient).toBe("top");
     });

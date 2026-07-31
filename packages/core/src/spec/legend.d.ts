@@ -34,12 +34,9 @@ export interface LegendLayout extends LegendRegionLayout {
 }
 
 // TODO: Consider adding more Vega/Vega-Lite legend properties when concrete
-// use cases appear. Known gaps include tick controls (`tickCount`,
-// `tickMinStep`), explicit legend `type`, gradient sizing/styling knobs
-// (`gradientLength`, `gradientThickness`, `gradientOpacity`,
-// `gradientStrokeColor`, `gradientStrokeWidth`), label overlap controls, and
-// symbol override properties such as `symbolFillColor`, `symbolStrokeColor`,
-// `symbolOpacity`, and `symbolLimit`.
+// use cases appear. Known gaps include `tickMinStep`, explicit legend `type`,
+// label overlap controls, and symbol override properties such as
+// `symbolFillColor`, `symbolStrokeColor`, `symbolOpacity`, and `symbolLimit`.
 
 /**
  * Legend properties. The initial legend surface is adapted from Vega:
@@ -92,6 +89,58 @@ export interface Legend {
      * ticks.
      */
     values?: (string | number | boolean)[];
+
+    /**
+     * Fixed length of the gradient ramp in pixels. This is the width of a
+     * horizontal ramp and the height of a vertical ramp. When omitted, the
+     * ramp length adapts to the available layout space.
+     *
+     * @minimum 0
+     */
+    gradientLength?: number;
+
+    /**
+     * Thickness of the gradient ramp in pixels.
+     *
+     * __Default value:__ `12`
+     *
+     * @minimum 0
+     */
+    gradientThickness?: number;
+
+    /**
+     * Opacity of the gradient ramp.
+     *
+     * __Default value:__ `1`
+     *
+     * @minimum 0
+     * @maximum 1
+     */
+    gradientOpacity?: number;
+
+    /**
+     * Stroke color of the gradient ramp border.
+     */
+    gradientStrokeColor?: string;
+
+    /**
+     * Stroke width of the gradient ramp border in pixels.
+     *
+     * __Default value:__ `0`
+     *
+     * @minimum 0
+     */
+    gradientStrokeWidth?: number;
+
+    /**
+     * Desired number of ticks for a quantitative gradient legend. Explicit
+     * `values` take precedence over this property.
+     *
+     * __Default value:__ `5`
+     *
+     * @minimum 1
+     */
+    tickCount?: number;
 
     /**
      * Maximum label text width in pixels.
