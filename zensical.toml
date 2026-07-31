@@ -61,6 +61,7 @@ nav = [
             { "Multiscale" = "grammar/composition/multiscale.md" },
         ] },
         { "Scales" = "grammar/scale.md" },
+        "grammar/genomic-coordinates.md",
         { "Axes" = "grammar/axis.md" },
         "grammar/title.md",
         { "Legends" = "grammar/legend.md" },
@@ -69,10 +70,6 @@ nav = [
         "grammar/expressions.md",
         "grammar/parameters.md",
         { "Types" = "grammar/types.md" },
-    ] },
-    { "Working with Genomic Data" = [
-        "genomic-data/index.md",
-        "genomic-data/genomic-coordinates.md",
     ] },
     { "Working with Sample Collections" = [
         "sample-collections/index.md",

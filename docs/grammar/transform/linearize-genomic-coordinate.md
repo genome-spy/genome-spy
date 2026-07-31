@@ -4,7 +4,7 @@
 
 The `linearizeGenomicCoordinate` transform maps the \(chromosome, position\)
 pairs into a linear coordinate space using the chromosome sizes of
-the resolved [genome assembly](../../genomic-data/genomic-coordinates.md) of the
+the resolved [genome assembly](../genomic-coordinates.md) of the
 channel's locus scale.
 
 ## Parameters

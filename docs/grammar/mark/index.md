@@ -183,7 +183,7 @@ Encoding](../conditional-encoding.md).
 Expect for the `value` method, all methods require specifying the data type
 using the `type` property, which must be one of: `"quantitative"`, `"nominal"`,
 or `"ordinal"`, `"index"`, or
-[`"locus"`](../../genomic-data/genomic-coordinates.md#encoding-genomic-coordinates).
+[`"locus"`](../genomic-coordinates.md#encoding-genomic-coordinates).
 The first three types are equivalent to the [Vega-Lite
 types](https://vega.github.io/vega-lite/docs/type.html) of the same name.
 
@@ -243,4 +243,4 @@ the scale transformation will be applied.
 
 #### Chrom and Pos
 
-See [Working with Genomic Data](../../genomic-data/genomic-coordinates.md).
+See [Genomic Coordinates](../genomic-coordinates.md).

@@ -36,7 +36,7 @@ export default class Genome {
 
         if ("baseUrl" in config) {
             throw new Error(
-                "The `baseUrl` property in genome config has been removed in GenomeSpy v0.52.0. Use `url` instead. See https://genomespy.app/docs/genomic-data/genomic-coordinates/."
+                "The `baseUrl` property in genome config has been removed in GenomeSpy v0.52.0. Use `url` instead. See https://genomespy.app/docs/grammar/genomic-coordinates/."
             );
         }
 
@@ -70,7 +70,7 @@ export default class Genome {
                 this.setChromSizes(contigs);
             } else {
                 throw new Error(
-                    `Unknown genome: ${this.config.name}. Please provide contigs or a URL. See https://genomespy.app/docs/genomic-data/genomic-coordinates/.`
+                    `Unknown genome: ${this.config.name}. Please provide contigs or a URL. See https://genomespy.app/docs/grammar/genomic-coordinates/.`
                 );
             }
         }
