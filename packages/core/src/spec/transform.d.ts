@@ -261,6 +261,28 @@ export interface RegexFoldParams extends TransformParamsBase {
     asKey?: string;
 }
 
+/**
+ * Computes exact set-intersection profiles from element-to-set memberships.
+ * The transform emits one row for every observed profile and observed set.
+ */
+export interface SetIntersectionParams extends TransformParamsBase {
+    type: "setIntersection";
+
+    /**
+     * Field identifying an element. Multiple fields form a compound identifier.
+     */
+    element: Field | Field[];
+
+    /** Field identifying a set. */
+    set: Field;
+
+    /**
+     * Optional field containing a Boolean membership value. The values `0` and
+     * `1` are also accepted. When omitted, every input row denotes membership.
+     */
+    membership?: Field;
+}
+
 export type SortOrder = "ascending" | "descending";
 
 export interface CompareParams {
@@ -1061,5 +1083,6 @@ export type TransformParams =
     | RegexExtractParams
     | RegexFoldParams
     | SampleParams
+    | SetIntersectionParams
     | StackParams
     | WindowParams;
