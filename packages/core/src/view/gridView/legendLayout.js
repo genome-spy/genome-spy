@@ -4,11 +4,27 @@ import { isActiveLegendRegion } from "./gridChildLegends.js";
 const LEGEND_ZINDEX = 1;
 
 /**
+ * @param {import("../../spec/legend.js").LegendRegionAnchor} anchor
+ */
+function getAnchorFactor(anchor) {
+    if (anchor == "start") {
+        return 0;
+    } else if (anchor == "middle") {
+        return 0.5;
+    } else if (anchor == "end") {
+        return 1;
+    } else {
+        throw new Error(`Invalid legend region anchor: ${anchor}`);
+    }
+}
+
+/**
  * @param {import("../layout/rectangle.js").default} coords
  * @param {import("../../spec/legend.js").LegendOrient} orient
  * @param {{
  *     getPerpendicularSize: () => number,
  *     getOffset: () => number,
+ *     getAnchor?: () => import("../../spec/legend.js").LegendRegionAnchor,
  *     getParallelSize?: () => number | undefined,
  *     getWidth?: () => number,
  *     getHeight?: () => number
@@ -23,7 +39,13 @@ export function translateLegendCoords(
 ) {
     const ps = legendView.getPerpendicularSize();
     const offset = legendView.getOffset();
-    const parallelSize = legendView.getParallelSize?.() ?? coords.height;
+    const horizontalEdge = orient == "top" || orient == "bottom";
+    const availableParallelSize = horizontalEdge ? coords.width : coords.height;
+    const parallelSize =
+        legendView.getParallelSize?.() ?? availableParallelSize;
+    const anchor = legendView.getAnchor?.() ?? "start";
+    const parallelOffset =
+        getAnchorFactor(anchor) * (availableParallelSize - parallelSize);
     const cornerParallelSize =
         legendView.getParallelSize?.() ?? coords.height - 2 * offset;
     const cornerWidth = legendView.getWidth?.() ?? ps;
@@ -31,19 +53,19 @@ export function translateLegendCoords(
 
     if (orient == "bottom") {
         return coords
-            .translate(0, coords.height + axisOffset + offset)
-            .modify({ height: ps });
+            .translate(parallelOffset, coords.height + axisOffset + offset)
+            .modify({ width: parallelSize, height: ps });
     } else if (orient == "top") {
         return coords
-            .translate(0, -ps - axisOffset - offset)
-            .modify({ height: ps });
+            .translate(parallelOffset, -ps - axisOffset - offset)
+            .modify({ width: parallelSize, height: ps });
     } else if (orient == "left") {
         return coords
-            .translate(-ps - axisOffset - offset, 0)
+            .translate(-ps - axisOffset - offset, parallelOffset)
             .modify({ width: ps, height: parallelSize });
     } else if (orient == "right") {
         return coords
-            .translate(coords.width + axisOffset + offset, 0)
+            .translate(coords.width + axisOffset + offset, parallelOffset)
             .modify({ width: ps, height: parallelSize });
     } else if (orient == "top-left") {
         return coords

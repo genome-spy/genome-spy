@@ -883,11 +883,15 @@ export class LegendRegionView extends ContainerView {
 
     #stackSpacing;
 
+    /** @type {import("../spec/legend.js").LegendRegionAnchor} */
+    #anchor;
+
     /** @type {import("../spec/legend.js").LegendDirection} */
     #direction;
 
     /**
      * @param {import("../spec/legend.js").LegendOrient} orient
+     * @param {import("../spec/legend.js").LegendRegionAnchor} anchor
      * @param {import("../spec/legend.js").LegendDirection} direction
      * @param {number} stackSpacing
      * @param {import("../types/viewContext.js").default} context
@@ -896,6 +900,7 @@ export class LegendRegionView extends ContainerView {
      */
     constructor(
         orient,
+        anchor,
         direction,
         stackSpacing,
         context,
@@ -916,6 +921,7 @@ export class LegendRegionView extends ContainerView {
 
         this.needsAxes = { x: false, y: false };
         this.orient = orient;
+        this.#anchor = anchor;
         this.#direction = direction;
         this.#stackSpacing = stackSpacing;
 
@@ -1043,6 +1049,10 @@ export class LegendRegionView extends ContainerView {
                 legendView.getOffset()
             )
         );
+    }
+
+    getAnchor() {
+        return this.#anchor;
     }
 
     getParallelSize() {

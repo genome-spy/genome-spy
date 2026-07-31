@@ -468,12 +468,13 @@ export async function addLegendView(legends, legend, resolution) {
     let region = legends[orient];
 
     if (!region) {
-        const { direction } = getConfiguredLegendRegionLayout(
+        const { anchor, direction } = getConfiguredLegendRegionLayout(
             legend.layoutParent.getConfigScopes(),
             orient
         );
         const regionView = new LegendRegionView(
             orient,
+            anchor,
             direction,
             legend.legendProps.spacing ?? 0,
             legend.context,

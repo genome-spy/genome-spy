@@ -113,10 +113,69 @@ describe("legend layout helpers", () => {
             expect(coords.height).toBe(200);
         });
 
+        test("centers a right legend stack along the viewport edge", () => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 80,
+                getParallelSize: () => 60,
+                getOffset: () => 12,
+                getAnchor: () => "middle",
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "right",
+                legendView
+            );
+
+            expect(coords.x).toBe(322);
+            expect(coords.y).toBe(90);
+            expect(coords.width).toBe(80);
+            expect(coords.height).toBe(60);
+        });
+
+        test("end-anchors a top legend stack", () => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 30,
+                getParallelSize: () => 120,
+                getOffset: () => 10,
+                getAnchor: () => "end",
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "top",
+                legendView
+            );
+
+            expect(coords.x).toBe(190);
+            expect(coords.y).toBe(-20);
+            expect(coords.width).toBe(120);
+            expect(coords.height).toBe(30);
+        });
+
+        test("centers an oversized stack without clamping", () => {
+            const legendView = /** @type {any} */ ({
+                getPerpendicularSize: () => 30,
+                getParallelSize: () => 400,
+                getOffset: () => 0,
+                getAnchor: () => "middle",
+            });
+
+            const coords = translateLegendCoords(
+                Rectangle.create(10, 20, 300, 200),
+                "top",
+                legendView
+            );
+
+            expect(coords.x).toBe(-40);
+            expect(coords.width).toBe(400);
+        });
+
         test("places a top-right legend inside the viewport", () => {
             const legendView = /** @type {any} */ ({
                 getPerpendicularSize: () => 80,
                 getOffset: () => 12,
+                getAnchor: () => "middle",
             });
 
             const coords = translateLegendCoords(
@@ -554,7 +613,11 @@ describe("GridView legends", () => {
         test("keeps root legends synchronized across child mutations", async () => {
             const view = await createLegendTestView({
                 config: {
-                    legend: { disable: false, placement: "root" },
+                    legend: {
+                        disable: false,
+                        placement: "root",
+                        layout: { anchor: "middle" },
+                    },
                 },
                 resolve: {
                     scale: { color: "independent" },
@@ -565,6 +628,7 @@ describe("GridView legends", () => {
 
             expect(getLegends(view)).toHaveLength(1);
             expect(getLegendRegions(view)).toHaveLength(1);
+            expect(getLegendRegions(view)[0].getAnchor()).toBe("middle");
 
             await view.addChildSpec({
                 ...createIndexColorPlotSpec(40),
@@ -1538,9 +1602,78 @@ describe("GridView legends", () => {
             expect(coords[0].y).toBe(coords[1].y);
         });
 
+        test("anchors stacks independently of their layout direction", async () => {
+            for (const [orient, direction] of /** @type {const} */ ([
+                ["top", "vertical"],
+                ["right", "horizontal"],
+            ])) {
+                const view = await createLegendTestView({
+                    config: {
+                        legend: {
+                            disable: false,
+                            layout: {
+                                [orient]: { anchor: "middle", direction },
+                            },
+                        },
+                    },
+                    vconcat: [
+                        {
+                            data: {
+                                values: [
+                                    { x: 1, y: 2, group: "A", kind: "one" },
+                                    { x: 2, y: 3, group: "B", kind: "two" },
+                                ],
+                            },
+                            mark: "point",
+                            encoding: {
+                                x: { field: "x", type: "quantitative" },
+                                y: { field: "y", type: "quantitative" },
+                                color: {
+                                    field: "group",
+                                    type: "nominal",
+                                    legend: { orient },
+                                },
+                                shape: {
+                                    field: "kind",
+                                    type: "nominal",
+                                    legend: { orient },
+                                },
+                            },
+                        },
+                    ],
+                });
+                const [region] = getLegendRegions(view);
+                const viewport = Rectangle.create(10, 20, 300, 200);
+                const parallelSize = region.getParallelSize();
+                if (parallelSize === undefined) {
+                    throw new Error("Expected a fixed-size legend stack");
+                }
+
+                const coords = translateLegendCoords(viewport, orient, region);
+
+                expect(region.getAnchor()).toBe("middle");
+                if (orient == "top") {
+                    expect(coords.x).toBe(
+                        viewport.x + (viewport.width - parallelSize) / 2
+                    );
+                    expect(coords.width).toBe(parallelSize);
+                } else {
+                    expect(coords.y).toBe(
+                        viewport.y + (viewport.height - parallelSize) / 2
+                    );
+                    expect(coords.height).toBe(parallelSize);
+                }
+            }
+        });
+
         test("lets an adaptive top gradient fill the available width", async () => {
             const view = await createLegendTestView({
-                config: { legend: { disable: false } },
+                config: {
+                    legend: {
+                        disable: false,
+                        layout: { top: { anchor: "end" } },
+                    },
+                },
                 vconcat: [
                     {
                         data: {
@@ -1569,6 +1702,15 @@ describe("GridView legends", () => {
             const [region] = getLegendRegions(view);
 
             expect(legend.getSize().width.grow).toBe(1);
+            expect(region.getParallelSize()).toBeUndefined();
+
+            const regionCoords = translateLegendCoords(
+                Rectangle.create(0, 0, 300, 200),
+                "top",
+                region
+            );
+            expect(regionCoords.x).toBe(0);
+            expect(regionCoords.width).toBe(300);
 
             const context = new LegendRecordingRenderingContext({
                 picking: false,
