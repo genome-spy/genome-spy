@@ -15,6 +15,8 @@ export type LegendDirection = "vertical" | "horizontal";
 
 export type LegendTitleOrient = "top" | "bottom" | "left" | "right";
 
+export type LegendPlacement = "local" | "root";
+
 export interface LegendRegionLayout {
     /**
      * Direction in which complete legends are arranged within a legend region.
@@ -61,6 +63,15 @@ export interface Legend {
      * plot area.
      */
     orient?: LegendOrient | ExprRef;
+
+    /**
+     * Layout destination of the legend. Local legends stay next to their
+     * resolution owner or source view. Root legends are collected around the
+     * effective root view without changing their scale or legend resolution.
+     *
+     * __Default value:__ `"local"`
+     */
+    placement?: LegendPlacement;
 
     /**
      * The direction in which legend entries are laid out.

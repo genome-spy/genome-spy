@@ -7,6 +7,7 @@
 export const LEGEND_DEFAULTS = {
     disable: false,
     orient: "right",
+    placement: "local",
     direction: "vertical",
     offset: 18,
     padding: 0,

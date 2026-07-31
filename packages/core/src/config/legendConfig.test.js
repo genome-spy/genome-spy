@@ -14,6 +14,7 @@ describe("legendConfig", () => {
         const defaults = getConfiguredLegendDefaults([INTERNAL_DEFAULT_CONFIG]);
 
         expect(defaults.orient).toBe("right");
+        expect(defaults.placement).toBe("local");
         expect(defaults.direction).toBe("vertical");
         expect(defaults.labelOffset).toBe(4);
         expect(defaults.gradientThickness).toBe(12);
@@ -46,6 +47,15 @@ describe("legendConfig", () => {
 
         expect(defaults.orient).toBe("bottom");
         expect(defaults.labelLimit).toBe(40);
+    });
+
+    test("explicit placement overrides inherited placement", () => {
+        const defaults = getConfiguredLegendDefaults(
+            [INTERNAL_DEFAULT_CONFIG, { legend: { placement: "root" } }],
+            { placement: "local" }
+        );
+
+        expect(defaults.placement).toBe("local");
     });
 
     test("track defaults apply between built-in and user legend config", () => {
