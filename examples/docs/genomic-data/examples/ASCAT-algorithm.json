@@ -536,6 +536,10 @@
     {
       "name": "logRTrack",
 
+      "title": {
+        "text": "Observed and fitted LogR",
+        "style": "overlay-title"
+      },
       "layer": [
         {
           "data": {
@@ -548,7 +552,11 @@
 
           "mark": {
             "type": "point",
-            "size": { "expr": "min(10 * pow(zoomLevel, 1.5), 200)" }
+            "size": {
+              "expr": "min(pow(zoomLevel, 2) * width * height / 10000, 100)"
+            },
+            "color": "#aab",
+            "opacity": 0.3
           },
 
           "encoding": {
@@ -557,10 +565,7 @@
               "pos": "pos",
               "type": "locus"
             },
-            "y": { "field": "logR", "type": "quantitative", "title": null },
-            "color": { "value": "#7090c0" },
-            "opacity": { "value": 0.25 },
-            "strokeWidth": { "value": 0 }
+            "y": { "field": "logR", "type": "quantitative", "title": null }
           }
         },
         {
@@ -601,6 +606,11 @@
     {
       "name": "bafTrack",
 
+      "title": {
+        "text": "Observed and fitted B-allele frequency",
+        "style": "overlay-title"
+      },
+
       "layer": [
         {
           "data": {
@@ -615,7 +625,11 @@
 
           "mark": {
             "type": "point",
-            "size": { "expr": "min(10 * pow(zoomLevel, 1.5), 200)" }
+            "size": {
+              "expr": "min(pow(zoomLevel, 2) * width * height / 10000, 100)"
+            },
+            "color": "#aab",
+            "opacity": 0.3
           },
 
           "encoding": {
@@ -624,10 +638,7 @@
               "pos": "pos",
               "type": "locus"
             },
-            "y": { "field": "baf", "type": "quantitative", "title": null },
-            "color": { "value": "#7090c0" },
-            "opacity": { "value": 0.3 },
-            "strokeWidth": { "value": 0 }
+            "y": { "field": "baf", "type": "quantitative", "title": null }
           }
         },
         {
@@ -641,7 +652,7 @@
               "field": "bafMean",
               "type": "quantitative",
               "scale": { "domain": [0, 1] },
-              "title": "B-allele frequency"
+              "title": "BAF"
             },
             "size": { "value": 3 },
             "color": { "value": "black" }

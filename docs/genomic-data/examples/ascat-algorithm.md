@@ -1,10 +1,16 @@
 # Interactive ASCAT-like Purity/Ploidy Fitting
 
-This example turns the core idea behind ASCAT purity/ploidy fitting into an
-interactive GenomeSpy visualization. It uses simulated segments from the
-companion [ASCAT Copy-Number Segmentation](ascat.md) example and the method
-described in [Allele-specific copy number analysis of
+Because a bulk tumor sample contains both tumor and normal cells, its observed
+LogR and B-allele frequency (BAF) depend on tumor _purity_ and _ploidy_. ASCAT
+estimates these parameters using a grid search over candidate combinations,
+favoring those that produce allele-specific copy-number estimates close to
+nonnegative integers, as described in [Allele-specific copy number analysis of
 tumors](https://doi.org/10.1073/pnas.1009843107).
+
+This example implements that fitting principle in an interactive GenomeSpy
+visualization, allowing the exploration of how different purity/ploidy
+combinations affect the inferred allele-specific copy numbers and their fit to
+the observed data.
 
 The top "sunrise" plot samples integer-fit distance over tumor purity (`rho`)
 and tumor ploidy (`psi`). Color encodes mean squared integer-fit distance on a
@@ -14,19 +20,17 @@ fit.
 
 Click or drag anywhere on the sunrise plot to choose a fit. The readout below
 the heatmap evaluates the exact chosen coordinates, and the other panels update
-the allele-specific copy numbers and fitted LogR and B-allele frequency (BAF)
-overlays.
+the allele-specific copy numbers and fitted LogR and BAF overlays.
 
-The sample dropdown switches between several simulated tumors; `S96` is the
-default. Its selection reloads the segment and raw-probe data and recomputes the
-sunrise surface and fitted tracks.
+The sample dropdown below the visualization switches between several simulated
+tumors. Its selection reloads the segment and raw-probe data and recomputes the
+sunrise plot and fitted tracks.
 
-The complete analysis is expressed declaratively in GenomeSpy. The
-specification constructs the purity/ploidy grid, evaluates the fitting
-equations over all segments, aggregates the distance surface, and links the
-selected solution to the genomic tracks. No application-specific JavaScript is
-needed: moving the ruler or changing `gamma` reactively recomputes the affected
-dataflow.
+The complete analysis is expressed declaratively in GenomeSpy. The specification
+constructs the purity/ploidy grid, evaluates the fitting equations over all
+segments, aggregates the distance grid, and links the selected solution to the
+genomic tracks. No application-specific JavaScript is needed: moving the ruler
+or changing `gamma` reactively recomputes the affected dataflow.
 
 EXAMPLE examples/docs/genomic-data/examples/ASCAT-algorithm.json height=870 spechidden
 
@@ -39,12 +43,18 @@ EXAMPLE examples/docs/genomic-data/examples/ASCAT-algorithm.json height=870 spec
 
 ## What to notice
 
-Look for ridges and multiple local minima in the sunrise plot: distinct
-purity/ploidy combinations can make the inferred copy numbers similarly close
-to integers. As the ruler moves, the gray mismatch bands reveal which segments
-drive changes in the exact score. Comparing the colored fitted overlays with
-the black segment means shows how a numerically attractive integer solution
-maps back to the observed LogR and BAF data.
+Look for multiple local minima in the sunrise plot: distinct purity/ploidy
+combinations can make the inferred copy numbers similarly close to integers. A
+low integer-fit distance is not necessarily the correct biological solution.
+For example, a solution may retain at least one minor-allele copy in every
+segment, implying no complete loss of heterozygosity in the fitted profile;
+whether this is plausible depends on the tumor. Low-purity profiles can also
+produce attractive minima near 100% purity. As the ruler moves, the gray
+mismatch bands show where the inferred major- or minor-allele copy numbers are
+farthest from integers. The colored fitted overlays project the integer copy
+numbers back into LogR and BAF space. Disagreement with the black observed
+segment means reveals aspects that the minor-allele integer-fit distance alone
+does not capture.
 
 ## Fitting model
 
@@ -55,7 +65,7 @@ the tumor-ploidy parameter `psi`; thus, its `psi` corresponds to the paper's
 `psi_t`.
 
 The global `gamma` slider controls the decompaction of observed LogR values.
-Changing it recomputes the entire sunrise surface, revealing how this modeling
+Changing it recomputes the entire sunrise plot, revealing how this modeling
 choice affects the purity/ploidy landscape.
 
 For every segment and candidate pair (`rho`, `psi`), the spec converts the
@@ -104,12 +114,12 @@ profile implied by the selected integer states. The rounding follows Eqs. S10
 and S11, while the fitted LogR and BAF overlays use Eqs. S12 and S13.
 `gamma` is applied in both directions so that they stay consistent.
 
-## Sampled surface and exact selection
+## Sampled grid and exact selection
 
-The heatmap samples `rho` from `0.10` to `1.05` in steps of `0.01` and `psi`
-from `1.00` to `6.00` in steps of `0.05`, matching ASCAT R v3.2.0's default
-calculated distance matrix. GenomeSpy builds the surface by crossing the two
-candidate sequences and the finite segment table, calculating the segment
+The sunrise heatmap samples `rho` from `0.10` to `1.05` in steps of `0.01` and
+`psi` from `1.00` to `6.00` in steps of `0.05`, matching ASCAT R v3.2.0's
+default calculated distance matrix. GenomeSpy builds the grid by crossing the
+two candidate sequences and the finite segment table, calculating the segment
 errors, and aggregating by candidate pair.
 
 The ruler is independent of those samples. Its unsnapped quantitative
