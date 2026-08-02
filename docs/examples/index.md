@@ -1,9 +1,9 @@
-# Genomic Data Examples
+# Examples
 
-This page collects non-trivial genomic examples that are useful as reference
-material and demonstate the capabilities of GenomeSpy.
+This page collects non-trivial examples that are useful as reference material
+and demonstrate the capabilities of GenomeSpy.
 
-## Linked examples
+## Genomic data examples
 
 The example specs below mostly display a single dataset to keep the examples
 simple and focused. Gene annotation track, etc. are omitted from the examples.
@@ -24,6 +24,12 @@ EXAMPLE_GALLERY examples/docs/examples/genomic-data
 - [Multiple Sequence Alignment](genomic-data/multiple-sequence-alignment.md) msa.json
 - [SPI1 Binding-QTL Dynseq Track](genomic-data/dynseq-spi1-bqtl.md) dynseq-spi1-bqtl.json
 - [Composing a Genome Browser](genomic-data/genome-browser.md) genome-browser.json
+
+## Generic visualization examples
+
+EXAMPLE_GALLERY examples/docs/examples/generic
+
+- [Set Intersections with an UpSet Plot](generic/upsetr-mutations.md) upsetr-mutations.json
 
 ## More examples
 

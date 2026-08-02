@@ -1,0 +1,336 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@genome-spy/core/dist/schema.json",
+
+  "description": [
+    "GenomeSpy version of the five-set mutations example from UpSetR.",
+    "Only observed, nonempty intersections are displayed."
+  ],
+
+  "data": {
+    "url": "https://raw.githubusercontent.com/hms-dbmi/UpSetR/master/inst/extdata/mutations.csv",
+    "format": { "type": "csv" },
+    "description": "Load UpSetR's bundled glioblastoma mutation dataset directly from GitHub."
+  },
+
+  "transform": [
+    {
+      "type": "regexFold",
+      "columnRegex": "^(PTEN|TP53|EGFR|PIK3R1|RB1)$",
+      "asKey": "set",
+      "asValue": "membership",
+      "description": "Normalize the five gene columns selected in the UpSetR example into patient-gene membership rows."
+    },
+    {
+      "type": "setIntersection",
+      "element": "Identifier",
+      "set": "set",
+      "membership": "membership",
+      "description": "Group patients by their exact mutation profiles and expand each observed profile across the five genes."
+    },
+    {
+      "type": "filter",
+      "expr": "datum.profileDegree > 0",
+      "description": "Match UpSetR by excluding patients with no mutation in any of the selected genes."
+    },
+    {
+      "type": "formula",
+      "expr": "datum.member ? datum.profileSize : 0",
+      "as": "memberSize",
+      "description": "Contribute each profile's patient count to every set included in that profile."
+    },
+    {
+      "type": "window",
+      "groupby": ["set"],
+      "frame": [null, null],
+      "ops": ["sum"],
+      "fields": ["memberSize"],
+      "as": ["setSize"],
+      "description": "Compute the inclusive mutation count for each gene."
+    },
+    {
+      "type": "formula",
+      "expr": "datum.setIndex",
+      "as": "setOrder",
+      "description": "Preserve the set order requested by the UpSetR example."
+    },
+    {
+      "type": "collect",
+      "description": "Buffer the static intersection table before deriving presentation-specific ordering."
+    },
+    {
+      "type": "window",
+      "sort": {
+        "field": ["profileSize", "profileKey"],
+        "order": ["descending", "ascending"]
+      },
+      "ops": ["dense_rank"],
+      "fields": [null],
+      "as": ["profileNumber"],
+      "description": "Order intersections by frequency, using the profile key only as a deterministic tie-breaker."
+    },
+    {
+      "type": "formula",
+      "expr": "datum.profileNumber - 1",
+      "as": "profileIndex",
+      "description": "Convert the one-based profile rank into a zero-based matrix column."
+    }
+  ],
+
+  "columns": 2,
+  "spacing": 3,
+
+  "resolve": {
+    "scale": { "x": "shared", "y": "shared" }
+  },
+
+  "scales": {
+    "x": { "paddingInner": 0.22, "paddingOuter": 0.12 },
+    "y": { "paddingInner": 0.16, "paddingOuter": 0.08 }
+  },
+
+  "concat": [
+    {
+      "width": 0,
+      "height": 0,
+      "name": "empty-space",
+      "data": { "values": [] },
+      "mark": "point"
+    },
+
+    {
+      "name": "intersection-sizes",
+      "width": { "step": 20 },
+      "height": 210,
+      "resolve": { "scale": { "y": "excluded" } },
+      "scales": {
+        "y": {
+          "zero": true,
+          "nice": true,
+          "padding": 0.12,
+          "domainMin": 0
+        }
+      },
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.setOrder == 0",
+          "description": "Retain one row per profile because profile statistics repeat for every set."
+        }
+      ],
+      "layer": [
+        {
+          "mark": { "type": "rect", "color": "#3b3b3b" },
+          "encoding": {
+            "x": {
+              "field": "profileIndex",
+              "type": "index",
+              "axis": null
+            },
+            "y": {
+              "field": "profileSize",
+              "type": "quantitative",
+              "axis": {
+                "title": "Intersection Size",
+                "grid": true,
+                "tickCount": 5
+              }
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "size": 11,
+            "fontWeight": "bold",
+            "baseline": "bottom",
+            "dy": -5
+          },
+          "encoding": {
+            "x": { "field": "profileIndex", "type": "index" },
+            "y": { "field": "profileSize", "type": "quantitative" },
+            "text": { "field": "profileSize", "type": "quantitative" },
+            "color": { "value": "#333" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "set-sizes",
+      "width": 150,
+      "height": { "step": 20 },
+      "resolve": { "scale": { "x": "excluded" } },
+      "scales": {
+        "x": {
+          "zero": true,
+          "nice": true,
+          "reverse": true,
+          "padding": 0.08,
+          "domainMin": 0
+        }
+      },
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.profileIndex == 0",
+          "description": "Retain one row per set because set sizes repeat for every profile."
+        }
+      ],
+      "layer": [
+        {
+          "mark": { "type": "rect", "color": "#6f6f6f" },
+          "encoding": {
+            "x": {
+              "field": "setSize",
+              "type": "quantitative",
+              "axis": {
+                "title": "Set Size",
+                "orient": "bottom",
+                "grid": false
+              }
+            },
+            "y": {
+              "field": "setOrder",
+              "type": "index",
+              "axis": null
+            }
+          }
+        },
+        {
+          "mark": {
+            "type": "text",
+            "size": 11,
+            "fontWeight": "bold",
+            "align": "left",
+            "dx": 5
+          },
+          "encoding": {
+            "x": { "field": "setSize", "type": "quantitative" },
+            "y": { "field": "setOrder", "type": "index" },
+            "text": { "field": "setSize", "type": "quantitative" },
+            "color": { "value": "white" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "combination-matrix",
+      "width": { "step": 20 },
+      "height": { "step": 20 },
+      "padding": { "left": 45 },
+      "layer": [
+        {
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.profileIndex == 0",
+              "description": "Retain one matrix-axis label row per set."
+            }
+          ],
+          "mark": {
+            "type": "text",
+            "align": "right",
+            "dx": -3,
+            "clip": "never"
+          },
+          "encoding": {
+            "x": { "value": 0 },
+            "y": { "field": "setOrder", "type": "index" },
+            "text": { "field": "set" },
+            "color": { "value": "#555" }
+          }
+        },
+        {
+          "transform": [
+            {
+              "type": "filter",
+              "expr": "datum.setOrder % 2 == 0 && datum.profileIndex == 0",
+              "description": "Draw one alternating background rectangle for every other set row."
+            }
+          ],
+          "mark": { "type": "rect", "color": "#f1f1f1" },
+          "encoding": {
+            "x": null,
+            "y": { "field": "setOrder", "type": "index" }
+          }
+        },
+        {
+          "mark": {
+            "type": "point",
+            "filled": true,
+            "size": 95,
+            "strokeWidth": 0
+          },
+          "encoding": {
+            "x": { "field": "profileIndex", "type": "index" },
+            "y": { "field": "setOrder", "type": "index" },
+            "color": { "value": "#d1d1d1" }
+          }
+        },
+        {
+          "transform": [
+            { "type": "filter", "expr": "datum.member" },
+            {
+              "type": "aggregate",
+              "groupby": ["profileKey", "profileIndex"],
+              "fields": ["setOrder", "setOrder"],
+              "ops": ["min", "max"],
+              "as": ["firstSetIndex", "lastSetIndex"],
+              "description": "Collapse active cells into one connector spanning the first and last set of each profile."
+            }
+          ],
+          "mark": {
+            "type": "rule",
+            "color": "#3b3b3b",
+            "size": 2.5,
+            "strokeCap": "round"
+          },
+          "encoding": {
+            "x": { "field": "profileIndex", "type": "index" },
+            "y": { "field": "firstSetIndex", "type": "index" },
+            "y2": { "field": "lastSetIndex" }
+          }
+        },
+        {
+          "transform": [{ "type": "filter", "expr": "datum.member" }],
+          "mark": {
+            "type": "point",
+            "filled": true,
+            "size": 115,
+            "strokeWidth": 0
+          },
+          "encoding": {
+            "x": {
+              "field": "profileIndex",
+              "type": "index",
+              "axis": null
+            },
+            "y": { "field": "setOrder", "type": "index", "axis": null },
+            "color": { "value": "#3b3b3b" },
+            "tooltip": [
+              {
+                "field": "profileSize",
+                "type": "quantitative",
+                "title": "Intersection size"
+              },
+              { "field": "profileDegree", "title": "Degree" },
+              { "field": "profileKey", "title": "Profile" }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+
+  "config": {
+    "axis": {
+      "domainColor": "#999",
+      "gridColor": "#e6e6e6",
+      "labelColor": "#555",
+      "titleColor": "#333",
+      "titleFontWeight": "normal"
+    },
+    "scale": { "zoom": false }
+  }
+}
