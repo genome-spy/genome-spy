@@ -17,143 +17,72 @@
       { "sample": "S6", "gene": "KRAS" },
       { "sample": "S7", "gene": "PTEN" },
       { "sample": "S8", "gene": "TP53" },
-      { "sample": "S8", "gene": "PIK3CA" },
-      { "sample": "S9", "gene": "KRAS" },
-      { "sample": "S9", "gene": "PIK3CA" },
-      { "sample": "S10", "gene": "TP53" }
+      { "sample": "S8", "gene": "PIK3CA" }
     ]
   },
 
   "transform": [
-    { "type": "setIntersection", "element": "sample", "set": "gene" },
-    {
-      "type": "window",
-      "sort": {
-        "field": ["profileSize", "profileDegree", "profileKey"],
-        "order": ["descending", "descending", "ascending"]
-      },
-      "ops": ["dense_rank"],
-      "fields": [null],
-      "as": ["profileNumber"]
-    },
-    {
-      "type": "formula",
-      "expr": "datum.profileNumber - 1",
-      "as": "profileIndex"
-    }
+    { "type": "setIntersection", "element": "sample", "set": "gene" }
   ],
 
-  "spacing": 0,
-  "resolve": { "scale": { "x": "shared" } },
-  "scales": { "x": { "paddingInner": 0.22, "paddingOuter": 0.12 } },
+  "spacing": 12,
+  "resolve": { "scale": { "y": "shared" } },
 
-  "vconcat": [
+  "hconcat": [
     {
-      "width": { "step": 38 },
-      "height": 180,
-      "padding": { "left": 70 },
-      "scales": { "y": { "zero": true, "nice": true } },
-      "transform": [{ "type": "filter", "expr": "datum.setIndex == 0" }],
-      "layer": [
-        {
-          "mark": { "type": "rect", "color": "#3b3b3b" },
-          "encoding": {
-            "x": { "field": "profileIndex", "type": "index", "axis": null },
-            "y": {
-              "field": "profileSize",
-              "type": "quantitative",
-              "axis": { "title": "Profile size", "tickMinStep": 1 }
-            }
-          }
+      "width": { "step": 70 },
+      "height": { "step": 32 },
+      "title": "Mutated genes",
+      "mark": { "type": "rect", "stroke": "white", "strokeWidth": 2 },
+      "encoding": {
+        "x": {
+          "field": "set",
+          "type": "nominal",
+          "axis": { "title": "Gene", "labelAngle": 0 }
         },
-        {
-          "mark": { "type": "text", "dy": -7, "fontWeight": "bold" },
-          "encoding": {
-            "x": { "field": "profileIndex", "type": "index" },
-            "y": { "field": "profileSize", "type": "quantitative" },
-            "text": { "field": "profileSize", "type": "quantitative" }
-          }
-        }
-      ]
+        "y": {
+          "field": "profileKey",
+          "type": "nominal",
+          "axis": { "title": "Exact profile" }
+        },
+        "color": {
+          "field": "member",
+          "type": "nominal",
+          "scale": {
+            "type": "ordinal",
+            "domain": [false, true],
+            "range": ["#eeeeee", "#333333"]
+          },
+          "legend": null
+        },
+        "tooltip": [
+          { "field": "profileKey", "title": "Profile" },
+          { "field": "profileSize", "title": "Samples" },
+          { "field": "profileDegree", "title": "Mutated genes" },
+          { "field": "set", "title": "Gene" },
+          { "field": "member", "title": "Member" }
+        ]
+      },
+      "name": "profile-memberships"
     },
 
     {
-      "width": { "step": 38 },
+      "width": 40,
       "height": { "step": 32 },
-      "padding": { "left": 70 },
-      "layer": [
-        {
-          "mark": {
-            "type": "point",
-            "filled": true,
-            "size": 85,
-            "color": "#d1d1d1"
-          },
-          "encoding": {
-            "x": { "field": "profileIndex", "type": "index", "axis": null },
-            "y": { "field": "setIndex", "type": "index", "axis": null }
-          }
-        },
-        {
-          "transform": [
-            { "type": "filter", "expr": "datum.member" },
-            {
-              "type": "aggregate",
-              "groupby": ["profileKey", "profileIndex"],
-              "fields": ["setIndex", "setIndex"],
-              "ops": ["min", "max"],
-              "as": ["firstSetIndex", "lastSetIndex"]
-            }
-          ],
-          "mark": { "type": "rule", "color": "#3b3b3b", "size": 2.5 },
-          "encoding": {
-            "x": { "field": "profileIndex", "type": "index", "axis": null },
-            "y": { "field": "firstSetIndex", "type": "index", "axis": null },
-            "y2": { "field": "lastSetIndex" }
-          }
-        },
-        {
-          "transform": [{ "type": "filter", "expr": "datum.member" }],
-          "mark": {
-            "type": "point",
-            "filled": true,
-            "size": 105,
-            "color": "#3b3b3b"
-          },
-          "encoding": {
-            "x": { "field": "profileIndex", "type": "index", "axis": null },
-            "y": { "field": "setIndex", "type": "index", "axis": null },
-            "tooltip": [
-              { "field": "profileSize", "title": "Profile size" },
-              { "field": "profileDegree", "title": "Degree" },
-              { "field": "profileKey", "title": "Profile" }
-            ]
-          }
-        },
-        {
-          "transform": [
-            { "type": "filter", "expr": "datum.profileIndex == 0" }
-          ],
-          "mark": {
-            "type": "text",
-            "align": "right",
-            "dx": -14,
-            "clip": "never"
-          },
-          "encoding": {
-            "x": { "value": 0 },
-            "y": { "field": "setIndex", "type": "index" },
-            "text": { "field": "set" },
-            "color": { "value": "#555" }
-          }
-        }
-      ]
+      "title": "Samples",
+      "transform": [{ "type": "filter", "expr": "datum.setIndex == 0" }],
+      "mark": { "type": "text", "fontWeight": "bold", "color": "#555" },
+      "encoding": {
+        "x": { "value": 0.5 },
+        "y": { "field": "profileKey", "type": "nominal", "axis": null },
+        "text": { "field": "profileSize", "type": "quantitative" }
+      },
+      "name": "profile-counts"
     }
   ],
 
   "config": {
     "axis": {
-      "gridColor": "#e6e6e6",
       "labelColor": "#555",
       "titleColor": "#333",
       "titleFontWeight": "normal"

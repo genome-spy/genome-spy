@@ -84,8 +84,10 @@ be calculated using `member ? profileSize : 0` followed by `aggregate`.
 
 ## Genomic co-mutation example
 
-This example treats samples as elements and mutated genes as sets. Ordinary
-downstream transforms rank the intersection bars and construct the matrix
-connectors.
+This example treats samples as elements and mutated genes as sets. Each output
+row maps directly to one matrix cell: exact profiles are rows, genes are
+columns, and dark cells indicate membership. The aligned sample count shows
+how many input samples were collapsed into each exact profile. Hover a cell to
+inspect the profile size and degree.
 
-EXAMPLE examples/docs/grammar/transform/set-intersection/co-mutation.json height=430 spechidden
+EXAMPLE examples/docs/grammar/transform/set-intersection/co-mutation.json height=260 spechidden

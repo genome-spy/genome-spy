@@ -12578,6 +12578,26 @@ exports[`shared examples > initializes examples/docs/grammar/transform/set-inter
     },
     {
       "identifier": null,
+      "type": "AxisTickSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
+      "type": "InlineSource",
+    },
+    {
+      "identifier": null,
       "type": "InlineSource",
     },
     {
@@ -12594,53 +12614,15 @@ exports[`shared examples > initializes examples/docs/grammar/transform/set-inter
     "children": [
       {
         "baseUrl": "examples/",
-        "children": [
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "layer0",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "layer1",
-            "type": "UnitView",
-          },
-        ],
-        "name": "grid0",
-        "type": "LayerView",
+        "children": [],
+        "name": "profile-memberships",
+        "type": "UnitView",
       },
       {
         "baseUrl": "examples/",
-        "children": [
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "layer0",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "layer1",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "layer2",
-            "type": "UnitView",
-          },
-          {
-            "baseUrl": "examples/",
-            "children": [],
-            "name": "layer3",
-            "type": "UnitView",
-          },
-        ],
-        "name": "grid1",
-        "type": "LayerView",
+        "children": [],
+        "name": "profile-counts",
+        "type": "UnitView",
       },
     ],
     "name": "viewRoot",
