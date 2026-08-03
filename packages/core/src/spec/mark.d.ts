@@ -704,6 +704,8 @@ export interface PointProps
      * Horizontal offset in pixels.
      *
      * **Default value:** `0`
+     *
+     * @deprecated Use `xOffset` instead.
      */
     dx?: number | ExprRef;
 
@@ -711,6 +713,9 @@ export interface PointProps
      * Vertical offset in pixels.
      *
      * **Default value:** `0`
+     *
+     * @deprecated Use `yOffset` instead. Note that positive `yOffset` values
+     * move down, while positive `dy` values move up.
      */
     dy?: number | ExprRef;
 

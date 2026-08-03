@@ -514,7 +514,19 @@ export interface Encoding {
      */
     yOffset?: OffsetDef | null;
 
-    dx?: NumericMarkPropDef | MarkPropExprDef; // TODO: Not a mark property. Fix types.
+    /**
+     * Legacy horizontal pixel offset for point marks.
+     *
+     * @deprecated Use `xOffset` instead.
+     */
+    dx?: NumericMarkPropDef | MarkPropExprDef;
+
+    /**
+     * Legacy vertical pixel offset for point marks. Positive values move in
+     * the opposite direction from `yOffset`.
+     *
+     * @deprecated Use `yOffset` instead.
+     */
     dy?: NumericMarkPropDef | MarkPropExprDef;
 
     /**

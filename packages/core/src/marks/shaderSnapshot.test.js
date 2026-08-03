@@ -195,6 +195,24 @@ describe("generated shader snapshots", () => {
         expect(sources.vertex).toContain("scale_xOffset");
     });
 
+    test("legacy point dx and dy retain their pre-facet direction", async () => {
+        const sources = await captureShaderSources({
+            data: { values: [{}] },
+            mark: "point",
+            encoding: {
+                dx: { value: 4 },
+                dy: { value: -3 },
+            },
+        });
+
+        expect(sources.vertex).toContain(
+            "return vec2(getScaled_dx(), getScaled_dy()) / uViewportSize;"
+        );
+        expect(sources.vertex.indexOf("+ getDxDy()")).toBeLessThan(
+            sources.vertex.indexOf("applySampleFacet(pos)")
+        );
+    });
+
     test("point mark control spec", async () => {
         const sources = await captureShaderSources({
             data: {

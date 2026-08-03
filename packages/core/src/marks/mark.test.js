@@ -155,6 +155,42 @@ describe("mark positional offsets", () => {
         expect(encoding.xOffset).toEqual({ value: 8 });
         expect(encoding.x2Offset).toEqual({ value: 0 });
     });
+
+    test.each([
+        ["dx", "xOffset"],
+        ["dy", "yOffset"],
+    ])("rejects legacy point %s with %s", async (legacy, offset) => {
+        await expect(
+            create(
+                {
+                    mark: { type: "point", [offset]: 2 },
+                    encoding: {
+                        [legacy]: { value: 3 },
+                    },
+                },
+                UnitView
+            )
+        ).rejects.toThrow(
+            `Point marks cannot combine legacy ${legacy} with ${offset}`
+        );
+    });
+
+    test("allows legacy and new offsets on different axes", async () => {
+        const view = await create(
+            {
+                mark: { type: "point", yOffset: 2 },
+                encoding: {
+                    dx: { value: 3 },
+                },
+            },
+            UnitView
+        );
+
+        expect(view.mark.encoding).toMatchObject({
+            dx: { value: 3 },
+            yOffset: { value: 2 },
+        });
+    });
 });
 
 describe("mark viewport scope", () => {
