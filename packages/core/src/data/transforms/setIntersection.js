@@ -2,8 +2,6 @@ import { field } from "../../utils/field.js";
 import { BEHAVIOR_CLONES } from "../flowNode.js";
 import Transform from "./transform.js";
 
-const ELEMENT_STATE = Symbol("elementState");
-
 /**
  * Computes exact set-intersection profiles and expands them across all
  * observed sets. Input order determines the stable order of sets and profiles.
@@ -43,7 +41,7 @@ export default class SetIntersectionTransform extends Transform {
     }
 
     #initialize() {
-        /** @type {Map<string | number | boolean | symbol, any>} */
+        /** @type {Map<string | number | boolean, any>} */
         this.elementRoot = new Map();
 
         /** @type {Map<number, boolean>[]} */
@@ -99,12 +97,17 @@ export default class SetIntersectionTransform extends Transform {
     }
 
     /**
-     * @param {(string | number | boolean)[]} elementKey
+     * @param {import("../flowNode.js").Datum} datum
      */
-    #getMemberships(elementKey) {
+    #getMemberships(datum) {
         let node = this.elementRoot;
+        const lastIndex = this.elementAccessors.length - 1;
 
-        for (const value of elementKey) {
+        // Only compound keys need intermediate maps. The final key component
+        // points directly to memberships, keeping single-field lookup flat.
+        for (let i = 0; i < lastIndex; i++) {
+            const value = this.elementAccessors[i](datum);
+            this.#assertScalar(value, "element");
             let child = node.get(value);
             if (!child) {
                 child = new Map();
@@ -113,10 +116,12 @@ export default class SetIntersectionTransform extends Transform {
             node = child;
         }
 
-        let memberships = node.get(ELEMENT_STATE);
+        const lastValue = this.elementAccessors[lastIndex](datum);
+        this.#assertScalar(lastValue, "element");
+        let memberships = node.get(lastValue);
         if (!memberships) {
             memberships = new Map();
-            node.set(ELEMENT_STATE, memberships);
+            node.set(lastValue, memberships);
             this.elements.push(memberships);
         }
 
@@ -127,11 +132,6 @@ export default class SetIntersectionTransform extends Transform {
      * @param {import("../flowNode.js").Datum} datum
      */
     handle(datum) {
-        const elementKey = this.elementAccessors.map((accessor) =>
-            accessor(datum)
-        );
-        elementKey.forEach((value) => this.#assertScalar(value, "element"));
-
         const set = this.setAccessor(datum);
         this.#assertScalar(set, "set");
 
@@ -145,7 +145,7 @@ export default class SetIntersectionTransform extends Transform {
         const membership = this.membershipAccessor
             ? this.#normalizeMembership(this.membershipAccessor(datum))
             : true;
-        const memberships = this.#getMemberships(elementKey);
+        const memberships = this.#getMemberships(datum);
 
         if (
             memberships.has(setIndex) &&
