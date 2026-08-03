@@ -27,6 +27,7 @@ export type PositionalChannel =
     PrimaryPositionalChannel | SecondaryPositionalChannel;
 
 export type OffsetChannel = "xOffset" | "yOffset";
+export type SecondaryOffsetChannel = "x2Offset" | "y2Offset";
 
 // Remember to updata the type guard when adding channels!
 export type ChannelWithScale =

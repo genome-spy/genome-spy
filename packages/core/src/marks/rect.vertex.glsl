@@ -64,19 +64,23 @@ void main(void) {
         uCornerRadiusBottomLeft
     );
 
-    float x = getScaled_x();
-    float x2 = getScaled_x2();
-    float y = getScaled_y();
-    float y2 = getScaled_y2();
+    vec2 pos1 = applyOffset(
+        applySampleFacet(vec2(getScaled_x(), getScaled_y())),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
+    vec2 pos2 = applyOffset(
+        applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
+        vec2(getScaled_x2Offset(), getScaled_y2Offset())
+    );
 
-    sort(x, x2);
-    sort(y, y2);
+    sort(pos1.x, pos2.x);
+    sort(pos1.y, pos2.y);
 
     // Clamp x to prevent precision artifacts when the scale is zoomed very close.
 	// TODO: clamp y as well
 	float clampMargin = 1.0;
-    vec2 pos1 = vec2(clamp(x, 0.0 - clampMargin, 1.0 + clampMargin), y);
-    vec2 pos2 = vec2(clamp(x2, 0.0 - clampMargin, 1.0 + clampMargin), y2);
+    pos1.x = clamp(pos1.x, 0.0 - clampMargin, 1.0 + clampMargin);
+    pos2.x = clamp(pos2.x, 0.0 - clampMargin, 1.0 + clampMargin);
 
     vec2 size = pos2 - pos1;
 
@@ -88,16 +92,12 @@ void main(void) {
 
     vec2 pos = pos1 + frac * size;
 
-    size.y *= getSampleFacetHeight(pos);
-
     // Clamp to minimum size, optionally compensate with opacity
     float opaFactor = uViewOpacity * max(uMinOpacity,
         clampMinSize(pos.x, frac.x, size.x, normalizedMinSize.x) *
         clampMinSize(pos.y, frac.y, size.y, normalizedMinSize.y));
 
     size = max(size, normalizedMinSize);
-
-    pos = applySampleFacet(pos);
 
 #if defined(ROUNDED_CORNERS) || defined(STROKED) || defined(SHADOW)
     // Add an extra pixel to the stroke width to accommodate edge antialiasing

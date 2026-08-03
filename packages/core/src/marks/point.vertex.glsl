@@ -53,7 +53,10 @@ void main(void) {
 
     float size = getScaled_size();
     vec2 pos = vec2(getScaled_x(), getScaled_y()) + getDxDy();
-    vec2 facetedPos = applySampleFacet(pos);
+    vec2 facetedPos = applyOffset(
+        applySampleFacet(pos),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
 
 #ifdef VISIBLE_RANGE_CULLING
     if (isOutsideVisibleRange(facetedPos)) {

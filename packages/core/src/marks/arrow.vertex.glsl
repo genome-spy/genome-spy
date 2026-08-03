@@ -178,8 +178,14 @@ vec2 getOutsideHeadExpansion(float outsideHeadOffset, float direction) {
 }
 
 void main(void) {
-    vec2 a = applySampleFacet(vec2(getScaled_x(), getScaled_y()));
-    vec2 b = applySampleFacet(vec2(getScaled_x2(), getScaled_y2()));
+    vec2 a = applyOffset(
+        applySampleFacet(vec2(getScaled_x(), getScaled_y())),
+        vec2(getScaled_xOffset(), getScaled_yOffset())
+    );
+    vec2 b = applyOffset(
+        applySampleFacet(vec2(getScaled_x2(), getScaled_y2())),
+        vec2(getScaled_x2Offset(), getScaled_y2Offset())
+    );
     float direction = getScaled_direction();
 
     vec2 segmentInPixels = (b - a) * uViewportSize;

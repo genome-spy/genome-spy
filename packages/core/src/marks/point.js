@@ -61,6 +61,8 @@ export default class PointMark extends Mark {
             "facetIndex",
             "x",
             "y",
+            "xOffset",
+            "yOffset",
             "size",
             "semanticScore",
             "shape",

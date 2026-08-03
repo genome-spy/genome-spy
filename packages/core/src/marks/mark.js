@@ -18,6 +18,7 @@ import createEncoders, {
     isExprDef,
     isFieldDef,
     isValueDef,
+    resolveSecondaryOffset,
 } from "../encoder/encoder.js";
 import {
     generateConstantValueGlsl,
@@ -321,6 +322,10 @@ export default class Mark {
             "facetIndex",
             "x",
             "y",
+            "xOffset",
+            "yOffset",
+            /** @type {Channel} */ ("x2Offset"),
+            /** @type {Channel} */ ("y2Offset"),
             "color",
             "opacity",
             "search",
@@ -337,6 +342,8 @@ export default class Mark {
         const encoding = {
             sample: undefined,
             uniqueId: undefined,
+            xOffset: { value: 0 },
+            yOffset: { value: 0 },
         };
 
         if (this.isPickingParticipant()) {
@@ -437,6 +444,27 @@ export default class Mark {
                 ...propertyValues,
                 ...configured,
             });
+            const internalEncoding = /** @type {Record<string, any>} */ (
+                encoding
+            );
+
+            for (const primary of /** @type {const} */ (["x", "y"])) {
+                const secondary = primary == "x" ? "x2" : "y2";
+                const primaryOffset = primary + "Offset";
+                const secondaryOffset = secondary + "Offset";
+                const resolved = resolveSecondaryOffset(
+                    internalEncoding[primaryOffset],
+                    propertyValues[secondaryOffset],
+                    configured[secondary] != null
+                );
+
+                internalEncoding[secondaryOffset] =
+                    typeof resolved == "number"
+                        ? { value: resolved }
+                        : resolved && "field" in resolved
+                          ? { ...resolved, resolutionChannel: primaryOffset }
+                          : resolved;
+            }
 
             for (const channel of Object.keys(encoding)) {
                 if (!this.getSupportedChannels().includes(channel)) {
@@ -1518,11 +1546,8 @@ export default class Mark {
         // rules inside pixels, not between pixels.
         const pixelOffset = 0.5;
 
-        // Note: we also handle xOffset/yOffset mark properties here
-        const xOffset =
-            /** @type {number} */ (props.xOffset ?? 0) + pixelOffset;
-        const yOffset =
-            /** @type {number} */ (props.yOffset ?? 0) + pixelOffset;
+        const xOffset = pixelOffset;
+        const yOffset = pixelOffset;
 
         /** @type {object} */
         let uniforms;

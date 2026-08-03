@@ -170,6 +170,31 @@ async function captureShaderSources(spec, unitName) {
 }
 
 describe("generated shader snapshots", () => {
+    test("scaled offset channels generate both endpoint accessors", async () => {
+        const sources = await captureShaderSources({
+            data: {
+                values: [
+                    { category: "A", group: "first", value: 2 },
+                    { category: "A", group: "second", value: 3 },
+                ],
+            },
+            mark: "rect",
+            encoding: {
+                x: { field: "category", type: "nominal" },
+                y: { field: "value", type: "quantitative" },
+                xOffset: {
+                    field: "group",
+                    type: "nominal",
+                    scale: { range: [-8, 8] },
+                },
+            },
+        });
+
+        expect(sources.vertex).toContain("getScaled_xOffset()");
+        expect(sources.vertex).toContain("getScaled_x2Offset()");
+        expect(sources.vertex).toContain("scale_xOffset");
+    });
+
     test("point mark control spec", async () => {
         const sources = await captureShaderSources({
             data: {

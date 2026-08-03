@@ -88,6 +88,75 @@ describe("mark positional endpoints", () => {
     });
 });
 
+describe("mark positional offsets", () => {
+    test("inherits the primary offset for an implicit secondary endpoint", async () => {
+        const view = await create(
+            {
+                data: { values: [{ category: "A", value: 3 }] },
+                mark: "rect",
+                encoding: {
+                    x: { field: "category", type: "nominal" },
+                    y: { field: "value", type: "quantitative" },
+                    xOffset: {
+                        field: "category",
+                        type: "nominal",
+                        scale: { range: [-6, 6] },
+                    },
+                },
+            },
+            UnitView
+        );
+
+        const encoding = /** @type {Record<string, any>} */ (
+            view.mark.encoding
+        );
+        expect(encoding.x2Offset).toEqual({
+            ...encoding.xOffset,
+            resolutionChannel: "xOffset",
+        });
+    });
+
+    test("defaults the secondary offset to zero for an explicit endpoint", async () => {
+        const view = await create(
+            {
+                data: { values: [{ start: 1, end: 2 }] },
+                mark: "rule",
+                encoding: {
+                    x: { field: "start", type: "quantitative" },
+                    x2: { field: "end" },
+                    xOffset: { value: 7 },
+                },
+            },
+            UnitView
+        );
+
+        const encoding = /** @type {Record<string, any>} */ (
+            view.mark.encoding
+        );
+        expect(encoding.x2Offset).toEqual({ value: 0 });
+    });
+
+    test("honors an explicit zero secondary offset property", async () => {
+        const view = await create(
+            {
+                data: { values: [{ category: "A", value: 3 }] },
+                mark: { type: "rect", xOffset: 8, x2Offset: 0 },
+                encoding: {
+                    x: { field: "category", type: "nominal" },
+                    y: { field: "value", type: "quantitative" },
+                },
+            },
+            UnitView
+        );
+
+        const encoding = /** @type {Record<string, any>} */ (
+            view.mark.encoding
+        );
+        expect(encoding.xOffset).toEqual({ value: 8 });
+        expect(encoding.x2Offset).toEqual({ value: 0 });
+    });
+});
+
 describe("mark viewport scope", () => {
     test("clips only x when clipX is enabled", () => {
         const canvasSize = { width: 20, height: 10 };
